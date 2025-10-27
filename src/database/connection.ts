@@ -1,0 +1,308 @@
+import "reflect-metadata";
+import * as oracledb from "oracledb";
+import { DataSource, Repository, EntityTarget, ObjectLiteral } from "typeorm";
+
+// ==================== ORACLE CLIENT INIT ====================
+try {
+  oracledb.initOracleClient({
+    libDir:
+      process.env.ORACLE_INSTANT_CLIENT_PATH ||
+      "C:\\oracle\\instantclient_19_19\\instantclient_19_28",
+  });
+  console.log("Oracle thick mode initialized");
+} catch (err) {
+  console.error("Error initializing Oracle thick mode:", err);
+  console.log("Using thin mode as fallback");
+}
+
+// ==================== RAW ORACLE CONFIG ====================
+const dbConfig: oracledb.PoolAttributes = {
+  user: process.env.ORACLE_USER || "WMSDEV",
+  password: process.env.ORACLE_PASSWORD || "WMSDEV123",
+  connectString:
+    process.env.ORACLE_CONNECTION_STRING ||
+    "10.10.2.56:1521/BayanDB_dxb1c4.jumpsn.prodvcn.oraclevcn.com",
+  poolMin: 5,
+  poolMax: 20,
+  poolIncrement: 2,
+  poolTimeout: 60,
+};
+
+let oraclePool: oracledb.Pool | null = null;
+
+// ==================== TYPEORM CONFIG - FIXED ====================
+export const AppDataSource = new DataSource({
+  type: "oracle",
+  connectString:
+    process.env.ORACLE_CONNECTION_STRING ||
+    "10.10.2.56:1521/BayanDB_dxb1c4.jumpsn.prodvcn.oraclevcn.com",
+  username: process.env.ORACLE_USER || "WMSDEV",
+  password: process.env.ORACLE_PASSWORD || "WMSDEV123",
+  synchronize: false,
+  logging: true,
+  entities: [
+    "src/entity/**/*.ts", // Keep existing entity path pattern
+    "src/entities/**/*.ts", // Add new entities path pattern
+  ],
+  migrations: ["src/migration/**/*.ts"],
+  subscribers: ["src/subscriber/**/*.ts"],
+  extra: {
+    poolMin: 5,
+    poolMax: 20,
+    poolIncrement: 2,
+    poolTimeout: 60,
+  },
+});
+
+// ==================== TYPEORM SERVICE ====================
+class TypeORMService {
+  private static initialized = false;
+
+  static async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      if (!AppDataSource.isInitialized) {
+        console.log("Attempting TypeORM connection...");
+        console.log("TypeORM Config:", {
+          type: "oracle",
+          connectString:
+            "10.10.2.56:1521/BayanDB_dxb1c4.jumpsn.prodvcn.oraclevcn.com",
+          username: process.env.ORACLE_USER || "WMSDEV",
+        });
+
+        await AppDataSource.initialize();
+        console.log("TypeORM Connected to Oracle Database");
+
+        // Set session parameters
+        await AppDataSource.query(
+          "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
+        );
+
+        this.initialized = true;
+      }
+    } catch (error) {
+      console.error("TypeORM connection failed:", error);
+      console.log("TypeORM failed, but raw Oracle connection is active");
+    }
+  }
+
+  static getRepository<T extends ObjectLiteral>(
+    entity: EntityTarget<T>
+  ): Repository<T> {
+    if (!this.initialized) {
+      throw new Error("TypeORM not initialized. Call initialize() first.");
+    }
+    return AppDataSource.getRepository(entity);
+  }
+
+  static async close(): Promise<void> {
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
+      this.initialized = false;
+      console.log("TypeORM connection closed");
+    }
+  }
+
+  static isConnected(): boolean {
+    return this.initialized && AppDataSource.isInitialized;
+  }
+}
+
+// ==================== BIND PARAMETER HELPER ====================
+function processBindParameters(binds: any): any {
+  if (!binds) return {};
+
+  const processedBinds: any = {};
+
+  for (const [key, value] of Object.entries(binds)) {
+    // Handle undefined, null, and empty objects
+    if (value === undefined || value === null) {
+      processedBinds[key] = { val: null };
+    }
+    // Check if it's already a proper bind object
+    else if (
+      value &&
+      typeof value === "object" &&
+      ("val" in value ||
+        "dir" in value ||
+        "type" in value ||
+        "maxSize" in value)
+    ) {
+      processedBinds[key] = value;
+    }
+    // Handle empty objects
+    else if (
+      value &&
+      typeof value === "object" &&
+      Object.keys(value).length === 0
+    ) {
+      processedBinds[key] = { val: null };
+    } else {
+      processedBinds[key] = { val: value };
+    }
+  }
+
+  return processedBinds;
+}
+
+// ==================== RAW ORACLE FUNCTIONS ====================
+export const oracleDb = {
+  authenticate: async (): Promise<void> => {
+    try {
+      oraclePool = await oracledb.createPool(dbConfig);
+      console.log(" Oracle Database Connected (Thick Mode)");
+    } catch (error: unknown) {
+      console.error(
+        "Oracle connection failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+      throw error;
+    }
+  },
+
+  getConnection: async (): Promise<oracledb.Connection> => {
+    if (!oraclePool)
+      throw new Error("Database not connected. Call authenticate() first.");
+    return await oraclePool.getConnection();
+  },
+
+  withTransaction: async <T>(
+    fn: (conn: oracledb.Connection) => Promise<T>
+  ): Promise<T> => {
+    const conn = await oracleDb.getConnection();
+    try {
+      await conn.execute("BEGIN NULL; END;");
+      const result = await fn(conn);
+      await conn.commit();
+      return result;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      await conn.close();
+    }
+  },
+
+  query: async (
+    sql: string,
+    binds?: any,
+    conn?: oracledb.Connection
+  ): Promise<any> => {
+    const useExternalConn = Boolean(conn);
+    let connection: oracledb.Connection | undefined;
+
+    try {
+      connection = conn ?? (await oracleDb.getConnection());
+      const options = {
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
+        autoCommit: !useExternalConn,
+      };
+
+      // Process bind parameters to ensure proper format
+      const processedBinds = processBindParameters(binds || {});
+
+      // console.log("=== DEBUG ===");
+      // console.log("Original SQL:", sql);
+      // console.log("Original binds:", JSON.stringify(binds, null, 2));
+      // console.log("Processed binds:", JSON.stringify(processedBinds, null, 2));
+      // console.log("=== END DEBUG ===");
+
+      const result = await connection.execute(sql, processedBinds, options);
+      return result;
+    } catch (error: unknown) {
+      console.error(
+        "Query failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+      console.error("SQL that failed:", sql);
+      console.error("Bind parameters:", binds);
+      throw error;
+    } finally {
+      if (connection && !useExternalConn) {
+        try {
+          await connection.close();
+        } catch (err) {
+          console.error("Error closing connection:", err);
+        }
+      }
+    }
+  },
+
+  close: async (): Promise<void> => {
+    if (oraclePool) {
+      await oraclePool.close();
+      oraclePool = null;
+    }
+  },
+
+  processBindParameters,
+};
+
+// ==================== CONNECTION INITIALIZATION ====================
+export const initializeAllConnections = async (): Promise<void> => {
+  try {
+    // Initialize raw Oracle connection (this works)
+    await oracleDb.authenticate();
+
+    // Test the connection with a simple query
+    const testResult = await oracleDb.query("SELECT 1 FROM DUAL");
+
+    await oracleDb.query(
+      "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
+    );
+
+    console.log("Raw Oracle connection established and session configured");
+
+    try {
+      await TypeORMService.initialize();
+      console.log(" TypeORM connection established");
+    } catch (typeormError) {
+      console.log("TypeORM connection failed, but raw Oracle is working");
+    }
+
+    console.log(" Database connections ready (at least raw Oracle is working)");
+  } catch (error) {
+    console.error("Failed to initialize database connections:", error);
+    throw error;
+  }
+};
+
+export const closeAllConnections = async (): Promise<void> => {
+  await oracleDb.close();
+  await TypeORMService.close();
+  console.log("All database connections closed");
+};
+
+// ==================== BACKWARD COMPATIBILITY ====================
+export const databaseConnection = (): Promise<boolean> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      await oracleDb.authenticate();
+      await oracleDb.query(
+        "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
+      );
+      console.log("Oracle Database Connected and Session Set");
+      resolve(true);
+    } catch (error: unknown) {
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+};
+
+// ==================== EXPORTS ====================
+export { TypeORMService };
+export const getRepository = TypeORMService.getRepository.bind(TypeORMService);
+export const isTypeOrmConnected = TypeORMService.isConnected;
+export const closeTypeOrmConnection = TypeORMService.close;
+
+// ==================== BIND PARAMETER UTILITY (for external use) ====================
+export const createBindObject = (value: any): any => {
+  return { val: value };
+};
+
+export const createBindObjects = (
+  params: Record<string, any>
+): Record<string, any> => {
+  return processBindParameters(params);
+};

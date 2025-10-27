@@ -1,0 +1,423 @@
+// Import required dependencies and types
+import { Response } from "express";
+import {
+  ISearch,
+  RequestWithUser,
+} from "../../../../interfaces/common.interface";
+import { IUser } from "../../../../interfaces/user.interface";
+import { packingDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
+import constants from "../../../../helpers/constants";
+import Product from "../../../../models/wms/product_wms.model";
+import { Op } from "sequelize";
+import Country from "../../../../models/wms/warehouse_wms.model";
+import PackingDetailsInboundWms from "../../../../models/wms/transaction/inbound/packingDetails_wms.model";
+import { IPackingDetails } from "../../../../interfaces/wms/transaction/inbound/packingDetails_wms.interface";
+import * as fastCsv from "fast-csv";
+import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
+import { getSearchFilterQuery } from "../../../../helpers/functions";
+
+// Get a single packing detail by prin_code, packdet_no and job_no
+export const getPackingDetail = async (req: RequestWithUser, res: Response) => {
+  try {
+    console.log("i am here packing details ...............");
+    const { prin_code, packdet_no, job_no } = req.query;
+
+    // Find packing details record
+    const packingDetails = await PackingDetailsInboundWms.findOne({
+      where: {
+        prin_code,
+        packdet_no,
+        job_no,
+        company_code: req.user.company_code,
+      },
+    });
+
+    // Return error if packing details not found
+    if (!packingDetails) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Packing Item " + constants.MESSAGES.DOES_NOT_EXISTS,
+      });
+      return;
+    }
+
+    // Get associated product info
+    const productInfo = await Product.findOne({
+      where: {
+        prod_code: packingDetails.dataValues.prod_code,
+        company_code: req.user.company_code,
+      },
+    });
+
+    // Return packing details with product info
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: {
+        ...packingDetails.dataValues,
+        prod_name: productInfo?.dataValues.prod_name,
+        uom_count: productInfo?.dataValues.uom_count,
+        uppp: productInfo?.dataValues.uppp,
+      },
+    });
+    return;
+  } catch (error: unknown) {
+    const knownError = error as { message: string };
+    res
+      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: knownError.message });
+  }
+};
+
+// Create a new packing item
+export const createPackingItem = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const requestUser: IUser = req.user;
+console.log('inside createPackingItem1a');
+    // Validate request body
+    const { error } = packingDetailsSchema(
+      req.body,
+      false,
+      requestUser.company_code
+    );
+    if (error) {
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: error.message });
+      return;
+    }
+console.log('inside createPackingItem1b');
+    // Validate product code if provided
+    if (!!req.body.prod_code) {
+      const productResponse = await Product.findOne({
+        where: {
+          [Op.and]: [
+            { company_code: requestUser.company_code },
+            { prod_code: req.body.prod_code },
+          ],
+        },
+      });
+      console.log('inside createPackingItem1c');
+      if (!productResponse) {
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: "Product " + constants.MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+    }
+console.log('inside createPackingItem1d');
+    // Validate country code if provided  
+    if (!!req.body.country_code) {
+      const countryResponse = await Country.findOne({
+        where: {
+          [Op.and]: [
+            { company_code: requestUser.company_code },
+            { country_code: req.body.country_code },
+          ],
+        },
+      });
+      console.log('inside createPackingItem1e');
+      if (!countryResponse) {
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: "Country " + constants.MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+    }
+console.log('inside createPackingItem1f');
+    // Create packing details record
+    const response = await PackingDetailsInboundWms.create({
+      ...req.body,
+      company_code: requestUser.company_code,
+      created_by: requestUser.loginid,
+      updated_by: requestUser.loginid,
+    });
+console.log('inside createPackingItem2');
+    if (!response) {
+      res
+        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: response });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Packing Details " + constants.MESSAGES.CREATED_SUCCESSFULLY,
+    });
+    return;
+  } catch (error: any) {
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};
+
+// Update an existing packing item
+export const updatePackingItem = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    console.log('inside createPackingItem3');
+    const requestUser: IUser = req.user;
+    const { packdet_no } = req.params;
+    const { prin_code, job_no } = req.query;
+
+    // Validate request body
+    const { error } = packingDetailsSchema(
+      req.body,
+      false,
+      requestUser.company_code
+    );
+    if (error) {
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: error.message });
+      return;
+    }
+
+    // Check if packing details exists
+    const packingResponse = await PackingDetailsInboundWms.findOne({
+      where: {
+        [Op.and]: [
+          { company_code: requestUser.company_code },
+          { packdet_no },
+          { prin_code },
+          { job_no },
+        ],
+      },
+    });
+    if (!packingResponse) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Packing " + constants.MESSAGES.NOT_FOUND,
+      });
+      return;
+    }
+
+    // Validate product code if provided
+    if (!!req.body?.prod_code) {
+      const productResponse = await Product.findOne({
+        where: {
+          [Op.and]: [
+            { company_code: requestUser.company_code },
+            { prod_code: req.body.prod_code },
+          ],
+        },
+      });
+      if (!productResponse) {
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: "Product " + constants.MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+    }
+
+    // Validate country code if provided
+    if (!!req.body?.country_code) {
+      const countryResponse = await Country.findOne({
+        where: {
+          [Op.and]: [
+            { company_code: requestUser.company_code },
+            { country_code: req.body.country_code },
+          ],
+        },
+      });
+      if (!countryResponse) {
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: "Country " + constants.MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+    }
+console.log('inside createPackingItem');
+    // Update packing details
+    const response = await PackingDetailsInboundWms.update(
+      {
+        ...req.body,
+        packdet_no: Number(packdet_no),
+        updated_by: requestUser.loginid,
+      },
+      {
+        where: {
+          [Op.and]: [
+            { company_code: requestUser.company_code },
+            { packdet_no },
+            { prin_code },
+            { job_no },
+          ],
+        },
+      }
+    );
+
+    if (!response) {
+      res
+        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: response });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Packing Details " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
+    });
+    return;
+  } catch (error: any) {
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};
+// Delete one or multiple packing items based on provided details
+export const deletePackingItem = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<any> => {
+  try {
+    const { packing_details } = req.body;
+    const requestUser = req.user;
+    // Validate that at least one item is provided for deletion
+    if (packing_details.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide at least one packing item to delete",
+      });
+    }
+
+    // Delete all provided packing items in parallel
+    await Promise.all(
+      packing_details.map(
+        async (packingDetail: {
+          prin_code: string;
+          job_no: string;
+          packdet_no: number;
+        }) => {
+          const { prin_code, job_no, packdet_no } = packingDetail;
+
+          return await PackingDetailsInboundWms.destroy({
+            where: {
+              prin_code,
+              job_no,
+              packdet_no,
+              company_code: requestUser.company_code,
+            },
+          });
+        }
+      )
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Deleted successfully",
+    });
+  } catch (error: any) {
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};
+
+// Create multiple packing details records in bulk
+export const createBulkPAckingDetails = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const requestUser: IUser = req.user;
+
+    // Add user info to each record
+    req.body = req.body.map((packingDetails: IPackingDetails[]) => ({
+      ...packingDetails.reduce((acc: any, value: any, index: number) => {
+        acc[constants.CSVFIELDNAME.PACKING_DETAILS[index]] = value;
+        return acc;
+      }, {}),
+      updated_by: requestUser.loginid,
+      created_by: requestUser.loginid,
+      company_code: requestUser.company_code,
+    }));
+
+    // Bulk create records, ignoring duplicates
+    PackingDetailsInboundWms.bulkCreate(req.body, { ignoreDuplicates: true });
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Packing Details " + constants.MESSAGES.IMPORTED_SUCCESSFULLY,
+    });
+    return;
+  } catch (error: any) {
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};
+
+// Export packing details to CSV file
+export const exportPackingDetails = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    let csvTransform: fastCsv.CsvFormatterStream<
+      fastCsv.FormatterRow,
+      fastCsv.FormatterRow
+    >;
+    let fetchedData: any[] = [];
+
+    // Parse filter from query params
+    const filter: ISearch = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : {};
+
+    // Build query with company code and search filters
+    let insideQuery: any = [],
+      outsideQuery = {
+        [Op.and]: [{ company_code: req.user.company_code }],
+      };
+
+    outsideQuery = getSearchFilterQuery({
+      insideQuery,
+      filter: filter.search,
+      outsideQuery,
+    });
+
+    // Fetch filtered data
+    fetchedData = await PackingDetailsInboundWms.findAll({
+      where: outsideQuery,
+    });
+
+    // Initialize CSV formatter with headers
+    csvTransform = fastCsv.format({
+      headers: WmsCsvHeaders.TANSACTION.INBOUND.PACKING_DETAIL,
+    });
+
+    // Set headers for CSV response before streaming
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="packing_details.csv"`
+    );
+
+    // Write data to the CSV stream
+    fetchedData.forEach((eachData) => {
+      const plainData = eachData.get({ plain: true });
+      csvTransform.write(plainData); // Write each row to the CSV stream
+    });
+
+    // End the CSV stream and pipe it to the response
+    csvTransform.end(); // Complete the CSV data transformation
+    csvTransform.pipe(res); // Pipe CSV data into the HTTP response
+  } catch (error: any) {
+    console.error("Export Error:", error); // Log the error for debugging
+    res.status(400).json({ success: false, message: error.message });
+  }
+};

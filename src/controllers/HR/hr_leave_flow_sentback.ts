@@ -1,0 +1,130 @@
+import { Request, Response } from "express";
+import { oracleDb } from "../../database/connection";
+import constants from "../../helpers/constants";
+import { RequestWithUser } from "../../interfaces/common.interface";
+import { IUser } from "../../interfaces/user.interface";
+
+export const getRequestFlowUsers = async (req: RequestWithUser, res: Response) => {
+  try {
+    const requestUser: IUser = req.user;
+    const { loginid } = requestUser;
+    const { doc_id } = req.query;
+
+    console.log("All query parameters:", req.query);
+    console.log("doc_id:", doc_id);
+    console.log("loginid from user:", loginid);
+    console.log("loginid type:", typeof loginid);
+    console.log("loginid length:", loginid.length);
+
+    if (!doc_id || typeof doc_id !== "string") {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Invalid or missing document ID",
+      });
+    }
+
+    const roleQuery = `
+      SELECT HOD, DEPT_HEAD, IMMEDIATE_SUPERVISOR,
+             LENGTH(HOD) as HOD_LENGTH,
+             LENGTH(DEPT_HEAD) as DEPT_HEAD_LENGTH, 
+             LENGTH(IMMEDIATE_SUPERVISOR) as IMMEDIATE_SUPERVISOR_LENGTH
+      FROM VW_HR_LEAVE_REQUEST_FLOW
+      WHERE REQUEST_NUMBER = :doc_id
+    `;
+
+    const roleResult = await oracleDb.query(roleQuery, { doc_id });
+
+    if (!roleResult.rows || roleResult.rows.length === 0) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Request number not found",
+      });
+    }
+
+    const roleData = roleResult.rows[0];
+    
+    console.log("HOD from DB:", roleData.HOD, "type:", typeof roleData.HOD, "length:", roleData.HOD_LENGTH);
+    console.log("DEPT_HEAD from DB:", roleData.DEPT_HEAD, "type:", typeof roleData.DEPT_HEAD, "length:", roleData.DEPT_HEAD_LENGTH);
+    console.log("IMMEDIATE_SUPERVISOR from DB:", roleData.IMMEDIATE_SUPERVISOR, "type:", typeof roleData.IMMEDIATE_SUPERVISOR, "length:", roleData.IMMEDIATE_SUPERVISOR_LENGTH);
+
+    const HOD = roleData.HOD;
+    const DEPT_HEAD = roleData.DEPT_HEAD;
+    const IMMEDIATE_SUPERVISOR = roleData.IMMEDIATE_SUPERVISOR;
+
+    const paddedLoginId = loginid.padStart(5, '0');
+    console.log("Padded loginid:", paddedLoginId, "length:", paddedLoginId.length);
+
+
+    console.log("Comparison results with padded loginid:");
+    console.log("paddedLoginId === HOD:", paddedLoginId === HOD, `(${paddedLoginId} === ${HOD})`);
+    console.log("paddedLoginId === DEPT_HEAD:", paddedLoginId === DEPT_HEAD, `(${paddedLoginId} === ${DEPT_HEAD})`);
+    console.log("paddedLoginId === IMMEDIATE_SUPERVISOR:", paddedLoginId === IMMEDIATE_SUPERVISOR, `(${paddedLoginId} === ${IMMEDIATE_SUPERVISOR})`);
+
+    let roleBasedQuery = "";
+    const queryParams = { doc_id };
+
+    if (paddedLoginId === HOD) {
+      console.log("User is HOD");
+      roleBasedQuery = `
+        SELECT V.CREATED_BY AS login_id, S.USERNAME
+        FROM VW_HR_LEAVE_REQUEST_FLOW V
+        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID
+        WHERE V.REQUEST_NUMBER = :doc_id
+        UNION
+        SELECT V.IMMEDIATE_SUPERVISOR, S.USERNAME
+        FROM VW_HR_LEAVE_REQUEST_FLOW V
+        JOIN SEC_LOGIN S ON V.IMMEDIATE_SUPERVISOR = S.LOGINID
+        WHERE V.REQUEST_NUMBER = :doc_id
+        UNION
+        SELECT V.DEPT_HEAD, S.USERNAME
+        FROM VW_HR_LEAVE_REQUEST_FLOW V
+        JOIN SEC_LOGIN S ON V.DEPT_HEAD = S.LOGINID
+        WHERE V.REQUEST_NUMBER = :doc_id
+      `;
+    } else if (paddedLoginId === DEPT_HEAD) {
+      console.log("User is DEPT_HEAD");
+      roleBasedQuery = `
+        SELECT V.CREATED_BY AS login_id, S.USERNAME
+        FROM VW_HR_LEAVE_REQUEST_FLOW V
+        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID
+        WHERE V.REQUEST_NUMBER = :doc_id
+        UNION
+        SELECT V.IMMEDIATE_SUPERVISOR, S.USERNAME
+        FROM VW_HR_LEAVE_REQUEST_FLOW V
+        JOIN SEC_LOGIN S ON V.IMMEDIATE_SUPERVISOR = S.LOGINID
+        WHERE V.REQUEST_NUMBER = :doc_id
+      `;
+    } else if (paddedLoginId === IMMEDIATE_SUPERVISOR) {
+      console.log("User is IMMEDIATE_SUPERVISOR");
+      roleBasedQuery = `
+        SELECT V.CREATED_BY AS login_id, S.USERNAME
+        FROM VW_HR_LEAVE_REQUEST_FLOW V
+        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID
+        WHERE V.REQUEST_NUMBER = :doc_id
+      `;
+    } else {
+      console.log("User is NOT authorized");
+      return res.status(constants.STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        message: "User is not authorized to view this request flow",
+      });
+    }
+
+    console.log("Executing query:", roleBasedQuery);
+    console.log("With parameters:", queryParams);
+
+    const usersInFlow = await oracleDb.query(roleBasedQuery, queryParams);
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: false,
+      data: usersInFlow.rows,
+    });
+  } catch (error: unknown) {
+    const knownError = error as { message: string };
+    console.error("Error in getRequestFlowUsers:", knownError);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: knownError.message || "Internal server error",
+    });
+  }
+};
