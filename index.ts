@@ -38,24 +38,13 @@ app.use("/api/auth", authRoutes);
 
 app.use("/api/reports", boldReportsRoutes);
 
-// app.use("/api/wms", wmsRoutes);
-
-// app.use("/api/pf", pfRoutes);
-
-// app.use("/api/BT-WF-AL", pfbtflowRoutes);
-
 app.use("/api/security", secRoutes);
 
 app.use("/api/hr", hrRoutes);
 
-// app.use("/api/finance", financeRoutes);
-
-// app.use("/api/accounts", accountsRoutes);
 
 app.use("/api/notification", logRoutes);
 
-// app.use("/api/sms", cfsRoutes)
-// ;
 
 app.use("/api/vendor", VendorRouter);
 
