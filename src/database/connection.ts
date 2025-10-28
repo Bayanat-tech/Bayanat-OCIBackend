@@ -7,7 +7,7 @@ try {
   oracledb.initOracleClient({
     libDir:
       process.env.ORACLE_INSTANT_CLIENT_PATH ||
-      "C:\\oracle\\instantclient_19_19\\instantclient_19_28",
+      "/opt/oracle/instantclient",
   });
   console.log("Oracle thick mode initialized");
 } catch (err) {
