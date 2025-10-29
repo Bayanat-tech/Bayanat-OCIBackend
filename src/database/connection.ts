@@ -7,7 +7,7 @@ try {
   oracledb.initOracleClient({
     libDir:
       process.env.ORACLE_INSTANT_CLIENT_PATH ||
-      "/opt/oracle/instantclient",
+      "C:\\oracle\\instantclient_19_19\\instantclient_19_28",
   });
   console.log("Oracle thick mode initialized");
 } catch (err) {
@@ -41,8 +41,8 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: true,
   entities: [
-    "src/entity/**/*.ts", // Keep existing entity path pattern
-    "src/entities/**/*.ts", // Add new entities path pattern
+    "src/entity/**/*.ts", 
+    "src/entities/**/*.ts", 
   ],
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
