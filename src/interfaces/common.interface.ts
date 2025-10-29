@@ -50,6 +50,12 @@ export interface UploadToS3ObjectInterface {
   ACL: ObjectCannedACL;
   ContentType: string;
 }
+export interface UploadToOCIObjectInterface {
+  bucketName: string;
+  objectName: string;
+  content: Buffer;
+  contentType: string;
+}
 export interface IFiles {
   company_code: string;
   request_number: string;
