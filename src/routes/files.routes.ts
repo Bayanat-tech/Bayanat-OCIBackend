@@ -21,8 +21,7 @@ import {
   uploadPFToS3,
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
-  deleteEmployeeAttachmentFromS3,
-} from "../services/s3Upload.service";
+} from "../services/ociUpload.service";
 // router for files operations
 
 const router = express.Router();

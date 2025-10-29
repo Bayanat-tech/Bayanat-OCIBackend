@@ -1,33 +1,31 @@
-// Import AWS S3 SDK components for file operations
 import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-// Import application constants including AWS credentials
 import constants from "../helpers/constants";
-// Import interface defining S3 upload parameters
 import { UploadToS3ObjectInterface } from "../interfaces/common.interface";
 
+// Configure S3 client for OCI S3 Compatibility API
 const s3Client = new S3Client({
-  region: constants.AWS_S3_CREDENTIALS.REGION,
+  region: constants.OCI_S3_COMPATIBILITY.REGION,
+  endpoint: constants.OCI_S3_COMPATIBILITY.ENDPOINT,
+  forcePathStyle: true,
   credentials: {
-    accessKeyId: constants.AWS_S3_CREDENTIALS.ACCESS_KEY,
-    secretAccessKey: constants.AWS_S3_CREDENTIALS.SECRET_ACCESS_KEY,
+    accessKeyId: constants.OCI_S3_COMPATIBILITY.ACCESS_KEY_ID,
+    secretAccessKey: constants.OCI_S3_COMPATIBILITY.SECRET_ACCESS_KEY,
   },
 });
 
 export const uploadToS3 = async (req: any, res: any) => {
   const file = req.file;
 
-  // Generate dynamic file path using current date (YYYY/MM/filename)
   const fileName: string = `uploads/${new Date().getFullYear()}/${
     new Date().getMonth() + 1
   }/${file.originalname}`;
 
-  // Configure S3 upload parameters
   const objectParams: UploadToS3ObjectInterface = {
-    Bucket: constants.AWS_S3_CREDENTIALS.S3_BUCKET,
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
     ACL: "public-read",
@@ -37,7 +35,7 @@ export const uploadToS3 = async (req: any, res: any) => {
   try {
     await s3Client.send(new PutObjectCommand(objectParams));
 
-    const URL: string = constants.AWS_S3_CREDENTIALS.AWS_S3_URL(fileName);
+    const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
 
     return res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -61,7 +59,7 @@ export const uploadPFToS3 = async (req: any, res: any) => {
   }/${requestNumber}/${file.originalname}`;
 
   const objectParams: UploadToS3ObjectInterface = {
-    Bucket: constants.AWS_S3_CREDENTIALS.S3_BUCKET,
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
     ACL: "public-read",
@@ -71,7 +69,7 @@ export const uploadPFToS3 = async (req: any, res: any) => {
   try {
     await s3Client.send(new PutObjectCommand(objectParams));
 
-    const URL: string = constants.AWS_S3_CREDENTIALS.AWS_S3_URL(fileName);
+    const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
 
     return res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -87,7 +85,7 @@ export const uploadPFToS3 = async (req: any, res: any) => {
 
 export const deleteFileFromS3 = async (awsFileLocation: string) => {
   const params = {
-    Bucket: constants.AWS_S3_CREDENTIALS.S3_BUCKET,
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: awsFileLocation,
   };
 
@@ -95,9 +93,9 @@ export const deleteFileFromS3 = async (awsFileLocation: string) => {
     await s3Client.send(new DeleteObjectCommand(params));
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`Failed to delete file from S3: ${error.message}`);
+      throw new Error(`Failed to delete file from OCI: ${error.message}`);
     } else {
-      throw new Error("Failed to delete file from S3: Unknown error occurred");
+      throw new Error("Failed to delete file from OCI: Unknown error occurred");
     }
   }
 };
@@ -109,7 +107,7 @@ export const uploadVendorAttachmentToS3 = async (req: any, res: any) => {
   const fileName: string = `VendorDocument/${docNo}/${file.originalname}`;
 
   const objectParams: UploadToS3ObjectInterface = {
-    Bucket: constants.AWS_S3_CREDENTIALS.S3_BUCKET,
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
     ACL: "public-read",
@@ -119,7 +117,7 @@ export const uploadVendorAttachmentToS3 = async (req: any, res: any) => {
   try {
     await s3Client.send(new PutObjectCommand(objectParams));
 
-    const URL: string = constants.AWS_S3_CREDENTIALS.AWS_S3_URL(fileName);
+    const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
 
     return res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -138,7 +136,7 @@ export const deleteVendorAttachmentFromS3 = async (req: any, res: any) => {
   const fileName = `VendorDocument/${docNo}`;
 
   const params = {
-    Bucket: constants.AWS_S3_CREDENTIALS.S3_BUCKET,
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
   };
 
@@ -163,7 +161,7 @@ export const uploadEmployeeAttachmentToS3 = async (req: any, res: any) => {
   const fileName: string = `LeaveDocument/${requestNumber}/${file.originalname}`;
 
   const objectParams: UploadToS3ObjectInterface = {
-    Bucket: constants.AWS_S3_CREDENTIALS.S3_BUCKET,
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
     ACL: "public-read",
@@ -173,7 +171,7 @@ export const uploadEmployeeAttachmentToS3 = async (req: any, res: any) => {
   try {
     await s3Client.send(new PutObjectCommand(objectParams));
 
-    const URL: string = constants.AWS_S3_CREDENTIALS.AWS_S3_URL(fileName);
+    const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
 
     return res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -192,7 +190,7 @@ export const deleteEmployeeAttachmentFromS3 = async (req: any, res: any) => {
   const fileName = `LeaveDocument/${empId}`;
 
   const params = {
-    Bucket: constants.AWS_S3_CREDENTIALS.S3_BUCKET,
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
   };
 
