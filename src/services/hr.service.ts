@@ -70,6 +70,8 @@ export const HrService = {
     });
     return response.data;
   },
+
+
   getLeaveBalance: async (employeeId: string) => {
     const response = await axiosInstance.get(
       `/api/EmployeeLeave/leavebalance/${employeeId}`
@@ -180,10 +182,12 @@ export const HrService = {
         JSON.stringify(formattedRequest, null, 2)
       );
 
-      const response = await axiosInstance.post(
-        "/api/EmployeeLeave/insertLeaveRequest",
-        formattedRequest
-      );
+      if(request.finalApproved === "YES"){
+        const response = await axiosInstance.post(
+          "/api/EmployeeLeave/insertLeaveRequest",
+          formattedRequest
+        );
+   
 
       console.log("API Response:", {
         status: response.status,
@@ -198,8 +202,12 @@ export const HrService = {
           }\nDetails: ${JSON.stringify(response.data)}`
         );
       }
+      
 
       return response.data;
+         }else{
+          return ;
+         }
     } catch (error: any) {
       console.error("Error in insertLeaveRequest:", {
         message: error.message,

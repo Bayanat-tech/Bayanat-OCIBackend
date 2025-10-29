@@ -218,7 +218,7 @@ export const getHrMaster = async (
         try {
           const fetchQuery = `
       SELECT *
-      FROM LEAVE_REQUEST_FLOW
+      FROM VW_LEAVE_REQUEST_FLOW
       WHERE ${whereConditions}
       ORDER BY request_number ASC
     `;

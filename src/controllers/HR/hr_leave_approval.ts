@@ -219,6 +219,7 @@ async function updateLeaveApproval(data: TLeaveApproval, connection: any) {
     sentback_history: { val: data.SENTBACK_HISTORY || "" },
   };
   console.log("Update parameters:", JSON.stringify(params, null, 2));
+  console.log("Update sql:", sql); 
 
   await oracleDb.query(sql, params, connection);
 }
@@ -325,6 +326,36 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
   // Debug: log parameters
   console.log("Parameters for insert:", JSON.stringify(params, null, 2));
 
+  // Right before the try-catch block, add:
+console.log("📋 TOAD-READY SQL:");
+console.log("--------------------------------------------------");
+console.log(`INSERT INTO LEAVE_REQUEST_FLOW (
+  EMPLOYEE_NAME, HALF_DAY, DUTY_RESUME_DATE, ACTUAL_RESUME_DATE,
+  LEAVE_ALLOWANCE, ADV_PAYMENT, CAUSE_TYPE, TRAVEL_DATE,
+  NAME_OF_REPLACEMENT, CONTACT_DETAILS_DURING_LEAVE, REMARKS, 
+  FLOW_CODE, HOD, UPDATED_BY, IMMEDIATE_SUPERVISOR, DEPT_HEAD,
+  COMPANY_CODE, REQUEST_NUMBER, REQUEST_DATE,
+  EMPLOYEE_CODE, LEAVE_TYPE, LEAVE_START_DATE, LEAVE_END_DATE,
+  LEAVE_DAYS, LAST_ACTION, CURRENT_STEP, FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
+  CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL
+) VALUES (
+  '${data.EMPLOYEE_NAME}', '${data.HALF_DAY || "N"}', 
+  ${data.DUTY_RESUME_DATE ? `TO_DATE('${toOracleDate(data.DUTY_RESUME_DATE)}', 'YYYY-MM-DD')` : 'NULL'},
+  ${data.ACTUAL_RESUME_DATE ? `TO_DATE('${toOracleDate(data.ACTUAL_RESUME_DATE)}', 'YYYY-MM-DD')` : 'NULL'},
+  '${data.LEAVE_ALLOWANCE}', '${data.ADV_PAYMENT}', '${data.CAUSE_TYPE}',
+  ${data.TRAVEL_DATE ? `TO_DATE('${toOracleDate(data.TRAVEL_DATE)}', 'YYYY-MM-DD')` : 'NULL'},
+  '${data.NAME_OF_REPLACEMENT}', '${data.CONTACT_DETAILS_DURING_LEAVE}', '${data.REMARKS}', 
+  '004', '${data.HOD}', '${data.UPDATED_BY}', '${data.IMMEDIATE_SUPERVISOR}', '${data.DEPT_HEAD}',
+  '${data.COMPANY_CODE}', '${data.REQUEST_NUMBER}',
+  TO_DATE('${toOracleDate(data.REQUEST_DATE) || leaveStartDate}', 'YYYY-MM-DD'),
+  '${data.EMPLOYEE_CODE}', '${data.LEAVE_TYPE}',
+  TO_DATE('${leaveStartDate}', 'YYYY-MM-DD'),
+  TO_DATE('${leaveEndDate}', 'YYYY-MM-DD'),
+  ${data.LEAVE_DAYS}, '${data.LAST_ACTION}', 1, 1, 4, '${data.UPDATED_BY}', SYSDATE, 
+  '${data.CREATED_BY}', SYSDATE, 4
+)`);
+console.log("--------------------------------------------------");
+
   try {
     await oracleDb.query(sql, params, connection);
   } catch (error: any) {
@@ -374,10 +405,28 @@ export const upsertLeaveApprovalHandler = async (
     };
 
     const requestNumber = await upsertLeaveApproval(leaveApprovalData);
+    console.log("LAST_ACTION", leaveApprovalData.LAST_ACTION); 
+
+    let messageType = '';
+
+    if (leaveApprovalData.LAST_ACTION === 'SAVEASDRAFT') {
+      messageType = 'Saved as draft';
+    } else if (leaveApprovalData.LAST_ACTION === 'SENDBACK') {
+      messageType = 'Sent back';
+    } else if (leaveApprovalData.LAST_ACTION === 'REJECTED') {
+      messageType = 'Rejected';
+    } else if (leaveApprovalData.LAST_ACTION === 'CANCEL') {
+      messageType = 'Cancelled';
+    } else if (leaveApprovalData.LAST_ACTION === 'SUBMITTED') {
+      messageType = 'Submitted';
+    } else {
+      messageType = 'Updated';
+    }
+
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: "Leave Request Updated successfully.",
+      message: `${requestNumber} ${messageType} successfully.`,
       request_number: requestNumber,
     });
   } catch (error: any) {
