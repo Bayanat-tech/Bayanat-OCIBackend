@@ -28,7 +28,6 @@ export const uploadToS3 = async (req: any, res: any) => {
     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
-    ACL: "public-read",
     ContentType: file.mimetype,
   };
 
@@ -62,7 +61,6 @@ export const uploadPFToS3 = async (req: any, res: any) => {
     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
-    ACL: "public-read",
     ContentType: file.mimetype,
   };
 
@@ -110,7 +108,6 @@ export const uploadVendorAttachmentToS3 = async (req: any, res: any) => {
     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
-    ACL: "public-read",
     ContentType: file.mimetype,
   };
 
@@ -164,7 +161,6 @@ export const uploadEmployeeAttachmentToS3 = async (req: any, res: any) => {
     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
     Key: fileName,
     Body: file.buffer,
-    ACL: "public-read",
     ContentType: file.mimetype,
   };
 
