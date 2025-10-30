@@ -60,8 +60,8 @@ router.get(
 );
 
 //------Employee files----------
-router.post(
-  "/employees",
+router.get(
+  "/employees/:request_number",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   async (req, res) => {
