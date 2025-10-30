@@ -76,20 +76,33 @@ export async function upsertLeaveApproval(
         connection
       );
 
+      // Check if the record exists and perform the appropriate insert/update
       if (exists) {
+        console.log('Checking commit1')
         await updateLeaveApproval(data, connection);
       } else {
+        console.log('Checking commit2')
         await insertLeaveApproval(data, connection);
+      }
+console.log('Checking commit3')
+      // If FINAL_APPROVED is 'YES', trigger the background process
+      if (data.FINAL_APPROVED === 'YES') {
+        console.log('Checking commit4')
+        // Trigger background processing asynchronously
+        processApprovedLeaveRequestsForSingleRecord(
+          data.REQUEST_NUMBER,
+          data.COMPANY_CODE
+        ).catch((error) => {
+          console.error("Background processing failed:", error);
+        });
+      } else {
+        console.log('Checking commit5')
+        // If FINAL_APPROVED is not 'YES', explicitly commit the transaction
+        await connection.commit();
+        console.log("Transaction committed because FINAL_APPROVED is not 'YES'.");
       }
 
       return data.REQUEST_NUMBER;
-    });
-
-    processApprovedLeaveRequestsForSingleRecord(
-      data.REQUEST_NUMBER,
-      data.COMPANY_CODE
-    ).catch((error) => {
-      console.error("Background processing failed:", error);
     });
 
     return result;
@@ -98,6 +111,7 @@ export async function upsertLeaveApproval(
     throw error;
   }
 }
+
 
 export async function processApprovedLeaveRequestsForSingleRecord(
   requestNumber: string,
