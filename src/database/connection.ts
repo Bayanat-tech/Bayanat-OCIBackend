@@ -72,8 +72,9 @@ class TypeORMService {
         console.log("TypeORM Config:", {
           type: "oracle",
           connectString:
-            "10.10.2.56:1521/BayanDB_dxb1c4.jumpsn.prodvcn.oraclevcn.com",
-          username: process.env.ORACLE_USER || "WMSDEV",
+              constants.DATABASE.ORACLE_CONNECTION_STRING ||
+              process.env.ORACLE_CONNECTION_STRING,
+          username: process.env.ORACLE_USER,
         });
 
         await AppDataSource.initialize();
