@@ -411,8 +411,10 @@ export const getEmployeeFiles = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { request_number } = req.params;
+    let { request_number } = req.params;
     const { modules } = req.query;
+
+    request_number = decodeURIComponent(request_number);
 
     if (!request_number) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -423,7 +425,7 @@ export const getEmployeeFiles = async (
     }
 
     const conditions = {
-      request_number,
+      request_number, 
       modules: (modules as string) || "hr",
       company_code: req.user.company_code,
     };
@@ -458,6 +460,8 @@ export const getEmployeeFiles = async (
   }
 };
 
+
+
 export const editEmployeeFiles = async (
   req: RequestWithUser,
   res: Response
@@ -466,8 +470,13 @@ export const editEmployeeFiles = async (
     const { aws_file_locn, request_number, user_file_name } = req.body;
 
     const result = await filesVHService.update(
-      { aws_file_locn, request_number },
-      { user_file_name }
+      {
+        awsFileLocn: aws_file_locn,
+        requestNumber: request_number,
+      },
+      {
+        userFileName: user_file_name,
+      }
     );
 
     if (result.affected === 0) {
@@ -482,31 +491,34 @@ export const editEmployeeFiles = async (
       success: true,
       message: "File name updated successfully",
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    console.error("Error in editHrVendorFiles:", error);
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
-
 export const deleteEmployeeFiles = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
     const { request_number, sr_no } = req.params;
+    console.log("Deleting file:", { request_number, sr_no });
 
-    if (request_number === undefined) {
+    if (!request_number) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: true,
+        success: false,
         message: constants.MESSAGES.BAD_REQUEST,
       });
       return;
     }
 
-    const file = await filesVHService.findOne({ request_number, sr_no });
+    const file = await filesVHService.findOne({
+      requestNumber: request_number,
+      srNo: sr_no,
+    });
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -516,7 +528,10 @@ export const deleteEmployeeFiles = async (
       return;
     }
 
-    const result = await filesVHService.delete({ request_number, sr_no });
+    const result = await filesVHService.delete({
+      requestNumber: request_number,
+      srNo: sr_no,
+    });
 
     if (result.affected === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -530,11 +545,11 @@ export const deleteEmployeeFiles = async (
       success: true,
       message: constants.MESSAGES.DELETED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    console.error("Error in deleteHriles:", error);
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

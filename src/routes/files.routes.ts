@@ -26,9 +26,7 @@ import {
 
 const router = express.Router();
 const upload = multer({
-  // store the file in memory
   storage: multer.memoryStorage(),
-  // allow all files to be uploaded
   fileFilter(req, file, next) {
     next(null, true);
   },
@@ -64,17 +62,7 @@ router.get(
   "/employees/:request_number",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  async (req, res) => {
-    if (req.body?.request_number) {
-      req.params = req.params || {};
-      req.params.request_number = req.body.request_number;
-    }
-    if (req.body?.modules) {
-      req.query = req.query || {};
-      req.query.modules = req.body.modules;
-    }
-    return getEmployeeFiles(req, res);
-  }
+  getEmployeeFiles 
 );
 
 router.put(
@@ -159,7 +147,7 @@ router.delete(
 );
 
 router.delete(
-  "/deleteEmployeeAttachment/:emp_id",
+  "/deleteEmployeeFiles/:request_number(.+)/:sr_no",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   deleteEmployeeFiles
