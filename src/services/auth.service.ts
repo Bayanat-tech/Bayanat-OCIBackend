@@ -10,6 +10,8 @@ interface ExternalApiUser {
   NAME: string;
   EMAIL?: string;
   TYPE?: string;
+  EMPLOYEE_ID?: string;
+
 }
 
 export class AuthService {
@@ -107,6 +109,7 @@ export class AuthService {
       updated_by: "system",
       created_at: new Date(),
       lang_pref: "en",
+      loginid1 : apiUser.EMPLOYEE_ID,
     });
 
     const savedUser = await userRepository.save(newUser);
