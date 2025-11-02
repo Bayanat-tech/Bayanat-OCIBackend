@@ -198,6 +198,7 @@ async function updateLeaveApproval(data: TLeaveApproval, connection: any) {
       LAST_ACTION = NVL(:last_action, LAST_ACTION),
       NEXT_ACTION_BY = NVL(:next_action_by, NEXT_ACTION_BY), 
       SENTBACK_HISTORY = NVL(:sentback_history, SENTBACK_HISTORY), 
+      CANCEL_REMARK = NVL(:cancel_remark, CANCEL_REMARK), 
       UPDATED_BY = :updated_by,
       UPDATED_AT = SYSTIMESTAMP
     WHERE COMPANY_CODE = :company_code 
@@ -231,6 +232,7 @@ async function updateLeaveApproval(data: TLeaveApproval, connection: any) {
     request_number: { val: data.REQUEST_NUMBER },
     next_action_by: { val: data.NEXT_ACTION_BY || "" },
     sentback_history: { val: data.SENTBACK_HISTORY || "" },
+    cancel_remark: { val: data.CANCEL_REMARK || "" },
   };
   console.log("Update parameters:", JSON.stringify(params, null, 2));
   console.log("Update sql:", sql); 

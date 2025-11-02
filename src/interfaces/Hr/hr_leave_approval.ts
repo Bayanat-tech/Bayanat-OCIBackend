@@ -31,4 +31,5 @@ SUPERVISOR: string;
   CONTACT_DETAILS_DURING_LEAVE?: string;
   NEXT_ACTION_BY?: string;
   SENTBACK_HISTORY?: string;
+  CANCEL_REMARK?: string;
 };  
