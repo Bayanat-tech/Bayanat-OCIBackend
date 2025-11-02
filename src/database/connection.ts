@@ -1,13 +1,14 @@
 import "reflect-metadata";
 import * as oracledb from "oracledb";
 import { DataSource, Repository, EntityTarget, ObjectLiteral } from "typeorm";
+import constants from "../helpers/constants"; 
 
 // ==================== ORACLE CLIENT INIT ====================
 try {
   oracledb.initOracleClient({
     libDir:
-      process.env.ORACLE_INSTANT_CLIENT_PATH ||
-      "C:\\oracle\\instantclient_19_19\\instantclient_19_28",
+      constants.DATABASE.ORACLE_INSTANT_CLIENT_PATH ||
+      process.env.ORACLE_INSTANT_CLIENT_PATH,
   });
   console.log("Oracle thick mode initialized");
 } catch (err) {
@@ -17,11 +18,13 @@ try {
 
 // ==================== RAW ORACLE CONFIG ====================
 const dbConfig: oracledb.PoolAttributes = {
-  user: process.env.ORACLE_USER || "WMSDEV",
-  password: process.env.ORACLE_PASSWORD || "WMSDEV123",
+  user: constants.DATABASE.ORACLE_USER || process.env.ORACLE_USER,
+  password:
+    constants.DATABASE.ORACLE_PASSWORD ||
+    process.env.ORACLE_PASSWORD,
   connectString:
-    process.env.ORACLE_CONNECTION_STRING ||
-    "10.10.2.56:1521/BayanDB_dxb1c4.jumpsn.prodvcn.oraclevcn.com",
+    constants.DATABASE.ORACLE_CONNECTION_STRING ||
+    process.env.ORACLE_CONNECTION_STRING,
   poolMin: 5,
   poolMax: 20,
   poolIncrement: 2,
@@ -34,15 +37,17 @@ let oraclePool: oracledb.Pool | null = null;
 export const AppDataSource = new DataSource({
   type: "oracle",
   connectString:
-    process.env.ORACLE_CONNECTION_STRING ||
-    "10.10.2.56:1521/BayanDB_dxb1c4.jumpsn.prodvcn.oraclevcn.com",
-  username: process.env.ORACLE_USER || "WMSDEV",
-  password: process.env.ORACLE_PASSWORD || "WMSDEV123",
+    constants.DATABASE.ORACLE_CONNECTION_STRING ||
+    process.env.ORACLE_CONNECTION_STRING ,
+  username: constants.DATABASE.ORACLE_USER || process.env.ORACLE_USER ,
+  password:
+    constants.DATABASE.ORACLE_PASSWORD ||
+    process.env.ORACLE_PASSWORD,
   synchronize: false,
   logging: true,
   entities: [
-    "src/entity/**/*.ts", // Keep existing entity path pattern
-    "src/entities/**/*.ts", // Add new entities path pattern
+    "src/entity/**/*.ts",
+    "src/entities/**/*.ts",
   ],
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
@@ -67,8 +72,9 @@ class TypeORMService {
         console.log("TypeORM Config:", {
           type: "oracle",
           connectString:
-            "10.10.2.56:1521/BayanDB_dxb1c4.jumpsn.prodvcn.oraclevcn.com",
-          username: process.env.ORACLE_USER || "WMSDEV",
+              constants.DATABASE.ORACLE_CONNECTION_STRING ||
+              process.env.ORACLE_CONNECTION_STRING,
+          username: process.env.ORACLE_USER,
         });
 
         await AppDataSource.initialize();
@@ -201,13 +207,6 @@ export const oracleDb = {
 
       // Process bind parameters to ensure proper format
       const processedBinds = processBindParameters(binds || {});
-
-      // console.log("=== DEBUG ===");
-      // console.log("Original SQL:", sql);
-      // console.log("Original binds:", JSON.stringify(binds, null, 2));
-      // console.log("Processed binds:", JSON.stringify(processedBinds, null, 2));
-      // console.log("=== END DEBUG ===");
-
       const result = await connection.execute(sql, processedBinds, options);
       return result;
     } catch (error: unknown) {

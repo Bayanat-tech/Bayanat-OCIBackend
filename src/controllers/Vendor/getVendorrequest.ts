@@ -99,7 +99,7 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         DOC_TYPE,
         DOC_NO,
         SERIAL_NO,
-        TO_CHAR(DOC_DATE, 'DD-MM-YYYY') as DOC_DATE,
+        DOC_DATE,
         AC_CODE,
         HEADER_AC_CODE,
         REMARKS,
@@ -117,16 +117,18 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         REF_DOC_TYPE,
         REF_DOC_NO,
         PROD_CODE,
+        PDO_TYPE,
         QTY_RCV,
         OTHER_REMARKS,
         AMOUNT_RCV,
         DIV_CODE,
         TX_CAT_CODE,
         TX_COMPNTCAT_CODE_1
-      FROM TR_AC_LPO_DETAIL
+      FROM VW_TR_AC_LPO_DETAIL
       WHERE COMPANY_CODE = 'BSG'
         AND DOC_NO = :new_doc_no
         AND HEADER_AC_CODE = :ac_code
+        ORDER BY SERIAL_NO
     `;
 
     // Execute header query

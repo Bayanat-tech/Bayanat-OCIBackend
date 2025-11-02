@@ -10,7 +10,7 @@ export default {
     MS_TERRITORY: "MS_TERRITORY",
     MS_CURRENCY: "MS_CURRENCY",
     MS_SALESMAN: "MS_SALESMAN",
-    MS_SITE: "MS_SITE",
+    MS_SITE: "MS_SITE", 
     MS_INDUSTRY_SECTOR: "MS_INDUSTRY_SECTOR",
     MS_PS_FLOW_MASTER: "MS_PS_FLOW_MASTER",
     SEC_ROLE_MASTER: "SEC_ROLE_MASTER",
@@ -52,8 +52,8 @@ export default {
     SEC_ROLE_FUNCTION_ACCESS_USER: "SEC_ROLE_FUNCTION_ACCESS_USER",
     MS_COMPANY_USER_ASSIGN: "MS_COMPANY_USER_ASSIGN",
     MS_PS_CUSTOMER: "MS_PS_CUSTOMER",
-    MG_REPORT: "MG_REPORT", 
-    TBL_SQL_STRING_INFO: "TBL_SQL_STRING_INFO", 
+    MG_REPORT: "MG_REPORT",
+    TBL_SQL_STRING_INFO: "TBL_SQL_STRING_INFO",
 
     // HR Master Table
     MS_ALERT: "MS_ALERT",
@@ -766,14 +766,10 @@ export default {
     },
   },
   DATABASE: {
-    NAME: String(process.env.DATABASE_NAME),
-    USER: String(process.env.DATABASE_USERNAME),
-    PASSWORD: String(process.env.DATABASE_PASSWORD),
-    HOST: String(process.env.DATABASE_HOST),
-    DIALECT: String(process.env.DATABASE_DIALECT),
     ORACLE_USER: String(process.env.ORACLE_USER),
-    ORACLE_PASSWORD: String(process.env.ORACLE_PASSWOR),
+    ORACLE_PASSWORD: String(process.env.ORACLE_PASSWORD),
     ORACLE_CONNECTION_STRING: String(process.env.ORACLE_CONNECTION_STRING),
+    ORACLE_INSTANT_CLIENT_PATH: String(process.env.ORACLE_INSTANT_CLIENT_PATH),
   },
   STATUS_CODES: {
     OK: 200,
@@ -786,13 +782,14 @@ export default {
     CONFLICT: 409,
     NO_CONTENT: 204,
   },
-
-  AWS_S3_CREDENTIALS: {
-    ACCESS_KEY: String(process.env.S3_ACCESS_KEY),
-    SECRET_ACCESS_KEY: String(process.env.S3_SECRET_ACCESS_KEY),
-    S3_BUCKET: String(process.env.S3_BUCKET_NAME),
-    REGION: String(process.env.S3_REGION),
-    AWS_S3_URL: (file_name: string) => `${process.env.AWS_S3_URL}/${file_name}`,
+  OCI_S3_COMPATIBILITY: {
+    ACCESS_KEY_ID: String(process.env.OCI_ACCESS_KEY_ID),
+    SECRET_ACCESS_KEY: String(process.env.OCI_SECRET_ACCESS_KEY),
+    BUCKET_NAME: String(process.env.OCI_BUCKET_NAME),
+    REGION: String(process.env.OCI_REGION),
+    ENDPOINT: String(process.env.OCI_BUCKET_ENDPOINT),
+    getObjectUrl: (fileName: string) =>
+      `${process.env.OCI_BUCKET_ENDPOINT}/${process.env.OCI_BUCKET_NAME}/${fileName}`,
   },
   TRANSACTION_DOCUMENT_TYPE: {
     CHEQUE_PAYMENT: "BP",
