@@ -44,6 +44,7 @@ import {
 import {
   createSecRollFunctionAccessUser,
   deleteSecRollFunctionAccessUser,
+  getOperationalModule,
   getSecRollFunctionAccessUser,
   updateSecRoleFunctionAccessUser,
 } from "../../controllers/Security/accessuser_security.controller";
@@ -104,7 +105,7 @@ router.put("/accessassignrole", updateSecRollAppAccess);
 //AccessUserto
 router.get("/accessassignuser", getSecRollFunctionAccessUser);
 router.post("/accessassignuser", createSecRollFunctionAccessUser);
-router.get("/accessassignuser/:serial_no", getOperationalMaster);
+router.get("/accessassignuser/:serial_no", getOperationalModule);
 router.post("/accessassignuser/delete", deleteSecRollFunctionAccessUser);
 router.put("/accessassignuser", updateSecRoleFunctionAccessUser);
 

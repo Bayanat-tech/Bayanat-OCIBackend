@@ -1,6 +1,7 @@
-import { Entity, PrimaryColumn, Column, OneToMany } from "typeorm";
+import { Entity, PrimaryColumn, Column, OneToMany, ManyToMany, JoinTable } from "typeorm";
 import constants from "../../helpers/constants";
 import { AccessSecOperation } from "./accesssecoperation.entity";
+import { SecLogin } from "./seclogin.entity";
 
 @Entity(constants.TABLE.SEC_MODULE_DATA)
 export class AccessSecModuleData {
@@ -19,4 +20,19 @@ export class AccessSecModuleData {
   // One-to-Many relationship with AccessSecOperation
   @OneToMany(() => AccessSecOperation, (operation) => operation.module)
   operations!: AccessSecOperation[];
+  
+  @ManyToMany(() => SecLogin, (user) => user.assignedModules)
+  @JoinTable({ 
+    name: constants.TABLE.SEC_ROLE_FUNCTION_ACCESS_USER,
+    joinColumn: {
+      name: "SERIAL_NO_OR_ROLE_ID",
+      referencedColumnName: "serial_no",
+    },
+    inverseJoinColumn: {
+      name: "LOGINID",
+      referencedColumnName: "user_id",
+    }
+
+    })
+  assignedUsers!: SecLogin[];
 }

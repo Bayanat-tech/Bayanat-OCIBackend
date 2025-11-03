@@ -41,44 +41,33 @@ export class AccessMasterService {
 
   // ==================== ACCESS SEC OPERATION METHODS ====================
 
-  static async getOperationsByModule(serial_no: number): Promise<any[]> {
+  static async getUserScreenAccess(serial_no: number): Promise<any[]> {
     const moduleData = await this.getModuleWithOperations(serial_no);
 
-    if (!moduleData || !moduleData.operations) {
+    if (!moduleData || !moduleData.assignedUsers) {
       return [];
     }
 
-    return moduleData.operations.map((operation) => ({
-      serial_no: operation.serial_no,
-      snew: operation.snew,
-      smodify: operation.smodify,
-      sdelete: operation.sdelete,
-      ssave: operation.ssave,
-      ssearch: operation.ssearch,
-      ssaveas: operation.ssaveas,
-      supload: operation.supload,
-      sundo: operation.sundo,
-      sprint: operation.sprint,
-      sprintsetup: operation.sprintsetup,
-      shelp: operation.shelp,
-      company_code: operation.company_code,
+    return moduleData.assignedUsers.map((user) => ({
+      serial_no: user.user_id,
+      company_code: user.company_code,
     }));
   }
 
   static async getModuleWithOperations(
-    serial_no: number
+    serial_no: number,
   ): Promise<AccessSecModuleData | null> {
     const repository = getRepository(AccessSecModuleData);
     return await repository.findOne({
       where: { serial_no },
-      relations: ["operations"], // This loads the related AccessSecOperation entities
+      relations: ["assignedUsers"], // This loads the related AccessSecOperation entities
     });
   }
 
   static async createOperation(operationData: {
-    serial_no: number;
+    serial_no_or_role_id: number;
+    login_id: string;
     snew: string;
-    smodify: string;
     sdelete: string;
     ssave: string;
     ssearch: string;
@@ -89,17 +78,17 @@ export class AccessMasterService {
     sprintsetup: string;
     shelp: string;
     company_code: string;
-  }): Promise<AccessSecOperation> {
-    const repository = getRepository(AccessSecOperation);
+  }): Promise<AccessSecModuleData> {
+    const repository = getRepository(AccessSecModuleData);
 
     // Check if module exists first
     const moduleExists = await getRepository(AccessSecModuleData).findOne({
-      where: { serial_no: operationData.serial_no },
+      where: { serial_no: operationData.serial_no_or_role_id },
     });
 
     if (!moduleExists) {
       throw new Error(
-        `Module with serial_no ${operationData.serial_no} not found`
+        `Module with serial_no ${operationData.serial_no_or_role_id} not found`
       );
     }
 
@@ -108,7 +97,7 @@ export class AccessMasterService {
   }
 
   static async updateOperation(
-    serial_no: number,
+    serial_no_or_role_id: number,
     updateData: Partial<{
       snew: string;
       smodify: string;
@@ -123,8 +112,8 @@ export class AccessMasterService {
       shelp: string;
     }>
   ): Promise<boolean> {
-    const repository = getRepository(AccessSecOperation);
-    const result = await repository.update({ serial_no }, updateData);
+    const repository = getRepository(AccessUserSecRoleAccess);
+    const result = await repository.update({ serial_no_or_role_id }, updateData);
     return result.affected ? result.affected > 0 : false;
   }
 

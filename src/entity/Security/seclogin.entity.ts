@@ -1,6 +1,7 @@
 import { Entity, PrimaryColumn, Column, ManyToMany, JoinTable } from "typeorm";
 import constants from "../../helpers/constants";
 import { MSPSProjectMaster } from "./mspsprojectmaster.entity";
+import { AccessSecModuleData } from "./accesssecmoduledata.entity";
 
 @Entity(constants.TABLE.SEC_LOGIN)
 export class SecLogin {
@@ -26,4 +27,8 @@ export class SecLogin {
     },
   })
   assignedProjects!: MSPSProjectMaster[];
+
+  // Many-to-Many relationship with AccessSecModuleData
+  @ManyToMany(() => AccessSecModuleData, (user) => user.assignedUsers)
+  assignedModules!: AccessSecModuleData[];
 }

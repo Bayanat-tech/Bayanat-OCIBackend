@@ -122,13 +122,14 @@ export const createSecRollFunctionAccessUser = async (
 };
 
 // ==================== GET OPERATIONAL MASTER ====================
-export const getOperationalMaster = async (
+export const getOperationalModule = async (
   req: RequestWithUser,
   res: Response
 ) => {
   try {
+    console.log("Required feilds",req.params)
     const { serial_no } = req.params;
-
+    
     if (!serial_no) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
@@ -137,7 +138,7 @@ export const getOperationalMaster = async (
       return;
     }
 
-    const operations = await AccessMasterService.getOperationsByModule(
+    const operations = await AccessMasterService.getUserScreenAccess(
       Number(serial_no)
     );
 
