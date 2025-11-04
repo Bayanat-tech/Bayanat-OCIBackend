@@ -3,6 +3,8 @@ import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
 import { VendorService } from "../../services/vendor.service";
 
+import { notifyUser } from "../../../src/helpers/functions";
+
 function formatDateForOracle(date: unknown): string | null {
   if (!date) return null;
 
@@ -139,8 +141,29 @@ async function sendDataToDotNetAPI(
     for (const file of fileData) {
       try {
         await VendorService.insertUploadedFile(file);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to send file data for DOC_NO: ${docNo}`, error);
+
+        // Send email notification for file upload failure
+        await notifyUser({
+          event: "VENDOR_API_ERROR",
+          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${
+            error.message || "Unknown error"
+          }`,
+          subject: "Vendor API File Upload Failed",
+          request_user:
+            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+          cc: "prem@bayanattechnology.com",
+          htmlMessage: `
+            <h3>Vendor API File Upload Failed</h3>
+            <p><strong>Document No:</strong> ${docNo}</p>
+            <p><strong>Error Message:</strong> ${
+              error.message || "Unknown error"
+            }</p>
+            <p><strong>File Details:</strong></p>
+            <pre>${JSON.stringify(file, null, 2)}</pre>
+          `,
+        });
         return;
       }
     }
@@ -148,7 +171,7 @@ async function sendDataToDotNetAPI(
     if (fileData.length > 0) {
       await oracleDb.query(
         `UPDATE UPLOADED_FILES_DLTS_VH 
-         SET FILE_TRANSFER = 'Y'
+         SET FILE_TRANSFER = 'Y' 
          WHERE REQUEST_NUMBER = :requestNumber`,
         {
           requestNumber: { val: docNo },
@@ -269,8 +292,29 @@ async function sendDataToDotNetAPI(
     for (const detail of cleanedDetailData) {
       try {
         await VendorService.insertAcDetail(detail);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to send detail for DOC_NO: ${docNo}`, error);
+
+        // Send email notification for detail API failure
+        await notifyUser({
+          event: "VENDOR_API_ERROR",
+          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${
+            error.message || "Unknown error"
+          }`,
+          subject: "Vendor API Detail Data Failed",
+          request_user:
+            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+          cc: "prem@bayanattechnology.com",
+          htmlMessage: `
+            <h3>Vendor API Detail Data Failed</h3>
+            <p><strong>Document No:</strong> ${docNo}</p>
+            <p><strong>Error Message:</strong> ${
+              error.message || "Unknown error"
+            }</p>
+            <p><strong>Detail Data:</strong></p>
+            <pre>${JSON.stringify(detail, null, 2)}</pre>
+          `,
+        });
         return;
       }
     }
@@ -278,8 +322,28 @@ async function sendDataToDotNetAPI(
     // Send header data
     try {
       await VendorService.insertAcHeader(cleanedHeaderData);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Failed to send header for DOC_NO: ${docNo}`, error);
+
+      await notifyUser({
+        event: "VENDOR_API_ERROR",
+        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${
+          error.message || "Unknown error"
+        }`,
+        subject: "Vendor API Header Data Failed",
+        request_user:
+          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        cc: "prem@bayanattechnology.com",
+        htmlMessage: `
+          <h3>Vendor API Header Data Failed</h3>
+          <p><strong>Document No:</strong> ${docNo}</p>
+          <p><strong>Error Message:</strong> ${
+            error.message || "Unknown error"
+          }</p>
+          <p><strong>Header Data:</strong></p>
+          <pre>${JSON.stringify(cleanedHeaderData, null, 2)}</pre>
+        `,
+      });
       return;
     }
 

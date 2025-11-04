@@ -110,7 +110,11 @@ export const getHrMaster = async (
         const limit = Number(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
+
+
         const loginid = req.query.code as string;
+        console.log("loginid", loginid);
+        console.log("requestUser", requestUser);
 
         if (!requestUser?.company_code || !loginid) {
           console.error("Missing company_code or loginid");
@@ -125,29 +129,39 @@ export const getHrMaster = async (
 
         let whereConditions = "";
 
+
         switch (masters) {
           case "Pg_Leave_flow":
-    whereConditions = `company_code = :company_code 
+            whereConditions = `company_code = :company_code
                       AND (
-                          (NEXT_ACTION_BY = :loginid AND FINAL_APPROVED <> 'YES') 
-                          OR 
-                          (IMMEDIATE_SUPERVISOR = :loginid AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
-                      ) 
+                          (NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
+EMPLOYEE_CODE =  :loginid ) AND FINAL_APPROVED <> 'YES')
+                          OR
+                          (IMMEDIATE_SUPERVISOR IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
+EMPLOYEE_CODE =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
+                      )
                       AND LAST_ACTION <> 'REJECTED'
                       AND LAST_ACTION <> 'CANCEL'
                       `;
-                      break;
+            break;
           case "Pg_leave_flow_Rejected":
-            whereConditions = `company_code = :company_code AND LAST_ACTION = 'REJECTED' AND :loginid in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+            whereConditions = `company_code = :company_code AND LAST_ACTION = 'REJECTED' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
+EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
             break;
           case "Pg_leave_flow_close":
-            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'YES' AND :loginid in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'YES' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
+EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
             break;
           case "Pg_leave_flow_cancel":
-            whereConditions = `company_code = :company_code AND LAST_ACTION = 'CANCEL' AND :loginid in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+            whereConditions = `company_code = :company_code AND LAST_ACTION = 'CANCEL' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
+EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
             break;
           case "Pg_leave_flow_InProgress":
-            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'NO' AND LAST_ACTION NOT IN ('REJECTED','CANCEL') AND NEXT_ACTION_BY <> :loginid AND (REQUEST_NUMBER IN (SELECT DISTINCT REQUEST_NUMBER FROM LEAVE_REQUEST_FLOW_HISTRY WHERE NEXT_ACTION_BY = :loginid))`;
+            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'NO' AND LAST_ACTION NOT IN 
+            ('REJECTED','CANCEL') AND NEXT_ACTION_BY NOT IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
+EMPLOYEE_CODE =  :loginid ) AND 
+            (REQUEST_NUMBER IN (SELECT DISTINCT REQUEST_NUMBER FROM LEAVE_REQUEST_FLOW_HISTRY WHERE NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
+EMPLOYEE_CODE =  :loginid )))`;
             break;
         }
         try {
@@ -206,13 +220,13 @@ export const getHrMaster = async (
 
         const whereConditions = `company_code = :company_code ${request_number ? 'AND request_number = :request_number' : ''}`;
 
-          const bindParams: any = {
-    company_code: requestUser.company_code
-  };
-  
-  if (request_number) {
-    bindParams.request_number = request_number;
-  }
+        const bindParams: any = {
+          company_code: requestUser.company_code
+        };
+
+        if (request_number) {
+          bindParams.request_number = request_number;
+        }
 
 
         try {
@@ -223,9 +237,9 @@ export const getHrMaster = async (
       ORDER BY request_number ASC
     `;
 
-     
-    console.log("Leaveflow_request Query:", fetchQuery);
-    console.log("Leaveflow_request Params:", bindParams);
+
+          console.log("Leaveflow_request Query:", fetchQuery);
+          console.log("Leaveflow_request Params:", bindParams);
 
           // const queryParams = [requestUser.company_code];
           // if (request_number) queryParams.push(request_number);

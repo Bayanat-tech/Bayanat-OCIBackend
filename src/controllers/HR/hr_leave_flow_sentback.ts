@@ -7,14 +7,15 @@ import { IUser } from "../../interfaces/user.interface";
 export const getRequestFlowUsers = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
-    const { loginid } = requestUser;
+    // const { loginid1 } = requestUser;
     const { doc_id } = req.query;
+    const { loginId } = req.query;
 
     console.log("All query parameters:", req.query);
+    console.log("requestUser", requestUser);
     console.log("doc_id:", doc_id);
-    console.log("loginid from user:", loginid);
-    console.log("loginid type:", typeof loginid);
-    console.log("loginid length:", loginid.length);
+    console.log("loginid from user:", loginId);
+    console.log("loginid type:", typeof loginId);
 
     if (!doc_id || typeof doc_id !== "string") {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -51,55 +52,55 @@ export const getRequestFlowUsers = async (req: RequestWithUser, res: Response) =
     const DEPT_HEAD = roleData.DEPT_HEAD;
     const IMMEDIATE_SUPERVISOR = roleData.IMMEDIATE_SUPERVISOR;
 
-    const paddedLoginId = loginid.padStart(5, '0');
-    console.log("Padded loginid:", paddedLoginId, "length:", paddedLoginId.length);
+    // const paddedLoginId = loginid.padStart(5, '0');
+    // console.log("Padded loginid:", paddedLoginId, "length:", paddedLoginId.length);
 
 
     console.log("Comparison results with padded loginid:");
-    console.log("paddedLoginId === HOD:", paddedLoginId === HOD, `(${paddedLoginId} === ${HOD})`);
-    console.log("paddedLoginId === DEPT_HEAD:", paddedLoginId === DEPT_HEAD, `(${paddedLoginId} === ${DEPT_HEAD})`);
-    console.log("paddedLoginId === IMMEDIATE_SUPERVISOR:", paddedLoginId === IMMEDIATE_SUPERVISOR, `(${paddedLoginId} === ${IMMEDIATE_SUPERVISOR})`);
+    console.log("paddedLoginId === HOD:", loginId === HOD, `(${loginId} === ${HOD})`);
+    console.log("paddedLoginId === DEPT_HEAD:", loginId === DEPT_HEAD, `(${loginId} === ${DEPT_HEAD})`);
+    console.log("paddedLoginId === IMMEDIATE_SUPERVISOR:", loginId === IMMEDIATE_SUPERVISOR, `(${loginId} === ${IMMEDIATE_SUPERVISOR})`);
 
     let roleBasedQuery = "";
     const queryParams = { doc_id };
 
-    if (paddedLoginId === HOD) {
+    if (loginId === HOD) {
       console.log("User is HOD");
       roleBasedQuery = `
         SELECT V.CREATED_BY AS login_id, S.USERNAME
         FROM VW_HR_LEAVE_REQUEST_FLOW V
-        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID
+        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID1
         WHERE V.REQUEST_NUMBER = :doc_id
         UNION
         SELECT V.IMMEDIATE_SUPERVISOR, S.USERNAME
         FROM VW_HR_LEAVE_REQUEST_FLOW V
-        JOIN SEC_LOGIN S ON V.IMMEDIATE_SUPERVISOR = S.LOGINID
+        JOIN SEC_LOGIN S ON V.IMMEDIATE_SUPERVISOR = S.LOGINID1
         WHERE V.REQUEST_NUMBER = :doc_id
         UNION
         SELECT V.DEPT_HEAD, S.USERNAME
         FROM VW_HR_LEAVE_REQUEST_FLOW V
-        JOIN SEC_LOGIN S ON V.DEPT_HEAD = S.LOGINID
+        JOIN SEC_LOGIN S ON V.DEPT_HEAD = S.LOGINID1
         WHERE V.REQUEST_NUMBER = :doc_id
       `;
-    } else if (paddedLoginId === DEPT_HEAD) {
+    } else if (loginId === DEPT_HEAD) {
       console.log("User is DEPT_HEAD");
       roleBasedQuery = `
         SELECT V.CREATED_BY AS login_id, S.USERNAME
         FROM VW_HR_LEAVE_REQUEST_FLOW V
-        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID
+        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID1
         WHERE V.REQUEST_NUMBER = :doc_id
         UNION
         SELECT V.IMMEDIATE_SUPERVISOR, S.USERNAME
         FROM VW_HR_LEAVE_REQUEST_FLOW V
-        JOIN SEC_LOGIN S ON V.IMMEDIATE_SUPERVISOR = S.LOGINID
+        JOIN SEC_LOGIN S ON V.IMMEDIATE_SUPERVISOR = S.LOGINID1
         WHERE V.REQUEST_NUMBER = :doc_id
       `;
-    } else if (paddedLoginId === IMMEDIATE_SUPERVISOR) {
+    } else if (loginId === IMMEDIATE_SUPERVISOR) {
       console.log("User is IMMEDIATE_SUPERVISOR");
       roleBasedQuery = `
         SELECT V.CREATED_BY AS login_id, S.USERNAME
         FROM VW_HR_LEAVE_REQUEST_FLOW V
-        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID
+        JOIN SEC_LOGIN S ON V.CREATED_BY = S.LOGINID1
         WHERE V.REQUEST_NUMBER = :doc_id
       `;
     } else {

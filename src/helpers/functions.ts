@@ -1,4 +1,3 @@
-
 import bcrypt from "bcrypt";
 import {
   ButtonGroup,
@@ -15,7 +14,19 @@ import { StructuredResult } from "../interfaces/auth.interface";
 import { TiPackdetSeriesService } from "../services/tiPackdetSeries.service";
 import { LogService } from "../services/log.service";
 const nodemailer = require("nodemailer");
-import { FindOptionsWhere, Like, In, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Between, Not, IsNull, Raw } from "typeorm";
+import {
+  FindOptionsWhere,
+  Like,
+  In,
+  LessThan,
+  LessThanOrEqual,
+  MoreThan,
+  MoreThanOrEqual,
+  Between,
+  Not,
+  IsNull,
+  Raw,
+} from "typeorm";
 
 // Function to compare a plain password with a hashed password
 export const comparePassword = async (args: ComparePasswordInterface) => {
@@ -221,12 +232,16 @@ export const buildTree = (
   return Object.values(tree);
 };
 
-export const getSearchFilterQuery = (args: GetFilterQueryInterface): FindOptionsWhere<any> => {
+export const getSearchFilterQuery = (
+  args: GetFilterQueryInterface
+): FindOptionsWhere<any> => {
   try {
     const { filter, outsideQuery } = args;
 
     // Start with existing outsideQuery or empty object
-    const typeormWhere: FindOptionsWhere<any> = outsideQuery ? { ...outsideQuery } : {};
+    const typeormWhere: FindOptionsWhere<any> = outsideQuery
+      ? { ...outsideQuery }
+      : {};
 
     if (!filter || !Array.isArray(filter)) {
       return typeormWhere;
@@ -242,7 +257,7 @@ export const getSearchFilterQuery = (args: GetFilterQueryInterface): FindOptions
             field_value === undefined ||
             field_value === null ||
             (Array.isArray(field_value) && field_value.length === 0) ||
-            field_value === ''
+            field_value === ""
           ) {
             return;
           }
@@ -291,7 +306,10 @@ export const getSearchFilterQuery = (args: GetFilterQueryInterface): FindOptions
 
             case "between":
               if (Array.isArray(field_value) && field_value.length === 2) {
-                typeormWhere[field_name] = Between(field_value[0], field_value[1]);
+                typeormWhere[field_name] = Between(
+                  field_value[0],
+                  field_value[1]
+                );
               }
               break;
 
@@ -314,7 +332,9 @@ export const getSearchFilterQuery = (args: GetFilterQueryInterface): FindOptions
 
             default:
               // For unsupported operators, use equality as fallback
-              console.warn(`Unsupported operator '${operator}', using '=' as fallback`);
+              console.warn(
+                `Unsupported operator '${operator}', using '=' as fallback`
+              );
               typeormWhere[field_name] = field_value;
               break;
           }
@@ -1193,6 +1213,18 @@ export const notifyUser = async (args: SendEmailInterface) => {
         text:
           message || "Please follow the instructions to reset your password.",
         html: htmlMessage,
+      };
+      break;
+
+    case "VENDOR_API_ERROR":
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: cc,
+        subject: subject || "Vendor API Error Notification",
+        text: message || "An error occurred in the Vendor API integration.",
+        html: htmlMessage,
+        attachments: attachments || [],
       };
       break;
 
