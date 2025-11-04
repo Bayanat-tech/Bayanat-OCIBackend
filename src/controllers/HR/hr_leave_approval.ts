@@ -427,7 +427,7 @@ export const upsertLeaveApprovalHandler = async (
 
     if (leaveApprovalData.LAST_ACTION === 'SAVEASDRAFT') {
       messageType = 'Saved as draft';
-    } else if (leaveApprovalData.LAST_ACTION === 'SENDBACK') {
+    } else if (leaveApprovalData.LAST_ACTION === 'SENTBACK') {
       messageType = 'Sent back';
     } else if (leaveApprovalData.LAST_ACTION === 'REJECTED') {
       messageType = 'Rejected';

@@ -1,6 +1,7 @@
 export interface IUser {
   company_code: string;
   loginid: string;
+  loginid1?: string;
   email_id: string;
   username: string;
   contact_name?: string;
