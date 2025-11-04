@@ -240,11 +240,14 @@ EMPLOYEE_CODE =  :loginid )))`;
 
           console.log("Leaveflow_request Query:", fetchQuery);
           console.log("Leaveflow_request Params:", bindParams);
-
+          
           // const queryParams = [requestUser.company_code];
           // if (request_number) queryParams.push(request_number);
-
+          
           const fetchedData = await oracleDb.query(fetchQuery, bindParams);
+          
+          console.log("fetchedData:", fetchedData);
+          
 
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
