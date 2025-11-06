@@ -76,6 +76,9 @@ export class User {
   @Column({ name: "USER_ID", type: "varchar2", length: 50, nullable: true })
   user_id!: string;
 
+  @Column({ name: "LOGINID1", type: "varchar2", length: 50, nullable: true })
+  loginid1!: string;
+  
   // Company relationship
   @ManyToOne(() => Company, (company) => company.users)
   @JoinColumn({ name: "COMPANY_CODE", referencedColumnName: "company_code" })

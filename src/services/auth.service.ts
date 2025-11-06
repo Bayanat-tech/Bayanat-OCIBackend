@@ -10,6 +10,7 @@ interface ExternalApiUser {
   NAME: string;
   EMAIL?: string;
   TYPE?: string;
+  EMPLOYEE_ID?: string;
 }
 
 export class AuthService {
@@ -92,22 +93,25 @@ export class AuthService {
       syntheticEmail = apiUser.EMAIL;
     }
 
-    const newUser = userRepository.create({
-      company_code: "BSG",
-      email_id: syntheticEmail,
-      loginid: apiUser.USER_ID,
-      username: apiUser.NAME,
-      userpass: hashedPassword,
-      SEC_PASSWD: hashedPassword,
-      active_flag: "Y",
-      user_code: apiUser.USER_ID,
-      user_id: apiUser.USER_ID,
-      APPLICATION: appType,
-      created_by: "system",
-      updated_by: "system",
-      created_at: new Date(),
-      lang_pref: "en",
-    });
+    const loginid1Value =
+      appType === "VENDOR" ? apiUser.USER_ID : apiUser.EMPLOYEE_ID || "";
+
+    const newUser = new User();
+    newUser.company_code = "BSG";
+    newUser.email_id = syntheticEmail;
+    newUser.loginid = apiUser.USER_ID;
+    newUser.username = apiUser.NAME;
+    newUser.userpass = hashedPassword;
+    newUser.SEC_PASSWD = hashedPassword;
+    newUser.active_flag = "Y";
+    newUser.user_code = apiUser.USER_ID;
+    newUser.user_id = apiUser.USER_ID;
+    newUser.APPLICATION = appType;
+    newUser.created_by = "system";
+    newUser.updated_by = "system";
+    newUser.created_at = new Date();
+    newUser.lang_pref = "en";
+    newUser.loginid1 = loginid1Value;
 
     const savedUser = await userRepository.save(newUser);
 
