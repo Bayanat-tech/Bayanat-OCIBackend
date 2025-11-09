@@ -32,4 +32,6 @@ SUPERVISOR: string;
   NEXT_ACTION_BY?: string;
   SENTBACK_HISTORY?: string;
   CANCEL_REMARK?: string;
+  AIR_ROUTE?: string;
+  AIR_TICKET?: string;  
 };  
