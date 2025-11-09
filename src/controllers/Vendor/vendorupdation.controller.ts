@@ -439,7 +439,7 @@ async function upsertLpoRequestHeader(
 ): Promise<string> {
   let isNew = false;
 
-  const company_code = defaultString(data.COMPANY_CODE); // Use from payload
+  const company_code = defaultString(data.COMPANY_CODE);
   const doc_no = defaultString(data.DOC_NO);
   const ac_code = defaultString(data.AC_CODE);
 
