@@ -1,3 +1,4 @@
+import oracledb from 'oracledb';
 import { oracleDb } from "../../database/connection";
 import { Request, Response } from "express";
 import constants from "../../helpers/constants";
@@ -65,52 +66,124 @@ async function retryOnDeadlock<T>(
   }
 }
 
+
+
+
+// export async function upsertLeaveApproval(
+//   data: TLeaveApproval
+// ): Promise<string> {
+//   try {
+//     const result = await oracleDb.withTransaction(async (connection) => {
+//       const exists = await recordExists(
+//         data.REQUEST_NUMBER,
+//         data.COMPANY_CODE,
+//         connection
+//       );
+//       console.log('record exists223:', exists);
+//       // Check if the record exists and perform the appropriate insert/update
+//       if (exists) {
+//         console.log('Checking commit1')
+//         await updateLeaveApproval(data, connection);
+//       } else {
+//         console.log('Checking commit2')
+//         await insertLeaveApproval(data, connection);
+//       }
+// console.log('Checking commit3')
+//       // If FINAL_APPROVED is 'YES', trigger the background process
+//       if (data.FINAL_APPROVED === 'YES') {
+//         console.log('Checking commit4')
+//         // Trigger background processing asynchronously
+//         processApprovedLeaveRequestsForSingleRecord(
+//           data.REQUEST_NUMBER,
+//           data.COMPANY_CODE
+//         ).catch((error) => {
+//           console.error("Background processing failed:", error);
+//         });
+//       } else {
+//         console.log('Checking commit5')
+//         // If FINAL_APPROVED is not 'YES', explicitly commit the transaction
+//         await connection.commit();
+//         console.log("Transaction committed because FINAL_APPROVED is not 'YES'.");
+//       }
+
+//       return data.REQUEST_NUMBER;
+//     });
+
+//     return result;
+//   } catch (error) {
+//     console.error("Error in upsertLeaveApproval:", error);
+//     throw error;
+//   }
+// }
+
+
 export async function upsertLeaveApproval(
   data: TLeaveApproval
 ): Promise<string> {
-  try {
-    const result = await oracleDb.withTransaction(async (connection) => {
+  const { requestNumber, finalApproved } = await oracleDb.withTransaction(
+    async (connection: oracledb.Connection) => {
       const exists = await recordExists(
         data.REQUEST_NUMBER,
         data.COMPANY_CODE,
         connection
       );
+      console.log('record exists:', exists);
 
-      // Check if the record exists and perform the appropriate insert/update
       if (exists) {
-        console.log('Checking commit1')
+        console.log('update path');
         await updateLeaveApproval(data, connection);
       } else {
-        console.log('Checking commit2')
+        console.log('insert path');
         await insertLeaveApproval(data, connection);
       }
-console.log('Checking commit3')
-      // If FINAL_APPROVED is 'YES', trigger the background process
-      if (data.FINAL_APPROVED === 'YES') {
-        console.log('Checking commit4')
-        // Trigger background processing asynchronously
-        processApprovedLeaveRequestsForSingleRecord(
-          data.REQUEST_NUMBER,
-          data.COMPANY_CODE
-        ).catch((error) => {
-          console.error("Background processing failed:", error);
-        });
-      } else {
-        console.log('Checking commit5')
-        // If FINAL_APPROVED is not 'YES', explicitly commit the transaction
-        await connection.commit();
-        console.log("Transaction committed because FINAL_APPROVED is not 'YES'.");
-      }
 
-      return data.REQUEST_NUMBER;
-    });
+      // Inline SELECT using the SAME connection/txn
+      const sql = `
+        SELECT TRIM(FINAL_APPROVED) AS FINAL_APPROVED
+        FROM LEAVE_REQUEST_FLOW
+        WHERE REQUEST_NUMBER = :req
+          AND COMPANY_CODE   = :comp
+        FETCH FIRST 1 ROWS ONLY
+      `;
+      // If you're on Oracle 11g or earlier, replace the last line with:
+      //   AND ROWNUM = 1
+      const binds = { req: data.REQUEST_NUMBER, comp: data.COMPANY_CODE };
 
-    return result;
-  } catch (error) {
-    console.error("Error in upsertLeaveApproval:", error);
-    throw error;
+      console.log('Checking FINAL_APPROVED from DB with same txn:', binds);
+
+      const res = await connection.execute<{ FINAL_APPROVED?: string }>(
+        sql,
+        binds,
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      const dbFlag = res.rows?.[0]?.FINAL_APPROVED ?? null;
+
+      const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? '')
+        .toString()
+        .trim()
+        .toUpperCase();
+
+      // Don't start background work inside the txn; just return the decision.
+      return {
+        requestNumber: data.REQUEST_NUMBER,
+        finalApproved: normalizedFlag === 'YES',
+      };
+    }
+  );
+
+  // Now we're OUTSIDE the transaction (committed).
+  if (finalApproved) {
+    console.log('Triggering background processing for approved leave (post-commit)');
+    processApprovedLeaveRequestsForSingleRecord(requestNumber, data.COMPANY_CODE)
+      .catch((error) => {
+        console.error('Background processing failed:', error);
+      });
   }
+
+  return requestNumber;
 }
+
 
 
 export async function processApprovedLeaveRequestsForSingleRecord(
@@ -463,144 +536,186 @@ export const upsertLeaveApprovalHandler = async (
   }
 };
 
+
+const oq = (s: string) => s.replace(/'/g, "''"); 
+
 export async function processApprovedLeaveRequests(options?: {
   specificRequestNumber?: string;
   specificCompanyCode?: string;
 }): Promise<void> {
   try {
-    console.log("Starting to process approved leave requests...", options);
+    console.log('Starting to process approved leave requests...', options);
 
     let whereClause = "WHERE FINAL_APPROVED = 'YES'";
-    const bindParams: Record<string, { val: string }> = {};
 
     if (options?.specificRequestNumber && options?.specificCompanyCode) {
-      whereClause +=
-        " AND REQUEST_NUMBER = :requestNumber AND COMPANY_CODE = :companyCode";
-      bindParams.requestNumber = { val: options.specificRequestNumber };
-      bindParams.companyCode = { val: options.specificCompanyCode };
-
-      console.log("Using specific record filter:", {
-        requestNumber: options.specificRequestNumber,
-        companyCode: options.specificCompanyCode,
-      });
+      const rn = oq(options.specificRequestNumber);
+      const cc = oq(options.specificCompanyCode);
+      whereClause += ` AND REQUEST_NUMBER = '${rn}' AND COMPANY_CODE = '${cc}'`;
+      console.log('Using specific record filter (inlined):', { requestNumber: rn, companyCode: cc });
     }
 
-    // First verify data in database using Oracle-specific syntax
-    const testData = await oracleDb.query(
-      `SELECT COUNT(*) as total,
-              COUNT(CASE WHEN DUTY_RESUME_DATE IS NOT NULL OR ACTUAL_RESUME_DATE IS NOT NULL THEN 1 END) as withDates,
-              COUNT(CASE WHEN NVL(DATE_FLAG, 'N') = 'N' THEN 1 END) as needsProcessing
-       FROM LEAVE_REQUEST_FLOW
-       ${whereClause}`,
-      bindParams
-    );
-
-    console.log("Database status:", testData.rows?.[0] || {});
-
-    // Process resume date updates with Oracle date handling
-    const resumeRequests = await oracleDb.query(
-      `SELECT
-        REQUEST_NUMBER as "requestNumber",
-        TO_CHAR(DUTY_RESUME_DATE, 'YYYY-MM-DD') as "dutyResumeDate",
-        TO_CHAR(ACTUAL_RESUME_DATE, 'YYYY-MM-DD') as "actualResumeDate",
-        COMPANY_CODE as "companyCode",
-        NVL(DATE_FLAG, 'N') as "dateFlag"
-       FROM LEAVE_REQUEST_FLOW
-       ${whereClause}
-         AND (DUTY_RESUME_DATE IS NOT NULL OR ACTUAL_RESUME_DATE IS NOT NULL)
-         AND NVL(DATE_FLAG, 'N') != 'Y'`,
-      bindParams
-    );
-
-    console.log(
-      `Found ${resumeRequests.rows?.length || 0} resume requests to process`
-    );
-
-    // Process resume dates
-    for (const request of resumeRequests.rows || []) {
-      try {
-        await HrService.updateLeaveResume({
-          requestNumber: request.requestNumber,
-          dutyResumeDate: request.dutyResumeDate
-            ? new Date(request.dutyResumeDate)
-            : null,
-          actualResumeDate: request.actualResumeDate
-            ? new Date(request.actualResumeDate)
-            : null,
-        });
-
-        await oracleDb.query(
-          `UPDATE LEAVE_REQUEST_FLOW
-           SET DATE_FLAG = 'Y',
-               UPDATED_AT = SYSTIMESTAMP
-           WHERE REQUEST_NUMBER = :requestNumber`,
-          { requestNumber: { val: request.requestNumber } }
-        );
-
-        console.log(
-          `Updated resume dates for request: ${request.requestNumber}`
-        );
-      } catch (error: any) {
-        console.error("Failed to update resume dates:", {
-          requestNumber: request.requestNumber,
-          error: error.message,
-        });
-      }
-    }
-
-    // Process new leave requests with proper Oracle date and NULL handling
     const approvedRequests = await oracleDb.query(
-      `SELECT
-        NVL(REQUEST_NUMBER, '') as "requestNumber",
-        NVL(COMPANY_CODE, '') as "companyCode",
-        NVL(EMPLOYEE_CODE, '') as "employeeCode",
-        TO_CHAR(LEAVE_START_DATE, 'YYYY-MM-DD') as "leaveStartDate",
-        TO_CHAR(LEAVE_END_DATE, 'YYYY-MM-DD') as "leaveEndDate",
-        TO_CHAR(REQUEST_DATE, 'YYYY-MM-DD') as "requestDate",
-        NVL(LEAVE_TYPE, '') as "leaveType",
-        NVL(LEAVE_DAYS, 0) as "leaveDays",
-        NVL(REMARKS, '') as "remarks",
-        NVL(LAST_ACTION, '') as "lastAction",
-        TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') as "createdAt",
-        NVL(CREATED_BY, '') as "createdBy",
-        NVL(DATA_TRANSFER, 'N') as "dataTransfer"
-      FROM LEAVE_REQUEST_FLOW
-      ${whereClause}
-      AND NVL(DATA_TRANSFER, 'N') = 'N'`,
-      bindParams
+      `
+  SELECT
+    NVL(REQUEST_NUMBER, '')                                         AS "requestNumber",
+    NVL(CURRENT_STEP, '')                                           AS "currentStep",
+    NVL(COMPANY_CODE, '')                                           AS "companyCode",
+    NVL(EMPLOYEE_CODE, '')                                          AS "employeeCode",
+    TO_CHAR(LEAVE_REQUEST_DATE, 'YYYY-MM-DD HH24:MI:SS')            AS "leaveRequestDate",
+    TO_CHAR(TRAVEL_DATE, 'YYYY-MM-DD HH24:MI:SS')                   AS "travelDate",
+    NVL(LEAVE_TYPE, '')                                             AS "leaveType",
+    TO_CHAR(LEAVE_START_DATE, 'YYYY-MM-DD HH24:MI:SS')              AS "leaveStartDate",
+    TO_CHAR(LEAVE_END_DATE, 'YYYY-MM-DD HH24:MI:SS')                AS "leaveEndDate",
+    NVL(LEAVE_DAYS, 0)                                              AS "leaveDays",
+    NVL(LEAVE_REASON, '')                                           AS "leaveReason",
+    NVL(DAYS_ADJUSTED, 0)                                           AS "daysAdjusted",
+    NVL(HALF_DAY, '')                                               AS "halfDay",
+    NVL(AIR_TICKET, '')                                             AS "airTicket",
+    NVL(AIR_TICKET_SELF, '')                                        AS "airTicketSelf",
+    NVL(AIR_TICKET_WIFE, '')                                        AS "airTicketWife",
+    NVL(AIR_TICKET_CHILDREN, 0)                                     AS "airTicketChildren",
+    TO_CHAR(REQUEST_DATE, 'YYYY-MM-DD HH24:MI:SS')                  AS "requestDate",
+    NVL(FLOW_CODE, '')                                              AS "flowCode",
+    NVL(FLOW_LEVEL_INITIAL, 0)                                      AS "flowLevelInitial",
+    NVL(FLOW_LEVEL_RUNNING, 0)                                      AS "flowLevelRunning",
+    NVL(FLOW_LEVEL_FINAL, 0)                                        AS "flowLevelFinal",
+    NVL(FA_UPLOADED, '')                                            AS "faUploaded",
+
+    CASE WHEN UPPER(TRIM(FINAL_APPROVED)) = 'YES' THEN 'YES' ELSE 'NO' END
+                                                                     AS "finalApproved",
+
+    NVL(CREATE_USER, '')                                            AS "createUser",
+    TO_CHAR(CREATE_DATE, 'YYYY-MM-DD HH24:MI:SS')                   AS "createDate",
+    NVL(LAST_UPDATED, '')                                           AS "lastUpdated",
+    NVL(LAST_ACTION, '')                                            AS "lastAction",
+    NVL(HISTORY_SERIAL, 0)                                          AS "historySerial",
+    NVL(CANCEL_FLAG, '')                                            AS "cancelFlag",
+    NVL(CANCEL_USER, '')                                            AS "cancelUser",
+    TO_CHAR(CANCEL_DATE, 'YYYY-MM-DD HH24:MI:SS')                   AS "cancelDate",
+    NVL(CANCEL_REMARK, '')                                          AS "cancelRemark",
+    NVL(REMARKS_HISTRY, '')                                         AS "remarksHistry",
+    NVL(REMARKS, '')                                                AS "remarks",
+    NVL(DESCRIPTION, '')                                            AS "description",
+    NVL(COMMENTS, '')                                               AS "comments",
+    NVL(MOBILE_APP_UPDATE, 'N')                                     AS "mobileAppUpdate",
+    TO_CHAR(UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS')                    AS "updatedAt",
+    NVL(UPDATED_BY, '')                                             AS "updatedBy",
+    NVL(CREATED_BY, '')                                             AS "createdBy",
+    TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')                    AS "createdAt",
+    NVL(HOD, '')                                                    AS "hod",
+    NVL(DEPT_HEAD, '')                                              AS "deptHead",
+    NVL(IMMEDIATE_SUPERVISOR, '')                                   AS "immediateSupervisor",
+    NVL(LOG_NUMBER, 0)                                              AS "logNumber",
+    NVL(NEXT_ACTION_BY, '')                                         AS "nextActionBy",
+    NVL(LEAVE_ALLOWANCE, '')                                        AS "leaveAllowance",
+    NVL(ADV_PAYMENT, '')                                            AS "advPayment",
+    NVL(CAUSE_TYPE, '')                                             AS "causeType",
+    NVL(NAME_OF_REPLACEMENT, '')                                    AS "nameOfReplacement",
+    NVL(CONTACT_DETAILS_DURING_LEAVE, '')                           AS "contactDetailsDuringLeave",
+    TO_CHAR(DUTY_RESUME_DATE, 'YYYY-MM-DD HH24:MI:SS')              AS "dutyResumeDate",
+    TO_CHAR(ACTUAL_RESUME_DATE, 'YYYY-MM-DD HH24:MI:SS')            AS "actualResumeDate",
+    NVL(EMPLOYEE_NAME, '')                                          AS "employeeName",
+
+    /* keep if you still need flags downstream */
+    NVL(DATA_TRANSFER, 'N')                                         AS "dataTransfer",
+    NVL(DATE_FLAG, 'N')                                             AS "dateFlag"
+
+  FROM LEAVE_REQUEST_FLOW
+  ${whereClause}
+    AND NVL(NULLIF(TRIM(DATA_TRANSFER), ''), 'N') = 'N'
+  `,
     );
+
+    console.log(`Found ${approvedRequests.rows?.length || 0} records to INSERT`);
 
     for (const request of approvedRequests.rows || []) {
       try {
         await HrService.insertLeaveRequest(request);
-
+        const rn = oq(request.requestNumber);
+        const cc = oq(request.companyCode);
         await oracleDb.query(
           `UPDATE LEAVE_REQUEST_FLOW
-           SET DATA_TRANSFER = 'Y',
-               UPDATED_AT = SYSTIMESTAMP
-           WHERE REQUEST_NUMBER = :requestNumber 
-           AND COMPANY_CODE = :companyCode`,
-          {
-            requestNumber: { val: request.requestNumber },
-            companyCode: { val: request.companyCode },
-          }
+             SET DATA_TRANSFER = 'Y',
+                 UPDATED_AT    = SYSTIMESTAMP
+           WHERE REQUEST_NUMBER = '${rn}'
+             AND COMPANY_CODE   = '${cc}'`
         );
 
-        console.log(`Successfully processed request: ${request.requestNumber}`);
+        console.log(`Inserted/marked transferred: ${request.requestNumber}`);
       } catch (error: any) {
-        console.error("Failed to process request:", {
+        console.error('Failed to insert request:', {
           requestNumber: request.requestNumber,
           error: error.message,
         });
       }
     }
+    const resumeRequests = await oracleDb.query(
+      `SELECT
+          REQUEST_NUMBER                                   AS "requestNumber",
+          COMPANY_CODE                                     AS "companyCode",
+          TO_CHAR(DUTY_RESUME_DATE,   'YYYY-MM-DD')        AS "dutyResumeDate",
+          TO_CHAR(ACTUAL_RESUME_DATE, 'YYYY-MM-DD')        AS "actualResumeDate",
+          NVL(DATE_FLAG, 'N')                              AS "dateFlag",
+          NVL(DATA_TRANSFER, 'N')                          AS "dataTransfer"
+       FROM LEAVE_REQUEST_FLOW
+       ${whereClause}
+         AND (DUTY_RESUME_DATE IS NOT NULL OR ACTUAL_RESUME_DATE IS NOT NULL)
+         AND NVL(DATE_FLAG, 'N') != 'Y'
+         AND NVL(DATA_TRANSFER, 'N') = 'Y'`
+    );
+
+    console.log(
+      `Found ${resumeRequests.rows?.length || 0} records with resume dates to update`
+    );
+
+    for (const r of resumeRequests.rows || []) {
+      const hasDuty = !!r.dutyResumeDate;
+      const hasActual = !!r.actualResumeDate;
+      if (!hasDuty && !hasActual) {
+        console.log(`Skipping resume API; no dates present for ${r.requestNumber}`);
+        continue;
+      }
+
+      try {
+        await HrService.updateLeaveResume({
+          requestNumber: r.requestNumber,
+          dutyResumeDate: hasDuty ? new Date(r.dutyResumeDate) : null,
+          actualResumeDate: hasActual ? new Date(r.actualResumeDate) : null,
+        });
+
+        const rn = oq(r.requestNumber);
+        const cc = oq(r.companyCode);
+        await oracleDb.query(
+          `UPDATE LEAVE_REQUEST_FLOW
+             SET DATE_FLAG  = 'Y',
+                 UPDATED_AT = SYSTIMESTAMP
+           WHERE REQUEST_NUMBER = '${rn}'
+             AND COMPANY_CODE   = '${cc}'`
+        );
+
+        console.log(`Updated resume dates for: ${r.requestNumber}`);
+      } catch (error: any) {
+        console.error('Failed to update resume dates:', {
+          requestNumber: r.requestNumber,
+          error: error.message,
+        });
+      }
+    }
+
+    const status = await oracleDb.query(
+      `SELECT COUNT(*) AS total,
+              COUNT(CASE WHEN NVL(DATA_TRANSFER,'N')='Y' THEN 1 END) AS inserted,
+              COUNT(CASE WHEN NVL(DATE_FLAG,'N')='Y'    THEN 1 END) AS resumed
+         FROM LEAVE_REQUEST_FLOW
+         ${whereClause}`
+    );
+    console.log('Post-processing status:', status.rows?.[0] || {});
   } catch (error) {
-    console.error("Error in processApprovedLeaveRequests:", error);
+    console.error('Error in processApprovedLeaveRequests:', error);
     throw error;
   }
 }
-
-// Save attachment
 
 export const saveFileHR = async (
   req: Request,
