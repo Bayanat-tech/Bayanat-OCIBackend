@@ -199,6 +199,8 @@ async function updateLeaveApproval(data: TLeaveApproval, connection: any) {
       NEXT_ACTION_BY = NVL(:next_action_by, NEXT_ACTION_BY), 
       SENTBACK_HISTORY = NVL(:sentback_history, SENTBACK_HISTORY), 
       CANCEL_REMARK = NVL(:cancel_remark, CANCEL_REMARK), 
+      AIR_TICKET = NVL(:air_route, AIR_TICKET),
+      AIR_ROUTE = NVL(:air_route, AIR_ROUTE),
       UPDATED_BY = :updated_by,
       UPDATED_AT = SYSTIMESTAMP
     WHERE COMPANY_CODE = :company_code 
@@ -233,6 +235,8 @@ async function updateLeaveApproval(data: TLeaveApproval, connection: any) {
     next_action_by: { val: data.NEXT_ACTION_BY || "" },
     sentback_history: { val: data.SENTBACK_HISTORY || "" },
     cancel_remark: { val: data.CANCEL_REMARK || "" },
+    air_route: { val: data.AIR_ROUTE || "" },
+    air_ticket: { val: data.AIR_TICKET || "" },
   };
   console.log("Update parameters:", JSON.stringify(params, null, 2));
   console.log("Update sql:", sql); 
@@ -283,28 +287,29 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
  INSERT INTO LEAVE_REQUEST_FLOW (
     EMPLOYEE_NAME, HALF_DAY, DUTY_RESUME_DATE, ACTUAL_RESUME_DATE,
     LEAVE_ALLOWANCE, ADV_PAYMENT, CAUSE_TYPE, TRAVEL_DATE,
-    NAME_OF_REPLACEMENT, CONTACT_DETAILS_DURING_LEAVE, REMARKS, 
+    NAME_OF_REPLACEMENT, CONTACT_DETAILS_DURING_LEAVE, REMARKS,
     FLOW_CODE, HOD, UPDATED_BY, IMMEDIATE_SUPERVISOR, DEPT_HEAD,
     COMPANY_CODE, REQUEST_NUMBER, REQUEST_DATE,
     EMPLOYEE_CODE, LEAVE_TYPE, LEAVE_START_DATE, LEAVE_END_DATE,
-    LEAVE_DAYS, LAST_ACTION, CURRENT_STEP, FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
-    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL  -- 33 columns
-  ) VALUES (
-    :employee_name, :half_day, 
+    LEAVE_DAYS, AIR_TICKET, AIR_ROUTE, LAST_ACTION, CURRENT_STEP, 
+    FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
+    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL
+) VALUES (
+    :employee_name, :half_day,
     CASE WHEN :duty_resume_date IS NOT NULL THEN TO_DATE(:duty_resume_date, 'YYYY-MM-DD') ELSE NULL END,
     CASE WHEN :actual_resume_date IS NOT NULL THEN TO_DATE(:actual_resume_date, 'YYYY-MM-DD') ELSE NULL END,
     :leave_allowance, :adv_payment, :cause_type,
     CASE WHEN :travel_date IS NOT NULL THEN TO_DATE(:travel_date, 'YYYY-MM-DD') ELSE NULL END,
-    :name_of_replacement, :contact_details, :remarks, 
+    :name_of_replacement, :contact_details_during_leave, :remarks,
     :flow_code, :hod, :updated_by, :immediate_supervisor, :dept_head,
     :company_code, :request_number,
     TO_DATE(:request_date, 'YYYY-MM-DD'),
     :employee_code, :leave_type,
     TO_DATE(:leave_start_date, 'YYYY-MM-DD'),
     TO_DATE(:leave_end_date, 'YYYY-MM-DD'),
-    :leave_days, :last_action, 1, 1, 4, :create_user, SYSDATE, 
-    :created_by, SYSDATE, 4  -- 33 values (added the last '4')
-  )
+    :leave_days, :air_ticket, :air_route, :last_action, 1, 1, 4, :create_user, SYSDATE,
+    :created_by, SYSDATE, 4
+)
 `;
 
   const params = {
@@ -335,8 +340,11 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     leave_end_date: { val: leaveEndDate },
     leave_days: { val: data.LEAVE_DAYS },
     last_action: { val: data.LAST_ACTION },
+    air_route: { val: data.AIR_ROUTE || "" },
+    air_ticket: { val: data.AIR_TICKET || "" },
     create_user: { val: data.UPDATED_BY },
     created_by: { val: data.CREATED_BY },
+
   };
 
   // Debug: log parameters
@@ -352,7 +360,7 @@ console.log(`INSERT INTO LEAVE_REQUEST_FLOW (
   FLOW_CODE, HOD, UPDATED_BY, IMMEDIATE_SUPERVISOR, DEPT_HEAD,
   COMPANY_CODE, REQUEST_NUMBER, REQUEST_DATE,
   EMPLOYEE_CODE, LEAVE_TYPE, LEAVE_START_DATE, LEAVE_END_DATE,
-  LEAVE_DAYS, LAST_ACTION, CURRENT_STEP, FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
+  LEAVE_DAYS, AIR_TICKET, AIR_ROUTE,LAST_ACTION, CURRENT_STEP, FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
   CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL
 ) VALUES (
   '${data.EMPLOYEE_NAME}', '${data.HALF_DAY || "N"}', 
