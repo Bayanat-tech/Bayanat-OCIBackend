@@ -404,3 +404,60 @@ export const resetPassword = async (req: Request, res: Response) => {
     return;
   }
 };
+export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
+  try {
+    const { loginId, newPassword } = req.body;
+
+    if (!loginId || !newPassword) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Login ID and new password are required",
+      });
+      return;
+    }
+
+    // Find user by login ID
+    const user = await AuthService.findUserByEmailOrLoginId(loginId);
+
+    if (!user) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "User not found with the provided login ID",
+      });
+      return;
+    }
+
+    // Hash the new password
+    const hashedPassword = await AuthService.hashPassword(newPassword);
+
+    // Update user's password using email
+    await AuthService.updateUserPassword(user.email_id, hashedPassword);
+
+    // Send confirmation email
+    await notifyUser({
+      event: constants.EVENTS.RESET_PASSWORD,
+      request_users: user.email_id,
+      subject: "Password Reset Successful",
+      htmlMessage: `
+        <p>Dear ${user.username || 'User'},</p>
+        <p>Your password has been successfully reset for login ID: ${loginId}</p>
+        <p>If you did not make this change, please contact support immediately.</p>
+        <p>Best regards,</p>
+        <p>Bayanat Technology</p>
+      `,
+    });
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+    return;
+  } catch (error: any) {
+    console.error("Reset Password With Login ID Error:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || "An error occurred while resetting password",
+    });
+    return;
+  }
+};

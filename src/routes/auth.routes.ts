@@ -5,6 +5,7 @@ import {
   me,
   resetPassword,
   forgotPassword,
+    resetPasswordWithLoginId,
 } from "../controllers/auth.controller";
 
 // Create a new Express router
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post("/login", login);
 router.post("/forgotPassword", forgotPassword);
 router.post("/resetPassword", resetPassword);
+router.post("/reset-password-loginid", resetPasswordWithLoginId);
 
 // Define the me route
 // This route accepts a GET request and requires a valid JWT token
