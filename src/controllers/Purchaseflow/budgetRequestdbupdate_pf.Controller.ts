@@ -1,11 +1,12 @@
-import { oracleDb } from "../../database/connection";
+import { sequelize } from "../../database/connection";
 import {
   TBasicBrequest,
   TCostbudget,
 } from "../../interfaces/Purchaseflow/Budgetflow.interface";
 
+
 export async function upsertBudgetRequest(data: TBasicBrequest) {
-  const transaction = await oracleDb.transaction();
+  const transaction = await sequelize.transaction();
 
   try {
     console.log("Starting upsertBudgetRequest.30012025..");
@@ -20,15 +21,15 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
     console.log("Last Action:", data.last_action);
 
     let ls_insert = "NO";
-    // if (data.last_action === "SAVEASDRAFT" || data.request_number === null) {
-    if (data.request_number === null || data.request_number === "") {
+   // if (data.last_action === "SAVEASDRAFT" || data.request_number === null) {
+    if (data.request_number === null || data.request_number === '') {
       ls_insert = "YES";
     }
-    console.log("ls_insert", ls_insert);
-    console.log("request number", data.request_number);
+    console.log('ls_insert',ls_insert);
+console.log('request number',data.request_number);
     if (data.last_action === "SUBMITTED" || ls_insert === "NO") {
       // Update existing record in PURCHASE_REQUEST_HEADER
-      await oracleDb.query(
+      await sequelize.query(
         `UPDATE PURCHASE_REQUEST_HEADER
         SET
           LAST_ACTION = :lastAction,
@@ -41,8 +42,8 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
         {
           replacements: {
             lastAction: data.last_action,
-            description: data.description, // ✅ Added
-            remarks: data.remarks, // ✅ Added
+            description: data.description,      // ✅ Added
+            remarks: data.remarks,              // ✅ Added
             updatedBy: data.updated_by,
             requestNumber: data.request_number,
             companyCode: data.company_code,
@@ -51,20 +52,21 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
         }
       );
 
+    
       console.log("Update committed successfully1.");
-      await oracleDb.query(
+      await sequelize.query(
         `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,'Transaction Updated Successfully')`,
         {
           replacements: {
-            screen: "BUDGETSUBMIT",
-            type: "success",
-            document_number: data.request_number, // empty string as in your original call
+            screen: 'BUDGETSUBMIT',
+            type: 'success',
+            document_number: data.request_number , // empty string as in your original call
             userId: data.updated_by, // pass this properly as a named replacement
           },
         }
       );
       await transaction.commit();
-      return { requestNumber: "" };
+      return { requestNumber: '' };
     }
 
     // Parse and validate request date
@@ -108,7 +110,7 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
     `;
 
     // Execute the INSERT statement
-    await oracleDb.query(insertQuery, {
+    await sequelize.query(insertQuery, {
       replacements: {
         companyCode: data.company_code,
         requestDate: requestDate,
@@ -123,8 +125,11 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
       transaction,
     });
 
+
+  
+
     // Fetch the latest generated request_number within the same transaction sagar b
-    const [requestNumberResult] = await oracleDb.query(
+    const [requestNumberResult] = await sequelize.query(
       `SELECT  CONCAT(
       'BUDGET$',
       SUBSTRING_INDEX(SUBSTRING_INDEX(request_number, '$', 2), '$', -1),
@@ -142,21 +147,24 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
       }
     );
 
+   
+
     const requestNumber = (requestNumberResult[0] as { request_number: string })
       ?.request_number;
 
+      
     console.log("Data successfully inserted into PURCHASE_REQUEST_HEADER222.");
     console.log("Generated Request Number:", requestNumber);
-    console.log("requestNumber", requestNumber);
-    const formattedRequestNumber = requestNumber.replace(/\$/g, "/");
+console.log('requestNumber',requestNumber)
+const formattedRequestNumber = requestNumber.replace(/\$/g, '/');
 
     console.log("Transaction committed successfully.");
-    await oracleDb.query(
+    await sequelize.query(
       `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
       {
         replacements: {
-          screen: "BUDGETSUBMIT",
-          type: "success",
+          screen: 'BUDGETSUBMIT',
+          type: 'success',
           document_number: requestNumber,
           userId: data.updated_by,
           message: `Generated Request Number: ${formattedRequestNumber}`,
@@ -165,28 +173,28 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
     );
     await transaction.commit();
     console.log("Update committed successfully.");
-
+   
     return { requestNumber };
   } catch (error) {
-    await oracleDb.query(
+    await sequelize.query(
       `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,"")`,
       {
         replacements: {
-          screen: "TRNFAIL",
-          type: "error",
-          document_number: data.request_number, // empty string as in your original call
+          screen: 'TRNFAIL',
+          type: 'error',
+          document_number: data.request_number , // empty string as in your original call
           userId: data.updated_by, // pass this properly as a named replacement
         },
       }
     );
     console.error("Error in upsertBudgetRequest:", error);
-    await oracleDb.query(
+    await sequelize.query(
       `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,"")`,
       {
         replacements: {
-          screen: "TRNFAIL",
-          type: "error",
-          document_number: "", // empty string as in your original call
+          screen: 'TRNFAIL',
+          type: 'error',
+          document_number: '' , // empty string as in your original call
           userId: data.updated_by, // pass this properly as a named replacement
         },
       }
@@ -227,7 +235,7 @@ export const insertBudgetCost = async (
       value.approved_amt,
     ];
 
-    await oracleDb.query(sql, {
+    await sequelize.query(sql, {
       replacements: params,
       transaction,
     });

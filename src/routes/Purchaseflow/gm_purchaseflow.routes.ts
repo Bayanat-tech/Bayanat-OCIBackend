@@ -7,6 +7,9 @@ import express, {
 } from "express";
 import { cancelFinalApproval } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
 
+import {
+  upsertAMCDetails  
+  } from "../../controllers/Purchaseflow/update_requestAMCdata"
 import { getBudgetexcel } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
 import { budgetexcelupload } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
 import { CheckBudgetStatus } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
@@ -37,8 +40,8 @@ import {
 import { getMaterialRequestNumber } from "../../controllers/Purchaseflow/materialRequest_pf.Controller";
 import {
   createOrUpdateMaterialRequestSequential,
-  MaterialRequestListing,
-} from "../../controllers/Purchaseflow/materialRequest_pf.Controller";
+  MaterialRequestListing
+  } from "../../controllers/Purchaseflow/materialRequest_pf.Controller";
 import {
   createOrUpdatePurchaseRequestSequential,
   getPurchaserequest,
@@ -63,7 +66,7 @@ import {
   getddProductMaster,
 } from "../../controllers/Purchaseflow/getdddivisiondata_pf.cotroller";
 
-import { getDashboardData } from "../../controllers/Purchaseflow/getDashboardData_pf_controller";
+import { executeRawSql, getDashboardData,handleGenerateExpenseAdj ,handleSaveExpSamt} from "../../controllers/Purchaseflow/getDashboardData_pf_controller";
 
 import {
   updateReasonForPO,
@@ -137,6 +140,9 @@ router.get("/getPfglobalsearch/:master", getPfglobalsearch);
 router.get("/fetchPRregisterdata", fetchPRregisterdata);
 router.get("/fetchPOlisting/:request_number", fetchPOlisting);
 router.get("/MaterialRequestListing", MaterialRequestListing);
+router.post("/executeRawSql", executeRawSql);
+router.post("/handleGenerateExpenseAdj", handleGenerateExpenseAdj);
+router.post("/handleSaveExpSamt", handleSaveExpSamt);
 
 router.get(
   "/fetchProjectwisebudgetAllocation",
@@ -192,4 +198,8 @@ router.post("/saveFile", saveFile as RequestHandler);
 //------------------CUSTOMER MASTER------------------
 router.post("/customermaster", createcustomer);
 router.put("/customermaster", updatecustomer);
+
+
+
+router.post("/upsertAMCDetails",upsertAMCDetails);
 export default router;
