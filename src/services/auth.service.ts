@@ -88,7 +88,7 @@ export class AuthService {
         : "VENDOR";
 
     let syntheticEmail = `${apiUser.USER_ID.toLowerCase()}@gmail.com`;
-    if (apiUser.EMAIL && apiUser.EMAIL.includes("@")) {
+    if (typeof apiUser.EMAIL === "string" && apiUser.EMAIL.includes("@")) {
       syntheticEmail = apiUser.EMAIL;
     }
 

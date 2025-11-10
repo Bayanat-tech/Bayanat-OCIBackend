@@ -574,11 +574,9 @@ async function upsertLpoRequestHeader(
     console.log("Binds:", JSON.stringify(replacements, null, 2));
 
     await oracleDb.query(insertQuery, replacements, connection);
-    return data.DOC_NO ?? "";
-  }
-
-  // Update query
-  const updateQuery = `
+  } else {
+    // Update query
+    const updateQuery = `
     UPDATE TR_AC_LPO_HEADER SET 
       INVOICE_NUMBER = :invoiceNumber, 
       INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
@@ -595,25 +593,79 @@ async function upsertLpoRequestHeader(
     WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo AND AC_CODE = :acCode
   `;
 
-  const updateReplacements = {
-    invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
-    invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
-    lastAction: { val: defaultString(data.LAST_ACTION) },
-    acCode: { val: ac_code },
-    refDocNo: { val: defaultString(data.REF_DOC_NO) },
-    refDate: { val: formatDateForOracle(data.REF_DATE) },
-    remarks: { val: defaultString(data.REMARKS) },
-    currCode: { val: defaultString(data.CURR_CODE) },
-    exRate: { val: data.EX_RATE ?? 0 },
-    canceled: { val: data.CANCELED ?? false },
-    editUser: { val: defaultString(data.EDIT_USER) },
-    editDate: { val: formatDateForOracle(new Date()) },
-    companyCode: { val: company_code },
-    docType: { val: defaultString(data.DOC_TYPE) },
-    docNo: { val: doc_no },
-  };
+    const updateReplacements = {
+      invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
+      invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
+      lastAction: { val: defaultString(data.LAST_ACTION) },
+      acCode: { val: ac_code },
+      refDocNo: { val: defaultString(data.REF_DOC_NO) },
+      refDate: { val: formatDateForOracle(data.REF_DATE) },
+      remarks: { val: defaultString(data.REMARKS) },
+      currCode: { val: defaultString(data.CURR_CODE) },
+      exRate: { val: data.EX_RATE ?? 0 },
+      canceled: { val: data.CANCELED ?? false },
+      editUser: { val: defaultString(data.EDIT_USER) },
+      editDate: { val: formatDateForOracle(new Date()) },
+      companyCode: { val: company_code },
+      docType: { val: defaultString(data.DOC_TYPE) },
+      docNo: { val: doc_no },
+    };
 
-  await oracleDb.query(updateQuery, updateReplacements, connection);
+    await oracleDb.query(updateQuery, updateReplacements, connection);
+  }
+
+  // Fetch the updated FLOW_LEVEL and LAST_ACTION
+  const flowLevelResult = await oracleDb.query(
+    `SELECT FLOW_LEVEL, LAST_ACTION 
+     FROM TR_AC_LPO_HEADER 
+     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+    {
+      companyCode: { val: company_code },
+      docNo: { val: doc_no },
+    },
+    connection
+  ); 
+
+
+  console.log("flowLevelResult", flowLevelResult);
+
+  const flowLevelData = flowLevelResult.rows?.[0] || flowLevelResult[0];
+  const flowLevel = flowLevelData?.FLOW_LEVEL;
+  const lastAction = flowLevelData?.LAST_ACTION;
+
+  if ((lastAction === "SUBMITTED" || lastAction === "APPROVED") && (flowLevel === 1 || flowLevel === 2)) {
+    const emailInfoResult = await oracleDb.query(
+      `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS 
+       FROM VW_VENDOR_EMAIL_INFOR`,
+      {}, 
+      connection
+    );
+
+    const emailInfo = emailInfoResult.rows?.[0] || emailInfoResult[0];
+    const recipientEmails =
+      flowLevel === 1
+        ? emailInfo?.EMP_ID_LEVEL1_EMAILS
+        : emailInfo?.EMP_ID_LEVEL2_EMAILS;
+
+    if (recipientEmails) {
+      const subject = `Vendor Request Approval Required`;
+      const message = `Dear Approver,\n\nThe vendor request with Document No: ${doc_no} is awaiting your approval.\n\nBest regards,\nBayanat Technology`;
+      const htmlMessage = `
+        <p>Dear Approver,</p>
+        <p>The vendor request with <strong>Document No: ${doc_no}</strong> is awaiting your approval.</p>
+        <p>Best regards,<br>Bayanat Technology</p>
+      `;
+
+      await notifyUser({
+        event: "APPROVAL_NOTIFICATION",
+        request_users: recipientEmails,
+        subject,
+        message,
+        htmlMessage,
+      });
+    }
+  }
+
   return data.DOC_NO ?? "";
 }
 
