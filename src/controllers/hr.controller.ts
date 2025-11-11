@@ -104,7 +104,6 @@ export const getHrMaster = async (
       case "Pg_leave_flow_close":
       case "Pg_leave_flow_cancel":
       case "Pg_leave_flow_InProgress": {
-        console.log(`Inside ${masters} handler`);
 
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
@@ -113,8 +112,7 @@ export const getHrMaster = async (
 
 
         const loginid = req.query.code as string;
-        console.log("loginid", loginid);
-        console.log("requestUser", requestUser);
+
 
         if (!requestUser?.company_code || !loginid) {
           console.error("Missing company_code or loginid");
@@ -193,8 +191,7 @@ EMPLOYEE_CODE =  :loginid )))`;
             limit: limit
           };
 
-          console.log("Fetch Query:", fetchQuery);
-          console.log("Fetch Params:", fetchParams);
+  
 
           const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
 
@@ -216,7 +213,6 @@ EMPLOYEE_CODE =  :loginid )))`;
 
       case "Leaveflow_request": {
         const request_number = req.query.code as string;
-        console.log("request_number", request_number);
 
         const whereConditions = `company_code = :company_code ${request_number ? 'AND request_number = :request_number' : ''}`;
 
@@ -238,15 +234,19 @@ EMPLOYEE_CODE =  :loginid )))`;
     `;
 
 
-          console.log("Leaveflow_request Query:", fetchQuery);
-          console.log("Leaveflow_request Params:", bindParams);
+  
           
           // const queryParams = [requestUser.company_code];
           // if (request_number) queryParams.push(request_number);
+
+               console.log("Leaveflow_request Query:", fetchQuery);
+          console.log("Leaveflow_request Params:", bindParams);
           
           const fetchedData = await oracleDb.query(fetchQuery, bindParams);
+
+          console.log("fetchedData.rows", fetchedData.rows)
           
-          console.log("fetchedData:", fetchedData);
+
           
 
           res.status(constants.STATUS_CODES.OK).json({
@@ -514,7 +514,7 @@ EMPLOYEE_CODE =  :loginid )))`;
 
 // Delete master data with optional pagination based on the `master` type.
 export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
-  console.log("DeleteMaster Call");
+
 
   try {
     const { master } = req.params;
@@ -525,7 +525,6 @@ export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
       throw new Error("IDs are required");
     }
 
-    console.log(master);
 
     switch (master) {
       case "bank": {

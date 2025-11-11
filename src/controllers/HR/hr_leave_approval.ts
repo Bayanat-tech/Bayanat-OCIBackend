@@ -69,53 +69,6 @@ async function retryOnDeadlock<T>(
 
 
 
-// export async function upsertLeaveApproval(
-//   data: TLeaveApproval
-// ): Promise<string> {
-//   try {
-//     const result = await oracleDb.withTransaction(async (connection) => {
-//       const exists = await recordExists(
-//         data.REQUEST_NUMBER,
-//         data.COMPANY_CODE,
-//         connection
-//       );
-//       console.log('record exists223:', exists);
-//       // Check if the record exists and perform the appropriate insert/update
-//       if (exists) {
-//         console.log('Checking commit1')
-//         await updateLeaveApproval(data, connection);
-//       } else {
-//         console.log('Checking commit2')
-//         await insertLeaveApproval(data, connection);
-//       }
-// console.log('Checking commit3')
-//       // If FINAL_APPROVED is 'YES', trigger the background process
-//       if (data.FINAL_APPROVED === 'YES') {
-//         console.log('Checking commit4')
-//         // Trigger background processing asynchronously
-//         processApprovedLeaveRequestsForSingleRecord(
-//           data.REQUEST_NUMBER,
-//           data.COMPANY_CODE
-//         ).catch((error) => {
-//           console.error("Background processing failed:", error);
-//         });
-//       } else {
-//         console.log('Checking commit5')
-//         // If FINAL_APPROVED is not 'YES', explicitly commit the transaction
-//         await connection.commit();
-//         console.log("Transaction committed because FINAL_APPROVED is not 'YES'.");
-//       }
-
-//       return data.REQUEST_NUMBER;
-//     });
-
-//     return result;
-//   } catch (error) {
-//     console.error("Error in upsertLeaveApproval:", error);
-//     throw error;
-//   }
-// }
-
 
 export async function upsertLeaveApproval(
   data: TLeaveApproval
@@ -191,7 +144,7 @@ export async function processApprovedLeaveRequestsForSingleRecord(
   companyCode: string
 ): Promise<void> {
   try {
-    console.log("Processing single record:", { requestNumber, companyCode });
+    // console.log("Processing single record:", { requestNumber, companyCode });
 
     await processApprovedLeaveRequests({
       specificRequestNumber: requestNumber,
