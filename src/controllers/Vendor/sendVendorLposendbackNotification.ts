@@ -2,7 +2,6 @@ import { oracleDb } from "./../../../src/database/connection";
 import { notifyUser } from "../../../src/helpers/functions";
 
 const stdSign = `
-
 Best regards,
 Bayanat Technology`;
 const stdSignHtml = `<p>Best regards,<br/>Bayanat Technology</p>`;
@@ -15,7 +14,7 @@ const toCsv = (parts: Array<string | null | undefined>) =>
 
 async function getEmailInfo(connection?: any) {
   const r = await oracleDb.query(
-    `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS FROM VW_VENDOR_EMAIL_INFOR1`,
+    `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS FROM VW_VENDOR_EMAIL_INFOR`,
     {},
     connection
   );
@@ -74,6 +73,16 @@ async function getHistories(companyCode: string, docNo: string, connection?: any
   return { sendbackHistory: row.SENDBACK_HISTORY, rejectHistory: row.REJECT_HISTORY };
 }
 
+async function getMaxFlowLevel(docNo: string, connection?: any): Promise<number> {
+  const result = await oracleDb.query(
+    `SELECT MAX(FLOW_LEVEL) AS MAX_FLOW_LEVEL
+       FROM TR_AC_LPO_HEADER_HISTORY
+      WHERE DOC_NO = :docNo`,
+    { docNo: { val: docNo } },
+    connection
+  );
+  return result.rows?.[0]?.MAX_FLOW_LEVEL || result[0]?.MAX_FLOW_LEVEL || 0;
+}
 
 export async function sendVendorLposendbackNotification(
   params: {
@@ -84,9 +93,10 @@ export async function sendVendorLposendbackNotification(
   },
   connection?: any
 ): Promise<void> {
-  const { action, docNo, companyCode, flowLevel } = params;
+  const { action, docNo, companyCode } = params;
 
-  const { level1 } = await getEmailInfo(connection);
+  const maxFlowLevel = await getMaxFlowLevel(docNo, connection);
+  const { level1, level2 } = await getEmailInfo(connection);
   const vendorEmail = await getVendorEmail(docNo, connection);
   const { sendbackHistory, rejectHistory } = await getHistories(companyCode, docNo, connection);
 
@@ -98,10 +108,10 @@ export async function sendVendorLposendbackNotification(
   if (action === "SENTBACK") {
     const actor = extractLastActor(sendbackHistory); 
 
-    if (flowLevel === 1) {
-      recipients = toCsv([level1]);
-    } else if (flowLevel === 0) {
+    if (maxFlowLevel === 1) {
       recipients = toCsv([level1, vendorEmail]);
+    } else if (maxFlowLevel > 2) {
+      recipients = toCsv([level1, level2, vendorEmail]);
     }
 
     if (recipients) {
@@ -115,10 +125,10 @@ export async function sendVendorLposendbackNotification(
   } else if (action === "REJECTED") {
     const actor = extractLastActor(rejectHistory); 
 
-    if (flowLevel === 2) {
+    if (maxFlowLevel === 1) {
       recipients = toCsv([level1, vendorEmail]);
-    } else if (flowLevel === 1) {
-      recipients = toCsv([vendorEmail]);
+    } else if (maxFlowLevel > 2) {
+      recipients = toCsv([level1, level2, vendorEmail]);
     }
 
     if (recipients) {

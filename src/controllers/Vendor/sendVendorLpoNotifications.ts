@@ -9,7 +9,7 @@ const toCsv = (list: (string | null | undefined)[]) =>
 
 async function getApproverListsFromFixedView(connection: any): Promise<EmailInfo> {
   const r = await oracleDb.query(
-    `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS FROM VW_VENDOR_EMAIL_INFOR1`,
+    `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS FROM VW_VENDOR_EMAIL_INFOR`,
     {},
     connection
   );
@@ -99,39 +99,6 @@ export async function sendVendorLpoNotifications(
                   ${stdSignHtml}`;
     }
   }
-
-//   if (lastAction === "SENTBACK") {
-//     console.log('lastaction4444',lastAction)
-//     if (flowLevel === 1) {
-//       recipients = toCsv([level1]);
-//     } else if (flowLevel === 0) {
-//       recipients = toCsv([level1, vendorEmail]);
-//     }
-//     if (recipients) {
-//       subject = `Vendor Request Sent Back`;
-//       textBody = `Dear Recipient,\n\nThe vendor request with Document No: ${docNo} has been sent back. Please review the request.\n\nReason: ${sendbackHistory}${stdSign}`;
-//       htmlBody = `<p>Dear Recipient,</p>
-//                   <p>The vendor request with <strong>Document No: ${docNo}</strong> has been sent back. Please review the request.</p>
-//                   <p><strong>Reason:</strong> ${sendbackHistory}</p>
-//                   ${stdSignHtml}`;
-//     }
-//   }
-
-//   if (lastAction === "REJECTED") {
-//     if (flowLevel === 2) {
-//       recipients = toCsv([level1, vendorEmail]);
-//     } else if (flowLevel === 1) {
-//       recipients = toCsv([vendorEmail]);
-//     }
-//     if (recipients) {
-//       subject = `Vendor Request Rejected`;
-//       textBody = `Dear Recipient,\n\nThe vendor request with Document No: ${docNo} has been rejected.\n\nReason: ${rejectHistory}${stdSign}`;
-//       htmlBody = `<p>Dear Recipient,</p>
-//                   <p>The vendor request with <strong>Document No: ${docNo}</strong> has been rejected.</p>
-//                   <p><strong>Reason:</strong> ${rejectHistory}</p>
-//                   ${stdSignHtml}`;
-//     }
-//   }
 
   if (!recipients) return; 
   try {

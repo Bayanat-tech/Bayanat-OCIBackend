@@ -1331,7 +1331,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
 
     const updateResult = await oracleDb.query(query, {
       flow_level: { val: flow_level },
-      remarks: { val: remarks },   // e.g. "sentback - JOHN DOE" or "rejected - JANE DOE"
+      remarks: { val: remarks },   
       action: { val: action },
       doc_no: { val: doc_no },
       company_code: { val: company_code },
