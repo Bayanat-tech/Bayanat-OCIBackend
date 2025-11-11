@@ -90,6 +90,26 @@ export const validateLeaveHandler = async (req: Request, res: Response) => {
   }
 };
 
+
+export const newvalidateLeaveHandler = async (req: Request, res: Response) => {
+  try {
+    const {
+      leaveStartDate,employeeId,leaveType
+    } = req.query;
+
+    const data = await HrService.newValidaterequest({
+      leaveStartDate: leaveStartDate as string,
+      employeeId: employeeId as string,
+      leaveType: leaveType as string,
+
+    });
+
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const getLeaveRequestsWithErpDocHandler = async (
   req: Request,
   res: Response
