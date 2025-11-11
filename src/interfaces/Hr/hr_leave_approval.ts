@@ -2,7 +2,7 @@ export type TLeaveApproval = {
   EMPLOYEE_NAME: string;
   FINAL_APPROVED: string;
   HALF_DAY: string;
-SUPERVISOR: string;
+  SUPERVISOR: string;
  DUTY_RESUME_DATE: string;
  ACTUAL_RESUME_DATE: string;
   DIVISION_HEAD: string;

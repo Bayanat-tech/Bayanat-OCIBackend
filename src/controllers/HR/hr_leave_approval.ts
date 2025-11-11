@@ -489,7 +489,6 @@ export const upsertLeaveApprovalHandler = async (
   }
 };
 
-
 const oq = (s: string) => s.replace(/'/g, "''"); 
 
 export async function processApprovedLeaveRequests(options?: {
@@ -497,7 +496,7 @@ export async function processApprovedLeaveRequests(options?: {
   specificCompanyCode?: string;
 }): Promise<void> {
   try {
-    console.log('Starting to process approved leave requests...', options);
+    console.log("Starting to process approved leave requests...", options);
 
     let whereClause = "WHERE FINAL_APPROVED = 'YES'";
 
@@ -505,79 +504,113 @@ export async function processApprovedLeaveRequests(options?: {
       const rn = oq(options.specificRequestNumber);
       const cc = oq(options.specificCompanyCode);
       whereClause += ` AND REQUEST_NUMBER = '${rn}' AND COMPANY_CODE = '${cc}'`;
-      console.log('Using specific record filter (inlined):', { requestNumber: rn, companyCode: cc });
+      console.log("Using specific record filter (inlined):", {
+        requestNumber: rn,
+        companyCode: cc,
+      });
+    }
+
+    // Fetch file data for transfer
+    const fileDataResult = await oracleDb.query(
+      `SELECT 
+        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME
+      FROM UPLOADED_FILES_DLTS_VH
+      WHERE REQUEST_NUMBER = :requestNumber AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
+      { requestNumber: { val: options?.specificRequestNumber } }
+    );
+    const fileData: any[] = fileDataResult.rows || fileDataResult;
+
+    // Send file data to .NET API
+    for (const file of fileData) {
+      try {
+        await HrService.insertUploadedFileEmployee(file);
+      } catch (error: any) {
+        console.error(
+          `Failed to send file data for REQUEST_NUMBER: ${options?.specificRequestNumber}`,
+          error
+        );
+        return;
+      }
+    }
+
+    if (fileData.length > 0) {
+      await oracleDb.query(
+        `UPDATE UPLOADED_FILES_DLTS_VH 
+         SET FILE_TRANSFER = 'Y' 
+         WHERE REQUEST_NUMBER = :requestNumber`,
+        { requestNumber: { val: options?.specificRequestNumber } }
+      );
     }
 
     const approvedRequests = await oracleDb.query(
       `
-  SELECT
-    NVL(REQUEST_NUMBER, '')                                         AS "requestNumber",
-    NVL(CURRENT_STEP, '')                                           AS "currentStep",
-    NVL(COMPANY_CODE, '')                                           AS "companyCode",
-    NVL(EMPLOYEE_CODE, '')                                          AS "employeeCode",
-    TO_CHAR(LEAVE_REQUEST_DATE, 'YYYY-MM-DD HH24:MI:SS')            AS "leaveRequestDate",
-    TO_CHAR(TRAVEL_DATE, 'YYYY-MM-DD HH24:MI:SS')                   AS "travelDate",
-    NVL(LEAVE_TYPE, '')                                             AS "leaveType",
-    TO_CHAR(LEAVE_START_DATE, 'YYYY-MM-DD HH24:MI:SS')              AS "leaveStartDate",
-    TO_CHAR(LEAVE_END_DATE, 'YYYY-MM-DD HH24:MI:SS')                AS "leaveEndDate",
-    NVL(LEAVE_DAYS, 0)                                              AS "leaveDays",
-    NVL(LEAVE_REASON, '')                                           AS "leaveReason",
-    NVL(DAYS_ADJUSTED, 0)                                           AS "daysAdjusted",
-    NVL(HALF_DAY, '')                                               AS "halfDay",
-    NVL(AIR_TICKET, '')                                             AS "airTicket",
-    NVL(AIR_TICKET_SELF, '')                                        AS "airTicketSelf",
-    NVL(AIR_TICKET_WIFE, '')                                        AS "airTicketWife",
-    NVL(AIR_TICKET_CHILDREN, 0)                                     AS "airTicketChildren",
-    TO_CHAR(REQUEST_DATE, 'YYYY-MM-DD HH24:MI:SS')                  AS "requestDate",
-    NVL(FLOW_CODE, '')                                              AS "flowCode",
-    NVL(FLOW_LEVEL_INITIAL, 0)                                      AS "flowLevelInitial",
-    NVL(FLOW_LEVEL_RUNNING, 0)                                      AS "flowLevelRunning",
-    NVL(FLOW_LEVEL_FINAL, 0)                                        AS "flowLevelFinal",
-    NVL(FA_UPLOADED, '')                                            AS "faUploaded",
+      SELECT
+        NVL(REQUEST_NUMBER, '') AS "requestNumber",
+        NVL(COMPANY_CODE, '') AS "companyCode",
+        NVL(EMPLOYEE_CODE, '') AS "employeeCode",
+        TO_CHAR(LEAVE_REQUEST_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "leaveRequestDate",
+        TO_CHAR(TRAVEL_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "travelDate",
+        NVL(LEAVE_TYPE, '') AS "leaveType",
+        TO_CHAR(LEAVE_START_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "leaveStartDate",
+        TO_CHAR(LEAVE_END_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "leaveEndDate",
+        NVL(LEAVE_DAYS, 0) AS "leaveDays",
+        NVL(LEAVE_REASON, '') AS "leaveReason",
+        NVL(DAYS_ADJUSTED, 0) AS "daysAdjusted",
+        NVL(HALF_DAY, '') AS "halfDay",
+        NVL(AIR_TICKET, '') AS "airTicket",
+        NVL(AIR_TICKET_SELF, '') AS "airTicketSelf",
+        NVL(AIR_TICKET_WIFE, '') AS "airTicketWife",
+        NVL(AIR_TICKET_CHILDREN, 0) AS "airTicketChildren",
+        TO_CHAR(REQUEST_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "requestDate",
+        NVL(FLOW_CODE, '') AS "flowCode",
+        NVL(FLOW_LEVEL_INITIAL, 0) AS "flowLevelInitial",
+        NVL(FLOW_LEVEL_RUNNING, 0) AS "flowLevelRunning",
+        NVL(FLOW_LEVEL_FINAL, 0) AS "flowLevelFinal",
+        NVL(FA_UPLOADED, '') AS "faUploaded",
 
-    CASE WHEN UPPER(TRIM(FINAL_APPROVED)) = 'YES' THEN 'YES' ELSE 'NO' END
+        CASE WHEN UPPER(TRIM(FINAL_APPROVED)) = 'YES' THEN 'YES' ELSE 'NO' END
                                                                      AS "finalApproved",
 
-    NVL(CREATE_USER, '')                                            AS "createUser",
-    TO_CHAR(CREATE_DATE, 'YYYY-MM-DD HH24:MI:SS')                   AS "createDate",
-    NVL(LAST_UPDATED, '')                                           AS "lastUpdated",
-    NVL(LAST_ACTION, '')                                            AS "lastAction",
-    NVL(HISTORY_SERIAL, 0)                                          AS "historySerial",
-    NVL(CANCEL_FLAG, '')                                            AS "cancelFlag",
-    NVL(CANCEL_USER, '')                                            AS "cancelUser",
-    TO_CHAR(CANCEL_DATE, 'YYYY-MM-DD HH24:MI:SS')                   AS "cancelDate",
-    NVL(CANCEL_REMARK, '')                                          AS "cancelRemark",
-    NVL(REMARKS_HISTRY, '')                                         AS "remarksHistry",
-    NVL(REMARKS, '')                                                AS "remarks",
-    NVL(DESCRIPTION, '')                                            AS "description",
-    NVL(COMMENTS, '')                                               AS "comments",
-    NVL(MOBILE_APP_UPDATE, 'N')                                     AS "mobileAppUpdate",
-    TO_CHAR(UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS')                    AS "updatedAt",
-    NVL(UPDATED_BY, '')                                             AS "updatedBy",
-    NVL(CREATED_BY, '')                                             AS "createdBy",
-    TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')                    AS "createdAt",
-    NVL(HOD, '')                                                    AS "hod",
-    NVL(DEPT_HEAD, '')                                              AS "deptHead",
-    NVL(IMMEDIATE_SUPERVISOR, '')                                   AS "immediateSupervisor",
-    NVL(LOG_NUMBER, 0)                                              AS "logNumber",
-    NVL(NEXT_ACTION_BY, '')                                         AS "nextActionBy",
-    NVL(LEAVE_ALLOWANCE, '')                                        AS "leaveAllowance",
-    NVL(ADV_PAYMENT, '')                                            AS "advPayment",
-    NVL(CAUSE_TYPE, '')                                             AS "causeType",
-    NVL(NAME_OF_REPLACEMENT, '')                                    AS "nameOfReplacement",
-    NVL(CONTACT_DETAILS_DURING_LEAVE, '')                           AS "contactDetailsDuringLeave",
-    TO_CHAR(DUTY_RESUME_DATE, 'YYYY-MM-DD HH24:MI:SS')              AS "dutyResumeDate",
-    TO_CHAR(ACTUAL_RESUME_DATE, 'YYYY-MM-DD HH24:MI:SS')            AS "actualResumeDate",
-    NVL(EMPLOYEE_NAME, '')                                          AS "employeeName",
+        NVL(CREATE_USER, '') AS "createUser",
+        TO_CHAR(CREATE_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "createDate",
+        NVL(LAST_UPDATED, '') AS "lastUpdated",
+        NVL(LAST_ACTION, '') AS "lastAction",
+        NVL(HISTORY_SERIAL, 0) AS "historySerial",
+        NVL(CANCEL_FLAG, '') AS "cancelFlag",
+        NVL(CANCEL_USER, '') AS "cancelUser",
+        TO_CHAR(CANCEL_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "cancelDate",
+        NVL(CANCEL_REMARK, '') AS "cancelRemark",
+        NVL(REMARKS_HISTRY, '') AS "remarksHistry",
+        NVL(REMARKS, '') AS "remarks",
+        NVL(DESCRIPTION, '') AS "description",
+        NVL(COMMENTS, '') AS "comments",
+        NVL(MOBILE_APP_UPDATE, 'N') AS "mobileAppUpdate",
+        TO_CHAR(UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS "updatedAt",
+        NVL(UPDATED_BY, '') AS "updatedBy",
+        NVL(CREATED_BY, '') AS "createdBy",
+        TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
+        NVL(HOD, '') AS "hod",
+        NVL(DEPT_HEAD, '') AS "deptHead",
+        NVL(IMMEDIATE_SUPERVISOR, '') AS "immediateSupervisor",
+        NVL(LOG_NUMBER, 0) AS "logNumber",
+        NVL(NEXT_ACTION_BY, '') AS "nextActionBy",
+        NVL(LEAVE_ALLOWANCE, '') AS "leaveAllowance",
+        NVL(ADV_PAYMENT, '') AS "advPayment",
+        NVL(CAUSE_TYPE, '') AS "causeType",
+        NVL(NAME_OF_REPLACEMENT, '') AS "nameOfReplacement",
+        NVL(CONTACT_DETAILS_DURING_LEAVE, '') AS "contactDetailsDuringLeave",
+        TO_CHAR(DUTY_RESUME_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "dutyResumeDate",
+        TO_CHAR(ACTUAL_RESUME_DATE, 'YYYY-MM-DD HH24:MI:SS') AS "actualResumeDate",
+        NVL(EMPLOYEE_NAME, '') AS "employeeName",
 
-    /* keep if you still need flags downstream */
-    NVL(DATA_TRANSFER, 'N')                                         AS "dataTransfer",
-    NVL(DATE_FLAG, 'N')                                             AS "dateFlag"
+        /* keep if you still need flags downstream */
+        NVL(DATA_TRANSFER, 'N') AS "dataTransfer",
+        NVL(DATE_FLAG, 'N') AS "dateFlag"
 
-  FROM LEAVE_REQUEST_FLOW
-  ${whereClause}
-    AND NVL(NULLIF(TRIM(DATA_TRANSFER), ''), 'N') = 'N'
-  `,
+      FROM LEAVE_REQUEST_FLOW
+      ${whereClause}
+        AND NVL(NULLIF(TRIM(DATA_TRANSFER), ''), 'N') = 'N'
+      `,
     );
 
     console.log(`Found ${approvedRequests.rows?.length || 0} records to INSERT`);
@@ -590,19 +623,20 @@ export async function processApprovedLeaveRequests(options?: {
         await oracleDb.query(
           `UPDATE LEAVE_REQUEST_FLOW
              SET DATA_TRANSFER = 'Y',
-                 UPDATED_AT    = SYSTIMESTAMP
+                 UPDATED_AT = SYSTIMESTAMP
            WHERE REQUEST_NUMBER = '${rn}'
-             AND COMPANY_CODE   = '${cc}'`
+             AND COMPANY_CODE = '${cc}'`
         );
 
         console.log(`Inserted/marked transferred: ${request.requestNumber}`);
       } catch (error: any) {
-        console.error('Failed to insert request:', {
+        console.error("Failed to insert request:", {
           requestNumber: request.requestNumber,
           error: error.message,
         });
       }
     }
+
     const resumeRequests = await oracleDb.query(
       `SELECT
           REQUEST_NUMBER                                   AS "requestNumber",
@@ -665,10 +699,10 @@ export async function processApprovedLeaveRequests(options?: {
     );
     console.log('Post-processing status:', status.rows?.[0] || {});
   } catch (error) {
-    console.error('Error in processApprovedLeaveRequests:', error);
+    console.error("Error in processApprovedLeaveRequests:", error);
     throw error;
   }
-}
+};
 
 export const saveFileHR = async (
   req: Request,

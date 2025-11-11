@@ -149,51 +149,6 @@ newValidaterequest: async(params: {
   console.log("PL/SQL Block:", query);
   console.log("Bind Parameters:", bindParams);
 
-
-
-//   // Helper function to get leave balances
-// async function getLeaveBalances(employeeId: string) {
-//   const balanceQuery = `
-//     SELECT LEAVE_TYPE, NO_OF_LEAVES_AVAILABLE 
-//     FROM VW_HR_LEAVE_YEARLY_BALANCE_AWARE 
-//     WHERE EMPLOYEE_ID = :employeeId 
-//     AND LEAVE_TYPE IN ('AL', '014', '015', '016', '018', '013')
-//     ORDER BY LEAVE_TYPE
-//   `;
-
-//   const bindParams = {
-//     employeeId: employeeId
-//   };
-
-//   console.log("Leave Balance Query:", balanceQuery);
-//   console.log("Balance Bind Parameters:", bindParams);
-
-//   try {
-//     const result = await oracleDb.query(balanceQuery, bindParams);
-    
-//     // Convert rows to a more usable format
-//     const balances: { [key: string]: number } = {};
-//     result.rows.forEach((row: any) => {
-//       balances[row.LEAVE_TYPE] = row.NO_OF_LEAVES_AVAILABLE;
-//     });
-
-//     return {
-//       success: true,
-//       balances: balances,
-//       rawData: result.rows
-//     };
-
-//   } catch (error: any) {
-//     console.error("Error fetching leave balances:", error);
-//     return {
-//       success: false,
-//       error: error.message,
-//       balances: null
-//     };
-//   }
-// }
-
-// Helper function to get only the requested leave type balance
 async function getLeaveBalances(employeeId: string, leaveType: string) {
   const balanceQuery = `
     SELECT NO_OF_LEAVES_AVAILABLE 
@@ -435,11 +390,45 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
     );
     return response.data;
   },
+
+  insertUploadedFileEmployee: async (data: Record<string, any>) => {
+    try {
+      // Log the payload being sent
+      console.log("Sending File Data Payload:", data);
+
+      // Call the .NET API
+      const response = await axiosInstance.post(
+        "/api/EmployeeLeave/INSERT_UPLOADED_FILE",
+        data
+      );
+
+      // Log the response for debugging
+      console.log("Response from .NET API:", {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      // Log detailed error information
+      console.error("Error sending file data to .NET API:", {
+        url: error.config?.url,
+        method: error.config?.method,
+        requestHeaders: error.config?.headers,
+        payload: data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        responseHeaders: error.response?.headers,
+        responseData: error.response?.data,
+        message: error.message,
+      });
+
+      throw new Error(`Failed to insert uploaded file data: ${error.message}`);
+    }
+  },
+
 };
-
-
-
-
 // Helper function to ensure temp table exists
 async function ensureTempTableExists(): Promise<void> {
   const createTableQuery = `
@@ -467,7 +456,6 @@ async function ensureTempTableExists(): Promise<void> {
     }
   }
 }
-
 
 
 
