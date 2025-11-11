@@ -1,5 +1,6 @@
 import { DataTypes, Model } from "sequelize";
-import { sequelize } from "../../../../database/connection";
+import oracledb, { Connection } from "oracledb";
+import { oracleDb } from "../../../../database/connection";
 import constants from "../../../../helpers/constants";
 import { IConfirmInboundjob } from "../../../../interfaces/wms/transaction/inbound/confirminboundJobWms.interface";
 

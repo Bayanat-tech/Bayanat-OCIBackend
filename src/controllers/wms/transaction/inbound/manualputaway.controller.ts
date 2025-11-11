@@ -1,62 +1,77 @@
-import { sequelize } from "../../../../../src/database/connection";
-import { QueryTypes, Transaction } from "sequelize";
-import { TPutawaymanual } from "../../../../../src/interfaces/wms/transaction/inbound/manualputaway.interface";
+/**
+ * @fileoverview Oracle-based upsert logic for TT_BATCH table (Putaway Manual)
+ */
+import oracledb from "oracledb";
+import { oracleDb } from "../../../../database/connection";
+
 import { Request, Response } from "express";
-import constants from "../../../..//helpers/constants";
+import constants from "../../../../helpers/constants";
+
+import { TPutawaymanual } from "../../../../../src/interfaces/wms/transaction/inbound/manualputaway.interface";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
 /**
- * Utility: Convert JS Date or dd-mm-yyyy string to MySQL yyyy-mm-dd
+ * Utility: Convert JS Date or dd-mm-yyyy string to Oracle TO_DATE format
  */
-function toMySQLDate(dateInput?: string | Date | null): string | null {
+function toOracleDate(dateInput?: string | Date | null): Date | null {
   if (!dateInput) return null;
-  if (dateInput instanceof Date) {
-    const year = dateInput.getFullYear();
-    const month = String(dateInput.getMonth() + 1).padStart(2, "0");
-    const day = String(dateInput.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
+  if (dateInput instanceof Date) return dateInput;
+
   const parts = dateInput.split("-");
-  if (parts.length !== 3) return null;
-  if (parts[0].length === 4) return dateInput; // already yyyy-mm-dd
-  const [day, month, year] = parts;
-  return `${year}-${month}-${day}`;
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // yyyy-mm-dd
+      return new Date(dateInput);
+    } else {
+      // dd-mm-yyyy
+      const [day, month, year] = parts;
+      return new Date(`${year}-${month}-${day}`);
+    }
+  }
+  return null;
 }
 
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function retryOnDeadlock<T>(
+/**
+ * Retry logic for transient Oracle errors
+ */
+async function retryOnError<T>(
   operation: () => Promise<T>,
   retries = MAX_RETRIES
 ): Promise<T> {
   try {
     return await operation();
   } catch (error: any) {
-    if (retries > 0 && error.original?.code === "ER_LOCK_DEADLOCK") {
+    const message = error.message || "";
+    if (retries > 0 && /ORA-00060/.test(message)) {
+      // ORA-00060: deadlock detected
       console.warn("Deadlock detected. Retrying...");
       await sleep(RETRY_DELAY);
-      return retryOnDeadlock(operation, retries - 1);
+      return retryOnError(operation, retries - 1);
     }
     throw error;
   }
 }
 
 /**
- * Upsert logic for TT_BATCH
+ * === Main Upsert Function ===
  */
-export async function upsertPutawaymanual(
+export async function upsertPutawaymanualOracle(
   data: TPutawaymanual
 ): Promise<string> {
-  return retryOnDeadlock(async () => {
-    let transaction: Transaction | undefined;
-    const transactionState = { committed: false, rolledBack: false };
-
+  return retryOnError(async () => {
+    let connection: oracledb.Connection | null = null;
     try {
-      transaction = await sequelize.transaction();
+      connection = await oracleDb.getConnection();
+
+      await connection.execute("BEGIN NULL; END;"); // keepalive
+
+      await connection.execute("SAVEPOINT before_upsert");
 
       const exists = await recordExists(
         data.COMPANY_CODE,
@@ -64,39 +79,36 @@ export async function upsertPutawaymanual(
         data.JOB_NO,
         data.TXN_TYPE,
         data.KEY_NUMBER ?? "",
-        transaction
+        connection
       );
 
       if (exists) {
-        await updatePutawaymanual(data, transaction);
+        await updatePutawaymanual(data, connection);
       } else {
-        await insertPutawaymanual(data, transaction);
+        await insertPutawaymanual(data, connection);
       }
 
-      await transaction.commit();
-      transactionState.committed = true;
-
+      await connection.commit();
       return data.JOB_NO;
     } catch (error) {
-      if (
-        transaction &&
-        !transactionState.committed &&
-        !transactionState.rolledBack
-      ) {
-        try {
-          await transaction.rollback();
-          transactionState.rolledBack = true;
-        } catch (rollbackError) {
-          console.error("Error during rollback:", rollbackError);
-        }
+      if (connection) {
+        await connection.rollback();
       }
       throw error;
+    } finally {
+      if (connection) {
+        try {
+          await connection.close();
+        } catch (e) {
+          console.error("Error closing Oracle connection:", e);
+        }
+      }
     }
   });
 }
 
 /**
- * Check if record exists
+ * === Check if record exists ===
  */
 async function recordExists(
   companyCode: string,
@@ -104,250 +116,122 @@ async function recordExists(
   jobNo: string,
   txnType: string,
   keyNumber: string,
-  transaction: Transaction
+  connection: oracledb.Connection
 ): Promise<boolean> {
-  const result: any = await sequelize.query(
+  const result = await connection.execute(
     `SELECT 1 
        FROM TT_BATCH 
-      WHERE COMPANY_CODE = ? 
-        AND PRIN_CODE = ? 
-        AND JOB_NO = ? 
-        AND TXN_TYPE = ?
-        AND KEY_NUMBER = ?
-      LIMIT 1`,
+      WHERE COMPANY_CODE = :companyCode 
+        AND PRIN_CODE = :prinCode 
+        AND JOB_NO = :jobNo 
+        AND TXN_TYPE = :txnType
+        AND KEY_NUMBER = :keyNumber
+      FETCH FIRST 1 ROWS ONLY`,
     {
-      replacements: [companyCode, prinCode, jobNo, txnType, keyNumber],
-      type: QueryTypes.SELECT,
-      transaction,
-    }
+      companyCode,
+      prinCode,
+      jobNo,
+      txnType,
+      keyNumber,
+    },
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
   );
-  return result.length > 0;
+
+  // ✅ Always return a boolean
+  return (result.rows?.length ?? 0) > 0;
 }
 
 /**
- * Update TT_BATCH
+ * === Update TT_BATCH ===
  */
 async function updatePutawaymanual(
   data: TPutawaymanual,
-  transaction: Transaction
+  connection: oracledb.Connection
 ) {
   const sql = `
-  UPDATE TT_BATCH SET
-    TXN_DATE = ?, KEY_NUMBER = ?, PROD_CODE = ?, SITE_CODE = ?, LOCATION_CODE = ?, QUANTITY = ?,
-    QTY_PUOM = ?, QTY_LUOM = ?, P_UOM = ?, L_UOM = ?, QTY_CONFIRMED = ?, PQTY_CONFIRMED = ?,
-    LQTY_CONFIRMED = ?, PUOM_CONFIRMED = ?, LUOM_CONFIRMED = ?, UPPP = ?, PACK_KEY = ?, UPP = ?,
-    CONFIRM_DATE = ?, CUST_CODE = ?, ORDER_NO = ?, ORDER_SRNO = ?, VESSEL_NAME = ?, CONTAINER_NO = ?,
-    SEAL_NO = ?, PO_NO = ?, BL_NO = ?, DOC_REF = ?, LOT_NO = ?, PALLET_ID = ?, PALLET_SERIAL_NO = ?,
-    MANU_CODE = ?, MFG_DATE = ?, EXP_DATE = ?, CURR_CODE = ?, EX_RATE = ?, UNIT_PRICE = ?,
-    SELECTED = ?, ALLOCATED = ?, CONFIRMED = ?, USER_ID = ?, USER_DT = ?, APPLIED_KEYNO = ?,
-    RECEIPT_TYPE = ?, RECEIPT_DATE = ?, CONTAINER_SIZE = ?, MOC1 = ?, MOC2 = ?,
-    ORIGIN_COUNTRY = ?, SHELF_LIFE_DAYS = ?, SHELF_LIFE_DATE = ?, TASK_ORDER = ?, PROD_ATTRIB_CODE = ?,
-    PROD_GRADE1 = ?, PROD_GRADE2 = ?, TX_IDENTITY_NUMBER = ?, ASSIGNED_PDA_USER = ?, PDA_VERIFIED = ?,
-    SUPP_CODE = ?, PUTAWAY_DT = ?, MASTER_CTN = ?, LOOSE_CTN = ?, HS_CODE = ?, NET_WT = ?, NET_VOLUME = ?,
-    LC_PO_VALUE = ?, GROSS_WT = ?, DA_NO = ?, BATCH_NO = ?, EDIT_USER = ?, CARTON_NO = ?,
-    updated_at = NOW(), updated_by = ?
-  WHERE COMPANY_CODE = ? AND PRIN_CODE = ? AND JOB_NO = ? AND TXN_TYPE = ? AND KEY_NUMBER = ?;
-`;
+    UPDATE TT_BATCH SET
+      TXN_DATE = :TXN_DATE, KEY_NUMBER = :KEY_NUMBER, PROD_CODE = :PROD_CODE, SITE_CODE = :SITE_CODE,
+      LOCATION_CODE = :LOCATION_CODE, QUANTITY = :QUANTITY, QTY_PUOM = :QTY_PUOM, QTY_LUOM = :QTY_LUOM,
+      P_UOM = :P_UOM, L_UOM = :L_UOM, QTY_CONFIRMED = :QTY_CONFIRMED, PQTY_CONFIRMED = :PQTY_CONFIRMED,
+      LQTY_CONFIRMED = :LQTY_CONFIRMED, PUOM_CONFIRMED = :PUOM_CONFIRMED, LUOM_CONFIRMED = :LUOM_CONFIRMED,
+      UPPP = :UPPP, PACK_KEY = :PACK_KEY, UPP = :UPP, CONFIRM_DATE = :CONFIRM_DATE,
+      CUST_CODE = :CUST_CODE, ORDER_NO = :ORDER_NO, ORDER_SRNO = :ORDER_SRNO, VESSEL_NAME = :VESSEL_NAME,
+      CONTAINER_NO = :CONTAINER_NO, SEAL_NO = :SEAL_NO, PO_NO = :PO_NO, BL_NO = :BL_NO,
+      DOC_REF = :DOC_REF, LOT_NO = :LOT_NO, PALLET_ID = :PALLET_ID, PALLET_SERIAL_NO = :PALLET_SERIAL_NO,
+      MANU_CODE = :MANU_CODE, MFG_DATE = :MFG_DATE, EXP_DATE = :EXP_DATE, CURR_CODE = :CURR_CODE,
+      EX_RATE = :EX_RATE, UNIT_PRICE = :UNIT_PRICE, SELECTED = 'N', ALLOCATED = 'Y', CONFIRMED = 'N',
+      USER_ID = :USER_ID, USER_DT = :USER_DT, APPLIED_KEYNO = :APPLIED_KEYNO, RECEIPT_TYPE = :RECEIPT_TYPE,
+      RECEIPT_DATE = :RECEIPT_DATE, CONTAINER_SIZE = :CONTAINER_SIZE, MOC1 = :MOC1, MOC2 = :MOC2,
+      ORIGIN_COUNTRY = :ORIGIN_COUNTRY, SHELF_LIFE_DAYS = :SHELF_LIFE_DAYS, SHELF_LIFE_DATE = :SHELF_LIFE_DATE,
+      TASK_ORDER = :TASK_ORDER, PROD_ATTRIB_CODE = :PROD_ATTRIB_CODE, PROD_GRADE1 = :PROD_GRADE1, PROD_GRADE2 = :PROD_GRADE2,
+      TX_IDENTITY_NUMBER = :TX_IDENTITY_NUMBER, ASSIGNED_PDA_USER = :ASSIGNED_PDA_USER, PDA_VERIFIED = :PDA_VERIFIED,
+      SUPP_CODE = :SUPP_CODE, PUTAWAY_DT = :PUTAWAY_DT, MASTER_CTN = :MASTER_CTN, LOOSE_CTN = :LOOSE_CTN,
+      HS_CODE = :HS_CODE, NET_WT = :NET_WT, NET_VOLUME = :NET_VOLUME, LC_PO_VALUE = :LC_PO_VALUE, GROSS_WT = :GROSS_WT,
+      DA_NO = :DA_NO, BATCH_NO = :BATCH_NO, EDIT_USER = :EDIT_USER, CARTON_NO = :CARTON_NO,
+      UPDATED_AT = SYSDATE, UPDATED_BY = :UPDATED_BY
+    WHERE COMPANY_CODE = :COMPANY_CODE AND PRIN_CODE = :PRIN_CODE AND JOB_NO = :JOB_NO AND TXN_TYPE = :TXN_TYPE AND KEY_NUMBER = :KEY_NUMBER
+  `;
 
-const params = [
-  toMySQLDate(data.TXN_DATE),
-  data.KEY_NUMBER ?? null,
-  data.PROD_CODE,
-  data.SITE_CODE,
-  data.LOCATION_CODE ?? null,
-  data.QUANTITY,
-  data.QTY_PUOM,
-  data.QTY_LUOM,
-  data.P_UOM,
-  data.L_UOM ?? null,
-  data.QTY_CONFIRMED ?? null,
-  data.PQTY_CONFIRMED ?? null,
-  data.LQTY_CONFIRMED ?? null,
-  data.PUOM_CONFIRMED ?? null,
-  data.LUOM_CONFIRMED ?? null,
-  data.UPPP ?? null,
-  data.PACK_KEY ?? null,
-  data.UPP ?? null,
-  toMySQLDate(data.CONFIRM_DATE),
-  data.CUST_CODE ?? null,
-  data.ORDER_NO ?? null,
-  data.ORDER_SRNO ?? null,
-  data.VESSEL_NAME ?? null,
-  data.CONTAINER_NO ?? null,
-  data.SEAL_NO ?? null,
-  data.PO_NO ?? null,
-  data.BL_NO ?? null,
-  data.DOC_REF ?? null,
-  data.LOT_NO ?? null,
-  data.PALLET_ID ?? null,
-  data.PALLET_SERIAL_NO ?? null,
-  data.MANU_CODE ?? null,
-  toMySQLDate(data.MFG_DATE),
-  toMySQLDate(data.EXP_DATE),
-  data.CURR_CODE ?? null,
-  data.EX_RATE ?? null,
-  data.UNIT_PRICE ?? null,
-  'N',
-  'Y',
-  'N',
-  data.USER_ID ?? null,
-  toMySQLDate(data.USER_DT),
-  data.APPLIED_KEYNO ?? null,
-  data.RECEIPT_TYPE ?? null,
-  toMySQLDate(data.RECEIPT_DATE),
-  data.CONTAINER_SIZE ?? null,
-  data.MOC1 ?? null,
-  data.MOC2 ?? null,
-  data.ORIGIN_COUNTRY ?? null,
-  data.SHELF_LIFE_DAYS ?? null,
-  toMySQLDate(data.SHELF_LIFE_DATE),
-  data.TASK_ORDER ?? null,
-  data.PROD_ATTRIB_CODE ?? null,
-  data.PROD_GRADE1 ?? null,
-  data.PROD_GRADE2 ?? null,
-  data.TX_IDENTITY_NUMBER ?? null,
-  data.ASSIGNED_PDA_USER ?? null,
-  data.PDA_VERIFIED ?? null,
-  data.SUPP_CODE ?? null,
-  toMySQLDate(data.PUTAWAY_DT),
-  data.MASTER_CTN ?? null,
-  data.LOOSE_CTN ?? null,
-  data.HS_CODE ?? null,
-  data.NET_WT ?? null,
-  data.NET_VOLUME ?? null,
-  data.LC_PO_VALUE ?? null,
-  data.GROSS_WT ?? null,
-  data.DA_NO ?? null,
-  data.BATCH_NO ?? null,
-  data.EDIT_USER ?? null,
-  data.CARTON_NO ?? null,
-  data.updated_by ?? null,
-  // WHERE
-  data.COMPANY_CODE,
-  data.PRIN_CODE,
-  data.JOB_NO,
-  data.TXN_TYPE,
-  data.KEY_NUMBER ?? null
-];
-
-
-  await sequelize.query(sql, { replacements: params, transaction });
+  await connection.execute(sql, {
+    ...data,
+    TXN_DATE: toOracleDate(data.TXN_DATE),
+    CONFIRM_DATE: toOracleDate(data.CONFIRM_DATE),
+    MFG_DATE: toOracleDate(data.MFG_DATE),
+    EXP_DATE: toOracleDate(data.EXP_DATE),
+    USER_DT: toOracleDate(data.USER_DT),
+    RECEIPT_DATE: toOracleDate(data.RECEIPT_DATE),
+    SHELF_LIFE_DATE: toOracleDate(data.SHELF_LIFE_DATE),
+    PUTAWAY_DT: toOracleDate(data.PUTAWAY_DT),
+    UPDATED_BY: data.updated_by ?? null,
+  });
 }
 
 /**
- * Insert TT_BATCH
+ * === Insert TT_BATCH ===
  */
 async function insertPutawaymanual(
   data: TPutawaymanual,
-  transaction: Transaction
+  connection: oracledb.Connection
 ) {
-const sql = `
-INSERT INTO TT_BATCH (
-  COMPANY_CODE, PRIN_CODE, JOB_NO, TXN_TYPE, TXN_DATE, KEY_NUMBER, PROD_CODE, SITE_CODE, LOCATION_CODE,
-  QUANTITY, QTY_PUOM, QTY_LUOM, P_UOM, L_UOM, QTY_CONFIRMED, PQTY_CONFIRMED, LQTY_CONFIRMED, PUOM_CONFIRMED, LUOM_CONFIRMED,
-  UPPP, PACK_KEY, UPP, CONFIRM_DATE, CUST_CODE, ORDER_NO, ORDER_SRNO, VESSEL_NAME, CONTAINER_NO, SEAL_NO,
-  PO_NO, BL_NO, DOC_REF, LOT_NO, PALLET_ID, PALLET_SERIAL_NO, MANU_CODE, MFG_DATE, EXP_DATE, CURR_CODE,
-  EX_RATE, UNIT_PRICE, SELECTED, ALLOCATED, CONFIRMED, IDENTITY_NUMBER, USER_ID, USER_DT, APPLIED_KEYNO,
-  RECEIPT_TYPE, RECEIPT_DATE, CONTAINER_SIZE, MOC1, MOC2, ORIGIN_COUNTRY, SHELF_LIFE_DAYS, SHELF_LIFE_DATE,
-  TASK_ORDER, PROD_ATTRIB_CODE, PROD_GRADE1, PROD_GRADE2, TX_IDENTITY_NUMBER, ASSIGNED_PDA_USER, PDA_VERIFIED,
-  SUPP_CODE, PUTAWAY_DT, MASTER_CTN, LOOSE_CTN, HS_CODE, NET_WT, NET_VOLUME, LC_PO_VALUE, GROSS_WT, DA_NO,
-  BATCH_NO, EDIT_USER, CARTON_NO, created_by, updated_by, created_at, updated_at
-) VALUES (
-  ${Array(80).fill("?").join(", ")}
-);
-`;
+  const sql = `
+    INSERT INTO TT_BATCH (
+      COMPANY_CODE, PRIN_CODE, JOB_NO, TXN_TYPE, TXN_DATE, KEY_NUMBER, PROD_CODE, SITE_CODE, LOCATION_CODE,
+      QUANTITY, QTY_PUOM, QTY_LUOM, P_UOM, L_UOM, QTY_CONFIRMED, PQTY_CONFIRMED, LQTY_CONFIRMED,
+      PUOM_CONFIRMED, LUOM_CONFIRMED, UPPP, PACK_KEY, UPP, CONFIRM_DATE, CUST_CODE, ORDER_NO,
+      ORDER_SRNO, VESSEL_NAME, CONTAINER_NO, SEAL_NO, PO_NO, BL_NO, DOC_REF, LOT_NO, PALLET_ID,
+      PALLET_SERIAL_NO, MANU_CODE, MFG_DATE, EXP_DATE, CURR_CODE, EX_RATE, UNIT_PRICE,
+      SELECTED, ALLOCATED, CONFIRMED, IDENTITY_NUMBER, USER_ID, USER_DT, APPLIED_KEYNO,
+      RECEIPT_TYPE, RECEIPT_DATE, CONTAINER_SIZE, MOC1, MOC2, ORIGIN_COUNTRY, SHELF_LIFE_DAYS,
+      SHELF_LIFE_DATE, TASK_ORDER, PROD_ATTRIB_CODE, PROD_GRADE1, PROD_GRADE2, TX_IDENTITY_NUMBER,
+      ASSIGNED_PDA_USER, PDA_VERIFIED, SUPP_CODE, PUTAWAY_DT, MASTER_CTN, LOOSE_CTN, HS_CODE,
+      NET_WT, NET_VOLUME, LC_PO_VALUE, GROSS_WT, DA_NO, BATCH_NO, EDIT_USER, CARTON_NO,
+      CREATED_BY, UPDATED_BY, CREATED_AT, UPDATED_AT
+    ) VALUES (
+      :COMPANY_CODE, :PRIN_CODE, :JOB_NO, :TXN_TYPE, :TXN_DATE, :KEY_NUMBER, :PROD_CODE, :SITE_CODE, :LOCATION_CODE,
+      :QUANTITY, :QTY_PUOM, :QTY_LUOM, :P_UOM, :L_UOM, :QTY_CONFIRMED, :PQTY_CONFIRMED, :LQTY_CONFIRMED,
+      :PUOM_CONFIRMED, :LUOM_CONFIRMED, :UPPP, :PACK_KEY, :UPP, :CONFIRM_DATE, :CUST_CODE, :ORDER_NO,
+      :ORDER_SRNO, :VESSEL_NAME, :CONTAINER_NO, :SEAL_NO, :PO_NO, :BL_NO, :DOC_REF, :LOT_NO, :PALLET_ID,
+      :PALLET_SERIAL_NO, :MANU_CODE, :MFG_DATE, :EXP_DATE, :CURR_CODE, :EX_RATE, :UNIT_PRICE,
+      'N', 'Y', 'N', :IDENTITY_NUMBER, :USER_ID, :USER_DT, :APPLIED_KEYNO,
+      :RECEIPT_TYPE, :RECEIPT_DATE, :CONTAINER_SIZE, :MOC1, :MOC2, :ORIGIN_COUNTRY, :SHELF_LIFE_DAYS,
+      :SHELF_LIFE_DATE, :TASK_ORDER, :PROD_ATTRIB_CODE, :PROD_GRADE1, :PROD_GRADE2, :TX_IDENTITY_NUMBER,
+      :ASSIGNED_PDA_USER, :PDA_VERIFIED, :SUPP_CODE, :PUTAWAY_DT, :MASTER_CTN, :LOOSE_CTN, :HS_CODE,
+      :NET_WT, :NET_VOLUME, :LC_PO_VALUE, :GROSS_WT, :DA_NO, :BATCH_NO, :EDIT_USER, :CARTON_NO,
+      :CREATED_BY, :UPDATED_BY, SYSDATE, SYSDATE
+    )
+  `;
 
-const params = [
-  data.COMPANY_CODE,
-  data.PRIN_CODE,
-  data.JOB_NO,
-  'IMP',
-  toMySQLDate(data.TXN_DATE),
-  data.KEY_NUMBER ?? null,
-  data.PROD_CODE,
-  data.SITE_CODE,
-  data.LOCATION_CODE ?? null,
-  data.QUANTITY,
-  data.QTY_PUOM,
-  data.QTY_LUOM,
-  data.P_UOM,
-  data.L_UOM ?? null,
-  data.QTY_CONFIRMED ?? null,
-  data.PQTY_CONFIRMED ?? null,
-  data.LQTY_CONFIRMED ?? null,
-  data.PUOM_CONFIRMED ?? null,
-  data.LUOM_CONFIRMED ?? null,
-  data.UPPP ?? null,
-  data.PACK_KEY ?? null,
-  data.UPP ?? null,
-  toMySQLDate(data.CONFIRM_DATE),
-  data.CUST_CODE ?? null,
-  data.ORDER_NO ?? null,
-  data.ORDER_SRNO ?? null,
-  data.VESSEL_NAME ?? null,
-  data.CONTAINER_NO ?? null,
-  data.SEAL_NO ?? null,
-  data.PO_NO ?? null,
-  data.BL_NO ?? null,
-  data.DOC_REF ?? null,
-  data.LOT_NO ?? null,
-  data.PALLET_ID ?? null,
-  data.PALLET_SERIAL_NO ?? null,
-  data.MANU_CODE ?? null,
-  toMySQLDate(data.MFG_DATE),
-  toMySQLDate(data.EXP_DATE),
-  data.CURR_CODE ?? null,
-  data.EX_RATE ?? null,
-  data.UNIT_PRICE ?? null,
-  'N',
-  'Y',
-  'N',
-  data.IDENTITY_NUMBER,
-  data.USER_ID ?? null,
-  toMySQLDate(data.USER_DT),
-  data.APPLIED_KEYNO ?? null,
-  data.RECEIPT_TYPE ?? null,
-  toMySQLDate(data.RECEIPT_DATE),
-  data.CONTAINER_SIZE ?? null,
-  data.MOC1 ?? null,
-  data.MOC2 ?? null,
-  data.ORIGIN_COUNTRY ?? null,
-  data.SHELF_LIFE_DAYS ?? null,
-  toMySQLDate(data.SHELF_LIFE_DATE),
-  data.TASK_ORDER ?? null,
-  data.PROD_ATTRIB_CODE ?? null,
-  data.PROD_GRADE1 ?? null,
-  data.PROD_GRADE2 ?? null,
-  data.TX_IDENTITY_NUMBER ?? null,
-  data.ASSIGNED_PDA_USER ?? null,
-  data.PDA_VERIFIED ?? null,
-  data.SUPP_CODE ?? null,
-  toMySQLDate(data.PUTAWAY_DT),
-  data.MASTER_CTN ?? null,
-  data.LOOSE_CTN ?? null,
-  data.HS_CODE ?? null,
-  data.NET_WT ?? null,
-  data.NET_VOLUME ?? null,
-  data.LC_PO_VALUE ?? null,
-  data.GROSS_WT ?? null,
-  data.DA_NO ?? null,
-  data.BATCH_NO ?? null,
-  data.EDIT_USER ?? null,
-  data.CARTON_NO ?? null,
-  data.created_by ?? null,
-  data.updated_by ?? null,
-  toMySQLDate(data.created_at) ?? new Date(),
-  toMySQLDate(data.updated_at) ?? new Date()
-];
-
-
-  if (params.length !== 80) {
-    throw new Error(
-      `Params length mismatch: expected 80, got ${params.length}`
-    );
-  }
-
-  await sequelize.query(sql, { replacements: params, transaction });
+  await connection.execute(sql, {
+    ...data,
+    TXN_DATE: toOracleDate(data.TXN_DATE),
+    CONFIRM_DATE: toOracleDate(data.CONFIRM_DATE),
+    MFG_DATE: toOracleDate(data.MFG_DATE),
+    EXP_DATE: toOracleDate(data.EXP_DATE),
+    USER_DT: toOracleDate(data.USER_DT),
+    RECEIPT_DATE: toOracleDate(data.RECEIPT_DATE),
+    SHELF_LIFE_DATE: toOracleDate(data.SHELF_LIFE_DATE),
+    PUTAWAY_DT: toOracleDate(data.PUTAWAY_DT),
+  });
 }
 
 /**
@@ -380,7 +264,7 @@ export const upsertPutawaymanualHandler = async (
       return;
     }
 
-    const jobNo = await upsertPutawaymanual(data);
+    const jobNo = await upsertPutawaymanualOracle(data);
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "TT_BATCH record upserted successfully.",

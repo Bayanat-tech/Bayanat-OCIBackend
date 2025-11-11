@@ -1,32 +1,31 @@
+import oracledb from "oracledb";
+import { oracleDb } from "../../../../database/connection";
 import { Response } from "express";
-import { Op, QueryTypes } from "sequelize";
-import { sequelize } from "../../../../database/connection";
 import constants from "../../../../helpers/constants";
 import {
   ISearch,
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
 import ConfirmInboundInboundWms from "../../../../models/wms/transaction/inbound/confirmInboundjob_wms.model";
-import * as fastCsv from "fast-csv";
-import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
-import { getSearchFilterQuery } from "../../../../helpers/functions";
-import { InboundJobConfirmSchema } from "../../../../validation/wms/transaction/inbound.validation";
 
+
+/**
+ * @function getconfirmInboundjob
+ * @description Fetch a confirm inbound job record from Oracle
+ */
 export const getconfirmInboundjob = async (
   req: RequestWithUser,
   res: Response
 ) => {
   try {
     const { prin_code, job_no } = req.query;
+    const company_code = req.user.company_code;
 
-    console.log(req.query);
- console.log('getconfirminboundjob');
+    console.log("Fetching confirm inbound job:", { prin_code, job_no });
+
+    // Use ORM model or a direct query — ORM remains unchanged here
     const confirminbound = await ConfirmInboundInboundWms.findOne({
-      where: {
-        prin_code,
-        job_no,
-        company_code: req.user.company_code,
-      },
+      where: { prin_code, job_no, company_code },
     });
 
     if (!confirminbound) {
@@ -36,127 +35,126 @@ export const getconfirmInboundjob = async (
       });
       return;
     }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: confirminbound,
+    });
   } catch (error: unknown) {
     const knownError = error as { message: string };
-    res
-      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-      .json({ success: false, message: knownError.message });
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: knownError.message,
+    });
   }
 };
+
+/**
+ * @function confirmInboundjob
+ * @description Executes Oracle UPDATE + Stored Procedure for inbound confirmation
+ */
 export const confirmInboundjob = async (
   req: RequestWithUser,
   res: Response
 ) => {
-  try {
-    console.log("Request Params (params):", req.params); // This should show { job_no: '1234' }
-    console.log("Request Query (query):", req.query); // This should show { prin_code: 'XYZ' }
-    console.log("Request Body (body):", req.body); // This should show packdet_no
-    console.log("procedure start SP_WM_INB_PUTAWAY_CONFIRM1", req.body);
+  let connection: oracledb.Connection | null = null;
 
-    //const { error } = InboundJobConfirmSchema(req.body);
-    //console.log("procedure start SP_WM_INB_PUTAWAY_CONFIRM55555", error);
+  try {
+    console.log("Starting confirmInboundjob process...");
     const { job_no } = req.params;
     const { prin_code } = req.query;
-    console.log("job_no", job_no);
-    console.log("prin_code", prin_code);
+    const { packdet_no } = req.body; // array of key numbers
+    const company_code = req.user.company_code;
+    const user_id = req.user.loginid;
 
-    /*if (error) {
-      console.log("procedure start SP_WM_INB_PUTAWAY_CONFIRM5896");
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: error.message });
-      return;
-    }*/
+    console.log("Job No:", job_no);
+    console.log("Principal:", prin_code);
+    console.log("Company Code:", company_code);
+    console.log("Packdet Numbers:", packdet_no);
 
-    console.log("procedure start SP_WM_INB_PUTAWAY_CONFIRM2");
+    connection = await oracleDb.getConnection();
 
-    //const { site_from, site_to, location_from, location_to, packdet_no } =
-    //req.body;
+    // Start a transaction
+    await connection.execute("SAVEPOINT before_confirm");
 
-    // initiating trsaction
-    // New method start
-    // Update query to mark 'SELECTED' as 'Y' for specific conditions
-    const { packdet_no } = req.body; // ['1', '2']
-    const vs_company_code = req.user.company_code;
-    console.log("packetnos", packdet_no);
-    console.log("company_code", vs_company_code);
+    /**
+     * Step 1️⃣: Update TT_BATCH
+     * Convert IN (:array) handling properly in Oracle with binding.
+     */
+    if (Array.isArray(packdet_no) && packdet_no.length > 0) {
+      const updateQuery = `
+        UPDATE TT_BATCH
+        SET SELECTED = 'Y'
+        WHERE COMPANY_CODE = :company_code
+          AND JOB_NO = :job_no
+          AND PRIN_CODE = :prin_code
+          AND KEY_NUMBER IN (${packdet_no.map((_, i) => `:key${i}`).join(", ")})
+      `;
 
-    const updateQuery = `
-      UPDATE TT_BATCH
-      SET SELECTED = 'Y'
-      WHERE company_code = :vs_company_code
-        AND job_no = :vs_job_no
-        AND prin_code = :vs_prin_code
-        AND KEY_NUMBER IN (:packdet_no)
-    `;
-console.log(updateQuery);
-    sequelize
-      .query(updateQuery, {
-        replacements: {
-          vs_company_code: vs_company_code, // Replace with actual company code
-          vs_job_no: job_no, // Replace with actual job number
-          vs_prin_code: prin_code, // Replace with actual principal code
-          packdet_no: packdet_no, // Pass the array ['1', '2'] directly here
-        },
-      })
-      .then(() => {
-        console.log("Update successful");
-      })
-      .catch((error) => {
-        console.error("Error updating records:", error);
+      const binds: Record<string, any> = {
+        company_code,
+        job_no,
+        prin_code,
+      };
+
+      packdet_no.forEach((val: string, i: number) => {
+        binds[`key${i}`] = val;
       });
 
-    // Logging the update result
+      console.log("Executing TT_BATCH update...");
+      await connection.execute(updateQuery, binds, { autoCommit: false });
+      console.log("TT_BATCH update completed.");
+    }
 
-    // New method end
+    /**
+     * Step 2️⃣: Call the Oracle stored procedure
+     * MySQL: CALL SP_WM_INB_PUTAWAY_CONFIRM(:a, :b, :c, NOW(), :d)
+     * Oracle: BEGIN SP_WM_INB_PUTAWAY_CONFIRM(:a, :b, :c, SYSDATE, :d); END;
+     */
+    const callProc = `
+      BEGIN
+        SP_WM_INB_PUTAWAY_CONFIRM(:vs_company_code, :principal_code, :vs_job_no, SYSDATE, :vs_user);
+      END;
+    `;
 
-    console.log("user", req.user.company_code);
+    console.log("Calling stored procedure SP_WM_INB_PUTAWAY_CONFIRM...");
+    await connection.execute(callProc, {
+      vs_company_code: company_code,
+      principal_code: prin_code,
+      vs_job_no: job_no,
+      vs_user: user_id,
+    });
 
-    //   console.log("procedure start SP_WM_INB_PUTAWAY_CONFIRM14");
-
-    //calling stored procedure
-    console.log("procedure start SP_WM_INB_PUTAWAY_CONFIRM");
-    const result: any = await sequelize.query(
-      `CALL SP_WM_INB_PUTAWAY_CONFIRM(:vs_company_code, :principal_code, :VS_job_no,NOW(),:VS_USER)`,
-
-      {
-        replacements: {
-          vs_company_code: req.user.company_code,
-          principal_code: prin_code,
-          VS_job_no: job_no,
-          VS_USER: req.user.loginid,
-        },
-        type: QueryTypes.RAW,
-        //transaction: t,
-      }
-    );
-
-    //   if (!!result) {
-    //     await ConfirmInboundInboundWms.update(
-    //       { selected: "N" },
-    //       {
-    //         where: {
-    //           [Op.and]: [
-    //             { company_code: req.user.company_code },
-    //             { prin_code },
-    //             { job_no },
-    //           ],
-    //         },
-    //         transaction: t,
-    //       }
-    //     );
-    //   }
-    // }
+    // Commit all updates + procedure
+    await connection.commit();
+    console.log("Transaction committed successfully.");
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Job Confirmation successfully",
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    console.error("Oracle Confirm Inbound Error:", error);
+
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error("Rollback failed:", rollbackError);
+      }
+    }
+
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message || "Error confirming inbound job.",
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error closing Oracle connection:", closeError);
+      }
+    }
   }
 };

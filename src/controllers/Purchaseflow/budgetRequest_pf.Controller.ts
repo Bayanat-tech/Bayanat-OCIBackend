@@ -7,7 +7,8 @@ import mysql, { RowDataPacket } from "mysql2";
 import { Sequelize, QueryTypes } from "sequelize";
 
 import { getBudgetData } from "./getBudgetData";
-import { sequelize } from "../../database/connection";
+import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection"
 
 import { insertBudgetCost } from "./budgetRequestdbupdate_pf.Controller";
 import { upsertBudgetRequest } from "./budgetRequestdbupdate_pf.Controller";
@@ -41,84 +42,98 @@ interface RequestWithBody extends Request {
 // Define a schema for validation
 // Define a schema for validation
 // Geting excel data fro temp_data table
+/**
+ * Fetch Budget Excel Data from TEMP_LOAD table (Oracle version)
+ */
 export const getBudgetexcel = async (req: Request, res: Response) => {
-  const transaction = await sequelize.transaction(); // Start a transaction
+  let connection;
+
   try {
-    console.log("inside backend getBudgetexcel");
+    console.log("Inside backend getBudgetexcel (Oracle)");
+
     const { request_number } = req.params;
 
     if (!request_number || typeof request_number !== "string") {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "Invalid or missing request_number.",
       });
-      return;
     }
-    console.log("inside backend getBudgetexcel1");
+
     // Replace $$ with /
     const ls_request_number = request_number.replace(/\$\$/g, "/");
     console.log("Sanitized request_number:", ls_request_number);
 
-    // Update request_number in TEMP_DATA
+    // Get connection from Oracle pool
+    connection = await oracleDb.getConnection();
+
+    // Start transaction
+    await connection.execute(`BEGIN NULL; END;`); // Ensures transaction block begins
+
+    // Update TEMP_LOAD with the request_number (Oracle SQL)
     const updateQuery = `
       UPDATE TEMP_LOAD
-      SET REQUEST_NUMBER = :ls_request_number
-     ; -- Adjust condition if needed
+         SET REQUEST_NUMBER = :ls_request_number
+       WHERE REQUEST_NUMBER IS NULL
     `;
 
-    await sequelize.query(updateQuery, {
-      replacements: { ls_request_number },
-      type: QueryTypes.UPDATE,
-      transaction,
+    const updateResult = await connection.execute(updateQuery, {
+      ls_request_number,
     });
 
-    console.log("Updated TEMP_DATA with request_number:", ls_request_number);
+    console.log(
+      `Updated TEMP_LOAD rows: ${updateResult.rowsAffected ?? 0}`
+    );
 
-    // Retrieve specific columns from TEMP_DATA
+    // Select data from TEMP_LOAD (Oracle SQL)
     const selectQuery = `
-   SELECT 
-  PROJECT_CODE AS project_code,
-  COST_CODE AS cost_code,
-  MONTH_BUDGET AS month_budget,
-  BUDGET_YEAR AS budget_year,
-  REQUESTED_AMT AS requested_amt,
-  APPROVED_AMT AS approved_amt
-FROM TEMP_LOAD order by COST_CODE,BUDGET_YEAR,MONTH_BUDGET;
+      SELECT 
+        PROJECT_CODE AS project_code,
+        COST_CODE AS cost_code,
+        MONTH_BUDGET AS month_budget,
+        BUDGET_YEAR AS budget_year,
+        REQUESTED_AMT AS requested_amt,
+        APPROVED_AMT AS approved_amt
+      FROM TEMP_LOAD
+      ORDER BY COST_CODE, BUDGET_YEAR, MONTH_BUDGET
     `;
 
-    const excelData = await sequelize.query(selectQuery, {
-      replacements: { ls_request_number },
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const result = await connection.execute(selectQuery, {}, { outFormat: oracleDb.OUT_FORMAT_OBJECT });
 
-    if (!excelData || excelData.length === 0) {
-      await transaction.rollback(); // Rollback transaction in case of no data
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+    if (!result.rows || result.rows.length === 0) {
+      await connection.rollback();
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
-        message: "No data found in TEMP_DATA for the given request_number.",
+        message: "No data found in TEMP_LOAD for the given request_number.",
       });
-      return;
     }
 
-    await transaction.commit(); // Commit the transaction
+    // Commit transaction
+    await connection.commit();
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: excelData, // Send the retrieved data
+      data: result.rows,
     });
-  } catch (error: unknown) {
-    await transaction.rollback(); // Rollback the transaction on error
-    console.error("Error in getBudgetexcel:", error);
+  } catch (error: any) {
+    if (connection) await connection.rollback();
+    console.error("Error in getBudgetexcel (Oracle):", error);
 
-    const knownError = error as { message: string };
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: knownError.message || "An unexpected error occurred.",
+      message: error.message || "An unexpected error occurred.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing Oracle connection:", closeErr);
+      }
+    }
   }
 };
-// end Geting excel data fro temp_data table
+
 
 export const budgetexcelupload = async (req: Request, res: Response) => {
   const transaction = await sequelize.transaction(); // Initialize transaction
