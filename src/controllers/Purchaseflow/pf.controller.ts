@@ -11,7 +11,7 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 4000;
 
-    let result: { fetchedData: unknown[]; totalCount: number } = {
+    let result: { fetchedData: any[]; totalCount: number } = {
       fetchedData: [],
       totalCount: 0,
     };
@@ -24,20 +24,84 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
           limit
         );
         break;
-        
+
       case "cost_master":
+        result = await PurchaseFlowMasterService.getCostMaster (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "matcat_master":
+        result = await PurchaseFlowMasterService.getCostMaster (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "matcat_master":
+        result = await PurchaseFlowMasterService.getMaterialCategoryMaster (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "supplier_master":
+        result = await PurchaseFlowMasterService.getSupplierMaster (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "customer_master":
+        result = await PurchaseFlowMasterService.getCustomerMaster (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "ddCurrency":
+        result = await PurchaseFlowMasterService.getddcurrency (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "ddMaterialCateotry":
+         result = await PurchaseFlowMasterService.ddMaterialCateotry (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
       
+      case "item_master":
+        result = await PurchaseFlowMasterService.getItemmaster (
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+ 
     }
 
     return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
       data: result.fetchedData,
       total: result.totalCount,
-      message: "Data fetched successfully.",
+      message: "data fetched successfully.",
     });
   } catch (error) {
-    console.error("Error in getPfMaster:",error);
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
-        success: false,
-        message: "Error fetching master data." });
+    console.error("Error in getPfMaster:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Error fetching master data.",
+    });
   }
 };
