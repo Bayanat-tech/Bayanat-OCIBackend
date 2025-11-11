@@ -11,12 +11,12 @@ import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 
 const router = express.Router();
 // Route for transaction operations
-router.use(
-  "/:transaction",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  gmPfRouter
-);
+// router.use(
+//   "/:transaction",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   gmPfRouter
+// );
 //gmpurchaserequestRouter
 // Route for reports management
 // router.use(
@@ -33,16 +33,16 @@ router.get(
   getPfMaster
 );
 
-router.use(
-  "/gm",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  gmPfRouter
-);
+// router.use(
+//   "/gm",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   gmPfRouter
+// );
 
-router.post(
-  "/:master",
-  passport.authenticate("jwt", { session: false }),
-  deletepfMaster
-);
+// router.post(
+//   "/:master",
+//   passport.authenticate("jwt", { session: false }),
+//   deletepfMaster
+// );
 export default router;
