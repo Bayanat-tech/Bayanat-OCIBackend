@@ -74,7 +74,6 @@ export class AuthService {
     return user;
   }
 
-  // Create new user from external API
   static async createUserFromExternal(
     apiUser: ExternalApiUser,
     password: string,
@@ -98,7 +97,7 @@ export class AuthService {
 
     const newUser = new User();
     newUser.company_code = "BSG";
-    newUser.email_id = syntheticEmail;
+    newUser.email_id = syntheticEmail; 
     newUser.loginid = apiUser.USER_ID;
     newUser.username = apiUser.NAME;
     newUser.userpass = hashedPassword;

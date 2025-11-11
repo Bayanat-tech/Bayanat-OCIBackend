@@ -2,7 +2,8 @@ import { oracleDb } from "./../../../src/database/connection";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
 import { VendorService } from "../../services/vendor.service";
-
+import {sendVendorLpoNotifications} from "./sendVendorLpoNotifications";
+import {sendVendorLposendbackNotification} from "./sendVendorLposendbackNotification";
 import { notifyUser } from "../../../src/helpers/functions";
 
 function formatDateForOracle(date: unknown): string | null {
@@ -439,7 +440,7 @@ async function upsertLpoRequestHeader(
 ): Promise<string> {
   let isNew = false;
 
-  const company_code = defaultString(data.COMPANY_CODE); // Use from payload
+  const company_code = defaultString(data.COMPANY_CODE);
   const doc_no = defaultString(data.DOC_NO);
   const ac_code = defaultString(data.AC_CODE);
 
@@ -569,51 +570,46 @@ async function upsertLpoRequestHeader(
       pdoType: { val: defaultString(data.PDO_TYPE) },
     };
 
-    // Log the query and binds for debugging
-    console.log("Query:", insertQuery);
-    console.log("Binds:", JSON.stringify(replacements, null, 2));
-
     await oracleDb.query(insertQuery, replacements, connection);
-    return data.DOC_NO ?? "";
+  } else {
+    const updateQuery = `
+      UPDATE TR_AC_LPO_HEADER SET 
+        INVOICE_NUMBER = :invoiceNumber, 
+        INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
+        LAST_ACTION = :lastAction,
+        AC_CODE = :acCode, 
+        REF_DOC_NO = :refDocNo, 
+        REF_DATE = CASE WHEN :refDate IS NOT NULL THEN TO_DATE(:refDate, 'YYYY-MM-DD') ELSE NULL END,
+        REMARKS = :remarks,
+        CURR_CODE = :currCode, 
+        EX_RATE = :exRate, 
+        CANCELED = :canceled, 
+        EDIT_USER = :editUser, 
+        EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
+      WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo AND AC_CODE = :acCode
+    `;
+
+    const updateReplacements = {
+      invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
+      invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
+      lastAction: { val: defaultString(data.LAST_ACTION) },
+      acCode: { val: ac_code },
+      refDocNo: { val: defaultString(data.REF_DOC_NO) },
+      refDate: { val: formatDateForOracle(data.REF_DATE) },
+      remarks: { val: defaultString(data.REMARKS) },
+      currCode: { val: defaultString(data.CURR_CODE) },
+      exRate: { val: data.EX_RATE ?? 0 },
+      canceled: { val: data.CANCELED ?? false },
+      editUser: { val: defaultString(data.EDIT_USER) },
+      editDate: { val: formatDateForOracle(new Date()) },
+      companyCode: { val: company_code },
+      docType: { val: defaultString(data.DOC_TYPE) },
+      docNo: { val: doc_no },
+    };
+
+    await oracleDb.query(updateQuery, updateReplacements, connection);
   }
-
-  // Update query
-  const updateQuery = `
-    UPDATE TR_AC_LPO_HEADER SET 
-      INVOICE_NUMBER = :invoiceNumber, 
-      INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
-      LAST_ACTION = :lastAction,
-      AC_CODE = :acCode, 
-      REF_DOC_NO = :refDocNo, 
-      REF_DATE = CASE WHEN :refDate IS NOT NULL THEN TO_DATE(:refDate, 'YYYY-MM-DD') ELSE NULL END,
-      REMARKS = :remarks,
-      CURR_CODE = :currCode, 
-      EX_RATE = :exRate, 
-      CANCELED = :canceled, 
-      EDIT_USER = :editUser, 
-      EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
-    WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo AND AC_CODE = :acCode
-  `;
-
-  const updateReplacements = {
-    invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
-    invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
-    lastAction: { val: defaultString(data.LAST_ACTION) },
-    acCode: { val: ac_code },
-    refDocNo: { val: defaultString(data.REF_DOC_NO) },
-    refDate: { val: formatDateForOracle(data.REF_DATE) },
-    remarks: { val: defaultString(data.REMARKS) },
-    currCode: { val: defaultString(data.CURR_CODE) },
-    exRate: { val: data.EX_RATE ?? 0 },
-    canceled: { val: data.CANCELED ?? false },
-    editUser: { val: defaultString(data.EDIT_USER) },
-    editDate: { val: formatDateForOracle(new Date()) },
-    companyCode: { val: company_code },
-    docType: { val: defaultString(data.DOC_TYPE) },
-    docNo: { val: doc_no },
-  };
-
-  await oracleDb.query(updateQuery, updateReplacements, connection);
+  await sendVendorLpoNotifications({ companyCode: company_code, docNo: doc_no }, connection);
   return data.DOC_NO ?? "";
 }
 
@@ -1199,89 +1195,162 @@ export const getTmpAcHeaderWithErpDocNoHandler = async (
   }
 };
 
-export const updateLpoStatusHandler = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+// export const updateLpoStatusHandler = async (
+//   req: Request,
+//   res: Response
+// ): Promise<void> => {
+//   const { doc_no, company_code, flow_level, remarks, action } = req.body;
+
+//   console.log("Updating LPO status:", {
+//     doc_no,
+//     company_code,
+//     flow_level,
+//     remarks,
+//     action,
+//   });
+
+//   if (
+//     !doc_no ||
+//     !company_code ||
+//     typeof flow_level !== "number" ||
+//     !remarks ||
+//     !action
+//   ) {
+//     res.status(400).json({
+//       success: false,
+//       message:
+//         "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
+//     });
+//     return;
+//   }
+
+//   if (action !== "SENTBACK" && action !== "REJECTED") {
+//     res.status(400).json({
+//       success: false,
+//       message: "Invalid action (must be SENTBACK or REJECTED)",
+//     });
+//     return;
+//   }
+
+//   try {
+//     // Check if record exists
+//     const existingResult = await oracleDb.query(
+//       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
+//       {
+//         doc_no: { val: doc_no },
+//         company_code: { val: company_code },
+//       }
+//     );
+
+//     const existing = existingResult.rows?.[0] || existingResult[0];
+
+//     if (!existing) {
+//       res.status(404).json({
+//         success: false,
+//         message: "LPO not found with the provided DOC_NO and COMPANY_CODE",
+//       });
+//       return;
+//     }
+
+//     const historyField =
+//       action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
+
+//     const query = `
+//       UPDATE TR_AC_LPO_HEADER
+//       SET
+//         FLOW_LEVEL = :flow_level,
+//         ${historyField} = COALESCE(${historyField}, '') || ' | ' || :remarks,
+//         LAST_ACTION = :action
+//       WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
+//     `;
+
+//     const updateResult = await oracleDb.query(query, {
+//       flow_level: { val: flow_level },
+//       remarks: { val: remarks },
+//       action: { val: action },
+//       doc_no: { val: doc_no },
+//       company_code: { val: company_code },
+//     });
+
+//     const affectedRows = updateResult.rowsAffected || 0;
+
+//     res.json({
+//       success: true,
+//       message: `LPO marked as ${action.toLowerCase()}`,
+//       affectedRows: affectedRows,
+//     });
+//   } catch (err: any) {
+//     console.error("Error in updateLpoStatusHandler:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: err.message ?? "Internal Server Error",
+//     });
+//   }
+// };
+
+export const updateLpoStatusHandler = async (req: Request, res: Response): Promise<void> => {
   const { doc_no, company_code, flow_level, remarks, action } = req.body;
 
-  console.log("Updating LPO status:", {
-    doc_no,
-    company_code,
-    flow_level,
-    remarks,
-    action,
-  });
-
-  if (
-    !doc_no ||
-    !company_code ||
-    typeof flow_level !== "number" ||
-    !remarks ||
-    !action
-  ) {
+  if (!doc_no || !company_code || typeof flow_level !== "number" || !remarks || !action) {
     res.status(400).json({
       success: false,
-      message:
-        "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
+      message: "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
     });
     return;
   }
 
   if (action !== "SENTBACK" && action !== "REJECTED") {
-    res.status(400).json({
-      success: false,
-      message: "Invalid action (must be SENTBACK or REJECTED)",
-    });
+    res.status(400).json({ success: false, message: "Invalid action (must be SENTBACK or REJECTED)" });
     return;
   }
 
   try {
-    // Check if record exists
     const existingResult = await oracleDb.query(
       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
-      {
-        doc_no: { val: doc_no },
-        company_code: { val: company_code },
-      }
+      { doc_no: { val: doc_no }, company_code: { val: company_code } }
     );
-
     const existing = existingResult.rows?.[0] || existingResult[0];
-
     if (!existing) {
-      res.status(404).json({
-        success: false,
-        message: "LPO not found with the provided DOC_NO and COMPANY_CODE",
-      });
+      res.status(404).json({ success: false, message: "LPO not found with the provided DOC_NO and COMPANY_CODE" });
       return;
     }
 
-    const historyField =
-      action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
+    const historyField = action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
 
+    // Optional: add separator only when existing value is non-empty
     const query = `
       UPDATE TR_AC_LPO_HEADER
-      SET
-        FLOW_LEVEL = :flow_level,
-        ${historyField} = COALESCE(${historyField}, '') || ' | ' || :remarks,
-        LAST_ACTION = :action
-      WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
+         SET FLOW_LEVEL = :flow_level,
+             ${historyField} = CASE
+               WHEN NVL(TRIM(${historyField}), '') = '' THEN :remarks
+               ELSE ${historyField} || ' | ' || :remarks
+             END,
+             LAST_ACTION = :action
+       WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
     `;
 
     const updateResult = await oracleDb.query(query, {
       flow_level: { val: flow_level },
-      remarks: { val: remarks },
+      remarks: { val: remarks },   // e.g. "sentback - JOHN DOE" or "rejected - JANE DOE"
       action: { val: action },
       doc_no: { val: doc_no },
       company_code: { val: company_code },
     });
 
-    const affectedRows = updateResult.rowsAffected || 0;
+    // ✅ Send emails now
+    await sendVendorLposendbackNotification(
+      {
+        action,
+        docNo: doc_no,
+        companyCode: company_code,
+        flowLevel: flow_level,
+      }
+    );
 
     res.json({
       success: true,
       message: `LPO marked as ${action.toLowerCase()}`,
-      affectedRows: affectedRows,
+      affectedRows: updateResult.rowsAffected || 0,
     });
   } catch (err: any) {
     console.error("Error in updateLpoStatusHandler:", err);

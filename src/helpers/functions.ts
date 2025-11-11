@@ -1228,10 +1228,27 @@ export const notifyUser = async (args: SendEmailInterface) => {
       };
       break;
 
+    case "APPROVAL_NOTIFICATION":
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: [
+          "Sagar.b@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          ...(cc || []),
+        ],
+        subject: subject || "Approval Notification",
+        text: message || "An approval is required for the vendor request.",
+        html: htmlMessage,
+        attachments: attachments || [],
+      };
+      break;
+
     default:
       console.warn(`Unhandled event type: ${event}`);
       return;
   }
+
   try {
     await transporter.sendMail(mailOptions);
     console.log(`Email sent successfully for event: ${event}`);
