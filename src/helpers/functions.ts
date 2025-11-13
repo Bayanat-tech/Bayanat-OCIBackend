@@ -1235,7 +1235,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
         cc: [
           "Sagar.b@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-          "",
+          "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || "Approval Notification",
@@ -1248,7 +1248,12 @@ export const notifyUser = async (args: SendEmailInterface) => {
     mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users, 
-        cc: cc,
+        cc: [
+          "Sagar.b@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "pratik.shirke@bayanattechnology.com",
+          ...(cc || []),
+        ],
         subject: subject || `Leave Approval Required: ${request_user?.request_number || ""}`,
         text: message ||
         `Dear Sir/Madam,\n\nA leave request requires your action. Request No: ${request_user?.request_number || ""}.\nPlease login to LMS to take action.\n\nRegards.`,
@@ -1261,7 +1266,12 @@ export const notifyUser = async (args: SendEmailInterface) => {
     mailOptions = {
       from: constants.ENV.EMAIL_USER,
       to: request_users,
-      cc: cc,
+      cc: [
+          "Sagar.b@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "pratik.shirke@bayanattechnology.com",
+          ...(cc || []),
+        ],
       subject: subject || `Leave Approved: ${request_user?.request_number || ""}`,
       text:
       message ||
@@ -1309,6 +1319,18 @@ export const notifyUser = async (args: SendEmailInterface) => {
         html: htmlMessage,
       };
   break;
+
+    case constants.EVENTS.LEAVE_REJECTED:
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: cc,
+        subject: subject || `Leave Rejected: ${request_user?.request_number || ""}`,
+        text: message || `Hello,\n\nYour leave request (${request_user?.request_number || ""}) has been rejected.${request_user?.reason ? ` Reason: ${request_user.reason}` : ""}\n\nRegards.`,
+        html: htmlMessage,
+        attachments: attachments || [],
+      };
+      break;
 
     default:
       console.warn(`Unhandled event type: ${event}`);
