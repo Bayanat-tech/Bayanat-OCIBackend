@@ -1051,58 +1051,54 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
         //    return { totalCount1, MyItem_ClosedRequestfetchedData };
 
         break;
+case "Pg_Material_flow":
+case "Pg_Material_flow_Rejected":
+case "Pg_Material_flow_close":
+case "Pg_Material_flow_cancel":
+case "Pg_Material_flow_InProgress": {
+  console.log(`Inside ${master} handler`);
 
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+  const loginid = req.query.code as string;
 
+  if (!requestUser?.company_code || !loginid) {
+    console.error("Missing company_code or loginid");
+    res.status(400).json({ success: false, message: "Invalid request" });
+    return;
+  }
 
-        
-      case "Pg_Material_flow":
-      case "Pg_Material_flow_Rejected":
-      case "Pg_Material_flow_close":
-      case "Pg_Material_flow_cancel":
-      case "Pg_Material_flow_InProgress": {
-        console.log(`Inside ${master} handler`);
+  const replacements: Record<string, any> = {
+    company_code: requestUser.company_code,
+    loginid,
+    limit,
+    offset,
+  };
 
-        const page = Number(req.query.page) || 1;
-        const limit = Number(req.query.limit) || 10;
-        const offset = (page - 1) * limit;
-        const loginid = req.query.code as string;
+  console.log('loginid', loginid);
 
-        if (!requestUser?.company_code || !loginid) {
-          console.error("Missing company_code or loginid");
-          res.status(400).json({ success: false, message: "Invalid request" });
-          return;
-        }
+  let whereConditions = "";
 
-        const replacements: Record<string, any> = {
-          company_code: requestUser.company_code,
-          loginid,
-          limit,
-          offset,
-        };
+  switch (master) {
+    case "Pg_Material_flow":
+      whereConditions = `company_code = :company_code AND NEXT_ACTION_BY = :loginid`;
+      break;
 
-        console.log("loginid", loginid);
+    case "Pg_Material_flow_Rejected":
+      whereConditions = `company_code = :company_code AND LAST_ACTION = 'REJECTED' AND CREATED_BY = :loginid`;
+      break;
 
-        let whereConditions = "";
+    case "Pg_Material_flow_close":
+      whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'YES' AND CREATED_BY = :loginid`;
+      break;
 
-        switch (master) {
-          case "Pg_Material_flow":
-            whereConditions = `company_code = :company_code AND NEXT_ACTION_BY = :loginid`;
-            break;
+    case "Pg_Material_flow_cancel":
+      whereConditions = `company_code = :company_code AND LAST_ACTION = 'CANCEL' AND CREATED_BY = :loginid`;
+      break;
 
-          case "Pg_Material_flow_Rejected":
-            whereConditions = `company_code = :company_code AND LAST_ACTION = 'REJECTED' AND CREATED_BY = :loginid`;
-            break;
-
-          case "Pg_Material_flow_close":
-            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'YES' AND CREATED_BY = :loginid`;
-            break;
-
-          case "Pg_Material_flow_cancel":
-            whereConditions = `company_code = :company_code AND LAST_ACTION = 'CANCEL' AND CREATED_BY = :loginid`;
-            break;
-
-          case "Pg_Material_flow_InProgress":
-            whereConditions = `
+    case "Pg_Material_flow_InProgress":
+      whereConditions = `
         company_code = :company_code AND FINAL_APPROVED IS NULL AND (
           CREATED_BY = :loginid OR 
           REQUEST_NUMBER IN (
@@ -1112,34 +1108,28 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
           )
         )
       `;
-            break;
+      break;
 
-          default:
-            res.status(400).json({
-              success: false,
-              message: `Invalid master value: ${master}`,
-            });
-            return;
-        }
+    default:
+      res.status(400).json({ success: false, message: `Invalid master value: ${master}` });
+      return;
+  }
 
-        try {
-          const countQuery = `
+  try {
+    const countQuery = `
       SELECT COUNT(*) as totalCount
       FROM LEAVE_REQUEST_FLOW
       WHERE ${whereConditions}
     `;
 
-          const countResult = await sequelize.query<{ totalCount: number }>(
-            countQuery,
-            {
-              replacements,
-              type: QueryTypes.SELECT,
-            }
-          );
+    const countResult = await sequelize.query<{ totalCount: number }>(countQuery, {
+      replacements,
+      type: QueryTypes.SELECT,
+    });
 
-          const totalCount = countResult[0]?.totalCount || 0;
+    const totalCount = countResult[0]?.totalCount || 0;
 
-          const fetchQuery = `
+    const fetchQuery = `
       SELECT *
       FROM MATERIAL_REQUEST_HEADER
       WHERE ${whereConditions}
@@ -1147,25 +1137,26 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
       LIMIT :limit OFFSET :offset
     `;
 
-          const fetchedData = await sequelize.query(fetchQuery, {
-            replacements,
-            type: QueryTypes.SELECT,
-          });
+    const fetchedData = await sequelize.query(fetchQuery, {
+      replacements,
+      type: QueryTypes.SELECT,
+    });
 
-          res.status(constants.STATUS_CODES.OK).json({
-            success: true,
-            data: {
-              tableData: fetchedData,
-              count: totalCount,
-            },
-          });
-        } catch (error) {
-          console.error(`Error in ${master}:`, error);
-          res.status(500).json({ success: false, message: "Server Error" });
-        }
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: {
+        tableData: fetchedData,
+        count: totalCount,
+      },
+    });
+  } catch (error) {
+    console.error(`Error in ${master}:`, error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
 
-        return;
-      }
+  return;
+}
+
 
       case "purchase_request":
       case "my_task": {

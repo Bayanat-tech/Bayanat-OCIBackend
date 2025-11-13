@@ -166,7 +166,8 @@ export const getPurchaserequest = async (
 
     const ls_prin_code = prinCodeResult.prin_code;
 
-    const query = `SELECT REPLACE(request_number, '$', '/') as request_number,final_approved,fa_uploaded, flow_level_running,request_date, description, type_of_contract, type_of_material_supply, wo_number, remarks, 
+    const query = `SELECT REPLACE(request_number, '$', '/') as request_number,final_approved,fa_uploaded, flow_level_running,request_date, description, type_of_contract,
+    amc_from,amc_to, type_of_material_supply, wo_number, remarks, 
     project_code, contract_soft_hard, amc_service_status, material_mechanical, material_electrical, material_plumbing,
      material_tools, material_civil, material_ac, material_cleaning, material_other, services_temp_staff, services_rentals,
      services_subcon_conslt, services_other, other_stationery, other_it, other_new_uniform_ppe, other_rplcmt_uniform, other_other, 
@@ -240,6 +241,8 @@ others,it_tech,stationary,laundry_housekeeping,accommodation,catering,medical,tr
   }
 };
 
+
+
 // Construct the purchase request object
 // Assuming termconditions is passed into the function or available in the current context
 export const createOrUpdatePurchaseRequestSequential = async (
@@ -260,6 +263,8 @@ export const createOrUpdatePurchaseRequestSequential = async (
     wo_number,
     remarks,
     type_of_contract,
+    amc_from,
+    amc_to,
     type_of_material_supply,
     contract_soft_hard,
     amc_service_status,
@@ -420,8 +425,18 @@ export const updatePurchaseOrder = async (
       for (const item of purchaseRequest.items) {
         await sequelize.query(
           `UPDATE PURCHASE_REQUEST_DETAILS
-               SET po_mod_final_rate = ?, po_mod_amount = ?, po_confirm = 'N', po_cancel = 'N'
-               WHERE company_code = ? AND ref_doc_no = ? AND item_code = ?`,
+           SET po_mod_final_rate = ?, 
+               po_mod_amount = ?, 
+               po_confirm = 'N', 
+               po_cancel = 'N'
+           WHERE company_code = ? 
+             AND ref_doc_no = ? 
+             AND item_code = ? 
+             AND final_rate = ? 
+             AND allocated_approved_quantity = ? 
+             AND item_p_qty = ? 
+             AND item_l_qty = ? 
+             AND addl_item_desc = ?`,
           {
             replacements: [
               item.po_mod_final_rate,
@@ -429,6 +444,11 @@ export const updatePurchaseOrder = async (
               requestUser.company_code,
               item.ref_doc_no,
               item.item_code,
+              item.final_rate,
+              item.allocated_approved_quantity,
+              item.item_p_qty,
+              item.item_l_qty,
+              item.addl_item_desc,
             ],
             transaction,
           }
@@ -438,6 +458,7 @@ export const updatePurchaseOrder = async (
       res.status(200).json({ message: "PO modification successful." });
       return;
     }
+
     // Handle PO Confirmation
     if (purchaseRequest.last_action === "Confirm") {
       // Database updates
@@ -462,7 +483,8 @@ export const updatePurchaseOrder = async (
       await transaction.commit();
 
       try {
-        // Handle email notifications
+        // Commented out email notifications and PDF generation
+        /*
         const [revisionResults] = await sequelize.query<RevisionResult>(
           `SELECT MAX(REVISION_NUMBER) as REVISION_NUMBER FROM PO_DETAILS WHERE REF_DOC_NO = ?`,
           {
@@ -474,37 +496,11 @@ export const updatePurchaseOrder = async (
         const isModifiedPO = revisionResults?.REVISION_NUMBER > 0;
         console.log("PO Revision Number:", revisionResults?.REVISION_NUMBER);
 
-        // Commented out supplier email lookup - using default email for now
-        /*
-        const supplierResult = await sequelize.query(
-          "SELECT SUPPLIER FROM PURCHASE_REQUEST_DETAILS WHERE REF_DOC_NO = ?",
-          {
-            replacements: [purchaseRequest.ref_doc_no],
-            type: QueryTypes.SELECT,
-          }
-        );
-        const supplier =
-          (supplierResult as { SUPPLIER: string }[])[0]?.SUPPLIER || "";
-
-        if (supplier) {
-          const emailResult = await sequelize.query(
-            "SELECT SUPP_EMAIL1 FROM MS_SUPPLIER WHERE SUPP_CODE = ?",
-            { replacements: [supplier], type: QueryTypes.SELECT }
-          );
-          const supplierEmail =
-            (emailResult as { SUPP_EMAIL1: string }[])[0]?.SUPP_EMAIL1 || "";
-        */
-
-        // Using default email for testing
-        const supplierEmail =
-          "Sandeep.dandekar@bayanattechnology.com,gaurang.pai@bayanattechnology.com";
+        const supplierEmail = "Sandeep.dandekar@bayanattechnology.com,gaurang.pai@bayanattechnology.com";
 
         if (supplierEmail) {
           try {
-            console.log(
-              "Starting PDF generation for PO:",
-              purchaseRequest.ref_doc_no
-            );
+            console.log("Starting PDF generation for PO:", purchaseRequest.ref_doc_no);
             const pdfBase64 = await BoldReportsController.exportPOAsBase64(
               purchaseRequest.ref_doc_no,
               requestUser.company_code
@@ -512,41 +508,14 @@ export const updatePurchaseOrder = async (
 
             await notifyUser({
               event: isModifiedPO ? "PO_MODIFIED" : "PO_CONFIRMED",
-              subject: `${
-                isModifiedPO ? "Modified" : "Confirmed"
-              } PO: ${purchaseRequest.ref_doc_no.replace(/\$/g, "/")}`,
+              subject: `${isModifiedPO ? "Modified" : "Confirmed"} PO: ${purchaseRequest.ref_doc_no.replace(/\$/g, "/")}`,
               message: isModifiedPO
-                ? `Dear Sir,
-Please find attached here with our revised LPO for your information and further action.
-
-Kindly confirm the receipt of this LPO within 48 hours by sending us an Acknowledgement signed and stamped (on both the side) copy of the LPO. Please refer to the terms & conditions as stated in the LPO.
-
-Note1: Our order number is to be quoted on all relevant Invoices & Delivery Notes. Your Original Invoice to be submitted to our Lusail Head Office within seven days from the date of invoice supported with relevant Delivery Note or Job Completion Report or Service Report or attendance sheet whichever is applicable.
-
-INVOICE SUBMISSION AND PAYMENT COLLECTION TIMING- SUNDAY TO THURSDAY 2.00 PM TO 3.00 PM
-
-Thank you.`
-                : `Dear Sir,
-Please find attached herein our LPO for your information and further action.
-
-Kindly confirm the receipt of this LPO within 48 hours by sending us an Acknowledgement signed and stamped (on both the side) copy of the LPO. Please refer to the terms & conditions as stated in the LPO.
-
-Note1: Our order number is to be quoted on all relevant Invoices & Delivery Notes. Your Original Invoice to be submitted to our Lusail Head Office within seven days from the date of invoice supported with relevant Delivery Note or Job Completion Report or Service Report or attendance sheet whichever is applicable.
-
-INVOICE SUBMISSION AND PAYMENT COLLECTION TIMING- SUNDAY TO THURSDAY 2.00 PM TO 3.00 PM
-
-Note2: Kindly send your company documents (CR, CC, TL Tax Card, Authorized QID, and Bank Certified Letter for Account details) along with Order Acknowledgements for our Vendor registration.
-
-If you require any further information, please do not hesitate to contact us at procurement@the-maintainers.com
-
-Thank you.`,
+                ? `Dear Sir,...` 
+                : `Dear Sir,...`,
               request_users: supplierEmail,
               attachments: [
                 {
-                  filename: `PO_${purchaseRequest.ref_doc_no.replace(
-                    /\$/g,
-                    "/"
-                  )}.pdf`,
+                  filename: `PO_${purchaseRequest.ref_doc_no.replace(/\$/g, "/")}.pdf`,
                   content: pdfBase64,
                   encoding: "base64",
                   contentType: "application/pdf",
@@ -558,6 +527,8 @@ Thank you.`,
             console.log("Continuing with transaction despite PDF error");
           }
         }
+        */
+
         res
           .status(200)
           .json({ message: "Purchase order processed successfully." });
@@ -668,6 +639,8 @@ export function mapIncomingRequestData(data: any): IPurchaseRequestPf {
     wo_number: data.wo_number || "",
     remarks: data.remarks || "",
     type_of_contract: data.type_of_contract || "",
+    amc_from: new Date(data.amc_from || Date.now()),
+    amc_to: new Date(data.amc_to || Date.now()),
     type_of_material_supply: data.type_of_material_supply || "",
     contract_soft_hard: data.contract_soft_hard || "",
     amc_service_status: data.amc_service_status || "",
@@ -1013,7 +986,8 @@ export const fetchUserlevel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { userId, companyCode, flow_code } = req.query;
+    const { userId, companyCode, flow_code } = req.query; // Extract query params
+
     if (!userId || !companyCode) {
       res
         .status(400)
@@ -1021,18 +995,14 @@ export const fetchUserlevel = async (
       return;
     }
 
-    const [[result]]: any = await sequelize.query(
-      `SELECT MIN(FLOW_LEVEL) AS flowLevel 
-       FROM V_USER_FLOW_DETAILS 
-       WHERE USER_CODE = ? AND COMPANY_CODE = ? AND FLOW_CODE = ?`,
+    const [[userLevel]]: any = await sequelize.query(
+      `SELECT MIN(FLOW_LEVEL) AS flowLevel FROM V_USER_FLOW_DETAILS WHERE USER_CODE = ? AND COMPANY_CODE = ? AND FLOW_CODE = ?`,
       { replacements: [userId, companyCode, flow_code] }
     );
 
-    let flowLevel = result?.flowLevel ?? 1;
-
-    if (flowLevel !== null) {
-      setUserLevel(flowLevel);
-      res.status(200).json({ success: true, data: flowLevel });
+    if (userLevel?.flowLevel !== null) {
+      setUserLevel(userLevel.flowLevel);
+      res.status(200).json({ success: true, data: userLevel.flowLevel });
     } else {
       res.status(404).json({
         success: false,
@@ -1859,8 +1829,16 @@ Thank you.`,
 
     const userEmails = Array.isArray(emailResultRows)
       ? emailResultRows.length > 0
-        ? (emailResultRows[0] as { email_id: string }).email_id
+        ? LAST_ACTION === "SENTBACK"
+          ? `${
+              (emailResultRows[0] as { email_id: string }).email_id
+            },admin1@the-maintainers.com`
+          : (emailResultRows[0] as { email_id: string }).email_id
+        : LAST_ACTION === "SENTBACK"
+        ? "admin1@the-maintainers.com"
         : ""
+      : LAST_ACTION === "SENTBACK"
+      ? "admin1@the-maintainers.com"
       : (emailResultRows as { email_id: string }).email_id || "";
 
     console.log("CC Email found:", userEmails);
@@ -2159,7 +2137,7 @@ Thank you.`,
                   
                   .notification-header {
                       font-size: 14px !important;
-                      padding: 8px 5px !important;
+                      padding:  8px 5px !important;
                   }
                   
                   .footer {
@@ -2255,6 +2233,7 @@ Thank you.`,
                   padding: 4px 0;
               }
               
+                           
               .link:hover {
                   text-decoration: underline;
               }

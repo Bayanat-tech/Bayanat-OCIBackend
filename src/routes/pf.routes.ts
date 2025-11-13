@@ -17,14 +17,14 @@ const router = express.Router();
 //   checkUserAuthorization,
 //   gmPfRouter
 // );
-// //gmpurchaserequestRouter
-// // Route for reports management
-// // router.use(
-// //   "/reports",
-// //   passport.authenticate("jwt", { session: false }),
-// //   checkUserAuthorization,
-// //
-// // );
+//gmpurchaserequestRouter
+// Route for reports management
+// router.use(
+//   "/reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//
+// );
 
 router.get(
   "/:master",

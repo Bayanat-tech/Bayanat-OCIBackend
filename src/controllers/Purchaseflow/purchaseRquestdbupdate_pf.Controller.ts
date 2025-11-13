@@ -332,13 +332,15 @@ async function upsertPurchaseRequestHeader(
     //SECOND LINE FOR HARDCODE VALUE
     console.log("updatedby", data.updated_by);
     console.log('print div_code', data.div_code);
-    const insertQuery = `INSERT INTO PURCHASE_REQUEST_HEADER (DIV_CODE,ACCOMMODATION,
+    const insertQuery = `INSERT INTO PURCHASE_REQUEST_HEADER (AMC_FROM,AMC_TO,
+    DIV_CODE,ACCOMMODATION,
    CATERING, LAUNDRY_HOUSEKEEPING, MEDICAL, TRANSPORTATION, TRAINING, RECRUITMENT_HR, UNIFORM, STATIONARY, IT_TECH, FURNITURE, ENTERTAINMENT, BARBER, OTHERS, REQUESTOR_NAME,
   CONTRACT_SOFT_HARD, AMC_SERVICE_STATUS, MATERIAL_MECHANICAL, MATERIAL_ELECTRICAL, MATERIAL_PLUMBING, MATERIAL_TOOLS, MATERIAL_CIVIL, MATERIAL_AC, MATERIAL_CLEANING, MATERIAL_OTHER,
   SERVICES_TEMP_STAFF, SERVICES_RENTALS, SERVICES_SUBCON_CONSLT, SERVICES_OTHER, OTHER_STATIONERY, OTHER_IT, OTHER_NEW_UNIFORM_PPE, OTHER_RPLCMT_UNIFORM, OTHER_OTHER, GOOD_MATERIAL_REQUEST,
   SERVICE_REQUEST, TYPE_OF_CONTRACT, TYPE_OF_MATERIAL_SUPPLY, REMARKS, WO_NUMBER, REQUEST_DATE, DESCRIPTION, PROJECT_CODE, COMPANY_CODE, CREATED_BY, LAST_ACTION, LAST_UPDATED,
   FLOW_TYPE, FLOW_CODE, HISTORY_SERIAL, UPDATED_AT, SERVICE_TYPE, NEED_BY_DATE, TYPE_OF_PR, COVERED_BY_CONTRACT_YES, FLAG_SHARING_COST, BUDGETED_YES, CHECKED_STORE_YES
 ) VALUES (?, ?,
+ ?, ?,
  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,
   ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
   ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
@@ -350,6 +352,8 @@ async function upsertPurchaseRequestHeader(
     const [result]: any = await sequelize.query(insertQuery, {
       replacements: [
         //added this
+         data.amc_from,
+      data.amc_to,
         data.div_code,
         data.accommodation,
         data.catering,
@@ -460,6 +464,8 @@ data.requestor_name,
       WO_NUMBER = ?,
       REMARKS = ?,
       TYPE_OF_CONTRACT = ?,
+      AMC_FROM = ?,
+      AMC_TO = ?,
       TYPE_OF_MATERIAL_SUPPLY = ?,
       CONTRACT_SOFT_HARD = ?,
       AMC_SERVICE_STATUS = ?,
@@ -521,6 +527,8 @@ data.requestor_name,
       data.wo_number,
       data.remarks,
       data.type_of_contract,
+     data.amc_from,
+     data.amc_to,
       data.type_of_material_supply,
       data.contract_soft_hard,
       data.amc_service_status,
@@ -586,6 +594,8 @@ data.requestor_name,
         data.wo_number,
         data.remarks,
         data.type_of_contract,
+        data.amc_from,
+        data.amc_to,
         data.type_of_material_supply,
         data.contract_soft_hard,
         data.amc_service_status,
@@ -675,16 +685,17 @@ async function upsertPurchaseRequestDetails(
     console.log("div_code");
     //  console.log("10", item.last_action); 15
     const insertQuery = `
-   INSERT INTO PURCHASE_REQUEST_DETAILS (
+   INSERT INTO PURCHASE_REQUEST_DETAILS (currency_rate,
         request_number, company_code, item_code, item_rate, amount, cost_code,
         SERVICE_RM_FLAG, ITEM_P_QTY, P_UOM, ITEM_L_QTY, L_UOM,
         ALLOCATED_APPROVED_QUANTITY, DISCOUNT_AMOUNT, FINAL_RATE, ADDL_ITEM_DESC,
         UPP, SUPPLIER, PRIN_CODE, PROJECT_CODE, DIV_CODE, ITEM_SEQUENCE_NO, CURR_CODE
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
 
     await sequelize.query(insertQuery, {
       replacements: [
+        item.currency_rate,
         key_request_number,
         companyCode,
         item.item_code,
