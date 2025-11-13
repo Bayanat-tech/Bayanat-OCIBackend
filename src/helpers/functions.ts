@@ -1235,6 +1235,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
         cc: [
           "Sagar.b@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
+          "",
           ...(cc || []),
         ],
         subject: subject || "Approval Notification",
@@ -1243,6 +1244,71 @@ export const notifyUser = async (args: SendEmailInterface) => {
         attachments: attachments || [],
       };
       break;
+    case constants.EVENTS.LEAVE_APPROVAL_REQUEST:
+    mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users, 
+        cc: cc,
+        subject: subject || `Leave Approval Required: ${request_user?.request_number || ""}`,
+        text: message ||
+        `Dear Sir/Madam,\n\nA leave request requires your action. Request No: ${request_user?.request_number || ""}.\nPlease login to LMS to take action.\n\nRegards.`,
+        html: htmlMessage,
+        attachments: attachments || [],
+    };
+    break;
+
+    case constants.EVENTS.LEAVE_APPROVED:
+    mailOptions = {
+      from: constants.ENV.EMAIL_USER,
+      to: request_users,
+      cc: cc,
+      subject: subject || `Leave Approved: ${request_user?.request_number || ""}`,
+      text:
+      message ||
+      `Hello,\n\nYour leave request (${request_user?.request_number || ""}) has been approved.\n\nRegards.`,
+      html: htmlMessage,
+      attachments: attachments || [],
+    };
+    break;
+
+    case constants.EVENTS.LEAVE_CANCEL:
+    mailOptions = {
+      from: constants.ENV.EMAIL_USER,
+      to: request_users,
+      cc: cc,
+      subject: subject || `Leave Rejected: ${request_user?.request_number || ""}`,
+      text:
+      message ||
+      `Hello,\n\nYour leave request (${request_user?.request_number || ""}) has been rejected.${request_user?.reason ? ` Reason: ${request_user.reason}` : ""}\n\nRegards.`,
+    html: htmlMessage,
+    attachments: attachments || [],
+    };
+    break;
+
+    case constants.EVENTS.LEAVE_SENTBACK:
+    mailOptions = {
+      from: constants.ENV.EMAIL_USER,
+      to: request_users,
+      cc: cc,
+      subject: subject || `Leave Sent Back: ${request_user?.request_number || ""}`,
+      text:
+      message ||
+      `Hello,\n\nYour leave request (${request_user?.request_number || ""}) has been sent back for more information.\n\nRegards.`,
+      html: htmlMessage,
+      attachments: attachments || [],
+      };
+  break;
+
+    case constants.EVENTS.LEAVE_INFO:
+    mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: cc,
+        subject: subject || `Leave Notification: ${request_user?.request_number || ""}`,
+        text: message || `Notification regarding leave request (${request_user?.request_number || ""}).`,
+        html: htmlMessage,
+      };
+  break;
 
     default:
       console.warn(`Unhandled event type: ${event}`);

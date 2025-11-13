@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import constants from "../../helpers/constants";
 import { HrService } from "../../services/hr.service";
 import { TLeaveApproval } from "../../interfaces/Hr/hr_leave_approval";
+import {sendLeaveNotifications} from "./sendLeaveNotifications";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -66,10 +67,6 @@ async function retryOnDeadlock<T>(
   }
 }
 
-
-
-
-
 export async function upsertLeaveApproval(
   data: TLeaveApproval
 ): Promise<string> {
@@ -90,7 +87,6 @@ export async function upsertLeaveApproval(
         await insertLeaveApproval(data, connection);
       }
 
-      // Inline SELECT using the SAME connection/txn
       const sql = `
         SELECT TRIM(FINAL_APPROVED) AS FINAL_APPROVED
         FROM LEAVE_REQUEST_FLOW
@@ -98,8 +94,7 @@ export async function upsertLeaveApproval(
           AND COMPANY_CODE   = :comp
         FETCH FIRST 1 ROWS ONLY
       `;
-      // If you're on Oracle 11g or earlier, replace the last line with:
-      //   AND ROWNUM = 1
+     
       const binds = { req: data.REQUEST_NUMBER, comp: data.COMPANY_CODE };
 
       console.log('Checking FINAL_APPROVED from DB with same txn:', binds);
@@ -116,8 +111,6 @@ export async function upsertLeaveApproval(
         .toString()
         .trim()
         .toUpperCase();
-
-      // Don't start background work inside the txn; just return the decision.
       return {
         requestNumber: data.REQUEST_NUMBER,
         finalApproved: normalizedFlag === 'YES',
@@ -125,7 +118,10 @@ export async function upsertLeaveApproval(
     }
   );
 
-  // Now we're OUTSIDE the transaction (committed).
+  sendLeaveNotifications(requestNumber, data.COMPANY_CODE).catch((err) => {
+    console.error("sendLeaveNotifications failed for", requestNumber, err);
+  });
+
   if (finalApproved) {
     console.log('Triggering background processing for approved leave (post-commit)');
     processApprovedLeaveRequestsForSingleRecord(requestNumber, data.COMPANY_CODE)
@@ -136,8 +132,6 @@ export async function upsertLeaveApproval(
 
   return requestNumber;
 }
-
-
 
 export async function processApprovedLeaveRequestsForSingleRecord(
   requestNumber: string,

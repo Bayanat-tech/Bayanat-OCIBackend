@@ -133,10 +133,10 @@ export const getHrMaster = async (
             whereConditions = `company_code = :company_code
                       AND (
                           (NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) AND FINAL_APPROVED <> 'YES')
+EMPLOYEE_ID =  :loginid ) AND FINAL_APPROVED <> 'YES')
                           OR
                           (IMMEDIATE_SUPERVISOR IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
+EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
                       )
                       AND LAST_ACTION <> 'REJECTED'
                       AND LAST_ACTION <> 'CANCEL'
@@ -144,22 +144,22 @@ EMPLOYEE_CODE =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_A
             break;
           case "Pg_leave_flow_Rejected":
             whereConditions = `company_code = :company_code AND LAST_ACTION = 'REJECTED' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+EMPLOYEE_ID =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
             break;
           case "Pg_leave_flow_close":
             whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'YES' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+EMPLOYEE_ID =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
             break;
           case "Pg_leave_flow_cancel":
             whereConditions = `company_code = :company_code AND LAST_ACTION = 'CANCEL' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+EMPLOYEE_ID =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
             break;
           case "Pg_leave_flow_InProgress":
-            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'NO' AND LAST_ACTION NOT IN 
+            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'NO' AND LAST_ACTION NOT IN
             ('REJECTED','CANCEL') AND NEXT_ACTION_BY NOT IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) AND 
+EMPLOYEE_ID =  :loginid ) AND
             (REQUEST_NUMBER IN (SELECT DISTINCT REQUEST_NUMBER FROM LEAVE_REQUEST_FLOW_HISTRY WHERE NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid )))`;
+EMPLOYEE_ID =  :loginid )))`;
             break;
         }
         try {
