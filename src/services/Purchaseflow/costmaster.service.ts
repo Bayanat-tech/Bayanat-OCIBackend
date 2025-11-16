@@ -1,5 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
-import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
+import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 import constants from "../../helpers/constants";
 
 export class CostmasterService {
@@ -154,5 +154,39 @@ export class CostmasterService {
       success: true,
       message: "Cost Code Deleted Successfully",
     };
+  }
+
+  static async getCostmaster(company_code: string, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    const query = `
+      SELECT * FROM (
+        SELECT "CostMaster".*, ROWNUM AS rnum
+        FROM "MS_COST" "CostMaster"
+        WHERE "CostMaster"."COMPANY_CODE" = :company_code
+          AND ROWNUM <= :max_row
+      )
+      WHERE rnum > :min_row
+    `;
+
+    const params = {
+      company_code,
+      max_row: offset + limit,
+      min_row: offset,
+    };
+
+    const result = await oracleDb.query(query, params);
+    const data = result.rows || result;
+
+    const countQuery = `
+      SELECT COUNT(1) AS cnt
+      FROM "MS_COST" "CostMaster"
+      WHERE "CostMaster"."COMPANY_CODE" = :company_code
+    `;
+
+    const countResult = await oracleDb.query(countQuery, { company_code });
+    const totalCount = countResult.rows?.[0]?.CNT || 0;
+
+    return { fetchedData: data, totalCount };
   }
 }

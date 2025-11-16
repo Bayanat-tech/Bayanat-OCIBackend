@@ -1,11 +1,11 @@
 import { getRepository } from "../../database/connection";
-import { Divisionmaster } from "../../entity/Purchaseflow/Pf_divisionmaster.entity";
-import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
-import { CustomerMaster } from "../../entity/Purchaseflow/customermaster.entity";
-import { DdCurrency } from "../../entity/Purchaseflow/ddcurrency_pf_models.entity";
-import { ItemmasterPf } from "../../entity/Purchaseflow/itemmaster.entity";
-import { MaterialCategoryMaster } from "../../entity/Purchaseflow/materialcategary.entity";
-import { SupplierMaster } from "../../entity/Purchaseflow/suppliermaster_pf.entity";
+import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
+import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
+import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf_models.entity";
+import { ItemmasterPf } from "../../entity/PurchaseFlow/itemmaster.entity";
+import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
+import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
+import { Divisionmaster } from "../../entity/PurchaseFlow/divisionmaster.entity";
 
 export interface Master<T> {
   fetchedData: T[];
@@ -34,13 +34,21 @@ export class PurchaseFlowMasterService {
     limit = 4000
   ): Promise<Master<CostMaster>> {
     const skip = (page - 1) * limit;
-    const [fetchedData, totalCount] = await getRepository(CostMaster).findAndCount({
-      where: { company_code },
-      skip,
-      take: limit,
-    });
 
-    return { fetchedData, totalCount };
+    try {
+      const totalCount = await getRepository(CostMaster).count({
+        where: { company_code },
+      });
+
+      const fetchedData = await getRepository(CostMaster).find({
+        where: { company_code }
+      });
+
+      return { fetchedData, totalCount };
+    } catch (error: any) {
+      console.error("Error fetching CostMaster data:", error.message);
+      throw new Error("Failed to fetch CostMaster data. Please check the database configuration.");
+    }
   }
 
   static async getMaterialCategoryMaster(
@@ -128,40 +136,4 @@ export class PurchaseFlowMasterService {
     return { fetchedData, totalCount };
   }
 
-  // //  Delete :
-
-  // static async deleteRecords(
-  //   entity: any,
-  //    conditions: any[]
-  //   ): Promise<number> {
-  //   const repo = getRepository(entity);
-
-  //   if (!conditions || conditions.length === 0) {
-  //     throw new Error("Delete conditions must be a non-empty array.");
-  //   }
-
-  //   let totalDeleted = 0;
-
-  //   for (const condition of conditions) {
-
-  //     const existing = await repo.findOne({ where: condition });
-  //     if (!existing) {
-  //       console.warn(`Record not found for condition:`, condition);
-  //       continue;  
-  //     }
-
-  //     const result = await repo.delete(condition);
-
-  //     if (result.affected && result.affected > 0) {
-  //       totalDeleted += result.affected;
-  //     }
-  //   }
-
-  //   return totalDeleted;
-  // }
 }
-
-
-
-
-
