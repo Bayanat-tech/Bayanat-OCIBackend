@@ -361,8 +361,9 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     leave_end_date: { val: leaveEndDate },
     leave_days: { val: data.LEAVE_DAYS },
     last_action: { val: data.LAST_ACTION },
-    air_route: { val: data.AIR_ROUTE || "" },
-    air_ticket: { val: data.AIR_TICKET || "" },
+air_route: { val: data.AIR_ROUTE || null },
+air_ticket: { val: data.AIR_TICKET || null },
+
     create_user: { val: data.UPDATED_BY },
     created_by: { val: data.CREATED_BY },
 
