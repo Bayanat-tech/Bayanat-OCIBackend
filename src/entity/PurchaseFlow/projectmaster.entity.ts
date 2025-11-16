@@ -6,7 +6,7 @@ export class ProjectMaster {
   @PrimaryColumn({ name: "PROJECT_CODE", type: "varchar2", length: 15 })
   project_code!: string;
 
-  @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 5 })
+  @Column({ name: "COMPANY_CODE", type: "varchar2", length: 5 })
   company_code!: string;
 
   @Column({ name: "PROJECT_NAME", type: "varchar2", length: 200, nullable: true })

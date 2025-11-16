@@ -1,16 +1,11 @@
-import { AppDataSource, getRepository } from "../../database/connection";
-import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
-import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
-import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
-import { Divisionmaster } from "../../entity/PurchaseFlow/Pf_divisionmaster.entity";
-// import { Divisionmaster } from "../../entity/Purchaseflow/Pf_divisionmaster.entity";
-// import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
-// import { CustomerMaster } from "../../entity/Purchaseflow/customermaster.entity";
-// import { DdCurrency } from "../../entity/Purchaseflow/ddcurrency_pf_models.entity";
-
-import Itemmaster_pf from "../../models/Purchaseflow/itemmaster_pf_model";
-import MaterialCategoryMaster from "../../models/Purchaseflow/materialcategory_pf.model";
-import Suppliermaster from "../../models/Purchaseflow/suppliermaster_pf.model";
+import { getRepository } from "../../database/connection";
+import { Divisionmaster } from "../../entity/Purchaseflow/Pf_divisionmaster.entity";
+import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
+import { CustomerMaster } from "../../entity/Purchaseflow/customermaster.entity";
+import { DdCurrency } from "../../entity/Purchaseflow/ddcurrency_pf_models.entity";
+import { ItemmasterPf } from "../../entity/Purchaseflow/itemmaster.entity";
+import { MaterialCategoryMaster } from "../../entity/Purchaseflow/materialcategary.entity";
+import { SupplierMaster } from "../../entity/Purchaseflow/suppliermaster_pf.entity";
 
 export interface Master<T> {
   fetchedData: T[];
@@ -32,7 +27,7 @@ export class PurchaseFlowMasterService {
 
     return { fetchedData, totalCount };
   }
-
+// Get Cost Master
   static async getCostMaster(
     company_code: string,
     page = 1,
@@ -47,7 +42,7 @@ export class PurchaseFlowMasterService {
 
     return { fetchedData, totalCount };
   }
-//
+
   static async getMaterialCategoryMaster(
     company_code: string,
     page = 1,
@@ -67,9 +62,9 @@ export class PurchaseFlowMasterService {
     company_code: string, 
     page = 1, 
     limit = 4000
-  ): Promise<Master<Suppliermaster>> {
+  ): Promise<Master<SupplierMaster>> {
     const skip = (page - 1) * limit;
-    const [fetchedData, totalCount] = await getRepository(Suppliermaster).findAndCount({
+    const [fetchedData, totalCount] = await getRepository(SupplierMaster).findAndCount({
       where: { company_code },
       skip,
       take: limit,
@@ -123,9 +118,9 @@ export class PurchaseFlowMasterService {
     company_code: string, 
     page = 1, 
     limit = 4000
-  ): Promise<Master<Itemmaster_pf>> {
+  ): Promise<Master<ItemmasterPf>> {
     const skip = (page - 1) * limit;
-    const [fetchedData, totalCount] = await getRepository(Itemmaster_pf).findAndCount({
+    const [fetchedData, totalCount] = await getRepository(ItemmasterPf).findAndCount({
       where: { company_code },
       skip,
       take: limit,
@@ -133,6 +128,40 @@ export class PurchaseFlowMasterService {
     return { fetchedData, totalCount };
   }
 
+  // //  Delete :
+
+  // static async deleteRecords(
+  //   entity: any,
+  //    conditions: any[]
+  //   ): Promise<number> {
+  //   const repo = getRepository(entity);
+
+  //   if (!conditions || conditions.length === 0) {
+  //     throw new Error("Delete conditions must be a non-empty array.");
+  //   }
+
+  //   let totalDeleted = 0;
+
+  //   for (const condition of conditions) {
+
+  //     const existing = await repo.findOne({ where: condition });
+  //     if (!existing) {
+  //       console.warn(`Record not found for condition:`, condition);
+  //       continue;  
+  //     }
+
+  //     const result = await repo.delete(condition);
+
+  //     if (result.affected && result.affected > 0) {
+  //       totalDeleted += result.affected;
+  //     }
+  //   }
+
+  //   return totalDeleted;
+  // }
 }
+
+
+
 
 
