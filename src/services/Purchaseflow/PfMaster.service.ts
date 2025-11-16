@@ -1,8 +1,12 @@
 import { AppDataSource, getRepository } from "../../database/connection";
-import { Divisionmaster } from "../../entity/Purchaseflow/Pf_divisionmaster.entity";
-import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
-import { CustomerMaster } from "../../entity/Purchaseflow/customermaster.entity";
-import { DdCurrency } from "../../entity/Purchaseflow/ddcurrency_pf_models.entity";
+import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
+import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
+import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
+import { Divisionmaster } from "../../entity/PurchaseFlow/Pf_divisionmaster.entity";
+// import { Divisionmaster } from "../../entity/Purchaseflow/Pf_divisionmaster.entity";
+// import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
+// import { CustomerMaster } from "../../entity/Purchaseflow/customermaster.entity";
+// import { DdCurrency } from "../../entity/Purchaseflow/ddcurrency_pf_models.entity";
 
 import Itemmaster_pf from "../../models/Purchaseflow/itemmaster_pf_model";
 import MaterialCategoryMaster from "../../models/Purchaseflow/materialcategory_pf.model";

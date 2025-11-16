@@ -8,11 +8,12 @@ export interface Master<T> {
 }
 
 export class PRRejectedService {
+  static getRequestRejectedData(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+    throw new Error("Method not implemented.");
+  }
+  static getCancelledRequests: any;
   constructor(private prRejectedRepo: Repository<PRRejected>) {}
-
-  /**
-   * Get rejected requests with optional search, sorting, and pagination
-   */
+  
   async getRequestRejectedData(
     company_code: string,
     filter?: any,

@@ -10,6 +10,9 @@ interface PaginationOptions {
 }
 
 export class MaterialRequestService {
+  static getInProgressRequests(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+    throw new Error("Method not implemented.");
+  }
   private materialRepo: Repository<MaterialRequestHeader>;
   private historyRepo: Repository<PurchaseRequestHeader_htry>;
 

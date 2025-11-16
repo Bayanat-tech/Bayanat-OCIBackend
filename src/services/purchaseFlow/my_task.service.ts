@@ -6,7 +6,11 @@ import { AppDataSource } from "../../database/connection";
 import { getSearchFilterQuery } from "../../helpers/functions";
 
 
-export const getMyTaskData = async (
+export class myTask {
+static getMyTaskData(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+  throw new Error("Method not implemented.");
+}
+getMyTaskData = async (
   requestUser: any,
   filter: any,
   paginationOptions: { skip?: number; take?: number } = {}
@@ -71,4 +75,4 @@ export const getMyTaskData = async (
       error: error.message,
     };
   }
-};
+}};

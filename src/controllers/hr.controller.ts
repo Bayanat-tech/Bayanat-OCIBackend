@@ -44,7 +44,7 @@ async function queryEntityWithFilters(
 
   // Apply search filter if exists
   if (filter?.search) {
-    // You'll need to update getSearchFilterQuery for TypeORM
+    // // You'll need to update getSearchFilterQuery for TypeORM
     Object.assign(where, getSearchFilterQuery(filter.search));
   }
 

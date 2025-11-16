@@ -11,8 +11,11 @@ interface PaginationOptions {
   skip?: number; // offset
   take?: number; // limit
 }
-
-export async function getClosedRequests(
+export class PurchaseCloseRequestService {
+static getMyClosedRequests(arg0: string, loginid: string, filter: any, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+  throw new Error("Method not implemented.");
+}
+static async  getClosedRequests(
   repository: Repository<PurchaseCloseRequest>,
   requestUser: { company_code: string; loginid: string },
   filter?: Filter,
@@ -61,3 +64,7 @@ export async function getClosedRequests(
     throw error;
   }
 }
+}
+
+
+
