@@ -30,7 +30,7 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
         TRIM(NVL(NEXT_ACTION_BY,'')) AS NEXT_ACTION_BY,
         TRIM(NVL(EMPLOYEE_NAME,'')) AS EMPLOYEE_NAME,
         TRIM(NVL(LAST_ACTION,'')) AS LAST_ACTION
-      FROM VW_LEAVE_REQUEST_FLOW
+      FROM VW_HR_LEAVE_REQUEST_FLOW
       WHERE REQUEST_NUMBER = :req
       ${companyCode ? "AND COMPANY_CODE = :comp" : ""}
       FETCH FIRST 1 ROWS ONLY
