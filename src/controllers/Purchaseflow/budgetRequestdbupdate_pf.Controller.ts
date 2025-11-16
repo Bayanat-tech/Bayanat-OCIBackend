@@ -1,4 +1,4 @@
-import { oracleDb } from "../../database/connection";
+import { sequelize } from "../../database/connection";
 import {
   TBasicBrequest,
   TCostbudget,

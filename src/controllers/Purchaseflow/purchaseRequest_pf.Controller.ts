@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection"; // your oracledb pool
+import { oracleDb } from "../../database/connection"; 
 import { QueryTypes } from "sequelize";
 import { upsertPurchaseRequest } from "./purchaseRquestdbupdate_pf.Controller";
 import { createLog, notifyUser } from "../../helpers/functions";
@@ -249,6 +249,8 @@ export const getPurchaserequest = async (req: RequestWithUser, res: Response) =>
   }
 };
 
+
+
 // Construct the purchase request object
 // Assuming termconditions is passed into the function or available in the current context
 export const createOrUpdatePurchaseRequestSequential = async (
@@ -269,6 +271,8 @@ export const createOrUpdatePurchaseRequestSequential = async (
     wo_number,
     remarks,
     type_of_contract,
+    amc_from,
+    amc_to,
     type_of_material_supply,
     contract_soft_hard,
     amc_service_status,
@@ -642,6 +646,8 @@ export function mapIncomingRequestData_Oracle(data: any) {
     wo_number: data.wo_number || "",
     remarks: data.remarks || "",
     type_of_contract: data.type_of_contract || "",
+    amc_from: new Date(data.amc_from || Date.now()),
+    amc_to: new Date(data.amc_to || Date.now()),
     type_of_material_supply: data.type_of_material_supply || "",
     contract_soft_hard: data.contract_soft_hard || "",
     amc_service_status: data.amc_service_status || "",
@@ -1987,8 +1993,16 @@ Thank you.`,
 
     const userEmails = Array.isArray(emailResultRows)
       ? emailResultRows.length > 0
-        ? (emailResultRows[0] as { email_id: string }).email_id
+        ? LAST_ACTION === "SENTBACK"
+          ? `${
+              (emailResultRows[0] as { email_id: string }).email_id
+            },admin1@the-maintainers.com`
+          : (emailResultRows[0] as { email_id: string }).email_id
+        : LAST_ACTION === "SENTBACK"
+        ? "admin1@the-maintainers.com"
         : ""
+      : LAST_ACTION === "SENTBACK"
+      ? "admin1@the-maintainers.com"
       : (emailResultRows as { email_id: string }).email_id || "";
 
     console.log("CC Email found:", userEmails);
@@ -2287,7 +2301,7 @@ Thank you.`,
                   
                   .notification-header {
                       font-size: 14px !important;
-                      padding: 8px 5px !important;
+                      padding:  8px 5px !important;
                   }
                   
                   .footer {
@@ -2383,6 +2397,7 @@ Thank you.`,
                   padding: 4px 0;
               }
               
+                           
               .link:hover {
                   text-decoration: underline;
               }
