@@ -4,7 +4,10 @@ import { IUser } from "../../interfaces/user.interface";
 import { PurchaseFlowMasterService } from "../../services/Purchaseflow/PfMaster.service";
 import { Response } from "express";
 
-export const getPfMaster = async (req: RequestWithUser, res: Response) => {
+export const getPfMaster = async (
+  req: RequestWithUser, 
+  res: Response
+): Promise<void> => {
   try {
     const { master } = req.params;
     const requestUser: IUser = req.user;
@@ -26,14 +29,6 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
         break;
 
       case "cost_master":
-        result = await PurchaseFlowMasterService.getCostMaster (
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;
-
-      case "matcat_master":
         result = await PurchaseFlowMasterService.getCostMaster (
           requestUser.company_code,
           page,
@@ -91,7 +86,7 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
  
     }
 
-    return res.status(constants.STATUS_CODES.OK).json({
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: result.fetchedData,
       total: result.totalCount,
@@ -99,7 +94,7 @@ export const getPfMaster = async (req: RequestWithUser, res: Response) => {
     });
   } catch (error) {
     console.error("Error in getPfMaster:", error);
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Error fetching master data.",
     });
