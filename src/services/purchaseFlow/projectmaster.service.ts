@@ -1,5 +1,6 @@
 import { getRepository } from "../../database/connection";
-import { ProjectMaster } from "../../entity/Purchaseflow/projectmaster.entity";
+import { ProjectMaster } from "../../entity/PurchaseFlow/projectmaster.entity";
+
 
 export class ProjectMasterService {
   private static getRepository() {
@@ -19,17 +20,17 @@ export class ProjectMasterService {
   }
 
   // Create
-  static async createProject(data: any): Promise<ProjectMaster> {
-    const repo = this.getRepository();
+  // static async createProject(data: any): Promise<ProjectMaster> {
+  //   const repo = this.getRepository();
 
-    const project = repo.create({
-      ...data,
-      created_at: new Date(),
-      updated_at: new Date()
-    });
+  //   const project = repo.create({
+  //     ...data,
+  //     created_at: new Date(),
+  //     updated_at: new Date()
+  //   });
 
-    return await repo.save(project);
-  }
+  //   return await repo.save(project);
+  // }
 
   // Update
   static async updateProject(

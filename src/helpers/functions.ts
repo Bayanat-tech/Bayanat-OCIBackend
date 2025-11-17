@@ -233,8 +233,7 @@ export const buildTree = (
 };
 
 export const getSearchFilterQuery = (
-  args: GetFilterQueryInterface
-): FindOptionsWhere<any> => {
+args: GetFilterQueryInterface, p0?: string[]): FindOptionsWhere<any> => {
   try {
     const { filter, outsideQuery } = args;
 
