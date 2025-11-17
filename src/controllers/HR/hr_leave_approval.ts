@@ -181,7 +181,7 @@ async function recordExists(
 }
 
   async function updateLeaveApproval(data: TLeaveApproval, connection: any) {
-   const sql = `
+  const sql = `
   UPDATE LEAVE_REQUEST_FLOW
   SET
     EMPLOYEE_NAME = NVL(:employee_name, EMPLOYEE_NAME),
@@ -200,33 +200,46 @@ async function recordExists(
     LEAVE_ALLOWANCE = NVL(:leave_allowance, LEAVE_ALLOWANCE),
     ADV_PAYMENT = NVL(:adv_payment, ADV_PAYMENT),
     CAUSE_TYPE = NVL(:cause_type, CAUSE_TYPE),
+
     TRAVEL_DATE = CASE 
       WHEN :travel_date IS NOT NULL 
       THEN TO_DATE(:travel_date, 'YYYY-MM-DD') 
       ELSE TRAVEL_DATE 
     END,
+
+    TRAVEL_END_DATE = CASE 
+      WHEN :travel_end_date IS NOT NULL 
+      THEN TO_DATE(:travel_end_date, 'YYYY-MM-DD') 
+      ELSE TRAVEL_END_DATE 
+    END,
+
     NAME_OF_REPLACEMENT = NVL(:name_of_replacement, NAME_OF_REPLACEMENT),
     CONTACT_DETAILS_DURING_LEAVE = NVL(:contact_details_during_leave, CONTACT_DETAILS_DURING_LEAVE),
     REMARKS = NVL(:remarks, REMARKS),
     HOD = NVL(:hod, HOD),
     IMMEDIATE_SUPERVISOR = NVL(:immediate_supervisor, IMMEDIATE_SUPERVISOR),
     DEPT_HEAD = NVL(:dept_head, DEPT_HEAD),
+
     REQUEST_DATE = CASE 
       WHEN :request_date IS NOT NULL 
       THEN TO_DATE(:request_date, 'YYYY-MM-DD') 
       ELSE REQUEST_DATE 
     END,
+
     LEAVE_TYPE = NVL(:leave_type, LEAVE_TYPE),
+
     LEAVE_START_DATE = CASE 
       WHEN :leave_start_date IS NOT NULL 
       THEN TO_DATE(:leave_start_date, 'YYYY-MM-DD') 
       ELSE LEAVE_START_DATE 
     END,
+
     LEAVE_END_DATE = CASE 
       WHEN :leave_end_date IS NOT NULL 
       THEN TO_DATE(:leave_end_date, 'YYYY-MM-DD') 
       ELSE LEAVE_END_DATE 
     END,
+
     LEAVE_DAYS = NVL(:leave_days, LEAVE_DAYS),
     LAST_ACTION = NVL(:last_action, LAST_ACTION),
     NEXT_ACTION_BY = NVL(:next_action_by, NEXT_ACTION_BY),
@@ -234,11 +247,14 @@ async function recordExists(
     CANCEL_REMARK = NVL(:cancel_remark, CANCEL_REMARK),
     AIR_TICKET = NVL(:air_ticket, AIR_TICKET),
     AIR_ROUTE = NVL(:air_route, AIR_ROUTE),
+
     UPDATED_BY = :updated_by,
     UPDATED_AT = SYSTIMESTAMP
+
   WHERE COMPANY_CODE = :company_code
     AND REQUEST_NUMBER = :request_number
 `;
+
 const params = {
   employee_name: { val: data.EMPLOYEE_NAME },
   half_day: { val: data.HALF_DAY || 'N' },
@@ -247,29 +263,39 @@ const params = {
   leave_allowance: { val: data.LEAVE_ALLOWANCE },
   adv_payment: { val: data.ADV_PAYMENT },
   cause_type: { val: data.CAUSE_TYPE },
+
   travel_date: { val: data.TRAVEL_DATE || null, type: oracledb.STRING },
+  travel_end_date: { val: data.TRAVEL_END_DATE || null, type: oracledb.STRING },
+
   name_of_replacement: { val: data.NAME_OF_REPLACEMENT },
   contact_details_during_leave: { val: data.CONTACT_DETAILS_DURING_LEAVE },
   remarks: { val: data.REMARKS },
   hod: { val: data.HOD },
   immediate_supervisor: { val: data.IMMEDIATE_SUPERVISOR },
   dept_head: { val: data.DEPT_HEAD },
+
   request_date: { val: data.REQUEST_DATE || null, type: oracledb.STRING },
   employee_code: { val: data.EMPLOYEE_CODE },
   leave_type: { val: data.LEAVE_TYPE },
+
   leave_start_date: { val: data.LEAVE_START_DATE || null, type: oracledb.STRING },
   leave_end_date: { val: data.LEAVE_END_DATE || null, type: oracledb.STRING },
+
   leave_days: { val: data.LEAVE_DAYS },
   last_action: { val: data.LAST_ACTION },
   updated_by: { val: data.UPDATED_BY },
+
   company_code: { val: data.COMPANY_CODE },
   request_number: { val: data.REQUEST_NUMBER },
+
   next_action_by: { val: data.NEXT_ACTION_BY || null },
   sentback_history: { val: data.SENTBACK_HISTORY || null },
   cancel_remark: { val: data.CANCEL_REMARK || null },
+
   air_route: { val: data.AIR_ROUTE || null },
   air_ticket: { val: data.AIR_TICKET || null },
 };
+
 
     console.log("Update parameters:", JSON.stringify(params, null, 2));
     console.log("Update sql:", sql); 
