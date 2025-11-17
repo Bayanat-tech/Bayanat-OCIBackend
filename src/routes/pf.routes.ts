@@ -9,6 +9,7 @@ import gmPfRouter from "./Purchaseflow/gm_purchaseflow.routes";
 import gmpurchaserequestRouter from "./Purchaseflow/transaction/gm_purchaserequest.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import { getPfMaster } from "../controllers/Purchaseflow/pf.controller";
+import { getPurchasefMaster } from "../controllers/Purchaseflow/PurchaseFlowMaster.controller";
 
 const router = express.Router();
 // Route for transaction operations
@@ -41,7 +42,9 @@ router.get(
   "/:master",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
+  // getPfMaster
   getPurchasefMaster
+ 
   
 );
 

@@ -7,6 +7,9 @@ export interface Master<T> {
 }
 
 export class ProjectMasterService {
+  static getRepository(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+    throw new Error("Method not implemented.");
+  }
   static async getProjectMaster(
     loginid: string,
     page = 1,

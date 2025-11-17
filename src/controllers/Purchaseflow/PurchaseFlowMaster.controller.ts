@@ -19,6 +19,8 @@ import { PurchaseCloseRequestService } from "../../services/purchaseFlow/MyItem_
 import { MaterialRequestService } from "../../services/purchaseFlow/Pg_Material_flow_InProgress.service";
 import { myTask } from "../../services/purchaseFlow/my_task.service";
 import { ItemMasterService } from "../../services/purchaseFlow/my_itemmaster.service";
+import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
+import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
 
 
 
@@ -42,6 +44,28 @@ export const getPurchasefMaster = async (
     };
 
     switch (master) {
+
+       case "dropdwonprojectmaster":
+        result=await DropdownProjectMasterService.getDropdownProjectMaster(
+           requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+        case "project_master":
+          result=await ProjectMasterService.getProjectMaster(
+            requestUser.loginid,
+            page,
+          limit
+          );break;
+
+          case "projectmaster":
+            result =await ProjectMasterService.getRepository(
+              requestUser.company_code,
+          page,
+          limit
+            )
 
 
       case "ddcostmaster":

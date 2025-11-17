@@ -1,12 +1,12 @@
 import { getRepository } from "../../database/connection";
-import { Divisionmaster } from "../../entity/Purchaseflow/Pf_divisionmaster.entity";
 import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
-import { CustomerMaster } from "../../entity/Purchaseflow/customermaster.entity";
-import { DdCurrency } from "../../entity/Purchaseflow/ddcurrency_pf_models.entity";
-import { ItemmasterPf } from "../../entity/Purchaseflow/itemmaster.entity";
-import { MaterialCategoryMaster } from "../../entity/Purchaseflow/materialcategary.entity";
-import { SupplierMaster } from "../../entity/Purchaseflow/suppliermaster_pf.entity";
-
+import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
+import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
+import { ItemmasterPf } from "../../entity/PurchaseFlow/Itemmaster_pf.entity";
+import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
+import { Divisionmaster } from "../../entity/PurchaseFlow/Pf_divisionmaster.entity";
+import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
+ 
 export interface Master<T> {
   fetchedData: T[];
   totalCount: number;

@@ -369,6 +369,12 @@
 //           raw: true,
 //         })) as unknown as IItemtmaster[];
 //         break;
+
+
+
+//         //==========================================================
+
+
 //       case "dropdwonprojectmaster":
 //         console.log("At backend before fetch Project");
 //         {
@@ -383,6 +389,10 @@
 //         }
 //         console.log(fetchedData);
 //         break;
+
+
+
+//         //==========================================================
 //       /*case "dropdwonprojects";
 //            const projects = await db.query('SELECT PROJECT_CODE, PROJECT_NAME FROM MS_PS_PROJECT_MASTER');
 //            res.json(projects);
@@ -419,6 +429,9 @@
 //         console.log(requestUser.loginid);
 //         console.log(fetchedData);
 //         break;
+
+
+//          //==========================================================
 //       case "projectmaster":
 //         console.log("project master case projectmaster", requestUser.loginid);
 
@@ -460,6 +473,9 @@
 //           console.log(fetchedData);
 //         }
 //         break;*/
+
+//         // ======================================================
+
 //       case "ddcostmaster":
 //         console.log("Inside ddcostmaster");
 //         {
@@ -1190,6 +1206,7 @@
 
 //     res.status(constants.STATUS_CODES.OK).json({
 //       success: true,
+
 //       data: {
 //         tableData: fetchedData,
 //         count: totalCount,

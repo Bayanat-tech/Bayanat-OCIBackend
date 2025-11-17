@@ -1,47 +1,62 @@
 import { getRepository } from "../../database/connection";
-import { VProjectMaster } from "../../entity/PurchaseFlow/projectmaster_pf_view.entity";
+import { ProjectMaster } from "../../entity/PurchaseFlow/projectmaster.entity";
 
-export interface Master<T> {
-  fetchedData: T[];
-  totalCount: number;
-}
 
 export class ProjectMasterService {
-  static async getProjectMaster(
-    loginid: string,
-    page = 1,
-    limit = 4000
-  ): Promise<Master<VProjectMaster>> {
-    const skip = (page - 1) * limit;
-    const repository = getRepository(VProjectMaster);
+  private static getRepository() {
+    return getRepository(ProjectMaster);
+  }
 
-    let fetchedData: VProjectMaster[] = [];
-    let totalCount = 0;
+  // Duplicate Check
+  static async findDuplicate(
+    project_code: string,
+    company_code: string
+  ): Promise<ProjectMaster | null> {
+    const repo = this.getRepository();
 
-    if (loginid !== "PRAKASH") {
-    
-      [fetchedData, totalCount] = await repository
-        .createQueryBuilder("proj")
-        .where(
-          `proj.project_code IN (
-            SELECT project_code 
-            FROM MS_PROJECT_USER_ASSIGN 
-            WHERE user_id = :loginid
-          )`,
-          { loginid }
-        )
-        .skip(skip)
-        .take(limit)
-        .getManyAndCount();
-    } else {
-   
-      [fetchedData, totalCount] = await repository
-        .createQueryBuilder("proj")
-        .skip(skip)
-        .take(limit)
-        .getManyAndCount();
-    }
+    return await repo.findOne({
+      where: { project_code, company_code }
+    });
+  }
 
-    return { fetchedData, totalCount };
+  // Create
+  // static async createProject(data: any): Promise<ProjectMaster> {
+  //   const repo = this.getRepository();
+
+  //   const project = repo.create({
+  //     ...data,
+  //     created_at: new Date(),
+  //     updated_at: new Date()
+  //   });
+
+  //   return await repo.save(project);
+  // }
+
+  // Update
+  static async updateProject(
+    project_code: string,
+    company_code: string,
+    updateData: any
+  ): Promise<boolean> {
+    const repo = this.getRepository();
+
+    const result = await repo.update(
+      { project_code, company_code },
+      {
+        ...updateData,
+        updated_at: new Date()
+      }
+    );
+
+    return result.affected ? result.affected > 0 : false;
+  }
+
+  // Delete
+  static async deleteProjects(projectCodes: string[]): Promise<number> {
+    const repo = this.getRepository();
+
+    const result = await repo.delete(projectCodes);
+
+    return result.affected ? result.affected : 0;
   }
 }
