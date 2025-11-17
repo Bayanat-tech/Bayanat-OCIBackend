@@ -8,37 +8,13 @@ type LeaveRow = {
   REQUEST_NUMBER?: string;
   COMPANY_CODE?: string;
   FINAL_APPROVED?: string | null;
-  NEXT_ACTION_BY?: string | null;
-  EMPLOYEE_CODE?: string | null;
-  IMMEDIATE_SUPERVISOR?: string | null;
-  HOD?: string | null;
-  DEPT_HEAD?: string | null;
+  NEXT_ACTION_BY_EMAIL?: string | null;
+  IMMEDIATE_SUPERVISOR_EMAIL?: string | null;
   CREATE_USER?: string | null;
+  NEXT_ACTION_BY?: string | null;
   EMPLOYEE_NAME?: string | null;
-  REJECT_HISTORY?: string | null;
-  SENTBACK_HISTORY?: string | null;
+  LAST_ACTION?: string | null;
 };
-
-async function getEmailForEmployeeCode(
-  connection: oracledb.Connection,
-  employeeCode?: string | null,
-  companyCode?: string | null
-): Promise<string | null> {
-  if (!employeeCode) return null;
-  const sql = `
-    SELECT TRIM(EMAIL_ADDRESS) AS EMAIL_ADDRESS
-    FROM SEC_LOGIN
-    WHERE TRIM(LOGINID1) = :emp
-    ${companyCode ? "AND COMPANY_CODE = :comp" : ""}
-    FETCH FIRST 1 ROWS ONLY
-  `;
-  const binds: any = { emp: employeeCode.trim() };
-  if (companyCode) binds.comp = companyCode;
-  const res = await connection.execute<{ EMAIL_ADDRESS?: string }>(sql, binds, {
-    outFormat: oracledb.OUT_FORMAT_OBJECT,
-  });
-  return res.rows?.[0]?.EMAIL_ADDRESS?.trim() ?? null;
-}
 
 export async function sendLeaveNotifications(requestNumber: string, companyCode?: string) {
   const connection = await oracleDb.getConnection();
@@ -48,16 +24,13 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
         TRIM(NVL(REQUEST_NUMBER,'')) AS REQUEST_NUMBER,
         TRIM(NVL(COMPANY_CODE,'')) AS COMPANY_CODE,
         TRIM(NVL(FINAL_APPROVED,'NO')) AS FINAL_APPROVED,
-        TRIM(NVL(NEXT_ACTION_BY,'')) AS NEXT_ACTION_BY,
-        TRIM(NVL(EMPLOYEE_CODE,'')) AS EMPLOYEE_CODE,
-        TRIM(NVL(IMMEDIATE_SUPERVISOR,'')) AS IMMEDIATE_SUPERVISOR,
-        TRIM(NVL(HOD,'')) AS HOD,
-        TRIM(NVL(DEPT_HEAD,'')) AS DEPT_HEAD,
+        TRIM(NVL(NEXT_ACTION_BY_EMAIL,'')) AS NEXT_ACTION_BY_EMAIL,
+        TRIM(NVL(IMMEDIATE_SUPERVISOR_EMAIL,'')) AS IMMEDIATE_SUPERVISOR_EMAIL,
         TRIM(NVL(CREATE_USER,'')) AS CREATE_USER,
+        TRIM(NVL(NEXT_ACTION_BY,'')) AS NEXT_ACTION_BY,
         TRIM(NVL(EMPLOYEE_NAME,'')) AS EMPLOYEE_NAME,
-        TRIM(NVL(REJECT_HISTORY,'')) AS REJECT_HISTORY,
-        TRIM(NVL(SENTBACK_HISTORY,'')) AS SENTBACK_HISTORY
-      FROM LEAVE_REQUEST_FLOW
+        TRIM(NVL(LAST_ACTION,'')) AS LAST_ACTION
+      FROM VW_LEAVE_REQUEST_FLOW
       WHERE REQUEST_NUMBER = :req
       ${companyCode ? "AND COMPANY_CODE = :comp" : ""}
       FETCH FIRST 1 ROWS ONLY
@@ -71,127 +44,91 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
 
     const row = res.rows?.[0] as LeaveRow | undefined;
     if (!row) {
-      console.warn("[sendLeaveNotifications] no row found for", requestNumber);
+      console.warn("[sendLeaveNotifications] No row found for", requestNumber);
       return;
     }
 
-    const finalVal = (row.FINAL_APPROVED ?? "NO").toString().trim().toUpperCase();
-    const nextActionRaw = (row.NEXT_ACTION_BY ?? "").toString().trim();
+    const finalApproved = (row.FINAL_APPROVED ?? "NO").toString().trim().toUpperCase();
+    const createUser = row.CREATE_USER?.trim();
+    const nextActionBy = row.NEXT_ACTION_BY?.trim();
+    const nextActionByEmail = row.NEXT_ACTION_BY_EMAIL?.trim();
+    const immediateSupervisorEmail = row.IMMEDIATE_SUPERVISOR_EMAIL?.trim();
+    const lastAction = row.LAST_ACTION?.trim().toUpperCase();
 
-    // resolve common emails
-    const employeeEmail = await getEmailForEmployeeCode(connection, row.EMPLOYEE_CODE, row.COMPANY_CODE);
-    const creatorEmail = await getEmailForEmployeeCode(connection, row.CREATE_USER, row.COMPANY_CODE);
-    const imSupEmail = await getEmailForEmployeeCode(connection, row.IMMEDIATE_SUPERVISOR, row.COMPANY_CODE);
-    const hodEmail = await getEmailForEmployeeCode(connection, row.HOD, row.COMPANY_CODE);
-    const deptHeadEmail = await getEmailForEmployeeCode(connection, row.DEPT_HEAD, row.COMPANY_CODE);
-
-    // 1) Final approved
-    if (finalVal === "YES") {
-      const recipients = [employeeEmail, creatorEmail].filter(Boolean) as string[];
-      if (recipients.length) {
+    // Notify the next action user
+    if (nextActionByEmail && lastAction !== "SAVEASDRAFT") {
+      await notifyUser({
+        event: constants.EVENTS.LEAVE_APPROVAL_REQUEST,
+        request_user: { request_number: requestNumber, company_code: row.COMPANY_CODE },
+        request_users: nextActionByEmail,
+        subject: `Leave Approval Required: ${requestNumber}`,
+        message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} requires your action.`,
+        htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} requires your action.</p>`,
+      });
+    }
+  
+    if (finalApproved === "YES" && createUser === nextActionBy) {
+      const recipients = [immediateSupervisorEmail, nextActionByEmail].filter(Boolean).join(",");
+      if (recipients) {
         await notifyUser({
           event: constants.EVENTS.LEAVE_APPROVED,
           request_user: { request_number: requestNumber, company_code: row.COMPANY_CODE },
-          request_users: recipients.join(","),
+          request_users: recipients,
           subject: `Leave Approved: ${requestNumber}`,
-          message: `Your leave request (${requestNumber}) has been approved.`,
-          htmlMessage: `<p>Your leave request <b>${requestNumber}</b> has been approved.</p>`,
+          message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} has been approved.`,
+          htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} has been approved.</p>`,
         });
       }
-      return;
     }
 
-    // 2) Rejected
-    if (finalVal === "CANCEL" || finalVal === "CANCEL") {
-      const target = employeeEmail || creatorEmail;
-      if (target) {
-        await notifyUser({
-          event: constants.EVENTS.LEAVE_CANCEL,
-          request_user: { request_number: requestNumber, reason: row.REJECT_HISTORY },
-          request_users: target,
-          subject: `Leave Rejected: ${requestNumber}`,
-          message: `Your leave request (${requestNumber}) has been rejected. ${row.REJECT_HISTORY || ""}`,
-          htmlMessage: `<p>Your leave request <b>${requestNumber}</b> has been rejected.<br/>${row.REJECT_HISTORY || ""}</p>`,
-        });
-      }
-      return;
+    // Notify for CANCEL action
+    if (lastAction === "CANCEL" && immediateSupervisorEmail) {
+      await notifyUser({
+        event: constants.EVENTS.LEAVE_CANCEL,
+        request_user: { request_number: requestNumber, company_code: row.COMPANY_CODE },
+        request_users: immediateSupervisorEmail,
+        subject: `Leave Request Cancelled: ${requestNumber}`,
+        message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} has been cancelled.`,
+        htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} has been cancelled.</p>`,
+      });
     }
 
-    // 3) Sent back
-    if (finalVal === "SENTBACK" || finalVal === "SENT BACK") {
-      const target = employeeEmail || creatorEmail;
-      if (target) {
+    // Notify for REJECTED action
+    if (lastAction === "REJECTED" && immediateSupervisorEmail) {
+      await notifyUser({
+        event: constants.EVENTS.LEAVE_REJECTED,
+        request_user: { request_number: requestNumber, company_code: row.COMPANY_CODE },
+        request_users: immediateSupervisorEmail,
+        subject: `Leave Request Rejected: ${requestNumber}`,
+        message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} has been rejected.`,
+        htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} has been rejected.</p>`,
+      });
+    }
+
+    // Notify for SENTBACK action
+    if (lastAction === "SENTBACK") {
+      const recipients = [immediateSupervisorEmail, nextActionByEmail].filter(Boolean).join(",");
+      if (recipients) {
         await notifyUser({
           event: constants.EVENTS.LEAVE_SENTBACK,
-          request_user: { request_number: requestNumber, reason: row.SENTBACK_HISTORY },
-          request_users: target,
-          subject: `Leave Sent Back: ${requestNumber}`,
-          message: `Your leave request (${requestNumber}) has been sent back. ${row.SENTBACK_HISTORY || ""}`,
-          htmlMessage: `<p>Your leave request <b>${requestNumber}</b> has been sent back.<br/>${row.SENTBACK_HISTORY || ""}</p>`,
-        });
-      }
-      return;
-    }
-
-    if (finalVal !== "NO") {
-      let recipientEmail: string | null = null;
-      let roleLabel = "";
-
-      const U = nextActionRaw.toUpperCase();
-      if (/IMMEDIATE_SUPERVISOR/i.test(U)) {
-        roleLabel = "Immediate Supervisor";
-        recipientEmail = imSupEmail;
-      } else if (/HOD/i.test(U)) {
-        roleLabel = "HOD";
-        recipientEmail = hodEmail;
-      } else if (/DEPT|DEPARTMENT|DEPT_HEAD/i.test(U)) {
-        roleLabel = "Department Head";
-        recipientEmail = deptHeadEmail;
-      } else if (/LAST|FINAL|FINAL_APPROVAL|LAST_APPROVAL/i.test(U)) {
-        roleLabel = "Final Approver";
-        recipientEmail = creatorEmail || employeeEmail;
-      } else if (nextActionRaw) {
-        // fallback: treat NEXT_ACTION_BY as an employee code/loginid
-        recipientEmail = await getEmailForEmployeeCode(connection, nextActionRaw, row.COMPANY_CODE);
-        roleLabel = `User ${nextActionRaw}`;
-      }
-
-      if (recipientEmail) {
-        // notify next approver
-        await notifyUser({
-          event: constants.EVENTS.LEAVE_APPROVAL_REQUEST,
           request_user: { request_number: requestNumber, company_code: row.COMPANY_CODE },
-          request_users: recipientEmail,
-          subject: `Leave Approval Required: ${requestNumber} (${roleLabel})`,
-          message: `Leave request ${requestNumber} for ${row.EMPLOYEE_NAME || ""} requires your action as ${roleLabel}.`,
-          htmlMessage: `<p>Leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || ""} requires your action as <b>${roleLabel}</b>.</p>`,
-        });
-      } else {
-        console.warn("[sendLeaveNotifications] couldn't resolve recipient for NEXT_ACTION_BY:", nextActionRaw);
-      }
-
-      // inform employee (requester) that request is now with approver
-      if (employeeEmail) {
-        await notifyUser({
-          event: constants.EVENTS.LEAVE_INFO,
-          request_user: { request_number: requestNumber, status: "With approver", role: roleLabel },
-          request_users: employeeEmail,
-          subject: `Leave Request ${requestNumber} - With ${roleLabel}`,
-          message: `Your leave request (${requestNumber}) is currently with ${roleLabel}.`,
-          htmlMessage: `<p>Your leave request <b>${requestNumber}</b> is currently with <b>${roleLabel}</b>.</p>`,
+          request_users: recipients,
+          subject: `Leave Request Sent Back: ${requestNumber}`,
+          message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} has been sent back for further action.`,
+          htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} has been sent back for further action.</p>`,
         });
       }
-    } else {
-      console.log(`[sendLeaveNotifications] FINAL_APPROVED='NO' for ${requestNumber} - skipping.`);
     }
+
+    console.log(`[sendLeaveNotifications] Notifications sent for ${requestNumber}.`);
   } catch (err) {
-    console.error("[sendLeaveNotifications] error:", err);
+    console.error("[sendLeaveNotifications] Error:", err);
     throw err;
   } finally {
     try {
       await connection.close();
     } catch (closeErr) {
-      console.warn("[sendLeaveNotifications] close connection error", closeErr);
+      console.warn("[sendLeaveNotifications] Close connection error", closeErr);
     }
   }
 }
