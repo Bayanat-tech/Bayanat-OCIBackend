@@ -397,11 +397,11 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     employee_code: { val: data.EMPLOYEE_CODE },
     leave_type: { val: data.LEAVE_TYPE },
     leave_start_date: {
-      val: toOracleDate(data.TRAVEL_DATE) || leaveStartDate || "",
-    },
-    leave_end_date: {
-      val: toOracleDate(data.TRAVEL_END_DATE) || leaveEndDate || "",
-    },
+  val: toOracleDate(data.TRAVEL_DATE) || leaveStartDate || null, // null if empty
+},
+leave_end_date: {
+  val: toOracleDate(data.TRAVEL_END_DATE) || leaveEndDate || null, // null if empty
+},
     leave_days: { val: data.LEAVE_DAYS },
     last_action: { val: data.LAST_ACTION },
 air_route: { val: data.AIR_ROUTE || null },
