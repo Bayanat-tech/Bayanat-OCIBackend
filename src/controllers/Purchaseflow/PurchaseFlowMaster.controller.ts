@@ -21,6 +21,7 @@ import { myTask } from "../../services/purchaseFlow/my_task.service";
 import { ItemMasterService } from "../../services/purchaseFlow/my_itemmaster.service";
 import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
 import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
+import { PurchaseFlowMasterService } from "../../services/purchaseFlow/PfMaster.service";
 
 
 
@@ -45,27 +46,92 @@ export const getPurchasefMaster = async (
 
     switch (master) {
 
-       case "dropdwonprojectmaster":
-        result=await DropdownProjectMasterService.getDropdownProjectMaster(
-           requestUser.company_code,
+      case "division":
+        result = await PurchaseFlowMasterService.getDivisionMaster(
+          requestUser.company_code,
           page,
           limit
         );
         break;
 
-        case "project_master":
-          result=await ProjectMasterService.getProjectMaster(
-            requestUser.loginid,
-            page,
-          limit
-          );break;
-
-          case "projectmaster":
-            result =await ProjectMasterService.getRepository(
-              requestUser.company_code,
+      case "cost_master":
+        result = await DdcostmasterService.getDdCostMaster(
+          requestUser.company_code,
           page,
           limit
-            )
+        );
+        break;
+
+      case "matcat_master":
+        result = await PurchaseFlowMasterService.getMaterialCategoryMaster(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "supplier_master":
+        result = await PurchaseFlowMasterService.getSupplierMaster(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "customer_master":
+        result = await PurchaseFlowMasterService.getCustomerMaster(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "ddCurrency":
+        result = await PurchaseFlowMasterService.getddcurrency(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "ddMaterialCateotry":
+        result = await PurchaseFlowMasterService.ddMaterialCateotry(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "item_master":
+        result = await PurchaseFlowMasterService.getItemmaster(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+
+      case "dropdwonprojectmaster":
+        result = await DropdownProjectMasterService.getDropdownProjectMaster(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "project_master":
+        result = await ProjectMasterService.getProjectMaster(
+          requestUser.loginid,
+          page,
+          limit
+        ); break;
+
+      case "projectmaster":
+        result = await ProjectMasterService.getRepository(
+          requestUser.company_code,
+          page,
+          limit
+        )
 
 
       case "ddcostmaster":
