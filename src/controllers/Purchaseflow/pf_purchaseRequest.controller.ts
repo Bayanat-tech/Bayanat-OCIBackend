@@ -5,15 +5,16 @@ import { MessageBoxService } from "../../services/Purchaseflow/purchaseRequest.s
 
 export const fetchMessageBox = async (
      req: RequestWithUser, res: Response
-     ) => {
+     ): Promise<void> => {
   try {
     const { userId, companyCode } = req.query;
 
     if (!userId || !companyCode) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "Missing userId or companyCode"
       });
+      return;
     }
 
     const data = await MessageBoxService.fetchMessageBox(
@@ -21,14 +22,14 @@ export const fetchMessageBox = async (
       String(companyCode)
     );
 
-    return res.status(constants.STATUS_CODES.OK).json({
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data
     });
   } catch (err) {
     console.error("MessageBox error:", err);
 
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Internal server error"
     });

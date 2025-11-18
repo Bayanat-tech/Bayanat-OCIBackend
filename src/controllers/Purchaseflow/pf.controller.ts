@@ -83,7 +83,186 @@ export const getPfMaster = async (
           limit
         );
         break;
- 
+
+      // case "dropdwonprojectmaster":
+      //   result=await DropdownProjectMasterService.getDropdownProjectMaster(
+      //      requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      case "project_master":
+          result=await PurchaseFlowMasterService.getProjectMaster(
+            requestUser.loginid,
+            page,
+          limit
+          );
+          break;
+
+        // case "projectmaster":
+        //   result =await PurchaseFlowMasterService.getProjectMasterService(
+        //   requestUser.company_code,
+        //   page,
+        //   limit
+        //   );
+        // break;
+
+      // case "ddcostmaster":
+      //   result = await DdcostmasterService.getDdCostMaster(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+      // case "dduommaster":
+      //   result = await DduommasterService.getDdUomMaster(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+      // case "ddCurrency":
+      //   result = await DdcurrencyService.getDdCurrency(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "ddprodmaster":
+      //   result = await DdProdmasterService.getDdProdmaster(
+      //     String(requestUser.company_code),
+      //     undefined,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "ddemployeemaster":
+      //   result = await DdEmployeeMasterService.getDdEmployeeMaster(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "po_modify":
+      //   result = await PoHeaderService.getPoModify(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "ponotgenerated":
+      //   result = await PoNotGeneratedService.getPoNotGenerated(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "dddivision":
+      //   result = await DddivisionmasterService.getDdDivision(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "po_modify_rate_change":
+      //   result = await PoHeaderService.getPoModify(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "po_cancel":
+      //   result = await POCancelService.getPOCancelData(
+      //     String(requestUser.company_code),
+      //     undefined,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+
+      // case "sentbackrollselection_mat":
+      //   result = {
+      //     fetchedData: await WorkflowService.getSentBackRoles(),
+      //     totalCount: 0
+      //   };
+      //   break;
+
+      // case "sentbackrollselection":
+      //   result = await FlowRoleService.getSentBackRoles(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+
+      // case "My_History":
+      //   result = await PurchaseRequestHistoryService.getMyHistory(
+      //     requestUser.company_code,
+      //     undefined,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "Request_Cancel":
+      //   result = await PRRejectedService.getCancelledRequests(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "Request_Rejected":
+      //   result = await PRRejectedService.getRequestRejectedData(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "MyItem_ClosedRequest":
+      //   result = await PurchaseCloseRequestService.getMyClosedRequests(
+      //     requestUser.company_code,
+      //     requestUser.loginid,
+      //     undefined, // optional filter
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "Pg_Material_flow_InProgress":
+      //   result = await MaterialRequestService.getInProgressRequests(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "my_task":
+      //   result = await myTask.getMyTaskData(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
+
+      // case "my_itemmaster":
+      //   result = await ItemMasterService.getMyItemMaster(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      // break;
     }
 
     res.status(constants.STATUS_CODES.OK).json({
@@ -100,3 +279,52 @@ export const getPfMaster = async (
     });
   }
 };
+
+// export class DeletePfMaster {
+//   static async deleteMaster(
+//     req: RequestWithUser, 
+//     res: Response
+//   ): Promise<void> {
+//     try {
+//       const { master } = req.params;
+//       const requestUser: IUser = req.user;
+//       const { ids } = req.body;
+
+//       if (!ids || !Array.isArray(ids) || ids.length === 0) {
+//         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//           success: false,
+//           message: "IDs are required for deletion",
+//         });
+//         return;
+//       }
+
+//       const Deleted = await MasterDeleteService.deleteRecords(
+//         master,
+//         requestUser.company_code,
+//         ids
+//       );
+
+//       if (!Deleted) {
+//         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//           success: false,
+//           message: "No records were deleted",
+//         });
+//         return;
+//       }
+
+//       res.status(constants.STATUS_CODES.OK).json({
+//         success: true,
+//         message: "Record(s) deleted successfully.",
+//       });
+
+//     } catch (error: any) {
+//       console.error("Error in deleteMaster:", error);
+
+//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//         success: false,
+//         message: error.message,
+//       });
+//     }
+//   }
+// }
+

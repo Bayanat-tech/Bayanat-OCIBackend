@@ -1,10 +1,11 @@
-import { getRepository } from "../../database/connection";
+import { AppDataSource, getRepository } from "../../database/connection";
 import { Divisionmaster } from "../../entity/Purchaseflow/Pf_divisionmaster.entity";
 import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
 import { CustomerMaster } from "../../entity/Purchaseflow/customermaster.entity";
 import { DdCurrency } from "../../entity/Purchaseflow/ddcurrency_pf_models.entity";
 import { ItemmasterPf } from "../../entity/Purchaseflow/itemmaster.entity";
 import { MaterialCategoryMaster } from "../../entity/Purchaseflow/materialcategary.entity";
+import { VProjectMaster } from "../../entity/Purchaseflow/projectmaster_pf_view.entity";
 import { SupplierMaster } from "../../entity/Purchaseflow/suppliermaster_pf.entity";
 
 export interface Master<T> {
@@ -128,40 +129,141 @@ export class PurchaseFlowMasterService {
     return { fetchedData, totalCount };
   }
 
-  // //  Delete :
+  static async getProjectMaster(
+    loginid: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<VProjectMaster>> {
+    const skip = (page - 1) * limit;
+    const repository = getRepository(VProjectMaster);
 
-  // static async deleteRecords(
-  //   entity: any,
-  //    conditions: any[]
-  //   ): Promise<number> {
-  //   const repo = getRepository(entity);
+    let fetchedData: VProjectMaster[] = [];
+    let totalCount = 0;
 
-  //   if (!conditions || conditions.length === 0) {
-  //     throw new Error("Delete conditions must be a non-empty array.");
-  //   }
+   
+    if (loginid !== "PRAKASH") {
+      [fetchedData, totalCount] = await repository
+        .createQueryBuilder("proj")
+        .where(
+          `proj.project_code IN (
+            SELECT project_code 
+            FROM MS_PROJECT_USER_ASSIGN 
+            WHERE user_id = :loginid
+          )`,
+          { loginid }
+        )
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
+    } else {
+      [fetchedData, totalCount] = await repository
+        .createQueryBuilder("proj")
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
+    }
 
-  //   let totalDeleted = 0;
-
-  //   for (const condition of conditions) {
-
-  //     const existing = await repo.findOne({ where: condition });
-  //     if (!existing) {
-  //       console.warn(`Record not found for condition:`, condition);
-  //       continue;  
-  //     }
-
-  //     const result = await repo.delete(condition);
-
-  //     if (result.affected && result.affected > 0) {
-  //       totalDeleted += result.affected;
-  //     }
-  //   }
-
-  //   return totalDeleted;
-  // }
+    return { fetchedData, totalCount };
+  }
 }
 
+// export class DeletePfService {
+//   static async deleteRecords(
+//     master: string,
+//     company_code: string,
+//     ids: (string | number)[]
+//   ): Promise<boolean> {
 
+//     const queryRunner = AppDataSource.createQueryRunner();
+//     await queryRunner.connect();
+//     await queryRunner.startTransaction();
 
+//     try {
+//       let result;
 
+//       switch (master) {
+        
+//         // -------------------- PROJECT MASTER --------------------
+//         case "project_master":
+//           result = await queryRunner.manager.delete(ProjectMaster, {
+//             company_code,
+//             project_code: In(ids as string[]),
+//           });
+//           break;
 
+//         // -------------------- COST MASTER --------------------
+//         case "cost_master":
+//           result = await queryRunner.manager.delete(Costmaster, {
+//             company_code,
+//             cost_code: In(ids as string[]),
+//           });
+//           break;
+
+//         // -------------------- FLOW MASTER --------------------
+//         case "flow_master":
+//           result = await queryRunner.manager.delete(FlowMaster, {
+//             company_code,
+//             flow_code: In(ids as string[]),
+//           });
+//           break;
+
+//         // -------------------- ROLE MASTER --------------------
+//         case "role_master":
+//           result = await queryRunner.manager.delete(RoleMaster, {
+//             company_code,
+//             role_id: In(ids as number[]),
+//           });
+//           break;
+
+//         // -------------------- USER LOGIN --------------------
+//         case "sec_login":
+//           result = await queryRunner.manager.delete(User, {
+//             company_code,
+//             id: In(ids as number[]),
+//           });
+//           break;
+
+//         // -------------------- MODULE --------------------
+//         case "sec_module_data":
+//           result = await queryRunner.manager.delete(SecModule, {
+//             company_code,
+//             serial_no: In(ids as number[]),
+//           });
+//           break;
+
+//         // -------------------- COMPANY --------------------
+//         case "sec_company":
+//           result = await queryRunner.manager.delete(Company, {
+//             company_code: In(ids as string[]),
+//           });
+//           break;
+
+//         // -------------------- REPORT MASTER --------------------
+//         case "report_master":
+//           result = await queryRunner.manager.delete(ReportMaster, {
+//             report_no: In(ids as number[]),
+//           });
+//           break;
+
+//         // -------------------- QUERY MASTER --------------------
+//         case "query_master":
+//           result = await queryRunner.manager.delete(QueryMaster, {
+//             sr_no: In(ids as number[]),
+//           });
+//           break;
+
+//         default:
+//           throw new Error(`Unknown master type: ${master}`);
+//       }
+
+//       await queryRunner.commitTransaction();
+//       return result?.affected > 0;
+
+//     } catch (err) {
+//       await queryRunner.rollbackTransaction();
+//       throw err;
+//     } finally {
+//       await queryRunner.release();
+//     }
+//   }
+// }

@@ -23,10 +23,12 @@ export interface RequestWithUser extends Request {
 import { checkUserAuthorization } from "../../middleware/checkUserAthorization";
 import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmaster.controller";
 
-// import {
-//   createcostmaster,
-//   updatecostmaster,
-// } from "../../controllers/Purchaseflow/costmaster_pf.controller";
+ import {
+  createcostmaster,
+  updatecostmaster,
+} from "../../controllers/Purchaseflow/costmaster_pf.controller";
+import { ProjectMasterController } from "../../controllers/Purchaseflow/pf_projectmaster.controller";
+import { fetchMessageBox } from "../../controllers/Purchaseflow/pf_purchaseRequest.controller";
 
 // import {
 //   creatematerialcategory,
@@ -116,8 +118,9 @@ router.put("/costmaster", CostmasterController. updatecostmaster);
 // router.put("/CatMatMaster", updatematerialcategory);
 // router.delete("/CatMatMaster", deletematerialcategory);
 
-// router.post("/projectmaster", createprojectmaster);
-// router.put("/projectmaster", updateprojectmaster);
+//--------------------- Project Master -------------------------
+router.post("/projectmaster",ProjectMasterController.createProject);
+router.put("/projectmaster", ProjectMasterController.updateProject);
 // router.delete("/projectmaster", deletepfMaster);
 
 // //-----Item Master---------------
@@ -137,6 +140,8 @@ router.put("/costmaster", CostmasterController. updatecostmaster);
 // );
 
 // // Define the route
+
+router.get("/fetchMessageBox", fetchMessageBox);
 
 // router.get("/getDashboardData", getDashboardData);
 // router.get("/getPfglobalsearch/:master", getPfglobalsearch);

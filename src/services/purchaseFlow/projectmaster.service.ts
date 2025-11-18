@@ -6,7 +6,6 @@ export class ProjectMasterService {
     return getRepository(ProjectMaster);
   }
 
-  // Duplicate Check
   static async findDuplicate(
     project_code: string,
     company_code: string
@@ -14,21 +13,41 @@ export class ProjectMasterService {
     const repo = this.getRepository();
 
     return await repo.findOne({
-      where: { project_code, company_code }
+      where: { project_code, company_code },
     });
   }
 
   // Create
-  static async createProject(data: any): Promise<ProjectMaster> {
+  static async createProject(data: any) {
     const repo = this.getRepository();
+
+    const exists = await repo.findOne({
+      where: {
+        company_code: data.company_code,
+        project_code: data.project_code,
+      },
+    });
+
+    if (exists) {
+      return {
+        success: false,
+        message: "Project Master Already Exists",
+      };
+    }
 
     const project = repo.create({
       ...data,
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     });
 
-    return await repo.save(project);
+    const saved = await repo.save(project);
+
+    return {
+      success: true,
+      message: "Project created successfully",
+      data: saved,
+    };
   }
 
   // Update
@@ -36,26 +55,32 @@ export class ProjectMasterService {
     project_code: string,
     company_code: string,
     updateData: any
-  ): Promise<boolean> {
+  ) {
     const repo = this.getRepository();
 
-    const result = await repo.update(
+    const existing = await repo.findOne({
+      where: {
+        company_code,
+        project_code,
+      },
+    });
+
+    if (!existing) {
+      throw new Error("Project Master Already Exists")
+    }
+
+    await repo.update(
       { project_code, company_code },
       {
         ...updateData,
-        updated_at: new Date()
+        updated_at: new Date(),
       }
     );
 
-    return result.affected ? result.affected > 0 : false;
-  }
-
-  // Delete
-  static async deleteProjects(projectCodes: string[]): Promise<number> {
-    const repo = this.getRepository();
-
-    const result = await repo.delete(projectCodes);
-
-    return result.affected ? result.affected : 0;
+    return {
+      success: true,
+      message: "Project Master Updated Successfully",
+    };
   }
 }
+

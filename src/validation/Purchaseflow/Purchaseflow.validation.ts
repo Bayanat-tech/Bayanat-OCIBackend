@@ -53,13 +53,13 @@ export const projectmasterSchema = (data: IProjectmaster) => {
     project_code: Joi.string().optional().allow(null),
     project_name: Joi.string().optional().allow(null),
     company_code: Joi.string().optional().allow(null),
-    div_code: Joi.string().required(),
-    prno_pre_fix: Joi.string().required(),
+    div_code: Joi.string().optional().allow("",null),
+    prno_pre_fix: Joi.string().optional().allow("",null),
     flag_proj_department: Joi.string().optional().allow(null),
     project_date_from: Joi.date().optional().allow(null),
     project_date_to: Joi.date().optional().allow(null),
     total_project_cost: Joi.number().required(),
-    facility_mgr_name: Joi.string().required(),
+    facility_mgr_name: Joi.string().optional().allow(null),
     facility_mgr_email: Joi.string().email().required(),
     facility_mgr_phone: Joi.string()
       .required()
