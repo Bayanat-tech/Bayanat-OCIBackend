@@ -22,7 +22,7 @@ export interface RequestWithUser extends Request {
 }
 import { checkUserAuthorization } from "../../middleware/checkUserAthorization";
 import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmaster.controller";
-
+import {proc_build_dynamic_sql} from "../../controllers/Purchaseflow/proc_build_dynamic_sql"
 // import {
 //   createcostmaster,
 //   updatecostmaster,
@@ -109,7 +109,7 @@ const router = express.Router();
 
 router.post("/costmaster", CostmasterController.createcostmaster);
 router.put("/costmaster", CostmasterController. updatecostmaster);
-
+router.put("proc_build_dynamic_sql",proc_build_dynamic_sql);
 
 // router.post("/cancelFinalApproval", cancelFinalApproval);
 // router.post("/CatMatMaster", creatematerialcategory);
