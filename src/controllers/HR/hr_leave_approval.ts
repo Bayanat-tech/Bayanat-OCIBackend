@@ -262,8 +262,18 @@ const params = {
   adv_payment: { val: data.ADV_PAYMENT },
   cause_type: { val: data.CAUSE_TYPE },
 
-  travel_date: { val: data.TRAVEL_DATE || null, type: oracledb.STRING },
-  travel_end_date: { val: data.TRAVEL_END_DATE || null, type: oracledb.STRING },
+  travel_date: {
+  val: data.TRAVEL_DATE && data.TRAVEL_DATE.trim() !== '' 
+       ? new Date(data.TRAVEL_DATE) 
+       : null,
+  type: oracledb.DATE
+},
+travel_end_date: {
+  val: data.TRAVEL_END_DATE && data.TRAVEL_END_DATE.trim() !== ''
+       ? new Date(data.TRAVEL_END_DATE)
+       : null,
+  type: oracledb.DATE
+},
 
   name_of_replacement: { val: data.NAME_OF_REPLACEMENT },
   contact_details_during_leave: { val: data.CONTACT_DETAILS_DURING_LEAVE },
@@ -319,6 +329,15 @@ const formatDate = (date: string | number | Date | undefined) => {
   return null;
 };
 
+function parseOracleDate(value: string | Date | undefined | null): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;          // Already a Date
+  if (typeof value === "string" && value.trim() !== "") {
+    return new Date(value);
+  }
+  return null;
+}
+
 async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
   // Validate required dates
   console.log(
@@ -370,45 +389,38 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
 )
 `;
 
-  const params = {
-    employee_name: { val: data.EMPLOYEE_NAME },
-    half_day: { val: data.HALF_DAY || "N" },
-    duty_resume_date: { val: toOracleDate(data.DUTY_RESUME_DATE) || null },
-    actual_resume_date: { val: toOracleDate(data.ACTUAL_RESUME_DATE) || null },
-    leave_allowance: { val: data.LEAVE_ALLOWANCE },
-    adv_payment: { val: data.ADV_PAYMENT },
-    cause_type: { val: data.CAUSE_TYPE },
-    travel_date: { val: toOracleDate(data.TRAVEL_DATE) || "" },
-    name_of_replacement: { val: data.NAME_OF_REPLACEMENT },
-    contact_details_during_leave: { val: data.CONTACT_DETAILS_DURING_LEAVE },
-    remarks: { val: data.REMARKS },
-    flow_code: { val: "004" },
-    hod: { val: data.HOD },
-    updated_by: { val: data.UPDATED_BY },
-    immediate_supervisor: { val: data.IMMEDIATE_SUPERVISOR },
-    dept_head: { val: data.DEPT_HEAD },
-    company_code: { val: data.COMPANY_CODE },
-    request_number: { val: data.REQUEST_NUMBER },
-    request_date: {
-      val: toOracleDate(data.REQUEST_DATE) || "",
-    },
-    employee_code: { val: data.EMPLOYEE_CODE },
-    leave_type: { val: data.LEAVE_TYPE },
-    leave_start_date: {
-  val: toOracleDate(data.TRAVEL_DATE) || leaveStartDate || null, // null if empty
-},
-leave_end_date: {
-  val: toOracleDate(data.TRAVEL_END_DATE) || leaveEndDate || null, // null if empty
-},
-    leave_days: { val: data.LEAVE_DAYS },
-    last_action: { val: data.LAST_ACTION },
-air_route: { val: data.AIR_ROUTE || null },
-air_ticket: { val: data.AIR_TICKET || null },
-
-    create_user: { val: data.UPDATED_BY },
-    created_by: { val: data.CREATED_BY },
-
-  };
+ const params = {
+  employee_name: { val: data.EMPLOYEE_NAME },
+  half_day: { val: data.HALF_DAY || "N" },
+  duty_resume_date: { val: parseOracleDate(data.DUTY_RESUME_DATE), type: oracledb.DATE },
+  actual_resume_date: { val: parseOracleDate(data.ACTUAL_RESUME_DATE), type: oracledb.DATE },
+  leave_allowance: { val: data.LEAVE_ALLOWANCE },
+  adv_payment: { val: data.ADV_PAYMENT },
+  cause_type: { val: data.CAUSE_TYPE },
+  travel_date: { val: parseOracleDate(data.TRAVEL_DATE), type: oracledb.DATE },
+  travel_end_date: { val: parseOracleDate(data.TRAVEL_END_DATE), type: oracledb.DATE },
+  name_of_replacement: { val: data.NAME_OF_REPLACEMENT },
+  contact_details_during_leave: { val: data.CONTACT_DETAILS_DURING_LEAVE },
+  remarks: { val: data.REMARKS },
+  flow_code: { val: "004" },
+  hod: { val: data.HOD },
+  updated_by: { val: data.UPDATED_BY },
+  immediate_supervisor: { val: data.IMMEDIATE_SUPERVISOR },
+  dept_head: { val: data.DEPT_HEAD },
+  company_code: { val: data.COMPANY_CODE },
+  request_number: { val: data.REQUEST_NUMBER },
+  request_date: { val: parseOracleDate(data.REQUEST_DATE), type: oracledb.DATE },
+  employee_code: { val: data.EMPLOYEE_CODE },
+  leave_type: { val: data.LEAVE_TYPE },
+  leave_start_date: { val: parseOracleDate(data.LEAVE_START_DATE), type: oracledb.DATE },
+  leave_end_date: { val: parseOracleDate(data.LEAVE_END_DATE), type: oracledb.DATE },
+  leave_days: { val: data.LEAVE_DAYS },
+  air_ticket: { val: data.AIR_TICKET || null },
+  air_route: { val: data.AIR_ROUTE || null },
+  last_action: { val: data.LAST_ACTION },
+  create_user: { val: data.UPDATED_BY },
+  created_by: { val: data.CREATED_BY }
+};
 
   // Debug: log parameters
   console.log("Parameters for insert:", JSON.stringify(params, null, 2));
