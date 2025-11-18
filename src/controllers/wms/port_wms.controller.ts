@@ -1,11 +1,10 @@
 // Import required dependencies
 import { Response } from "express";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { portSchema } from "../../validation/wms/gm.validation";
-import Port from "../../models/wms/port_wms.model";
+import { PortService } from "../../services/WMS/port.service";
 
 /**
  * Creates a new port entry
@@ -16,6 +15,9 @@ export const createPort = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
 
+    // Debug log to inspect incoming body
+    // console.log("createPort req.body:", req.body);
+
     // Validate request body against port schema
     const { error } = portSchema(req.body);
     if (error) {
@@ -24,16 +26,17 @@ export const createPort = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
-    const { port_code, company_code } = req.body;
+    const { port_name, company_code, country_code } = req.body;
 
-    // Check if port already exists
-    const port = await Port.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { port_code: port_code }],
-      },
-    });
+    // Remove redundant manual check for country_code
+    // If country_code is missing, schema validation will already fail
 
-    if (port) {
+    // Check duplicate
+    const duplicatePort = await PortService.findByDescriptionAndCompany(
+      port_name,
+      company_code
+    );
+    if (duplicatePort) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.PORT_WMS.PORT_ALREADY_EXISTS,
@@ -41,29 +44,26 @@ export const createPort = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Create new port entry
-    const createPort = await Port.create({
-      company_code,
+    // Create port
+    const createdPort = await PortService.createPort({
+      ...req.body,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
-      ...req.body,
     });
-    if (!createPort) {
+    if (!createdPort) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
+        .json({ success: false, message: "Error while creating port" });
       return;
     }
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PORT_WMS.PORT_CREATED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
-    return;
   }
 };
 
@@ -84,53 +84,36 @@ export const updatePort = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
+    
     const { port_code, company_code } = req.body;
 
-    // Check if port exists
-    const port = await Port.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { port_code: port_code }],
-      },
-    });
+    console.log("updatePort - Request data:", req.body);
 
-    if (!port) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: constants.MESSAGES.PORT_WMS.PORT_DOES_NOT_EXISTS,
-      });
-      return;
-    }
-
-    // Update port entry
-    const createPort = await Port.update(
-      {
-        company_code,
-        created_by: requestUser.loginid,
-        updated_by: requestUser.loginid,
-        ...req.body,
-      },
-      {
-        where: {
-          [Op.and]: [{ company_code: company_code }, { port_code: port_code }],
-        },
-      }
+    // Use smart update that finds port by either port_code or port_name
+    const updateData = {
+      ...req.body,
+      updated_by: requestUser.loginid,
+    };
+    const isUpdated = await PortService.updatePortSmart(
+      port_code,
+      company_code,
+      updateData
     );
-    if (!createPort) {
+    
+    if (!isUpdated) {
       res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating company" });
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: "Port not found or no changes made" });
       return;
     }
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PORT_WMS.PORT_UPDATED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
-    return;
   }
 };
 
@@ -141,10 +124,9 @@ export const updatePort = async (req: RequestWithUser, res: Response) => {
  */
 export const deletePorts = async (req: RequestWithUser, res: Response) => {
   try {
-    const PortsCode = req.body;
+    const port_codes = req.body;
 
-    // Validate request body
-    if (!req.body.length) {
+    if (!port_codes || !Array.isArray(port_codes) || port_codes.length === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.PORT_WMS.SELECT_AT_LEAST_ONE_PORT,
@@ -152,16 +134,12 @@ export const deletePorts = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Delete ports
-    const PortsDeleteResponse = await Port.destroy({
-      where: {
-        port_code: PortsCode,
-      },
-    });
-    if (PortsDeleteResponse === 0) {
+    const isDeleted = await PortService.deletePorts(port_codes);
+
+    if (!isDeleted) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: PortsDeleteResponse,
+        message: "No ports were deleted",
       });
       return;
     }
@@ -169,11 +147,50 @@ export const deletePorts = async (req: RequestWithUser, res: Response) => {
       success: true,
       message: constants.MESSAGES.PORT_WMS.PORT_DELETED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
-    return;
   }
 };
+
+/**
+ * Fetch ports with optional filters and pagination
+ * @param req Request object with query params
+ * @param res Response object
+ */
+export const getPorts = async (req: RequestWithUser, res: Response) => {
+  try {
+    const { code, code2, page = 1, limit = 20 } = req.query;
+
+    // Prepare filters
+    const filters: any = {};
+    
+    // Only add filters if they have valid values
+    if (code && code !== "undefined" && code !== "null") {
+      filters.port_code = code;
+    }
+    if (code2 && code2 !== "undefined" && code2 !== "null") {
+      filters.company_code = code2;
+    }
+
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 20;
+
+    const { data, total } = await PortService.getPorts(filters, pageNum, limitNum);
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+    });
+  } catch (error: any) {
+    res
+      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: error.message });
+  }
+};
+
+  
