@@ -47,7 +47,6 @@ export const costmasterSchema = (data: ICostmaster) => {
   });
   return schema.validate(data);
 };
-
 export const projectmasterSchema = (data: IProjectmaster) => {
   const schema = Joi.object().keys({
     project_code: Joi.string().optional().allow(null),
@@ -59,12 +58,15 @@ export const projectmasterSchema = (data: IProjectmaster) => {
     project_date_from: Joi.date().optional().allow(null),
     project_date_to: Joi.date().optional().allow(null),
     total_project_cost: Joi.number().required(),
-    facility_mgr_name: Joi.string().optional().allow(null),
+    facility_mgr_name: Joi.string().optional().allow(" ",null),
     facility_mgr_email: Joi.string().email().required(),
     facility_mgr_phone: Joi.string()
       .required()
       .pattern(/^[0-9\s\-()+]+$/),
     project_type: Joi.string().optional().allow(null),
+    store_name: Joi.string().optional().allow("", null),
+    contact_person: Joi.string().optional().allow("", null),
+    contact_number: Joi.string().optional().allow("", null),
     updated_at: Joi.date().optional().allow(null),
     updated_by: Joi.string().optional().allow(null),
     created_at: Joi.date().optional().allow(null),

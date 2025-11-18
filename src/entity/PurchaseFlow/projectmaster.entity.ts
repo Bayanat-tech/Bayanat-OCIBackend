@@ -33,6 +33,15 @@ export class ProjectMaster {
   @Column({ name: "PROJECT_TYPE", type: "varchar2", length: 50 })
   project_type!: string;
 
+  @Column({ name: "STORE_NAME", type: "varchar2", length :20})
+  store_name!: string;
+
+  @Column({ name: "CONTACT_PERSON", type: "varchar2", length :40})
+  contact_person!: string;
+
+  @Column({ name: "CONTACT_NUMBER", type: "varchar2", length: 20 })
+  contact_number!: string;
+
   @Column({ name: "FACILITY_MGR_NAME", type: "varchar2", length: 100 })
   facility_mgr_name!: string;
 

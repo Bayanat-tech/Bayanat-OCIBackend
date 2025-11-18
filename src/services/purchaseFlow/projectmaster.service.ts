@@ -1,6 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { ProjectMaster } from "../../entity/Purchaseflow/projectmaster.entity";
-
+import { ProjectMaster } from "../../entity/PurchaseFlow/projectmaster.entity";
 export class ProjectMasterService {
   private static getRepository() {
     return getRepository(ProjectMaster);

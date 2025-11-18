@@ -1,5 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
-import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
+import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 import constants from "../../helpers/constants";
 
 export class CostmasterService {
@@ -11,15 +11,25 @@ export class CostmasterService {
     screen: string,
     type: string,
     document_number: string | null,
-    userId: string,
+    userId: string | null,
     message: string
   ) {
-    await oracleDb.query(
-      `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
-      {
-        replacements: { screen, type, document_number, userId, message },
-      }
-    );
+    try {
+      const binds = {
+        screen: { val: screen },
+        type: { val: type },
+        document_number: { val: document_number },
+        userId: { val: userId ?? null },
+        message: { val: message },
+      };
+
+      await oracleDb.query(
+        `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message); END;`,
+        binds
+      );
+    } catch (err) {
+      console.error("callMessageBox failed:", { screen, type, document_number, userId, message, err });
+    }
   }
 
   static async createCostmaster(Costdata: any) {
@@ -154,5 +164,39 @@ export class CostmasterService {
       success: true,
       message: "Cost Code Deleted Successfully",
     };
+  }
+
+  static async getCostmaster(company_code: string, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+
+    const query = `
+      SELECT * FROM (
+        SELECT "CostMaster".*, ROWNUM AS rnum
+        FROM "MS_COST" "CostMaster"
+        WHERE "CostMaster"."COMPANY_CODE" = :company_code
+          AND ROWNUM <= :max_row
+      )
+      WHERE rnum > :min_row
+    `;
+
+    const params = {
+      company_code,
+      max_row: offset + limit,
+      min_row: offset,
+    };
+
+    const result = await oracleDb.query(query, params);
+    const data = result.rows || result;
+
+    const countQuery = `
+      SELECT COUNT(1) AS cnt
+      FROM "MS_COST" "CostMaster"
+      WHERE "CostMaster"."COMPANY_CODE" = :company_code
+    `;
+
+    const countResult = await oracleDb.query(countQuery, { company_code });
+    const totalCount = countResult.rows?.[0]?.CNT || 0;
+
+    return { fetchedData: data, totalCount };
   }
 }
