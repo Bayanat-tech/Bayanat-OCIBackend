@@ -228,17 +228,15 @@ async function recordExists(
 
     LEAVE_TYPE = NVL(:leave_type, LEAVE_TYPE),
 
-    LEAVE_START_DATE = CASE 
-      WHEN :leave_start_date IS NOT NULL 
-      THEN TO_DATE(:leave_start_date, 'YYYY-MM-DD') 
-      ELSE LEAVE_START_DATE 
-    END,
+    LEAVE_START_DATE = CASE
+  WHEN :leave_start_date IS NOT NULL THEN TO_DATE(:leave_start_date, 'YYYY-MM-DD')
+  ELSE NULL
+END,
 
-    LEAVE_END_DATE = CASE 
-      WHEN :leave_end_date IS NOT NULL 
-      THEN TO_DATE(:leave_end_date, 'YYYY-MM-DD') 
-      ELSE LEAVE_END_DATE 
-    END,
+LEAVE_END_DATE = CASE
+  WHEN :leave_end_date IS NOT NULL THEN TO_DATE(:leave_end_date, 'YYYY-MM-DD')
+  ELSE NULL
+END
 
     LEAVE_DAYS = NVL(:leave_days, LEAVE_DAYS),
     LAST_ACTION = NVL(:last_action, LAST_ACTION),
