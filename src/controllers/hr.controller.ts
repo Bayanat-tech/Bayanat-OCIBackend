@@ -31,7 +31,6 @@ import { HrSponsor } from "../models/Hr/hr_sponsor";
 import { HrViewEmp } from "../views/hr/hr_view_employee";
 import { oracleDb, TypeORMService } from "../database/connection";
 
-
 async function queryEntityWithFilters(
   entityClass: any,
   companyCode: string,
@@ -39,7 +38,6 @@ async function queryEntityWithFilters(
   paginationOptions: any
 ): Promise<{ data: any[]; count: number }> {
   const repo = TypeORMService.getRepository(entityClass);
-
 
   // Build where conditions
   const where: FindOptionsWhere<any> = { company_code: companyCode };
@@ -145,7 +143,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
                       `;
             break;
           case "Pg_leave_flow_Rejected":
-            whereConditions = `
+              whereConditions = `
   company_code = :company_code
   AND LAST_ACTION = 'REJECTED'
   AND (
@@ -153,11 +151,11 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         OR IMMEDIATE_SUPERVISOR = :loginid
         OR HOD = :loginid
         OR DEPT_HEAD = :loginid
-  )
-`;
+  )`;
+
             break;
           case "Pg_leave_flow_close":
-            whereConditions = `
+           whereConditions = `
   company_code = :company_code
   AND FINAL_APPROVED = 'YES'
   AND (
@@ -165,11 +163,11 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         OR IMMEDIATE_SUPERVISOR = :loginid
         OR HOD = :loginid
         OR DEPT_HEAD = :loginid
-  )
-`;
+  )`;
+
             break;
           case "Pg_leave_flow_cancel":
-            whereConditions = `
+              whereConditions = `
   company_code = :company_code
   AND LAST_ACTION = 'CANCEL'
   AND (
@@ -178,11 +176,31 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
 `;
             break;
           case "Pg_leave_flow_InProgress":
-            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'NO' AND LAST_ACTION NOT IN
-            ('REJECTED','CANCEL') AND NEXT_ACTION_BY NOT IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_ID =  :loginid ) AND
-            (REQUEST_NUMBER IN (SELECT DISTINCT REQUEST_NUMBER FROM LEAVE_REQUEST_FLOW_HISTRY WHERE NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_ID =  :loginid )))`;
+            whereConditions = `
+    company_code = :company_code
+    AND FINAL_APPROVED = 'NO'
+    AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
+    AND NEXT_ACTION_BY NOT IN (
+        SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE 
+        WHERE EMPLOYEE_ID = :loginid
+    )
+    AND (
+        REQUEST_NUMBER IN (
+            SELECT DISTINCT REQUEST_NUMBER 
+            FROM LEAVE_REQUEST_FLOW_HISTRY 
+            WHERE NEXT_ACTION_BY IN (
+                SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE 
+                WHERE EMPLOYEE_ID = :loginid
+            )
+        )
+    )
+    AND (
+        CREATED_BY = :loginid
+        OR IMMEDIATE_SUPERVISOR = :loginid
+        OR HOD = :loginid
+        OR DEPT_HEAD = :loginid
+    )
+`;
             break;
         }
         try {
@@ -214,8 +232,8 @@ EMPLOYEE_ID =  :loginid )))`;
             limit: limit
           };
 
+  
 
-          console.log("fetchQuery", fetchQuery)
           const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
 
 
@@ -251,26 +269,26 @@ EMPLOYEE_ID =  :loginid )))`;
         try {
           const fetchQuery = `
       SELECT *
-      FROM VW_LEAVE_REQUEST_FLOW
+      FROM VW_HR_LEAVE_REQUEST_FLOW
       WHERE ${whereConditions}
       ORDER BY request_number ASC
     `;
 
 
-
-
+  
+          
           // const queryParams = [requestUser.company_code];
           // if (request_number) queryParams.push(request_number);
 
-          console.log("Leaveflow_request Query:", fetchQuery);
+               console.log("Leaveflow_request Query:", fetchQuery);
           console.log("Leaveflow_request Params:", bindParams);
-
+          
           const fetchedData = await oracleDb.query(fetchQuery, bindParams);
 
           console.log("fetchedData.rows", fetchedData.rows)
+          
 
-
-
+          
 
           res.status(constants.STATUS_CODES.OK).json({
             success: true,

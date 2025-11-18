@@ -27,6 +27,7 @@ export type TLeaveApproval = {
   ADV_PAYMENT?: number;
   CAUSE_TYPE?: string;
   TRAVEL_DATE?: string;
+  TRAVEL_END_DATE?: string;
   NAME_OF_REPLACEMENT?: string;
   CONTACT_DETAILS_DURING_LEAVE?: string;
   NEXT_ACTION_BY?: string;
