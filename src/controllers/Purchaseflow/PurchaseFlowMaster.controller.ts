@@ -1,27 +1,31 @@
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import { DdcostmasterService } from "../../services/purchaseFlow/ddcostmasterservice";
+
 import { Response } from "express";
-import { DduommasterService } from "../../services/purchaseFlow/dduommaster.service";
-import { DdcurrencyService } from "../../services/purchaseFlow/ddCurrency.service";
-import { DdProdmasterService } from "../../services/purchaseFlow/ddprodmaster.service";
-import { DdEmployeeMasterService } from "../../services/purchaseFlow/ddemployeemaster.service";
-import { PoHeaderService } from "../../services/purchaseFlow/po_modify.service";
-import { PoNotGeneratedService } from "../../services/purchaseFlow/ponotgenerated.service";
-import { DddivisionmasterService } from "../../services/purchaseFlow/dddivisionMaster.service";
-import { POCancelService } from "../../services/purchaseFlow/po_cancel.service";
-import { WorkflowService } from "../../services/purchaseFlow/sentbackrollselection_mat.service";
-import { FlowRoleService } from "../../services/purchaseFlow/sentbackrollselection.service";
-import { PurchaseRequestHistoryService } from "../../services/purchaseFlow/My_History.service";
-import { PRRejectedService } from "../../services/purchaseFlow/Request_Rejected.service";
-import { PurchaseCloseRequestService } from "../../services/purchaseFlow/MyItem_CloseRequest.service";
-import { MaterialRequestService } from "../../services/purchaseFlow/Pg_Material_flow_InProgress.service";
-import { myTask } from "../../services/purchaseFlow/my_task.service";
-import { ItemMasterService } from "../../services/purchaseFlow/my_itemmaster.service";
-import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
-import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
-import { PurchaseFlowMasterService } from "../../services/purchaseFlow/PfMaster.service";
+
+import { DdcostmasterService } from "../../services/Purchaseflow/ddcostmasterservice";
+import { PurchaseFlowMasterService } from "../../services/Purchaseflow/PfMaster.service";
+import { DropdownProjectMasterService } from "../../services/Purchaseflow/dropdwonprojectmaster.service";
+import { ProjectMasterService } from "../../services/Purchaseflow/project_master.service";
+import { DduommasterService } from "../../services/Purchaseflow/dduommaster.service";
+import { DdcurrencyService } from "../../services/Purchaseflow/ddCurrency.service";
+import { DdProdmasterService } from "../../services/Purchaseflow/ddprodmaster.service";
+import { DdEmployeeMasterService } from "../../services/Purchaseflow/ddemployeemaster.service";
+import { PoHeaderService } from "../../services/Purchaseflow/po_modify.service";
+import { PoNotGeneratedService } from "../../services/Purchaseflow/ponotgenerated.service";
+import { POCancelService } from "../../services/Purchaseflow/po_cancel.service";
+import { WorkflowService } from "../../services/Purchaseflow/sentbackrollselection_mat.service";
+import { FlowRoleService } from "../../services/Purchaseflow/sentbackrollselection.service";
+import { PurchaseRequestHistoryService } from "../../services/Purchaseflow/My_History.service";
+import { PRRejectedService } from "../../services/Purchaseflow/Request_Rejected.service";
+import { PurchaseCloseRequestService } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
+import { MaterialRequestService } from "../../services/Purchaseflow/Pg_Material_flow_InProgress.service";
+import {  MyTaskService } from "../../services/Purchaseflow/my_task.service";
+import { ItemMasterService } from "../../services/Purchaseflow/my_itemmaster.service";
+//import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
+// import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
+//import { DddivisionmasterService} from "../../services/Purchaseflow/dddivisionMaster.service"
 
 
 
@@ -189,13 +193,13 @@ export const getPurchasefMaster = async (
         );
         break;
 
-      case "dddivision":
+     /* case "dddivision":
         result = await DddivisionmasterService.getDdDivision(
           requestUser.company_code,
           page,
           limit
         );
-        break;
+        break;*/
 
       case "po_modify_rate_change":
         result = await PoHeaderService.getPoModify(
@@ -260,7 +264,7 @@ export const getPurchasefMaster = async (
         result = await PurchaseCloseRequestService.getMyClosedRequests(
           requestUser.company_code,
           requestUser.loginid,
-          undefined, // optional filter
+          undefined, 
           page,
           limit
         );
@@ -275,7 +279,9 @@ export const getPurchasefMaster = async (
         break;
 
       case "my_task":
-        result = await myTask.getMyTaskData(
+        console.log('inside my_task')
+
+          await MyTaskService.getMyTaskData(
           requestUser.company_code,
           page,
           limit
