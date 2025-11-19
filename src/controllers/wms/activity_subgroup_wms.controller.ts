@@ -1,10 +1,9 @@
 import { Response } from "express";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import Activitysubgroup from "../../models/wms/activity_subgroup.model";
 import { activitysubgroupSchema } from "../../validation/wms/gm.validation";
+import { ActivitySubgroupService } from "../../services/WMS/activity_subgroup.service";
 
 export const createActivitysubgroup = async (
   req: RequestWithUser,
@@ -20,18 +19,15 @@ export const createActivitysubgroup = async (
         .json({ success: false, message: error.message });
       return;
     }
-    const { activity_subgroup_code, company_code } = req.body;
+    const { activity_subgroup_code, company_code, act_subgroup_name } = req.body;
 
-    const activitysubgroup = await Activitysubgroup.findOne({
-      where: {
-        [Op.and]: [
-          { company_code: company_code },
-          { activity_subgroup_code: activity_subgroup_code },
-        ],
-      },
-    });
+    // Check if activity subgroup already exists
+    const activitySubgroupExists = await ActivitySubgroupService.findByNameAndCompany(
+      act_subgroup_name,
+      company_code
+    );
 
-    if (activitysubgroup) {
+    if (activitySubgroupExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message:
@@ -40,17 +36,23 @@ export const createActivitysubgroup = async (
       });
       return;
     }
-    const createCountry = await Activitysubgroup.create({
-      company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
 
-      ...req.body,
+    // Create new activity subgroup
+    const createSubgroup = await ActivitySubgroupService.createActivitySubgroup({
+      actSubgroupName: act_subgroup_name,
+      companyCode: company_code,
+      createdBy: requestUser.loginid,
+      updatedBy: requestUser.loginid,
+      actGroupCode: req.body.act_group_code,
+      accountCode: req.body.account_code,
+      mandatoryFlag: req.body.mandatory_flag,
+      validateFlag: req.body.validate_flag
     });
-    if (!createCountry) {
+
+    if (!createSubgroup) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
+        .json({ success: false, message: "Error while creating activity subgroup" });
       return;
     }
     res.status(constants.STATUS_CODES.OK).json({
@@ -67,6 +69,7 @@ export const createActivitysubgroup = async (
     return;
   }
 };
+
 export const updateActivitysubgroup = async (
   req: RequestWithUser,
   res: Response
@@ -83,16 +86,13 @@ export const updateActivitysubgroup = async (
     }
     const { activity_subgroup_code, company_code } = req.body;
 
-    const country = await Activitysubgroup.findOne({
-      where: {
-        [Op.and]: [
-          { company_code: company_code },
-          { activity_subgroup_code: activity_subgroup_code },
-        ],
-      },
-    });
+    // Check if activity subgroup exists
+    const activitySubgroup = await ActivitySubgroupService.findByCodeAndCompany(
+      activity_subgroup_code,
+      company_code
+    );
 
-    if (!country) {
+    if (!activitySubgroup) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message:
@@ -101,26 +101,25 @@ export const updateActivitysubgroup = async (
       });
       return;
     }
-    const createactivitysubgroup = await Activitysubgroup.update(
-      {
-        company_code,
-        updated_by: requestUser.loginid,
 
-        ...req.body,
-      },
+    // Update activity subgroup
+    const updateResult = await ActivitySubgroupService.updateActivitySubgroup(
+      activity_subgroup_code,
+      company_code,
       {
-        where: {
-          [Op.and]: [
-            { company_code: company_code },
-            { activity_subgroup_code: activity_subgroup_code },
-          ],
-        },
+        actSubgroupName: req.body.act_subgroup_name,
+        actGroupCode: req.body.act_group_code,
+        accountCode: req.body.account_code,
+        mandatoryFlag: req.body.mandatory_flag,
+        validateFlag: req.body.validate_flag,
+        updatedBy: requestUser.loginid
       }
     );
-    if (!createActivitysubgroup) {
+
+    if (!updateResult) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating company" });
+        .json({ success: false, message: "Error while updating activity subgroup" });
       return;
     }
     res.status(constants.STATUS_CODES.OK).json({
@@ -137,9 +136,10 @@ export const updateActivitysubgroup = async (
     return;
   }
 };
-export const deleteCountries = async (req: RequestWithUser, res: Response) => {
+
+export const deleteActivitySubgroups = async (req: RequestWithUser, res: Response) => {
   try {
-    const countriesCode = req.body;
+    const activitySubgroupCodes = req.body;
 
     if (!req.body.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -150,18 +150,17 @@ export const deleteCountries = async (req: RequestWithUser, res: Response) => {
       });
       return;
     }
-    const countriesDeleteResponse = await Activitysubgroup.destroy({
-      where: {
-        activity_subgroup_code: countriesCode,
-      },
-    });
-    if (countriesDeleteResponse === 0) {
+
+    const deleteResult = await ActivitySubgroupService.deleteActivitySubgroups(activitySubgroupCodes);
+    
+    if (!deleteResult) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: countriesDeleteResponse,
+        message: "Failed to delete activity subgroups",
       });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message:
@@ -176,3 +175,4 @@ export const deleteCountries = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
+

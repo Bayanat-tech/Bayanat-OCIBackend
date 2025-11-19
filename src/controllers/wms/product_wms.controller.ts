@@ -1,20 +1,18 @@
 import { Response } from "express";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import Product from "../../models/wms/product_wms.model";
-import ProductEdi from "../../models/wms/product_edi_wms.model";
 import {
   productSchema,
   productediSchema,
 } from "../../validation/wms/gm.validation";
 import * as XLSX from "xlsx";
 import { IProductEdi } from "../../interfaces/wms/gm_wms.interface";
+import { ProductService } from "../../services/WMS/product.service";
+// import ProductEdi from "../../models/wms/product_edi_wms.model"; // Keep this for now for Excel import
 
 export const createProduct = async (req: RequestWithUser, res: Response) => {
   try {
-    console.log("before update", req);
     const requestUser: IUser = req.user;
 
     const { error } = productSchema(req.body);
@@ -24,34 +22,37 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
+    
     const { prod_code, company_code } = req.body;
 
-    const product = await Product.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { prod_code: prod_code }],
-      },
-    });
+    // Check if product already exists
+    const productExists = await ProductService.checkProductExists(prod_code, company_code);
 
-    if (product) {
+    if (productExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_ALREADY_EXISTS,
       });
       return;
     }
-    const createProduct = await Product.create({
-      company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
 
-      ...req.body,
-    });
-    if (!createProduct) {
+    // Format data for TypeORM entity
+    const productData = {
+      prodCode: prod_code,
+      companyCode: company_code,
+      userId: requestUser.loginid,
+      ...formatProductData(req.body)
+    };
+
+    const createdProduct = await ProductService.createProduct(productData);
+    
+    if (!createdProduct) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
+        .json({ success: false, message: "Error while creating product" });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_CREATED_SUCCESSFULLY,
@@ -64,7 +65,7 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
-//update product
+
 export const updateProduct = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
@@ -76,41 +77,39 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
+    
     const { prod_code, company_code } = req.body;
 
-    const product = await Product.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { prod_code: prod_code }],
-      },
-    });
+    // Check if product exists
+    const productExists = await ProductService.checkProductExists(prod_code, company_code);
 
-    if (!product) {
+    if (!productExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_DOES_NOT_EXISTS,
       });
       return;
     }
-    const createProduct = await Product.update(
-      {
-        company_code,
-        created_by: requestUser.loginid,
-        updated_by: requestUser.loginid,
 
-        ...req.body,
-      },
-      {
-        where: {
-          [Op.and]: [{ company_code: company_code }, { prod_code: prod_code }],
-        },
-      }
+    // Format data for TypeORM entity
+    const productData = {
+      userId: requestUser.loginid,
+      ...formatProductData(req.body)
+    };
+
+    const updateResult = await ProductService.updateProduct(
+      prod_code,
+      company_code,
+      productData
     );
-    if (!createProduct) {
+    
+    if (!updateResult) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating company" });
+        .json({ success: false, message: "Error while updating product" });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_UPDATED_SUCCESSFULLY,
@@ -123,9 +122,10 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
+
 export const deleteproducts = async (req: RequestWithUser, res: Response) => {
   try {
-    const prodCode = req.body;
+    const prodCodes = req.body;
 
     if (!req.body.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -134,18 +134,17 @@ export const deleteproducts = async (req: RequestWithUser, res: Response) => {
       });
       return;
     }
-    const productsDeleteResponse = await Product.destroy({
-      where: {
-        prod_code: prodCode,
-      },
-    });
-    if (productsDeleteResponse === 0) {
+    
+    const deleteResult = await ProductService.deleteProducts(prodCodes);
+    
+    if (!deleteResult) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: productsDeleteResponse,
+        message: "No products were deleted",
       });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_DELETED_SUCCESSFULLY,
@@ -205,11 +204,22 @@ export const importExcelProducts = async (
       return;
     }
 
-    await ProductEdi.bulkCreate(validProducts, {
-      updateOnDuplicate: Object.keys(
-        ProductEdi.rawAttributes
-      ) as (keyof IProductEdi)[],
-    });
+    // If ProductEdi is a Sequelize model, ensure it is imported from the correct Sequelize model file.
+    // If ProductEdi is a TypeORM entity, use getRepository(ProductEdi).save() instead.
+
+    // Example for TypeORM entity (uncomment if using TypeORM):
+    // import { getRepository } from "typeorm";
+    // await getRepository(ProductEdi).save(validProducts, { chunk: 100 });
+
+    // Example for Sequelize model:
+    // await ProductEdi.bulkCreate(validProducts, {
+    //   updateOnDuplicate: Object.keys(ProductEdi.rawAttributes) as (keyof IProductEdi)[],
+    // });
+
+    // For TypeORM:
+    const { getRepository } = require("typeorm");
+    
+    // await getRepository(ProductEdi).save(validProducts, { chunk: 100 });
 
     res.json({
       success: true,
@@ -223,3 +233,18 @@ export const importExcelProducts = async (
     return;
   }
 };
+
+// Helper function to convert snake_case fields to camelCase for TypeORM entity
+function formatProductData(data: any): any {
+  const formattedData: any = {};
+  
+  // Map all properties with appropriate casing
+  // Add specific mappings as needed for your Product entity fields
+  if (data.prod_name) formattedData.prodName = data.prod_name;
+  if (data.group_code) formattedData.groupCode = data.group_code;
+  if (data.category_abc) formattedData.categoryAbc = data.category_abc;
+  
+  // Add any other field mappings here
+  
+  return formattedData;
+}

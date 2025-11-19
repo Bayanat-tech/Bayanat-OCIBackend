@@ -1,18 +1,13 @@
 import { Response } from "express";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-//import Department from "../../models/wms/department_wms.model";
-import Currency from "../../models/wms/currency_wms.model";
-//import { departmentSchema } from "../../validation/wms/gm.validation";
 import { currencySchema } from "../../validation/wms/gm.validation";
+import { CurrencyService } from "../../services/WMS/currency.service";
 
 export const createcurrency = async (req: RequestWithUser, res: Response) => {
   try {
-    //console.log("data aaya ki nhi in function bakend..yesr", req.body);
     const requestUser: IUser = req.user;
-    //console.log("tt", requestUser);
     const { error } = currencySchema(req.body);
 
     if (error) {
@@ -21,14 +16,9 @@ export const createcurrency = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
-    //console.log("called0");
 
     const { curr_code, company_code } = req.body;
-    const currency = await Currency.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { curr_code: curr_code }],
-      },
-    });
+    const currency = await CurrencyService.findByCodeAndCompany(curr_code, company_code);
 
     if (currency) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -37,18 +27,21 @@ export const createcurrency = async (req: RequestWithUser, res: Response) => {
       });
       return;
     }
-    const createcurrency = await Currency.create({
+    
+    const createcurrency = await CurrencyService.createCurrency({
       company_code,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
       ...req.body,
     });
+    
     if (!createcurrency) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
+        .json({ success: false, message: "Error while creating currency" });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.CURRENCY_WMS.CURRENCY_CREATED_SUCCESSFULLY,
@@ -61,6 +54,7 @@ export const createcurrency = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
+
 export const updatecurrency = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
@@ -73,11 +67,7 @@ export const updatecurrency = async (req: RequestWithUser, res: Response) => {
     }
     const { curr_code, company_code } = req.body;
 
-    const currency = await Currency.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { curr_code: curr_code }],
-      },
-    });
+    const currency = await CurrencyService.findByCodeAndCompany(curr_code, company_code);
 
     if (!currency) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -86,25 +76,21 @@ export const updatecurrency = async (req: RequestWithUser, res: Response) => {
       });
       return;
     }
-    const createcurrency = await currency.update(
-      {
-        company_code,
-        created_by: requestUser.loginid,
-        updated_by: requestUser.loginid,
-        ...req.body,
-      },
-      {
-        where: {
-          [Op.and]: [{ company_code: company_code }, { curr_code: curr_code }],
-        },
-      }
-    );
-    if (!createcurrency) {
+    
+    const updateData = {
+      ...req.body,
+      updated_by: requestUser.loginid,
+    };
+    
+    const updateResult = await CurrencyService.updateCurrency(curr_code, company_code, updateData);
+    
+    if (!updateResult) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating company" });
+        .json({ success: false, message: "Error while updating currency" });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.CURRENCY_WMS.CURRENCY_UPDATED_SUCCESSFULLY,
@@ -117,29 +103,29 @@ export const updatecurrency = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
+
 export const deletecurrencys = async (req: RequestWithUser, res: Response) => {
   try {
-    const currencysCode = req.body;
+    const currencyCodes = req.body;
 
-    if (!req.body.length) {
+    if (!currencyCodes.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.CURRENCY_WMS.SELECT_AT_LEAST_ONE_CURRENCY,
       });
       return;
     }
-    const currencysDeleteResponse = await Currency.destroy({
-      where: {
-        curr_code: currencysCode,
-      },
-    });
-    if (currencysDeleteResponse === 0) {
+    
+    const deleteResult = await CurrencyService.deleteCurrencies(currencyCodes);
+    
+    if (!deleteResult) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: currencysDeleteResponse,
+        message: "Failed to delete currencies",
       });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.CURRENCY_WMS.CURRENCY_DELETED_SUCCESSFULLY,
@@ -152,3 +138,4 @@ export const deletecurrencys = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
+   

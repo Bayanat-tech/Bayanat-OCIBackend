@@ -1,10 +1,9 @@
 import { Response } from "express";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import Harmonize from "../../models/wms/harmonize_code.model";
 import { harmonizeSchema } from "../../validation/wms/gm.validation";
+import { HarmonizeService } from "../../services/WMS/harmonize.service";
 
 export const createHarmonize = async (req: RequestWithUser, res: Response) => {
   try {
@@ -19,32 +18,39 @@ export const createHarmonize = async (req: RequestWithUser, res: Response) => {
     }
     const { harm_code, company_code } = req.body;
 
-    const harmonize = await Harmonize.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { harm_code: harm_code }],
-      },
-    });
+    // Check if harmonize with same code and company already exists
+    const harmonizeExists = await HarmonizeService.checkHarmonizeExists(
+      harm_code,
+      company_code
+    );
 
-    if (harmonize) {
+    if (harmonizeExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.HARMONIZE_WMS.HARMONIZE_ALREADY_EXISTS,
       });
       return;
     }
-    const createHarmonize = await Harmonize.create({
-      company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
 
-      ...req.body,
+    // Transform request body to match service structure
+    const createHarmonize = await HarmonizeService.createHarmonize({
+      harmDesc: req.body.harm_desc || "",
+      companyCode: company_code,
+      createdBy: requestUser.loginid,
+      updatedBy: requestUser.loginid,
+      shortDesc: req.body.short_desc,
+      uom: req.body.uom,
+      permitReqd: req.body.permit_reqd,
+      unit: req.body.unit,
     });
+
     if (!createHarmonize) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
+        .json({ success: false, message: "Error while creating harmonize code" });
       return;
     }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.HARMONIZE_WMS.HARMONIZE_CREATED_SUCCESSFULLY,
@@ -57,6 +63,7 @@ export const createHarmonize = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
+
 export const updateHarmonize = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
@@ -68,41 +75,46 @@ export const updateHarmonize = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
+
     const { harm_code, company_code } = req.body;
 
-    const harmonize = await Harmonize.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { harm_code: harm_code }],
-      },
-    });
+    // Check if harmonize exists
+    const harmonizeExists = await HarmonizeService.checkHarmonizeExists(
+      harm_code,
+      company_code
+    );
 
-    if (!harmonize) {
+    if (!harmonizeExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.HARMONIZE_WMS.HARMONIZE_DOES_NOT_EXISTS,
       });
       return;
     }
-    const createHarmonize = await Harmonize.update(
-      {
-        company_code,
-        created_by: requestUser.loginid,
-        updated_by: requestUser.loginid,
 
-        ...req.body,
-      },
-      {
-        where: {
-          [Op.and]: [{ company_code: company_code }, { harm_code: harm_code }],
-        },
-      }
+    // Transform request data to match service structure
+    const updateData = {
+      harmDesc: req.body.harm_desc,
+      shortDesc: req.body.short_desc,
+      uom: req.body.uom,
+      permitReqd: req.body.permit_reqd,
+      unit: req.body.unit,
+      updatedBy: requestUser.loginid,
+    };
+
+    const updated = await HarmonizeService.updateHarmonize(
+      harm_code,
+      company_code,
+      updateData
     );
-    if (!createHarmonize) {
+
+    if (!updated) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating company" });
+        .json({ success: false, message: "Error while updating harmonize code" });
       return;
     }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.HARMONIZE_WMS.HARMONIZE_UPDATED_SUCCESSFULLY,
@@ -115,29 +127,29 @@ export const updateHarmonize = async (req: RequestWithUser, res: Response) => {
     return;
   }
 };
-export const deleteCountries = async (req: RequestWithUser, res: Response) => {
-  try {
-    const countriesCode = req.body;
 
-    if (!req.body.length) {
+export const deleteHarmonizeCodes = async (req: RequestWithUser, res: Response) => {
+  try {
+    const harmonizeCodes = req.body;
+
+    if (!harmonizeCodes.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.HARMONIZE_WMS.SELECT_AT_LEAST_ONE_HARMONIZE,
       });
       return;
     }
-    const countriesDeleteResponse = await Harmonize.destroy({
-      where: {
-        harm_code: countriesCode,
-      },
-    });
-    if (countriesDeleteResponse === 0) {
+
+    const deleted = await HarmonizeService.deleteHarmonizeCodes(harmonizeCodes);
+
+    if (!deleted) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: countriesDeleteResponse,
+        message: "Failed to delete harmonize codes",
       });
       return;
     }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.HARMONIZE_WMS.HARMONIZE_DELETED_SUCCESSFULLY,
