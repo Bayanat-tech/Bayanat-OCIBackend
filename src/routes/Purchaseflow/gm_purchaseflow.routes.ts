@@ -22,6 +22,7 @@ export interface RequestWithUser extends Request {
 }
 import { checkUserAuthorization } from "../../middleware/checkUserAthorization";
 import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmaster.controller";
+import { getddProductMaster } from "../../controllers/Purchaseflow/getdddivisiondata_pf.cotroller";
 
 // import {
 //   createcostmaster,
@@ -153,7 +154,8 @@ router.put("/costmaster", CostmasterController. updatecostmaster);
 // );
 
 // router.get("/getddProjectMaster", getddProjectMaster);
-// router.get("/getddProductMaster", getddProductMaster);
+router.get("/getddProductMaster", 
+  getddProductMaster);
 
 // router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
 // router.get("/fetchPOregisterdata", fetchPOregisterdata);

@@ -314,6 +314,8 @@
 //           })) as unknown[] as ICostmaster[];
 //         }
 //         break;
+
+
 //       case "matcat_master":
 //         {
 //           (fetchedData = await MaterialCategoryMaster.findAll({
@@ -323,6 +325,8 @@
 //           })) as unknown[] as IMaterialCateogrymaster[];
 //         }
 //         break;
+
+
 //       case "supplier_master":
 //         console.log("inside supplier_master:", master);
 //         fetchedData = (await Suppliermaster.findAll({
@@ -351,6 +355,8 @@
 //           //  console.log(fetchedData);
 //         }
 //         break;
+
+
 //       case "ddMaterialCateotry":
 //         {
 //           (fetchedData = await ddMaterialCateotry.findAll({
@@ -360,6 +366,8 @@
 //           console.log(fetchedData);
 //         }
 //         break;
+
+
 //       case "item_master":
 //         console.log("inside item_master:", master);
 //         fetchedData = (await Itemmaster_pf.findAll({
