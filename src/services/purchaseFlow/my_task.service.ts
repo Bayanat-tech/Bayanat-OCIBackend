@@ -18,6 +18,20 @@ getMyTaskData = async (
   try {
     console.log("🔹 Inside MyTask Service");
 
+     const query = `
+        BEGIN
+          PRO_CREATEORINERTGTMYTASK(
+            gs_company_code => :1,
+            gs_user_id      => :2
+          );
+        END;
+      `;
+      const entityManager = AppDataSource.manager;
+      const binds = [requestUser.company_code, requestUser.user_id];
+      const result: any[] = await entityManager.query(query, binds);
+
+     
+
     const purchaseRequestRepo = AppDataSource.getRepository(PurchaseRequestHeader);
 
    
