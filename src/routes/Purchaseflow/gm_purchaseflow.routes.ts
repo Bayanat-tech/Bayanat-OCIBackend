@@ -29,6 +29,8 @@ import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmast
 } from "../../controllers/Purchaseflow/costmaster_pf.controller";
 import { ProjectMasterController } from "../../controllers/Purchaseflow/pf_projectmaster.controller";
 import { fetchMessageBox } from "../../controllers/Purchaseflow/pf_purchaseRequest.controller";
+import { MaterialCategoryController } from "../../controllers/Purchaseflow/pf_MaterialCategory.controller";
+//import { createMaterialCategory, updateMaterialCategory } from "../../controllers/Purchaseflow/pf_MaterialCategory.controller"
 
 // import {
 //   creatematerialcategory,
@@ -112,6 +114,8 @@ const router = express.Router();
 router.post("/costmaster", CostmasterController.createcostmaster);
 router.put("/costmaster", CostmasterController. updatecostmaster);
 
+// router.post("/CatMatMaster", createMaterialCategory );
+// router.put("/CatMatMaster", updateMaterialCategory);
 
 // router.post("/cancelFinalApproval", cancelFinalApproval);
 // router.post("/CatMatMaster", creatematerialcategory);

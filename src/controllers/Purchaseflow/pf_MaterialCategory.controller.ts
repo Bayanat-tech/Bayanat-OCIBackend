@@ -8,7 +8,10 @@ import { MaterialCategoryService } from "../../services/Purchaseflow/MaterialCat
 export class MaterialCategoryController {
   
   // CREATE
-  static async create(req: RequestWithUser, res: Response) {
+  static async createMaterialCategory(
+    req: RequestWithUser, 
+    res: Response
+  ) {
     try {
       const user: IUser = req.user;
 
@@ -37,7 +40,10 @@ export class MaterialCategoryController {
   }
 
   // UPDATE
-  static async update(req: RequestWithUser, res: Response) {
+  static async updateMaterialCategory(
+    req: RequestWithUser, 
+    res: Response
+  ) {
     try {
       const user: IUser = req.user;
 
