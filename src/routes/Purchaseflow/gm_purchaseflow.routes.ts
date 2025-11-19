@@ -30,7 +30,6 @@ import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmast
 import { ProjectMasterController } from "../../controllers/Purchaseflow/pf_projectmaster.controller";
 import { fetchMessageBox } from "../../controllers/Purchaseflow/pf_purchaseRequest.controller";
 import { MaterialCategoryController } from "../../controllers/Purchaseflow/pf_MaterialCategory.controller";
-//import { createMaterialCategory, updateMaterialCategory } from "../../controllers/Purchaseflow/pf_MaterialCategory.controller"
 
 // import {
 //   creatematerialcategory,
@@ -79,7 +78,7 @@ import { MaterialCategoryController } from "../../controllers/Purchaseflow/pf_Ma
 // } from "../../controllers/Purchaseflow/purchaseRquestdbupdate_pf.Controller";
 // import { UpdPurchaseRecoveryData } from "../../controllers/Purchaseflow/purchaserecovery_pf.controller";
 // import { deletepfMaster } from "../../controllers/Purchaseflow/purchaseflow.controller";
-// import { getPfglobalsearch } from "../../controllers/Purchaseflow/purchaseflow.globalserch.controller";
+// import { getPfglobalseearch } from "../../controllers/Purchaseflow/purchaseflow.globalserch.controller";
 // /*import {
 //   createcostmaster,
 //   updatecostmaster,
@@ -114,8 +113,8 @@ const router = express.Router();
 router.post("/costmaster", CostmasterController.createcostmaster);
 router.put("/costmaster", CostmasterController. updatecostmaster);
 
-// router.post("/CatMatMaster", createMaterialCategory );
-// router.put("/CatMatMaster", updateMaterialCategory);
+router.post("/CatMatMaster", MaterialCategoryController.createMaterialCategory);
+router.put("/CatMatMaster", MaterialCategoryController.updateMaterialCategory);
 
 // router.post("/cancelFinalApproval", cancelFinalApproval);
 // router.post("/CatMatMaster", creatematerialcategory);

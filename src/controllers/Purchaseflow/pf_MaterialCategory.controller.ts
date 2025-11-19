@@ -8,7 +8,7 @@ import { MaterialCategoryService } from "../../services/Purchaseflow/MaterialCat
 export class MaterialCategoryController {
   
   // CREATE
-  static async createMaterialCategory(
+  static async createMaterialCategory( 
     req: RequestWithUser, 
     res: Response
   ) {
