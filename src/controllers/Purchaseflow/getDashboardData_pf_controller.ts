@@ -1,23 +1,21 @@
 import { Request, Response, NextFunction } from "express";
-import { sequelize } from "../../database/connection";
-import { QueryTypes } from "sequelize";
-import constants from "../../helpers/constants";
-
-// Fix the return type issue by setting Promise<void>
-// Fix the return type issue by setting Promise<void>
+import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection"; 
 export const getDashboardData = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const transaction = await sequelize.transaction(); // Ensure single session
+  let connection: oracledb.Connection | undefined;
+
   try {
     const { level, user, from_date, to_date } = req.query;
 
     if (!level || !user || !from_date || !to_date) {
       res.status(400).json({
         success: false,
-        message: "Parameters 'level', 'user', 'from_date', and 'to_date' are required.",
+        message:
+          "Parameters 'level', 'user', 'from_date', and 'to_date' are required.",
       });
       return;
     }
@@ -34,140 +32,301 @@ export const getDashboardData = async (
     const formattedFromDate = from_date.toString().slice(0, 10);
     const formattedToDate = to_date.toString().slice(0, 10);
 
-    // Step-by-step procedure call and data fetch
-    await sequelize.query(`CALL PROC_PR_DIV_COUNT(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
-    });
-    const VW_DB_PR_DIV_COUNTdata = await sequelize.query(`SELECT * FROM GT_PR_DIV_COUNT`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    connection = await oracleDb.getConnection();
+    await connection.execute("BEGIN NULL; END;"); // start a dummy block for transaction
+    await connection.execute("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD'");
 
-    await sequelize.query(`CALL PROC_PO_DIV_COUNT(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
-    });
-    const VW_DB_PO_DIV_COUNTdata = await sequelize.query(`SELECT * FROM GT_PO_DIV_COUNT`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    // Helper to call a procedure
+    const callProc = async (procName: string, binds: Record<string, any>) => {
+      const bindParams = Object.entries(binds)
+        .map(([key]) => `:${key}`)
+        .join(", ");
+      const sql = `BEGIN ${procName}(${bindParams}); END;`;
+      await connection!.execute(sql, binds);
+    };
 
-    await sequelize.query(`CALL PROC_PO_COST_CENTRE(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    // Execute procedures sequentially
+    await callProc("PROC_PR_DIV_COUNT", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const PO_COST_CENTREdata = await sequelize.query(`
-      SELECT *
-      FROM GT_PO_COST_CENTRE
-       `, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const VW_DB_PR_DIV_COUNTdata = await connection.execute(
+      "SELECT * FROM GT_PR_DIV_COUNT",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await sequelize.query(`CALL PROC_PR_SERVICE_TYPE_COUNT(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    await callProc("PROC_PO_DIV_COUNT", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const VW_DB_PRSERVICE_TYPEdata = await sequelize.query(`SELECT * FROM GT_PR_SERVICE_TYPE_COUNT`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const VW_DB_PO_DIV_COUNTdata = await connection.execute(
+      "SELECT * FROM GT_PO_DIV_COUNT",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await sequelize.query(`CALL PROC_PO_SERVICE_TYPE_COUNT(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    await callProc("PROC_PO_COST_CENTRE", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const VW_DB_POSERVICE_TYPEdata = await sequelize.query(`SELECT * FROM GT_PO_SERVICE_TYPE_COUNT`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const PO_COST_CENTREdata = await connection.execute(
+      "SELECT * FROM GT_PO_COST_CENTRE",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await sequelize.query(`CALL PROC_PR_STATUS(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    await callProc("PROC_PR_SERVICE_TYPE_COUNT", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const PR_STATUS_COUNTdata = await sequelize.query(`SELECT * FROM GT_PR_STATUS`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const VW_DB_PRSERVICE_TYPEdata = await connection.execute(
+      "SELECT * FROM GT_PR_SERVICE_TYPE_COUNT",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await sequelize.query(`CALL PROC_PO_STATUS(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    await callProc("PROC_PO_SERVICE_TYPE_COUNT", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const PO_STATUS_COUNTdata = await sequelize.query(`SELECT * FROM GT_PO_STATUS`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const VW_DB_POSERVICE_TYPEdata = await connection.execute(
+      "SELECT * FROM GT_PO_SERVICE_TYPE_COUNT",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await sequelize.query(`CALL PROC_PR_SERVICE_RM_FLAG(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    await callProc("PROC_PR_STATUS", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const PR_SERVICE_RMdata = await sequelize.query(`SELECT * FROM GT_PR_SERVICE_RM_FLAG`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const PR_STATUS_COUNTdata = await connection.execute(
+      "SELECT * FROM GT_PR_STATUS",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await sequelize.query(`CALL PROC_PO_SERVICE_RM_FLAG(?, ?, ?)`, {
-      replacements: [user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    await callProc("PROC_PO_STATUS", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const PO_SERVICE_RMdata = await sequelize.query(`SELECT * FROM GT_PO_SERVICE_RM_FLAG`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const PO_STATUS_COUNTdata = await connection.execute(
+      "SELECT * FROM GT_PO_STATUS",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await sequelize.query(`CALL PROC_CREATE_DASHBOARD_SUMMARY(?, ?, ?, ?)`, {
-      replacements: [parsedLevel, user, formattedFromDate, formattedToDate],
-      type: QueryTypes.RAW,
-      transaction,
+    await callProc("PROC_PR_SERVICE_RM_FLAG", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
     });
-    const [Dashboardbasicdata] = await sequelize.query(`SELECT * FROM GT_DASH_BOARD`, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const PR_SERVICE_RMdata = await connection.execute(
+      "SELECT * FROM GT_PR_SERVICE_RM_FLAG",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    const VW_MONTHWISE_POdata = await sequelize.query(`
+    await callProc("PROC_PO_SERVICE_RM_FLAG", {
+      user,
+      from_date: formattedFromDate,
+      to_date: formattedToDate,
+    });
+    const PO_SERVICE_RMdata = await connection.execute(
+      "SELECT * FROM GT_PO_SERVICE_RM_FLAG",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    await connection.execute(
+  `
+  BEGIN
+    PROC_CREATE_DASHBOARD_SUMMARY(:level, :user, :from_date, :to_date);
+  END;
+  `,
+  {
+    level: { val: parsedLevel, dir: oracledb.BIND_IN, type: oracledb.NUMBER },
+    user: { val: user, dir: oracledb.BIND_IN, type: oracledb.STRING },
+    from_date: { val: formattedFromDate, dir: oracledb.BIND_IN, type: oracledb.STRING },
+    to_date: { val: formattedToDate, dir: oracledb.BIND_IN, type: oracledb.STRING },
+  }
+);
+
+    const Dashboardbasicdata = await connection.execute(
+      "SELECT * FROM GT_DASH_BOARD",
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const VW_MONTHWISE_POdata = await connection.execute(
+      `
       SELECT PO_YEAR, PO_MONTH, SUM(PO_AMOUNT) AS PO_AMOUNT
       FROM VW_MONTHWISE_PO
       GROUP BY PO_YEAR, PO_MONTH
-    `, {
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+      `,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-    await transaction.commit(); // All good
+    await connection.commit();
 
     res.status(200).json({
       success: true,
       data: {
-        Dashboardbasicdata,
-        VW_DB_PO_DIV_COUNTdata,
-        PO_COST_CENTREdata,
-        VW_DB_POSERVICE_TYPEdata,
-        VW_MONTHWISE_POdata,
-        VW_DB_PR_DIV_COUNTdata,
-        VW_DB_PRSERVICE_TYPEdata,
-        PR_STATUS_COUNTdata,
-        PO_STATUS_COUNTdata,
-        PR_SERVICE_RMdata,
-        PO_SERVICE_RMdata,
+        Dashboardbasicdata: Dashboardbasicdata.rows,
+        VW_DB_PR_DIV_COUNTdata: VW_DB_PR_DIV_COUNTdata.rows,
+        VW_DB_PO_DIV_COUNTdata: VW_DB_PO_DIV_COUNTdata.rows,
+        PO_COST_CENTREdata: PO_COST_CENTREdata.rows,
+        VW_DB_PRSERVICE_TYPEdata: VW_DB_PRSERVICE_TYPEdata.rows,
+        VW_DB_POSERVICE_TYPEdata: VW_DB_POSERVICE_TYPEdata.rows,
+        PR_STATUS_COUNTdata: PR_STATUS_COUNTdata.rows,
+        PO_STATUS_COUNTdata: PO_STATUS_COUNTdata.rows,
+        PR_SERVICE_RMdata: PR_SERVICE_RMdata.rows,
+        PO_SERVICE_RMdata: PO_SERVICE_RMdata.rows,
+        VW_MONTHWISE_POdata: VW_MONTHWISE_POdata.rows,
       },
     });
-  } catch (error: any) {
-    await transaction.rollback();
+  } catch (error) {
+    if (connection) await connection.rollback();
     console.error("Error fetching dashboard data:", error);
     next(error);
+  } finally {
+    if (connection) await connection.close();
   }
 };
+
+/**
+ * Calls MySQL procedure PROC_CREATE_GT_EXPENSE_ADJ
+ * and returns GT_EXPENSE_ADJ data as JSON.
+ */
+export const handleGenerateExpenseAdj = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { company_code, request_number } = req.body;
+
+    // Validate inputs
+    if (!company_code || !request_number) {
+      res.status(400).json({ error: "company_code and request_number are required." });
+      return;
+    }
+
+    console.log("Calling PROC_CREATE_GT_EXPENSE_ADJ with:", {
+      company_code,
+      request_number,
+    });
+
+    // ✅ Execute the stored procedure
+    const [results] = await sequelize.query(
+      `CALL PROC_CREATE_GT_EXPENSE_ADJ(:company_code, :request_number);`,
+      {
+        replacements: { company_code, request_number },
+        type: QueryTypes.RAW,
+      }
+    );
+
+    // ✅ Return the results to frontend
+    res.status(200).json({
+      success: true,
+      message: "GT_EXPENSE_ADJ generated successfully.",
+      data: results,
+    });
+  } catch (error: any) {
+    console.error("Error in handleGenerateExpenseAdj:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Error while generating GT_EXPENSE_ADJ.",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
+export const handleSaveExpSamt = async (req: Request, res: Response): Promise<void> => {
+  const { company_code, request_number, expense_data } = req.body;
+
+  if (!company_code || !request_number || !Array.isArray(expense_data) || expense_data.length === 0) {
+    res.status(400).json({ success: false, message: "company_code, request_number, and expense_data are required." });
+    return;
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    // 1️⃣ Delete existing rows
+    await sequelize.query(
+      `DELETE FROM GT_EXPENSE_ADJ `,
+      {
+        replacements: { company_code, request_number },
+        transaction,
+        type: QueryTypes.DELETE,
+      }
+    );
+
+    // 2️⃣ Insert multiple rows from frontend
+   for (const row of expense_data) {
+  // ✅ Convert "June 2025" → "2025-06-01"
+  const parsedDate = new Date(`${row.REQUEST_DATE} 1`); // Add day 1
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const firstDay = `${year}-${month}-01`; // ✅ always first day
+
+  await sequelize.query(
+    `INSERT INTO GT_EXPENSE_ADJ 
+      (REQUEST_DATE, NEW_ADJ_AMOUNT)
+     VALUES
+      (:request_date, :new_adj_amount)`,
+    {
+      replacements: {
+        request_date: firstDay,
+        new_adj_amount: row.NEW_ADJ_AMOUNT,
+      },
+      transaction,
+      type: QueryTypes.INSERT,
+    }
+  );
+}
+
+
+
+    // 3️⃣ Call procedure to process PURCHASE_REQUEST_DETAILS_AMC
+    await sequelize.query(
+      `CALL PROC_ADJAMT_PURCHASE_REQUEST_DETAILS_AMC(:company_code, :request_number)`,
+      {
+        replacements: { company_code, request_number },
+        transaction,
+        type: QueryTypes.RAW,
+      }
+    );
+
+    // 4️⃣ Commit transaction
+    await transaction.commit();
+
+    res.status(200).json({
+      success: true,
+      message: "GT_EXPENSE_ADJ processed and PROC_ADJAMT_PURCHASE_REQUEST_DETAILS_AMC executed successfully.",
+    });
+  } catch (error: any) {
+    console.error("Error in handleSaveExpSamt:", error);
+    await transaction.rollback();
+    res.status(500).json({
+      success: false,
+      message: "Error while processing GT_EXPENSE_ADJ",
+      error: error.message,
+    });
+  }
+};
+
+

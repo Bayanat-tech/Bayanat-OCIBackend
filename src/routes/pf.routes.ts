@@ -1,22 +1,23 @@
 import * as express from "express";
 import passport from "passport";
-import {
-  getPfMaster,
-  deletepfMaster,
-} from "../controllers/Purchaseflow/purchaseflow.controller";
+// import {
+//   getPfMaster,
+//   deletepfMaster,
+// } from "../controllers/Purchaseflow/purchaseflow.controller";
 
 import gmPfRouter from "./Purchaseflow/gm_purchaseflow.routes";
 import gmpurchaserequestRouter from "./Purchaseflow/transaction/gm_purchaserequest.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
+import { getPfMaster } from "../controllers/Purchaseflow/pf.controller";
 
 const router = express.Router();
 // Route for transaction operations
-router.use(
-  "/:transaction",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  gmPfRouter
-);
+// router.use(
+//   "/:transaction",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   gmPfRouter
+// );
 //gmpurchaserequestRouter
 // Route for reports management
 // router.use(
@@ -40,9 +41,9 @@ router.use(
   gmPfRouter
 );
 
-router.post(
-  "/:master",
-  passport.authenticate("jwt", { session: false }),
-  deletepfMaster
-);
+// router.post(
+//   "/:master",
+//   passport.authenticate("jwt", { session: false }),
+//   deletepfMaster
+// );
 export default router;
