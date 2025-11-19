@@ -1235,7 +1235,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
         cc: [
           "Sagar.b@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-           "gaurang.pai@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
@@ -1246,7 +1246,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
       };
       break;
     case constants.EVENTS.LEAVE_APPROVAL_REQUEST:
-    mailOptions = {
+      mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users, 
         cc: [
@@ -1265,14 +1265,15 @@ export const notifyUser = async (args: SendEmailInterface) => {
     break;
 
     case constants.EVENTS.LEAVE_APPROVED:
-    mailOptions = {
-      from: constants.ENV.EMAIL_USER,
-      to: request_users,
-      cc: [
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: [
           "Sagar.b@bayanattechnology.com",
-           "gaurang.pai@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
+          "HR@almadinalogistics.com",
           ...(cc || []),
         ],
       subject: subject || `Leave Approved: ${request_user?.request_number || ""}`,
@@ -1283,14 +1284,13 @@ export const notifyUser = async (args: SendEmailInterface) => {
       attachments: attachments || [],
     };
     break;
-
     case constants.EVENTS.LEAVE_CANCEL:
     mailOptions = {
       from: constants.ENV.EMAIL_USER,
       to: request_users,
       cc: [
           "Sagar.b@bayanattechnology.com",
-           "gaurang.pai@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
