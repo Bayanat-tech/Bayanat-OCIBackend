@@ -1251,9 +1251,10 @@ export const notifyUser = async (args: SendEmailInterface) => {
         to: request_users, 
         cc: [
           "Sagar.b@bayanattechnology.com",
-           "gaurang.pai@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
+          "prem@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || `Leave Approval Required: ${request_user?.request_number || ""}`,
@@ -1311,9 +1312,10 @@ export const notifyUser = async (args: SendEmailInterface) => {
       to: request_users,
       cc: [
           "Sagar.b@bayanattechnology.com",
-           "gaurang.pai@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
+          "prem@bayanattechnology.com",
           ...(cc || []),
         ],
       subject: subject || `Leave Sent Back: ${request_user?.request_number || ""}`,
