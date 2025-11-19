@@ -38,6 +38,7 @@ export const proc_build_dynamic_sql = async (req: Request, res: Response): Promi
       BEGIN
         PROC_BUILD_DYNAMIC_SQL(
           :parameter,
+          :loginid,
           :code1,
           :code2,
           :code3,
