@@ -14,9 +14,11 @@ export class MaterialCategoryController {
 
       const { error } = materialcategorySchema(req.body);
       if (error) {
-        return res
+         res
           .status(constants.STATUS_CODES.BAD_REQUEST)
-          .json({ success: false, message: error.message });
+          .json({ success: false, message: error.message 
+          });
+        return
       }
 
       const result = await MaterialCategoryService.createCategory({
@@ -25,12 +27,13 @@ export class MaterialCategoryController {
         updated_by: user.loginid,
       });
 
-      return res.status(result.status).json(result);
+     res.status(result.status).json(result);
     } catch (err: any) {
-      return res
+       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: err.message });
-    }
+        .json({ success: false, message: err.message 
+        });
+      }
   }
 
   // UPDATE
@@ -40,9 +43,10 @@ export class MaterialCategoryController {
 
       const { error } = materialcategorySchema(req.body);
       if (error) {
-        return res
+        res
           .status(constants.STATUS_CODES.BAD_REQUEST)
           .json({ success: false, message: error.message });
+          return
       }
 
       const { mater_category_code, company_code } = req.body;
@@ -56,9 +60,9 @@ export class MaterialCategoryController {
         }
       );
 
-      return res.status(result.status).json(result);
+     res.status(result.status).json(result);
     } catch (err: any) {
-      return res
+       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: err.message });
     }
