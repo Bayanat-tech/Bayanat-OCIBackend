@@ -133,7 +133,7 @@ export const getPurchasefMaster = async (
           limit
         )
 
-
+        break;  
       case "ddcostmaster":
         result = await DdcostmasterService.getDdCostMaster(
           requestUser.company_code,
@@ -297,6 +297,8 @@ export const getPurchasefMaster = async (
           message: `Invalid master type: ${master}`,
         });
     }
+
+
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,

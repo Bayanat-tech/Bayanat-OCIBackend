@@ -360,7 +360,107 @@
 //   }
 // };
 
-// export default getPurchaseRequesthistoryData;
+// // This is for Purchase flow module
+// export const getPfMaster = async (req: RequestWithUser, res: Response) => {
+//   try {
+//     console.log("Enter in this getPfFunction today function..");
+//     const { master } = req.params;
+//     const requestUser: IUser = req.user;
+//     const page = Number(req.query.page) || 1;
+//     const limit = Number(req.query.limit) || 4000;
+//     const skip = Number(page * limit - limit);
+//     let fetchedData: unknown[] = [];
+//     let totalCount = 0;
+//     const paginationOptions = limit ? { offset: skip, limit: limit } : {};
+//     const filter: ISearch = req.query.filter
+//       ? JSON.parse(req.query.filter)
+//       : {};
+//     console.log("master value:", master);
+//     const { loginid, company_code } = requestUser;
+//     const code = req.query.code as string | undefined;
+//     switch (master) {
+//       case "division":
+//         console.log("inside division");
+//         {
+//           (fetchedData = await Divisionmaster.findAll({
+//             where: { company_code: requestUser.company_code },
+//             offset: skip,
+//             limit: limit,
+//           })) as unknown[] as IDivisionmaster[];
+//         }
+//         break;
+//       case "cost_master":
+//         {
+//           (fetchedData = await Costmaster.findAll({
+//             where: { company_code: requestUser.company_code },
+//             offset: skip,
+//             limit: limit,
+//           })) as unknown[] as ICostmaster[];
+//         }
+//         break;
+
+
+//       case "matcat_master":
+//         {
+//           (fetchedData = await MaterialCategoryMaster.findAll({
+//             where: { company_code: requestUser.company_code },
+//             offset: skip,
+//             limit: limit,
+//           })) as unknown[] as IMaterialCateogrymaster[];
+//         }
+//         break;
+
+
+//       case "supplier_master":
+//         console.log("inside supplier_master:", master);
+//         fetchedData = (await Suppliermaster.findAll({
+//           where: { company_code: requestUser.company_code },
+//           offset: skip,
+//           limit: limit,
+//           raw: true, // âœ… Ensures we get plain objects
+//         })) as unknown as ISupplier[];
+//         break;
+//       // customer_master
+//       case "customer_master":
+//         console.log("inside customer_master:", master);
+//         fetchedData = (await CustomerMaster.findAll({
+//           where: { company_code: requestUser.company_code },
+//           offset: skip,
+//           limit: limit,
+//           raw: true,
+//         })) as unknown as IMsPsCustomer[];
+//         break;
+//       case "ddCurrency":
+//         {
+//           (fetchedData = await ddcurrency.findAll({
+//             where: { company_code: requestUser.company_code },
+//             ...paginationOptions,
+//           })) as unknown[] as IddCurrency[];
+//           //  console.log(fetchedData);
+//         }
+//         break;
+
+
+//       case "ddMaterialCateotry":
+//         {
+//           (fetchedData = await ddMaterialCateotry.findAll({
+//             where: { company_code: requestUser.company_code },
+//             ...paginationOptions,
+//           })) as unknown[] as IddMaterialCategory[];
+//           console.log(fetchedData);
+//         }
+//         break;
+
+
+//       case "item_master":
+//         console.log("inside item_master:", master);
+//         fetchedData = (await Itemmaster_pf.findAll({
+//           where: { company_code: requestUser.company_code },
+//           offset: skip,
+//           limit: limit,
+//           raw: true,
+//         })) as unknown as IItemtmaster[];
+//         break;
 
 
 //  // This is for Purchase flow module

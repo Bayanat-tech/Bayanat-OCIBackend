@@ -22,6 +22,8 @@ export interface RequestWithUser extends Request {
 }
 import { checkUserAuthorization } from "../../middleware/checkUserAthorization";
 import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmaster.controller";
+import { getddProductMaster } from "../../controllers/Purchaseflow/getdddivisiondata_pf.cotroller";
+
 import {proc_build_dynamic_sql} from "../../controllers/Purchaseflow/proc_build_dynamic_sql"
 // import {
 //   createcostmaster,
@@ -153,7 +155,8 @@ router.put("proc_build_dynamic_sql",proc_build_dynamic_sql);
 // );
 
 // router.get("/getddProjectMaster", getddProjectMaster);
-// router.get("/getddProductMaster", getddProductMaster);
+router.get("/getddProductMaster", 
+  getddProductMaster);
 
 // router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
 // router.get("/fetchPOregisterdata", fetchPOregisterdata);

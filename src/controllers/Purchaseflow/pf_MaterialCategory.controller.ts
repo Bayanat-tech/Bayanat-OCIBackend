@@ -5,7 +5,7 @@ import { materialcategorySchema } from "../../validation/Purchaseflow/Purchasefl
 import constants from "../../helpers/constants";
 import { MaterialCategoryService } from "../../services/Purchaseflow/MaterialCategoryMaster.service";
 
-export class MaterialCategoryController {
+export class MaterialCategoryController { 
   
   // CREATE
   static async create(req: RequestWithUser, res: Response) {
