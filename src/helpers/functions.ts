@@ -1273,6 +1273,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
+          "prem@bayanattechnology.com",
           "HR@almadinalogistics.com",
           ...(cc || []),
         ],
