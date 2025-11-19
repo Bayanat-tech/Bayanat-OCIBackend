@@ -1,7 +1,6 @@
 // controllers/Product/productget.controller.ts
 import { Request, Response } from "express";
-import { sequelize } from "../../database/connection";
-import { QueryTypes } from "sequelize";
+import { oracleDb } from "../../database/connection";
 
 export const getProductAvailability = async (req: Request, res: Response) => {
   const { company_code, prod_code } = req.query;
@@ -16,20 +15,28 @@ export const getProductAvailability = async (req: Request, res: Response) => {
   }
 
   try {
-    // Query from VW_PRODUCT_AVL_QTY
-    const productAvailability = await sequelize.query(
-      `
+    // Build query dynamically for optional prod_code
+    let query = `
       SELECT * 
       FROM VW_PRODUCT_AVL_QTY
       WHERE COMPANY_CODE = :company_code
-      ${prod_code ? "AND PROD_CODE = :prod_code" : ""}
-      ORDER BY PROD_CODE
-      `,
-      {
-        type: QueryTypes.SELECT,
-        replacements: { company_code, prod_code },
-      }
-    );
+    `;
+    
+    const bindParams: any = {
+      company_code: company_code
+    };
+
+    if (prod_code) {
+      query += " AND PROD_CODE = :prod_code";
+      bindParams.prod_code = prod_code;
+    }
+
+    query += " ORDER BY PROD_CODE";
+
+    // Query from VW_PRODUCT_AVL_QTY using Oracle connection
+    const result = await oracleDb.query(query, bindParams);
+    
+    const productAvailability = result.rows || [];
 
     if (!productAvailability.length) {
       return res.status(404).json({
