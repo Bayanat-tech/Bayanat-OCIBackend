@@ -1,58 +1,114 @@
-import { getRepository } from "../../database/connection";
-import { POCancel } from "../../entity/PurchaseFlow/poCancel.entity";
+import { oracleDb } from "../../database/connection";
 
-
-export interface Master<T> {
-  fetchedData: T[];
-  totalCount: number;
-}
-
-export interface FilterOptions {
-  search?: Record<string, any>;
+interface POCancelFilter {
   sort?: {
     field_name: string;
-    desc: boolean;
+    desc?: boolean;
   };
 }
 
-export class POCancelService {
-  static async getPOCancelData(
-    company_code: string,
-    filter?: FilterOptions,
-    page = 1,
-    limit = 4000
-  ): Promise<Master<POCancel>> {
-    const repo = getRepository(POCancel);
-    const skip = (page - 1) * limit;
+export const getPOCancelData = async (
+  company_code: string,
+  loginid: string,
+  filter?: POCancelFilter,
+  page = 1,
+  limit = 4000
+) => {
+  let conn: any = null;
 
-    const query = repo
-      .createQueryBuilder("po_cancel")
-      .where("po_cancel.COMPANY_CODE = :company_code", { company_code });
+  try {
+    if (!company_code || !loginid) {
+      return {
+        success: false,
+        tableData: [],
+        totalCount: 0,
+        message: "company_code and loginid are required.",
+      };
+    }
 
-    
-    if (filter?.search) {
-      for (const [key, value] of Object.entries(filter.search)) {
-        if (value && value.trim() !== "") {
-          query.andWhere(`po_cancel.${key} LIKE :${key}`, {
-            [key]: `%${value}%`,
-          });
-        }
+    conn = await oracleDb.getConnection();
+
+    console.log("Calling PROC_POPULATE_GT_CANCEL with:", company_code, loginid);
+
+    // ✅ Correct procedure call with 2 parameters
+    await conn.execute(
+      `
+      BEGIN
+        PROC_POPULATE_GT_CANCEL(:p_user, :p_company);
+      END;
+      `,
+      {
+        p_company: company_code,
+        p_user: loginid,
+      }
+    );
+
+    console.log("Procedure executed successfully");
+
+    // Sorting logic
+    let orderBy = "";
+    if (filter?.sort?.field_name) {
+      orderBy = ` ORDER BY ${filter.sort.field_name} ${
+        filter.sort.desc ? "DESC" : "ASC"
+      } `;
+    }
+
+    const offset = (page - 1) * limit;
+
+    // Fetch paginated data
+    const dataResult = await conn.execute(
+      `
+      SELECT *
+      FROM GT_CANCEL
+      ${orderBy}
+      OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+      `,
+      { offset, limit }
+    );
+
+    // Fetch total count
+    const countResult = await conn.execute(`SELECT COUNT(*) FROM GT_CANCEL`);
+
+    // Map rows to objects
+    const tableData =
+      dataResult.rows?.map((row: any[]) => {
+        const obj: any = {};
+        dataResult.metaData.forEach((col: any, index: number) => {
+          obj[col.name] = row[index];
+        });
+        return obj;
+      }) || [];
+
+    const totalCount =
+      countResult.rows && countResult.rows.length > 0
+        ? countResult.rows[0][0]
+        : 0;
+
+    return {
+      success: true,
+      tableData,
+      totalCount,
+      message: "Data fetched successfully.",
+    };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
+
+    console.error("❌ Error in getPOCancelData:", message);
+
+    return {
+      success: false,
+      tableData: [],
+      totalCount: 0,
+      message,
+    };
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch (closeErr) {
+        console.error("❌ Error closing connection:", closeErr);
       }
     }
-
-    if (filter?.sort && filter.sort.field_name) {
-      query.orderBy(
-        `po_cancel.${filter.sort.field_name}`,
-        filter.sort.desc ? "DESC" : "ASC"
-      );
-    }
-
-  
-    query.skip(skip).take(limit);
-
- 
-    const [fetchedData, totalCount] = await query.getManyAndCount();
-
-    return { fetchedData, totalCount };
   }
-}
+};

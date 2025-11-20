@@ -19,6 +19,9 @@ export interface PaginationOptions {
 }
 
 export class PRRejectedService {
+  static getRequestRejectedData(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+    throw new Error("Method not implemented.");
+  }
   private static getRepository(): Repository<PRRejected> {
     return AppDataSource.getRepository(PRRejected);
   }

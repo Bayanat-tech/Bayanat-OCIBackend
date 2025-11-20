@@ -3,26 +3,48 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 
 import { Response } from "express";
+import { PurchaseFlowMasterService } from "../../services/purchaseFlow/PfMaster.service";
+import { DdcostmasterService } from "../../services/purchaseFlow/ddcostmasterservice";
+import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
+import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
+import { DduommasterService } from "../../services/purchaseFlow/dduommaster.service";
+import { DdcurrencyService } from "../../services/purchaseFlow/ddCurrency.service";
+import { DdProdmasterService } from "../../services/purchaseFlow/ddprodmaster.service";
+import { DdEmployeeMasterService } from "../../services/purchaseFlow/ddemployeemaster.service";
+import { PoHeaderService } from "../../services/purchaseFlow/po_modify.service";
+import { PoNotGeneratedService } from "../../services/purchaseFlow/ponotgenerated.service";
+// import { POCancelService } from "../../services/purchaseFlow/po_cancel.service";
+import { WorkflowService } from "../../services/purchaseFlow/sentbackrollselection_mat.service";
+import { FlowRoleService } from "../../services/purchaseFlow/sentbackrollselection.service";
+import { PurchaseRequestHistoryService } from "../../services/purchaseFlow/My_History.service";
+// import { PRRejectedService } from "../../services/purchaseFlow/Request_Rejected.service";
+import { PurchaseCloseRequestService } from "../../services/purchaseFlow/MyItem_CloseRequest.service";
+import { MaterialRequestService } from "../../services/purchaseFlow/Pg_Material_flow_InProgress.service";
+import { getMyTaskData } from "../../services/purchaseFlow/my_task.service";
+import { ItemMasterService } from "../../services/purchaseFlow/my_itemmaster.service";
+import { getPOCancelData } from "../../services/purchaseFlow/po_cancel.service";
+import { PRRejectedService } from "../../services/purchaseFlow/Request_Cancel.service";
+import { getPRRejectedData } from "../../services/purchaseFlow/Request_Rejected.service";
 
-import { DdcostmasterService } from "../../services/Purchaseflow/ddcostmasterservice";
-import { PurchaseFlowMasterService } from "../../services/Purchaseflow/PfMaster.service";
-import { DropdownProjectMasterService } from "../../services/Purchaseflow/dropdwonprojectmaster.service";
-import { ProjectMasterService } from "../../services/Purchaseflow/project_master.service";
-import { DduommasterService } from "../../services/Purchaseflow/dduommaster.service";
-import { DdcurrencyService } from "../../services/Purchaseflow/ddCurrency.service";
-import { DdProdmasterService } from "../../services/Purchaseflow/ddprodmaster.service";
-import { DdEmployeeMasterService } from "../../services/Purchaseflow/ddemployeemaster.service";
-import { PoHeaderService } from "../../services/Purchaseflow/po_modify.service";
-import { PoNotGeneratedService } from "../../services/Purchaseflow/ponotgenerated.service";
-import { POCancelService } from "../../services/Purchaseflow/po_cancel.service";
-import { WorkflowService } from "../../services/Purchaseflow/sentbackrollselection_mat.service";
-import { FlowRoleService } from "../../services/Purchaseflow/sentbackrollselection.service";
-import { PurchaseRequestHistoryService } from "../../services/Purchaseflow/My_History.service";
-import { PRRejectedService } from "../../services/Purchaseflow/Request_Rejected.service";
-import { PurchaseCloseRequestService } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
-import { MaterialRequestService } from "../../services/Purchaseflow/Pg_Material_flow_InProgress.service";
-import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
-import { ItemMasterService } from "../../services/Purchaseflow/my_itemmaster.service";
+// import { DdcostmasterService } from "../../services/Purchaseflow/ddcostmasterservice";
+// import { PurchaseFlowMasterService } from "../../services/Purchaseflow/PfMaster.service";
+// import { DropdownProjectMasterService } from "../../services/Purchaseflow/dropdwonprojectmaster.service";
+// import { ProjectMasterService } from "../../services/Purchaseflow/project_master.service";
+// import { DduommasterService } from "../../services/Purchaseflow/dduommaster.service";
+// import { DdcurrencyService } from "../../services/Purchaseflow/ddCurrency.service";
+// import { DdProdmasterService } from "../../services/Purchaseflow/ddprodmaster.service";
+// import { DdEmployeeMasterService } from "../../services/Purchaseflow/ddemployeemaster.service";
+// import { PoHeaderService } from "../../services/Purchaseflow/po_modify.service";
+// import { PoNotGeneratedService } from "../../services/Purchaseflow/ponotgenerated.service";
+// import { POCancelService } from "../../services/Purchaseflow/po_cancel.service";
+// import { WorkflowService } from "../../services/Purchaseflow/sentbackrollselection_mat.service";
+// import { FlowRoleService } from "../../services/Purchaseflow/sentbackrollselection.service";
+// import { PurchaseRequestHistoryService } from "../../services/Purchaseflow/My_History.service";
+// import { PRRejectedService } from "../../services/Purchaseflow/Request_Rejected.service";
+// import { PurchaseCloseRequestService } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
+// import { MaterialRequestService } from "../../services/Purchaseflow/Pg_Material_flow_InProgress.service";
+// import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
+// import { ItemMasterService } from "../../services/Purchaseflow/my_itemmaster.service";
 //import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
 // import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
 //import { DddivisionmasterService} from "../../services/Purchaseflow/dddivisionMaster.service"
@@ -137,7 +159,7 @@ export const getPurchasefMaster = async (
           limit
         )
 
-        break;  
+        break;
       case "ddcostmaster":
         result = await DdcostmasterService.getDdCostMaster(
           requestUser.company_code,
@@ -193,13 +215,13 @@ export const getPurchasefMaster = async (
         );
         break;
 
-     /* case "dddivision":
-        result = await DddivisionmasterService.getDdDivision(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;*/
+      /* case "dddivision":
+         result = await DddivisionmasterService.getDdDivision(
+           requestUser.company_code,
+           page,
+           limit
+         );
+         break;*/
 
       case "po_modify_rate_change":
         result = await PoHeaderService.getPoModify(
@@ -209,14 +231,37 @@ export const getPurchasefMaster = async (
         );
         break;
 
+
+
+
+
       case "po_cancel":
-        result = await POCancelService.getPOCancelData(
-          String(requestUser.company_code),
-          undefined,
-          page,
-          limit
-        );
-        break;
+  console.log("inside po_cancel");
+
+  try {
+    const result1 = await getPOCancelData(
+      requestUser.company_code,
+      requestUser.loginid,
+      undefined, // no filter applied
+      page,
+      limit
+    );
+
+    res.json(result1);
+    return;
+
+  } catch (err) {
+    console.error("❌ Error in po_cancel route:", err);
+
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "Server error" });
+    }
+    return;
+  }
+
+  break;
+
+
 
 
       case "sentbackrollselection_mat":
@@ -244,27 +289,46 @@ export const getPurchasefMaster = async (
         );
         break;
 
-      case "Request_Cancel":
-        result = await PRRejectedService.getCancelledRequests(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;
+      // case "Request_Cancel":
+      //   result = await PRRejectedService.getCancelledRequests(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
 
       case "Request_Rejected":
-        result = await PRRejectedService.getRequestRejectedData(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;
+  console.log("inside Request_Rejected");
+
+  try {
+    const result1 = await getPRRejectedData(
+      requestUser.company_code,
+      requestUser.loginid, // assuming procedure needs loginid
+      undefined, // no filter applied
+      page,
+      limit
+    );
+
+    res.json(result1);
+    return;
+
+  } catch (err) {
+    console.error("❌ Error in Request_Rejected route:", err);
+
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "Server error" });
+    }
+    return;
+  }
+
+  break;
+
 
       case "MyItem_ClosedRequest":
         result = await PurchaseCloseRequestService.getMyClosedRequests(
           requestUser.company_code,
           requestUser.loginid,
-          undefined, 
+          undefined,
           page,
           limit
         );
@@ -278,35 +342,35 @@ export const getPurchasefMaster = async (
         );
         break;
 
-case "my_task":
-  console.log("inside my_task");
+      case "my_task":
+        console.log("inside my_task");
 
-  try {
-    const result1 = await getMyTaskData(
-      requestUser.loginid,
-      requestUser.company_code,
-      undefined,
-      page,
-      limit
-    );
+        try {
+          const result1 = await getMyTaskData(
+            requestUser.loginid,
+            requestUser.company_code,
+            undefined,
+            page,
+            limit
+          );
 
-    // Send response once
-    res.json(result1);
+          // Send response once
+          res.json(result1);
 
-    // Important: do not execute anything else after sending response
-    return;
+          // Important: do not execute anything else after sending response
+          return;
 
-  } catch (err) {
-    console.error("❌ Error in my_task route:", err);
+        } catch (err) {
+          console.error("❌ Error in my_task route:", err);
 
-    // Only send response if headers not sent yet
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, message: "Server error" });
-    }
-    return;
-  }
+          // Only send response if headers not sent yet
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: "Server error" });
+          }
+          return;
+        }
 
-  break;
+        break;
 
 
 
