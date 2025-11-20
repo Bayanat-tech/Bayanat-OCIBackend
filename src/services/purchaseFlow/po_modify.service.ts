@@ -1,48 +1,112 @@
-import { getRepository } from "../../database/connection";
-import { POHeader } from "../../entity/PurchaseFlow/POHeader.entity";
 
-export interface Master<T> {
-  fetchedData: T[];
-  totalCount: number;
+
+import { oracleDb } from "../../database/connection";
+
+interface Filter {
+  sort?: {
+    field_name: string;
+    desc?: boolean;
+  };
 }
 
-export interface FilterOptions {
-  search?: Record<string, any>;
-  sort?: { field_name: string; desc?: boolean };
-}
+export const getPoModifyData = async (
+  loginid: string,
+  company_code: string,
+  filter?: Filter,
+  page = 1,
+  limit = 4000
+) => {
+  let conn: any = null;
 
-export class PoHeaderService {
-  static async getPoModify(
-    company_code: string,
-    page = 1,
-    limit = 4000,
-    filter?: FilterOptions
-  ): Promise<Master<POHeader>> {
-    const skip = (page - 1) * limit;
-
-    let whereQuery: any = { company_code };
-
-
-    if (filter?.search) {
-      whereQuery = { ...whereQuery, ...filter.search };
+  try {
+    if (!loginid || !company_code) {
+      return {
+        success: false,
+        tableData: [],
+        totalCount: 0,
+        message: "Both loginid and company_code are required.",
+      };
     }
 
-    const repository = getRepository(POHeader);
+    conn = await oracleDb.getConnection();
 
-    const totalCount = await repository.count({ where: whereQuery });
+    console.log("Calling procedure with:", company_code, loginid);
 
-    let order: any = undefined;
-    if (filter?.sort && filter.sort.field_name) {
-      order = { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" };
+    // Execute procedure
+    await conn.execute(
+      `BEGIN
+         PROC_POPULATE_GT_CLOSE(:p_user, :p_company);
+       END;`,
+      {
+        p_company: company_code,
+        p_user: loginid,
+      }
+    );
+   console.log("loginid,company_code");
+    console.log("Procedure executed successfully");
+
+    // Sorting
+    let orderBy = "";
+    if (filter?.sort?.field_name) {
+      orderBy = ` ORDER BY ${filter.sort.field_name} ${
+        filter.sort.desc ? "DESC" : "ASC"
+      } `;
     }
 
-    const fetchedData = await repository.find({
-      where: whereQuery,
-      skip,
-      take: limit,
-      order,
-    });
+    const offset = (page - 1) * limit;
 
-    return { fetchedData, totalCount };
+    // Fetch paginated data
+    const dataResult = await conn.execute(
+      `
+      SELECT *
+      FROM GT_MY_TASK
+      ${orderBy}
+      OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+      `,
+      { offset, limit }
+    );
+
+    // Fetch total count
+    const countResult = await conn.execute(`SELECT COUNT(*) FROM GT_MY_TASK`);
+
+    // Map rows to objects using column names
+    const tableData =
+      dataResult.rows?.map((row: any[], idx: number) => {
+        const obj: any = {};
+        dataResult.metaData.forEach((col: any, i: number) => {
+          obj[col.name] = row[i];
+        });
+        return obj;
+      }) || [];
+
+    const totalCount =
+      countResult.rows && countResult.rows.length > 0
+        ? countResult.rows[0][0]
+        : 0;
+
+    console.log("My Task Result:", { tableData, totalCount });
+
+    return {
+      success: true,
+      tableData,
+      totalCount,
+      message: "Data fetched successfully.",
+    };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+        ? err
+        : JSON.stringify(err);
+
+    console.error("❌ Error in getMyModifyData:", message);
+
+    return {
+      success: false,
+      tableData: [],
+      totalCount: 0,
+      message,
+    };
   }
-}
+};

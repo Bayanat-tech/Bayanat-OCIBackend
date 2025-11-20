@@ -12,7 +12,7 @@ import { DduommasterService } from "../../services/Purchaseflow/dduommaster.serv
 import { DdcurrencyService } from "../../services/Purchaseflow/ddCurrency.service";
 import { DdProdmasterService } from "../../services/Purchaseflow/ddprodmaster.service";
 import { DdEmployeeMasterService } from "../../services/Purchaseflow/ddemployeemaster.service";
-import { PoHeaderService } from "../../services/Purchaseflow/po_modify.service";
+// import { PoHeaderService } from "../../services/Purchaseflow/po_modify.service";
 import { PoNotGeneratedService } from "../../services/Purchaseflow/ponotgenerated.service";
 import { POCancelService } from "../../services/Purchaseflow/po_cancel.service";
 import { WorkflowService } from "../../services/Purchaseflow/sentbackrollselection_mat.service";
@@ -23,6 +23,7 @@ import { PurchaseCloseRequestService } from "../../services/Purchaseflow/MyItem_
 import { MaterialRequestService } from "../../services/Purchaseflow/Pg_Material_flow_InProgress.service";
 import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
 import { ItemMasterService } from "../../services/Purchaseflow/my_itemmaster.service";
+import { getPoModifyData } from "../../services/Purchaseflow/po_modify.service";
 //import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
 // import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
 //import { DddivisionmasterService} from "../../services/Purchaseflow/dddivisionMaster.service"
@@ -137,7 +138,7 @@ export const getPurchasefMaster = async (
           limit
         )
 
-        break;  
+        break;
       case "ddcostmaster":
         result = await DdcostmasterService.getDdCostMaster(
           requestUser.company_code,
@@ -178,12 +179,35 @@ export const getPurchasefMaster = async (
         break;
 
       case "po_modify":
-        result = await PoHeaderService.getPoModify(
-          requestUser.company_code,
-          page,
-          limit
-        );
+        console.log("inside po_modify");
+
+        try {
+          const result1 = await getPoModifyData(
+            requestUser.loginid,
+            requestUser.company_code,
+            undefined,
+            page,
+            limit
+          );
+
+          // Send response once
+          res.json(result1);
+
+          // Important: do not execute anything else after sending response
+          return;
+
+        } catch (err) {
+          console.error("❌ Error in po_modify route:", err);
+
+          // Only send response if headers not sent yet
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: "Server error" });
+          }
+          return;
+        }
+
         break;
+
 
       case "ponotgenerated":
         result = await PoNotGeneratedService.getPoNotGenerated(
@@ -193,21 +217,21 @@ export const getPurchasefMaster = async (
         );
         break;
 
-     /* case "dddivision":
-        result = await DddivisionmasterService.getDdDivision(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;*/
+      /* case "dddivision":
+         result = await DddivisionmasterService.getDdDivision(
+           requestUser.company_code,
+           page,
+           limit
+         );
+         break;*/
 
-      case "po_modify_rate_change":
-        result = await PoHeaderService.getPoModify(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;
+      // case "po_modify_rate_change":
+      //   result = await PoHeaderService.getPoModify(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
 
       case "po_cancel":
         result = await POCancelService.getPOCancelData(
@@ -264,7 +288,7 @@ export const getPurchasefMaster = async (
         result = await PurchaseCloseRequestService.getMyClosedRequests(
           requestUser.company_code,
           requestUser.loginid,
-          undefined, 
+          undefined,
           page,
           limit
         );
@@ -278,35 +302,35 @@ export const getPurchasefMaster = async (
         );
         break;
 
-case "my_task":
-  console.log("inside my_task");
+      case "my_task":
+        console.log("inside my_task");
 
-  try {
-    const result1 = await getMyTaskData(
-      requestUser.loginid,
-      requestUser.company_code,
-      undefined,
-      page,
-      limit
-    );
+        try {
+          const result1 = await getMyTaskData(
+            requestUser.loginid,
+            requestUser.company_code,
+            undefined,
+            page,
+            limit
+          );
 
-    // Send response once
-    res.json(result1);
+          // Send response once
+          res.json(result1);
 
-    // Important: do not execute anything else after sending response
-    return;
+          // Important: do not execute anything else after sending response
+          return;
 
-  } catch (err) {
-    console.error("❌ Error in my_task route:", err);
+        } catch (err) {
+          console.error("❌ Error in my_task route:", err);
 
-    // Only send response if headers not sent yet
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, message: "Server error" });
-    }
-    return;
-  }
+          // Only send response if headers not sent yet
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: "Server error" });
+          }
+          return;
+        }
 
-  break;
+        break;
 
 
 
