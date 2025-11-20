@@ -1,101 +1,110 @@
-import { ILike } from "typeorm";
-import { PurchaseRequestHeader } from "../../entity/PurchaseFlow/PurchaseRequestHeader.entity";
-import { AppDataSource } from "../../database/connection";
-import { getSearchFilterQuery } from "../../helpers/functions";
+import { oracleDb } from "../../database/connection";
 
-export class MyTaskService {
+interface Filter {
+  sort?: {
+    field_name: string;
+    desc?: boolean;
+  };
+}
 
-  /**
-   * OLD method signature (static) — Now properly implemented.
-   */
-  static async getMyTaskData(
-    requestUser: any,
-    filter: any,
-    page: number = 1,
-    limit: number = 20
-  ): Promise<{ success: boolean; tableData: any[]; totalCount: number; message?: string }> {
+export const getMyTaskData = async (
+  loginid: string,
+  company_code: string,
+  filter?: Filter,
+  page = 1,
+  limit = 4000
+) => {
+  let conn: any = null;
 
-    try {
-      console.log("🔹 Inside MyTask Service");
-
-      // ---------------------------------------------
-      // CALL STORED PROCEDURE PRO_CREATEORINERTGTMYTASK
-      // ---------------------------------------------
-      const query = `
-        BEGIN
-          PRO_CREATEORINERTGTMYTASK(
-            gs_company_code => :1,
-            gs_user_id      => :2
-          );
-        END;
-      `;
-
-      const entityManager = AppDataSource.manager;
-      const binds = [requestUser.company_code, requestUser.user_id];
-
-      console.log("📨 Running MyTask Stored Procedure...");
-      await entityManager.query(query, binds);
-
-      // ---------------------------------------------
-      // FETCH PURCHASE REQUEST HEADER DATA
-      // ---------------------------------------------
-      const purchaseRequestRepo = AppDataSource.getRepository(PurchaseRequestHeader);
-
-      let where: any = {
-        company_code: requestUser.company_code,
-      };
-
-      // 🔍 SEARCH FILTER
-      if (filter?.search) {
-        const searchFilter = getSearchFilterQuery(filter.search, [
-          "request_number",
-          "description",
-          "project_name",
-          "created_by",
-        ]);
-        where = { ...where, ...searchFilter };
-      }
-
-      console.log("✅ Final WHERE:", where);
-
-      // COUNT
-      const totalCount = await purchaseRequestRepo.count({
-        where,
-      });
-
-      console.log("📊 Total Count:", totalCount);
-
-      // SORTING
-      let order: any = {};
-      if (filter?.sort && filter.sort.field_name) {
-        order[filter.sort.field_name] = filter.sort.desc ? "DESC" : "ASC";
-      }
-
-      // PAGINATION CALC
-      const skip = (page - 1) * limit;
-
-      // FINAL DATA
-      const fetchedData = await purchaseRequestRepo.find({
-        where,
-        order,
-        skip,
-        take: limit,
-      });
-
-      return {
-        success: true,
-        tableData: fetchedData,
-        totalCount,
-      };
-
-    } catch (error: any) {
-      console.error("❌ Error in getMyTaskData:", error);
+  try {
+    if (!loginid || !company_code) {
       return {
         success: false,
         tableData: [],
         totalCount: 0,
-        message: error.message,
+        message: "Both loginid and company_code are required.",
       };
     }
+
+    conn = await oracleDb.getConnection();
+
+    console.log("Calling procedure with:", company_code, loginid);
+
+    // Execute procedure
+    await conn.execute(
+      `BEGIN
+         PRO_CREATEORINERTGTMYTASK(:p_company, :p_user);
+       END;`,
+      {
+        p_company: company_code,
+        p_user: loginid,
+      }
+    );
+
+    console.log("Procedure executed successfully");
+
+    // Sorting
+    let orderBy = "";
+    if (filter?.sort?.field_name) {
+      orderBy = ` ORDER BY ${filter.sort.field_name} ${
+        filter.sort.desc ? "DESC" : "ASC"
+      } `;
+    }
+
+    const offset = (page - 1) * limit;
+
+    // Fetch paginated data
+    const dataResult = await conn.execute(
+      `
+      SELECT *
+      FROM GT_MY_TASK
+      ${orderBy}
+      OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+      `,
+      { offset, limit }
+    );
+
+    // Fetch total count
+    const countResult = await conn.execute(`SELECT COUNT(*) FROM GT_MY_TASK`);
+
+    // Map rows to objects using column names
+    const tableData =
+      dataResult.rows?.map((row: any[], idx: number) => {
+        const obj: any = {};
+        dataResult.metaData.forEach((col: any, i: number) => {
+          obj[col.name] = row[i];
+        });
+        return obj;
+      }) || [];
+
+    const totalCount =
+      countResult.rows && countResult.rows.length > 0
+        ? countResult.rows[0][0]
+        : 0;
+
+    console.log("My Task Result:", { tableData, totalCount });
+
+    return {
+      success: true,
+      tableData,
+      totalCount,
+      message: "Data fetched successfully.",
+    };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+        ? err
+        : JSON.stringify(err);
+
+    console.error("❌ Error in getMyTaskData:", message);
+
+    return {
+      success: false,
+      tableData: [],
+      totalCount: 0,
+      message,
+    };
   }
-}
+};

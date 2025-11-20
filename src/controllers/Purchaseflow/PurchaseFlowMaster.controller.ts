@@ -21,7 +21,7 @@ import { PurchaseRequestHistoryService } from "../../services/Purchaseflow/My_Hi
 import { PRRejectedService } from "../../services/Purchaseflow/Request_Rejected.service";
 import { PurchaseCloseRequestService } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
 import { MaterialRequestService } from "../../services/Purchaseflow/Pg_Material_flow_InProgress.service";
-import {  MyTaskService } from "../../services/Purchaseflow/my_task.service";
+import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
 import { ItemMasterService } from "../../services/Purchaseflow/my_itemmaster.service";
 //import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
 // import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
@@ -278,15 +278,21 @@ export const getPurchasefMaster = async (
         );
         break;
 
-      case "my_task":
-        console.log('inside my_task')
+case "my_task":
+  console.log("inside my_task");
 
-          await MyTaskService.getMyTaskData(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;
+  const result1= await getMyTaskData(
+    requestUser.loginid,       // ✅ loginid
+    requestUser.company_code,  // ✅ company_code
+    undefined,                 // optional filter
+    page,                      // page number
+    limit                      // page size
+  );
+
+  // Return JSON to frontend
+  res.json(result1)   // <-- this sends tableData, totalCount, and message
+ 
+  break;
 
       case "my_itemmaster":
         result = await ItemMasterService.getMyItemMaster(
