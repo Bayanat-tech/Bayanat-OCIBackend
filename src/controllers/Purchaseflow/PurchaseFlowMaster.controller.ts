@@ -281,18 +281,36 @@ export const getPurchasefMaster = async (
 case "my_task":
   console.log("inside my_task");
 
-  const result1= await getMyTaskData(
-    requestUser.loginid,       // ✅ loginid
-    requestUser.company_code,  // ✅ company_code
-    undefined,                 // optional filter
-    page,                      // page number
-    limit                      // page size
-  );
+  try {
+    const result1 = await getMyTaskData(
+      requestUser.loginid,
+      requestUser.company_code,
+      undefined,
+      page,
+      limit
+    );
 
-  // Return JSON to frontend
-  res.json(result1)   // <-- this sends tableData, totalCount, and message
- 
+    // Send response once
+    res.json(result1);
+
+    // Important: do not execute anything else after sending response
+    return;
+
+  } catch (err) {
+    console.error("❌ Error in my_task route:", err);
+
+    // Only send response if headers not sent yet
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "Server error" });
+    }
+    return;
+  }
+
   break;
+
+
+
+
 
       case "my_itemmaster":
         result = await ItemMasterService.getMyItemMaster(
