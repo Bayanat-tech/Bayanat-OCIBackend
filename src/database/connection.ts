@@ -72,8 +72,8 @@ class TypeORMService {
         console.log("TypeORM Config:", {
           type: "oracle",
           connectString:
-              constants.DATABASE.ORACLE_CONNECTION_STRING ||
-              process.env.ORACLE_CONNECTION_STRING,
+            constants.DATABASE.ORACLE_CONNECTION_STRING ||
+            process.env.ORACLE_CONNECTION_STRING,
           username: process.env.ORACLE_USER,
         });
 
@@ -89,16 +89,20 @@ class TypeORMService {
       }
     } catch (error) {
       console.error("TypeORM connection failed:", error);
-      console.log("TypeORM failed, but raw Oracle connection is active");
+      console.log("TypeORM failed, but raw Oracle connection may be active");
     }
   }
 
   static getRepository<T extends ObjectLiteral>(
     entity: EntityTarget<T>
   ): Repository<T> {
-    if (!this.initialized) {
+    if (!AppDataSource.isInitialized) {
       throw new Error("TypeORM not initialized. Call initialize() first.");
     }
+    if (!this.initialized && AppDataSource.isInitialized) {
+      this.initialized = true;
+    }
+
     return AppDataSource.getRepository(entity);
   }
 
@@ -107,11 +111,13 @@ class TypeORMService {
       await AppDataSource.destroy();
       this.initialized = false;
       console.log("TypeORM connection closed");
+    } else {
+      this.initialized = false;
     }
   }
 
   static isConnected(): boolean {
-    return this.initialized && AppDataSource.isInitialized;
+    return AppDataSource.isInitialized || this.initialized;
   }
 }
 
@@ -122,11 +128,9 @@ function processBindParameters(binds: any): any {
   const processedBinds: any = {};
 
   for (const [key, value] of Object.entries(binds)) {
-    // Handle undefined, null, and empty objects
     if (value === undefined || value === null) {
       processedBinds[key] = { val: null };
     }
-    // Check if it's already a proper bind object
     else if (
       value &&
       typeof value === "object" &&
@@ -137,7 +141,6 @@ function processBindParameters(binds: any): any {
     ) {
       processedBinds[key] = value;
     }
-    // Handle empty objects
     else if (
       value &&
       typeof value === "object" &&
@@ -240,31 +243,55 @@ export const oracleDb = {
 
 // ==================== CONNECTION INITIALIZATION ====================
 export const initializeAllConnections = async (): Promise<void> => {
+  // Validate config early so we can show a helpful message
+  const cfgUser =
+    constants.DATABASE.ORACLE_USER || process.env.ORACLE_USER || "";
+  const cfgPass =
+    constants.DATABASE.ORACLE_PASSWORD || process.env.ORACLE_PASSWORD || "";
+  const cfgConn =
+    constants.DATABASE.ORACLE_CONNECTION_STRING ||
+    process.env.ORACLE_CONNECTION_STRING ||
+    "";
+
+  if (!cfgUser || !cfgPass || !cfgConn) {
+    console.warn(
+      "Oracle DB credentials appear to be missing. Skipping DB initialization.\n" +
+        "Set ORACLE_USER, ORACLE_PASSWORD and ORACLE_CONNECTION_STRING (or update constants) to enable DB connections."
+    );
+    return;
+  }
+
   try {
-    // Initialize raw Oracle connection (this works)
     await oracleDb.authenticate();
-
-    // Test the connection with a simple query
-    const testResult = await oracleDb.query("SELECT 1 FROM DUAL");
-
+    await oracleDb.query("SELECT 1 FROM DUAL");
     await oracleDb.query(
       "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
     );
 
     console.log("Raw Oracle connection established and session configured");
-
-    try {
-      await TypeORMService.initialize();
-      console.log(" TypeORM connection established");
-    } catch (typeormError) {
-      console.log("TypeORM connection failed, but raw Oracle is working");
-    }
-
-    console.log(" Database connections ready (at least raw Oracle is working)");
   } catch (error) {
-    console.error("Failed to initialize database connections:", error);
-    throw error;
+    console.error(
+      "Raw Oracle initialization failed. Application will continue but DB features may be unavailable.",
+      error
+    );
+    console.warn(
+      "If this is unexpected, verify ORACLE_USER/ORACLE_PASSWORD/ORACLE_CONNECTION_STRING are correct."
+    );
   }
+
+  try {
+    await TypeORMService.initialize();
+    console.log(" TypeORM connection established");
+  } catch (typeormError) {
+    console.warn(
+      "TypeORM connection failed, but raw Oracle (if initialized) may still be working:",
+      typeormError
+    );
+  }
+
+  console.log(
+    " Database connections initialization complete (some connections may be unavailable)"
+  );
 };
 
 export const closeAllConnections = async (): Promise<void> => {
@@ -275,7 +302,7 @@ export const closeAllConnections = async (): Promise<void> => {
 
 // ==================== BACKWARD COMPATIBILITY ====================
 export const databaseConnection = (): Promise<boolean> => {
-  return new Promise(async (resolve, reject) => {
+  return new Promise(async (resolve) => {
     try {
       await oracleDb.authenticate();
       await oracleDb.query(
@@ -284,7 +311,11 @@ export const databaseConnection = (): Promise<boolean> => {
       console.log("Oracle Database Connected and Session Set");
       resolve(true);
     } catch (error: unknown) {
-      reject(error instanceof Error ? error : new Error(String(error)));
+      console.error(
+        "Oracle authentication failed in databaseConnection check:",
+        error
+      );
+      resolve(false);
     }
   });
 };
