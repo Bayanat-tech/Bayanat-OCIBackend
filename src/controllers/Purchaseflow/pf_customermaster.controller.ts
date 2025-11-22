@@ -8,7 +8,7 @@ import { CustomerMasterService } from "../../services/Purchaseflow/customermaste
 export class CustomerMasterController {
 
   // --- CREATE ---
-  static async create(
+  static async createCustomerMaster(
     req: RequestWithUser, 
     res: Response) {
     try {
@@ -16,7 +16,7 @@ export class CustomerMasterController {
 
       const { error } = customerSchema(req.body);
       if (error) {
-        return res
+        res
           .status(constants.STATUS_CODES.BAD_REQUEST)
           .json({ success: false, message: error.message });
       }
@@ -29,14 +29,14 @@ export class CustomerMasterController {
 
       return res.status(result.status).json(result);
     } catch (err: any) {
-      return res
+      res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: err.message });
     }
   }
 
   // --- UPDATE ---
-  static async update(
+  static async updateCustomerMaster(
     req: RequestWithUser,
     res: Response) {
     try {
@@ -44,7 +44,7 @@ export class CustomerMasterController {
 
       const { error } = customerSchema(req.body);
       if (error) {
-        return res
+        res
           .status(constants.STATUS_CODES.BAD_REQUEST)
           .json({ success: false, message: error.message });
       }
@@ -60,9 +60,9 @@ export class CustomerMasterController {
         }
       );
 
-      return res.status(result.status).json(result);
+      res.status(result.status).json(result);
     } catch (err: any) {
-      return res
+      res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: err.message });
     }

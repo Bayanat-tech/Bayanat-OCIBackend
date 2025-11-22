@@ -1,12 +1,17 @@
 import { AppDataSource, getRepository } from "../../database/connection";
-import { Divisionmaster } from "../../entity/PurchaseFlow/Pf_divisionmaster.entity";
+import { Divisionmaster } from "../../entity/PurchaseFlow/divisionmaster.entity";
 import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
-import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf_models.entity";
+import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency.entity";
+import { EmployeeMaster } from "../../entity/PurchaseFlow/ddemployeemaster.entity";
+import { DropdownProjectmaster } from "../../entity/PurchaseFlow/dropdownprojectmaster.entity";
 import { ItemmasterPf } from "../../entity/PurchaseFlow/itemmaster.entity";
 import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
+import { ProductMaster } from "../../entity/PurchaseFlow/prodmaster.entity";
 import { VProjectMaster } from "../../entity/PurchaseFlow/projectmaster_pf_view.entity";
 import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
+import { UomMaster } from "../../entity/PurchaseFlow/uommaster_pf.entity";
+import { In } from "typeorm";
 
 export interface Master<T> {
   fetchedData: T[];
@@ -86,34 +91,6 @@ export class PurchaseFlowMasterService {
     });
     return { fetchedData, totalCount };
   }
- 
-   static async getddcurrency(
-    company_code: string, 
-    page = 1, 
-    limit = 4000
-  ): Promise<Master<DdCurrency>> {
-    const skip = (page - 1) * limit;
-    const [fetchedData, totalCount] = await getRepository(DdCurrency).findAndCount({
-      where: { company_code },
-      skip,
-      take: limit,
-    });
-    return { fetchedData, totalCount };
-  }
-
-   static async ddMaterialCateotry(
-    company_code: string, 
-    page = 1, 
-    limit = 4000
-  ): Promise<Master<DdCurrency>> {
-    const skip = (page - 1) * limit;
-    const [fetchedData, totalCount] = await getRepository(DdCurrency).findAndCount({
-      where: { company_code },
-      skip,
-      take: limit,
-    });
-    return { fetchedData, totalCount };
-  }
 
   static async getItemmaster(
     company_code: string, 
@@ -165,105 +142,222 @@ export class PurchaseFlowMasterService {
 
     return { fetchedData, totalCount };
   }
+ 
+  static async getddcurrency(
+    company_code: string, 
+    page = 1, 
+    limit = 4000
+   ): Promise<Master<DdCurrency>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(DdCurrency).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+    return { fetchedData, totalCount };
+  }
+
+  static async ddMaterialCateotry(
+    company_code: string, 
+    page = 1, 
+    limit = 4000
+  ): Promise<Master<DdCurrency>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(DdCurrency).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+    return { fetchedData, totalCount };
+  }
+
+  static async getDdDivision(
+        company_code: string,
+        page = 1,
+        limit = 4000
+    ):Promise<Master<Divisionmaster>> {
+        const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(Divisionmaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });           
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getDdCostMaster(
+    company_code: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<CostMaster>> {
+    const skip = (page - 1) * limit;
+
+    const [fetchedData, totalCount] = await getRepository(CostMaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getDdEmployeeMaster(
+    company_code: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<EmployeeMaster>> {
+   
+    const skip = (page - 1) * limit;
+
+   
+    const [fetchedData, totalCount] = await getRepository(EmployeeMaster).findAndCount({
+      where: { company_code }, 
+      skip,                    
+      take: limit,             
+    });
+
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getDdProductmaster(
+    company_code: string,
+    code?: string, 
+    page = 1,
+    limit = 4000
+  ): Promise<Master<ProductMaster>> {
+    const skip = (page - 1) * limit;
+    const repository = getRepository(ProductMaster);
+
+    let query = repository.createQueryBuilder("prod")
+      .where("prod.company_code = :company_code", { company_code });
+
+    if (code) {
+      query = query.andWhere(
+        `prod.prin_code IN (
+          SELECT prin_code 
+          FROM MS_PRINCIPAL 
+          WHERE PRIN_DEPT_CODE = :code
+        )`,
+        { code }
+      );
+    }
+    const [fetchedData, totalCount] = await query.skip(skip).take(limit).getManyAndCount();
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getDdSupplierMaster(
+    company_code: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<SupplierMaster>> {
+    const skip = (page - 1) * limit;
+
+    const [fetchedData, totalCount] = await getRepository(SupplierMaster).findAndCount({
+      where: { company_code }, 
+      skip,                    
+      take: limit,             
+    });
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getDdUomMaster(
+    company_code: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<UomMaster>> {
+    const skip = (page - 1) * limit;
+
+    const [fetchedData, totalCount] = await getRepository(UomMaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getDropdownProjectMaster(
+    company_code: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<DropdownProjectmaster>> {
+    const skip = (page - 1) * limit;
+
+    const [fetchedData, totalCount] = await getRepository(DropdownProjectmaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+      select: [
+       
+        "project_code",
+        "project_name",
+      ],
+    });
+
+    return { fetchedData, totalCount };
+  }
+
+
+
+//-------------------------delete Master ---------------------
+
+static async deleteMasterRecords(
+  master: string,
+  company_code: string,
+  ids: (string | number)[]
+): Promise<boolean> {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    let result: any;
+
+    switch (master) {
+      case "cost_master":
+        result = await queryRunner.manager.delete(CostMaster, {
+          company_code,
+          cost_code: In(ids as string[]),
+        });
+        break;
+
+      case "project_master":
+        result = await queryRunner.manager.delete(VProjectMaster, {
+          company_code,
+          project_code: In(ids as string[]),
+        });
+        break;
+
+      case "supplier_master":
+        result = await queryRunner.manager.delete(SupplierMaster, {
+          company_code,
+          supp_code: In(ids as string[]),
+        });
+        break;
+
+      case "customer_master":
+        result = await queryRunner.manager.delete(CustomerMaster, {
+          company_code,
+          cust_code: In(ids as string[]),
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown master type: ${master}`);
+    }
+
+    await queryRunner.commitTransaction();
+
+    return result?.affected && result.affected > 0;
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    throw error;
+  } finally {
+    await queryRunner.release();
+  }
 }
-
-// export class DeletePfService {
-//   static async deleteRecords(
-//     master: string,
-//     company_code: string,
-//     ids: (string | number)[]
-//   ): Promise<boolean> {
-
-//     const queryRunner = AppDataSource.createQueryRunner();
-//     await queryRunner.connect();
-//     await queryRunner.startTransaction();
-
-//     try {
-//       let result;
-
-//       switch (master) {
-        
-//         // -------------------- PROJECT MASTER --------------------
-//         case "project_master":
-//           result = await queryRunner.manager.delete(ProjectMaster, {
-//             company_code,
-//             project_code: In(ids as string[]),
-//           });
-//           break;
-
-//         // -------------------- COST MASTER --------------------
-//         case "cost_master":
-//           result = await queryRunner.manager.delete(Costmaster, {
-//             company_code,
-//             cost_code: In(ids as string[]),
-//           });
-//           break;
-
-//         // -------------------- FLOW MASTER --------------------
-//         case "flow_master":
-//           result = await queryRunner.manager.delete(FlowMaster, {
-//             company_code,
-//             flow_code: In(ids as string[]),
-//           });
-//           break;
-
-//         // -------------------- ROLE MASTER --------------------
-//         case "role_master":
-//           result = await queryRunner.manager.delete(RoleMaster, {
-//             company_code,
-//             role_id: In(ids as number[]),
-//           });
-//           break;
-
-//         // -------------------- USER LOGIN --------------------
-//         case "sec_login":
-//           result = await queryRunner.manager.delete(User, {
-//             company_code,
-//             id: In(ids as number[]),
-//           });
-//           break;
-
-//         // -------------------- MODULE --------------------
-//         case "sec_module_data":
-//           result = await queryRunner.manager.delete(SecModule, {
-//             company_code,
-//             serial_no: In(ids as number[]),
-//           });
-//           break;
-
-//         // -------------------- COMPANY --------------------
-//         case "sec_company":
-//           result = await queryRunner.manager.delete(Company, {
-//             company_code: In(ids as string[]),
-//           });
-//           break;
-
-//         // -------------------- REPORT MASTER --------------------
-//         case "report_master":
-//           result = await queryRunner.manager.delete(ReportMaster, {
-//             report_no: In(ids as number[]),
-//           });
-//           break;
-
-//         // -------------------- QUERY MASTER --------------------
-//         case "query_master":
-//           result = await queryRunner.manager.delete(QueryMaster, {
-//             sr_no: In(ids as number[]),
-//           });
-//           break;
-
-//         default:
-//           throw new Error(`Unknown master type: ${master}`);
-//       }
-
-//       await queryRunner.commitTransaction();
-//       return result?.affected > 0;
-
-//     } catch (err) {
-//       await queryRunner.rollbackTransaction();
-//       throw err;
-//     } finally {
-//       await queryRunner.release();
-//     }
-//   }
-// }
+}

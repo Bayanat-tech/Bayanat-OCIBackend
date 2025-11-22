@@ -279,52 +279,48 @@ export const getPfMaster = async (
     });
   }
 };
+ //------------------- delete Master -------------------------------
+export const deletePfMaster = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { master } = req.params;
+    const requestUser = req.user;
+    const { ids } = req.body;
 
-// export class DeletePfMaster {
-//   static async deleteMaster(
-//     req: RequestWithUser, 
-//     res: Response
-//   ): Promise<void> {
-//     try {
-//       const { master } = req.params;
-//       const requestUser: IUser = req.user;
-//       const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "IDs (codes) are required for deletion",
+      });
+      return;
+    }
 
-//       if (!ids || !Array.isArray(ids) || ids.length === 0) {
-//         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//           success: false,
-//           message: "IDs are required for deletion",
-//         });
-//         return;
-//       }
+    const isDeleted = await PurchaseFlowMasterService.deleteMasterRecords(
+      master,
+      requestUser.company_code,
+      ids
+    );
 
-//       const Deleted = await MasterDeleteService.deleteRecords(
-//         master,
-//         requestUser.company_code,
-//         ids
-//       );
+    if (!isDeleted) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "No records were deleted",
+      });
+      return;
+    }
 
-//       if (!Deleted) {
-//         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//           success: false,
-//           message: "No records were deleted",
-//         });
-//         return;
-//       }
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: `${master} records deleted successfully`,
+    });
+  } catch (error: any) {
+    console.error("Error in deletePfMaster:", error);
 
-//       res.status(constants.STATUS_CODES.OK).json({
-//         success: true,
-//         message: "Record(s) deleted successfully.",
-//       });
-
-//     } catch (error: any) {
-//       console.error("Error in deleteMaster:", error);
-
-//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//         success: false,
-//         message: error.message,
-//       });
-//     }
-//   }
-// }
-
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

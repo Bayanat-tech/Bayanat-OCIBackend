@@ -30,6 +30,7 @@ import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmast
 import { ProjectMasterController } from "../../controllers/Purchaseflow/pf_projectmaster.controller";
 import { fetchMessageBox } from "../../controllers/Purchaseflow/pf_purchaseRequest.controller";
 import { MaterialCategoryController } from "../../controllers/Purchaseflow/pf_MaterialCategory.controller";
+import { SupplierMasterController } from "../../controllers/Purchaseflow/pf_supplier.controller";
 
 // import {
 //   creatematerialcategory,
@@ -110,9 +111,11 @@ import { MaterialCategoryController } from "../../controllers/Purchaseflow/pf_Ma
 
 const router = express.Router();
 
+//----------------------- Cost Master -----------------------
 router.post("/costmaster", CostmasterController.createcostmaster);
 router.put("/costmaster", CostmasterController. updatecostmaster);
 
+//------------------------- Material Category ---------------------------
 router.post("/CatMatMaster", MaterialCategoryController.createMaterialCategory);
 router.put("/CatMatMaster", MaterialCategoryController.updateMaterialCategory);
 
@@ -132,8 +135,8 @@ router.put("/projectmaster", ProjectMasterController.updateProject);
 
 // // ------------------Supplier Master ------------------
 
-// router.post("/suppliermaster", createSupplier);
-// router.put("/suppliermaster", updateSupplier);
+router.post("/suppliermaster",SupplierMasterController.createSuppilerMaster);
+router.put("/suppliermaster",SupplierMasterController.updateSuppilerMaster);
 
 // //-----Purchase Request-----------
 // router.get("/purchaserequest/:request_number", getPurchaserequest);

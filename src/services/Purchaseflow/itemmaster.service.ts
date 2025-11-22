@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { ItemmasterPf } from "../../entity/Purchaseflow/itemmaster.entity";
+import { ItemmasterPf } from "../../entity/PurchaseFlow/itemmaster.entity";
 
 export class ItemMasterService {
   private static getRepository() {
@@ -19,25 +19,45 @@ export class ItemMasterService {
     });
   }
 
-  static async findOne(item_code: string, company_code: string): Promise<ItemmasterPf | null> {
+  // static async findOne(item_code: string, company_code: string): Promise<ItemmasterPf | null> {
+  //   const repo = this.getRepository();
+
+  //   return await repo.findOne({
+  //     where: { item_code, company_code }
+  //   });
+  // }
+
+   // Create
+  static async createItem(data: any) {
     const repo = this.getRepository();
 
-    return await repo.findOne({
-      where: { item_code, company_code }
+    const exists = await repo.findOne({
+      where: {
+        company_code: data.company_code,
+        item_code: data.item_code,
+      },
     });
-  }
 
-  // Create
-  static async createItem(data: any): Promise<ItemmasterPf> {
-    const repo = this.getRepository();
+    if (exists) {
+      return {
+        success: false,
+        message: "Item Master Already Exists",
+      };
+    }
 
-    const item = repo.create({
+    const items = repo.create({
       ...data,
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     });
 
-    return await repo.save(item);
+    const saved = await repo.save(items);
+
+    return {
+      success: true,
+      message: "Item created successfully",
+      data: saved,
+    };
   }
 
   // Update
@@ -45,18 +65,32 @@ export class ItemMasterService {
     item_code: string,
     company_code: string,
     updateData: any
-  ): Promise<boolean> {
+  ) {
     const repo = this.getRepository();
 
-    const result = await repo.update(
+    const existing = await repo.findOne({
+      where: {
+        company_code,
+        item_code,
+      },
+    });
+
+    if (!existing) {
+      throw new Error("Item Master Already Exists")
+    }
+
+    await repo.update(
       { item_code, company_code },
       {
         ...updateData,
-        updated_at: new Date()
+        updated_at: new Date(),
       }
     );
 
-    return result.affected ? result.affected > 0 : false;
+    return {
+      success: true,
+      message: "Item Master Updated Successfully",
+    };
   }
 
   // Delete 
