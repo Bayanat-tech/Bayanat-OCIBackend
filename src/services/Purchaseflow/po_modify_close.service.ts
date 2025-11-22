@@ -7,7 +7,7 @@ interface Filter {
   };
 }
 
-export const getMyClosedRequests = async (
+export const getPoModifyData = async (
   loginid: string,
   company_code: string,
   filter?: Filter,
@@ -28,12 +28,12 @@ export const getMyClosedRequests = async (
 
     conn = await oracleDb.getConnection();
 
-    console.log("Calling closed request procedure with:", company_code, loginid);
+    console.log("Calling procedure with:", company_code, loginid);
 
-    // ✅ CALL HISTORY PROCEDURE (REQUIRED)
+    // Execute procedure
     await conn.execute(
       `BEGIN
-         PROC_CREATE_MY_HISTORY(:p_company, :p_user);
+         PROC_POPULATE_GT_CLOSE(:p_user, :p_company);
        END;`,
       {
         p_company: company_code,
@@ -41,9 +41,9 @@ export const getMyClosedRequests = async (
       }
     );
 
-    console.log("Closed request procedure executed successfully");
+    console.log("Procedure executed successfully");
 
-    // Sorting (same logic)
+    // Sorting
     let orderBy = "";
     if (filter?.sort?.field_name) {
       orderBy = ` ORDER BY "${filter.sort.field_name.toUpperCase()}" ${
@@ -53,11 +53,11 @@ export const getMyClosedRequests = async (
 
     const offset = (page - 1) * limit;
 
-    // ✅ FETCH FROM GT_CLOSE TABLE (REQUIRED)
+    // Fetch data + total count in single query
     const dataResult = await conn.execute(
       `
       SELECT t.*, COUNT(*) OVER() AS total_count
-      FROM GT_CLOSE t
+      FROM GT_MY_TASK t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
@@ -74,16 +74,16 @@ export const getMyClosedRequests = async (
         return obj;
       }) || [];
 
-    // Extract total count
+    // Total count from first row
     const totalCount = tableData.length > 0 ? tableData[0].total_count : 0;
 
-    console.log("My Closed Requests Result:", { tableData, totalCount });
+    console.log("My Task Result:", { tableData, totalCount });
 
     return {
       success: true,
       tableData,
       totalCount,
-      message: "Closed requests fetched successfully.",
+      message: "Data fetched successfully.",
     };
   } catch (err: unknown) {
     const message =
@@ -93,7 +93,7 @@ export const getMyClosedRequests = async (
         ? err
         : JSON.stringify(err);
 
-    console.error("❌ Error in getMyClosedRequests:", message);
+    console.error("❌ Error in getPoModifyData:", message);
 
     return {
       success: false,

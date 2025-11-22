@@ -1,5 +1,3 @@
-
-
 import { oracleDb } from "../../database/connection";
 
 interface Filter {
@@ -9,7 +7,7 @@ interface Filter {
   };
 }
 
-export const getPoModifyData = async (
+export const getRequestCloseData = async (
   loginid: string,
   company_code: string,
   filter?: Filter,
@@ -30,67 +28,62 @@ export const getPoModifyData = async (
 
     conn = await oracleDb.getConnection();
 
-    console.log("Calling procedure with:", company_code, loginid);
+    console.log("Calling close request procedure with:", company_code, loginid);
 
-    // Execute procedure
+    // ✅ CALL CLOSE REQUEST PROCEDURE
     await conn.execute(
       `BEGIN
-         PROC_POPULATE_GT_CLOSE(:p_user, :p_company);
+         PROC_POPULATE_GT_CLOSE(:p_company, :p_user);
        END;`,
       {
         p_company: company_code,
         p_user: loginid,
       }
     );
-   console.log("loginid,company_code");
-    console.log("Procedure executed successfully");
+
+    console.log("Close request procedure executed successfully");
 
     // Sorting
     let orderBy = "";
     if (filter?.sort?.field_name) {
-      orderBy = ` ORDER BY ${filter.sort.field_name} ${
+      orderBy = ` ORDER BY "${filter.sort.field_name.toUpperCase()}" ${
         filter.sort.desc ? "DESC" : "ASC"
       } `;
     }
 
     const offset = (page - 1) * limit;
 
-    // Fetch paginated data
+    // ✅ FETCH FROM GT_CLOSE
     const dataResult = await conn.execute(
       `
-      SELECT *
-      FROM GT_MY_TASK
+      SELECT t.*, COUNT(*) OVER() AS total_count
+      FROM GT_CLOSE t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
       { offset, limit }
     );
 
-    // Fetch total count
-    const countResult = await conn.execute(`SELECT COUNT(*) FROM GT_MY_TASK`);
-
-    // Map rows to objects using column names
+    // Map rows to lowercase keys
     const tableData =
-      dataResult.rows?.map((row: any[], idx: number) => {
+      dataResult.rows?.map((row: any[]) => {
         const obj: any = {};
         dataResult.metaData.forEach((col: any, i: number) => {
-          obj[col.name] = row[i];
+          obj[col.name.toLowerCase()] = row[i];
         });
         return obj;
       }) || [];
 
-    const totalCount =
-      countResult.rows && countResult.rows.length > 0
-        ? countResult.rows[0][0]
-        : 0;
+    // Extract total count
+    const totalCount = tableData.length > 0 ? tableData[0].total_count : 0;
 
-    console.log("My Task Result:", { tableData, totalCount });
+    console.log("Close Requests Result:", { tableData, totalCount });
 
     return {
       success: true,
       tableData,
       totalCount,
-      message: "Data fetched successfully.",
+      message: "Close requests fetched successfully.",
     };
   } catch (err: unknown) {
     const message =
@@ -100,7 +93,7 @@ export const getPoModifyData = async (
         ? err
         : JSON.stringify(err);
 
-    console.error("❌ Error in getMyModifyData:", message);
+    console.error("❌ Error in getRequestCloseData:", message);
 
     return {
       success: false,
@@ -108,5 +101,13 @@ export const getPoModifyData = async (
       totalCount: 0,
       message,
     };
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch (closeErr) {
+        console.error("❌ Error closing connection:", closeErr);
+      }
+    }
   }
 };
