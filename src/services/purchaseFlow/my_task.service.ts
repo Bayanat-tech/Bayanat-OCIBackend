@@ -30,7 +30,7 @@ export const getMyTaskData = async (
 
     console.log("Calling procedure with:", company_code, loginid);
 
-    // Execute procedure
+    // Execute procedure to populate GTT
     await conn.execute(
       `BEGIN
          PRO_CREATEORINERTGTMYTASK(:p_company, :p_user);
@@ -46,41 +46,36 @@ export const getMyTaskData = async (
     // Sorting
     let orderBy = "";
     if (filter?.sort?.field_name) {
-      orderBy = ` ORDER BY ${filter.sort.field_name} ${
+      orderBy = ` ORDER BY "${filter.sort.field_name.toUpperCase()}" ${
         filter.sort.desc ? "DESC" : "ASC"
       } `;
     }
 
     const offset = (page - 1) * limit;
 
-    // Fetch paginated data
+    // Fetch data with total count in one query using COUNT(*) OVER()
     const dataResult = await conn.execute(
       `
-      SELECT *
-      FROM GT_MY_TASK
+      SELECT t.*, COUNT(*) OVER() AS total_count
+      FROM GT_MY_TASK t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
       { offset, limit }
     );
 
-    // Fetch total count
-    const countResult = await conn.execute(`SELECT COUNT(*) FROM GT_MY_TASK`);
-
-    // Map rows to objects using column names
+    // Map rows to lowercase keys
     const tableData =
-      dataResult.rows?.map((row: any[], idx: number) => {
+      dataResult.rows?.map((row: any[]) => {
         const obj: any = {};
         dataResult.metaData.forEach((col: any, i: number) => {
-          obj[col.name] = row[i];
+          obj[col.name.toLowerCase()] = row[i];
         });
         return obj;
       }) || [];
 
-    const totalCount =
-      countResult.rows && countResult.rows.length > 0
-        ? countResult.rows[0][0]
-        : 0;
+    // Get total count from first row if available
+    const totalCount = tableData.length > 0 ? tableData[0].total_count : 0;
 
     console.log("My Task Result:", { tableData, totalCount });
 
@@ -106,5 +101,13 @@ export const getMyTaskData = async (
       totalCount: 0,
       message,
     };
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch (closeErr) {
+        console.error("❌ Error closing connection:", closeErr);
+      }
+    }
   }
 };
