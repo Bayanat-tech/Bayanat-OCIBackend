@@ -364,8 +364,8 @@ export const getPurchasefMaster = async (
 
     const responsePayload = {
       success: historyResult.success,
-      data: historyResult.tableData || [],    // <-- map tableData → data
-      count: historyResult.totalCount || 0,   // <-- map totalCount → count
+      data: historyResult.data || [],   // <-- use data
+      count: historyResult.count || 0,  // <-- use count
       message: historyResult.message || "",
     };
 
@@ -373,7 +373,7 @@ export const getPurchasefMaster = async (
       res.json(responsePayload);
     }
 
-    return;
+    return; // stop further execution
 
   } catch (err) {
     console.error("❌ Error in My_History route:", err);
@@ -391,6 +391,7 @@ export const getPurchasefMaster = async (
   }
 
   break;
+
 
 
 
