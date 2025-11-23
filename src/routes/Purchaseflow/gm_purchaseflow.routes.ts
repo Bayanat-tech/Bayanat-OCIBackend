@@ -1,4 +1,5 @@
 import { IUser } from "../../interfaces/user.interface";
+
 import express, {
   Request,
   Response,
@@ -39,6 +40,8 @@ import { fetchCostwisebudgetAllocation } from "../../controllers/Purchaseflow/fe
 import { CheckBudgetStatus } from "../../controllers/Purchaseflow/CheckBudgetStatus";
 import { getBudgetexcel } from "../../controllers/Purchaseflow/getBudgetexcel";
 import { fetchUserlevel } from "../../controllers/Purchaseflow/fetchUserlevel";
+import { createOrUpdatePurchaseRequestSequential } from "../../../src/controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential"
+//import { createOrUpdatePurchaseRequestSequential } from "../../controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential";
 // import {
 //   createcostmaster,
 //   updatecostmaster,
@@ -198,7 +201,8 @@ router.get("/FetchGenPOString", FetchGenPOString);
 // console.log("inside purchase router");
 
 // router.post("/budgetrequest/cost", handleInsertBudgetCosts);
-// router.post("/purchaserequest", createOrUpdatePurchaseRequestSequential);
+
+router.post("/purchaserequest", createOrUpdatePurchaseRequestSequential);
 // router.post("/materialrequest", createOrUpdateMaterialRequestSequential);
 // router.post("/budgetrequest", createOrUpdateBudgetRequestSequential);
 // router.post("/purchaseorder", updatePurchaseOrder);
