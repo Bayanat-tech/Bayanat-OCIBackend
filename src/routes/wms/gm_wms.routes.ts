@@ -9,6 +9,7 @@ import {
   exportCountry, // For exporting country data
   updateCountry, // For updating country information
 } from "../../controllers/wms/country_wms.controller";
+import { createUoc, updateUoc } from "../../controllers/wms/uoc_wms.controller";
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -147,7 +148,6 @@ import {
   updateMoc2,
 } from "../../controllers/wms/moc2_wms.controller";
 import { createMoc, updateMoc } from "../../controllers/wms/moc_wms.controller";
-import { createUoc, updateUoc } from "../../controllers/wms/uoc_wms.controller";
 import { createUom, updateUom } from "../../controllers/wms/uom_wms.controller";
 // import { checkPassword } from "../../middleware/checkPassword";
 

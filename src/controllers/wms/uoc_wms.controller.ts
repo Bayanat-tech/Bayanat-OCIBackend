@@ -2,67 +2,55 @@ import { Response } from "express";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import { vesselSchema } from "../../validation/wms/gm.validation";
-import { VesselService } from "../../services/WMS/vessel.service";
+import { uocSchema } from "../../validation/wms/gm.validation";
+import { ActivityUOCService } from "../../services/WMS/uoc.service";
 
-export const createVessel = async (req: RequestWithUser, res: Response) => {
+export const createUoc = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
 
-    const { error } = vesselSchema(req.body);
+    const { error } = uocSchema(req.body);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
     }
-    // Map request body fields to camelCase for service
-    const { vessel_code, company_code, group_code, group_name } = req.body;
+    const { charge_code, charge_type, company_code, description, activity_group_code } = req.body;
 
-    if (!vessel_code) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: "VESSEL_CODE is required" });
-      return;
-    }
-
-    const exists = await VesselService.checkVesselExists(
-      vessel_code, // vessel_code is used as vesselCode
-      company_code
+    const uocExists = await ActivityUOCService.checkActivityUOCExists(
+      company_code,
+      charge_type,
+      charge_code
     );
 
-    if (exists) {
+    if (uocExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: constants.MESSAGES.VESSEL_WMS.VESSEL_ALREADY_EXISTS,
+        message: constants.MESSAGES.UOC_WMS.UOC_ALREADY_EXISTS,
       });
       return;
     }
-
-    const createVessel = await VesselService.createVessel({
+    
+    const createUoc = await ActivityUOCService.createActivityUOC({
       companyCode: company_code,
-      vesselCode: vessel_code, // Correct mapping
-      vesselName: req.body.vessel_name,
-      lineCode: req.body.line_code,
-      contactPerson: req.body.contact_person,
-      address: req.body.address,
-      telNo: req.body.tel_no,
-      faxNo: req.body.fax_no,
-      email: req.body.email,
-      createdBy: requestUser.username,
-      updatedBy: requestUser.username,
-      // ...other fields if needed
+      chargeType: charge_type,
+      chargeCode: charge_code,
+      description,
+      activityGroupCode: activity_group_code,
+      createdBy: requestUser.loginid,
+      updatedBy: requestUser.loginid
     });
-
-    if (!createVessel) {
+    
+    if (!createUoc) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating Vessel" });
+        .json({ success: false, message: "Error while creating company" });
       return;
     }
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: constants.MESSAGES.VESSEL_WMS.VESSEL_CREATED_SUCCESSFULLY,
+      message: constants.MESSAGES.UOC_WMS.UOC_CREATED_SUCCESSFULLY,
     });
     return;
   } catch (error: any) {
@@ -73,72 +61,66 @@ export const createVessel = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const updateVessel = async (req: RequestWithUser, res: Response) => {
+export const updateUoc = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
 
-    const { error } = vesselSchema(req.body);
+    const { error } = uocSchema(req.body);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
     }
-    // Map request body fields to camelCase for service
-    const { vessel_code, company_code, original_vessel_code, original_company_code } = req.body;
+    const { 
+      charge_code, 
+      charge_type, 
+      company_code, 
+      description, 
+      activity_group_code,
+      old_charge_type,
+      old_charge_code 
+    } = req.body;
 
-    // Use original codes for existence check, fall back to current codes if originals not provided
-    const checkVesselCode = original_vessel_code || vessel_code;
-    const checkCompanyCode = original_company_code || company_code;
-
-    if (!checkVesselCode) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: "VESSEL_CODE is required" });
-      return;
-    }
-
-    const exists = await VesselService.checkVesselExists(
-      checkVesselCode,
-      checkCompanyCode
+    // Use old values to check if the UOC exists
+    const uocExists = await ActivityUOCService.checkActivityUOCExists(
+      company_code,
+      old_charge_type || charge_type,
+      old_charge_code || charge_code
     );
 
-    if (!exists) {
+    if (!uocExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: constants.MESSAGES.VESSEL_WMS.VESSEL_DOES_NOT_EXISTS,
+        message: constants.MESSAGES.UOC_WMS.UOC_DOES_NOT_EXISTS,
       });
       return;
     }
-
-    const updateData = {
-      vesselCode: vessel_code,
-      companyCode: company_code,
-      vesselName: req.body.vessel_name,
-      lineCode: req.body.line_code,
-      contactPerson: req.body.contact_person,
-      address: req.body.address,
-      telNo: req.body.tel_no,
-      faxNo: req.body.fax_no,
-      email: req.body.email,
-      updatedBy: requestUser.username,
-    };
-
-    const updated = await VesselService.updateVessel(
-      checkVesselCode,
-      checkCompanyCode,
-      updateData
+    
+    // Pass old values to updateActivityUOC, and new values in updateData
+    const updateResult = await ActivityUOCService.updateActivityUOC(
+      company_code,
+      old_charge_type || charge_type,
+      old_charge_code || charge_code,
+      {
+        chargeType: charge_type,
+        chargeCode: charge_code,
+        description,
+        activityGroupCode: activity_group_code,
+        updatedBy: requestUser.loginid,
+      }
     );
-
-    if (!updated) {
+    
+    if (!updateResult) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating Vessel" });
+        .json({ success: false, message: "Error while updating company" });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: constants.MESSAGES.VESSEL_WMS.VESSEL_UPDATED_SUCCESSFULLY,
+      message: constants.MESSAGES.UOC_WMS.UOC_UPDATED_SUCCESSFULLY,
     });
     return;
   } catch (error: any) {
@@ -149,37 +131,37 @@ export const updateVessel = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const deleteVessel = async (req: RequestWithUser, res: Response) => {
+export const deleteCountries = async (req: RequestWithUser, res: Response) => {
   try {
-    const vesselCodes = req.body;
+    const uocList = req.body;
 
-    if (!vesselCodes.length) {
+    if (!uocList || !uocList.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: constants.MESSAGES.VESSEL_WMS.SELECT_AT_LEAST_ONE_VESSEL,
+        message: constants.MESSAGES.UOC_WMS.SELECT_AT_LEAST_ONE_UOC,
       });
       return;
     }
-
-    // Format the data for the service method
-    const vesselsToDelete = vesselCodes.map((item: any) => ({
-      vesselCode: item.vessel_code, // Correct mapping
+    
+    const activityIdentifiers = uocList.map((item: any) => ({
       companyCode: item.company_code,
+      chargeType: item.charge_type,
+      chargeCode: item.charge_code
     }));
 
-    const deleted = await VesselService.deleteVessels(vesselsToDelete);
-
-    if (!deleted) {
+    const deleteResult = await ActivityUOCService.deleteActivityUOCs(activityIdentifiers);
+    
+    if (!deleteResult) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "Failed to delete vessels",
+        message: "Failed to delete UOC records",
       });
       return;
     }
-
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: constants.MESSAGES.VESSEL_WMS.VESSEL_DELETED_SUCCESSFULLY,
+      message: constants.MESSAGES.UOC_WMS.UOC_DELETED_SUCCESSFULLY,
     });
     return;
   } catch (error: any) {

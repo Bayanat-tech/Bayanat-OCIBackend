@@ -8,13 +8,13 @@ import jobInboundRouter from "./wms/transaction/inbound_wms.routes";
 import stocktransferWmsRouter from "./wms/transaction/stocktransfer_wms.routes";
 //import jobOutboundRouter from "./wms/transaction/outbound_wms.routes";
 import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; // ✅ CORRECT
-import {
-  getAllReports,
-  getAllOutboundReports,
-  getAllVendorReports,
-  getAllEmployeeReports,
-  getAllDynamicReports,
-} from "../controllers/wms/transaction/inbound/allReport_wms.controller";
+// import {
+//   getAllReports,
+//   getAllOutboundReports,
+//   getAllVendorReports,
+//   getAllEmployeeReports,
+//   getAllDynamicReports,
+// } from "../controllers/wms/transaction/inbound/allReport_wms.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
 
@@ -22,44 +22,44 @@ import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
 const router = express.Router();
 
 // Route to get all inbound reports
-router.get(
-  "/inbound-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllReports
-);
+// router.get(
+//   "/inbound-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllReports
+// );
 
 // Route to get all outbound reports
-router.get(
-  "/outbound-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllOutboundReports
-);
+// router.get(
+//   "/outbound-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllOutboundReports
+// );
 
 //route for vendor reports
-router.get(
-  "/vendor-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllVendorReports
-);
+// router.get(
+//   "/vendor-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllVendorReports
+// );
 
-//route for Employee reports
-router.get(
-  "/employee-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllEmployeeReports
-);
+// //route for Employee reports
+// router.get(
+//   "/employee-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllEmployeeReports
+// );
 
-//route for Dynamic reports
-router.get(
-  "/dynamic-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllDynamicReports
-);
+// //route for Dynamic reports
+// router.get(
+//   "/dynamic-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllDynamicReports
+// );
 
 // Route for outbound operations
 router.use(

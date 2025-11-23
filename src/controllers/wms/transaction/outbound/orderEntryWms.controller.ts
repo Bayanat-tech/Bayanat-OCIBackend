@@ -16,7 +16,7 @@ import OrderEntry from "../../../../models/wms/transaction/outbound/orderEntry_w
 import { pickOrderSchema } from "../../../../validation/wms/transaction/outbound.validation";
 import VwWmOubJobPickFilter from "../../../../views/wms/transportation/outbound/pickingPreferenceFilter.view";
 import VwStkled from "../../../../views/wms/transportation/outbound/vmStkled.view";
-import OrderDetail from "../../../../models/wms/transaction/outbound/toOrderDetail_wms.model";
+// import OrderDetail from "../../../../models/wms/transaction/outbound/toOrderDetail_wms.model";
 import PickingDetailsOutboundWmsView from "../../../../views/wms/transportation/outbound/pickingDetailsWms.view";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { Request } from "express";
