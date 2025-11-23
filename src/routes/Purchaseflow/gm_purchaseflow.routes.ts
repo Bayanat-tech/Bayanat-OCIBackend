@@ -11,9 +11,9 @@ import { CheckCostcontroller } from "./../../../src/controllers/Purchaseflow/che
 import {
   upsertAMCDetails  
   } from "../../controllers/Purchaseflow/update_requestAMCdata"
-import { getBudgetexcel } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
-import { budgetexcelupload } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
-import { CheckBudgetStatus } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
+//import { getBudgetexcel } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
+//import { budgetexcelupload } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
+//import { CheckBudgetStatus } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
 import passport from "passport";
 import { TCostbudget } from "../../interfaces/Purchaseflow/Budgetflow.interface";
 import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
@@ -26,6 +26,18 @@ import { CostmasterController } from "../../controllers/Purchaseflow/pf_costmast
 import { getddProductMaster } from "../../controllers/Purchaseflow/getdddivisiondata_pf.cotroller";
 
 import {proc_build_dynamic_sql} from "../../controllers/Purchaseflow/proc_build_dynamic_sql"
+import { getPurchaserequest } from "../../controllers/Purchaseflow/getPurchaserequest.controller";
+import { fetchRequestNoFromGTSession } from "../../controllers/Purchaseflow/fetchRequestNoFromGTSession";
+import { FetchGenPOString } from "../../controllers/Purchaseflow/FetchGenPOString";
+import { updatePrintSignatureInfo } from "../../controllers/Purchaseflow/updateprintSignatureinfo";
+import { updateReasonForPO } from "../../controllers/Purchaseflow/updateReasonForPO";
+import { cancelFinalApproval } from "../../controllers/Purchaseflow/cancelFinalApproval";
+import { fetchPOlisting } from "../../controllers/Purchaseflow/fetchPOlisting";
+import { handleSaveExpSamt } from "../../controllers/Purchaseflow/handleSaveExpSamt";
+import { handleGenerateExpenseAdj } from "../../controllers/Purchaseflow/handleGenerateExpenseAdj";
+import { fetchCostwisebudgetAllocation } from "../../controllers/Purchaseflow/fetchCostwisebudgetAllocation";
+import { CheckBudgetStatus } from "../../controllers/Purchaseflow/CheckBudgetStatus";
+import { getBudgetexcel } from "../../controllers/Purchaseflow/getBudgetexcel";
 // import {
 //   createcostmaster,
 //   updatecostmaster,
@@ -114,7 +126,7 @@ router.post("/costmaster", CostmasterController.createcostmaster);
 router.put("/costmaster", CostmasterController. updatecostmaster);
 router.post("/proc_build_dynamic_sql", proc_build_dynamic_sql);
 
-// router.post("/cancelFinalApproval", cancelFinalApproval);
+ router.post("/cancelFinalApproval", cancelFinalApproval);
 // router.post("/CatMatMaster", creatematerialcategory);
 // router.put("/CatMatMaster", updatematerialcategory);
 // router.delete("/CatMatMaster", deletematerialcategory);
@@ -133,7 +145,7 @@ router.post("/proc_build_dynamic_sql", proc_build_dynamic_sql);
 // router.put("/suppliermaster", updateSupplier);
 
 // //-----Purchase Request-----------
-// router.get("/purchaserequest/:request_number", getPurchaserequest);
+router.get("/purchaserequest/:request_number", getPurchaserequest);
 // router.get(
 //   "/getMaterialRequestNumber/:request_number",
 //   getMaterialRequestNumber
@@ -144,11 +156,11 @@ router.post("/proc_build_dynamic_sql", proc_build_dynamic_sql);
 // router.get("/getDashboardData", getDashboardData);
 // router.get("/getPfglobalsearch/:master", getPfglobalsearch);
 // router.get("/fetchPRregisterdata", fetchPRregisterdata);
-// router.get("/fetchPOlisting/:request_number", fetchPOlisting);
+ router.get("/fetchPOlisting/:request_number", fetchPOlisting);
 // router.get("/MaterialRequestListing", MaterialRequestListing);
 // router.post("/executeRawSql", executeRawSql);
-// router.post("/handleGenerateExpenseAdj", handleGenerateExpenseAdj);
-// router.post("/handleSaveExpSamt", handleSaveExpSamt);
+ router.post("/handleGenerateExpenseAdj", handleGenerateExpenseAdj);
+ router.post("/handleSaveExpSamt", handleSaveExpSamt);
 
 // router.get(
 //   "/fetchProjectwisebudgetAllocation",
@@ -159,7 +171,7 @@ router.post("/proc_build_dynamic_sql", proc_build_dynamic_sql);
 router.get("/getddProductMaster", 
   getddProductMaster);
 
-// router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
+router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
 // router.get("/fetchPOregisterdata", fetchPOregisterdata);
 // router.get(
 //   "/bugetcurstatusprojectwiseconsolidated",
@@ -167,8 +179,8 @@ router.get("/getddProductMaster",
 // );
 
 // //below is to get data from temp_load and display on the screen.
-// router.get("/excebudget/:request_number", getBudgetexcel);
-// router.post("/CheckbudgetStatus", CheckBudgetStatus);
+ router.get("/excebudget/:request_number", getBudgetexcel);
+ router.post("/CheckbudgetStatus", CheckBudgetStatus);
 
 // router.get(
 //   "/budgetrequest/:request_number/:cost_code?",
@@ -176,12 +188,12 @@ router.get("/getddProductMaster",
 //   checkUserAuthorization,
 //   getBudgetRequest as unknown as RequestHandler
 // );
-// router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
+ router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
 // router.get("/fetchUserlevel", fetchUserlevel);
  router.get("/CheckCostcontroller", CheckCostcontroller);
 //router.get("/Fetchmessagebox", Fetchmessagebox);
 
-// router.get("/FetchGenPOString", FetchGenPOString);
+router.get("/FetchGenPOString", FetchGenPOString);
 // console.log("inside purchase router");
 
 // router.post("/budgetrequest/cost", handleInsertBudgetCosts);
@@ -192,8 +204,8 @@ router.get("/getddProductMaster",
 // router.post("/budgetexcelupload", budgetexcelupload);
 // router.post("/updatecancelrejectsentback", updatecancelrejectsentBack);
 // router.post("/UpdPurchaseRecoveryData", UpdPurchaseRecoveryData);
-// router.post("/updateReasonForPO", updateReasonForPO);
-// router.post("/updatePrintSignatureInfo", updatePrintSignatureInfo);
+ router.post("/updateReasonForPO", updateReasonForPO);
+router.post("/updatePrintSignatureInfo", updatePrintSignatureInfo);
 
 // router.get("/PRlogreport/:requestNumber", getPurchaseRequestLog);
 
