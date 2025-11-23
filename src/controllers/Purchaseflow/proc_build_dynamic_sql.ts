@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection";   // keep if needed for pool
+import { oracleDb } from "../../database/connection";
 
 export const proc_build_dynamic_sql = async (req: Request, res: Response): Promise<void> => {
   let connection;
@@ -8,6 +8,7 @@ export const proc_build_dynamic_sql = async (req: Request, res: Response): Promi
   try {
     const {
       parameter,
+      loginid,
       code1,
       code2,
       code3,
@@ -27,14 +28,12 @@ export const proc_build_dynamic_sql = async (req: Request, res: Response): Promi
       return;
     }
 
-    // 🔥 Get Oracle connection directly
     connection = await oracledb.getConnection();
 
-    // 1️⃣ Call PL/SQL procedure
     const result = await connection.execute(
       `
       DECLARE
-        v_sql VARCHAR2(4000);
+        v_sql VARCHAR2(32767);
       BEGIN
         PROC_BUILD_DYNAMIC_SQL(
           :parameter,
@@ -58,9 +57,11 @@ export const proc_build_dynamic_sql = async (req: Request, res: Response): Promi
       `,
       {
         parameter,
+        loginid,
         code1,
         code2,
         code3,
+        code4,
         number1,
         number2,
         number3,
@@ -69,12 +70,16 @@ export const proc_build_dynamic_sql = async (req: Request, res: Response): Promi
         date2,
         date3,
         date4,
-        out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+        out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
       }
     );
 
-const outBinds = result.outBinds as { out_sql: string };
-const rawSql = outBinds?.out_sql;
+    interface ProcOutBinds {
+      out_sql: string;
+    }
+
+    const outBinds = result.outBinds as ProcOutBinds;
+    const rawSql = outBinds?.out_sql;
 
     if (!rawSql) {
       res.status(500).json({ error: "Procedure did not return SQL" });
@@ -83,21 +88,30 @@ const rawSql = outBinds?.out_sql;
 
     console.log("Generated SQL:", rawSql);
 
-    // 2️⃣ Execute dynamic SQL
-    const queryResult = await connection.execute(rawSql, [], {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
+    // Execute dynamic SQL with OUT_FORMAT_ARRAY
+    const dataResult = await connection.execute<any[]>(rawSql, [], {
+      outFormat: oracledb.OUT_FORMAT_ARRAY
     });
+
+    // Safely map rows to lowercase keys
+    const tableData =
+      dataResult.rows?.map((row) => {
+        const obj: Record<string, any> = {};
+        dataResult.metaData?.forEach((col, i) => {
+          obj[col.name.toLowerCase()] = row[i];
+        });
+        return obj;
+      }) || [];
 
     res.json({
       success: true,
-      data: queryResult.rows || [],
-      totalCount: queryResult.rows?.length || 0
+      data: tableData,
+      totalCount: tableData.length,
     });
 
   } catch (error: any) {
     console.error("Oracle Error:", error);
     res.status(500).json({ error: "Failed to execute SQL", details: error.message });
-
   } finally {
     if (connection) {
       try {

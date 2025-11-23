@@ -33,7 +33,7 @@ export const getCancelledRequests = async (
     // ✅ CALL CANCELLED PROCEDURE
     await conn.execute(
       `BEGIN
-         PROC_POPULATE_GT_CANCEL(:p_company, :p_user);
+         PROC_POPULATE_GT_CANCEL(:p_user,:p_company);
        END;`,
       {
         p_company: company_code,

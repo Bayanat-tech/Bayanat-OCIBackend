@@ -57,7 +57,7 @@ export const getPoModifyData = async (
     const dataResult = await conn.execute(
       `
       SELECT t.*, COUNT(*) OVER() AS total_count
-      FROM GT_MY_TASK t
+      FROM GT_CLOSE t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
