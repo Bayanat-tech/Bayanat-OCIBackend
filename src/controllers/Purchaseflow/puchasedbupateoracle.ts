@@ -7,9 +7,11 @@ import { oracleDb } from "../../database/connection";
 
 import { notifyUser } from "../../helpers/functions";
 import constants from "../../helpers/constants";
+import { format } from 'date-fns';
 
-
-
+interface PurchaseRequestHeaderRow {
+  CREATED_BY: string;
+}
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
@@ -32,20 +34,22 @@ async function retryOnDeadlock<T>(
   }
 }
 
-export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
+// ----------------------
+// Main function
+// ----------------------
+export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<string> {
   let connection: oracledb.Connection | undefined;
 
   try {
     connection = await oracleDb.getConnection();
 
-    // Start transaction (Oracle implicitly starts a transaction)
-    await connection.execute("BEGIN NULL; END;"); // dummy block
+    // Start dummy transaction block (Oracle implicitly starts transaction)
+    await connection.execute("BEGIN NULL; END;");
 
-    const isAddMode = !data.requestNumber;
     let generatedRequestNumber = data.requestNumber;
 
-    // Handle POGEN case
-    if (data.last_action === "POGEN") {
+    // Handle POGEN case separately
+    if (data.last_action === "POGEN" && data.requestNumber) {
       const key_request_number = data.requestNumber.replace(/\//g, "$");
       await connection.execute(
         `BEGIN PRO_GEN_JESRA_PO_NO(:companyCode, :requestNumber, :userId, :prinCode); END;`,
@@ -57,14 +61,19 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
         }
       );
       await connection.commit();
-      return;
+      return key_request_number;
     }
 
-    // Insert/update header and retrieve request number if needed
+    // ----------------------
+    // 1. Insert/update header
+    // ----------------------
     generatedRequestNumber = await upsertPurchaseRequestHeader(data, connection);
 
-    // Insert/update details
+    // ----------------------
+    // 2. Insert/update details
+    // ----------------------
     await upsertPurchaseRequestDetails(
+      data.div_code ?? "",
       data.items,
       data.companyCode,
       generatedRequestNumber,
@@ -72,7 +81,9 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
       connection
     );
 
-    // Insert/update terms & conditions
+    // ----------------------
+    // 3. Insert/update terms & conditions
+    // ----------------------
     await updatetermscondition(
       data.termconditions,
       data.companyCode,
@@ -83,17 +94,21 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
     // Commit transaction
     await connection.commit();
 
-    // Send notification email if not a draft
+    // ----------------------
+    // 4. Send notification email if not draft
+    // ----------------------
     if (data.last_action !== "SAVEASDRAFT") {
       try {
         const request_users = await getRequestUsers(data, connection);
         const cc = await getCCList(data, request_users, generatedRequestNumber, connection);
-        const createdByResult = await connection.execute(
+
+        const createdByResult = await connection.execute<PurchaseRequestHeaderRow>(
           `SELECT CREATED_BY FROM PURCHASE_REQUEST_HEADER WHERE REQUEST_NUMBER = :requestNumber`,
           { requestNumber: generatedRequestNumber.replace(/\//g, "$") },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        const createdBy = createdByResult.rows?.[0]?.CREATED_BY || "Unknown";
+
+        const createdBy = createdByResult.rows?.[0]?.CREATED_BY ?? "Unknown";
 
         const htmlMessage = await generateEmailTemplate(data, generatedRequestNumber, createdBy);
 
@@ -111,6 +126,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
 
     return generatedRequestNumber;
   } catch (error) {
+    // Rollback if error occurs
     if (connection) {
       try {
         await connection.rollback();
@@ -120,6 +136,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
     }
     throw error;
   } finally {
+    // Close connection safely
     if (connection) {
       try {
         await connection.close();
@@ -129,9 +146,6 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
     }
   }
 }
-
-
-
 
 
 export async function getRequestUsers(
@@ -159,7 +173,7 @@ export async function getRequestUsers(
     );
 
     // 2️⃣ Query to get the email string
-    const result = await conn.execute(
+    const result = await conn.execute<{ EMAIL_CC: string }>(
       `SELECT FUN_EMAIL_SENT_STRING(:companyCode, FUN_GET_FLOW_ROLE_AL(:updatedBy, :companyCode)) AS EMAIL_CC FROM DUAL`,
       {
         companyCode: data.companyCode,
@@ -168,12 +182,14 @@ export async function getRequestUsers(
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const email_cc = result.rows?.[0]?.EMAIL_CC || "";
+    // ✅ TypeScript-safe access
+    const email_cc = result.rows?.[0]?.EMAIL_CC ?? "";
     return email_cc;
   } catch (error) {
     console.error("Error fetching request users:", error);
     throw error;
   } finally {
+    // Close the connection only if we opened it here
     if (!connection && conn) {
       try {
         await conn.close();
@@ -471,7 +487,7 @@ export async function upsertPurchaseRequestHeader(
  * Insert or update PURCHASE_REQUEST_DETAILS items in Oracle
  */
 export async function upsertPurchaseRequestDetails(
-
+div_code: string,
   items: IItemPrRequest[],
   companyCode: string,
   requestNumber: string,
@@ -679,433 +695,79 @@ export async function updatetermscondition(
     throw error;
   }
 }
-
-export const saveFile = async (
-  req: RequestWithUser,
-  res: Response
-): Promise<Response | void> => {
-  const { request_number, files } = req.body;
-
-  // Validate request_number
-  if (!request_number) {
-    return res.status(400).json({
-      success: false,
-      message: "request_number is required.",
-    });
-  }
-
-  // Validate files array
-  if (!files || !Array.isArray(files) || files.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: "files array is required and should not be empty.",
-    });
-  }
-
-  try {
-    const query = `
-      INSERT INTO UPLOADED_FILES_DLTS (
-        company_code, request_number, file_name, extensions, org_file_name, 
-        aws_file_locn, flow_level, modules, updated_by, created_by, user_file_name, created_at, updated_at
-      ) VALUES (
-        :company_code, :request_number, :file_name, :extensions, :org_file_name, 
-        :aws_file_locn, :flow_level, :modules, :updated_by, :created_by, :user_file_name, NOW(), NOW()
-      )
-    `;
-
-    for (const file of files) {
-      const {
-        company_code,
-        file_name,
-        extensions,
-        org_file_name,
-        aws_file_locn,
-        flow_level,
-        modules,
-        updated_by,
-        created_by,
-        user_file_name,
-      } = file;
-
-      await sequelize.query(query, {
-        replacements: {
-          company_code: company_code || null,
-          request_number,
-          file_name: file_name || null,
-          extensions: extensions || null,
-          org_file_name: org_file_name || null,
-          aws_file_locn: aws_file_locn || null,
-          flow_level: flow_level || null,
-          modules: modules || null,
-          updated_by: updated_by || null,
-          created_by: created_by || null,
-          user_file_name: user_file_name || null,
-        },
-        type: QueryTypes.INSERT,
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "File data stored successfully.",
-    });
-  } catch (error) {
-    console.error("Error storing file data:", error);
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while storing file data.",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-};
-// Controller to handle the request updatecancelrejectsentback
-// export const updatecancelrejectsentback = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   console.log("Incoming request dataXXXX:", req.body);
-
-//   const { LAST_ACTION, REQUEST_NUMBER, COMPANY_CODE, loginid } = req.body;
-
-//   if (!LAST_ACTION || !REQUEST_NUMBER || !COMPANY_CODE || !loginid) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Invalid request data",
-//     });
-//   }
-
-//   try {
-//     console.log("Before executing update statement with data:", req.body);
-//     await sequelize.query(
-//       `UPDATE PURCHASE_REQUEST_HEADER
-//            SET LAST_ACTION = ?, UPDATED_AT = NOW(), UPDATED_BY = ?
-//            WHERE REQUEST_NUMBER = ? AND COMPANY_CODE = ?`,
-//       { replacements: [LAST_ACTION, loginid, REQUEST_NUMBER, COMPANY_CODE] }
-//     );
-
-//     console.log("After executing update statement");
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Purchase request processed successfully.",
-//     });
-//   } catch (error) {
-//     console.error("Error saving/updating purchase request:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Error saving/updating purchase request.",
-//       error:
-//         error instanceof Error ? error.message : "An unknown error occurred",
-//     });
-//   }
-// };
-/*export const updatecancelrejectsentback = async (
-  req: RequestWithUser,
-  res: Response
-): Promise<void> => {
-  try {
-    console.log("Incoming request data:", req.body);
-
-    const {
-      LAST_ACTION,
-      REQUEST_NUMBER,
-      COMPANY_CODE,
-      loginid,
-      REMARKS,
-      CREATEPR,
-    } = req.body;
-
-    console.log(CREATEPR);
-
-    if (
-      !LAST_ACTION ||
-      !REQUEST_NUMBER ||
-      !COMPANY_CODE ||
-      !loginid ||
-      !REMARKS
-    ) {
-      res.status(400).json({
-        success: false,
-        message: "Invalid request data",
-      });
-      return;
-    }
-
-    console.log("Before executing update statement with data:", req.body);
-
-    if (REQUEST_NUMBER.startsWith("PO$")) {
-      await sequelize.query(
-        `UPDATE PURCHASE_REQUEST_DETAILS 
-         SET PO_CANCEL = 'Y', REASON_FOR_PO_CANCEL = ?, CANCEL_PO_BY = ?, UPDATED_AT = NOW() 
-         WHERE REF_DOC_NO = ? AND COMPANY_CODE = ?`,
-        { replacements: [REMARKS, loginid, REQUEST_NUMBER, COMPANY_CODE] }
-      );
-    } else {
-      await sequelize.query(
-        `UPDATE PURCHASE_REQUEST_HEADER 
-         SET LAST_ACTION = ?, UPDATED_AT = NOW(), UPDATED_BY = ?
-         WHERE REQUEST_NUMBER = ? AND COMPANY_CODE = ?`,
-        { replacements: [LAST_ACTION, loginid, REQUEST_NUMBER, COMPANY_CODE] }
-      );
-    }
-
-    console.log("After executing update statement");
-
-    res.status(200).json({
-      success: true,
-      message: "Purchase request processed successfully.",
-    });
-  } catch (error) {
-    console.error("Error saving/updating purchase request:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error saving/updating purchase request.",
-      error:
-        error instanceof Error ? error.message : "An unknown error occurred",
-    });
-  }
-};*/
-async function generateEmailTemplate(
+export async function generateEmailTemplate(
   data: IPurchaseRequestPf,
   requestNumber: string,
   createdBy: string
 ): Promise<string> {
-  const formatRequestNumber = (num: string) =>
-    num ? num.replace(/\$/g, "/") : "";
+
+  const formatRequestNumber = (num: string) => num ? num.replace(/\$/g, "/") : "";
+  const formatDate = (date: Date) => format(date, 'dd-MMM-yyyy HH:mm');
+
+  const formattedRequestNumber = formatRequestNumber(requestNumber);
+
   console.log("Generating email template for request number:", requestNumber);
 
-  return `<!DOCTYPE html>
-      <html>
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-              /* Reset styles */
-              * { 
-                  margin: 0;
-                  padding: 0;
-                  box-sizing: border-box;
-              }
-              
-              body { 
-                  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', Arial, sans-serif; 
-                  line-height: 1.6; 
-                  color: #333;
-                  -webkit-text-size-adjust: 100%;
-                  margin: 0;
-                  padding: 10px;
-                  background-color: #f5f5f5;
-              }
-              
-              .container { 
-                  max-width: 600px; 
-                  width: 100%;
-                  margin: 0 auto; 
-                  background-color: #ffffff; 
-                  border-radius: 8px; 
-                  border: 1px solid #2c3e50;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-              }
-              
-              @media screen and (max-width: 480px) {
-                  body {
-                      padding: 5px;
-                  }
-                  
-                  .container {
-                      margin: 0;
-                      border-radius: 0;
-                      border-left: none;
-                      border-right: none;
-                  }
-                  
-                  .content {
-                      padding: 10px !important;
-                  }
-                  
-                  .detail-row {
-                      padding: 8px 5px !important;
-                  }
-                  
-                  .detail-label, .detail-value {
-                      font-size: 13px !important;
-                  }
-                  
-                  .header h1 {
-                      font-size: 16px !important;
-                  }
-                  
-                  .notification-header {
-                      font-size: 14px !important;
-                      padding: 8px 5px !important;
-                  }
-                  
-                  .footer {
-                      font-size: 11px !important;
-                      padding: 10px 5px !important;
-                  }
-              }
-              
-              .header { 
-                  background-color: #2c3e50; 
-                  color: white; 
-                  padding: 15px 10px;
-                  text-align: center;
-              }
-              
-              .header h1 { 
-                  margin: 0;
-                  font-size: clamp(16px, 4vw, 20px);
-                  word-spacing: 4px;
-              }
-              
-              .notification-header { 
-                  background-color: #ecf0f1; 
-                  padding: 12px 10px;
-                  text-align: center; 
-                  font-weight: bold;
-                  font-size: clamp(14px, 3.5vw, 16px);
-                  color: #666;
-              }
-              
-              .content { 
-                  padding: 15px;
-              }
-              
-              .detail-row { 
-                  margin-bottom: 8px; 
-                  display: flex; 
-                  flex-direction: column;
-                  padding: 8px;
-                  border-bottom: 1px solid #eee;
-              }
-              
-              @media screen and (max-width: 480px) {
-                .no-border-mobile {
-                    border-bottom: none !important;
-                }
-              }
-              
-              @media screen and (min-width: 481px) {
-                  .detail-row {
-                      flex-direction: row;
-                      align-items: flex-start;
-                  }
-                  
-                  .detail-label {
-                      width: 150px;
-                      padding-right: 15px;
-                      text-align: right;
-                  }
-                  
-                  .detail-value {
-                      flex: 1;
-                  }
-              }
-              
-              .detail-label { 
-                  font-weight: bold; 
-                  color: #7f8c8d;
-                  margin-bottom: 4px;
-                  font-size: clamp(13px, 3.2vw, 15px);
-              }
-              
-              .detail-value { 
-                  padding-left: 8px;
-                  font-size: clamp(13px, 3.2vw, 15px);
-                  word-break: break-word;
-              }
-              
-              .footer { 
-                  padding: 15px 10px;
-                  text-align: center;
-                  font-size: clamp(11px, 2.8vw, 13px);
-                  color: #000000;
-                  border-top: 1px solid #2c3e50;
-                  background-color: transparent;
-              }
-              
-              .link { 
-                  color: #3498db; 
-                  text-decoration: none;
-                  word-break: break-all;
-                  display: inline-block;
-                  padding: 4px 0;
-              }
-              
-              .link:hover {
-                  text-decoration: underline;
-              }
-
-              /* Tablet Styles */
-              @media screen and (min-width: 768px) {
-                  .detail-row {
-                      flex-direction: row;
-                      align-items: center;
-                  }
-                  
-                  .detail-label {
-                      width: 150px;
-                      margin-bottom: 0;
-                      padding-right: 15px;
-                  }
-                  
-                  .footer {
-                      text-align: right;
-                  }
-              }
-          </style>
-      </head>
-      <body>
-          <div class="container">
-              <div class="header">
-                  <h1>N O T I F I C A T I O N</h1>
-              </div>
-              <div class="notification-header">
-                  An Item has been Assigned to you
-              </div>
-              <div class="content">
-                  <div class="detail-row no-border-mobile">
-                      <span class="detail-label">Link to Item:</span>
-                      <span class="detail-value"><a href="https://qa-app.bayanattechnology.com/login" class="link">${formatRequestNumber(
-                        requestNumber
-                      )}</a></span>
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">Description:</span>
-                      <span class="detail-value">A Purchase Request Number ${formatRequestNumber(
-                        requestNumber
-                      )} initiated by ${createdBy} is now with you for the next step</span>
-                  </div>
-                  <div class="detail-row no-border-mobile">
-                      <span class="detail-label">Initiated By:</span>
-                      <span class="detail-value">${createdBy}</span>
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">Initiated On:</span>
-                      <span class="detail-value">${formatDate(
-                        data.created_at
-                      )}</span>
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">Current Status:</span>
-                      <span class="detail-value">${data.last_action}</span>
-                  </div>
-                  <div class="detail-row no-border-mobile">
-                      <span class="detail-label">Last Modified By:</span>
-                      <span class="detail-value">${data.updated_by}</span>
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">Last Modified On:</span>
-                      <span class="detail-value">${formatDate(
-                        new Date()
-                      )}</span>
-                  </div>
-              </div>
-              <div class="footer">
-                  Powered by Bayanat Technology – Procurement Management System (PMS)
-              </div>
-          </div>
-      </body>
-      </html>`;
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; line-height:1.6; color:#333; padding:10px; background-color:#f5f5f5; }
+  .container { max-width:600px; margin:0 auto; background:#fff; border-radius:8px; border:1px solid #2c3e50; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  .header { background:#2c3e50; color:#fff; padding:15px; text-align:center; }
+  .header h1 { margin:0; font-size:20px; }
+  .notification-header { background:#ecf0f1; padding:12px; text-align:center; font-weight:bold; color:#666; }
+  .content { padding:15px; }
+  .detail-row { margin-bottom:8px; display:flex; flex-direction:column; padding:8px; border-bottom:1px solid #eee; }
+  .detail-label { font-weight:bold; color:#7f8c8d; margin-bottom:4px; }
+  .detail-value { padding-left:8px; word-break:break-word; }
+  .footer { padding:15px; text-align:center; font-size:12px; color:#000; border-top:1px solid #2c3e50; }
+  .link { color:#3498db; text-decoration:none; display:inline-block; padding:4px 0; }
+  .link:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header"><h1>N O T I F I C A T I O N</h1></div>
+  <div class="notification-header">An Item has been Assigned to you</div>
+  <div class="content">
+    <div class="detail-row">
+      <span class="detail-label">Link to Item:</span>
+      <span class="detail-value"><a href="https://qa-app.bayanattechnology.com/login" class="link">${formattedRequestNumber}</a></span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Description:</span>
+      <span class="detail-value">A Purchase Request Number ${formattedRequestNumber} initiated by ${createdBy} is now with you for the next step</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Initiated By:</span>
+      <span class="detail-value">${createdBy}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Initiated On:</span>
+      <span class="detail-value">${formatDate(data.created_at)}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Current Status:</span>
+      <span class="detail-value">${data.last_action}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Last Modified By:</span>
+      <span class="detail-value">${data.updated_by}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Last Modified On:</span>
+      <span class="detail-value">${formatDate(new Date())}</span>
+    </div>
+  </div>
+  <div class="footer">
+    Powered by Bayanat Technology – Procurement Management System (PMS)
+  </div>
+</div>
+</body>
+</html>`;
 }
