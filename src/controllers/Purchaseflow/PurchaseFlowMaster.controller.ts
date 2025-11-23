@@ -183,66 +183,94 @@ export const getPurchasefMaster = async (
         );
         break;
 
-      case "po_modify":
-        console.log("inside po_modify");
+  case "po_modify":
+  console.log("inside po_modify");
 
-        try {
-          const result1 = await getPoModifyData(
-            requestUser.loginid,
-            requestUser.company_code,
-            undefined,
-            page,
-            limit
-          );
+  try {
+    const result1 = await getPoModifyData(
+      requestUser.loginid,
+      requestUser.company_code,
+      undefined,
+      page,
+      limit
+    );
 
-          // Send response once
-          res.json(result1);
+    const responsePayload = {
+      success: result1.success,
+      data: result1.data || [],       // renamed from tableData
+      count: result1.count || 0,      // renamed from totalCount
+      message: result1.message || "",
+    };
 
-          // Important: do not execute anything else after sending response
-          return;
+    if (!res.headersSent) {
+      res.json(responsePayload);
+    }
 
-        } catch (err) {
-          console.error("❌ Error in po_modify route:", err);
+    return; // safe exit
 
-          // Only send response if headers not sent yet
-          if (!res.headersSent) {
-            res.status(500).json({ success: false, message: "Server error" });
-          }
-          return;
-        }
+  } catch (err) {
+    console.error("❌ Error in po_modify route:", err);
 
-        break;
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        data: [],
+        count: 0,
+        message: "Server error",
+      });
+    }
+
+    return;
+  }
+
+  break;
+
 
 
  case "ponotgenerated":
-    console.log("inside ponotgenerated");
+  console.log("inside ponotgenerated");
 
-    try {
-      const result1 = await getPoNotGenerated(
-        requestUser.loginid,      // loginid
-        requestUser.company_code, // company_code
-        undefined,                // filter
-        page,
-        limit
-      );
+  try {
+    const result1 = await getPoNotGenerated(
+      requestUser.loginid,       
+      requestUser.company_code,  
+      undefined,                 
+      page,
+      limit
+    );
 
-      // Send response once
-      res.json(result1);
+    const responsePayload = {
+      success: result1.success,
+      data: result1.data || [],       // renamed from tableData
+      count: result1.count || 0,     // renamed from totalCount
+      message: result1.message || "",
+    };
 
-      // Important: do not execute anything else after sending response
-      return;
-
-    } catch (err) {
-      console.error("❌ Error in ponotgenerated route:", err);
-
-      // Only send response if headers not sent yet
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: "Server error" });
-      }
-      return;
+    if (!res.headersSent) {
+      res.json(responsePayload);
     }
 
-    break;
+    return; // safe exit
+
+  } catch (err) {
+    console.error("❌ Error in ponotgenerated route:", err);
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        data: [],
+        count: 0,
+        message: "Server error",
+      });
+    }
+
+    return;
+  }
+
+  break;
+
+
+
 
 
 
@@ -262,35 +290,48 @@ export const getPurchasefMaster = async (
       //   );
       //   break;
 
-      case "po_cancel":
-    console.log("inside po_cancel");
+ case "po_cancel":
+  console.log("inside po_cancel");
 
-    try {
-      const cancelledResult = await getCancelledRequests(
-        requestUser.loginid,          // loginid
-        requestUser.company_code,     // company_code
-        undefined,                    // filter
-        page,
-        limit
-      );
+  try {
+    const cancelledResult = await getCancelledRequests(
+      requestUser.loginid,       // loginid
+      requestUser.company_code,  // company_code
+      undefined,                 // optional filter
+      page,
+      limit
+    );
 
-      // Send response once
-      res.json(cancelledResult);
+    const responsePayload = {
+      success: cancelledResult.success,
+      data: cancelledResult.data || [],    // renamed from tableData
+      count: cancelledResult.count || 0,   // renamed from totalCount
+      message: cancelledResult.message || "",
+    };
 
-      // Stop execution after response
-      return;
-
-    } catch (err) {
-      console.error("❌ Error in po_cancel route:", err);
-
-      // Only send error if not already sent
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: "Server error" });
-      }
-      return;
+    if (!res.headersSent) {
+      res.json(responsePayload);
     }
 
-    break;
+    return; // safe exit
+
+  } catch (err) {
+    console.error("❌ Error in po_cancel route:", err);
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        data: [],
+        count: 0,
+        message: "Server error",
+      });
+    }
+
+    return;
+  }
+
+  break;
+
 
 
       case "sentbackrollselection_mat":
@@ -309,34 +350,50 @@ export const getPurchasefMaster = async (
         break;
 
 
-     case "My_History":
+ case "My_History":
   console.log("inside My_History");
 
   try {
     const historyResult = await getMyHistory(
-      requestUser.loginid,       // pass loginid
-      requestUser.company_code,  // pass company_code
-      undefined,                 // optional filter
+      requestUser.loginid,
+      requestUser.company_code,
+      undefined,
       page,
       limit
     );
 
-    // Send response once
-    res.json(historyResult);
+    const responsePayload = {
+      success: historyResult.success,
+      data: historyResult.tableData || [],    // <-- map tableData → data
+      count: historyResult.totalCount || 0,   // <-- map totalCount → count
+      message: historyResult.message || "",
+    };
 
-    // Stop execution after response
+    if (!res.headersSent) {
+      res.json(responsePayload);
+    }
+
     return;
+
   } catch (err) {
     console.error("❌ Error in My_History route:", err);
 
-    // Only send error if headers not already sent
     if (!res.headersSent) {
-      res.status(500).json({ success: false, message: "Server error" });
+      res.status(500).json({
+        success: false,
+        data: [],
+        count: 0,
+        message: "Server error",
+      });
     }
+
     return;
   }
 
   break;
+
+
+
 
       case "Request_Cancel":
         result = await PRRejectedService.getCancelledRequests(
@@ -455,6 +512,7 @@ export const getPurchasefMaster = async (
     
     return;
   }
+  break;
       case "my_itemmaster":
         result = await ItemMasterService.getMyItemMaster(
           requestUser.company_code,

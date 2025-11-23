@@ -1,3 +1,4 @@
+import oracledb, { Connection, Result } from "oracledb";
 import { oracleDb } from "../../database/connection";
 
 interface Filter {
@@ -7,6 +8,11 @@ interface Filter {
   };
 }
 
+interface PoModifyRow {
+  [key: string]: any;
+  total_count?: number;
+}
+
 export const getPoModifyData = async (
   loginid: string,
   company_code: string,
@@ -14,14 +20,14 @@ export const getPoModifyData = async (
   page = 1,
   limit = 4000
 ) => {
-  let conn: any = null;
+  let conn: Connection | null = null;
 
   try {
     if (!loginid || !company_code) {
       return {
         success: false,
-        tableData: [],
-        totalCount: 0,
+        data: [],
+        count: 0,
         message: "Both loginid and company_code are required.",
       };
     }
@@ -32,13 +38,8 @@ export const getPoModifyData = async (
 
     // Execute procedure
     await conn.execute(
-      `BEGIN
-         PROC_POPULATE_GT_CLOSE(:p_user, :p_company);
-       END;`,
-      {
-        p_company: company_code,
-        p_user: loginid,
-      }
+      `BEGIN PROC_POPULATE_GT_CLOSE(:p_user, :p_company); END;`,
+      { p_company: company_code, p_user: loginid }
     );
 
     console.log("Procedure executed successfully");
@@ -54,35 +55,36 @@ export const getPoModifyData = async (
     const offset = (page - 1) * limit;
 
     // Fetch data + total count in single query
-    const dataResult = await conn.execute(
+    const dataResult: Result<PoModifyRow> = await conn.execute(
       `
-      SELECT t.*, COUNT(*) OVER() AS total_count
+      SELECT t.*, COUNT(*) OVER() AS TOTAL_COUNT
       FROM GT_CLOSE t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
-      { offset, limit }
+      { offset, limit },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    // Map rows to lowercase keys
-    const tableData =
-      dataResult.rows?.map((row: any[]) => {
-        const obj: any = {};
-        dataResult.metaData.forEach((col: any, i: number) => {
-          obj[col.name.toLowerCase()] = row[i];
-        });
-        return obj;
-      }) || [];
+    const rows = (dataResult.rows as PoModifyRow[]) || [];
 
-    // Total count from first row
-    const totalCount = tableData.length > 0 ? tableData[0].total_count : 0;
+    // Convert keys to lowercase
+    const tableData = rows.map((row) => {
+      const newObj: PoModifyRow = {};
+      Object.keys(row).forEach((key) => {
+        newObj[key.toLowerCase()] = row[key];
+      });
+      return newObj;
+    });
 
-    console.log("My Task Result:", { tableData, totalCount });
+    const totalCount = tableData.length > 0 ? tableData[0].total_count || 0 : 0;
+
+    console.log("Po Modify Result:", { tableData, totalCount });
 
     return {
       success: true,
-      tableData,
-      totalCount,
+      data: tableData,   // frontend expects: response.data.data
+      count: totalCount, // frontend expects: response.data.count
       message: "Data fetched successfully.",
     };
   } catch (err: unknown) {
@@ -97,8 +99,8 @@ export const getPoModifyData = async (
 
     return {
       success: false,
-      tableData: [],
-      totalCount: 0,
+      data: [],
+      count: 0,
       message,
     };
   } finally {

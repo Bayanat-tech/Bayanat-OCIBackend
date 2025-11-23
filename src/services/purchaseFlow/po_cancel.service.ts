@@ -1,3 +1,4 @@
+import oracledb, { Connection, Result } from "oracledb";
 import { oracleDb } from "../../database/connection";
 
 interface Filter {
@@ -7,6 +8,11 @@ interface Filter {
   };
 }
 
+interface CancelledRequestRow {
+  [key: string]: any;
+  total_count?: number;
+}
+
 export const getCancelledRequests = async (
   loginid: string,
   company_code: string,
@@ -14,14 +20,14 @@ export const getCancelledRequests = async (
   page = 1,
   limit = 4000
 ) => {
-  let conn: any = null;
+  let conn: Connection | null = null;
 
   try {
     if (!loginid || !company_code) {
       return {
         success: false,
-        tableData: [],
-        totalCount: 0,
+        data: [],
+        count: 0,
         message: "Both loginid and company_code are required.",
       };
     }
@@ -32,13 +38,8 @@ export const getCancelledRequests = async (
 
     // ✅ CALL CANCELLED PROCEDURE
     await conn.execute(
-      `BEGIN
-         PROC_POPULATE_GT_CANCEL(:p_user,:p_company);
-       END;`,
-      {
-        p_company: company_code,
-        p_user: loginid,
-      }
+      `BEGIN PROC_POPULATE_GT_CANCEL(:p_user,:p_company); END;`,
+      { p_company: company_code, p_user: loginid }
     );
 
     console.log("Cancelled request procedure executed successfully");
@@ -54,35 +55,35 @@ export const getCancelledRequests = async (
     const offset = (page - 1) * limit;
 
     // ✅ FETCH FROM GT_CANCEL
-    const dataResult = await conn.execute(
+    const dataResult: Result<CancelledRequestRow> = await conn.execute(
       `
-      SELECT t.*, COUNT(*) OVER() AS total_count
+      SELECT t.*, COUNT(*) OVER() AS TOTAL_COUNT
       FROM GT_CANCEL t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
-      { offset, limit }
+      { offset, limit },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    // Map rows to lowercase keys
-    const tableData =
-      dataResult.rows?.map((row: any[]) => {
-        const obj: any = {};
-        dataResult.metaData.forEach((col: any, i: number) => {
-          obj[col.name.toLowerCase()] = row[i];
-        });
-        return obj;
-      }) || [];
+    const rows = (dataResult.rows as CancelledRequestRow[]) || [];
 
-    // Extract total count
-    const totalCount = tableData.length > 0 ? tableData[0].total_count : 0;
+    // Convert column names to lowercase
+    const tableData = rows.map((row) => {
+      const newObj: CancelledRequestRow = {};
+      Object.keys(row).forEach((key) => {
+        newObj[key.toLowerCase()] = row[key];
+      });
+      return newObj;
+    });
 
-    console.log("Cancelled Requests Result:", { tableData, totalCount });
+    const totalCount =
+      tableData.length > 0 ? tableData[0].total_count || 0 : 0;
 
     return {
       success: true,
-      tableData,
-      totalCount,
+      data: tableData,   // frontend expects: response.data.data
+      count: totalCount, // frontend expects: response.data.count
       message: "Cancelled requests fetched successfully.",
     };
   } catch (err: unknown) {
@@ -97,8 +98,8 @@ export const getCancelledRequests = async (
 
     return {
       success: false,
-      tableData: [],
-      totalCount: 0,
+      data: [],
+      count: 0,
       message,
     };
   } finally {
