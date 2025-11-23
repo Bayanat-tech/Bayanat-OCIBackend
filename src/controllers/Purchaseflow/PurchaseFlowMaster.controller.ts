@@ -393,35 +393,49 @@ export const getPurchasefMaster = async (
 
 
 
+case "Request_Rejected":
+  console.log("inside Request_Rejected");
 
+  try {
+    const rejectedResult = await getRequestRejectedData(
+      requestUser.loginid,        // loginid
+      requestUser.company_code,   // company_code
+      undefined,                  // filter
+      page,
+      limit
+    );
 
-    
-    try {
-      const rejectedResult = await getRequestRejectedData(
-        requestUser.loginid,        // loginid
-        requestUser.company_code,   // company_code
-        undefined,                  // filter
-        page,
-        limit
-      );
+    const responsePayload = {
+      success: rejectedResult.success,
+      data: rejectedResult.data || [],
+      count: rejectedResult.count || 0,
+      message: rejectedResult.message || "",
+    };
 
-      // Send response once
-      res.json(rejectedResult);
-
-      // Stop execution after response
-      return;
-
-    } catch (err) {
-      console.error("❌ Error in Request_Rejected route:", err);
-
-      // Only send error if not already sent
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: "Server error" });
-      }
-      return;
+    // Send response only if headers not sent
+    if (!res.headersSent) {
+      res.json(responsePayload);
     }
 
-    break;
+    return; // safe exit
+
+  } catch (err) {
+    console.error("❌ Error in Request_Rejected route:", err);
+
+    // Send error only if headers not sent
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        data: [],
+        count: 0,
+        message: "Server error",
+      });
+    }
+
+    return;
+  }
+
+  break;
 
 
       case "MyItem_ClosedRequest":
