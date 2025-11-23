@@ -1235,6 +1235,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
         cc: [
           "Sagar.b@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
@@ -1245,13 +1246,15 @@ export const notifyUser = async (args: SendEmailInterface) => {
       };
       break;
     case constants.EVENTS.LEAVE_APPROVAL_REQUEST:
-    mailOptions = {
+      mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users, 
         cc: [
           "Sagar.b@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
+          "prem@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || `Leave Approval Required: ${request_user?.request_number || ""}`,
@@ -1263,13 +1266,16 @@ export const notifyUser = async (args: SendEmailInterface) => {
     break;
 
     case constants.EVENTS.LEAVE_APPROVED:
-    mailOptions = {
-      from: constants.ENV.EMAIL_USER,
-      to: request_users,
-      cc: [
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: [
           "Sagar.b@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
+          "prem@bayanattechnology.com",
+          "HR@almadinalogistics.com",
           ...(cc || []),
         ],
       subject: subject || `Leave Approved: ${request_user?.request_number || ""}`,
@@ -1280,12 +1286,17 @@ export const notifyUser = async (args: SendEmailInterface) => {
       attachments: attachments || [],
     };
     break;
-
     case constants.EVENTS.LEAVE_CANCEL:
     mailOptions = {
       from: constants.ENV.EMAIL_USER,
       to: request_users,
-      cc: cc,
+      cc: [
+          "Sagar.b@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "pratik.shirke@bayanattechnology.com",
+          ...(cc || []),
+        ],
       subject: subject || `Leave Rejected: ${request_user?.request_number || ""}`,
       text:
       message ||
@@ -1299,7 +1310,14 @@ export const notifyUser = async (args: SendEmailInterface) => {
     mailOptions = {
       from: constants.ENV.EMAIL_USER,
       to: request_users,
-      cc: cc,
+      cc: [
+          "Sagar.b@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "pratik.shirke@bayanattechnology.com",
+          "prem@bayanattechnology.com",
+          ...(cc || []),
+        ],
       subject: subject || `Leave Sent Back: ${request_user?.request_number || ""}`,
       text:
       message ||
@@ -1313,7 +1331,13 @@ export const notifyUser = async (args: SendEmailInterface) => {
     mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        cc: cc,
+        cc: [
+          "Sagar.b@bayanattechnology.com",
+           "gaurang.pai@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "pratik.shirke@bayanattechnology.com",
+          ...(cc || []),
+        ],
         subject: subject || `Leave Notification: ${request_user?.request_number || ""}`,
         text: message || `Notification regarding leave request (${request_user?.request_number || ""}).`,
         html: htmlMessage,
@@ -1324,7 +1348,12 @@ export const notifyUser = async (args: SendEmailInterface) => {
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        cc: cc,
+        cc: [
+          "gaurang.pai@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "pratik.shirke@bayanattechnology.com",
+          ...(cc || []),
+        ],
         subject: subject || `Leave Rejected: ${request_user?.request_number || ""}`,
         text: message || `Hello,\n\nYour leave request (${request_user?.request_number || ""}) has been rejected.${request_user?.reason ? ` Reason: ${request_user.reason}` : ""}\n\nRegards.`,
         html: htmlMessage,
