@@ -38,6 +38,7 @@ import { handleGenerateExpenseAdj } from "../../controllers/Purchaseflow/handleG
 import { fetchCostwisebudgetAllocation } from "../../controllers/Purchaseflow/fetchCostwisebudgetAllocation";
 import { CheckBudgetStatus } from "../../controllers/Purchaseflow/CheckBudgetStatus";
 import { getBudgetexcel } from "../../controllers/Purchaseflow/getBudgetexcel";
+import { fetchUserlevel } from "../../controllers/Purchaseflow/fetchUserlevel";
 // import {
 //   createcostmaster,
 //   updatecostmaster,
@@ -189,7 +190,7 @@ router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
 //   getBudgetRequest as unknown as RequestHandler
 // );
  router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
-// router.get("/fetchUserlevel", fetchUserlevel);
+router.get("/fetchUserlevel", fetchUserlevel);
  router.get("/CheckCostcontroller", CheckCostcontroller);
 //router.get("/Fetchmessagebox", Fetchmessagebox);
 
