@@ -1,100 +1,99 @@
 import { oracleDb } from "../../database/connection";
 
-interface POCancelFilter {
+interface Filter {
   sort?: {
     field_name: string;
     desc?: boolean;
   };
 }
 
-export const getPOCancelData = async (
-  company_code: string,
+export const getCancelledRequests = async (
   loginid: string,
-  filter?: POCancelFilter,
+  company_code: string,
+  filter?: Filter,
   page = 1,
   limit = 4000
 ) => {
   let conn: any = null;
 
   try {
-    if (!company_code || !loginid) {
+    if (!loginid || !company_code) {
       return {
         success: false,
         tableData: [],
         totalCount: 0,
-        message: "company_code and loginid are required.",
+        message: "Both loginid and company_code are required.",
       };
     }
 
     conn = await oracleDb.getConnection();
 
-    console.log("Calling PROC_POPULATE_GT_CANCEL with:", company_code, loginid);
+    console.log("Calling cancelled request procedure with:", company_code, loginid);
 
-    // ✅ Correct procedure call with 2 parameters
+    // ✅ CALL CANCELLED PROCEDURE
     await conn.execute(
-      `
-      BEGIN
-        PROC_POPULATE_GT_CANCEL(:p_user, :p_company);
-      END;
-      `,
+      `BEGIN
+         PROC_POPULATE_GT_CANCEL(:p_user,:p_company);
+       END;`,
       {
         p_company: company_code,
         p_user: loginid,
       }
     );
 
-    console.log("Procedure executed successfully");
+    console.log("Cancelled request procedure executed successfully");
 
-    // Sorting logic
+    // Sorting
     let orderBy = "";
     if (filter?.sort?.field_name) {
-      orderBy = ` ORDER BY ${filter.sort.field_name} ${
+      orderBy = ` ORDER BY "${filter.sort.field_name.toUpperCase()}" ${
         filter.sort.desc ? "DESC" : "ASC"
       } `;
     }
 
     const offset = (page - 1) * limit;
 
-    // Fetch paginated data
+    // ✅ FETCH FROM GT_CANCEL
     const dataResult = await conn.execute(
       `
-      SELECT *
-      FROM GT_CANCEL
+      SELECT t.*, COUNT(*) OVER() AS total_count
+      FROM GT_CANCEL t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
       { offset, limit }
     );
 
-    // Fetch total count
-    const countResult = await conn.execute(`SELECT COUNT(*) FROM GT_CANCEL`);
-
-    // Map rows to objects
+    // Map rows to lowercase keys
     const tableData =
       dataResult.rows?.map((row: any[]) => {
         const obj: any = {};
-        dataResult.metaData.forEach((col: any, index: number) => {
-          obj[col.name] = row[index];
+        dataResult.metaData.forEach((col: any, i: number) => {
+          obj[col.name.toLowerCase()] = row[i];
         });
         return obj;
       }) || [];
 
-    const totalCount =
-      countResult.rows && countResult.rows.length > 0
-        ? countResult.rows[0][0]
-        : 0;
+    // Extract total count
+    const totalCount = tableData.length > 0 ? tableData[0].total_count : 0;
+
+    console.log("Cancelled Requests Result:", { tableData, totalCount });
 
     return {
       success: true,
       tableData,
       totalCount,
-      message: "Data fetched successfully.",
+      message: "Cancelled requests fetched successfully.",
     };
   } catch (err: unknown) {
     const message =
-      err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+        ? err
+        : JSON.stringify(err);
 
-    console.error("❌ Error in getPOCancelData:", message);
+    console.error("❌ Error in getCancelledRequests:", message);
 
     return {
       success: false,

@@ -26,25 +26,31 @@ import { getPOCancelData } from "../../services/purchaseFlow/po_cancel.service";
 import { PRRejectedService } from "../../services/purchaseFlow/Request_Cancel.service";
 import { getPRRejectedData } from "../../services/purchaseFlow/Request_Rejected.service";
 
-// import { DdcostmasterService } from "../../services/Purchaseflow/ddcostmasterservice";
-// import { PurchaseFlowMasterService } from "../../services/Purchaseflow/PfMaster.service";
-// import { DropdownProjectMasterService } from "../../services/Purchaseflow/dropdwonprojectmaster.service";
-// import { ProjectMasterService } from "../../services/Purchaseflow/project_master.service";
-// import { DduommasterService } from "../../services/Purchaseflow/dduommaster.service";
-// import { DdcurrencyService } from "../../services/Purchaseflow/ddCurrency.service";
-// import { DdProdmasterService } from "../../services/Purchaseflow/ddprodmaster.service";
-// import { DdEmployeeMasterService } from "../../services/Purchaseflow/ddemployeemaster.service";
+import { DdcostmasterService } from "../../services/Purchaseflow/ddcostmasterservice";
+import { PurchaseFlowMasterService } from "../../services/Purchaseflow/PfMaster.service";
+import { DropdownProjectMasterService } from "../../services/Purchaseflow/dropdwonprojectmaster.service";
+import { ProjectMasterService } from "../../services/Purchaseflow/project_master.service";
+import { DduommasterService } from "../../services/Purchaseflow/dduommaster.service";
+import { DdcurrencyService } from "../../services/Purchaseflow/ddCurrency.service";
+import { DdProdmasterService } from "../../services/Purchaseflow/ddprodmaster.service";
+import { DdEmployeeMasterService } from "../../services/Purchaseflow/ddemployeemaster.service";
 // import { PoHeaderService } from "../../services/Purchaseflow/po_modify.service";
-// import { PoNotGeneratedService } from "../../services/Purchaseflow/ponotgenerated.service";
-// import { POCancelService } from "../../services/Purchaseflow/po_cancel.service";
-// import { WorkflowService } from "../../services/Purchaseflow/sentbackrollselection_mat.service";
-// import { FlowRoleService } from "../../services/Purchaseflow/sentbackrollselection.service";
-// import { PurchaseRequestHistoryService } from "../../services/Purchaseflow/My_History.service";
-// import { PRRejectedService } from "../../services/Purchaseflow/Request_Rejected.service";
-// import { PurchaseCloseRequestService } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
-// import { MaterialRequestService } from "../../services/Purchaseflow/Pg_Material_flow_InProgress.service";
-// import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
-// import { ItemMasterService } from "../../services/Purchaseflow/my_itemmaster.service";
+//import { PoNotGeneratedService } from "../../services/Purchaseflow/ponotgenerated.service";
+//import { POCancelService } from "../../services/Purchaseflow/po_cancel.service";
+import { WorkflowService } from "../../services/Purchaseflow/sentbackrollselection_mat.service";
+import { FlowRoleService } from "../../services/Purchaseflow/sentbackrollselection.service";
+
+import { PRRejectedService } from "../../services/Purchaseflow/Request_Rejected.service";
+//import { PurchaseCloseRequestService } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
+import { MaterialRequestService } from "../../services/Purchaseflow/Pg_Material_flow_InProgress.service";
+import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
+import { ItemMasterService } from "../../services/Purchaseflow/my_itemmaster.service";
+import { getPoModifyData } from "../../services/Purchaseflow/po_modify_close.service";
+import { getMyClosedRequests } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
+import { getRequestRejectedData } from "../../services/Purchaseflow/my_rejected.service";
+import { getCancelledRequests } from "../../services/Purchaseflow/po_cancel.service";
+import { getMyHistory } from "../../services/Purchaseflow/My_History.service";
+import { getPoNotGenerated } from "../../services/Purchaseflow/ponotgenerated.service";
 //import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
 // import { DddivisionmasterService } from "../../services/Purchaseflow/dddivisionMaster.service";
 //import { DddivisionmasterService} from "../../services/Purchaseflow/dddivisionMaster.service"
@@ -200,20 +206,67 @@ export const getPurchasefMaster = async (
         break;
 
       case "po_modify":
-        result = await PoHeaderService.getPoModify(
-          requestUser.company_code,
-          page,
-          limit
-        );
+        console.log("inside po_modify");
+
+        try {
+          const result1 = await getPoModifyData(
+            requestUser.loginid,
+            requestUser.company_code,
+            undefined,
+            page,
+            limit
+          );
+
+          // Send response once
+          res.json(result1);
+
+          // Important: do not execute anything else after sending response
+          return;
+
+        } catch (err) {
+          console.error("❌ Error in po_modify route:", err);
+
+          // Only send response if headers not sent yet
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, message: "Server error" });
+          }
+          return;
+        }
+
         break;
 
-      case "ponotgenerated":
-        result = await PoNotGeneratedService.getPoNotGenerated(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;
+
+ case "ponotgenerated":
+    console.log("inside ponotgenerated");
+
+    try {
+      const result1 = await getPoNotGenerated(
+        requestUser.loginid,      // loginid
+        requestUser.company_code, // company_code
+        undefined,                // filter
+        page,
+        limit
+      );
+
+      // Send response once
+      res.json(result1);
+
+      // Important: do not execute anything else after sending response
+      return;
+
+    } catch (err) {
+      console.error("❌ Error in ponotgenerated route:", err);
+
+      // Only send response if headers not sent yet
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "Server error" });
+      }
+      return;
+    }
+
+    break;
+
+
 
       /* case "dddivision":
          result = await DddivisionmasterService.getDdDivision(
@@ -223,45 +276,47 @@ export const getPurchasefMaster = async (
          );
          break;*/
 
-      case "po_modify_rate_change":
-        result = await PoHeaderService.getPoModify(
-          requestUser.company_code,
-          page,
-          limit
-        );
-        break;
+      // case "po_modify_rate_change":
+      //   result = await PoHeaderService.getPoModify(
+      //     requestUser.company_code,
+      //     page,
+      //     limit
+      //   );
+      //   break;
 
 
 
 
 
       case "po_cancel":
-  console.log("inside po_cancel");
+    console.log("inside po_cancel");
 
-  try {
-    const result1 = await getPOCancelData(
-      requestUser.company_code,
-      requestUser.loginid,
-      undefined, // no filter applied
-      page,
-      limit
-    );
+    try {
+      const cancelledResult = await getCancelledRequests(
+        requestUser.loginid,          // loginid
+        requestUser.company_code,     // company_code
+        undefined,                    // filter
+        page,
+        limit
+      );
 
-    res.json(result1);
-    return;
+      // Send response once
+      res.json(cancelledResult);
 
-  } catch (err) {
-    console.error("❌ Error in po_cancel route:", err);
+      // Stop execution after response
+      return;
 
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, message: "Server error" });
+    } catch (err) {
+      console.error("❌ Error in po_cancel route:", err);
+
+      // Only send error if not already sent
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "Server error" });
+      }
+      return;
     }
-    return;
-  }
 
-  break;
-
-
+    break;
 
 
       case "sentbackrollselection_mat":
@@ -280,14 +335,34 @@ export const getPurchasefMaster = async (
         break;
 
 
-      case "My_History":
-        result = await PurchaseRequestHistoryService.getMyHistory(
-          requestUser.company_code,
-          undefined,
-          page,
-          limit
-        );
-        break;
+     case "My_History":
+  console.log("inside My_History");
+
+  try {
+    const historyResult = await getMyHistory(
+      requestUser.loginid,       // pass loginid
+      requestUser.company_code,  // pass company_code
+      undefined,                 // optional filter
+      page,
+      limit
+    );
+
+    // Send response once
+    res.json(historyResult);
+
+    // Stop execution after response
+    return;
+  } catch (err) {
+    console.error("❌ Error in My_History route:", err);
+
+    // Only send error if headers not already sent
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "Server error" });
+    }
+    return;
+  }
+
+  break;
 
       // case "Request_Cancel":
       //   result = await PRRejectedService.getCancelledRequests(
@@ -297,42 +372,67 @@ export const getPurchasefMaster = async (
       //   );
       //   break;
 
-      case "Request_Rejected":
-  console.log("inside Request_Rejected");
+    case "Request_Rejected":
+    console.log("inside Request_Rejected");
 
-  try {
-    const result1 = await getPRRejectedData(
-      requestUser.company_code,
-      requestUser.loginid, // assuming procedure needs loginid
-      undefined, // no filter applied
-      page,
-      limit
-    );
+    try {
+      const rejectedResult = await getRequestRejectedData(
+        requestUser.loginid,        // loginid
+        requestUser.company_code,   // company_code
+        undefined,                  // filter
+        page,
+        limit
+      );
 
-    res.json(result1);
-    return;
+      // Send response once
+      res.json(rejectedResult);
 
-  } catch (err) {
-    console.error("❌ Error in Request_Rejected route:", err);
+      // Stop execution after response
+      return;
 
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, message: "Server error" });
+    } catch (err) {
+      console.error("❌ Error in Request_Rejected route:", err);
+
+      // Only send error if not already sent
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "Server error" });
+      }
+      return;
     }
-    return;
-  }
 
-  break;
+    break;
 
 
       case "MyItem_ClosedRequest":
-        result = await PurchaseCloseRequestService.getMyClosedRequests(
-          requestUser.company_code,
-          requestUser.loginid,
-          undefined,
-          page,
-          limit
-        );
-        break;
+    console.log("inside MyItem_ClosedRequest");
+
+    try {
+      const resultClosed = await getMyClosedRequests(
+        requestUser.loginid,          // loginid (first parameter)
+        requestUser.company_code,     // company_code (second parameter)
+        undefined,                    // filter
+        page,
+        limit
+      );
+
+      // Send response once
+      res.json(resultClosed);
+
+      // Important: stop execution after response
+      return;
+
+    } catch (err) {
+      console.error("❌ Error in MyItem_ClosedRequest route:", err);
+
+      // Only send response if headers not already sent
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "Server error" });
+      }
+      return;
+    }
+
+    break;
+
 
       case "Pg_Material_flow_InProgress":
         result = await MaterialRequestService.getInProgressRequests(
@@ -408,3 +508,7 @@ export const getPurchasefMaster = async (
     });
   }
 };
+// function getRequestRejectedData(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+//   throw new Error("Function not implemented.");
+// }
+

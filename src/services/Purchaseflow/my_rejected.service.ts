@@ -7,7 +7,7 @@ interface Filter {
   };
 }
 
-export const getMyClosedRequests = async (
+export const getRequestRejectedData = async (
   loginid: string,
   company_code: string,
   filter?: Filter,
@@ -28,12 +28,12 @@ export const getMyClosedRequests = async (
 
     conn = await oracleDb.getConnection();
 
-    console.log("Calling closed request procedure with:", company_code, loginid);
+    console.log("Calling rejected request procedure with:", company_code, loginid);
 
-    // ✅ CALL HISTORY PROCEDURE (REQUIRED)
+    // ✅ CALL REJECTED PROCEDURE
     await conn.execute(
       `BEGIN
-         PROC_CREATE_MY_HISTORY(:p_company, :p_user);
+         PROC_POPULATE_GT_REJECTED( :p_user,:p_company);
        END;`,
       {
         p_company: company_code,
@@ -41,9 +41,9 @@ export const getMyClosedRequests = async (
       }
     );
 
-    console.log("Closed request procedure executed successfully");
+    console.log("Rejected request procedure executed successfully");
 
-    // Sorting (same logic)
+    // Sorting
     let orderBy = "";
     if (filter?.sort?.field_name) {
       orderBy = ` ORDER BY "${filter.sort.field_name.toUpperCase()}" ${
@@ -53,11 +53,11 @@ export const getMyClosedRequests = async (
 
     const offset = (page - 1) * limit;
 
-    // ✅ FETCH FROM GT_CLOSE TABLE (REQUIRED)
+    // ✅ FETCH FROM GT_REJECTED
     const dataResult = await conn.execute(
       `
       SELECT t.*, COUNT(*) OVER() AS total_count
-      FROM GT_CLOSE t
+      FROM GT_REJECTED t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
@@ -77,13 +77,13 @@ export const getMyClosedRequests = async (
     // Extract total count
     const totalCount = tableData.length > 0 ? tableData[0].total_count : 0;
 
-    console.log("My Closed Requests Result:", { tableData, totalCount });
+    console.log("Rejected Request Result:", { tableData, totalCount });
 
     return {
       success: true,
       tableData,
       totalCount,
-      message: "Closed requests fetched successfully.",
+      message: "Rejected requests fetched successfully.",
     };
   } catch (err: unknown) {
     const message =
@@ -93,7 +93,7 @@ export const getMyClosedRequests = async (
         ? err
         : JSON.stringify(err);
 
-    console.error("❌ Error in getMyClosedRequests:", message);
+    console.error("❌ Error in getRequestRejectedData:", message);
 
     return {
       success: false,

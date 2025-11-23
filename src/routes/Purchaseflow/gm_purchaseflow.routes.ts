@@ -5,7 +5,8 @@ import express, {
   RequestHandler,
   NextFunction,
 } from "express";
-import { cancelFinalApproval, Fetchmessagebox } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
+//import { cancelFinalApproval Fetchmessagebox } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
+import { CheckCostcontroller } from "./../../../src/controllers/Purchaseflow/checkcostcontoller";
 
 import {
   upsertAMCDetails  
@@ -111,7 +112,7 @@ const router = express.Router();
 
 router.post("/costmaster", CostmasterController.createcostmaster);
 router.put("/costmaster", CostmasterController. updatecostmaster);
-router.put("proc_build_dynamic_sql",proc_build_dynamic_sql);
+router.post("/proc_build_dynamic_sql", proc_build_dynamic_sql);
 
 // router.post("/cancelFinalApproval", cancelFinalApproval);
 // router.post("/CatMatMaster", creatematerialcategory);
@@ -177,7 +178,7 @@ router.get("/getddProductMaster",
 // );
 // router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
 // router.get("/fetchUserlevel", fetchUserlevel);
-// router.get("/CheckCostcontroller", CheckCostcontroller);
+ router.get("/CheckCostcontroller", CheckCostcontroller);
 //router.get("/Fetchmessagebox", Fetchmessagebox);
 
 // router.get("/FetchGenPOString", FetchGenPOString);
