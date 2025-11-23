@@ -1,68 +1,171 @@
-import { Repository, DataSource, Brackets } from "typeorm";
+import { getRepository } from "../../database/connection";
+import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 
-
-import { MaterialRequestHeader } from "../../entity/PurchaseFlow/MaterialRequestHeader.entity";
-import { PurchaseRequestHeader_htry } from "../../entity/PurchaseFlow/PurchaseRequestHeader_htry.entity";
-
-interface PaginationOptions {
-  page?: number;
-  limit?: number;
+// import { CostMaster } from "../../../src/entity/PurchaseFlow/costmaster.entity"
+// import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
+// import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
+import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
+import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
+import { ItemmasterPf } from "../../entity/PurchaseFlow/Itemmaster_pf.entity";
+import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
+import { Divisionmaster } from "../../entity/PurchaseFlow/Pf_divisionmaster.entity";
+import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
+ 
+export interface Master<T> {
+  fetchedData: T[];
+  totalCount: number;
 }
 
-export class MaterialRequestService {
-  static getInProgressRequests(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
-    throw new Error("Method not implemented.");
-  }
-  private materialRepo: Repository<MaterialRequestHeader>;
-  private historyRepo: Repository<PurchaseRequestHeader_htry>;
-
-  constructor(private dataSource: DataSource) {
-    this.materialRepo = this.dataSource.getRepository(MaterialRequestHeader);
-    this.historyRepo = this.dataSource.getRepository(PurchaseRequestHeader_htry);
-  }
-
-  async getInProgressRequests(
+export class PurchaseFlowMasterService {
+  static async getDivisionMaster(
     company_code: string,
-    loginid: string,
-    paginationOptions?: PaginationOptions
-  ) {
-    const page = paginationOptions?.page ?? 1;
-    const limit = paginationOptions?.limit ?? 10;
-    const offset = (page - 1) * limit;
+    page = 1,
+    limit = 4000
+  ): Promise<Master<Divisionmaster>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(Divisionmaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
 
-    // TypeORM QueryBuilder
-    const qb = this.materialRepo.createQueryBuilder("mrh")
-      .where("mrh.company_code = :company_code", { company_code })
-      .andWhere("mrh.final_approved IS NULL")
-      .andWhere(
-        new Brackets(qb => {
-          qb.where("mrh.created_by = :loginid", { loginid })
-            .orWhere((qb2: { subQuery: () => { (): any; new(): any; select: { (arg0: string): { (): any; new(): any; from: { (arg0: typeof PurchaseRequestHeader_htry, arg1: string): { (): any; new(): any; where: { (arg0: string, arg1: { loginid: string; }): { (): any; new(): any; getQuery: { (): any; new(): any; }; }; new(): any; }; }; new(): any; }; }; new(): any; }; }; }) => {
-              const subQuery = qb2.subQuery()
-                .select("DISTINCT h.request_number")
-                .from(PurchaseRequestHeader_htry, "h")
-                .where("h.updated_by = :loginid", { loginid })
-                .getQuery();
-              return "mrh.request_number IN " + subQuery;
-            });
-        })
-      )
-      .orderBy("mrh.request_number", "ASC")
-      .skip(offset)
-      .take(limit);
-
-    // Fetch total count
-    const totalCount = await qb.getCount();
-
-    // Fetch data
-    const tableData = await qb.getMany();
-
-    return {
-      success: true,
-      data: {
-        tableData,
-        count: totalCount,
-      },
-    };
+    return { fetchedData, totalCount };
   }
+// Get Cost Master
+  static async getCostMaster(
+    company_code: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<CostMaster>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(CostMaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getMaterialCategoryMaster(
+    company_code: string,
+    page = 1,
+    limit = 4000
+  ): Promise<Master<MaterialCategoryMaster>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(MaterialCategoryMaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+
+    return { fetchedData, totalCount };
+  }
+
+  static async getSupplierMaster(
+    company_code: string, 
+    page = 1, 
+    limit = 4000
+  ): Promise<Master<SupplierMaster>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(SupplierMaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+    return { fetchedData, totalCount };
+  }
+
+  static async getCustomerMaster(
+    company_code: string, 
+    page = 1, 
+    limit = 4000
+  ): Promise<Master<CustomerMaster>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(CustomerMaster).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+    return { fetchedData, totalCount };
+  }
+ 
+   static async getddcurrency(
+    company_code: string, 
+    page = 1, 
+    limit = 4000
+  ): Promise<Master<DdCurrency>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(DdCurrency).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+    return { fetchedData, totalCount };
+  }
+
+   static async ddMaterialCateotry(
+    company_code: string, 
+    page = 1, 
+    limit = 4000
+  ): Promise<Master<DdCurrency>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(DdCurrency).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+    return { fetchedData, totalCount };
+  }
+
+  static async getItemmaster(
+    company_code: string, 
+    page = 1, 
+    limit = 4000
+  ): Promise<Master<ItemmasterPf>> {
+    const skip = (page - 1) * limit;
+    const [fetchedData, totalCount] = await getRepository(ItemmasterPf).findAndCount({
+      where: { company_code },
+      skip,
+      take: limit,
+    });
+    return { fetchedData, totalCount };
+  }
+
+  // //  Delete :
+
+  // static async deleteRecords(
+  //   entity: any,
+  //    conditions: any[]
+  //   ): Promise<number> {
+  //   const repo = getRepository(entity);
+
+  //   if (!conditions || conditions.length === 0) {
+  //     throw new Error("Delete conditions must be a non-empty array.");
+  //   }
+
+  //   let totalDeleted = 0;
+
+  //   for (const condition of conditions) {
+
+  //     const existing = await repo.findOne({ where: condition });
+  //     if (!existing) {
+  //       console.warn(`Record not found for condition:`, condition);
+  //       continue;  
+  //     }
+
+  //     const result = await repo.delete(condition);
+
+  //     if (result.affected && result.affected > 0) {
+  //       totalDeleted += result.affected;
+  //     }
+  //   }
+
+  //   return totalDeleted;
+  // }
 }
+
+
+
+
+

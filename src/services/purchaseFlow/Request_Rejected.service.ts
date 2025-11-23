@@ -1,57 +1,114 @@
-import { Repository, ILike } from "typeorm";
-import { PRRejected } from "../../models/Purchaseflow/purchaserequest_pf.model";
+import { oracleDb } from "../../database/connection";
 
-
-export interface Master<T> {
-  fetchedData: T[];
-  totalCount: number;
+interface PRRejectedFilter {
+  sort?: {
+    field_name: string;
+    desc?: boolean;
+  };
 }
 
-export class PRRejectedService {
-  static getRequestRejectedData(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
-    throw new Error("Method not implemented.");
-  }
-  static getCancelledRequests: any;
-  constructor(private prRejectedRepo: Repository<PRRejected>) {}
-  
-  async getRequestRejectedData(
-    company_code: string,
-    filter?: any,
-    page = 1,
-    limit = 20
-  ): Promise<Master<PRRejected>> {
-    const skip = (page - 1) * limit;
+export const getPRRejectedData = async (
+  company_code: string,
+  loginid: string,
+  filter?: PRRejectedFilter,
+  page = 1,
+  limit = 20
+) => {
+  let conn: any = null;
 
-    // Base query: filter by company_code
-    let where: any = { company_code };
-
-    // Apply search filters dynamically
-    if (filter?.search) {
-      // Example: assume filter.search is an object with key/value pairs to filter
-      for (const [key, value] of Object.entries(filter.search)) {
-        // Use ILike for case-insensitive partial match (Postgres style)
-        // For Oracle, replace ILike with simple LIKE
-        where[key] = `%${value}%`;
-      }
+  try {
+    if (!company_code || !loginid) {
+      return {
+        success: false,
+        tableData: [],
+        totalCount: 0,
+        message: "company_code and loginid are required.",
+      };
     }
 
-    // Total count
-    const totalCount = await this.prRejectedRepo.count({ where });
+    conn = await oracleDb.getConnection();
+
+    console.log("Calling PROC_POPULATE_GT_REJECTED with:", company_code, loginid);
+
+    // Call procedure (assuming it needs company_code and loginid)
+    await conn.execute(
+      `
+      BEGIN
+        PROC_POPULATE_GT_REJECTED(:p_user, :p_company);
+      END;
+      `,
+      {
+        p_company: company_code,
+        p_user: loginid,
+      }
+    );
+
+    console.log("Procedure executed successfully");
 
     // Sorting
-    let order: any = {};
-    if (filter?.sort && filter.sort.field_name) {
-      order[filter.sort.field_name] = filter.sort.desc ? "DESC" : "ASC";
+    let orderBy = "";
+    if (filter?.sort?.field_name) {
+      orderBy = ` ORDER BY ${filter.sort.field_name} ${
+        filter.sort.desc ? "DESC" : "ASC"
+      } `;
     }
 
-    // Fetch data
-    const fetchedData = await this.prRejectedRepo.find({
-      where,
-      order,
-      skip,
-      take: limit,
-    });
+    const offset = (page - 1) * limit;
 
-    return { fetchedData, totalCount };
+    // Fetch paginated data
+    const dataResult = await conn.execute(
+      `
+      SELECT *
+      FROM GT_REJECTED
+      ${orderBy}
+      OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+      `,
+      { offset, limit }
+    );
+
+    // Fetch total count
+    const countResult = await conn.execute(`SELECT COUNT(*) FROM GT_REJECTED`);
+
+    // Map rows to objects
+    const tableData =
+      dataResult.rows?.map((row: any[]) => {
+        const obj: any = {};
+        dataResult.metaData.forEach((col: any, index: number) => {
+          obj[col.name] = row[index];
+        });
+        return obj;
+      }) || [];
+
+    const totalCount =
+      countResult.rows && countResult.rows.length > 0
+        ? countResult.rows[0][0]
+        : 0;
+
+    return {
+      success: true,
+      tableData,
+      totalCount,
+      message: "Data fetched successfully.",
+    };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
+
+    console.error("❌ Error in getPRRejectedData:", message);
+
+    return {
+      success: false,
+      tableData: [],
+      totalCount: 0,
+      message,
+    };
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch (closeErr) {
+        console.error("❌ Error closing connection:", closeErr);
+      }
+    }
   }
-}
+};
