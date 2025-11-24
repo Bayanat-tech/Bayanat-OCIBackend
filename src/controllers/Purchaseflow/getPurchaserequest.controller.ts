@@ -1,43 +1,25 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
-import cors from "cors";
 
-// Enable CORS globally
-export const enableCors = (app: any) => {
-  app.use(cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }));
-
-  // Handle OPTIONS preflight requests
-  app.use((req: any, res: any, next: any) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    if (req.method === "OPTIONS") return res.sendStatus(200);
-    next();
-  });
-};
-
-// Controller to get purchase request
 export const getPurchaserequest = async (req: Request, res: Response): Promise<void> => {
   let connection;
 
   try {
-    const rawRequestNumber = req.params.request_number;
+    const rawRequestNumber = req.params.request_number; // e.g., MFS$25$P227$PR$0161
     console.log("Received request_number:", rawRequestNumber);
 
-    // DB stores $ format → use rawRequestNumber for queries
+    // Use $ format for DB queries
     const request_number = rawRequestNumber;
 
-    // Convert to slash format only for frontend display
+    // For frontend display: convert $ → /
     const request_number_display = rawRequestNumber.replace(/\$/g, "/");
 
+    // Get Oracle connection
     connection = await oracleDb.getConnection();
+    console.log("step1: connected to Oracle");
 
-    // 1️⃣ Check if request exists
+    // 1️⃣ Check if purchase request exists
     const countResult = await connection.execute<{ COUNT: number }>(
       `SELECT COUNT(*) AS COUNT
        FROM PURCHASE_REQUEST_HEADER
@@ -47,6 +29,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
     );
 
     const count = countResult.rows?.[0]?.COUNT || 0;
+    console.log("step2: countResult:", count);
 
     if (count === 0) {
       res.status(404).json({ success: false, message: "Purchase Request does not exist" });
@@ -55,10 +38,10 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
 
     // 2️⃣ Fetch PRIN_CODE
     const prinResult = await connection.execute<{ PRIN_CODE: string }>(
-      `SELECT prin_code 
-       FROM MS_PRINCIPAL 
+      `SELECT prin_code
+       FROM MS_PRINCIPAL
        WHERE PRIN_DEPT_CODE IN (
-         SELECT DISTINCT div_code 
+         SELECT DISTINCT div_code
          FROM PURCHASE_REQUEST_DETAILS
          WHERE REQUEST_NUMBER = :request_number
        )`,
@@ -67,11 +50,11 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
     );
 
     const ls_prin_code = prinResult.rows?.[0]?.PRIN_CODE;
-
     if (!ls_prin_code) {
       res.status(404).json({ success: false, message: "PRIN_CODE not found for this request" });
       return;
     }
+    console.log("step3: PRIN_CODE:", ls_prin_code);
 
     // 3️⃣ Fetch header
     const headerResult = await connection.execute(
@@ -104,6 +87,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
       res.status(404).json({ success: false, message: "Purchase Request header not found" });
       return;
     }
+    console.log("step4: header fetched");
 
     // 4️⃣ Fetch items
     const detailResult = await connection.execute(
@@ -117,6 +101,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
     );
 
     const itemRows = detailResult.rows || [];
+    console.log("step5: items fetched, count:", itemRows.length);
 
     // 5️⃣ Fetch terms & conditions
     const termResult = await connection.execute(
@@ -129,8 +114,13 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
     );
 
     const termRows = termResult.rows || [];
+    console.log("step6: terms fetched, count:", termRows.length);
 
-    // Helper: lowercase keys
+    // 6️⃣ Skip files fetch to avoid hanging
+    const filesResult: any[] = [];
+    console.log("step7: skipping files fetch");
+
+    // 7️⃣ Convert all keys to lowercase for frontend
     const mapLowerCase = (rows: any[]) =>
       rows.map((row) => {
         const obj: any = {};
@@ -139,16 +129,20 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
       });
 
     const headerLower = mapLowerCase([headerRow])[0];
-    headerLower.request_number = request_number_display; // frontend display
+    headerLower.request_number = request_number_display; // display-friendly
 
+    // 8️⃣ Send response
     res.status(200).json({
       success: true,
       data: {
         header: headerLower,
         items: mapLowerCase(itemRows),
         termscondition: mapLowerCase(termRows),
+        files: filesResult,
       },
     });
+
+    console.log("step8: response sent successfully");
 
   } catch (error: any) {
     console.error("Error in getPurchaserequest:", error);
@@ -156,7 +150,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
   } finally {
     if (connection) {
       try { await connection.close(); } 
-      catch (err) { console.error("Failed to close connection:", err); }
+      catch (err) { console.error("Failed to close Oracle connection:", err); }
     }
   }
 };
