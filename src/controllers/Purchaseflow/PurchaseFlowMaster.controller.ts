@@ -192,7 +192,7 @@ export const getPurchasefMaster = async (
         );
         break;
 
-  case "po_modify":
+case "po_modify":
   console.log("inside po_modify");
 
   try {
@@ -204,35 +204,28 @@ export const getPurchasefMaster = async (
       limit
     );
 
-    const responsePayload = {
+    // Send response and exit function
+    res.json({
       success: result1.success,
-      data: result1.data || [],       // renamed from tableData
-      count: result1.count || 0,      // renamed from totalCount
+      data: result1.data || [],
+      count: result1.count || 0,
       message: result1.message || "",
-    };
-
-    if (!res.headersSent) {
-      res.json(responsePayload);
-    }
-
-    return; // safe exit
+    });
+    return; // exit after sending response
 
   } catch (err) {
     console.error("❌ Error in po_modify route:", err);
 
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        data: [],
-        count: 0,
-        message: "Server error",
-      });
-    }
-
-    return;
+    // Send error response if something fails
+    res.status(500).json({
+      success: false,
+      data: [],
+      count: 0,
+      message: "Server error",
+    });
+    return; // exit after sending response
   }
 
-  break;
 
 
 

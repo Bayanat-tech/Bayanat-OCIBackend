@@ -149,7 +149,7 @@ router.post("/proc_build_dynamic_sql", proc_build_dynamic_sql);
 // router.put("/suppliermaster", updateSupplier);
 
 // //-----Purchase Request-----------
-router.get("/purchaserequest/:request_number", getPurchaserequest);
+router.get("/purchaserequest1/:request_number", getPurchaserequest);
 // router.get(
 //   "/getMaterialRequestNumber/:request_number",
 //   getMaterialRequestNumber

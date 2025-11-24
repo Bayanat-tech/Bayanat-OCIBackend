@@ -4,7 +4,7 @@ import { oracleDb } from "../../database/connection";   // <-- Use this
 
 export const getPurchaserequest = async (req: Request, res: Response): Promise<void> => {
   let connection;
-
+ console.log('inside getPurchaserequest');
   try {
     const { request_number: rawRequestNumber, company_code } = req.params;
 
