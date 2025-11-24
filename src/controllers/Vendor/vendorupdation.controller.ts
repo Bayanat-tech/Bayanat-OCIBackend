@@ -242,7 +242,7 @@ async function sendDataToDotNetAPI(
 
     // Fetch all columns from TR_AC_LPO_DETAIL
     const detailResult = await oracleDb.query(
-      `SELECT 
+      `SELECT ITEM_REMARK,
         NVL(COMPANY_CODE, '') AS COMPANY_CODE,
         NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
         NVL(DOC_NO, '') AS DOC_NO,
