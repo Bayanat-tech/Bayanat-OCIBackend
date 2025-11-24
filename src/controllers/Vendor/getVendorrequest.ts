@@ -89,8 +89,7 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
       FROM TR_AC_LPO_HEADER
       WHERE COMPANY_CODE = 'BSG' 
         AND DOC_NO = :new_doc_no
-        AND AC_CODE = :ac_code
-        AND ROWNUM = 1
+              AND ROWNUM = 1
     `;
 
     const queryDetail = `
@@ -127,14 +126,13 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
       FROM VW_TR_AC_LPO_DETAIL
       WHERE COMPANY_CODE = 'BSG'
         AND DOC_NO = :new_doc_no
-        AND HEADER_AC_CODE = :ac_code
-        ORDER BY SERIAL_NO
+           ORDER BY SERIAL_NO
     `;
 
     // Execute header query
     const headerResult = await oracleDb.query(queryHeader, {
-      new_doc_no,
-      ac_code,
+      new_doc_no
+ 
     });
 
     console.log("Header query result:", headerResult);
@@ -143,8 +141,8 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
 
     // Execute details query
     const detailResult = await oracleDb.query(queryDetail, {
-      new_doc_no,
-      ac_code,
+      new_doc_no
+
     });
     const VendorDetailData = detailResult.rows || detailResult;
 

@@ -447,11 +447,11 @@ async function upsertLpoRequestHeader(
   const rowsResult = await oracleDb.query(
     `SELECT COUNT(*) as cnt 
      FROM TR_AC_LPO_HEADER 
-     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND AC_CODE = :acCode`,
+     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo `,
     {
       companyCode: { val: company_code },
-      docNo: { val: doc_no },
-      acCode: { val: ac_code },
+      docNo: { val: doc_no }
+    
     },
     connection
   );
@@ -586,7 +586,7 @@ async function upsertLpoRequestHeader(
         CANCELED = :canceled, 
         EDIT_USER = :editUser, 
         EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
-      WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo AND AC_CODE = :acCode
+      WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo 
     `;
 
     const updateReplacements = {
