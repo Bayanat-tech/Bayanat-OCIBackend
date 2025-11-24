@@ -1,25 +1,43 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection";   // <-- Use this
+import { oracleDb } from "../../database/connection";
+import cors from "cors";
 
+// Enable CORS globally
+export const enableCors = (app: any) => {
+  app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }));
+
+  // Handle OPTIONS preflight requests
+  app.use((req: any, res: any, next: any) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (req.method === "OPTIONS") return res.sendStatus(200);
+    next();
+  });
+};
+
+// Controller to get purchase request
 export const getPurchaserequest = async (req: Request, res: Response): Promise<void> => {
   let connection;
- console.log('inside getPurchaserequest');
+
   try {
-    const { request_number: rawRequestNumber, company_code } = req.params;
+    const rawRequestNumber = req.params.request_number;
+    console.log("Received request_number:", rawRequestNumber);
 
-    if (!rawRequestNumber || !company_code) {
-      res.status(400).json({ success: false, message: "Missing request_number or company_code" });
-      return;
-    }
+    // DB stores $ format → use rawRequestNumber for queries
+    const request_number = rawRequestNumber;
 
-    // Replace $$ → /
-    const request_number = rawRequestNumber.replace(/\$\$/g, "/");
+    // Convert to slash format only for frontend display
+    const request_number_display = rawRequestNumber.replace(/\$/g, "/");
 
-    // ⬇️ Use your pooled connection
     connection = await oracleDb.getConnection();
 
-    // 1️⃣ Count purchase request headers
+    // 1️⃣ Check if request exists
     const countResult = await connection.execute<{ COUNT: number }>(
       `SELECT COUNT(*) AS COUNT
        FROM PURCHASE_REQUEST_HEADER
@@ -29,11 +47,9 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
     );
 
     const count = countResult.rows?.[0]?.COUNT || 0;
+
     if (count === 0) {
-      res.status(404).json({
-        success: false,
-        message: "Purchase Request does not exist",
-      });
+      res.status(404).json({ success: false, message: "Purchase Request does not exist" });
       return;
     }
 
@@ -51,15 +67,13 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
     );
 
     const ls_prin_code = prinResult.rows?.[0]?.PRIN_CODE;
+
     if (!ls_prin_code) {
-      res.status(404).json({
-        success: false,
-        message: "PRIN_CODE not found for the request",
-      });
+      res.status(404).json({ success: false, message: "PRIN_CODE not found for this request" });
       return;
     }
 
-    // 3️⃣ Fetch header data
+    // 3️⃣ Fetch header
     const headerResult = await connection.execute(
       `SELECT REPLACE(request_number, '$', '/') AS request_number,
               final_approved, fa_uploaded, flow_level_running, request_date,
@@ -78,34 +92,33 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
               catering, medical, transportation, training, recruitment_hr,
               uniform, furniture, entertainment, barber, requestor_name
        FROM VW_PURCHASE_REQUEST_HEADER
-       WHERE REQUEST_NUMBER = :request_number AND COMPANY_CODE = :company_code
-       AND ROWNUM = 1`,
-      { request_number, company_code },
+       WHERE REQUEST_NUMBER = :request_number
+         AND COMPANY_CODE = 'JASRA'
+         AND ROWNUM = 1`,
+      { request_number },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const RequestheaderData = headerResult.rows?.[0];
-    if (!RequestheaderData) {
-      res.status(404).json({
-        success: false,
-        message: "Purchase Request header not found",
-      });
+    const headerRow = headerResult.rows?.[0];
+    if (!headerRow) {
+      res.status(404).json({ success: false, message: "Purchase Request header not found" });
       return;
     }
 
-    // 4️⃣ Fetch detail data
+    // 4️⃣ Fetch items
     const detailResult = await connection.execute(
       `SELECT *
        FROM VW_PURCHASE_REQUEST_TRANSACTION1
-       WHERE REQUEST_NUMBER = :request_number AND PRIN_CODE = :ls_prin_code
+       WHERE REQUEST_NUMBER = :request_number
+         AND PRIN_CODE = :ls_prin_code
        ORDER BY ITEM_SEQUENCE_NO`,
       { request_number, ls_prin_code },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const RequestdetailData = detailResult.rows || [];
+    const itemRows = detailResult.rows || [];
 
-    // 5️⃣ Fetch terms and conditions
+    // 5️⃣ Fetch terms & conditions
     const termResult = await connection.execute(
       `SELECT request_number, supplier AS tsupplier, remarks, dlvr_term,
               payment_terms, quatation_reference, delivery_address
@@ -115,39 +128,35 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const Termconditiondata = termResult.rows || [];
+    const termRows = termResult.rows || [];
 
-    // 6️⃣ Convert all keys to lowercase
-    const mapLowerCaseKeys = (rows: any[]) =>
+    // Helper: lowercase keys
+    const mapLowerCase = (rows: any[]) =>
       rows.map((row) => {
         const obj: any = {};
-        Object.keys(row).forEach((key) => {
-          obj[key.toLowerCase()] = row[key];
-        });
+        Object.keys(row).forEach((k) => (obj[k.toLowerCase()] = row[k]));
         return obj;
       });
+
+    const headerLower = mapLowerCase([headerRow])[0];
+    headerLower.request_number = request_number_display; // frontend display
 
     res.status(200).json({
       success: true,
       data: {
-        header: mapLowerCaseKeys([RequestheaderData])[0],
-        items: mapLowerCaseKeys(RequestdetailData),
-        termscondition: mapLowerCaseKeys(Termconditiondata),
+        header: headerLower,
+        items: mapLowerCase(itemRows),
+        termscondition: mapLowerCase(termRows),
       },
     });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error("Error in getPurchaserequest:", error);
-    res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Internal server error",
-    });
+    res.status(500).json({ success: false, message: error.message || "Internal server error" });
   } finally {
     if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error("Failed to close Oracle connection:", err);
-      }
+      try { await connection.close(); } 
+      catch (err) { console.error("Failed to close connection:", err); }
     }
   }
 };
