@@ -1,5 +1,4 @@
 import { NextFunction, Response } from "express";
-import { Op, QueryTypes } from "sequelize";
 import * as fastCsv from "fast-csv";
 
 import oracledb, { BindParameters, ExecuteOptions, Connection } from "oracledb";
