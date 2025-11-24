@@ -176,31 +176,25 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
 `;
             break;
           case "Pg_leave_flow_InProgress":
-            whereConditions = `
+           whereConditions = `
     company_code = :company_code
-    AND FINAL_APPROVED = 'NO'
-    AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
+    AND LAST_ACTION <> 'REJECTED'
+    AND FINAL_APPROVED <> 'YES'
+    AND LAST_ACTION <> 'CANCEL'
     AND NEXT_ACTION_BY NOT IN (
-        SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE 
+        SELECT EMPLOYEE_ID 
+        FROM VW_HR_EMPLOYEE_AWARE 
         WHERE EMPLOYEE_ID = :loginid
     )
     AND (
-        REQUEST_NUMBER IN (
-            SELECT DISTINCT REQUEST_NUMBER 
-            FROM LEAVE_REQUEST_FLOW_HISTRY 
-            WHERE NEXT_ACTION_BY IN (
-                SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE 
-                WHERE EMPLOYEE_ID = :loginid
-            )
+        :loginid IN (
+            SELECT NEXT_ACTION_BY 
+            FROM LEAVE_REQUEST_FLOW_HISTRY
         )
-    )
-    AND (
-        CREATED_BY = :loginid
-        OR IMMEDIATE_SUPERVISOR = :loginid
-        OR HOD = :loginid
-        OR DEPT_HEAD = :loginid
+        OR CREATED_BY = :loginid
     )
 `;
+
             break;
         }
         try {
