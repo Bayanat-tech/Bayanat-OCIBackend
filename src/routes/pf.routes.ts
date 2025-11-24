@@ -1,24 +1,25 @@
 import * as express from "express";
 import passport from "passport";
-// import {
-//   getPfMaster,
-//   deletepfMaster,
-// } from "../controllers/Purchaseflow/purchaseflow.controller";
+
+
+import {
+  getPurchasefMaster,
+  //deletepfMaster,
+} from "../../src/controllers/Purchaseflow/PurchaseFlowMaster.controller"
+
 
 import gmPfRouter from "./Purchaseflow/gm_purchaseflow.routes";
 import gmpurchaserequestRouter from "./Purchaseflow/transaction/gm_purchaserequest.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
-// import { getPfMaster } from "../controllers/Purchaseflow/pf.controller";
-import { getPurchasefMaster } from "../controllers/Purchaseflow/PurchaseFlowMaster.controller";
 
 const router = express.Router();
 // Route for transaction operations
-// router.use(
-//   "/:transaction",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   gmPfRouter
-// );
+router.use(
+  "/:transaction",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  gmPfRouter
+);
 //gmpurchaserequestRouter
 // Route for reports management
 // router.use(
@@ -27,25 +28,12 @@ const router = express.Router();
 //   checkUserAuthorization,
 //
 // );
-getPurchasefMaster
-
-// 
-// router.get(
-//   "/:master",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   getPfMaster
-  
-// );
 
 router.get(
   "/:master",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  //  getPfMaster
   getPurchasefMaster
- 
-  
 );
 
 router.use(
@@ -55,9 +43,11 @@ router.use(
   gmPfRouter
 );
 
-// router.post(
-//   "/:master",
-//   passport.authenticate("jwt", { session: false }),
-//   deletepfMaster
-// );
-export default router;
+/*router.post(
+  "/:master",
+  passport.authenticate("jwt", { session: false }),
+  deletepfMaster
+);
+export default router;*/
+
+
