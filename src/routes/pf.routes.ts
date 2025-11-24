@@ -47,7 +47,7 @@ router.use(
   "/:master",
   passport.authenticate("jwt", { session: false }),
   deletepfMaster
-);
-export default router;*/
+);*/
+export default router;
 
 
