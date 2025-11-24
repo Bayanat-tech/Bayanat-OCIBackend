@@ -647,7 +647,7 @@ async function upsertLpoRequestDetails(
     }
 
     const insertQuery = `
-    INSERT INTO TR_AC_LPO_DETAIL (
+    INSERT INTO TR_AC_LPO_DETAIL (ITEM_REMARK,
       SERIAL_NO, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, AC_CODE,
       HEADER_AC_CODE, REMARKS, AMOUNT, SIGN_IND, CURR_CODE,
       EX_RATE, LCUR_AMOUNT, CANCELLED, JOB_NO, DEPT_CODE, QTY,
@@ -659,7 +659,7 @@ async function upsertLpoRequestDetails(
       TX_COMPNT_LCURAMT_1, TX_COMPNT_LCURAMT_2, TX_COMPNT_LCURAMT_3, TX_COMPNT_LCURAMT_4,
       TX_COMPNT_1_EXPMT, TX_COMPNT_2_EXPMT, TX_COMPNT_3_EXPMT, TX_COMPNT_4_EXPMT,
       EDIT_USER, CREATE_USER
-    ) VALUES (
+    ) VALUES (:ITEM_REMARK,
       :SERIAL_NO, :COMPANY_CODE, :DOC_TYPE, :DOC_NO, 
       TO_DATE(:DOC_DATE, 'YYYY-MM-DD'),
       :AC_CODE, :HEADER_AC_CODE, :REMARKS, :AMOUNT, :SIGN_IND, :CURR_CODE,
@@ -692,6 +692,7 @@ async function upsertLpoRequestDetails(
     }
 
     const replacements = {
+        ITEM_REMARK: { val: safe(defaultString(item.ITEM_REMARK)) },
       SERIAL_NO: { val: safe(item.SERIAL_NO) },
       COMPANY_CODE: { val: safe(companyCode) },
       DOC_TYPE: { val: safe(defaultString(item.DOC_TYPE)) },
