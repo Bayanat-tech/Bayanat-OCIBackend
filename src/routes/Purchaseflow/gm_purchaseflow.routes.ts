@@ -18,7 +18,7 @@ import {
 import passport from "passport";
 import { TCostbudget } from "../../interfaces/Purchaseflow/Budgetflow.interface";
 import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
-import { saveexcelbudgetdata } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
+import { saveExcelBudgetData } from "../../controllers/Purchaseflow/saveexcelbudgetdata";
 export interface RequestWithUser extends Request {
   user?: IUser; // Optional user if not always present
 }
@@ -216,7 +216,7 @@ router.post("/updatePrintSignatureInfo", updatePrintSignatureInfo);
 
 // router.get("/fetchPurchaseRecovery/:type_of_pr", fetchPurchaseRecovery);
 
-// router.post("/saveexcelbudgetdata", saveexcelbudgetdata);
+ router.post("/saveexcelbudgetdata", saveExcelBudgetData);
 // router.post("/saveFile", saveFile as RequestHandler);
 
 // //------------------CUSTOMER MASTER------------------
