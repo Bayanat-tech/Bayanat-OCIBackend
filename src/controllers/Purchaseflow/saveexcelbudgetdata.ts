@@ -1,12 +1,26 @@
+// File: controllers/Purchaseflow/saveexcelbudgetdata.ts
+
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection"; // your Oracle DB connection pool
+import { oracleDb } from "../../database/connection"; // Oracle DB connection pool
 import { Request, Response } from "express";
+
+// Define TypeScript interface for the budget row
+interface BudgetRow {
+  budget_year: number;
+  company_code: string;
+  cost_code: string;
+  month_budget: number;
+  requested_amt: number;
+}
 
 export const saveExcelBudgetData = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const { request_number, data: transformedRows } = req.body;
+  const { request_number, data: transformedRows } = req.body as {
+    request_number: string;
+    data: BudgetRow[];
+  };
 
   // Validate input
   if (!request_number || !transformedRows || transformedRows.length === 0) {
@@ -18,11 +32,9 @@ export const saveExcelBudgetData = async (
 
   try {
     connection = await oracleDb.getConnection();
-    await connection.execute("ALTER SESSION SET NLS_DATE_FORMAT = 'DD/MM/YYYY'");
-
-    // Start a transaction
-    await connection.execute("BEGIN NULL; END;"); // No explicit BEGIN needed, execute will be in transaction mode
-    console.log("log 1");
+    await connection.execute(
+      "ALTER SESSION SET NLS_DATE_FORMAT = 'DD/MM/YYYY'"
+    );
 
     // Fetch project_code and request_date
     const headerResults = await connection.execute<{
@@ -36,8 +48,6 @@ export const saveExcelBudgetData = async (
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    console.log("headerResults:", headerResults.rows);
-
     if (!headerResults.rows || headerResults.rows.length === 0) {
       res.status(404).json({ success: false, message: "Request not found" });
       return;
@@ -46,9 +56,7 @@ export const saveExcelBudgetData = async (
     const { PROJECT_CODE: project_code, REQUEST_DATE: request_date } =
       headerResults.rows[0];
 
-    console.log("Fetched project_code and request_date:", { project_code, request_date });
-
-    // Format the request_date as dd/mm/yyyy
+    // Format request_date as DD/MM/YYYY
     const formattedDate = `${String(request_date.getDate()).padStart(2, "0")}/${String(
       request_date.getMonth() + 1
     ).padStart(2, "0")}/${request_date.getFullYear()}`;
@@ -59,9 +67,7 @@ export const saveExcelBudgetData = async (
       { request_number }
     );
 
-    console.log("log 6");
-
-    // Insert each transformed row
+    // Prepare insert query
     const insertQuery = `
       INSERT INTO MS_PROJ_COST_MONTHWISE_BUDGET (
         PROJECT_CODE, COST_CODE, COMPANY_CODE, MONTH_DATE,
@@ -74,27 +80,27 @@ export const saveExcelBudgetData = async (
       )
     `;
 
-    for (const row of transformedRows) {
-      const { budget_year, company_code, cost_code, month_budget, requested_amt } = row;
-      const monthDate = `${budget_year}-${month_budget.toString().padStart(2, "0")}-01`;
+    // Prepare bind array for bulk insert
+    const binds = transformedRows.map((row: BudgetRow) => ({
+      project_code,
+      cost_code: row.cost_code,
+      company_code: row.company_code,
+      monthDate: `${row.budget_year}-${row.month_budget
+        .toString()
+        .padStart(2, "0")}-01`,
+      month_budget: row.month_budget,
+      budget_year: row.budget_year,
+      request_number,
+      requested_amt: row.requested_amt,
+      approved_amt: row.requested_amt, // approved = requested
+      requested_date: formattedDate,
+    }));
 
-      await connection.execute(insertQuery, {
-        project_code,
-        cost_code,
-        company_code,
-        monthDate,
-        month_budget,
-        budget_year,
-        request_number,
-        requested_amt,
-        approved_amt: requested_amt, // same as requested_amt
-        requested_date: formattedDate,
-      });
-    }
+    // Execute bulk insert
+    await connection.executeMany(insertQuery, binds);
 
-    // Commit the transaction
+    // Commit transaction
     await connection.commit();
-    console.log("log 7");
 
     res.json({
       success: true,
@@ -109,7 +115,6 @@ export const saveExcelBudgetData = async (
         console.error("Rollback failed:", rollbackError);
       }
     }
-
     res.status(500).json({
       success: false,
       message: "An error occurred while saving data.",
