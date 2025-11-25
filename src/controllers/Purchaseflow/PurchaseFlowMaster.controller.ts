@@ -250,6 +250,7 @@ case "po_modify":
 
     if (!res.headersSent) {
       res.json(responsePayload);
+      return
     }
 
     return; // safe exit
@@ -313,6 +314,7 @@ case "po_modify":
 
     if (!res.headersSent) {
       res.json(responsePayload);
+      return;
     }
 
     return; // safe exit
@@ -373,6 +375,7 @@ case "po_modify":
 
     if (!res.headersSent) {
       res.json(responsePayload);
+      return;
     }
 
     return; // stop further execution
@@ -418,6 +421,7 @@ case "Request_Rejected":
     // Send response only if headers not sent
     if (!res.headersSent) {
       res.json(responsePayload);
+      return;
     }
 
     return; // safe exit
@@ -494,6 +498,7 @@ case "Request_Rejected":
 
     if (!res.headersSent) {
       res.json(responsePayload); 
+      return
     }
 
     return; // safe exit
