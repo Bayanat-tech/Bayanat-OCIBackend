@@ -1228,6 +1228,19 @@ export const notifyUser = async (args: SendEmailInterface) => {
       };
       break;
 
+    // HR integration errors
+    case "HR_API_ERROR":
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: cc,
+        subject: subject || "HR API Error Notification",
+        text: message || "An error occurred in the HR API integration.",
+        html: htmlMessage,
+        attachments: attachments || [],
+      };
+      break;
+
     case "APPROVAL_NOTIFICATION":
       mailOptions = {
         from: constants.ENV.EMAIL_USER,

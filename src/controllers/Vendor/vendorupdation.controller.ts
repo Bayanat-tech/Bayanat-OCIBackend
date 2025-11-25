@@ -146,25 +146,28 @@ async function sendDataToDotNetAPI(
         console.error(`Failed to send file data for DOC_NO: ${docNo}`, error);
 
         // Send email notification for file upload failure
-        await notifyUser({
+        const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${
-            error.message || "Unknown error"
-          }`,
+          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
           subject: "Vendor API File Upload Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API File Upload Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${
-              error.message || "Unknown error"
-            }</p>
+            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
             <p><strong>File Details:</strong></p>
             <pre>${JSON.stringify(file, null, 2)}</pre>
           `,
-        });
+        };
+
+        try {
+          console.log("notifyUser payload (file upload):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (file upload):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (file upload):", notifErr);
+        }
         return;
       }
     }
@@ -237,12 +240,13 @@ async function sendDataToDotNetAPI(
       return;
     }
 
-    // Clean header data
+    // Clean header data 
     const cleanedHeaderData = VendorService.cleanDetail(headerData);
 
     // Fetch all columns from TR_AC_LPO_DETAIL
     const detailResult = await oracleDb.query(
-      `SELECT ITEM_REMARK,
+      `SELECT 
+        NVL(ITEM_REMARK, '') AS ITEM_REMARK,
         NVL(COMPANY_CODE, '') AS COMPANY_CODE,
         NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
         NVL(DOC_NO, '') AS DOC_NO,
@@ -297,25 +301,28 @@ async function sendDataToDotNetAPI(
         console.error(`Failed to send detail for DOC_NO: ${docNo}`, error);
 
         // Send email notification for detail API failure
-        await notifyUser({
+        const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${
-            error.message || "Unknown error"
-          }`,
+          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
           subject: "Vendor API Detail Data Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API Detail Data Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${
-              error.message || "Unknown error"
-            }</p>
+            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
             <p><strong>Detail Data:</strong></p>
             <pre>${JSON.stringify(detail, null, 2)}</pre>
           `,
-        });
+        };
+
+        try {
+          console.log("notifyUser payload (detail failure):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (detail failure):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (detail failure):", notifErr);
+        }
         return;
       }
     }
@@ -326,25 +333,28 @@ async function sendDataToDotNetAPI(
     } catch (error: any) {
       console.error(`Failed to send header for DOC_NO: ${docNo}`, error);
 
-      await notifyUser({
+      const notifPayload = {
         event: "VENDOR_API_ERROR",
-        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${
-          error.message || "Unknown error"
-        }`,
+        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
         subject: "Vendor API Header Data Failed",
-        request_user:
-          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
         cc: "prem@bayanattechnology.com",
         htmlMessage: `
           <h3>Vendor API Header Data Failed</h3>
           <p><strong>Document No:</strong> ${docNo}</p>
-          <p><strong>Error Message:</strong> ${
-            error.message || "Unknown error"
-          }</p>
+          <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
           <p><strong>Header Data:</strong></p>
           <pre>${JSON.stringify(cleanedHeaderData, null, 2)}</pre>
         `,
-      });
+      };
+
+      try {
+        console.log("notifyUser payload (header failure):", notifPayload);
+        const notifResult: any = await notifyUser(notifPayload);
+        console.log("notifyUser result (header failure):", notifResult);
+      } catch (notifErr) {
+        console.error("notifyUser failed (header failure):", notifErr);
+      }
       return;
     }
 
