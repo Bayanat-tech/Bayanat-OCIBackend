@@ -170,17 +170,29 @@ export class AuthService {
     email: string,
     hashedPassword: string
   ): Promise<boolean> {
-    const userRepository = this.getUserRepository();
+    try {
+      const updateQuery = `
+        UPDATE SEC_LOGIN 
+        SET USERPASS = :hashedPassword,
+            SEC_PASSWD = :hashedPassword,
+            UPDATED_BY = :updated_by
+        WHERE EMAIL_ID = :email
+      `;
 
-    const result = await userRepository.update(
-      { email_id: email },
-      {
-        userpass: hashedPassword,
+      const params = {
+        hashedPassword: hashedPassword,
         updated_by: "system",
-      }
-    );
+        email: email,
+      };
 
-    return result.affected ? result.affected > 0 : false;
+      const result = await this.executeRawQuery(updateQuery, params);
+      console.log("Password update result:", result);
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating password:", error);
+      throw error;
+    }
   }
 
   // Execute raw queries
