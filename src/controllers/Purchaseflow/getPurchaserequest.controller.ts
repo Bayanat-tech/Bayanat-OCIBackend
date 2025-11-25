@@ -136,38 +136,7 @@ export const getPurchaserequest = async (
     const termRows = termResult.rows ?? [];
     console.log("step6: terms fetched, count:", termRows.length);
 
-    // 6️⃣ Fetch files (using ResultSet)
-    const filesResult = await connection.execute(
-      `SELECT COMPANY_CODE, REQUEST_NUMBER, SR_NO, FILE_NAME, ORG_FILE_NAME,
-              AWS_FILE_LOCN, FLOW_LEVEL, MODULES, UPDATED_AT, UPDATED_BY,
-              CREATED_BY, CREATED_AT, EXTENSIONS, USER_FILE_NAME, TYPE
-       FROM UPLOADED_FILES_DLTS
-       WHERE COMPANY_CODE = :cc
-         AND REQUEST_NUMBER = :rn
-       ORDER BY SR_NO DESC`,
-      { cc: company_code, rn: request_number },
-      {
-        resultSet: true,
-        fetchArraySize: 500,
-        outFormat: oracledb.OUT_FORMAT_OBJECT,
-      }
-    );
-
-    const rs = filesResult.resultSet;
-    const filesRows: any[] = [];
-
-    if (rs) {
-      let chunk;
-      do {
-        chunk = await rs.getRows(500); // fetch in batches of 500 :contentReference[oaicite:0]{index=0}
-        filesRows.push(...chunk);
-      } while (chunk.length === 500);
-
-      await rs.close(); // close result set when done :contentReference[oaicite:1]{index=1}
-    }
-    console.log("step7: files fetched, count:", filesRows.length);
-
-    // 7️⃣ Convert keys to lowercase
+    // 6️⃣ Convert keys to lowercase
     const toLower = (rows: any[]) =>
       rows.map((row) => {
         const obj: any = {};
@@ -180,21 +149,86 @@ export const getPurchaserequest = async (
     const headerLower = toLower([headerRow])[0];
     const itemsLower = toLower(itemRows);
     const termsLower = toLower(termRows);
-    const filesLower = toLower(filesRows);
+
+    // 7️⃣ Format the response structure to match the front-end model
+    const formattedResponse = {
+      requestor_name: headerLower.requestor_name || '',
+      div_code: headerLower.div_code || '',
+      request_number: headerLower.request_number || '',
+      request_date: headerLower.request_date || new Date(),
+      need_by_date: headerLower.need_by_date || new Date(),
+      description: headerLower.description || '',
+      wo_number: headerLower.wo_number || '',
+      type_of_contract: headerLower.type_of_contract || '',
+      type_of_material_supply: headerLower.type_of_material_supply || 'N/A',
+      contract_soft_hard: headerLower.contract_soft_hard || 'N/A',
+      service_type: headerLower.service_type || 'N/A',
+      amc_service_status: headerLower.amc_service_status || 'N/A',
+      flow_level_running: headerLower.flow_level_running || 1,
+      material_mechanical: headerLower.material_mechanical || 'N',
+      material_electrical: headerLower.material_electrical || 'N',
+      material_plumbing: headerLower.material_plumbing || 'N',
+      material_tools: headerLower.material_tools || 'N',
+      material_civil: headerLower.material_civil || 'N',
+      material_ac: headerLower.material_ac || 'N',
+      material_cleaning: headerLower.material_cleaning || 'N',
+      material_other: headerLower.material_other || 'N',
+      services_temp_staff: headerLower.services_temp_staff || 'N',
+      services_rentals: headerLower.services_rentals || 'N',
+      services_subcon_conslt: headerLower.services_subcon_conslt || 'N',
+      services_other: headerLower.services_other || 'N',
+      other_stationery: headerLower.other_stationery || 'N',
+      other_it: headerLower.other_it || 'N',
+      other_new_uniform_ppe: headerLower.other_new_uniform_ppe || 'N',
+      other_rplcmt_uniform: headerLower.other_rplcmt_uniform || 'N',
+      other_other: headerLower.other_other || 'N',
+      good_material_request: headerLower.good_material_request || 'N',
+      service_request: headerLower.service_request || 'N',
+      project_code: headerLower.project_code || '',
+      company_code: headerLower.company_code || '',
+      created_by: headerLower.created_by || '',
+      updated_by: headerLower.updated_by || '',
+      last_action: headerLower.last_action || '',
+      created_at: headerLower.created_at || new Date(),
+      updated_at: headerLower.updated_at || new Date(),
+      fa_uploaded: headerLower.fa_uploaded || 'N',
+      final_approved: headerLower.final_approved || 'No',
+      type_of_pr: headerLower.type_of_pr || '',
+      covered_by_contract_yes: headerLower.covered_by_contract_yes || 'N/A',
+      flag_sharing_cost: headerLower.flag_sharing_cost || 'N/A',
+      budgeted_yes: headerLower.budgeted_yes || 'N/A',
+      checked_store_yes: headerLower.checked_store_yes || 'N/A',
+      amount: headerLower.amount || 0,
+
+      // Div_code 10 related items
+      accommodation: headerLower.accommodation || 'N',
+      catering: headerLower.catering || 'N',
+      laundry_housekeeping: headerLower.laundry_housekeeping || 'N',
+      medical: headerLower.medical || 'N',
+      transportation: headerLower.transportation || 'N',
+      training: headerLower.training || 'N',
+      recruitment_hr: headerLower.recruitment_hr || 'N',
+      uniform: headerLower.uniform || 'N',
+      stationary: headerLower.stationary || 'N',
+      it_tech: headerLower.it_tech || 'N',
+      furniture: headerLower.furniture || 'N',
+      entertainment: headerLower.entertainment || 'N',
+      barber: headerLower.barber || 'N',
+      others: headerLower.others || 'N',
+
+      items: itemsLower,
+      Termscondition: termsLower,
+    };
 
     // 8️⃣ Send response
     res.json({
       success: true,
-      data: {
-        header: headerLower,
-        items: itemsLower,
-        termscondition: termsLower,
-        files: filesLower,
-      },
+      data: formattedResponse,
       count,
       message: "",
     });
     console.log("step8: response sent successfully");
+
   } catch (err: unknown) {
     console.error("Error in getPurchaserequest:", err);
     const message = err instanceof Error ? err.message : "Internal server error";
