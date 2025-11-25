@@ -583,7 +583,7 @@ async function upsertLpoRequestHeader(
         REMARKS = :remarks,
         CURR_CODE = :currCode, 
         EX_RATE = :exRate, 
-        CANCELED = :canceled, 
+      
         EDIT_USER = :editUser, 
         EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
       WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo AND AC_CODE = :acCode
@@ -599,7 +599,7 @@ async function upsertLpoRequestHeader(
       remarks: { val: defaultString(data.REMARKS) },
       currCode: { val: defaultString(data.CURR_CODE) },
       exRate: { val: data.EX_RATE ?? 0 },
-      canceled: { val: data.CANCELED ?? false },
+     
       editUser: { val: defaultString(data.EDIT_USER) },
       editDate: { val: formatDateForOracle(new Date()) },
       companyCode: { val: company_code },
