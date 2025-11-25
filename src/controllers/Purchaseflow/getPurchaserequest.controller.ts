@@ -1,25 +1,35 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
 
-export const getPurchaserequest = async (req: Request, res: Response): Promise<void> => {
+export const getPurchaserequest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   let connection;
 
   try {
-    const rawRequestNumber = req.params.request_number; // e.g., MFS$25$P227$PR$0161
+    const rawRequestNumber = req.params.request_number;
     console.log("Received request_number:", rawRequestNumber);
 
-    // Use $ format for DB queries
+    if (!rawRequestNumber) {
+      res.json({
+        success: false,
+        data: [],
+        count: 0,
+        message: "Missing request_number",
+      });
+      return;
+    }
+
     const request_number = rawRequestNumber;
+    const company_code = "JASRA"; // hard-coded
 
-    // For frontend display: convert $ → /
-    const request_number_display = rawRequestNumber.replace(/\$/g, "/");
-
-    // Get Oracle connection
     connection = await oracleDb.getConnection();
     console.log("step1: connected to Oracle");
 
-    // 1️⃣ Check if purchase request exists
+    // 1️⃣ Count header
     const countResult = await connection.execute<{ COUNT: number }>(
       `SELECT COUNT(*) AS COUNT
        FROM PURCHASE_REQUEST_HEADER
@@ -27,16 +37,20 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
       { request_number },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
-    const count = countResult.rows?.[0]?.COUNT || 0;
+    const count = countResult.rows?.[0]?.COUNT ?? 0;
     console.log("step2: countResult:", count);
 
     if (count === 0) {
-      res.status(404).json({ success: false, message: "Purchase Request does not exist" });
+      res.json({
+        success: false,
+        data: [],
+        count: 0,
+        message: "Purchase Request does not exist",
+      });
       return;
     }
 
-    // 2️⃣ Fetch PRIN_CODE
+    // 2️⃣ Get PRIN_CODE
     const prinResult = await connection.execute<{ PRIN_CODE: string }>(
       `SELECT prin_code
        FROM MS_PRINCIPAL
@@ -48,13 +62,17 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
       { request_number },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
     const ls_prin_code = prinResult.rows?.[0]?.PRIN_CODE;
+    console.log("step3: PRIN_CODE:", ls_prin_code);
     if (!ls_prin_code) {
-      res.status(404).json({ success: false, message: "PRIN_CODE not found for this request" });
+      res.json({
+        success: false,
+        data: [],
+        count,
+        message: "PRIN_CODE not found for this request",
+      });
       return;
     }
-    console.log("step3: PRIN_CODE:", ls_prin_code);
 
     // 3️⃣ Fetch header
     const headerResult = await connection.execute(
@@ -76,20 +94,24 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
               uniform, furniture, entertainment, barber, requestor_name
        FROM VW_PURCHASE_REQUEST_HEADER
        WHERE REQUEST_NUMBER = :request_number
-         AND COMPANY_CODE = 'JASRA'
+         AND COMPANY_CODE = :company_code
          AND ROWNUM = 1`,
-      { request_number },
+      { request_number, company_code },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
     const headerRow = headerResult.rows?.[0];
+    console.log("step4: header fetched:", headerRow);
     if (!headerRow) {
-      res.status(404).json({ success: false, message: "Purchase Request header not found" });
+      res.json({
+        success: false,
+        data: [],
+        count,
+        message: "Purchase Request header not found",
+      });
       return;
     }
-    console.log("step4: header fetched");
 
-    // 4️⃣ Fetch items
+    // 4️⃣ Fetch detail / items
     const detailResult = await connection.execute(
       `SELECT *
        FROM VW_PURCHASE_REQUEST_TRANSACTION1
@@ -99,8 +121,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
       { request_number, ls_prin_code },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
-    const itemRows = detailResult.rows || [];
+    const itemRows = detailResult.rows ?? [];
     console.log("step5: items fetched, count:", itemRows.length);
 
     // 5️⃣ Fetch terms & conditions
@@ -112,45 +133,85 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
       { request_number },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
-    const termRows = termResult.rows || [];
+    const termRows = termResult.rows ?? [];
     console.log("step6: terms fetched, count:", termRows.length);
 
-    // 6️⃣ Skip files fetch to avoid hanging
-    const filesResult: any[] = [];
-    console.log("step7: skipping files fetch");
+    // 6️⃣ Fetch files (using ResultSet)
+    const filesResult = await connection.execute(
+      `SELECT COMPANY_CODE, REQUEST_NUMBER, SR_NO, FILE_NAME, ORG_FILE_NAME,
+              AWS_FILE_LOCN, FLOW_LEVEL, MODULES, UPDATED_AT, UPDATED_BY,
+              CREATED_BY, CREATED_AT, EXTENSIONS, USER_FILE_NAME, TYPE
+       FROM UPLOADED_FILES_DLTS
+       WHERE COMPANY_CODE = :cc
+         AND REQUEST_NUMBER = :rn
+       ORDER BY SR_NO DESC`,
+      { cc: company_code, rn: request_number },
+      {
+        resultSet: true,
+        fetchArraySize: 500,
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
+      }
+    );
 
-    // 7️⃣ Convert all keys to lowercase for frontend
-    const mapLowerCase = (rows: any[]) =>
+    const rs = filesResult.resultSet;
+    const filesRows: any[] = [];
+
+    if (rs) {
+      let chunk;
+      do {
+        chunk = await rs.getRows(500); // fetch in batches of 500 :contentReference[oaicite:0]{index=0}
+        filesRows.push(...chunk);
+      } while (chunk.length === 500);
+
+      await rs.close(); // close result set when done :contentReference[oaicite:1]{index=1}
+    }
+    console.log("step7: files fetched, count:", filesRows.length);
+
+    // 7️⃣ Convert keys to lowercase
+    const toLower = (rows: any[]) =>
       rows.map((row) => {
         const obj: any = {};
-        Object.keys(row).forEach((k) => (obj[k.toLowerCase()] = row[k]));
+        for (const [k, v] of Object.entries(row)) {
+          obj[k.toLowerCase()] = v;
+        }
         return obj;
       });
 
-    const headerLower = mapLowerCase([headerRow])[0];
-    headerLower.request_number = request_number_display; // display-friendly
+    const headerLower = toLower([headerRow])[0];
+    const itemsLower = toLower(itemRows);
+    const termsLower = toLower(termRows);
+    const filesLower = toLower(filesRows);
 
     // 8️⃣ Send response
-    res.status(200).json({
+    res.json({
       success: true,
       data: {
         header: headerLower,
-        items: mapLowerCase(itemRows),
-        termscondition: mapLowerCase(termRows),
-        files: filesResult,
+        items: itemsLower,
+        termscondition: termsLower,
+        files: filesLower,
       },
+      count,
+      message: "",
     });
-
     console.log("step8: response sent successfully");
-
-  } catch (error: any) {
-    console.error("Error in getPurchaserequest:", error);
-    res.status(500).json({ success: false, message: error.message || "Internal server error" });
+  } catch (err: unknown) {
+    console.error("Error in getPurchaserequest:", err);
+    const message = err instanceof Error ? err.message : "Internal server error";
+    res.status(500).json({
+      success: false,
+      data: [],
+      count: 0,
+      message,
+    });
   } finally {
     if (connection) {
-      try { await connection.close(); } 
-      catch (err) { console.error("Failed to close Oracle connection:", err); }
+      try {
+        await connection.close();
+        console.log("Connection closed");
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
     }
   }
 };
