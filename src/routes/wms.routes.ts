@@ -6,6 +6,7 @@ import gmWmsRouter from "./wms/gm_wms.routes";
 import dashboardRouter from "./../routes/wms/dashboard_wms.routes";
 import jobInboundRouter from "./wms/transaction/inbound_wms.routes";
 import stocktransferWmsRouter from "./wms/transaction/stocktransfer_wms.routes";
+import stockAdjustmentRouter from "./StockAdjustment/stockAdjustment.routes";
 //import jobOutboundRouter from "./wms/transaction/outbound_wms.routes";
 import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; // ✅ CORRECT
 // import {
@@ -107,6 +108,14 @@ router.use(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   dashboardRouter
+);
+
+// Route for stock adjustment operations
+router.use(
+  "/stock-adjustment",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  stockAdjustmentRouter
 );
 
 // Route to get WMS master data by parameter
