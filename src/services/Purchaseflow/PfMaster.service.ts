@@ -12,6 +12,7 @@ import { VProjectMaster } from "../../entity/PurchaseFlow/projectmaster_pf_view.
 import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
 import { UomMaster } from "../../entity/PurchaseFlow/uommaster_pf.entity";
 import { In } from "typeorm";
+import { DdMaterialCategory } from "../../entity/PurchaseFlow/ddMaterialCateotry.entity";
 
 export interface Master<T> {
   fetchedData: T[];
@@ -161,9 +162,9 @@ export class PurchaseFlowMasterService {
     company_code: string, 
     page = 1, 
     limit = 4000
-  ): Promise<Master<DdCurrency>> {
+  ): Promise<Master<DdMaterialCategory>> {
     const skip = (page - 1) * limit;
-    const [fetchedData, totalCount] = await getRepository(DdCurrency).findAndCount({
+    const [fetchedData, totalCount] = await getRepository(DdMaterialCategory).findAndCount({
       where: { company_code },
       skip,
       take: limit,

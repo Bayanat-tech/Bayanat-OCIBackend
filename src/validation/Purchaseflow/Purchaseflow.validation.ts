@@ -88,7 +88,7 @@ export const itemmasterSchema = (data: IItemtmaster) => {
 
 export const supplierSchema = (data: ISupplier) => {
   const schema = Joi.object({
-    company_code: Joi.string().optional().allow(null, ""),
+  company_code: Joi.string().optional().allow(null, ""),
   supp_code: Joi.string().optional().allow(null, ""),
   curr_code: Joi.string().optional().allow(null, ""),
   country_code: Joi.string().optional().allow(null, ""),
@@ -142,6 +142,7 @@ export const supplierSchema = (data: ISupplier) => {
   prin_code: Joi.string().optional().allow(null, ""),
   payment_terms: Joi.string().optional().allow(null, ""),
   mater_category_code: Joi.string().optional().allow(null, ""),
+  supp_mat_cat_desp: Joi.string().optional().allow(null, ""),
   });
 
   return schema.validate(data);

@@ -280,7 +280,7 @@ export const getPfMaster = async (
   }
 };
  //------------------- delete Master -------------------------------
-export const deletePfMaster = async (
+export const deletepfMaster = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
