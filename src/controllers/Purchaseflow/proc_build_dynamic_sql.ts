@@ -22,7 +22,7 @@ export const proc_build_dynamic_sql = async (req: Request, res: Response): Promi
       date3,
       date4
     } = req.body;
-
+console.log('check dynamic sql',req.body);
     if (!parameter) {
       res.status(400).json({ error: "Missing required parameter 'parameter'" });
       return;
