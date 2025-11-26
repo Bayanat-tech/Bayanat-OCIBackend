@@ -174,7 +174,7 @@ export async function getRequestUsers(
 
     // 2️⃣ Query to get the email string
     const result = await conn.execute<{ EMAIL_CC: string }>(
-      `SELECT FUN_EMAIL_SENT_STRING(:companyCode, FUN_GET_FLOW_ROLE_AL(:updatedBy, :companyCode)) AS EMAIL_CC FROM DUAL`,
+      `SELECT FUN_EMAIL_SENT_STRING(:companyCode, FUN_GET_FLOW_ROLE_JAS(:updatedBy, :companyCode)) AS EMAIL_CC FROM DUAL`,
       {
         companyCode: data.companyCode,
         updatedBy: data.updated_by,
@@ -286,7 +286,7 @@ export async function upsertPurchaseRequestHeader(
         :type_of_pr, :covered_by_contract_yes, :flag_sharing_cost, :budgeted_yes, :checked_store_yes
       )
     `;
-
+console.log('type of pr',data.type_of_pr);
     await connection.execute(insertSql, {
       amc_from: data.amc_from,
       amc_to: data.amc_to,
@@ -379,7 +379,7 @@ export async function upsertPurchaseRequestHeader(
       DESCRIPTION = :description,
       PROJECT_CODE = :project_code,
       UPDATED_BY = :updated_by,
-      LAST_UPDATED = SYSTIMESTAMP,
+      LAST_UPDATED = :last_updated,
       WO_NUMBER = :wo_number,
       REMARKS = :remarks,
       TYPE_OF_CONTRACT = :type_of_contract,
@@ -421,6 +421,7 @@ export async function upsertPurchaseRequestHeader(
   `;
 
   await connection.execute(updateSql, {
+    last_updated: data.last_updated ,
     accommodation: data.accommodation,
     catering: data.catering,
     laundry_housekeeping: data.laundry_housekeeping,

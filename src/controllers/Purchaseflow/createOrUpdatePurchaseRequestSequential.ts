@@ -109,6 +109,8 @@ export function mapIncomingRequestData(data: any): IPurchaseRequestPf {
 
   // Map basic purchase request fields
   const basicPrRequest: IBasicPrRequest = {
+    type_of_pr: data.type_of_pr || "",
+    last_updated: data.last_updated || "",
     requestNumber: data.request_number || "",
     requestDate: data.request_date ? new Date(data.request_date) : new Date(),
     description: data.description || "",
