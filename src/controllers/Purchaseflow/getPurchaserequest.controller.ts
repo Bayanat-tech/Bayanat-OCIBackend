@@ -78,8 +78,9 @@ export const getPurchaserequest = async (
     const headerResult = await connection.execute(
       `SELECT REPLACE(request_number, '$', '/') AS request_number,
               final_approved, fa_uploaded, flow_level_running, request_date,
-              description, type_of_contract, amc_from, amc_to,
-              type_of_material_supply, wo_number, remarks, project_code,
+              description, type_of_contract,     NVL(amc_from, TO_DATE('1900-01-01','YYYY-MM-DD')) AS amc_from,
+    NVL(amc_to, TO_DATE('1900-01-01','YYYY-MM-DD')) AS amc_to,
+              type_of_material_supply, wo_number, NVL(remarks,''), project_code,
               contract_soft_hard, amc_service_status, material_mechanical,
               material_electrical, material_plumbing, material_tools,
               material_civil, material_ac, material_cleaning, material_other,
@@ -100,6 +101,7 @@ export const getPurchaserequest = async (
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const headerRow = headerResult.rows?.[0];
+    
     console.log("step4: header fetched:", headerRow);
     if (!headerRow) {
       res.json({
@@ -158,6 +160,9 @@ export const getPurchaserequest = async (
       request_date: headerLower.request_date || new Date(),
       need_by_date: headerLower.need_by_date || new Date(),
       description: headerLower.description || '',
+        remarks: headerLower.description || '',
+        amc_from:headerLower.amc_from || null,
+          amc_to:headerLower.amc_to || null,
       wo_number: headerLower.wo_number || '',
       type_of_contract: headerLower.type_of_contract || '',
       type_of_material_supply: headerLower.type_of_material_supply || 'N/A',
