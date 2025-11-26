@@ -1422,33 +1422,7 @@ export const updatecancelrejectsentBack = async (
         }
       );
 
-      // Commented out supplier email lookup - using static emails for testing
-      /*
-      const supplierResult = await sequelize.query(
-        "SELECT SUPPLIER FROM PURCHASE_REQUEST_DETAILS WHERE REF_DOC_NO = ?",
-        {
-          replacements: [REQUEST_NUMBER],
-          type: QueryTypes.SELECT,
-          transaction: t,
-        }
-      );
-      console.log("Supplier result:", supplierResult);
-      const supplier =
-        (supplierResult as { SUPPLIER: string }[])[0]?.SUPPLIER || "";
-
-      if (supplier) {
-        const emailResult = await sequelize.query(
-          "SELECT SUPP_EMAIL1 FROM MS_SUPPLIER WHERE SUPP_CODE = ?",
-          {
-            replacements: [supplier],
-            type: QueryTypes.SELECT,
-            transaction: t,
-          }
-        );
-        const supplierEmail =
-          (emailResult as { SUPP_EMAIL1: string }[])[0]?.SUPP_EMAIL1 || "";
-      */
-
+     
       // Using static test emails
       const supplierEmail = "Sandeep.dandekar@bayanattechnology.com";
 

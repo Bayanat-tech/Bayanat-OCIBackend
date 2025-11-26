@@ -41,6 +41,9 @@ import { CheckBudgetStatus } from "../../controllers/Purchaseflow/CheckBudgetSta
 import { getBudgetexcel } from "../../controllers/Purchaseflow/getBudgetexcel";
 import { fetchUserlevel } from "../../controllers/Purchaseflow/fetchUserlevel";
 import { createOrUpdatePurchaseRequestSequential } from "../../../src/controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential"
+import { updateCancelRejectSentBack } from "../../controllers/Purchaseflow/updatecancelrejectsentBack";
+import { updatePurchaseOrder } from "../../controllers/Purchaseflow/updatePurchaseOrder";
+import { budgetExcelUpload } from "../../controllers/Purchaseflow/budgetexcelupload";
 //import { createOrUpdatePurchaseRequestSequential } from "../../controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential";
 // import {
 //   createcostmaster,
@@ -205,9 +208,9 @@ router.get("/FetchGenPOString", FetchGenPOString);
 router.post("/purchaserequest", createOrUpdatePurchaseRequestSequential);
 // router.post("/materialrequest", createOrUpdateMaterialRequestSequential);
 // router.post("/budgetrequest", createOrUpdateBudgetRequestSequential);
-// router.post("/purchaseorder", updatePurchaseOrder);
-// router.post("/budgetexcelupload", budgetexcelupload);
-// router.post("/updatecancelrejectsentback", updatecancelrejectsentBack);
+ router.post("/purchaseorder", updatePurchaseOrder);
+ router.post("/budgetexcelupload",budgetExcelUpload );
+ router.post("/updatecancelrejectsentback", updateCancelRejectSentBack );
 // router.post("/UpdPurchaseRecoveryData", UpdPurchaseRecoveryData);
  router.post("/updateReasonForPO", updateReasonForPO);
 router.post("/updatePrintSignatureInfo", updatePrintSignatureInfo);

@@ -1,119 +1,69 @@
-import { sequelize } from "../../database/connection";
-import {
-  TBasicBrequest,
-  TCostbudget,
-} from "../../interfaces/Purchaseflow/Budgetflow.interface";
-
+import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection";
+import { TBasicBrequest } from "../../interfaces/Purchaseflow/Budgetflow.interface";
 
 export async function upsertBudgetRequest(data: TBasicBrequest) {
-  const transaction = await sequelize.transaction();
+  let connection;
 
   try {
-    console.log("Starting upsertBudgetRequest.30012025..");
-
-    // Log input data for debugging
-    console.log("Request number:", data.request_number);
-    console.log("Request Date:", data.request_date);
-    console.log("Description:", data.description);
-    console.log("Project Code:", data.project_code);
-    console.log("Company Code:", data.company_code);
-    console.log("Created By:", data.created_by);
-    console.log("Last Action:", data.last_action);
+    connection = await oracleDb.getConnection();
+    await connection.execute("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'");
 
     let ls_insert = "NO";
-   // if (data.last_action === "SAVEASDRAFT" || data.request_number === null) {
-    if (data.request_number === null || data.request_number === '') {
-      ls_insert = "YES";
-    }
-    console.log('ls_insert',ls_insert);
-console.log('request number',data.request_number);
+    if (!data.request_number) ls_insert = "YES";
+    console.log('ls_insert', ls_insert);
+
     if (data.last_action === "SUBMITTED" || ls_insert === "NO") {
-      // Update existing record in PURCHASE_REQUEST_HEADER
-      await sequelize.query(
+      // UPDATE existing record
+      await connection.execute(
         `UPDATE PURCHASE_REQUEST_HEADER
-        SET
-          LAST_ACTION = :lastAction,
-            DESCRIPTION= :description,
-            REMARKS= :remarks,
-          updated_by = :updatedBy,
-          LAST_UPDATED = NOW(), 
-          HISTORY_SERIAL = 1
-        WHERE request_number = :requestNumber AND company_code = :companyCode;`,
+         SET LAST_ACTION = :lastAction,
+             DESCRIPTION = :description,
+             REMARKS = :remarks,
+             UPDATED_BY = :updatedBy,
+             LAST_UPDATED = SYSDATE,
+             HISTORY_SERIAL = 1
+         WHERE REQUEST_NUMBER = :requestNumber
+           AND COMPANY_CODE = :companyCode`,
         {
-          replacements: {
-            lastAction: data.last_action,
-            description: data.description,      // ✅ Added
-            remarks: data.remarks,              // ✅ Added
-            updatedBy: data.updated_by,
-            requestNumber: data.request_number,
-            companyCode: data.company_code,
-          },
-          transaction,
+          lastAction: data.last_action,
+          description: data.description,
+          remarks: data.remarks,
+          updatedBy: data.updated_by,
+          requestNumber: data.request_number,
+          companyCode: data.company_code,
         }
       );
 
-    
-      console.log("Update committed successfully1.");
-      await sequelize.query(
-        `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,'Transaction Updated Successfully')`,
+      // Call message procedure
+      await connection.execute(
+        `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, 'Transaction Updated Successfully'); END;`,
         {
-          replacements: {
-            screen: 'BUDGETSUBMIT',
-            type: 'success',
-            document_number: data.request_number , // empty string as in your original call
-            userId: data.updated_by, // pass this properly as a named replacement
-          },
+          screen: "BUDGETSUBMIT",
+          type: "success",
+          document_number: data.request_number,
+          userId: data.updated_by,
         }
       );
-      await transaction.commit();
-      return { requestNumber: '' };
+
+      await connection.commit();
+      return { requestNumber: data.request_number };
     }
 
-    // Parse and validate request date
-    const requestDate =
-      data.request_date && !isNaN(new Date(data.request_date).getTime())
-        ? data.request_date
-        : new Date().toISOString().split("T")[0];
-
-    // Define the SQL INSERT statement
-    console.log("Before insert");
-    const insertQuery = `
-    INSERT INTO PURCHASE_REQUEST_HEADER (
-      company_code,
-      request_date,
-      description,
-      remarks,
-      last_action,
-      project_code,
-      updated_by,
-      created_by,
-      flow_type,
-      flow_code,
-      flow_level_running,
-      flow_level_initial,
-      flow_level_final
-    ) VALUES (
-      :companyCode,
-      :requestDate,
-      :description,
-      :remarks,
-      :lastAction,
-      :projectCode,
-      :updatedBy,
-      :createdBy,
-      :flowType,
-      '003', -- Flow Code
-      1,     -- Flow Level Running
-      1,     -- Flow Level Initial
-      3      -- Flow Level Final
-    );
-    `;
-
-    // Execute the INSERT statement
-    await sequelize.query(insertQuery, {
-      replacements: {
+    // INSERT new record
+    const requestDate = data.request_date || new Date();
+    await connection.execute(
+      `INSERT INTO PURCHASE_REQUEST_HEADER (
+         COMPANY_CODE, REQUEST_DATE, DESCRIPTION, REMARKS, LAST_ACTION,
+         PROJECT_CODE, UPDATED_BY, CREATED_BY, FLOW_TYPE, FLOW_CODE,
+         FLOW_LEVEL_RUNNING, FLOW_LEVEL_INITIAL, FLOW_LEVEL_FINAL
+       ) VALUES (
+         :companyCode, :requestDate, :description, :remarks, :lastAction,
+         :projectCode, :updatedBy, :createdBy, :flowType, '003', 1, 1, 3
+       )`,
+      {
         companyCode: data.company_code,
-        requestDate: requestDate,
+        requestDate,
         description: data.description,
         remarks: data.remarks || null,
         lastAction: data.last_action,
@@ -121,88 +71,44 @@ console.log('request number',data.request_number);
         updatedBy: data.updated_by || null,
         createdBy: data.created_by,
         flowType: "BUDGET",
-      },
-      transaction,
-    });
+      }
+    );
 
-
-  
-
-    // Fetch the latest generated request_number within the same transaction sagar b
-    const [requestNumberResult] = await sequelize.query(
-      `SELECT  CONCAT(
-      'BUDGET$',
-      SUBSTRING_INDEX(SUBSTRING_INDEX(request_number, '$', 2), '$', -1),
-      '$',
-      LPAD(MAX(CAST(SUBSTRING_INDEX(request_number, '$', -1) AS UNSIGNED)), 5, '0')
-    ) AS request_number 
+    // Generate new request number
+    const result = await connection.execute(
+      `SELECT 'BUDGET$' || LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(REQUEST_NUMBER, INSTR(REQUEST_NUMBER,'$',-1)+1))),0)+1),5,'0') AS REQUEST_NUMBER
        FROM PURCHASE_REQUEST_HEADER
-       WHERE company_code = :companyCode 
-         AND request_number LIKE 'BUDGET%' 
-       ORDER BY last_updated DESC 
-       LIMIT 1;`,
-      {
-        replacements: { companyCode: data.company_code },
-        transaction,
-      }
+       WHERE COMPANY_CODE = :companyCode
+         AND REQUEST_NUMBER LIKE 'BUDGET%'`,
+      { companyCode: data.company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-   
-
-    const requestNumber = (requestNumberResult[0] as { request_number: string })
-      ?.request_number;
-
-      
-    console.log("Data successfully inserted into PURCHASE_REQUEST_HEADER222.");
+    const requestNumber = result.rows?.[0]?.REQUEST_NUMBER;
     console.log("Generated Request Number:", requestNumber);
-console.log('requestNumber',requestNumber)
-const formattedRequestNumber = requestNumber.replace(/\$/g, '/');
 
-    console.log("Transaction committed successfully.");
-    await sequelize.query(
-      `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
+    await connection.execute(
+      `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message); END;`,
       {
-        replacements: {
-          screen: 'BUDGETSUBMIT',
-          type: 'success',
-          document_number: requestNumber,
-          userId: data.updated_by,
-          message: `Generated Request Number: ${formattedRequestNumber}`,
-        },
+        screen: "BUDGETSUBMIT",
+        type: "success",
+        document_number: requestNumber,
+        userId: data.updated_by,
+        message: `Generated Request Number: ${requestNumber.replace(/\$/g, '/')}`,
       }
     );
-    await transaction.commit();
-    console.log("Update committed successfully.");
-   
+
+    await connection.commit();
     return { requestNumber };
   } catch (error) {
-    await sequelize.query(
-      `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,"")`,
-      {
-        replacements: {
-          screen: 'TRNFAIL',
-          type: 'error',
-          document_number: data.request_number , // empty string as in your original call
-          userId: data.updated_by, // pass this properly as a named replacement
-        },
-      }
-    );
-    console.error("Error in upsertBudgetRequest:", error);
-    await sequelize.query(
-      `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,"")`,
-      {
-        replacements: {
-          screen: 'TRNFAIL',
-          type: 'error',
-          document_number: '' , // empty string as in your original call
-          userId: data.updated_by, // pass this properly as a named replacement
-        },
-      }
-    );
-    await transaction.rollback();
+    if (connection) await connection.rollback();
+    console.error("Error in upsertBudgetRequestOracle:", error);
     throw error;
+  } finally {
+    if (connection) await connection.close();
   }
 }
+
 
 export const insertBudgetCost = async (
   value: TCostbudget,
