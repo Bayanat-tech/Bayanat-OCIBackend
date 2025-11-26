@@ -77,6 +77,7 @@ export interface HeaderTVendor {
   INVOICE_DATE?: string | null; // or Date | string | null, depending on how you handle dates
 }
 export interface DetailsTVendor {
+  ITEM_REMARK:string;
   COMPANY_CODE: string;
   DOC_TYPE: string;
   DOC_NO: string;
