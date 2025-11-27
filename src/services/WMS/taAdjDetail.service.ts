@@ -1,4 +1,4 @@
-import { getRepository } from "../../database/connection";
+import { getRepository, oracleDb } from "../../database/connection";
 import { TaAdjDetail } from "../../entity/WMS/taAdjDetail.entity";
 
 export class TaAdjDetailService {
@@ -26,21 +26,32 @@ export class TaAdjDetailService {
   }
 
   static async createAdjustment(adjustmentData: {
+    ADJ_NO: number;
+    ADJ_SERIALNO: number;
     JOB_NO: string;
     PROD_CODE?: string;
-    QTY_PUOM?: number;
-    QTY_LUOM?: number;
     ADJ_TYPE?: string;
+    QTY_PUOM?: number;
+    SITE_CODE?: string;
+    LOCATION_CODE?: string;
+    QTY_LUOM?: number;
+    PRIN_CODE?: string;
+    P_UOM?: string;
+    L_UOM?: string;
+    PALLET_ID?: string;
+    KEY_NUMBER?: string;
     COMPANY_CODE: string;
     CREATED_BY?: string;
     UPDATED_BY?: string;
   }): Promise<TaAdjDetail> {
     const repository = this.getRepository();
 
+    // Generate unique IDENTITY_NUMBER
+    const IDENTITY_NUMBER = await this.getNextIdentityNumber();
+
     const adjustment = repository.create({
       ...adjustmentData,
-      CREATED_AT: new Date(),
-      UPDATED_AT: new Date(),
+      IDENTITY_NUMBER,
     });
 
     return await repository.save(adjustment);
@@ -55,10 +66,7 @@ export class TaAdjDetailService {
 
     const result = await repository.update(
       { JOB_NO, COMPANY_CODE },
-      {
-        ...updateData,
-        UPDATED_AT: new Date(),
-      }
+      updateData
     );
 
     return result.affected ? result.affected > 0 : false;
@@ -76,5 +84,38 @@ export class TaAdjDetailService {
       where: { JOB_NO, COMPANY_CODE },
     });
     return count > 0;
+  }
+
+  static async getNextIdentityNumber(): Promise<number> {
+    const repository = this.getRepository();
+    
+    // Get the maximum IDENTITY_NUMBER and increment by 1
+    const result = await repository
+      .createQueryBuilder("detail")
+      .select("MAX(detail.IDENTITY_NUMBER)", "maxIdentityNumber")
+      .getRawOne();
+    
+    const maxIdentityNumber = result?.maxIdentityNumber || 0;
+    const nextIdentityNumber = maxIdentityNumber + 1;
+    
+    // Ensure the value is an integer
+    return Math.floor(nextIdentityNumber);
+  }
+
+  static async processAdjustment(data: {
+    COMPANY_CODE: string;
+    PRIN_CODE: string;
+    ADJ_NO: number;
+    USERID: string;
+  }): Promise<void> {
+    await oracleDb.query(
+      `BEGIN SP_WM_ADJUSTMNT_PROCESS(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID); END;`,
+      {
+        P_COMPANY_CODE: data.COMPANY_CODE,
+        P_PRIN_CODE: data.PRIN_CODE,
+        P_ADJ_NO: data.ADJ_NO,
+        P_USERID: data.USERID,
+      }
+    );
   }
 }
