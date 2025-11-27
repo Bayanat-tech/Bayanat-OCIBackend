@@ -31,7 +31,7 @@ export const updateCancelRejectSentBack = async (req: Request, res: Response): P
   let connection;
 
   try {
-    console.log("Incoming request data:", req.body);
+    //console.log("Incoming request data:", req.body);
     const { LAST_ACTION, REQUEST_NUMBER, COMPANY_CODE, loginid, REMARKS, CREATEPR, LEVEL } = req.body;
 
     if (!LAST_ACTION || !REQUEST_NUMBER || !COMPANY_CODE || !loginid || !REMARKS) {
