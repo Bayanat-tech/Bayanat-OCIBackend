@@ -352,7 +352,7 @@ console.log('type of pr',data.type_of_pr);
 
   // Existing record update
   const key_request_number = data.requestNumber.replace(/\//g, "$");
-  const exists = await headerRecordExists(data.requestNumber, data.companyCode, connection);
+  const exists = await headerRecordExists(key_request_number, data.companyCode, connection);
   if (!exists) {
     throw new Error(`Request number ${data.requestNumber} does not exist in PURCHASE_REQUEST_HEADER.`);
   }
@@ -488,7 +488,7 @@ console.log('type of pr',data.type_of_pr);
  * Insert or update PURCHASE_REQUEST_DETAILS items in Oracle
  */
 export async function upsertPurchaseRequestDetails(
-div_code: string,
+  div_code: string,
   items: IItemPrRequest[],
   companyCode: string,
   requestNumber: string,
@@ -497,33 +497,60 @@ div_code: string,
 ) {
   if (!connection) throw new Error("Oracle connection is required");
 
-  const key_request_number = requestNumber.replace(/\//g, "$");
+  // Replace slashes in request number
+  let key_request_number = requestNumber.replace(/\//g, "$");
 
-  // Delete existing records
+  // ----------------------------------------
+  // 1️⃣ If request_number is empty → fetch from GT_SESSION_INFO
+  // ----------------------------------------
+  if (!key_request_number || key_request_number.trim() === "") {
+    const result = await connection.execute<{
+      CODE: string;
+    }>(
+      `SELECT CODE FROM GT_SESSION_INFO`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (result.rows && result.rows.length > 0) {
+      key_request_number = (result.rows[0] as any).CODE;
+    } else {
+      throw new Error("GT_SESSION_INFO returned no CODE value");
+    }
+  }
+
+  // ----------------------------------------
+  // 2️⃣ DELETE existing detail lines
+  // ----------------------------------------
   const deleteSql = `
     DELETE FROM PURCHASE_REQUEST_DETAILS
     WHERE request_number = :request_number
       AND company_code = :company_code
   `;
+
   await connection.execute(deleteSql, {
     request_number: key_request_number,
     company_code: companyCode,
   });
 
-  // Sort items by sequence number
+  // ----------------------------------------
+  // 3️⃣ SORT items by sequence number
+  // ----------------------------------------
   const sortedItems = [...items].sort((a, b) => {
     const seqA = a.item_sequence_no ?? Number.MAX_SAFE_INTEGER;
     const seqB = b.item_sequence_no ?? Number.MAX_SAFE_INTEGER;
     return seqA - seqB;
   });
 
-  // Insert new records
+  // ----------------------------------------
+  // 4️⃣ INSERT new detail records
+  // ----------------------------------------
   const insertSql = `
     INSERT INTO PURCHASE_REQUEST_DETAILS (
       currency_rate, request_number, company_code, item_code, item_rate, amount, cost_code,
-      SERVICE_RM_FLAG, ITEM_P_QTY, P_UOM, ITEM_L_QTY, L_UOM,
-      ALLOCATED_APPROVED_QUANTITY, DISCOUNT_AMOUNT, FINAL_RATE, ADDL_ITEM_DESC,
-      UPP, SUPPLIER, PRIN_CODE, PROJECT_CODE, DIV_CODE, ITEM_SEQUENCE_NO, CURR_CODE
+      service_rm_flag, item_p_qty, p_uom, item_l_qty, l_uom,
+      allocated_approved_quantity, discount_amount, final_rate, addl_item_desc,
+      upp, supplier, prin_code, project_code, div_code, item_sequence_no, curr_code
     ) VALUES (
       :currency_rate, :request_number, :company_code, :item_code, :item_rate, :amount, :cost_code,
       :service_rm_flag, :item_p_qty, :p_uom, :item_l_qty, :l_uom,
@@ -560,7 +587,9 @@ div_code: string,
     });
   }
 
-  // Call stored procedure to check old PO amount
+  // ----------------------------------------
+  // 5️⃣ Call stored procedure for PO validation
+  // ----------------------------------------
   await connection.execute(
     `BEGIN PRO_CHECK_OLD_PO_AMOUNT(:company_code, :request_number); END;`,
     {

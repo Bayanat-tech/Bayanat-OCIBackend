@@ -59,7 +59,7 @@ export function mapIncomingRequestData(data: any): IPurchaseRequestPf {
   // Map Items
   const mapItems: IItemPrRequest[] = Array.isArray(data.items)
     ? data.items.map((item: any) => ({
-        item_code: item.item_code || "",
+        item_code: item.item_code || "SERVICE",
         item_desp: item.item_desp || "",
         item_group_code: item.item_group_code || "",
         item_rate: Number(item.item_rate) || 0,
@@ -109,6 +109,7 @@ export function mapIncomingRequestData(data: any): IPurchaseRequestPf {
 
   // Map basic purchase request fields
   const basicPrRequest: IBasicPrRequest = {
+    last_action:data.last_action || "",
     type_of_pr: data.type_of_pr || "",
     last_updated: data.last_updated || "",
     requestNumber: data.request_number || "",
@@ -116,6 +117,7 @@ export function mapIncomingRequestData(data: any): IPurchaseRequestPf {
     description: data.description || "",
     projectCode: data.project_code || "",
     wo_number: data.wo_number || "",
+    flow_type: data.flow_type || "PUR",
     remarks: data.remarks || "",
     type_of_contract: data.type_of_contract || "",
     amc_from: data.amc_from ? new Date(data.amc_from) : new Date(),

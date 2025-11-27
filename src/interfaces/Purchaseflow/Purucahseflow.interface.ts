@@ -182,6 +182,7 @@ export interface IdropdownProjectmaster {
 // Basic Purchase Request Interface
 // Basic Purchase Request Interface
 export interface IBasicPrRequest {
+  flow_type: string
   last_updated: string;
   requestNumber: string; // Unique identifier for the purchase request (required)
   requestDate: Date; // Date of the request (required)
