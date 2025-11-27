@@ -54,6 +54,7 @@ export default {
     MS_PS_CUSTOMER: "MS_PS_CUSTOMER",
     MG_REPORT: "MG_REPORT",
     TBL_SQL_STRING_INFO: "TBL_SQL_STRING_INFO",
+    employees: "employees",
 
     // HR Master Table
     MS_ALERT: "MS_ALERT",

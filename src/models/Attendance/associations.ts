@@ -23,7 +23,7 @@
 
 // models/Attendance/associations.ts
 
-import Employee from "./employee";
+import Employee from "./employee.entity";
 import AttendanceRecord from "./attendance_record";
 import AttendanceEvent from "./attendance_event";
 

@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { S3Service } from "../../services/s3Upload.service";
 import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
-import Employee from "../../models/Attendance/employee";
+import Employee from "../../models/Attendance/employee.entity";
 import EmployeeFace from "../../models/Attendance/employee_face";
 import logger from "../../utils/logger";
 import { validateImage } from "../../middleware/security.middleware";
@@ -100,17 +100,19 @@ export class EmployeeController {
   }
 }
 
-  static async getEmployees(req: Request, res: Response): Promise<void> {
-    try {
-      const employees = await Employee.findAll({
-        order: [["full_name", "ASC"]],
-      });
-      res.status(200).json(employees);
-    } catch (error: any) {
-      logger.error("Failed to fetch employees", error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  }
+
+  // static async getEmployees(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const employees = await Employee.findAll({
+  //       order: [["full_name", "ASC"]],
+  //     });
+  //     res.status(200).json(employees);
+  //   } catch (error: any) {
+  //     logger.error("Failed to fetch employees", error);
+  //     res.status(500).json({ success: false, message: error.message });
+  //   }
+  // }
+
 
   static async modifyEmployee(req: Request, res: Response): Promise<void> {
     try {
