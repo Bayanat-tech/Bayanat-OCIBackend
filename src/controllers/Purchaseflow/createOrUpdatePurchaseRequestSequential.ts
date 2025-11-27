@@ -59,7 +59,7 @@ export function mapIncomingRequestData(data: any): IPurchaseRequestPf {
   // Map Items
   const mapItems: IItemPrRequest[] = Array.isArray(data.items)
     ? data.items.map((item: any) => ({
-        item_code: item.item_code || "SERVICE",
+        item_code: item.item_code || "",
         item_desp: item.item_desp || "",
         item_group_code: item.item_group_code || "",
         item_rate: Number(item.item_rate) || 0,
