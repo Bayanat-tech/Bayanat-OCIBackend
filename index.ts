@@ -29,6 +29,7 @@ import VendorRouter from "./src/routes/vendor.routes";
 import wmsRoutes from "./src/routes/wms.routes";
 import boldReportsRoutes from "./src/routes/boldreports.routes";
 import cfsRoutes from "./src/routes/SMS/sms.routes";
+import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
 
 //----------------routes-------------
 
@@ -47,6 +48,8 @@ app.use("/api/pf",pfRoutes);
 app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
+
+app.use("/api/attendance", attendanceRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(constants.STATUS_CODES.OK).send("Server is up and running.");

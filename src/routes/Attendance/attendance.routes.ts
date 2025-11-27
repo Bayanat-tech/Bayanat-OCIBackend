@@ -20,7 +20,7 @@ const getControllers = async () => {
   const { checkUserAuthorization } = await import(
     "../../middleware/checkUserAthorization"
   );
-  const { EmployeeService } = await import("../../services/employee.service");
+  const { EmployeeService } = await import("../../services/Attendance/employee.service");
 
   return {
     AttendanceController,
