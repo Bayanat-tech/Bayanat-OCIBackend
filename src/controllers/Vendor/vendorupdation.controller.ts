@@ -1534,3 +1534,50 @@ export const proc_build_dynamic_sql = async (
     });
   }
 };
+
+export const executeVendorInvoicePrintHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { COMPANY_CODE, DOC_NO, LOGIN_USER } =
+      req.body && Object.keys(req.body).length
+        ? req.body
+        : (req.query as Record<string, string>);
+
+    if (!COMPANY_CODE || !DOC_NO || !LOGIN_USER) {
+      res.status(400).json({
+        success: false,
+        message: "Missing required parameters: COMPANY_CODE, DOC_NO, LOGIN_USER",
+      });
+      return;
+    }
+
+    const plsql = `
+      BEGIN
+        PROC_VENDOR_INVOICE_PRINT(:companyCode, :docNo, :loginUser);
+      END;
+    `;
+
+    await oracleDb.query(
+      plsql,
+      {
+        companyCode: { val: COMPANY_CODE },
+        docNo: { val: DOC_NO },
+        loginUser: { val: LOGIN_USER },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Procedure executed successfully for ${COMPANY_CODE}/${DOC_NO}`,
+    });
+  } catch (error: any) {
+    console.error("Error executing PROC_VENDOR_INVOICE_PRINT:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to execute procedure",
+      details: error?.message || String(error),
+    });
+  }
+};
