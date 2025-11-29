@@ -50,13 +50,27 @@ export const fetchPOlisting = async (
       outFormat: oracledb.OUT_FORMAT_OBJECT
     });
 
+    // Map all column names to lower case
+    const rowsWithLowerCaseKeys = (result.rows || []).map(row => {
+      const newRow: Record<string, any> = {};
+
+      // Type assertion to satisfy TypeScript
+      const objRow = row as Record<string, any>;
+
+      for (const key in objRow) {
+        newRow[key.toLowerCase()] = objRow[key];
+      }
+
+      return newRow;
+    });
+
     console.log(
       "✅ Query executed successfully. Retrieved",
-      result.rows?.length || 0,
+      rowsWithLowerCaseKeys.length,
       "records"
     );
 
-    res.status(200).json({ success: true, data: result.rows || [] });
+    res.status(200).json({ success: true, data: rowsWithLowerCaseKeys });
   } catch (error) {
     // Rollback if connection exists
     if (connection) {

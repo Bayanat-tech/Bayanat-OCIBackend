@@ -360,6 +360,7 @@ console.log('type of pr',data.type_of_pr);
   const updateSql = `
     UPDATE PURCHASE_REQUEST_HEADER
     SET
+       HISTORY_SERIAL = 1,
       ACCOMMODATION = :accommodation,
       CATERING = :catering,
       LAUNDRY_HOUSEKEEPING = :laundry_housekeeping,
