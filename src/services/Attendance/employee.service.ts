@@ -2,9 +2,9 @@ import { Request, Response } from "express";
 import { AppDataSource } from "../../database/connection"; 
 import { Employee } from "../../models/Attendance/employee.entity";
 
-export class EmployeeController {
+export class EmployeesController {
   // Fetch all employees
-  static async getEmployees(req: Request, res: Response): Promise<void> {
+  static async getEmployees(page: number, limit: number, req: Request, res: Response): Promise<void> {
     try {
       const employeeRepository = AppDataSource.getRepository(Employee);
 
