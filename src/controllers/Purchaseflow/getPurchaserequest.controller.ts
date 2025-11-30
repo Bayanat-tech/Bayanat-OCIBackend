@@ -7,6 +7,13 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 type OracleRow = Record<string, any>;
 type OracleRows = OracleRow[] | null;
 
+// Lowercase helper
+function toLowerKeys(obj: any) {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k.toLowerCase(), v])
+  );
+}
+
 export const getPurchaserequest: RequestHandler = async (
   req: RequestWithUser,
   res: Response
@@ -39,7 +46,11 @@ export const getPurchaserequest: RequestHandler = async (
       FROM PURCHASE_REQUEST_HEADER 
       WHERE REQUEST_NUMBER = :REQ
     `;
-    const countResult = await connection.execute(querycount, { REQ: ls_request_number }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const countResult = await connection.execute(
+      querycount,
+      { REQ: ls_request_number },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
     const count = (countResult.rows?.[0] as OracleRow)?.COUNT || 0;
     console.log(`Count for request_number ${ls_request_number}:`, count);
 
@@ -49,17 +60,27 @@ export const getPurchaserequest: RequestHandler = async (
     if (ls_request_number.includes("PO$")) {
       const poquerydetail = `SELECT * FROM GT_PO_PRINT_DETAILS ORDER BY ITEM_SEQUENCE_NO`;
       const procedureQuery = `BEGIN PRO_PO_PRINT_DATA(:REQ_NUM, :COMP_CODE); END;`;
-
+      
       await connection.execute(procedureQuery, {
         REQ_NUM: ls_request_number,
         COMP_CODE: requestUser.company_code,
       });
 
-      const headerPO = await connection.execute(`SELECT * FROM GT_PO_PRINT_HEADER`, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-      const headerRow = (headerPO.rows?.[0] as OracleRow) || {};
+      const headerPO = await connection.execute(
+        `SELECT * FROM GT_PO_PRINT_HEADER`,
+        {},
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      let headerRow = (headerPO.rows?.[0] as OracleRow) || {};
+      headerRow = toLowerKeys(headerRow); // 🔥 lowercase applied
 
-      const detailPO = await connection.execute(poquerydetail, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-      const detailRows = (detailPO.rows as OracleRows) || [];
+      const detailPO = await connection.execute(
+        poquerydetail,
+        {},
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      let detailRows = (detailPO.rows as OracleRows) || [];
+      detailRows = detailRows.map((r) => toLowerKeys(r)); // 🔥 lowercase applied
 
       if (!headerRow || !detailRows) {
         res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -94,7 +115,11 @@ export const getPurchaserequest: RequestHandler = async (
         WHERE REQUEST_NUMBER = :REQ
       )
     `;
-    const prinRes = await connection.execute(prinQuery, { REQ: ls_request_number }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const prinRes = await connection.execute(
+      prinQuery,
+      { REQ: ls_request_number },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
     const prinCode = (prinRes.rows?.[0] as OracleRow)?.PRIN_CODE;
 
     if (!prinCode) {
@@ -133,14 +158,29 @@ export const getPurchaserequest: RequestHandler = async (
       WHERE request_number = :REQ
     `;
 
-    const headerRes = await connection.execute(headerQuery, { REQ: ls_request_number }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    const headerRow = (headerRes.rows?.[0] as OracleRow) || {};
+    const headerRes = await connection.execute(
+      headerQuery,
+      { REQ: ls_request_number },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    let headerRow = (headerRes.rows?.[0] as OracleRow) || {};
+    headerRow = toLowerKeys(headerRow); // 🔥 lowercase
 
-    const detailRes = await connection.execute(detailQuery, { REQ: ls_request_number, PRIN: prinCode }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    const detailRows = (detailRes.rows as OracleRows) || [];
+    const detailRes = await connection.execute(
+      detailQuery,
+      { REQ: ls_request_number, PRIN: prinCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    let detailRows = (detailRes.rows as OracleRows) || [];
+    detailRows = detailRows.map((r) => toLowerKeys(r)); // 🔥 lowercase
 
-    const tcRes = await connection.execute(termconditionQuery, { REQ: ls_request_number }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    const tcRows = (tcRes.rows as OracleRows) || [];
+    const tcRes = await connection.execute(
+      termconditionQuery,
+      { REQ: ls_request_number },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    let tcRows = (tcRes.rows as OracleRows) || [];
+    tcRows = tcRows.map((r) => toLowerKeys(r)); // 🔥 lowercase
 
     console.log(headerRow);
     console.log(detailRows);
