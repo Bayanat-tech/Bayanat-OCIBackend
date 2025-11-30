@@ -17,7 +17,7 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
     // Start transaction
     await connection.execute("BEGIN NULL; END;");
     await connection.execute("SAVEPOINT start_transaction");
-
+console.log('ref_doc_no',ref_doc_no)
     // -----------------------
     // PO Modification
     // -----------------------
@@ -56,11 +56,12 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
       res.status(200).json({ message: "PO modification successful." });
       return;
     }
-
+console.log('before confirm',ref_doc_no)
     // -----------------------
     // PO Confirmation
     // -----------------------
     if (last_action === "Confirm") {
+      console.log('inside confirm1',ref_doc_no)
       // Update PURCHASE_REQUEST_DETAILS
       await connection.execute(
         `UPDATE PURCHASE_REQUEST_DETAILS
@@ -72,7 +73,7 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
            AND company_code = :company_code`,
         { ref_doc_no, company_code: requestUser.company_code }
       );
-
+console.log('before confirm2',ref_doc_no)
       // Update PO_DETAILS for revision number
       await connection.execute(
         `UPDATE PO_DETAILS
