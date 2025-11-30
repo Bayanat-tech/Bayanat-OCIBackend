@@ -44,6 +44,7 @@ import { createOrUpdatePurchaseRequestSequential } from "../../../src/controller
 import { updateCancelRejectSentBack } from "../../controllers/Purchaseflow/updatecancelrejectsentBack";
 import { updatePurchaseOrder } from "../../controllers/Purchaseflow/updatePurchaseOrder";
 import { budgetExcelUpload } from "../../controllers/Purchaseflow/budgetexcelupload";
+import { Fetchmessagebox } from "../../controllers/Purchaseflow/Fetchmessagebox.controller";
 //import { createOrUpdatePurchaseRequestSequential } from "../../controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential";
 // import {
 //   createcostmaster,
@@ -198,8 +199,7 @@ router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
  router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
 router.get("/fetchUserlevel", fetchUserlevel);
  router.get("/CheckCostcontroller", CheckCostcontroller);
-//router.get("/Fetchmessagebox", Fetchmessagebox);
-
+router.get("/Fetchmessagebox", Fetchmessagebox);
 router.get("/FetchGenPOString", FetchGenPOString);
 // console.log("inside purchase router");
 
