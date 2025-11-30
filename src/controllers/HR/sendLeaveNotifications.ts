@@ -10,6 +10,7 @@ type LeaveRow = {
   FINAL_APPROVED?: string | null;
   NEXT_ACTION_BY_EMAIL?: string | null;
   IMMEDIATE_SUPERVISOR_EMAIL?: string | null;
+  CREATED_BY_EMAIL?: string | null;
   CREATE_USER?: string | null;
   NEXT_ACTION_BY?: string | null;
   EMPLOYEE_NAME?: string | null;
@@ -26,6 +27,7 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
         TRIM(NVL(FINAL_APPROVED,'NO')) AS FINAL_APPROVED,
         TRIM(NVL(NEXT_ACTION_BY_EMAIL,'')) AS NEXT_ACTION_BY_EMAIL,
         TRIM(NVL(IMMEDIATE_SUPERVISOR_EMAIL,'')) AS IMMEDIATE_SUPERVISOR_EMAIL,
+        TRIM(NVL(CREATED_BY_EMAIL,'')) AS CREATED_BY_EMAIL,
         TRIM(NVL(CREATE_USER,'')) AS CREATE_USER,
         TRIM(NVL(NEXT_ACTION_BY,'')) AS NEXT_ACTION_BY,
         TRIM(NVL(EMPLOYEE_NAME,'')) AS EMPLOYEE_NAME,
@@ -53,18 +55,22 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
     const nextActionBy = row.NEXT_ACTION_BY?.trim();
     const nextActionByEmail = row.NEXT_ACTION_BY_EMAIL?.trim();
     const immediateSupervisorEmail = row.IMMEDIATE_SUPERVISOR_EMAIL?.trim();
+    const createUserEmail = row.CREATED_BY_EMAIL?.trim();
     const lastAction = row.LAST_ACTION?.trim().toUpperCase();
 
     // Notify the next action user
     if (nextActionByEmail && lastAction !== "SAVEASDRAFT") {
+      const recipients1 = [nextActionByEmail, createUserEmail].filter(Boolean).join(",");
+      if (recipients1) {
       await notifyUser({
         event: constants.EVENTS.LEAVE_APPROVAL_REQUEST,
         request_user: { request_number: requestNumber, company_code: row.COMPANY_CODE },
-        request_users: nextActionByEmail,
+        request_users: recipients1,
         subject: `Leave Approval Required: ${requestNumber}`,
         message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} requires your action.`,
         htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} requires your action.</p>`,
       });
+    }
     }
   
     if (finalApproved === "YES" && createUser === nextActionBy) {
