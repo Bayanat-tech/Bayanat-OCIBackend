@@ -1797,66 +1797,6 @@ case "activitysubgroup":
     }
   }
   break;
-
-// Fetching billing activity data from the ActivityBillingTable model
-// case "billing_activity":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [
-//           { company_code: requestUser.company_code },
-//           {
-//             ...(!!uniqueCode && {
-//               prin_code: uniqueCode,
-//             }),
-//           },
-//           {
-//             user_id: requestUser.loginid,
-//           },
-//         ],
-//       };
-
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-
-//     // Count the total number of records
-//     totalCount = await ActivityBillingTable.count({
-//       where: outsideQuery,
-//     });
-
-//     // Fetch billing activity data with optional pagination and sorting
-//     fetchedData = await ActivityBillingTable.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort &&
-//         Object.keys(filter?.sort).length > 0 && {
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-//           ],
-//         }),
-//       ...paginationOptions,
-//     });
-//   }
-//   break;
-// Fetching activity data from the Activity model
-// case "activity": {
-//   // Fetching data using the Activity model
-//   fetchedData = (await Activity.findAll({
-//     attributes: ["activity_code", "activity", "activity_group_code"],
-//     where: {
-//       company_code: requestUser.company_code,
-//     },
-//     ...paginationOptions,
-//   })) as unknown[] as IActivity[];
-
-//   break;
-// }
-
-// Fetching activity KPI data from the ActivityKPI model
 case "activitykpi": {
   try {
     // Get pagination parameters
@@ -2492,19 +2432,6 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
           }
         }
         break;
-
-      // Delete alert data
-      // case "alert":
-      //   {
-      //     // Destroy alert data with company code and op code
-      //     await Alert.destroy({
-      //       where: {
-      //         company_code: requestUser.company_code,
-      //         op_code: ids,
-      //       },
-      //     });
-      //   }
-      //   break;
 
       // Delete department data
       case "department":
