@@ -20,6 +20,7 @@ import { getMyHistory } from "../../services/Purchaseflow/My_History.service";
 import { getRequestRejectedData } from "../../services/Purchaseflow/my_rejected.service";
 import { getMyClosedRequests } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
 import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
+import { getPoModifyRatechangeData } from "./getPoModifyRatechangeData ";
 //import { ItemMasterService } from "../../services/Purchaseflow/itemmaster.service";
 
 // import { PurchaseFlowMasterService } from "../../services/purchaseFlow/Pg_Material_flow_InProgress.service";
@@ -191,9 +192,45 @@ export const getPurchasefMaster = async (
           limit
         );
         break;
+case "po_modify_rate_change":
+  try {
+    const result1 = await getPoModifyRatechangeData(
+      requestUser.loginid,
+      requestUser.company_code,
+      undefined,
+      page,
+      limit
+    );
+
+    res.json({
+      success: result1.success,
+      data: {
+        tableData: result1.data || [],   // ✅ wrapped for frontend
+        count: result1.count || 0        // ✅ inside data object
+      },
+      message: result1.message || ""
+    });
+
+    return;
+
+  } catch (err) {
+    console.error("❌ Error in po_modify_rate_change route:", err);
+
+    res.status(500).json({
+      success: false,
+      data: {
+        tableData: [],
+        count: 0
+      },
+      message: "Server error"
+    });
+
+    return;
+  }
+
 
 case "po_modify":
-  console.log("inside po_modify");
+
 
   try {
     const result1 = await getPoModifyData(

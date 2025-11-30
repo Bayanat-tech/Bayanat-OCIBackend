@@ -57,48 +57,81 @@ export const getPurchaserequest: RequestHandler = async (
     // -----------------------
     // 2. PO PRINT LOGIC
     // -----------------------
-    if (ls_request_number.includes("PO$")) {
-      const poquerydetail = `SELECT * FROM GT_PO_PRINT_DETAILS ORDER BY ITEM_SEQUENCE_NO`;
-      const procedureQuery = `BEGIN PRO_PO_PRINT_DATA(:REQ_NUM, :COMP_CODE); END;`;
-      
-      await connection.execute(procedureQuery, {
-        REQ_NUM: ls_request_number,
-        COMP_CODE: requestUser.company_code,
-      });
+   // -----------------------
+// 2. PO PRINT LOGIC
+// -----------------------
+if (ls_request_number.includes("PO$")) {
 
-      const headerPO = await connection.execute(
-        `SELECT * FROM GT_PO_PRINT_HEADER`,
-        {},
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
-      let headerRow = (headerPO.rows?.[0] as OracleRow) || {};
-      headerRow = toLowerKeys(headerRow); // 🔥 lowercase applied
+  const poquerydetail = `SELECT * FROM GT_PO_PRINT_DETAILS ORDER BY ITEM_SEQUENCE_NO`;
+  const procedureQuery = `BEGIN PRO_PO_PRINT_DATA(:REQ_NUM, :COMP_CODE); END;`;
 
-      const detailPO = await connection.execute(
-        poquerydetail,
-        {},
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
-      let detailRows = (detailPO.rows as OracleRows) || [];
-      detailRows = detailRows.map((r) => toLowerKeys(r)); // 🔥 lowercase applied
+  await connection.execute(procedureQuery, {
+    REQ_NUM: ls_request_number,
+    COMP_CODE: requestUser.company_code,
+  });
 
-      if (!headerRow || !detailRows) {
-        res.status(constants.STATUS_CODES.NOT_FOUND).json({
-          success: false,
-          message: "Purchase Request " + constants.MESSAGES.DOES_NOT_EXISTS,
-        });
-        return;
-      }
+  const headerPO = await connection.execute(
+    `SELECT * FROM GT_PO_PRINT_HEADER`,
+    {},
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+  let headerRow = (headerPO.rows?.[0] as OracleRow) || {};
+  headerRow = toLowerKeys(headerRow);
 
-      res.status(constants.STATUS_CODES.OK).json({
-        success: true,
-        data: {
-          ...headerRow,
-          items: detailRows,
-        },
-      });
-      return;
-    }
+  const detailPO = await connection.execute(
+    poquerydetail,
+    {},
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+  let detailRows = (detailPO.rows as OracleRows) || [];
+  detailRows = detailRows.map((r) => toLowerKeys(r));
+
+  if (!headerRow || !detailRows) {
+    res.status(constants.STATUS_CODES.NOT_FOUND).json({
+      success: false,
+      message: "Purchase Request " + constants.MESSAGES.DOES_NOT_EXISTS,
+    });
+    return;
+  }
+
+  // ⭐ REQUIRED RESPONSE FORMAT ⭐
+  const formattedData = {
+    doc_no: headerRow.doc_no ?? 0,
+    doc_date: headerRow.doc_date ?? null,
+    ref_doc_no: headerRow.ref_doc_no,
+    supplier: headerRow.supplier,
+    request_number: headerRow.request_number,
+    div_code: headerRow.div_code,
+    po_confirm: headerRow.po_confirm,
+    po_cancel: headerRow.po_cancel,
+    cancel_type: headerRow.cancel_type,
+    supp_name: headerRow.supp_name,
+    dlvr_term: headerRow.dlvr_term,
+    supp_addr1: headerRow.supp_addr1,
+    supp_addr2: headerRow.supp_addr2,
+    supp_addr3: headerRow.supp_addr3,
+    supp_addr4: headerRow.supp_addr4,
+    supp_telno1: headerRow.supp_telno1,
+    supp_faxno1: headerRow.supp_faxno1,
+    supp_email1: headerRow.supp_email1,
+    project_code: headerRow.project_code,
+    project_name: headerRow.project_name,
+    wo_number: headerRow.wo_number,
+    remarks: headerRow.remarks,
+    payment_terms: headerRow.payment_terms,
+    last_action: headerRow.last_action,
+    quotation_reference: headerRow.quotation_reference,
+    items: detailRows
+  };
+
+  res.status(constants.STATUS_CODES.OK).json({
+    success: true,
+    data: formattedData,
+  });
+
+  return;
+}
+
 
     console.log("company_code:", company_code);
     console.log("Count is not zero, proceeding with other operations.");
