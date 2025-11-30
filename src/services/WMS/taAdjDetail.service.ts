@@ -108,14 +108,28 @@ export class TaAdjDetailService {
     ADJ_NO: number;
     USERID: string;
   }): Promise<void> {
-    await oracleDb.query(
-      `BEGIN SP_WM_ADJUSTMNT_PROCESS(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID); END;`,
-      {
-        P_COMPANY_CODE: data.COMPANY_CODE,
-        P_PRIN_CODE: data.PRIN_CODE,
-        P_ADJ_NO: data.ADJ_NO,
-        P_USERID: data.USERID,
-      }
-    );
+    try {
+      console.log('Processing adjustment with params:', data);
+      
+      const result = await oracleDb.query(
+        `BEGIN SP_WM_ADJUSTMNT_PROCESS(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID); END;`,
+        {
+          P_COMPANY_CODE: data.COMPANY_CODE,
+          P_PRIN_CODE: data.PRIN_CODE,
+          P_ADJ_NO: data.ADJ_NO,
+          P_USERID: data.USERID,
+        }
+      );
+      
+      console.log('Stored procedure executed successfully:', result);
+    } catch (error: any) {
+      console.error('Error in processAdjustment service:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.errorNum,
+        offset: error.offset
+      });
+      throw new Error(`Failed to process adjustment: ${error.message}`);
+    }
   }
 }

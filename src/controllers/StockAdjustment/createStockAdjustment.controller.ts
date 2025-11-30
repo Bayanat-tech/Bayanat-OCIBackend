@@ -379,6 +379,13 @@ export const processAdjustment = async (
       return;
     }
 
+    console.log('Processing adjustment with data:', {
+      COMPANY_CODE,
+      PRIN_CODE,
+      ADJ_NO,
+      USERID,
+    });
+
     // Call the stored procedure
     await TaAdjDetailService.processAdjustment({
       COMPANY_CODE,
@@ -393,10 +400,12 @@ export const processAdjustment = async (
     });
   } catch (error: any) {
     console.error("Error processing stock adjustment:", error);
+    console.error("Error stack:", error.stack);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Failed to process stock adjustment",
       error: error.message,
+      details: error.stack,
     });
   }
 };
