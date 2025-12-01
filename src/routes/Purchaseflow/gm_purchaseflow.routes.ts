@@ -46,6 +46,7 @@ import { updatePurchaseOrder } from "../../controllers/Purchaseflow/updatePurcha
 import { budgetExcelUpload } from "../../controllers/Purchaseflow/budgetexcelupload";
 import { Fetchmessagebox } from "../../controllers/Purchaseflow/Fetchmessagebox.controller";
 import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/handleInsertBudgetCosts";
+import {getBudgetRequest} from "../../controllers/Purchaseflow/getBudgetRequest"
 import { createOrUpdateBudgetRequestSequential } from "../../controllers/Purchaseflow/createOrUpdateBudgetRequestSequential";
 //import { createOrUpdatePurchaseRequestSequential } from "../../controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential";
 // import {
@@ -192,12 +193,12 @@ router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
  router.get("/excebudget/:request_number", getBudgetexcel);
  router.post("/CheckbudgetStatus", CheckBudgetStatus);
 
-// router.get(
-//   "/budgetrequest/:request_number/:cost_code?",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   getBudgetRequest as unknown as RequestHandler
-// );
+router.get(
+  "/budgetrequest/:request_number/:cost_code?",
+    passport.authenticate("jwt", { session: false }),
+   checkUserAuthorization,
+   getBudgetRequest as unknown as RequestHandler
+ );
  router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
 router.get("/fetchUserlevel", fetchUserlevel);
  router.get("/CheckCostcontroller", CheckCostcontroller);
