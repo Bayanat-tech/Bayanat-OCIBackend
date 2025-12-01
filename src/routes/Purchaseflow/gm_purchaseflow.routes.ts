@@ -46,6 +46,7 @@ import { updatePurchaseOrder } from "../../controllers/Purchaseflow/updatePurcha
 import { budgetExcelUpload } from "../../controllers/Purchaseflow/budgetexcelupload";
 import { Fetchmessagebox } from "../../controllers/Purchaseflow/Fetchmessagebox.controller";
 import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/handleInsertBudgetCosts";
+import { createOrUpdateBudgetRequestSequential } from "../../controllers/Purchaseflow/createOrUpdateBudgetRequestSequential";
 //import { createOrUpdatePurchaseRequestSequential } from "../../controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential";
 // import {
 //   createcostmaster,
@@ -204,11 +205,11 @@ router.get("/Fetchmessagebox", Fetchmessagebox);
 router.get("/FetchGenPOString", FetchGenPOString);
 // console.log("inside purchase router");
 
- router.post("/budgetrequest/cost", handleInsertBudgetCosts);
+router.post("/budgetrequest/cost", handleInsertBudgetCosts);
 
 router.post("/purchaserequest", createOrUpdatePurchaseRequestSequential);
 // router.post("/materialrequest", createOrUpdateMaterialRequestSequential);
-// router.post("/budgetrequest", createOrUpdateBudgetRequestSequential);
+ router.post("/budgetrequest", createOrUpdateBudgetRequestSequential);
  router.post("/purchaseorder", updatePurchaseOrder);
  router.post("/budgetexcelupload",budgetExcelUpload );
  router.post("/updatecancelrejectsentback", updateCancelRejectSentBack );

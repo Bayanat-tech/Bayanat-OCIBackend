@@ -9,10 +9,10 @@ export const createOrUpdateBudgetRequestSequential = async (
 ): Promise<void> => {
   try {
     const budgetRequest: TBasicBrequest = req.body;
-
+    console.log('inside fore createorUpdateBudgetRequestSequential')
     // Call your function
     const { requestNumber } = await upsertBudgetRequest(budgetRequest);
-
+console.log('inside fore createorUpdateBudgetRequestSequential')
     res.status(200).json({
       success: true,
       message: "Budget request processed successfully.",

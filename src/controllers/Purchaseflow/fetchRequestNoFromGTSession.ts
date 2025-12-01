@@ -14,9 +14,8 @@ export const fetchRequestNoFromGTSession = async (req: Request, res: Response): 
 
     const result = await connection.execute<SessionRow>(
       `SELECT code 
-       FROM GT_SESSION_INFO 
-       WHERE session_id = SYS_CONTEXT('USERENV', 'SID')
-       AND ROWNUM = 1`,
+       FROM GT_SESSION_INFO_OTHER
+      `,
       [],
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
