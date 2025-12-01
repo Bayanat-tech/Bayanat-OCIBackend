@@ -49,10 +49,10 @@ import {executeRawSql,executeRawSqlbody} from "../../../../src/controllers/wms.c
 // import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
 // import  { getddSiteLocation }   from "../../../../src/views/wms/transportation/inbound/ddSiteLocation"
 // import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
-import {
-  createInboundjob, // Create new inbound job
-  GetsingleInboundjob, // Get single inbound job
-} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
+// import {
+//   createInboundjob, // Create new inbound job
+//   GetsingleInboundjob, // Get single inbound job
+// } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 // import {
 //   getconfirmInboundjob, // Get confirmation details
 //   confirmInboundjob, // Confirm inbound job
@@ -81,7 +81,7 @@ router.get(
 );
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
-router.post("/inboundjob", createInboundjob);
+// router.post("/inboundjob", createInboundjob);
 //router.put("/inboundjob", GetsingleInboundjob);
 
 // router.put(
