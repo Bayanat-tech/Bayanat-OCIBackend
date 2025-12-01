@@ -17,7 +17,7 @@ import {
 //import { CheckBudgetStatus } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
 import passport from "passport";
 import { TCostbudget } from "../../interfaces/Purchaseflow/Budgetflow.interface";
-import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
+//import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
 import { saveExcelBudgetData } from "../../controllers/Purchaseflow/saveexcelbudgetdata";
 export interface RequestWithUser extends Request {
   user?: IUser; // Optional user if not always present
@@ -45,6 +45,7 @@ import { updateCancelRejectSentBack } from "../../controllers/Purchaseflow/updat
 import { updatePurchaseOrder } from "../../controllers/Purchaseflow/updatePurchaseOrder";
 import { budgetExcelUpload } from "../../controllers/Purchaseflow/budgetexcelupload";
 import { Fetchmessagebox } from "../../controllers/Purchaseflow/Fetchmessagebox.controller";
+import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/handleInsertBudgetCosts";
 //import { createOrUpdatePurchaseRequestSequential } from "../../controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential";
 // import {
 //   createcostmaster,
@@ -203,7 +204,7 @@ router.get("/Fetchmessagebox", Fetchmessagebox);
 router.get("/FetchGenPOString", FetchGenPOString);
 // console.log("inside purchase router");
 
-// router.post("/budgetrequest/cost", handleInsertBudgetCosts);
+ router.post("/budgetrequest/cost", handleInsertBudgetCosts);
 
 router.post("/purchaserequest", createOrUpdatePurchaseRequestSequential);
 // router.post("/materialrequest", createOrUpdateMaterialRequestSequential);
