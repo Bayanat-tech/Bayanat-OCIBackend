@@ -1,49 +1,49 @@
-// import { Request, Response, NextFunction } from "express";
-// import { sequelize } from "../../../../database/connection";
+import { Request, Response, NextFunction } from "express";
+import { sequelize } from "../../../../database/connection";
 
-// import { QueryTypes } from "sequelize";
-// import constants from "../../../../helpers/constants";
-// import { IUser } from "../../../../interfaces/user.interface"
-// import { ISearch, RequestWithUser } from "../../../../interfaces/common.interface";
+import { QueryTypes } from "sequelize";
+import constants from "../../../../helpers/constants";
+import { IUser } from "../../../../interfaces/user.interface"
+import { ISearch, RequestWithUser } from "../../../../interfaces/common.interface";
 
-// export const getddPrinceCustomer = async (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ): Promise<void> => {
-//   try {
-//     const { company_code, prin_code } = req.query;
+export const getddPrinceCustomer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { company_code, prin_code } = req.query;
 
-//     if (!company_code || !prin_code) {
-//       res.status(400).json({
-//         success: false,
-//         message: "Parameters 'company_code' and 'prin_code' are required.",
-//       });
-//       return;
-//     }
+    if (!company_code || !prin_code) {
+      res.status(400).json({
+        success: false,
+        message: "Parameters 'company_code' and 'prin_code' are required.",
+      });
+      return;
+    }
 
-//     const locationData = await sequelize.query(
-//       `
-//       SELECT
-//         *
-//       FROM VW_MS_CUSTOMER
-//       WHERE company_code = :company_code AND prin_code = :prin_code
-//       LIMIT 0, 5000
-//       `,
-//       {
-//         replacements: { company_code, prin_code },
-//         type: QueryTypes.SELECT,
-//       }
-//     );
+    const locationData = await sequelize.query(
+      `
+      SELECT
+        *
+      FROM VW_MS_CUSTOMER
+      WHERE company_code = :company_code AND prin_code = :prin_code
+      LIMIT 0, 5000
+      `,
+      {
+        replacements: { company_code, prin_code },
+        type: QueryTypes.SELECT,
+      }
+    );
 
-//     res.status(200).json({
-//       success: true,
-//       data: locationData,
-//     });
-//   } catch (error: any) {
-//     console.error("Error fetching location data:", error);
-//     next(error);
-//   }
-// };
+    res.status(200).json({
+      success: true,
+      data: locationData,
+    });
+  } catch (error: any) {
+    console.error("Error fetching location data:", error);
+    next(error);
+  }
+};
 
 

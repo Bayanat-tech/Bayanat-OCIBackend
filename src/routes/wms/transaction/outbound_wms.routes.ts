@@ -8,7 +8,7 @@ import passport from "passport";
 
 import { checkUserAuthorization } from "../../../middleware/checkUserAthorization";
 
-// import {getddPrinceCustomer} from "../../../../src/views/wms/transportation/outbound/ddPrinceCustomer"
+import {getddPrinceCustomer} from "../../../../src/views/wms/transportation/outbound/ddPrinceCustomer"
 // Controller imports
 import { upsertOutboundOrderDetailManualHandler,getOutboundOrderDetailManualHandler, getAllOrderDetails, getSingleOrderDetail } from "../../../controllers/wms/transaction/outbound/orderEntryManualWMS.controller";
 import {upsertEDIOrderDetailHandler,getEDIOrderDetailHandler,copyEDIToOrderDetailHandler} from "../../../controllers/wms/transaction/outbound/orderEntryEDIWms.controller";
@@ -118,7 +118,7 @@ router.get('/getAllOrderDetails', getAllOrderDetails);
 router.get('/getSingleOrderDetail', getSingleOrderDetail);
 router.get('/getEDIOrderDetailHandler', getEDIOrderDetailHandler);
 router.post('/copyEDIToOrderDetailHandler', copyEDIToOrderDetailHandler);
-// router.get('/getddPrinceCustomer',getddPrinceCustomer)
+router.get('/getddPrinceCustomer',getddPrinceCustomer)
 router.get('/getddSiteCode',getddSiteCode)
 router.get('/getddLocationCode',getddLocationCode)
 router.get('/getddLotNum',getddLotNum)
