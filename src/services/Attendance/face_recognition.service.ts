@@ -3,11 +3,11 @@ import * as faceapi from "face-api.js";
 import { createCanvas, Image, ImageData } from "canvas";
 import sharp from "sharp";
 import logger from "../../utils/logger";
-import constants from "../../helpers/constants";
-import EmployeeFace from "../../models/Attendance/employee_face";
 import path from "path";
 import fs from "fs";
 import fetch from "node-fetch";
+import * as ort from "onnxruntime-node";
+import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";  
 
 // NOTE: Do NOT require @tensorflow/tfjs-node at module load time.
 // We'll attempt to load it lazily inside initializeTensorFlow() and handle failures gracefully.
@@ -106,6 +106,8 @@ export class FaceRecognitionService {
   private static isInitialized = false;
   public modelsLoaded = false; // make instance flag public for ensureModelsLoaded
 
+  // ONNX Runtime session for ArcFace model inference.
+  private arcfaceSession: ort.InferenceSession | null = null;
   // **OPTIMIZED DETECTION OPTIONS FOR SPEED**
   private readonly tinyFaceDetectorOptions =
     new faceapi.TinyFaceDetectorOptions({
@@ -114,8 +116,9 @@ export class FaceRecognitionService {
     });
 
   // **FASTER MATCHING THRESHOLD**
-  private static readonly MATCH_THRESHOLD = 0.55;
-  private static readonly OPTIMIZED_IMAGE_SIZE = 224; // Reduced from 480 for speed
+  private static readonly MATCH_THRESHOLD = 0.40;
+  private static readonly IMAGE_SIZE = 160; // ArcFace default input resolution
+  //private static readonly OPTIMIZED_IMAGE_SIZE = 224; // Reduced from 480 for speed
 
   private constructor() {
     logger.info(
@@ -136,7 +139,7 @@ export class FaceRecognitionService {
     if (FaceRecognitionService.isInitialized) return;
 
     try {
-      await this.initializeTensorFlow();
+      await this.initialize();
       const instance = FaceRecognitionService.instance;
       await instance.loadModels();
       FaceRecognitionService.isInitialized = true;
@@ -147,96 +150,80 @@ export class FaceRecognitionService {
     }
   }
 
-  private static async initializeTensorFlow(): Promise<void> {
-    try {
-      // Try to load native tfjs-node only here, and handle errors without crashing.
-      if (!tfjsNodeAttempted) {
-        tfjsNodeAttempted = true;
-        if (process.env.ENABLE_TFJS_NODE !== "false") {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            require("@tensorflow/tfjs-node");
-            tfjsNodeLoaded = true;
-            logger.info("Optional @tensorflow/tfjs-node loaded (native backend).");
-          } catch (err: any) {
-            tfjsNodeLoaded = false;
-            logger.warn(
-              "@tensorflow/tfjs-node failed to load - falling back to JS backend. " +
-                "If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source " +
-                "and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting."
-            );
-            logger.debug(err?.stack || err);
-          }
-        } else {
-          logger.info("Skipping attempt to load @tensorflow/tfjs-node (ENABLE_TFJS_NODE=false). Using JS backend.");
-        }
-      }
+  // private static async initializeModel(): Promise<void> {
+  //   try {
+  //     // Try to load native tfjs-node only here, and handle errors without crashing.
+  //     if (!tfjsNodeAttempted) {
+  //       tfjsNodeAttempted = true;
+  //       if (process.env.ENABLE_TFJS_NODE !== "false") {
+  //         try {
+  //           // eslint-disable-next-line @typescript-eslint/no-var-requires
+  //           require("@tensorflow/tfjs-node");
+  //           tfjsNodeLoaded = true;
+  //           logger.info("Optional @tensorflow/tfjs-node loaded (native backend).");
+  //         } catch (err: any) {
+  //           tfjsNodeLoaded = false;
+  //           logger.warn(
+  //             "@tensorflow/tfjs-node failed to load - falling back to JS backend. " +
+  //               "If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source " +
+  //               "and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting."
+  //           );
+  //           logger.debug(err?.stack || err);
+  //         }
+  //       } else {
+  //         logger.info("Skipping attempt to load @tensorflow/tfjs-node (ENABLE_TFJS_NODE=false). Using JS backend.");
+  //       }
+  //     }
 
-      // Prefer 'tensorflow' backend if native loaded, otherwise fallback to cpu
-      try {
-        if (tfjsNodeLoaded) {
-          if (tf.getBackend() !== "tensorflow") await tf.setBackend("tensorflow");
-        } else {
-          if (tf.getBackend() !== "cpu") await tf.setBackend("cpu");
-        }
-      } catch (backendErr) {
-        // last-resort fallback to cpu
-        try { await tf.setBackend("cpu"); } catch (_) { /* ignore */ }
-      }
-      await tf.ready();
-      tf.enableProdMode();
-      logger.info(`TensorFlow.js backend initialized: ${tf.getBackend()}`);
+  //     // Prefer 'tensorflow' backend if native loaded, otherwise fallback to cpu
+  //     try {
+  //       if (tfjsNodeLoaded) {
+  //         if (tf.getBackend() !== "tensorflow") await tf.setBackend("tensorflow");
+  //       } else {
+  //         if (tf.getBackend() !== "cpu") await tf.setBackend("cpu");
+  //       }
+  //     } catch (backendErr) {
+  //       // last-resort fallback to cpu
+  //       try { await tf.setBackend("cpu"); } catch (_) { /* ignore */ }
+  //     }
+  //     await tf.ready();
+  //     tf.enableProdMode();
+  //     logger.info(`TensorFlow.js backend initialized: ${tf.getBackend()}`);
 
-      if (!(faceapi.tf as any).platform) {
-        faceapi.tf.setPlatform("node", {
-          fetch: async (path: string) => {
-            const response = await fetch(path);
-            return new FaceApiResponse(response);
-          },
-          now: () => Date.now(),
-          encode: (text: string) => new TextEncoder().encode(text),
-          decode: (bytes: Uint8Array) => new TextDecoder().decode(bytes),
-        });
-      }
-    } catch (error) {
-      logger.error("TensorFlow initialization failed", error);
-      throw error;
-    }
-  }
+  //     if (!(faceapi.tf as any).platform) {
+  //       faceapi.tf.setPlatform("node", {
+  //         fetch: async (path: string) => {
+  //           const response = await fetch(path);
+  //           return new FaceApiResponse(response);
+  //         },
+  //         now: () => Date.now(),
+  //         encode: (text: string) => new TextEncoder().encode(text),
+  //         decode: (bytes: Uint8Array) => new TextDecoder().decode(bytes),
+  //       });
+  //     }
+  //   } catch (error) {
+  //     logger.error("TensorFlow initialization failed", error);
+  //     throw error;
+  //   }
+  // }
 
   private async loadModels(): Promise<void> {
-    if (this.modelsLoaded) return;
+    if (this.arcfaceSession) return;
 
     try {
       logger.info("Loading optimized face recognition models...");
 
-      const modelPath = path.join(__dirname, "../../../models");
+      const modelPath = path.join(__dirname, "../../../models/arcface_r100.onnx");
       if (!fs.existsSync(modelPath)) {
         throw new Error(`Model path not found: ${modelPath}`);
       }
 
-      // **LOAD ONLY ESSENTIAL MODELS FOR SPEED**
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromDisk(modelPath), 
-        faceapi.nets.faceLandmark68TinyNet.loadFromDisk(modelPath), 
-        faceapi.nets.faceRecognitionNet.loadFromDisk(modelPath),
-      ]);
+      this.arcfaceSession = await ort.InferenceSession.create(modelPath, {
+        executionProviders: ["cpu"],
+      });
 
+      logger.info("ArcFace ONNX Model Loaded Successfully");
       this.modelsLoaded = true;
-      // expose instance flag
-      (this as any).modelsLoaded = true;
-      // Warm up TF backend (cheap op) to reduce first-inference latency
-      try {
-        // small tensor build + dispose to trigger backend JIT/init
-        tf.tidy(() => {
-          const t = (tf as any).zeros([1]);
-          t.dataSync();
-        });
-        logger.info("TensorFlow backend warm-up completed");
-      } catch (warmErr) {
-        logger.warn("TensorFlow warm-up failed (non-fatal):", warmErr);
-      }
-      logger.info("Optimized face recognition models loaded successfully");
     } catch (error) {
       logger.error("Model loading failed", error);
       throw error;
