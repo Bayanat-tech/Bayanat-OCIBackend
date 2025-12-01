@@ -125,6 +125,9 @@ export default {
     SMS_DEAL_PROBABILITY: "SMS_DEAL_PROBABILITY",
     SMS_SALES_REQUEST: "SMS_SALES_REQUEST",
     SMS_UPLOADED_FILES: "SMS_UPLOADED_FILES",
+
+    //------------Attendance Table --------------
+    employee_faces: "employee_faces",
   },
 
   VIEW: {
