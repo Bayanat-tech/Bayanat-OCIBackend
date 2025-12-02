@@ -88,4 +88,62 @@ export class ShipmentDetailsService {
 
     return await this.repository.find({ where });
   }
+
+  async findAllWithPagination(
+    filters: any,
+    page: number,
+    limit: number,
+    sort?: { field_name: string; desc: boolean }
+  ): Promise<{ data: TiContainer[]; total: number }> {
+    const where: any = {};
+
+    // Apply company_code filter (required)
+    if (filters.company_code) {
+      where.company_code = filters.company_code;
+    }
+
+    // Apply prin_code filter if provided
+    if (filters.prin_code) {
+      where.prin_code = filters.prin_code;
+    }
+
+    // Apply job_no filter if provided
+    if (filters.job_no) {
+      where.job_no = filters.job_no;
+    }
+
+    // Apply container_no filter if provided
+    if (filters.container_no) {
+      where.container_no = Like(`%${filters.container_no}%`);
+    }
+
+    // Apply vessel_name filter if provided
+    if (filters.vessel_name) {
+      where.vessel_name = Like(`%${filters.vessel_name}%`);
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Build order options
+    const order: any = {};
+    if (sort && sort.field_name) {
+      order[sort.field_name] = sort.desc ? "DESC" : "ASC";
+    } else {
+      order.user_dt = "DESC"; // Default sorting
+    }
+
+    // Get total count
+    const total = await this.repository.count({ where });
+
+    // Get paginated data
+    const data = await this.repository.find({
+      where,
+      skip,
+      take: limit,
+      order,
+    });
+
+    return { data, total };
+  }
 }

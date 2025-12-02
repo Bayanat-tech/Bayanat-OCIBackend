@@ -5,24 +5,22 @@ import {
 } from "../../../../interfaces/common.interface";
 import { IUser } from "../../../../interfaces/user.interface";
 import { createInboundSchema } from "../../../../validation/wms/transaction/createinbound.validation";
-//import Product from "../../../../models/wms/product_wms.model";
-import { Op } from "sequelize";
 import constants from "../../../../helpers/constants";
 import { IJobInboundWms } from "../../../../interfaces/wms/transaction/inbound/inboundJobWms.interface";
 import * as fastCsv from "fast-csv";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
-import createinboundjobWms from "../../../../views/wms/transportation/inbound/createinboundJobWms";
+import { InboundJobWmsService } from "../../../../services/WMS/transaction/inbound/inboundJobWms.service";
 
 export const getInboundJob = async (req: RequestWithUser, res: Response) => {
   try {
     const { prin_code, job_no } = req.query;
     console.log("check prin value:", req.query);
-    const createInboundjob = await createinboundjobWms.findOne({
-      where: {
-        prin_code,
-        company_code: req.user.company_code,
-      },
+    
+    const createInboundjob = await InboundJobWmsService.findOne({
+      company_code: req.user.company_code,
+      prin_code: prin_code as string,
+      job_no: job_no as string,
     });
 
     if (!createInboundjob) {
@@ -34,9 +32,7 @@ export const getInboundJob = async (req: RequestWithUser, res: Response) => {
     }
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: {
-        ...createInboundjob.dataValues,
-      },
+      data: createInboundjob,
     });
     return;
   } catch (error: unknown) {
@@ -61,21 +57,25 @@ export const createInboundjob = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
-    const response = await createinboundjobWms.create({
+    
+    const response = await InboundJobWmsService.create({
       ...req.body,
       company_code: requestUser.company_code,
+      created_by: requestUser.loginid,
+      updated_by: requestUser.loginid,
     });
+    
     console.log("response", response);
     if (!response) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: response });
+        .json({ success: false, message: "Failed to create inbound job" });
       return;
     }
     res.status(constants.STATUS_CODES.OK).json({
-  success: true,
-  message: ` ${req.body.job_no} ${req.body.job_type === 'EXP' ? 'Outbound Job' : 'Inbound Job'} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
-});
+      success: true,
+      message: ` ${req.body.job_no} ${req.body.job_type === 'EXP' ? 'Outbound Job' : 'Inbound Job'} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
+    });
 
     return;
   } catch (error: any) {
@@ -107,14 +107,11 @@ export const GetsingleInboundjob = async (
         .json({ success: false, message: error.message });
       return;
     }
-    const createInboundjobResponse = await createinboundjobWms.findOne({
-      where: {
-        [Op.and]: [
-          { company_code: requestUser.company_code },
-          { prin_code },
-          { job_no },
-        ],
-      },
+    
+    const createInboundjobResponse = await InboundJobWmsService.findOne({
+      company_code: requestUser.company_code,
+      prin_code: prin_code as string,
+      job_no: job_no as string,
     });
 
     if (!createInboundjobResponse) {
@@ -124,31 +121,30 @@ export const GetsingleInboundjob = async (
       });
       return;
     }
-    const response = await createinboundjobWms.update(
+    
+    const updatedRecord = await InboundJobWmsService.update(
+      {
+        company_code: requestUser.company_code,
+        prin_code: prin_code as string,
+        job_no: job_no as string,
+      },
       {
         ...req.body,
         updated_by: requestUser.loginid,
-      },
-      {
-        where: {
-          [Op.and]: [
-            { company_code: requestUser.company_code },
-            { prin_code },
-            { job_no },
-          ],
-        },
       }
     );
-    if (!response) {
+    
+    if (!updatedRecord) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: response });
+        .json({ success: false, message: "Failed to update inbound job" });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Inbound Job " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
-      data: createInboundjobResponse,
+      data: updatedRecord,
     });
     return;
   } catch (error: any) {
