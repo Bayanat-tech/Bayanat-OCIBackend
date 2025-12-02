@@ -2,30 +2,31 @@
 import express from "express";
 import multer from "multer";
 import passport from "passport";
+import { EmployeesController } from "../../services/Attendance/employee.service";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Lazy load controllers
 const getControllers = async () => {
-  const { AttendanceController } = await import(
-    "../../controllers/Attendance/attendance.controller"
-  );
+  // const { AttendanceController } = await import(
+  //   "../../controllers/Attendance/attendance.controller"
+  // );
   const { EmployeeController } = await import(
     "../../controllers/Attendance/Employee.controller"
   );
-  const { DashboardController } = await import(
-    "../../controllers/Attendance/dashboard.controller"
-  );
+  // const { DashboardController } = await import(
+  //   "../../controllers/Attendance/dashboard.controller"
+  // );
   const { checkUserAuthorization } = await import(
     "../../middleware/checkUserAthorization"
   );
   const { EmployeeService } = await import("../../services/employee.service");
 
   return {
-    AttendanceController,
+    // AttendanceController,
     EmployeeController,
-    DashboardController,
+    // DashboardController,
     checkUserAuthorization,
     EmployeeService,
   };
@@ -150,6 +151,18 @@ router.get(
   async (req, res) => {
     const { EmployeeController } = await getControllers();
     return EmployeeController.getEmployee(req, res);
+  }
+);
+
+router.put(
+  "/update_employees/:id",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    return EmployeesController.updateEmployee(req, res);
   }
 );
 

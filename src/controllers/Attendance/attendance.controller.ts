@@ -1,84 +1,91 @@
-import { Request, Response } from "express";
-import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
-import { AttendanceService } from "../../services/Attendance/Attendance.service";
-import { validateImage } from "../../middleware/security.middleware";
-import logger from "../../utils/logger";
+// import { Request, Response } from "express";
+// import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
+// import { AttendanceService } from "../../services/Attendance/Attendance.service";
+// import { ParamsDictionary } from "express-serve-static-core";
+// import { ParsedQs } from "qs";
+// import logger from "../../utils/logger";
+// // import { validateImage } from "../../middleware/security.middleware";
 
-export class AttendanceController {
-  static async markAttendance(req: Request, res: Response): Promise<void> {
-    try {
-      const { action } = req.body;
-      const file = req.file;
 
-      if (!file) {
-        logger.warn("Attendance marking attempt without image");
-        res.status(400).json({ error: "Face image is required" });
-        return;
-      }
+// export class AttendanceController {
+//   static async markAttendance(req: Request, res: Response): Promise<void> {
+//     try {
+//       const { action } = req.body;
+//       const file = req.file;
 
-      if (!["check-in", "check-out"].includes(action)) {
-        logger.warn(`Invalid attendance action: ${action}`);
-        res.status(400).json({ error: "Invalid action" });
-        return;
-      }
+//       if (!file) {
+//         logger.warn("Attendance marking attempt without image");
+//         res.status(400).json({ error: "Face image is required" });
+//         return;
+//       }
 
-      // Validate image
-      validateImage(req, res, () => {});
+//       if (!["check-in", "check-out"].includes(action)) {
+//         logger.warn(`Invalid attendance action: ${action}`);
+//         res.status(400).json({ error: "Invalid action" });
+//         return;
+//       }
 
-      // Get FaceRecognitionService instance
-      const faceService = await FaceRecognitionService.getInstance();
+//       // Validate image
+//       validateImage(req, res, () => {});
 
-      // Recognize face using instance methods
-      const descriptor = await faceService.extractFaceDescriptor(file.buffer);
-      const match = await faceService.findBestMatch(descriptor);
+//       // Get FaceRecognitionService instance
+//       const faceService = await FaceRecognitionService.getInstance();
 
-      if (!match) {
-        logger.warn("Unrecognized face attempt");
-        res.status(404).json({ error: "Employee not recognized" });
-        return;
-      }
+//       // Recognize face using instance methods
+//       const descriptor = await faceService.extractFaceDescriptor(file.buffer);
+//       const match = await faceService.findBestMatch(descriptor);
 
-      // Record attendance
-      const { status, timestamp } = await AttendanceService.markAttendance(
-        match.employeeId,
-        action
-      );
+//       if (!match) {
+//         logger.warn("Unrecognized face attempt");
+//         res.status(404).json({ error: "Employee not recognized" });
+//         return;
+//       }
 
-      res.status(200).json({
-        success: true,
-        employeeId: match.employeeId,
-        action,
-        status,
-        timestamp: timestamp.toISOString(),
-      });
-    } catch (error: any) {
-      logger.error("Attendance marking error", error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  }
+//       // Record attendance
+//       const { status, timestamp } = await AttendanceService.markAttendance(
+//         match.employeeId,
+//         action
+//       );
 
-  static async getAttendanceReport(req: Request, res: Response): Promise<void> {
-    try {
-      const { from_date, to_date, department, page, limit } = req.query;
-      console.log("Received query parameters:", req.query);
+//       res.status(200).json({
+//         success: true,
+//         employeeId: match.employeeId,
+//         action,
+//         status,
+//         timestamp: timestamp.toISOString(),
+//       });
+//     } catch (error: any) {
+//       logger.error("Attendance marking error", error);
+//       res.status(500).json({ success: false, message: error.message });
+//     }
+//   }
 
-      if (!from_date || !to_date) {
-        res.status(400).json({ error: "From date and to date are required" });
-        return;
-      }
+//   static async getAttendanceReport(req: Request, res: Response): Promise<void> {
+//     try {
+//       const { from_date, to_date, department, page, limit } = req.query;
+//       console.log("Received query parameters:", req.query);
 
-      const report = await AttendanceService.getAttendanceReport(
-        new Date(from_date as string),
-        new Date(to_date as string),
-        department as string | undefined,
-        Number(page) || 1,
-        Number(limit) || 20
-      );
+//       if (!from_date || !to_date) {
+//         res.status(400).json({ error: "From date and to date are required" });
+//         return;
+//       }
 
-      res.status(200).json(report);
-    } catch (error: any) {
-      logger.error("Attendance report error", error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  }
-}
+//       const report = await AttendanceService.getAttendanceReport(
+//         new Date(from_date as string),
+//         new Date(to_date as string),
+//         department as string | undefined,
+//         Number(page) || 1,
+//         Number(limit) || 20
+//       );
+
+//       res.status(200).json(report);
+//     } catch (error: any) {
+//       logger.error("Attendance report error", error);
+//       res.status(500).json({ success: false, message: error.message });
+//     }
+//   }
+// }
+// function validateImage(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>, res: Response<any, Record<string, any>>, arg2: () => void) {
+//   throw new Error("Function not implemented.");
+// }
+

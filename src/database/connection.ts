@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import * as oracledb from "oracledb";
 import { DataSource, Repository, EntityTarget, ObjectLiteral } from "typeorm";
-import constants from "../helpers/constants"; 
+import constants from "../helpers/constants";
 
 // ==================== ORACLE CLIENT INIT ====================
 try {
@@ -38,8 +38,8 @@ export const AppDataSource = new DataSource({
   type: "oracle",
   connectString:
     constants.DATABASE.ORACLE_CONNECTION_STRING ||
-    process.env.ORACLE_CONNECTION_STRING ,
-  username: constants.DATABASE.ORACLE_USER || process.env.ORACLE_USER ,
+    process.env.ORACLE_CONNECTION_STRING,
+  username: constants.DATABASE.ORACLE_USER || process.env.ORACLE_USER,
   password:
     constants.DATABASE.ORACLE_PASSWORD ||
     process.env.ORACLE_PASSWORD,
@@ -48,6 +48,8 @@ export const AppDataSource = new DataSource({
   entities: [
     "src/entity/**/*.ts",
     "src/entities/**/*.ts",
+    // "dist/**/*.entity.js",
+    // "src/**/*.entity.ts",
   ],
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
@@ -72,8 +74,8 @@ class TypeORMService {
         console.log("TypeORM Config:", {
           type: "oracle",
           connectString:
-              constants.DATABASE.ORACLE_CONNECTION_STRING ||
-              process.env.ORACLE_CONNECTION_STRING,
+            constants.DATABASE.ORACLE_CONNECTION_STRING ||
+            process.env.ORACLE_CONNECTION_STRING,
           username: process.env.ORACLE_USER,
         });
 

@@ -120,13 +120,16 @@ export class EmployeeController {
       const sort = filter?.sort || { full_name: "ASC" };
       const search = filter?.search || "";
 
+      console.log("inside getEmployees")
+
       const result = await EmployeesController.getEmployees(
         page,
         limit,
         sort,
         search
       );
-
+      console.log("result....",result);
+      
       res.status(200).json(result);
 
     } catch (error: any) {
@@ -153,6 +156,7 @@ export class EmployeeController {
       phone_number: data.phone_number ?? employee.phone_number,
     });
 
+    
 
     // static async modifyEmployee(req: Request, res: Response): Promise<void> {
     //   try {
