@@ -1,18 +1,19 @@
 import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection";
 import {
   TBasicBrequest,
   TCostbudget,
 } from "../../interfaces/Purchaseflow/Budgetflow.interface";
 
+/**
+ * Upsert Budget Request using existing connection from oracleDb
+ */
 export async function upsertBudgetRequest(data: TBasicBrequest) {
   let connection: oracledb.Connection | undefined;
 
   try {
-    connection = await oracledb.getConnection({
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      connectString: process.env.DB_CONN,
-    });
+    // Use existing connection wrapper
+    connection = await oracleDb.getConnection();
 
     console.log("Starting upsertBudgetRequest...");
     console.log("Request Number:", data.request_number);
@@ -104,10 +105,10 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
         :reqDate,
         :description,
         :remarks,
-        :action,
+        :lastAction,
         :project,
-        :updated,
-        :created,
+        :updatedBy,
+        :createdBy,
         'BUDGET',
         '003',
         1,
@@ -120,10 +121,10 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
         reqDate: requestDate,
         description: data.description,
         remarks: data.remarks,
-        action: data.last_action,
+        lastAction: data.last_action,   // fixed bind name
         project: data.project_code,
-        updated: data.updated_by,
-        created: data.created_by,
+        updatedBy: data.updated_by,     // fixed bind name
+        createdBy: data.created_by,     // fixed bind name
       },
       { autoCommit: false }
     );
@@ -185,7 +186,11 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
     throw error;
   } finally {
     if (connection) {
-      await connection.close();
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("❌ Error closing Oracle connection:", closeError);
+      }
     }
   }
 }

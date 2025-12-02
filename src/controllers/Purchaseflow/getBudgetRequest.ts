@@ -1,29 +1,23 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection";
 import { getBudgetData } from "./getBudgetData"; // Oracle version
 
-export const getBudgetRequest = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getBudgetRequest = async (req: Request, res: Response): Promise<void> => {
   let connection: oracledb.Connection | undefined;
 
   try {
     const { request_number, cost_code } = req.params;
     const ls_request_number = request_number.replace(/\$\$/g, "/");
 
-    // Get Oracle connection
-    connection = await oracledb.getConnection({
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      connectString: process.env.DB_CONN,
-    });
+    // Use existing Oracle connection from wrapper
+    connection = await oracleDb.getConnection();
 
-    // Call the service function to fetch data from Oracle
+    // Call service function
     const result = await getBudgetData(connection, ls_request_number, cost_code);
+    console.log('result',result)
 
-    // If result is empty or null, return a not found response
-    if (!result || result.length === 0) {
+    if (!result || (Array.isArray(result) && result.length === 0)) {
       res.status(404).json({
         success: false,
         message: "No data found for the given request number and cost code.",
@@ -31,7 +25,6 @@ export const getBudgetRequest = async (
       return;
     }
 
-    // Return the response with the fetched data
     res.status(200).json({
       success: true,
       data: result,
