@@ -122,9 +122,7 @@ export const getBudgetData = async (
      * ITEMS
      ***************************************************/
     const itemsResult = await connection.execute<Record<string, any>>(
-      `
-      SELECT company_code, request_number, cost_code, requested_amt, req_appr_amt,
-             pr_amount, po_amount, cost_name, prev_appr_amt
+      `SELECT company_code, request_number, cost_code, cost_name, month_budget, budget_year, request_amt, req_appr_amt
       FROM VW_BUDGET_REQUEST_ENTRY
       WHERE request_number = :request_number
       `,
