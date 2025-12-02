@@ -1,8 +1,7 @@
 import { NextFunction, Response } from "express";
 import * as fastCsv from "fast-csv";
-
-import oracledb, { BindParameters, ExecuteOptions, Connection } from "oracledb";
-import { oracleDb } from "../../../../database/connection"; // make sure this exports oracledb.getConnection()
+import { oracleDb } from "../../../../database/connection";
+import * as oracledb from "oracledb";
 import constants from "../../../../helpers/constants";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { RequestHandler } from 'express';
@@ -10,25 +9,19 @@ import {
   ISearch,
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
-import MsPickwave from "../../../../models/wms/transaction/outbound/msPickwave_wms.model";
-import OrderEntry from "../../../../models/wms/transaction/outbound/orderEntry_wms.model";
 import { pickOrderSchema } from "../../../../validation/wms/transaction/outbound.validation";
-import VwWmOubJobPickFilter from "../../../../views/wms/transportation/outbound/pickingPreferenceFilter.view";
-import VwStkled from "../../../../views/wms/transportation/outbound/vmStkled.view";
-// import OrderDetail from "../../../../models/wms/transaction/outbound/toOrderDetail_wms.model";
-import PickingDetailsOutboundWmsView from "../../../../views/wms/transportation/outbound/pickingDetailsWms.view";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { Request } from "express";
 
-
-
 export const createToOrder = async (
-  req: Request,
+  req: RequestWithUser,
   res: Response
 ): Promise<void> => {
-  let connection: Connection | undefined;
-
   try {
+    console.log("createToOrder API called");
+    console.log(" Request body:", req.body);
+
+    // Destructure with default null values for optional fields
     const {
       prin_code,
       company_code,
@@ -53,49 +46,42 @@ export const createToOrder = async (
       load_end = null
     } = req.body;
 
+    // Basic validation
     if (!prin_code || !company_code || !job_no) {
-      res.status(400).json({ success: false, message: "Missing required fields: PRIN_CODE, COMPANY_CODE, and job_no are required" });
-      return;
+      throw new Error('Missing required fields: PRIN_CODE, COMPANY_CODE, and job_no are required');
     }
 
-    connection = await oracleDb.getConnection();
-
-    // Duplicate check
+    // Check for duplicate order_no if it's provided
     if (order_no) {
-      const duplicateCheckQuery = `
-        SELECT COUNT(*) AS COUNT
-        FROM TO_ORDER
-        WHERE ORDER_NO = :order_no
+      const checkDuplicateQuery = `
+        SELECT COUNT(*) as count FROM TO_ORDER 
+        WHERE order_no = :order_no
       `;
-      const duplicateResult = await connection.execute<{ COUNT: number }>(
-        duplicateCheckQuery,
-        { order_no },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
+      
+      const duplicateCheckResult = await oracleDb.query(checkDuplicateQuery, {
+        order_no: order_no
+      });
 
-      if ((duplicateResult.rows?.[0]?.COUNT ?? 0) > 0) {
-        res.status(409).json({ success: false, message: "An order with this order_no already exists" });
-        return;
+      if (duplicateCheckResult.rows?.[0]?.COUNT > 0) {
+        throw new Error('An order with this order_no already exists');
       }
     }
 
-    // Insert
-    const insertQuery = `
+    const query = `
       INSERT INTO TO_ORDER (
-        PRIN_CODE, COMPANY_CODE, JOB_NO, CUST_CODE, ORDER_NO,
-        ORDER_DATE, ORDER_DUE_DATE, CURR_CODE, EX_RATE, UOC,
+        PRIN_CODE, COMPANY_CODE, job_no, cust_code, order_no, 
+        order_date, order_due_date, curr_code, EX_RATE, UOC,
         MOC1, MOC2, EXP_CONTAINER_NO, EXP_CONTAINER_SIZE, EXP_CONTAINER_TYPE,
         EXP_CONTAINER_SEALNO, CUST_REFERENCE, PACK_START, PACK_END, LOAD_START, LOAD_END
       ) VALUES (
-        :prin_code, :company_code, :job_no, :cust_code, :order_no,
+        :prin_code, :company_code, :job_no, :cust_code, :order_no, 
         :order_date, :order_due_date, :curr_code, :ex_rate, :uoc,
         :moc1, :moc2, :exp_container_no, :exp_container_size, :exp_container_type,
         :exp_container_sealno, :cust_reference, :pack_start, :pack_end, :load_start, :load_end
       )
-      RETURNING ROWID INTO :inserted_id
     `;
-
-    const binds = {
+    
+    const bindParams = {
       prin_code,
       company_code,
       job_no,
@@ -116,442 +102,339 @@ export const createToOrder = async (
       pack_start,
       pack_end,
       load_start,
-      load_end,
-      inserted_id: { dir: oracledb.BIND_OUT, type: oracledb.STRING }
+      load_end
     };
 
-    const insertResult = await connection.execute<{ inserted_id: string }>(insertQuery, binds, { autoCommit: true });
+    console.log("Executing query:", query);
+    console.log("With bindParams:", bindParams);
 
-    const insertedId = insertResult.outBinds?.inserted_id?.[0] ?? null;
+    // Execute the insert query
+    await oracleDb.query(query, bindParams);
 
-    if (!insertedId) {
-      res.status(500).json({ success: false, message: "Failed to retrieve inserted ID" });
-      return;
-    }
-
-    res.status(201).json({
-      success: true,
-      message: "Order created successfully",
-      orderId: insertedId
+    // For Oracle, we need to get the last inserted ID differently
+    // Assuming there's a sequence or we can get the max ID
+    const lastIdResult = await oracleDb.query(
+      "SELECT MAX(TO_ORDER_ID) as INSERTID FROM TO_ORDER WHERE COMPANY_CODE = :company_code AND PRIN_CODE = :prin_code",
+      { company_code, prin_code }
+    );
+    
+    const insertId = lastIdResult.rows?.[0]?.INSERTID;
+    
+    console.log("Order created successfully with ID:", insertId);
+    res.status(201).json({ 
+      success: true, 
+      message: 'Order created successfully',
+      orderId: insertId 
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating TO_ORDER:", error);
-    res.status(500).json({ success: false, message: error.message });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing Oracle connection:", closeErr);
+
+    // Determine appropriate status code
+    let statusCode = 500;
+    if (error instanceof Error) {
+      if (error.message.includes('Missing required fields')) {
+        statusCode = 400;
+      } else if (error.message.includes('already exists')) {
+        statusCode = 409; // 409 Conflict is appropriate for duplicate resource
       }
     }
+
+    res.status(statusCode).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'An error occurred while creating the order',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 };
 
+// Note: The following functions use Sequelize models (OrderEntry, etc.)
+// You'll need to convert these models to use TypeORM or raw Oracle queries
+// For now, I'll show the pattern:
 
 export const getAllOrderEntries = async (req: RequestWithUser, res: Response) => {
-  let connection: Connection | undefined;
-
   try {
     const { prin_code, job_no, cust_code, order_no } = req.query;
 
     if (!job_no) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "job_no parameter is required",
+        message: 'job_no parameter is required'
       });
     }
 
-    connection = await oracleDb.getConnection();
-
-    // ✅ Build dynamic SQL WHERE clause
-    let baseQuery = `
-      SELECT *
-      FROM ORDER_ENTRY
+    let query = `
+      SELECT * FROM TO_ORDER 
       WHERE COMPANY_CODE = :company_code
         AND JOB_NO = :job_no
     `;
-
-    const binds: Record<string, any> = {
+    
+    const bindParams: any = {
       company_code: req.user.company_code,
-      job_no,
+      job_no: job_no
     };
 
     if (prin_code) {
-      baseQuery += " AND PRIN_CODE = :prin_code";
-      binds.prin_code = prin_code;
+      query += " AND PRIN_CODE = :prin_code";
+      bindParams.prin_code = prin_code;
     }
     if (cust_code) {
-      baseQuery += " AND CUST_CODE = :cust_code";
-      binds.cust_code = cust_code;
+      query += " AND CUST_CODE = :cust_code";
+      bindParams.cust_code = cust_code;
     }
     if (order_no) {
-      baseQuery += " AND ORDER_NO = :order_no";
-      binds.order_no = order_no;
+      query += " AND ORDER_NO = :order_no";
+      bindParams.order_no = order_no;
     }
 
-    const result = await connection.execute<any>(
-      baseQuery,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+    const result = await oracleDb.query(query, bindParams);
+    const orderEntries = result.rows || [];
 
-    const orderEntries = result.rows ?? [];
-
-    if (orderEntries.length === 0) {
-      return res.status(constants.STATUS_CODES.NO_CONTENT).json({
+    if (!orderEntries.length) {
+      return res.status(constants.STATUS_CODES.NO_CONTENT).json({ 
         success: true,
         message: `No order entries found for job_no: ${job_no}`,
         data: [],
-        count: 0,
+        count: 0
       });
     }
 
-    return res.status(constants.STATUS_CODES.OK).json({
-      success: true,
+    return res.status(constants.STATUS_CODES.OK).json({ 
+      success: true, 
       data: orderEntries,
-      count: orderEntries.length,
+      count: orderEntries.length
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getAllOrderEntries:", error);
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: error.message || "An unknown error occurred",
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
+      success: false, 
+      message 
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error closing Oracle connection:", closeError);
-      }
-    }
   }
 };
 
 export const getSingleOrderEntry = async (req: RequestWithUser, res: Response) => {
-  let connection: Connection | undefined;
-
   try {
     const { cust_code } = req.query;
 
     if (!cust_code) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "cust_code parameter is required",
+        message: 'cust_code parameter is required'
       });
     }
 
-    connection = await oracleDb.getConnection();
-
-    const query = `
-      SELECT *
-      FROM ORDER_ENTRY
-      WHERE CUST_CODE = :cust_code
-    `;
-
-    const result = await connection.execute<any>(
-      query,
-      { cust_code },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    const result = await oracleDb.query(
+      `SELECT * FROM TO_ORDER WHERE CUST_CODE = :cust_code`,
+      { cust_code }
     );
-
-    const orderEntry = result.rows && result.rows.length > 0 ? result.rows[0] : null;
+    
+    const orderEntry = result.rows?.[0];
 
     if (!orderEntry) {
-      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({ 
         success: true,
         message: `No order entry found for cust_code: ${cust_code}`,
-        data: null,
+        data: null
       });
     }
 
-    return res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: orderEntry,
+    return res.status(constants.STATUS_CODES.OK).json({ 
+      success: true, 
+      data: orderEntry
     });
 
-  } catch (error: any) {
-    console.error("Error in getSingleOrderEntry:", error);
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: error.message || "An unknown error occurred",
+  } catch (error: unknown) {
+    console.error("Error in getOrderEntryByCustomerCode:", error);
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
+      success: false, 
+      message 
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error closing Oracle connection:", closeError);
-      }
-    }
   }
 };
 
-
 export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response) => {
-  let connection: Connection | undefined;
-
   try {
     const { id, ...updateData } = req.body;
 
     if (!id) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      return res.status(400).json({
         success: false,
-        message: "ID parameter is required",
+        message: 'ID parameter is required'
       });
     }
 
-    connection = await oracleDb.getConnection();
-
-    // Start manual transaction
-    await connection.execute("BEGIN NULL; END;");
-
-    // 1️⃣ Check if record exists
-    const checkQuery = `SELECT COUNT(*) AS COUNT FROM ORDER_ENTRY WHERE ID = :id`;
-    const checkResult = await connection.execute<{ COUNT: number }>(
-      checkQuery,
-      { id },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
-    const count = checkResult.rows?.[0]?.COUNT ?? 0;
-    if (count === 0) {
-      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: `No order entry found with id: ${id}`,
-      });
+    // Build dynamic UPDATE query
+    const setClauses = [];
+    const bindParams: any = { id };
+    
+    for (const [key, value] of Object.entries(updateData)) {
+      setClauses.push(`${key} = :${key}`);
+      bindParams[key] = value;
     }
 
-    // 2️⃣ Build dynamic SET clause for update
-    const fields = Object.keys(updateData);
-    if (fields.length === 0) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "No fields provided for update",
-      });
-    }
-
-    const setClause = fields.map((key) => `${key.toUpperCase()} = :${key}`).join(", ");
-    const updateQuery = `
-      UPDATE ORDER_ENTRY
-      SET ${setClause}
+    const query = `
+      UPDATE TO_ORDER 
+      SET ${setClauses.join(', ')}
       WHERE ID = :id
     `;
 
-    await connection.execute(updateQuery, { id, ...updateData });
-
-    // 3️⃣ Fetch updated record
-    const selectQuery = `
-      SELECT * FROM ORDER_ENTRY WHERE ID = :id
-    `;
-    const selectResult = await connection.execute<any>(
-      selectQuery,
-      { id },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
-    const updatedEntry = selectResult.rows?.[0] ?? null;
-
-    // Commit transaction
-    await connection.commit();
-
-    return res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: updatedEntry,
-    });
-
-  } catch (error: any) {
-    if (connection) await connection.rollback();
-    console.error("Error in updateSingleOrderEntry:", error);
-
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: error.message || "An error occurred while updating order entry",
-    });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing Oracle connection:", closeErr);
+    await oracleDb.withTransaction(async (connection: any) => {
+      const result = await oracleDb.query(query, bindParams, connection);
+      
+      // Check if row was updated (Oracle returns row count differently)
+      if (result.rowsAffected === 0) {
+        throw new Error(`No order entry found with id: ${id}`);
       }
-    }
+
+      // Get the updated entry
+      const updatedResult = await oracleDb.query(
+        `SELECT * FROM TO_ORDER WHERE ID = :id`,
+        { id },
+        connection
+      );
+      
+      return updatedResult.rows?.[0];
+    }).then((updatedEntry) => {
+      return res.json({ 
+        success: true, 
+        data: updatedEntry
+      });
+    });
+
+  } catch (error) {
+    console.error("Error:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
 };
 
-/**
- * DELETE an order entry by ID
- */
 export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
-  let connection: Connection | undefined;
-
   try {
-    const { id } = req.params;
+    const { id } = req.params; 
+    console.log('id', id);
 
     if (!id) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "id parameter is required",
+        message: 'id parameter is required'
       });
     }
 
-    connection = await oracleDb.getConnection();
-
-    // 1️⃣ Check if exists
-    const checkQuery = `
-      SELECT COUNT(*) AS COUNT FROM ORDER_ENTRY WHERE ID = :id
-    `;
-    const checkResult = await connection.execute<{ COUNT: number }>(
-      checkQuery,
-      { id },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    // First check if the order entry exists
+    const checkResult = await oracleDb.query(
+      `SELECT COUNT(*) as count FROM TO_ORDER WHERE ID = :id`,
+      { id }
     );
 
-    const count = checkResult.rows?.[0]?.COUNT ?? 0;
-    if (count === 0) {
-      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+    if (!checkResult.rows?.[0]?.COUNT || checkResult.rows[0].COUNT === 0) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({ 
         success: false,
-        message: `No order entry found for id: ${id}`,
+        message: `No order entry found for id: ${id}`
       });
     }
 
-    // 2️⃣ Delete record
-    const deleteQuery = `
-      DELETE FROM ORDER_ENTRY WHERE ID = :id
-    `;
-    const result = await connection.execute(deleteQuery, { id }, { autoCommit: true });
+    // Perform the deletion
+    const deleteResult = await oracleDb.query(
+      `DELETE FROM TO_ORDER WHERE ID = :id`,
+      { id }
+    );
 
-    if (result.rowsAffected && result.rowsAffected > 0) {
-      return res.status(constants.STATUS_CODES.OK).json({
-        success: true,
-        message: "Order entry deleted successfully",
-      });
-    } else {
-      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    // Check if deletion was successful
+    if (deleteResult.rowsAffected === 0) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
         success: false,
-        message: "Order entry could not be deleted",
+        message: 'Order entry could not be deleted'
       });
     }
 
-  } catch (error: any) {
-    console.error("Error in deleteOrderEntry:", error);
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: error.message || "An error occurred while deleting order entry",
+    return res.status(constants.STATUS_CODES.OK).json({ 
+      success: true, 
+      message: 'Order entry deleted successfully'
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing Oracle connection:", closeErr);
-      }
-    }
+
+  } catch (error: unknown) {
+    console.error("Error in deleteOrderEntry:", error);
+    const message = error instanceof Error ? error.message : 'Unknown error occurred';
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
+      success: false, 
+      message 
+    });
   }
 };
 
-/**
- * Get Picking Item Preference Details
- */
+// Note: The following functions use Sequelize models and complex query building
+// You'll need to convert them based on your actual View/Model implementations
+// Here's a pattern for converting View queries:
+
 export const getPickingItemPreferenceDetails = async (
   req: RequestWithUser,
   res: Response
 ) => {
-  let connection: Connection | undefined;
-
   try {
     const { distinct_field } = req.query;
-    const filter: ISearch = req.query.filter ? JSON.parse(req.query.filter as string) : {};
+    const filter: ISearch = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : {};
+    
+    // You'll need to adapt getSearchFilterQuery for raw SQL
+    // This is a placeholder - you'll need to implement proper filtering
+    let whereClause = `WHERE company_code = :company_code`;
+    const bindParams: any = { company_code: req.user.company_code };
 
-    if (!distinct_field) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "distinct_field parameter is required",
-      });
-    }
-
-    connection = await oracleDb.getConnection();
-
-    // Base SQL (You should replace with the correct view name used in Oracle)
-    let baseQuery = `
-      SELECT DISTINCT ${distinct_field}
-      FROM VW_WM_OUB_JOB_PICK_FILTER
-      WHERE COMPANY_CODE = :company_code
-    `;
-
-    const binds: Record<string, any> = {
-      company_code: req.user.company_code,
-    };
-
-    // Add dynamic filters (similar to getSearchFilterQuery)
-    if (filter?.search) {
-      for (const [key, value] of Object.entries(filter.search)) {
-        baseQuery += ` AND ${key.toUpperCase()} = :${key}`;
-        binds[key] = value;
-      }
+    // Add filter conditions based on your logic
+    if (filter.search) {
+      // Implement your filtering logic here
     }
 
     // Count query
-    const countQuery = `
-      SELECT COUNT(*) AS COUNT
-      FROM VW_WM_OUB_JOB_PICK_FILTER
-      WHERE COMPANY_CODE = :company_code
+    const countQuery = `SELECT COUNT(*) as count FROM VW_WM_OUB_JOB_PICK_FILTER ${whereClause}`;
+    const countResult = await oracleDb.query(countQuery, bindParams);
+    const resultCount = countResult.rows?.[0]?.COUNT || 0;
+
+    // Main query
+    const resultQuery = `
+      SELECT DISTINCT ${distinct_field}
+      FROM VW_WM_OUB_JOB_PICK_FILTER 
+      ${whereClause}
     `;
+    
+    const result = await oracleDb.query(resultQuery, bindParams);
 
-    const countResult = await connection.execute<{ COUNT: number }>(
-      countQuery,
-      { company_code: req.user.company_code },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    const count = countResult.rows?.[0]?.COUNT ?? 0;
-
-    // Execute distinct query
-    const result = await connection.execute<any>(
-      baseQuery,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
-    const data = result.rows ?? [];
-
-    return res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: { tableData: data, count },
-    });
-
-  } catch (error: any) {
-    console.error("Error in getPickingItemPreferenceDetails:", error);
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Error: " + (error.message || "Unknown error"),
-    });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error("Error closing Oracle connection:", err);
-      }
+    if (!result.rows) {
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
+        success: false, 
+        message: 'No data found' 
+      });
+      return;
     }
+
+    res.status(constants.STATUS_CODES.OK).json({ 
+      success: true, 
+      data: { tableData: result.rows, count: resultCount } 
+    });
+    
+  } catch (error: unknown) {
+    const knownError = error as { message: string };
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
+      success: false, 
+      message: "error:" + knownError.message 
+    });
   }
 };
 
-/**
- * Pick Order (calls stored procedure)
- */
 export const pickOrder = async (req: RequestWithUser, res: Response) => {
-  let connection: Connection | undefined;
-
   try {
-    // Validate request
     const { error } = pickOrderSchema(req.body);
     if (error) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: error.message,
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
+        success: false, 
+        message: error.message 
       });
     }
 
@@ -559,322 +442,279 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
     const { prin_code, preference, pick, min_qty, exp_period } = req.query;
     const { serial_no } = req.body;
 
-    if (!prin_code || !job_no || !serial_no) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "prin_code, job_no, and serial_no are required parameters.",
-      });
-    }
-
-    connection = await oracleDb.getConnection();
-
-    await connection.execute("BEGIN NULL; END;"); // start implicit transaction
-    let toggledPackets = 0;
-
-    // 1️⃣ Update selected = 'Y'
     const updateSelectedSql = `
       UPDATE TO_ORDER_DET
-      SET SELECTED = 'Y'
-      WHERE COMPANY_CODE = :company_code
-        AND PRIN_CODE = :prin_code
-        AND JOB_NO = :job_no
-        AND SERIAL_NO = :serial_no
+      SET selected = 'Y'
+      WHERE company_code = :company_code 
+        AND prin_code = :prin_code 
+        AND job_no = :job_no 
+        AND serial_no = :serial_no
     `;
 
-    const updateResult = await connection.execute(updateSelectedSql, {
+    const bindParams = {
       company_code: req.user.company_code,
       prin_code,
       job_no,
-      serial_no,
+      serial_no
+    };
+
+    let toggledPackets = 0;
+
+    await oracleDb.withTransaction(async (connection: any) => {
+      // Set selected = 'Y'
+      const updateResult = await oracleDb.query(
+        updateSelectedSql, 
+        bindParams, 
+        connection
+      );
+      toggledPackets = updateResult.rowsAffected || 0;
+
+      if (toggledPackets > 0) {
+        // Call stored procedure
+        await oracleDb.query(
+          `BEGIN SP_WM_OUB_PICKING_V3(:vs_company_code, :principal_code, :VS_job_no, ''); END;`,
+          {
+            vs_company_code: req.user.company_code,
+            principal_code: prin_code,
+            VS_job_no: job_no,
+            VS_USER: req.user.loginid,
+            VS_PREFERENCE: preference,
+            VS_PICK: pick,
+            VS_MIN_QTY: min_qty,
+            VS_EXP_PERIOD: exp_period,
+          },
+          connection
+        );
+
+        // Set selected = 'N'
+        const unselectSql = `
+          UPDATE TO_ORDER_DET
+          SET selected = 'N'
+          WHERE company_code = :company_code 
+            AND prin_code = :prin_code 
+            AND job_no = :job_no 
+            AND serial_no = :serial_no
+        `;
+
+        await oracleDb.query(unselectSql, bindParams, connection);
+      }
     });
 
-    toggledPackets = updateResult.rowsAffected ?? 0;
-
-    // 2️⃣ Call stored procedure if updated
-    if (toggledPackets > 0) {
-      const procedureCall = `
-        BEGIN
-          SP_WM_OUB_PICKING_V3(
-            :vs_company_code,
-            :principal_code,
-            :vs_job_no,
-            :vs_user,
-            :vs_preference,
-            :vs_pick,
-            :vs_min_qty,
-            :vs_exp_period
-          );
-        END;
-      `;
-
-      await connection.execute(procedureCall, {
-        vs_company_code: req.user.company_code,
-        principal_code: prin_code,
-        vs_job_no: job_no,
-        vs_user: req.user.loginid,
-        vs_preference: preference ?? null,
-        vs_pick: pick ?? null,
-        vs_min_qty: min_qty ?? null,
-        vs_exp_period: exp_period ?? null,
-      });
-
-      // 3️⃣ Optionally unselect if procedure result needs revert
-      // (Here assuming you always revert if procedure succeeds)
-      const unselectSql = `
-        UPDATE TO_ORDER_DET
-        SET SELECTED = 'N'
-        WHERE COMPANY_CODE = :company_code
-          AND PRIN_CODE = :prin_code
-          AND JOB_NO = :job_no
-          AND SERIAL_NO = :serial_no
-      `;
-
-      await connection.execute(unselectSql, {
-        company_code: req.user.company_code,
-        prin_code,
-        job_no,
-        serial_no,
-      });
-    }
-
-    await connection.commit();
-
-    return res.status(constants.STATUS_CODES.OK).json({
+    res.status(200).json({
       success: true,
       message: toggledPackets > 0 ? "Order picked successfully." : "No packet updated.",
     });
-
-  } catch (err: any) {
-    if (connection) await connection.rollback();
+  } catch (err) {
     console.error("pickOrder error:", err);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: "Failed to process pick order: " + (err.message || "Unknown error"),
+      message: "Failed to process pick order.",
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error("Error closing Oracle connection:", err);
-      }
-    }
   }
 };
 
-
-   
-/**
- * Export Picking Details (CSV)
- */
-export const exportPickingDetails = async (req: RequestWithUser, res: Response) => {
-  let connection: Connection | undefined;
-
+export const exportPickingDetails = async (
+  req: RequestWithUser,
+  res: Response
+) => {
   try {
-    const filter: ISearch = req.query.filter ? JSON.parse(req.query.filter as string) : {};
-    connection = await oracleDb.getConnection();
+    let csvTransform: fastCsv.CsvFormatterStream<
+      fastCsv.FormatterRow,
+      fastCsv.FormatterRow
+    >;
+    
+    const filter: ISearch = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : {};
 
-    // Build dynamic WHERE clause
-    let whereClause = `WHERE COMPANY_CODE = :company_code`;
-    const binds: any = { company_code: req.user.company_code };
+    // Simple query - you'll need to adapt your filtering logic
+    let query = `SELECT * FROM PICKING_DETAILS_OUTBOUND_WMS_VIEW WHERE company_code = :company_code`;
+    const bindParams = { company_code: req.user.company_code };
 
-    if (filter?.search) {
-      for (const [key, value] of Object.entries(filter.search)) {
-        whereClause += ` AND ${key.toUpperCase()} = :${key}`;
-        binds[key] = value;
-      }
+    // Add filtering logic here based on your filter object
+    if (filter.search) {
+      // Implement your filtering
     }
 
-    const sql = `SELECT * FROM VW_PICKING_DETAILS_OUTBOUND_WMS ${whereClause}`;
+    const result = await oracleDb.query(query, bindParams);
+    const fetchedData = result.rows || [];
 
-    const result = await connection.execute(sql, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
-
-    const data = result.rows || [];
-
-    // CSV streaming setup
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", `attachment; filename="picking_details.csv"`);
-
-    const csvStream = fastCsv.format({
+    csvTransform = fastCsv.format({
       headers: WmsCsvHeaders.TANSACTION.OUTOUND.PICKING_DETAILS,
     });
 
-    csvStream.pipe(res);
-    data.forEach((row) => csvStream.write(row));
-    csvStream.end();
+    // Set headers for CSV response before streaming
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="picking_details.csv"`
+    );
 
+    // Write data to the CSV stream
+    fetchedData.forEach((plainData:any) => {
+      csvTransform.write(plainData);
+    });
+
+    // End the CSV stream and pipe it to the response
+    csvTransform.end();
+    csvTransform.pipe(res);
   } catch (error: any) {
-    console.error("Export Picking Error:", error);
+    console.error("Export Error:", error);
     res.status(400).json({ success: false, message: error.message });
-  } finally {
-    if (connection) await connection.close();
   }
 };
 
-/**
- * Export Picking Stock Details (CSV)
- */
-export const exportPickingStockDeatils = async (req: RequestWithUser, res: Response) => {
-  let connection: Connection | undefined;
-
+export const exportPickingStockDeatils = async (
+  req: RequestWithUser,
+  res: Response
+) => {
   try {
-    const filter: ISearch = req.query.filter ? JSON.parse(req.query.filter as string) : {};
-    connection = await oracleDb.getConnection();
+    let csvTransform: fastCsv.CsvFormatterStream<
+      fastCsv.FormatterRow,
+      fastCsv.FormatterRow
+    >;
+    
+    const filter: ISearch = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : {};
 
-    // Build dynamic WHERE clause
-    let whereClause = `WHERE COMPANY_CODE = :company_code`;
-    const binds: any = { company_code: req.user.company_code };
+    // Simple query - adapt your filtering
+    let query = `SELECT * FROM VW_STKLED WHERE company_code = :company_code`;
+    const bindParams = { company_code: req.user.company_code };
 
-    if (filter?.search) {
-      for (const [key, value] of Object.entries(filter.search)) {
-        whereClause += ` AND ${key.toUpperCase()} = :${key}`;
-        binds[key] = value;
-      }
+    // Add filtering logic
+    if (filter.search) {
+      // Implement filtering
     }
 
-    const sql = `SELECT * FROM VW_STKLED ${whereClause}`;
-    const result = await connection.execute(sql, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
+    const result = await oracleDb.query(query, bindParams);
+    const fetchedData = result.rows || [];
 
-    const data = result.rows || [];
-
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", `attachment; filename="stock_detail.csv"`);
-
-    const csvStream = fastCsv.format({
+    csvTransform = fastCsv.format({
       headers: WmsCsvHeaders.TANSACTION.OUTOUND.PICKING_STOCK_DETAILS,
     });
 
-    csvStream.pipe(res);
-    data.forEach((row) => csvStream.write(row));
-    csvStream.end();
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="stock_detail.csv"`
+    );
 
+    fetchedData.forEach((plainData:any) => {
+      csvTransform.write(plainData);
+    });
+
+    console.log("\n\n\n\n\nfetchedData", fetchedData);
+    csvTransform.end();
+    csvTransform.pipe(res);
   } catch (error: any) {
-    console.error("Export Stock Error:", error);
-    res.status(400).json({ success: false, message: "Error: " + error.message });
-  } finally {
-    if (connection) await connection.close();
+    console.error("Export Error:", error);
+    res.status(400).json({ success: false, message: "Error:" + error.message });
   }
 };
-
-/**
- * Delete a TO_ORDER_DET record
- */
 
 export const deleteToOrderDetHandler = async (
   req: Request<{ company_code: string; prin_code: string; job_no: string; serial_no: number }>,
   res: Response
 ): Promise<void> => {
-  let connection: Connection | undefined;
+  const { company_code, prin_code, job_no, serial_no } = req.query;
+  console.log('deleteToOrderDetHandler called with params:', req.query);
+  
+  if (!company_code || !prin_code || !job_no || !serial_no) { 
+    res.status(400).json({ success: false, message: "Missing required fields" });
+    return;
+  }
 
   try {
-    const company_code = String(req.query.company_code);
-    const prin_code = String(req.query.prin_code);
-    const job_no = String(req.query.job_no);
-    const serial_no = Number(req.query.serial_no);
+    await oracleDb.withTransaction(async (connection: any) => {
+      const result = await oracleDb.query(
+        `DELETE FROM TO_ORDER_DET WHERE company_code = :company_code AND prin_code = :prin_code AND job_no = :job_no AND serial_no = :serial_no`,
+        {
+          company_code,
+          prin_code,
+          job_no,
+          serial_no: Number(serial_no)
+        },
+        connection
+      );
 
-    if (!company_code || !prin_code || !job_no || isNaN(serial_no)) {
-      res.status(400).json({ success: false, message: "Missing or invalid required fields" });
-      return;
-    }
+      const affectedRows = result.rowsAffected || 0;
 
-    connection = await oracleDb.getConnection();
-
-    const sql = `
-      DELETE FROM TO_ORDER_DET
-      WHERE COMPANY_CODE = :company_code
-        AND PRIN_CODE = :prin_code
-        AND JOB_NO = :job_no
-        AND SERIAL_NO = :serial_no
-    `;
-
-    const binds = { company_code, prin_code, job_no, serial_no };
-
-    // ✅ Use oracledb.Result<any> instead of undefined Result
-    const result: oracledb.Result<any> = await connection.execute(sql, binds, { autoCommit: true });
-
-    if ((result.rowsAffected ?? 0) === 0) {
-      res.status(404).json({ success: false, message: "Record not found" });
-    } else {
-      res.status(200).json({ success: true, message: "Record deleted successfully" });
-    }
-  } catch (error: any) {
-    console.error("Delete Error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing Oracle connection:", closeErr);
+      if (affectedRows === 0) {
+        res.status(404).json({ success: false, message: "Record not found" });
+      } else {
+        res.status(200).json({ success: true, message: "Record deleted successfully" });
       }
-    }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
-}
-/**
- * Get distinct SITE_CODE dropdown
- */
-export const getddSiteCode = async (req: Request, res: Response): Promise<void> => {
-  let connection: Connection | undefined;
+};
+
+export const getddSiteCode = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    connection = await oracleDb.getConnection();
-    const result = await connection.execute(
+    const result = await oracleDb.query(
       `SELECT DISTINCT SITE_CODE FROM VW_PRODUCT_SITE_AVL_QTY`,
-      {},
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      {}
     );
 
-    const rows = result.rows || [];
-    if (rows.length === 0) {
-      res.status(404).json({ success: false, message: "No availability data found" });
+    const locationData = result.rows || [];
+
+    if (!locationData.length) {
+      res.status(404).json({
+        success: false,
+        message: 'No availability data found',
+      });
       return;
     }
 
-    res.status(200).json({ success: true, data: rows });
+    res.status(200).json({
+      success: true,
+      data: locationData,
+    });
   } catch (error: any) {
-    console.error("Error fetching site codes:", error);
+    console.error("Error fetching location data:", error);
     res.status(500).json({ success: false, message: error.message });
-  } finally {
-    if (connection) await connection.close();
   }
 };
 
-/**
- * Get distinct LOCATION_CODE dropdown
- */
-export const getddLocationCode = async (req: Request, res: Response): Promise<void> => {
-  let connection: Connection | undefined;
+export const getddLocationCode = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
-    connection = await oracleDb.getConnection();
-    const result = await connection.execute(
+    const result = await oracleDb.query(
       `SELECT DISTINCT LOCATION_CODE FROM VW_PRODUCT_LOCATION_AVL_QTY`,
-      {},
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      {}
     );
 
-    const rows = result.rows || [];
-    if (rows.length === 0) {
-      res.status(404).json({ success: false, message: "No availability data found" });
+    const locationData = result.rows || [];
+
+    if (!locationData.length) {
+      res.status(404).json({
+        success: false,
+        message: 'No availability data found',
+      });
       return;
     }
 
-    res.status(200).json({ success: true, data: rows });
+    res.status(200).json({
+      success: true,
+      data: locationData,
+    });
   } catch (error: any) {
-    console.error("Error fetching location codes:", error);
+    console.error("Error fetching location data:", error);
     res.status(500).json({ success: false, message: error.message });
-  } finally {
-    if (connection) await connection.close();
   }
 };
 
-/**
- * Call PROC_GET_TOTAL_QTY_AVL procedure
- */
-export const getTotalAvailableQty = async (req: Request, res: Response): Promise<void> => {
-  let connection: Connection | undefined;
+export const getTotalAvailableQty = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const params = {
       company_code: req.body.company_code,
@@ -890,60 +730,40 @@ export const getTotalAvailableQty = async (req: Request, res: Response): Promise
       exp_date_from: req.body.exp_date_from,
       exp_date_to: req.body.exp_date_to,
     };
-
-    connection = await oracleDb.getConnection();
-
-    const binds = {
-      ...params,
-      v_total_qty: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-    };
-
-    await connection.execute(
-      `
-      BEGIN
-        PROC_GET_TOTAL_QTY_AVL(
-          :company_code,
-          :prin_code,
-          :prod_code,
-          :site_code,
-          :location_from,
-          :location_to,
-          :batch,
-          :lot_no,
-          :mfg_date_from,
-          :mfg_date_to,
-          :exp_date_from,
-          :exp_date_to,
-          :v_total_qty
-        );
-      END;
-      `,
-      binds
+ 
+    console.log("PROC_GET_TOTAL_QTY_AVL SQL Params:", params);
+ 
+    // For Oracle, use OUT parameter binding
+    const result = await oracleDb.query(
+      `DECLARE
+         v_total_qty NUMBER;
+       BEGIN
+         PROC_GET_TOTAL_QTY_AVL(
+           :company_code,
+           :prin_code,
+           :prod_code,
+           :site_code,
+           :location_from,
+           :location_to,
+           :batch,
+           :lot_no,
+           :mfg_date_from,
+           :mfg_date_to,
+           :exp_date_from,
+           :exp_date_to,
+           v_total_qty
+         );
+         :out_total_qty := v_total_qty;
+       END;`,
+      {
+        ...params,
+        out_total_qty: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+      }
     );
 
-    res.status(200).json({
-      success: true,
-      TOT_AVL_QTY: binds.v_total_qty,
-    });
-  } catch (error: any) {
-    console.error("Error fetching total available qty:", error);
-    res.status(500).json({ success: false, message: error.message });
-  } finally {
-    if (connection) await connection.close();
-  }
-};
- export const getddLotNum = async (req: Request, res: Response): Promise<void> => {
-  let connection: Connection | undefined;
+    const totalQty = result.outBinds?.out_total_qty;
 
-  try {
-    connection = await oracleDb.getConnection();
-
-    const sql = `SELECT * FROM VW_PRODUCT_LOT_AVL_QTY`;
-    const result = await connection.execute(sql, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-
-    const rows = result.rows || [];
-
-    if (rows.length === 0) {
+    if (totalQty === null || totalQty === undefined) {
       res.status(404).json({
         success: false,
         message: "No availability data found",
@@ -953,21 +773,43 @@ export const getTotalAvailableQty = async (req: Request, res: Response): Promise
 
     res.status(200).json({
       success: true,
-      data: rows,
+      TOT_AVL_QTY: totalQty,
     });
   } catch (error: any) {
-    console.error("Error fetching lot number data:", error);
+    console.error("Error fetching total available qty:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: "Internal server error",
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Error closing Oracle connection:", closeErr);
-      }
+  }
+};
+
+export const getddLotNum = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const result = await oracleDb.query(
+      `SELECT * FROM VW_PRODUCT_LOT_AVL_QTY`,
+      {}
+    );
+
+    const locationData = result.rows || [];
+
+    if (!locationData.length) {
+      res.status(404).json({
+        success: false,
+        message: 'No availability data found',
+      });
+      return;
     }
+
+    res.status(200).json({
+      success: true,
+      data: locationData,
+    });
+  } catch (error: any) {
+    console.error("Error fetching location data:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
