@@ -22,8 +22,6 @@ export interface IPurchaseRequestHeader {
   project_code: string;
   wo_number?: string;
   type_of_contract?: string;
-  amc_from: Date;
-  amc_to: Date;
   type_of_material_supply?: string;
   capex_opex_non_opex?: string;
   contract_soft_hard?: string;
@@ -229,8 +227,6 @@ class Ponotgenerated extends Model {
   declare description: string;
   declare project_code: string;
   declare type_of_contract: string;
-  declare amc_from: Date;
-  declare amc_to: Date;
   declare type_of_material_supply: string;
   declare material_mechanical: string;
   declare material_electrical: string;
@@ -357,11 +353,8 @@ class PurchaseRequestHeader extends Model {
   declare document_number: string;
   declare request_date: Date;
   declare description: string;
-  declare sendback_histry: string;
   declare project_code: string;
   declare type_of_contract: string;
-  declare amc_from: Date;
-  declare amc_to: Date;
   declare type_of_material_supply: string;
   declare material_mechanical: string;
   declare material_electrical: string;
@@ -422,10 +415,6 @@ PurchaseRequestHeader.init(
     },
     description: {
       type: DataTypes.STRING(200),
-      allowNull: true,
-    },
-    sendback_histry: {
-      type: DataTypes.STRING(500),
       allowNull: true,
     },
     amount: {
@@ -598,16 +587,6 @@ PurchaseRequestHeader.init(
     type_of_contract: {
       type: DataTypes.STRING(200),
       allowNull: true,
-    },
-    amc_from: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
-    },
-    amc_to: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
     },
     type_of_material_supply: {
       type: DataTypes.STRING(200),

@@ -1,12 +1,9 @@
 import * as express from "express";
 import passport from "passport";
-
-
 import {
-  getPurchasefMaster,
-  //deletepfMaster,
-} from "../../src/controllers/Purchaseflow/PurchaseFlowMaster.controller"
-
+  getPfMaster,
+  deletepfMaster,
+} from "../controllers/Purchaseflow/purchaseflow.controller";
 
 import gmPfRouter from "./Purchaseflow/gm_purchaseflow.routes";
 import gmpurchaserequestRouter from "./Purchaseflow/transaction/gm_purchaserequest.routes";
@@ -33,7 +30,7 @@ router.get(
   "/:master",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  getPurchasefMaster
+  getPfMaster
 );
 
 router.use(
@@ -43,11 +40,9 @@ router.use(
   gmPfRouter
 );
 
-/*router.post(
+router.post(
   "/:master",
   passport.authenticate("jwt", { session: false }),
   deletepfMaster
-);*/
+);
 export default router;
-
-
