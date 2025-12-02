@@ -1100,17 +1100,17 @@ case "supplier":
 //   }
 //   break;
 // Fetching ddepartment data from the DDdepartmentjob model
-// case "ddepartment":
-//   {
-//     // Fetch ddepartment data with company code and optional pagination
-//     (fetchedData = await DDdepartmentjob.findAll({
-//       where: { company_code: requestUser.company_code },
-//       ...paginationOptions,
-//     })) as unknown[] as IDepartmentjob[];
-//     // Log fetched data for debugging purposes
-//     console.log(fetchedData);
-//   }
-//   break;
+case "ddepartment":
+  {
+    // Fetch ddepartment data with company code and optional pagination
+    (fetchedData = await DDdepartmentjob.findAll({
+      where: { company_code: requestUser.company_code },
+      ...paginationOptions,
+    })) as unknown[] as IDepartmentjob[];
+    // Log fetched data for debugging purposes
+    console.log(fetchedData);
+  }
+  break;
 // Fetching dddivision data from the DDdivisionjob model
 // case "dddivision":
 //   {
