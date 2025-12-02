@@ -1,16 +1,14 @@
-import { sequelize } from "../../database/connection";
-import { Request, Response } from "express";
-import { QueryTypes, Transaction } from "sequelize"; // Add Transaction import
-import { NextFunction } from "express";
-import { IFiles, RequestWithUser } from "../../interfaces/common.interface";
-import {
-  IPurchaseRequestPf,
+import { IPurchaseRequestPf ,
   IItemPrRequest,
   IPrtermnscondition,
 } from "../../interfaces/Purchaseflow/Purucahseflow.interface";
+import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection";
+
+import { notifyUser } from "../../helpers/functions";
 import constants from "../../helpers/constants";
-import { createLog, notifyUser } from "../../helpers/functions";
-import { formatDate } from "../../utils/formatDate";
+
+
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -26,7 +24,7 @@ async function retryOnDeadlock<T>(
   try {
     return await operation();
   } catch (error: any) {
-    if (retries > 0 && error.original?.code === "ER_LOCK_DEADLOCK") {
+    if (retries > 0 && error.errorNum === 60) { // ORA-00060: deadlock detected
       await sleep(RETRY_DELAY);
       return retryOnDeadlock(operation, retries - 1);
     }
@@ -34,205 +32,71 @@ async function retryOnDeadlock<T>(
   }
 }
 
-export const updatePrintSignatureInfo = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { ref_doc_no, loginid, flag_yes_no } = req.body;
-    console.log(
-      "ref_doc_no, loginid, flag_yes_no",
-      ref_doc_no,
-      loginid,
-      flag_yes_no
-    );
-    const formattedRefDocNo = ref_doc_no.replace(/\//g, "$");
-    console.log("formattedRefDocNo", formattedRefDocNo);
-
-    // Call the stored procedure with formatted ref_doc_no
-    const procCall = `CALL PROC_PRINT_SIGNATURE_INFO(:ref_doc_no, :loginid, :flag_yes_no)`;
-
-    await sequelize.query(procCall, {
-      replacements: {
-        ref_doc_no: formattedRefDocNo,
-        loginid,
-        flag_yes_no,
-      },
-      transaction,
-    });
-
-    await transaction.commit();
-
-    res.status(200).json({
-      success: true,
-      message: "Signature info updated successfully",
-    });
-  } catch (error: any) {
-    await transaction.rollback();
-    console.error("Error calling stored procedure:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal Server Error",
-    });
-  }
-};
-
-export const updateReasonForPO = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  const transaction = await sequelize.transaction(); // Optional, but good for consistency
-
-  try {
-    const { ref_doc_no, company_code, reason_po_modify, loginid } = req.body;
-
-    // Validate input
-    if (!ref_doc_no || !company_code || !reason_po_modify || !loginid) {
-      res.status(400).json({
-        success: false,
-        message:
-          "All fields (ref_doc_no, company_code, reason_po_modify, loginid) are required",
-      });
-      return;
-    }
-
-    if (reason_po_modify.trim() === "") {
-      res.status(400).json({
-        success: false,
-        message: "Enter Reason for Purchase Order",
-      });
-      return;
-    }
-
-    const updateQuery = `
-      UPDATE PURCHASE_REQUEST_DETAILS
-      SET reason_for_po_modify = :reason_po_modify,
-          updated_by = :loginid
-      WHERE company_code = :company_code AND ref_doc_no = :ref_doc_no
-    `;
-
-    await sequelize.query(updateQuery, {
-      replacements: {
-        reason_po_modify,
-        company_code,
-        ref_doc_no,
-        loginid,
-      },
-      type: QueryTypes.UPDATE,
-      transaction,
-    });
-
-    await transaction.commit();
-
-    res.status(200).json({
-      success: true,
-      message: "Reason for PO modification updated successfully",
-    });
-  } catch (error: any) {
-    await transaction.rollback();
-    console.error("Error updating reason for PO:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal Server Error",
-    });
-  }
-};
-
-// Replace the existing upsertPurchaseRequest function
 export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
-  let transaction: Transaction | undefined;
-  const transactionState = {
-    committed: false,
-    rolledBack: false,
-  };
+  let connection: oracledb.Connection | undefined;
 
   try {
-    transaction = await sequelize.transaction();
+    connection = await oracleDb.getConnection();
+
+    // Start transaction (Oracle implicitly starts a transaction)
+    await connection.execute("BEGIN NULL; END;"); // dummy block
 
     const isAddMode = !data.requestNumber;
     let generatedRequestNumber = data.requestNumber;
 
     // Handle POGEN case
     if (data.last_action === "POGEN") {
-      let key_request_number = data.requestNumber.replace(/\//g, "$");
-      await sequelize.query(
-        "CALL PRO_GEN_JESRA_PO_NO(:companyCode, :requestNumber, :userId, :prinCode)",
+      const key_request_number = data.requestNumber.replace(/\//g, "$");
+      await connection.execute(
+        `BEGIN PRO_GEN_JESRA_PO_NO(:companyCode, :requestNumber, :userId, :prinCode); END;`,
         {
-          replacements: {
-            companyCode: data.companyCode,
-            requestNumber: key_request_number,
-            userId: "RIJASC",
-            prinCode: "10001",
-          },
-          transaction,
+          companyCode: data.companyCode,
+          requestNumber: key_request_number,
+          userId: "RIJASC",
+          prinCode: "10001",
         }
       );
-      await transaction.commit();
+      await connection.commit();
       return;
     }
 
-    // Ensure transaction exists before proceeding
-    if (!transaction) {
-      throw new Error("Failed to start transaction");
-    }
+    // Insert/update header and retrieve request number if needed
+    generatedRequestNumber = await upsertPurchaseRequestHeader(data, connection);
 
-    // Core database operations
-    const requestNumber = await upsertPurchaseRequestHeader(data, transaction);
-
-    if (isAddMode) {
-      const [[{ code }]]: any = await sequelize.query(
-        `SELECT code FROM GT_SESSION_INFO WHERE session_id = CONNECTION_ID() LIMIT 1;`,
-        { transaction }
-      );
-      if (code) {
-        generatedRequestNumber = code;
-      }
-    }
-
+    // Insert/update details
     await upsertPurchaseRequestDetails(
-      data.div_code ?? '',              // Ensure string
       data.items,
       data.companyCode,
       generatedRequestNumber,
       data.projectCode,
-      transaction
+      connection
     );
 
+    // Insert/update terms & conditions
     await updatetermscondition(
       data.termconditions,
       data.companyCode,
       generatedRequestNumber,
-      transaction
+      connection
     );
 
-    // Commit transaction before email operations
-    await transaction.commit();
-    transactionState.committed = true;
-    transaction = undefined; // Mark as committed
+    // Commit transaction
+    await connection.commit();
 
-    // Email operations outside transaction
+    // Send notification email if not a draft
     if (data.last_action !== "SAVEASDRAFT") {
       try {
-        const request_users = await getRequestUsers(data);
-        const cc = await getCCList(data, request_users, generatedRequestNumber);
-        const formattedRequestNumber = generatedRequestNumber.replace(
-          /\//g,
-          "$"
+        const request_users = await getRequestUsers(data, connection);
+        const cc = await getCCList(data, request_users, generatedRequestNumber, connection);
+        const createdByResult = await connection.execute(
+          `SELECT CREATED_BY FROM PURCHASE_REQUEST_HEADER WHERE REQUEST_NUMBER = :requestNumber`,
+          { requestNumber: generatedRequestNumber.replace(/\//g, "$") },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        const [createdByResult]: any = await sequelize.query(
-          `SELECT CREATED_BY FROM PURCHASE_REQUEST_HEADER WHERE REQUEST_NUMBER = :requestNumber LIMIT 1`,
-          { replacements: { requestNumber: formattedRequestNumber } }
-        );
-        const createdBy = createdByResult?.[0]?.CREATED_BY || "Unknown";
-        const htmlMessage = await generateEmailTemplate(
-          data,
-          generatedRequestNumber,
-          createdBy
-        );
+        const createdBy = createdByResult.rows?.[0]?.CREATED_BY || "Unknown";
+
+        const htmlMessage = await generateEmailTemplate(data, generatedRequestNumber, createdBy);
+
         await notifyUser({
           event: constants.EVENTS.TRANSACTION_COMPLETED,
           request_users,
@@ -240,586 +104,582 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
           message: "",
           htmlMessage,
         });
-      } catch (error) {
-        console.error("Error sending notification:", error);
-        // Don't rethrow - email errors shouldn't fail the transaction
+      } catch (emailError) {
+        console.error("Error sending notification:", emailError);
       }
     }
 
     return generatedRequestNumber;
   } catch (error) {
-    if (
-      transaction &&
-      !transactionState.committed &&
-      !transactionState.rolledBack
-    ) {
+    if (connection) {
       try {
-        await transaction.rollback();
-        transactionState.rolledBack = true;
+        await connection.rollback();
       } catch (rollbackError) {
-        console.error("Error during rollback:", rollbackError);
+        console.error("Error rolling back transaction:", rollbackError);
       }
     }
     throw error;
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error closing Oracle connection:", closeError);
+      }
+    }
   }
 }
 
-// Add these helper functions
-async function getRequestUsers(data: IPurchaseRequestPf) {
-  await sequelize.query(
-    `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,'')`,
-    {
-      replacements: {
+
+
+
+
+export async function getRequestUsers(
+  data: IPurchaseRequestPf,
+  connection?: oracledb.Connection
+): Promise<string> {
+  let conn: oracledb.Connection | undefined = connection;
+
+  try {
+    // If no connection is passed, get a new one
+    if (!conn) {
+      conn = await oracleDb.getConnection();
+    }
+
+    // 1️⃣ Call the procedure PROC_LOADMESSAGEBOX
+    await conn.execute(
+      `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :emptyStr); END;`,
+      {
         screen: "PRSUBMIT",
         type: "success",
         document_number: data.requestNumber,
         userId: data.updated_by,
-      },
-    }
-  );
+        emptyStr: "",
+      }
+    );
 
-  const [rows]: any = await sequelize.query(
-    `SELECT FUN_EMAIL_SENT_STRING(:companyCode, FUN_GET_FLOW_ROLE_AL(:updatedBy, :companyCode)) AS email_cc`,
-    {
-      replacements: {
+    // 2️⃣ Query to get the email string
+    const result = await conn.execute(
+      `SELECT FUN_EMAIL_SENT_STRING(:companyCode, FUN_GET_FLOW_ROLE_AL(:updatedBy, :companyCode)) AS EMAIL_CC FROM DUAL`,
+      {
         companyCode: data.companyCode,
         updatedBy: data.updated_by,
       },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const email_cc = result.rows?.[0]?.EMAIL_CC || "";
+    return email_cc;
+  } catch (error) {
+    console.error("Error fetching request users:", error);
+    throw error;
+  } finally {
+    if (!connection && conn) {
+      try {
+        await conn.close();
+      } catch (closeError) {
+        console.error("Error closing Oracle connection:", closeError);
+      }
     }
-  );
-  return rows[0].email_cc;
+  }
 }
 
-async function getCCList(
+
+export async function getCCList(
   data: IPurchaseRequestPf,
   request_users: string,
-  requestNumber: string
-) {
-  const [rows]: any = await sequelize.query(
-    `SELECT FUN_EMAIL_CC_STRING(:companyCode, :createdBy, :requestUsers, :requestNumber) AS email_cc`,
-    {
-      replacements: {
+  requestNumber: string,
+  connection?: oracledb.Connection
+): Promise<string> {
+  let conn: oracledb.Connection | undefined = connection;
+
+  try {
+    if (!conn) {
+      conn = await oracleDb.getConnection();
+    }
+
+    const result = await conn.execute(
+      `SELECT FUN_EMAIL_CC_STRING(:companyCode, :createdBy, :requestUsers, :requestNumber) AS EMAIL_CC FROM DUAL`,
+      {
         companyCode: data.companyCode,
         createdBy: data.created_by,
         requestUsers: request_users,
         requestNumber,
       },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const row = result.rows?.[0] as { EMAIL_CC: string } | undefined;
+    return row?.EMAIL_CC || "";
+  } catch (error) {
+    console.error("Error fetching CC list:", error);
+    throw error;
+  } finally {
+    if (!connection && conn) {
+      try {
+        await conn.close();
+      } catch (closeError) {
+        console.error("Error closing Oracle connection:", closeError);
+      }
     }
-  );
-  return rows[0].email_cc;
+  }
 }
 
-// Function to insert or update PURCHASE_REQUEST_HEADER
-async function upsertPurchaseRequestHeader(
+
+
+export async function upsertPurchaseRequestHeader(
   data: IPurchaseRequestPf,
-  transaction: Transaction
+  connection: oracledb.Connection
 ): Promise<string> {
-  if (!transaction) {
-    throw new Error("Transaction is required");
+  if (!connection) {
+    throw new Error("Oracle connection is required");
   }
-  // If requestNumber is null or an empty string, directly insert a new record
+
   let ls_new_flag = "No";
-  if (!data.requestNumber || data.requestNumber === "") {
+
+  // New record insertion
+  if (!data.requestNumber || data.requestNumber.trim() === "") {
     ls_new_flag = "Yes";
-    data.service_type =
-      data.service_type === undefined ? "" : data.service_type;
-    data.type_of_pr = data.type_of_pr === undefined ? "" : data.type_of_pr;
-    data.covered_by_contract_yes = data.covered_by_contract_yes || "No";
-    data.flag_sharing_cost = data.flag_sharing_cost || "No";
-    data.budgeted_yes = data.budgeted_yes || "No";
-    data.checked_store_yes = data.checked_store_yes || "No";
-    let ls_flow_type = "PUR";
-    //SECOND LINE FOR HARDCODE VALUE
-    console.log("updatedby", data.updated_by);
-    console.log('print div_code', data.div_code);
-    const insertQuery = `INSERT INTO PURCHASE_REQUEST_HEADER (DIV_CODE,ACCOMMODATION,
-   CATERING, LAUNDRY_HOUSEKEEPING, MEDICAL, TRANSPORTATION, TRAINING, RECRUITMENT_HR, UNIFORM, STATIONARY, IT_TECH, FURNITURE, ENTERTAINMENT, BARBER, OTHERS, REQUESTOR_NAME,
-  CONTRACT_SOFT_HARD, AMC_SERVICE_STATUS, MATERIAL_MECHANICAL, MATERIAL_ELECTRICAL, MATERIAL_PLUMBING, MATERIAL_TOOLS, MATERIAL_CIVIL, MATERIAL_AC, MATERIAL_CLEANING, MATERIAL_OTHER,
-  SERVICES_TEMP_STAFF, SERVICES_RENTALS, SERVICES_SUBCON_CONSLT, SERVICES_OTHER, OTHER_STATIONERY, OTHER_IT, OTHER_NEW_UNIFORM_PPE, OTHER_RPLCMT_UNIFORM, OTHER_OTHER, GOOD_MATERIAL_REQUEST,
-  SERVICE_REQUEST, TYPE_OF_CONTRACT, TYPE_OF_MATERIAL_SUPPLY, REMARKS, WO_NUMBER, REQUEST_DATE, DESCRIPTION, PROJECT_CODE, COMPANY_CODE, CREATED_BY, LAST_ACTION, LAST_UPDATED,
-  FLOW_TYPE, FLOW_CODE, HISTORY_SERIAL, UPDATED_AT, SERVICE_TYPE, NEED_BY_DATE, TYPE_OF_PR, COVERED_BY_CONTRACT_YES, FLAG_SHARING_COST, BUDGETED_YES, CHECKED_STORE_YES
-) VALUES (?, ?,
- ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-  ?, ?, 'PUR', '001', 1, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?
-)
-`;
 
-    const [result]: any = await sequelize.query(insertQuery, {
-      replacements: [
-        //added this
-        data.div_code,
-        data.accommodation,
-        data.catering,
-data.laundry_housekeeping,
-data.medical,
-data.transportation,
-data.training,
-data.recruitment_hr,
-data.uniform,
-data.stationary,
-data.it_tech,
-data.furniture,
-data.entertainment,
-data.barber,
-data.others,
-data.requestor_name,
-// end here.
+    const insertSql = `
+      INSERT INTO PURCHASE_REQUEST_HEADER (
+        AMC_FROM, AMC_TO, DIV_CODE, ACCOMMODATION, CATERING, LAUNDRY_HOUSEKEEPING,
+        MEDICAL, TRANSPORTATION, TRAINING, RECRUITMENT_HR, UNIFORM, STATIONARY,
+        IT_TECH, FURNITURE, ENTERTAINMENT, BARBER, OTHERS, REQUESTOR_NAME,
+        CONTRACT_SOFT_HARD, AMC_SERVICE_STATUS, MATERIAL_MECHANICAL, MATERIAL_ELECTRICAL,
+        MATERIAL_PLUMBING, MATERIAL_TOOLS, MATERIAL_CIVIL, MATERIAL_AC, MATERIAL_CLEANING,
+        MATERIAL_OTHER, SERVICES_TEMP_STAFF, SERVICES_RENTALS, SERVICES_SUBCON_CONSLT,
+        SERVICES_OTHER, OTHER_STATIONERY, OTHER_IT, OTHER_NEW_UNIFORM_PPE,
+        OTHER_RPLCMT_UNIFORM, OTHER_OTHER, GOOD_MATERIAL_REQUEST, SERVICE_REQUEST,
+        TYPE_OF_CONTRACT, TYPE_OF_MATERIAL_SUPPLY, REMARKS, WO_NUMBER, REQUEST_DATE,
+        DESCRIPTION, PROJECT_CODE, COMPANY_CODE, CREATED_BY, LAST_ACTION, LAST_UPDATED,
+        FLOW_TYPE, FLOW_CODE, HISTORY_SERIAL, UPDATED_AT, SERVICE_TYPE, NEED_BY_DATE,
+        TYPE_OF_PR, COVERED_BY_CONTRACT_YES, FLAG_SHARING_COST, BUDGETED_YES, CHECKED_STORE_YES
+      ) VALUES (
+        :amc_from, :amc_to, :div_code, :accommodation, :catering, :laundry_housekeeping,
+        :medical, :transportation, :training, :recruitment_hr, :uniform, :stationary,
+        :it_tech, :furniture, :entertainment, :barber, :others, :requestor_name,
+        :contract_soft_hard, :amc_service_status, :material_mechanical, :material_electrical,
+        :material_plumbing, :material_tools, :material_civil, :material_ac, :material_cleaning,
+        :material_other, :services_temp_staff, :services_rentals, :services_subcon_conslt,
+        :services_other, :other_stationery, :other_it, :other_new_uniform_ppe,
+        :other_rplcmt_uniform, :other_other, :good_material_request, :service_request,
+        :type_of_contract, :type_of_material_supply, :remarks, :wo_number, :request_date,
+        :description, :project_code, :company_code, :created_by, :last_action, :updated_by,
+        'PUR', '001', 1, SYSTIMESTAMP, :service_type, :need_by_date,
+        :type_of_pr, :covered_by_contract_yes, :flag_sharing_cost, :budgeted_yes, :checked_store_yes
+      )
+    `;
 
-        data.contract_soft_hard,
-        data.amc_service_status,
-        data.material_mechanical,
-        data.material_electrical,
-        data.material_plumbing,
-        data.material_tools,
-        data.material_civil,
-        data.material_ac,
-        data.material_cleaning,
-        data.material_other,
-        data.services_temp_staff,
-        data.services_rentals,
-        data.services_subcon_conslt,
-        data.services_other,
-        data.other_stationery,
-        data.other_it,
-        data.other_new_uniform_ppe,
-        data.other_rplcmt_uniform,
-        data.other_other,
-        data.good_material_request,
-        data.service_request,
-        data.type_of_contract,
-        data.type_of_material_supply,
-        data.remarks,
-        data.wo_number,
-        data.requestDate,
-        data.description,
-        data.projectCode,
-        data.companyCode,
-        data.created_by,
-        data.last_action,
-        data.updated_by,
-        data.service_type, // New column
-        data.need_by_date, // Newly added column
-        data.type_of_pr,
-        data.covered_by_contract_yes,
-        data.flag_sharing_cost,
-        data.budgeted_yes,
-        data.checked_store_yes,
-      ],
-      transaction,
-    });
+    await connection.execute(insertSql, {
+      amc_from: data.amc_from,
+      amc_to: data.amc_to,
+      div_code: data.div_code,
+      accommodation: data.accommodation,
+      catering: data.catering,
+      laundry_housekeeping: data.laundry_housekeeping,
+      medical: data.medical,
+      transportation: data.transportation,
+      training: data.training,
+      recruitment_hr: data.recruitment_hr,
+      uniform: data.uniform,
+      stationary: data.stationary,
+      it_tech: data.it_tech,
+      furniture: data.furniture,
+      entertainment: data.entertainment,
+      barber: data.barber,
+      others: data.others,
+      requestor_name: data.requestor_name,
+      contract_soft_hard: data.contract_soft_hard,
+      amc_service_status: data.amc_service_status,
+      material_mechanical: data.material_mechanical,
+      material_electrical: data.material_electrical,
+      material_plumbing: data.material_plumbing,
+      material_tools: data.material_tools,
+      material_civil: data.material_civil,
+      material_ac: data.material_ac,
+      material_cleaning: data.material_cleaning,
+      material_other: data.material_other,
+      services_temp_staff: data.services_temp_staff,
+      services_rentals: data.services_rentals,
+      services_subcon_conslt: data.services_subcon_conslt,
+      services_other: data.services_other,
+      other_stationery: data.other_stationery,
+      other_it: data.other_it,
+      other_new_uniform_ppe: data.other_new_uniform_ppe,
+      other_rplcmt_uniform: data.other_rplcmt_uniform,
+      other_other: data.other_other,
+      good_material_request: data.good_material_request,
+      service_request: data.service_request,
+      type_of_contract: data.type_of_contract,
+      type_of_material_supply: data.type_of_material_supply,
+      remarks: data.remarks,
+      wo_number: data.wo_number,
+      request_date: data.requestDate,
+      description: data.description,
+      project_code: data.projectCode,
+      company_code: data.companyCode,
+      created_by: data.created_by,
+      last_action: data.last_action,
+      updated_by: data.updated_by,
+      service_type: data.service_type,
+      need_by_date: data.need_by_date,
+      type_of_pr: data.type_of_pr,
+      covered_by_contract_yes: data.covered_by_contract_yes,
+      flag_sharing_cost: data.flag_sharing_cost,
+      budgeted_yes: data.budgeted_yes,
+      checked_store_yes: data.checked_store_yes,
+    }, { autoCommit: false });
 
-    // Retrieve the generated request number from the insert result
-    const userid = data.updated_by;
-    // Query to get the session code
-    /*  const getSessionCode: { code: string }[][] = (await sequelize.query(
-      `SELECT code from GT_SESSION_INFO WHERE USERID='${userid}'`
-    )) as { code: string }[][];
-
-    // return $code; // Return the newly generated request number
-    console.log("header3");
-    const generatedRequestNumber = getSessionCode[0][0].code;
-    console.log(
-      `Inserted new record with request number: ${generatedRequestNumber}`
-    );*/
-    return data.requestNumber;
-    // return generatedRequestNumber; // Return the newly generated request number
+    return data.requestNumber; // For Oracle, return input or generate sequence separately
   }
-  let key_request_number = data.requestNumber.replace(/\//g, "$");
-  // If requestNumber is provided and is not empty, check if the record exists
-  const exists = await headerRecordExists(
-    data.requestNumber,
-    data.companyCode,
-    transaction
-  );
 
+  // Existing record update
+  const key_request_number = data.requestNumber.replace(/\//g, "$");
+  const exists = await headerRecordExists(data.requestNumber, data.companyCode, connection);
   if (!exists) {
-    // Raise an error if the requestNumber does not exist
-    throw new Error(
-      `Request number ${data.requestNumber} does not exist in PURCHASE_REQUEST_HEADER.`
-    );
+    throw new Error(`Request number ${data.requestNumber} does not exist in PURCHASE_REQUEST_HEADER.`);
   }
 
-    // Update existing record if it exists
-  if (ls_new_flag === "No") {
-    console.log("update purchase request   No");
-    ls_new_flag = "No";
-    const updateQuery = `
+  const updateSql = `
     UPDATE PURCHASE_REQUEST_HEADER
-    SET 
-    ACCOMMODATION = ?,
-   CATERING = ?, LAUNDRY_HOUSEKEEPING = ?, MEDICAL = ?, TRANSPORTATION = ?, TRAINING = ?, RECRUITMENT_HR = ?, UNIFORM = ?, STATIONARY = ?, IT_TECH = ?, FURNITURE = ?, ENTERTAINMENT = ?, BARBER = ?, OTHERS = ?, REQUESTOR_NAME = ?,
-
-      REQUEST_DATE = ?,
-      DESCRIPTION = ?,
-      PROJECT_CODE = ?,
-      UPDATED_BY = ?,
-      LAST_UPDATED = ?,
-      WO_NUMBER = ?,
-      REMARKS = ?,
-      TYPE_OF_CONTRACT = ?,
-      TYPE_OF_MATERIAL_SUPPLY = ?,
-      CONTRACT_SOFT_HARD = ?,
-      AMC_SERVICE_STATUS = ?,
-      MATERIAL_MECHANICAL= ?,
-MATERIAL_ELECTRICAL = ?,
-MATERIAL_PLUMBING = ?,
-MATERIAL_TOOLS = ?,
-MATERIAL_CIVIL = ?,
-MATERIAL_AC = ?,
-MATERIAL_CLEANING = ?,
-MATERIAL_OTHER = ?,
-SERVICES_TEMP_STAFF = ?,
-SERVICES_RENTALS = ?,
-SERVICES_SUBCON_CONSLT = ?,
-SERVICES_OTHER = ?,
-OTHER_STATIONERY = ?,
-OTHER_IT = ?,
-OTHER_NEW_UNIFORM_PPE = ?,
-OTHER_RPLCMT_UNIFORM = ?,
-OTHER_OTHER = ?,
-GOOD_MATERIAL_REQUEST = ?,
-SERVICE_REQUEST = ?,
-LAST_ACTION = ?,
-    SERVICE_TYPE = ?,         -- newly added
-      NEED_BY_DATE = ?,         -- newly added
-HISTORY_SERIAL = 1,
-
-TYPE_OF_PR = ?,
- COVERED_BY_CONTRACT_YES = ?,
-    FLAG_SHARING_COST = ?,  
-      BUDGETED_YES = ?,
-      CHECKED_STORE_YES = ?,
-      FLOW_LEVEL_RUNNING = ?
-    
-    WHERE REQUEST_NUMBER = ? AND COMPANY_CODE = ?;
+    SET
+      ACCOMMODATION = :accommodation,
+      CATERING = :catering,
+      LAUNDRY_HOUSEKEEPING = :laundry_housekeeping,
+      MEDICAL = :medical,
+      TRANSPORTATION = :transportation,
+      TRAINING = :training,
+      RECRUITMENT_HR = :recruitment_hr,
+      UNIFORM = :uniform,
+      STATIONARY = :stationary,
+      IT_TECH = :it_tech,
+      FURNITURE = :furniture,
+      ENTERTAINMENT = :entertainment,
+      BARBER = :barber,
+      OTHERS = :others,
+      REQUESTOR_NAME = :requestor_name,
+      REQUEST_DATE = :request_date,
+      DESCRIPTION = :description,
+      PROJECT_CODE = :project_code,
+      UPDATED_BY = :updated_by,
+      LAST_UPDATED = SYSTIMESTAMP,
+      WO_NUMBER = :wo_number,
+      REMARKS = :remarks,
+      TYPE_OF_CONTRACT = :type_of_contract,
+      AMC_FROM = :amc_from,
+      AMC_TO = :amc_to,
+      TYPE_OF_MATERIAL_SUPPLY = :type_of_material_supply,
+      CONTRACT_SOFT_HARD = :contract_soft_hard,
+      AMC_SERVICE_STATUS = :amc_service_status,
+      MATERIAL_MECHANICAL= :material_mechanical,
+      MATERIAL_ELECTRICAL = :material_electrical,
+      MATERIAL_PLUMBING = :material_plumbing,
+      MATERIAL_TOOLS = :material_tools,
+      MATERIAL_CIVIL = :material_civil,
+      MATERIAL_AC = :material_ac,
+      MATERIAL_CLEANING = :material_cleaning,
+      MATERIAL_OTHER = :material_other,
+      SERVICES_TEMP_STAFF = :services_temp_staff,
+      SERVICES_RENTALS = :services_rentals,
+      SERVICES_SUBCON_CONSLT = :services_subcon_conslt,
+      SERVICES_OTHER = :services_other,
+      OTHER_STATIONERY = :other_stationery,
+      OTHER_IT = :other_it,
+      OTHER_NEW_UNIFORM_PPE = :other_new_uniform_ppe,
+      OTHER_RPLCMT_UNIFORM = :other_rplcmt_uniform,
+      OTHER_OTHER = :other_other,
+      GOOD_MATERIAL_REQUEST = :good_material_request,
+      SERVICE_REQUEST = :service_request,
+      LAST_ACTION = :last_action,
+      SERVICE_TYPE = :service_type,
+      NEED_BY_DATE = :need_by_date,
+      TYPE_OF_PR = :type_of_pr,
+      COVERED_BY_CONTRACT_YES = :covered_by_contract_yes,
+      FLAG_SHARING_COST = :flag_sharing_cost,
+      BUDGETED_YES = :budgeted_yes,
+      CHECKED_STORE_YES = :checked_store_yes,
+      FLOW_LEVEL_RUNNING = :flow_level_running
+    WHERE REQUEST_NUMBER = :request_number
+      AND COMPANY_CODE = :company_code
   `;
-    console.log("flow_level_running", data.flow_level_running);
-    const replacements = [
-      data.accommodation,
-        data.catering,
-data.laundry_housekeeping,
-data.medical,
-data.transportation,
-data.training,
-data.recruitment_hr,
-data.uniform,
-data.stationary,
-data.it_tech,
-data.furniture,
-data.entertainment,
-data.barber,
-data.others,
-data.requestor_name,
-      data.requestDate,
-      data.description,
-      data.projectCode,
-      data.updated_by,
-      data.updated_by,
-      data.wo_number,
-      data.remarks,
-      data.type_of_contract,
-      data.type_of_material_supply,
-      data.contract_soft_hard,
-      data.amc_service_status,
-      data.material_mechanical,
-      data.material_electrical,
-      data.material_plumbing,
-      data.material_tools,
-      data.material_civil,
-      data.material_ac,
-      data.material_cleaning,
-      data.material_other,
-      data.services_temp_staff,
-      data.services_rentals,
-      data.services_subcon_conslt,
-      data.services_other,
-      data.other_stationery,
-      data.other_it,
-      data.other_new_uniform_ppe,
-      data.other_rplcmt_uniform,
-      data.other_other,
-      data.good_material_request,
-      data.service_request,
-      data.last_action,
-      data.service_type, // newly added
-      data.need_by_date, // newly added
-      data.type_of_pr,
-      data.covered_by_contract_yes,
-      data.flag_sharing_cost,
-      data.budgeted_yes,
-      data.checked_store_yes,
-      data.flow_level_running,
-      key_request_number,
-      data.companyCode,
-    ];
 
-    // Log each replacement value with its index
-    replacements.forEach((value, index) => {
-      console.log(`Replacement [${index}]:`, value);
-    });
+  await connection.execute(updateSql, {
+    accommodation: data.accommodation,
+    catering: data.catering,
+    laundry_housekeeping: data.laundry_housekeeping,
+    medical: data.medical,
+    transportation: data.transportation,
+    training: data.training,
+    recruitment_hr: data.recruitment_hr,
+    uniform: data.uniform,
+    stationary: data.stationary,
+    it_tech: data.it_tech,
+    furniture: data.furniture,
+    entertainment: data.entertainment,
+    barber: data.barber,
+    others: data.others,
+    requestor_name: data.requestor_name,
+    request_date: data.requestDate,
+    description: data.description,
+    project_code: data.projectCode,
+    updated_by: data.updated_by,
+    wo_number: data.wo_number,
+    remarks: data.remarks,
+    type_of_contract: data.type_of_contract,
+    amc_from: data.amc_from,
+    amc_to: data.amc_to,
+    type_of_material_supply: data.type_of_material_supply,
+    contract_soft_hard: data.contract_soft_hard,
+    amc_service_status: data.amc_service_status,
+    material_mechanical: data.material_mechanical,
+    material_electrical: data.material_electrical,
+    material_plumbing: data.material_plumbing,
+    material_tools: data.material_tools,
+    material_civil: data.material_civil,
+    material_ac: data.material_ac,
+    material_cleaning: data.material_cleaning,
+    material_other: data.material_other,
+    services_temp_staff: data.services_temp_staff,
+    services_rentals: data.services_rentals,
+    services_subcon_conslt: data.services_subcon_conslt,
+    services_other: data.services_other,
+    other_stationery: data.other_stationery,
+    other_it: data.other_it,
+    other_new_uniform_ppe: data.other_new_uniform_ppe,
+    other_rplcmt_uniform: data.other_rplcmt_uniform,
+    other_other: data.other_other,
+    good_material_request: data.good_material_request,
+    service_request: data.service_request,
+    last_action: data.last_action,
+    service_type: data.service_type,
+    need_by_date: data.need_by_date,
+    type_of_pr: data.type_of_pr,
+    covered_by_contract_yes: data.covered_by_contract_yes,
+    flag_sharing_cost: data.flag_sharing_cost,
+    budgeted_yes: data.budgeted_yes,
+    checked_store_yes: data.checked_store_yes,
+    flow_level_running: data.flow_level_running,
+    request_number: key_request_number,
+    company_code: data.companyCode,
+  }, { autoCommit: false });
 
-    await sequelize.query(updateQuery, {
-      replacements: [
-          data.accommodation,
-        data.catering,
-data.laundry_housekeeping,
-data.medical,
-data.transportation,
-data.training,
-data.recruitment_hr,
-data.uniform,
-data.stationary,
-data.it_tech,
-data.furniture,
-data.entertainment,
-data.barber,
-data.others,
-data.requestor_name,
-        data.requestDate,
-        data.description,
-        data.projectCode,
-        data.updated_by,
-        data.updated_by,
-        data.wo_number,
-        data.remarks,
-        data.type_of_contract,
-        data.type_of_material_supply,
-        data.contract_soft_hard,
-        data.amc_service_status,
-        data.material_mechanical,
-        data.material_electrical,
-        data.material_plumbing,
-        data.material_tools,
-        data.material_civil,
-        data.material_ac,
-        data.material_cleaning,
-        data.material_other,
-        data.services_temp_staff,
-        data.services_rentals,
-        data.services_subcon_conslt,
-        data.services_other,
-        data.other_stationery,
-        data.other_it,
-        data.other_new_uniform_ppe,
-        data.other_rplcmt_uniform,
-        data.other_other,
-        data.good_material_request,
-        data.service_request,
-        data.last_action,
-        data.service_type, // newly added
-        data.need_by_date, // newly added
-        data.type_of_pr,
-        data.covered_by_contract_yes,
-        data.flag_sharing_cost,
-        data.budgeted_yes,
-        data.checked_store_yes,
-        data.flow_level_running,
-        key_request_number,
-        data.companyCode,
-      ],
-      transaction,
-    });
-    console.log(
-      `Updated existing record for request number: ${data.requestNumber}`
-    );
-  }
-  return data.requestNumber; // Return the existing request number
+  return data.requestNumber;
 }
 
-// Function to insert or update PURCHASE_REQUEST_DETAILS items
-async function upsertPurchaseRequestDetails(
-  div_code: string,
+/**
+ * Insert or update PURCHASE_REQUEST_DETAILS items in Oracle
+ */
+export async function upsertPurchaseRequestDetails(
+
   items: IItemPrRequest[],
   companyCode: string,
   requestNumber: string,
-  projectcode: string,
-  transaction: Transaction
+  projectCode: string,
+  connection: oracledb.Connection
 ) {
-  // Sort items before processing
+  if (!connection) throw new Error("Oracle connection is required");
+
+  const key_request_number = requestNumber.replace(/\//g, "$");
+
+  // Delete existing records
+  const deleteSql = `
+    DELETE FROM PURCHASE_REQUEST_DETAILS
+    WHERE request_number = :request_number
+      AND company_code = :company_code
+  `;
+  await connection.execute(deleteSql, {
+    request_number: key_request_number,
+    company_code: companyCode,
+  });
+
+  // Sort items by sequence number
   const sortedItems = [...items].sort((a, b) => {
     const seqA = a.item_sequence_no ?? Number.MAX_SAFE_INTEGER;
     const seqB = b.item_sequence_no ?? Number.MAX_SAFE_INTEGER;
     return seqA - seqB;
   });
-  console.log("inside discount checking");
-  // Delete existing records
-  const key_request_number = requestNumber.replace(/\//g, "$");
-  await sequelize.query(
-    `DELETE FROM PURCHASE_REQUEST_DETAILS WHERE request_number = ? AND company_code = ?`,
-    {
-      replacements: [key_request_number, companyCode],
-      transaction,
-    }
-  );
 
   // Insert new records
+  const insertSql = `
+    INSERT INTO PURCHASE_REQUEST_DETAILS (
+      currency_rate, request_number, company_code, item_code, item_rate, amount, cost_code,
+      SERVICE_RM_FLAG, ITEM_P_QTY, P_UOM, ITEM_L_QTY, L_UOM,
+      ALLOCATED_APPROVED_QUANTITY, DISCOUNT_AMOUNT, FINAL_RATE, ADDL_ITEM_DESC,
+      UPP, SUPPLIER, PRIN_CODE, PROJECT_CODE, DIV_CODE, ITEM_SEQUENCE_NO, CURR_CODE
+    ) VALUES (
+      :currency_rate, :request_number, :company_code, :item_code, :item_rate, :amount, :cost_code,
+      :service_rm_flag, :item_p_qty, :p_uom, :item_l_qty, :l_uom,
+      :allocated_approved_quantity, :discount_amount, :final_rate, :addl_item_desc,
+      :upp, :supplier, :prin_code, :project_code, :div_code, :item_sequence_no, :curr_code
+    )
+  `;
+
   for (const item of sortedItems) {
-    console.log("1", item.item_code);
-    console.log("2", item.item_rate);
-    console.log("3", item.amount);
-    console.log("4", item.cost_code);
-    console.log("5", item.service_rm_flag);
-    console.log("6", item.item_p_qty);
-    console.log("6b", item.addl_item_desc);
-    console.log("6a", item.allocated_approved_quantity);
-    console.log("6c", item.upp);
-    //   console.log("7", item.p_uom);
-    console.log("8", item.item_l_qty);
-    console.log("9", item.l_uom);
-    console.log("10", item.supplier);
-    console.log("discount", item.discount_amount);
-    console.log("final rate", item.final_rate);
-    console.log("div_code");
-    //  console.log("10", item.last_action); 15
-    const insertQuery = `
-   INSERT INTO PURCHASE_REQUEST_DETAILS (
-        request_number, company_code, item_code, item_rate, amount, cost_code,
-        SERVICE_RM_FLAG, ITEM_P_QTY, P_UOM, ITEM_L_QTY, L_UOM,
-        ALLOCATED_APPROVED_QUANTITY, DISCOUNT_AMOUNT, FINAL_RATE, ADDL_ITEM_DESC,
-        UPP, SUPPLIER, PRIN_CODE, PROJECT_CODE, DIV_CODE, ITEM_SEQUENCE_NO, CURR_CODE
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-    `;
-
-    await sequelize.query(insertQuery, {
-      replacements: [
-        key_request_number,
-        companyCode,
-        item.item_code,
-        item.item_rate,
-        item.amount,
-        item.cost_code,
-        item.service_rm_flag,
-        item.item_p_qty,
-        item.p_uom,
-        item.item_l_qty,
-        item.l_uom,
-        item.allocated_approved_quantity,
-        item.discount_amount,
-        item.final_rate,
-        item.addl_item_desc,
-        item.upp,
-        item.supplier,
-        "10001",
-        projectcode,
-        div_code,
-        item.item_sequence_no,
-           item.curr_code // ✅ Only this line is added
-      ],
-      transaction,
+    await connection.execute(insertSql, {
+      currency_rate: item.currency_rate,
+      request_number: key_request_number,
+      company_code: companyCode,
+      item_code: item.item_code,
+      item_rate: item.item_rate,
+      amount: item.amount,
+      cost_code: item.cost_code,
+      service_rm_flag: item.service_rm_flag,
+      item_p_qty: item.item_p_qty,
+      p_uom: item.p_uom,
+      item_l_qty: item.item_l_qty,
+      l_uom: item.l_uom,
+      allocated_approved_quantity: item.allocated_approved_quantity,
+      discount_amount: item.discount_amount,
+      final_rate: item.final_rate,
+      addl_item_desc: item.addl_item_desc,
+      upp: item.upp,
+      supplier: item.supplier,
+      prin_code: "10001",
+      project_code: projectCode,
+      div_code: div_code,
+      item_sequence_no: item.item_sequence_no,
+      curr_code: item.curr_code,
     });
-
-    console.log(`Inserted new record for item ${item.item_code}`);
   }
-  // ✅ Call the stored procedure after completing the loop to check old po amount for cancel po and created new PR
-  await sequelize.query(`CALL PRO_CHECK_OLD_PO_AMOUNT(?, ?)`, {
-    replacements: [companyCode, key_request_number],
-    transaction,
-  });
+
+  // Call stored procedure to check old PO amount
+  await connection.execute(
+    `BEGIN PRO_CHECK_OLD_PO_AMOUNT(:company_code, :request_number); END;`,
+    {
+      company_code: companyCode,
+      request_number: key_request_number,
+    }
+  );
 }
 
-// Function to check if a header record exists
-async function headerRecordExists(
+/**
+ * Check if a header record exists in Oracle
+ */
+export async function headerRecordExists(
   requestNumber: string,
   companyCode: string,
-  transaction: Transaction
+  connection: oracledb.Connection
 ): Promise<boolean> {
-  if (!transaction) {
-    throw new Error("Transaction is required");
-  }
-  if (requestNumber == null) {
-    return false; // Return false if requestNumber is null
-  }
+  if (!connection) throw new Error("Oracle connection is required");
+  if (!requestNumber) return false;
 
-  const query = `
-    SELECT count(*) FROM PURCHASE_REQUEST_HEADER
-    WHERE REQUEST_NUMBER = ? AND COMPANY_CODE = ?;
-  `;
-  const [results] = await sequelize.query(query, {
-    replacements: [requestNumber, companyCode],
-    transaction,
-  });
+  const result = await connection.execute<{ COUNT: number }>(
+    `
+    SELECT COUNT(*) AS COUNT
+    FROM PURCHASE_REQUEST_HEADER
+    WHERE REQUEST_NUMBER = :request_number
+      AND COMPANY_CODE = :company_code
+  `,
+    {
+      request_number: requestNumber,
+      company_code: companyCode,
+    },
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
 
-  return results.length > 0;
+  // Safely get COUNT value with fallback 0
+  const count = result.rows?.[0]?.COUNT ?? 0;
+
+  return count > 0;
 }
 
-// Function to check if a detail record exists
-async function detailRecordExists(
+/**
+ * Check if a detail record exists in Oracle
+ */
+export async function detailRecordExists(
   requestNumber: string,
   companyCode: string,
   itemCode: string,
-  transaction: Transaction
+  connection: oracledb.Connection
 ): Promise<boolean> {
-  const query = `
-    SELECT 1 FROM PURCHASE_REQUEST_DETAILS
-    WHERE request_number = ? AND company_code = ? AND item_code = ?;
-  `;
-  const [results] = await sequelize.query(query, {
-    replacements: [requestNumber, companyCode, itemCode],
-    transaction,
-  });
-  return results.length > 0;
+  if (!connection) throw new Error("Oracle connection is required");
+
+  const result = await connection.execute<{ COUNT: number }>(
+    `
+    SELECT COUNT(*) AS COUNT
+    FROM PURCHASE_REQUEST_DETAILS
+    WHERE request_number = :request_number
+      AND company_code = :company_code
+      AND item_code = :item_code
+  `,
+    {
+      request_number: requestNumber,
+      company_code: companyCode,
+      item_code: itemCode,
+    },
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+
+  const count = result.rows?.[0]?.COUNT ?? 0;
+
+  return count > 0;
 }
 
-async function updatetermscondition(
+
+
+export async function updatetermscondition(
   termconditions: IPrtermnscondition[],
   companyCode: string,
   requestNumber: string,
-  transaction: Transaction
+  connection: oracledb.Connection
 ) {
-  try {
-    let key_request_number = requestNumber.replace(/\//g, "$");
+  if (!connection) throw new Error("Oracle connection is required");
 
-    // Step 1: Delete existing records for the given request_number and company_code
-    const deleteQuery = `
+  const key_request_number = requestNumber.replace(/\//g, "$");
+
+  try {
+    // Step 1: Delete existing records
+    const deleteSql = `
       DELETE FROM PR_SUPPL_TERM_COND
-      WHERE request_number = ? AND company_code = ?;
+      WHERE request_number = :request_number
+        AND company_code = :company_code
     `;
-    await sequelize.query(deleteQuery, {
-      replacements: [key_request_number, companyCode],
-      transaction,
-    });
+
+    await connection.execute(deleteSql, {
+      request_number: key_request_number,
+      company_code: companyCode,
+    }, { autoCommit: false });
+
     console.log(
       `Deleted existing records for request_number ${requestNumber} and company_code ${companyCode}`
     );
+
     if (!termconditions || termconditions.length === 0) {
       console.log("No term conditions received from backend.");
-      // return; // or handle accordingly
+      return;
     }
 
-    // Step 2: Insert new records for each item in the termconditions array
-    for (const Termscondition of termconditions) {
-      const insertQuery = `
-        INSERT INTO PR_SUPPL_TERM_COND(request_number, company_code, supplier, remarks, dlvr_term, payment_terms, quatation_reference,delivery_address)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-      `;
+    // Step 2: Insert new records
+    const insertSql = `
+      INSERT INTO PR_SUPPL_TERM_COND (
+        request_number, company_code, supplier, remarks, dlvr_term, payment_terms, quatation_reference, delivery_address
+      ) VALUES (
+        :request_number, :company_code, :supplier, :remarks, :dlvr_term, :payment_terms, :quotation_reference, :delivery_address
+      )
+    `;
 
-      await sequelize.query(insertQuery, {
-        replacements: [
-          key_request_number,
-          companyCode,
-          Termscondition.tsupplier,
-          Termscondition.remarks,
-          Termscondition.dlvr_term,
-          Termscondition.payment_terms,
-          Termscondition.quotation_reference, // Corrected spelling
-          Termscondition.delivery_address,
-        ],
-        transaction,
-      });
-      //  await transaction.commit();
-      // Log the inserted record, typically log more meaningful info
-      console.log(
-        `Inserted new record for supplier ${Termscondition.tsupplier}`
-      );
+    for (const term of termconditions) {
+      await connection.execute(insertSql, {
+        request_number: key_request_number,
+        company_code: companyCode,
+        supplier: term.tsupplier,
+        remarks: term.remarks,
+        dlvr_term: term.dlvr_term,
+        payment_terms: term.payment_terms,
+        quotation_reference: term.quotation_reference,
+        delivery_address: term.delivery_address,
+      }, { autoCommit: false });
+
+      console.log(`Inserted new record for supplier ${term.tsupplier}`);
     }
+
   } catch (error) {
-    console.error("Error in upserting purchase request details:", error);
-    throw error; // Re-throw error to be handled by the caller if needed
+    console.error("Error in upserting purchase request term conditions:", error);
+    throw error;
   }
 }
+
 export const saveFile = async (
   req: RequestWithUser,
   res: Response
