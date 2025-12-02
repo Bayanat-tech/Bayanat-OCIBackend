@@ -17,7 +17,7 @@ export class Log {
   @Column({ name: "DESCRIPTION", type: "varchar2", length: 45 })
   description!: string;
 
-  @Column({ name: "READ_FLAG", type: "varchar2", length: 1 })
+  @Column({ name: "READ", type: "varchar2", length: 1 })
   read!: string;
 
   @Column({ name: "CREATED_BY", type: "varchar2", length: 45 })

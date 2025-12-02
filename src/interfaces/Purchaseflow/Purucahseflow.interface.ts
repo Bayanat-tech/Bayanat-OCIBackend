@@ -182,8 +182,6 @@ export interface IdropdownProjectmaster {
 // Basic Purchase Request Interface
 // Basic Purchase Request Interface
 export interface IBasicPrRequest {
-  flow_type: string
-  last_updated: string;
   requestNumber: string; // Unique identifier for the purchase request (required)
   requestDate: Date; // Date of the request (required)
   description: string; // Description of the request (required)
@@ -191,8 +189,6 @@ export interface IBasicPrRequest {
   wo_number?: string; // Work order number (optional)
   remarks?: string; // Additional remarks (optional)
   type_of_contract?: string; // Type of contract (optional)
-  amc_from: Date;
-  amc_to: Date;
   type_of_material_supply?: string; // Type of material supply (optional)
   contract_soft_hard?: string; // Type of contract (soft or hard) (optional)
   amc_service_status?: string; // AMC service status (optional)
