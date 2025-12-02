@@ -15,4 +15,5 @@ export interface IUser {
   active_flag: string;
   SEC_PASSWD: string;
   APPLICATION?: string;
+  user_id?: any;
 }
