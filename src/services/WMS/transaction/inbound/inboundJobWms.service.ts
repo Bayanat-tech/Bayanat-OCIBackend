@@ -1,102 +1,118 @@
-import { Repository, DataSource, FindOptionsWhere } from 'typeorm';
-import { InboundJobWms } from '../../../../entities/wms/transaction/inbound/InboundJobWms.entity';
-import { GrnReport } from '../../../../entities/wms/transaction/inbound/GrnReport.entity';
-import { PackingDetailsInboundWms } from '../../../../entities/wms/transportation/inbound/PackingDetailsInboundWms.entity';
-import { Product } from '../../../../entities/wms/Product.entity';
-import { ISearch } from '../../../../interfaces/common.interface';
-import { formatData, groupByContainerNo, getTiPackdetSeriesData } from '../../../../helpers/functions';
+import { getRepository } from "../../../../database/connection";
+import { InboundJobWms } from "../../../../entity/WMS/transaction/inbound/InboundJobWms.entity";
+import { IJobInboundWms } from "../../../../interfaces/wms/transaction/inbound/inboundJobWms.interface";
+import { FindManyOptions } from "typeorm";
 
 export class InboundJobWmsService {
-  private inboundJobRepository: Repository<InboundJobWms>; 
-  private grnReportRepository: Repository<GrnReport>;
-  private packingDetailsRepository: Repository<PackingDetailsInboundWms>;
-
-  constructor(private dataSource: DataSource) {
-    this.inboundJobRepository = this.dataSource.getRepository(InboundJobWms);
-    this.grnReportRepository = this.dataSource.getRepository(GrnReport);
-    this.packingDetailsRepository = this.dataSource.getRepository(PackingDetailsInboundWms);
+  private static getInboundJobRepository() {
+    return getRepository(InboundJobWms);
   }
 
-  async getInboundJobByJobNo(job_no: string): Promise<InboundJobWms | null> {
-    return await this.inboundJobRepository.findOne({
-      where: { job_no }
+  // Find a single inbound job by composite key
+  static async findOne(params: {
+    company_code: string;
+    prin_code: string;
+    job_no: string;
+  }): Promise<InboundJobWms | null> {
+    const repository = this.getInboundJobRepository();
+    return await repository.findOne({
+      where: {
+        company_code: params.company_code,
+        prin_code: params.prin_code,
+        job_no: params.job_no,
+      },
     });
   }
 
-  async getGrnReports(
-    company_code: string,
-    prin_code: string,
-    job_no: string,
-    page: number,
-    limit: number,
-    filter: ISearch
-  ) {
-    const skip = page * limit - limit;
+  // Find all inbound jobs with optional filters
+  static async findAll(
+    options?: FindManyOptions<InboundJobWms>
+  ): Promise<InboundJobWms[]> {
+    const repository = this.getInboundJobRepository();
+    return await repository.find(options);
+  }
 
-    // Build where conditions
-    const whereConditions: FindOptionsWhere<GrnReport> = {
-      company_code,
-      prin_code,
-      job_no,
-    };
+  // Find inbound jobs by company code
+  static async findByCompanyCode(
+    company_code: string
+  ): Promise<InboundJobWms[]> {
+    const repository = this.getInboundJobRepository();
+    return await repository.find({
+      where: { company_code },
+    });
+  }
 
-    // Apply search filter if exists
-    // Note: You'll need to adapt getSearchFilterQuery for TypeORM
-    // For now, this is a simplified version
+  // Find inbound jobs with search filters
+  static async findWithFilters(
+    whereConditions: any
+  ): Promise<InboundJobWms[]> {
+    const repository = this.getInboundJobRepository();
+    return await repository.find({
+      where: whereConditions,
+    });
+  }
 
-    // Get total count
-    const totalCount = await this.grnReportRepository.count({
-      where: whereConditions
+  // Create a new inbound job
+  static async create(
+    inboundJobData: Partial<IJobInboundWms>
+  ): Promise<InboundJobWms> {
+    const repository = this.getInboundJobRepository();
+
+    const inboundJob = repository.create({
+      ...inboundJobData,
     });
 
-    // Build query with sorting
-    const queryBuilder = this.grnReportRepository
-      .createQueryBuilder('grn')
-      .where(whereConditions);
+    return await repository.save(inboundJob);
+  }
 
-    // Apply sorting
-    if (filter?.sort && Object.keys(filter.sort).length > 0) {
-      queryBuilder.orderBy(
-        `grn.${filter.sort.field_name}`,
-        filter.sort.desc ? 'DESC' : 'ASC'
-      );
-    }
+  // Update an inbound job
+  static async update(
+    params: {
+      company_code: string;
+      prin_code: string;
+      job_no: string;
+    },
+    updateData: Partial<IJobInboundWms>
+  ): Promise<InboundJobWms | null> {
+    const repository = this.getInboundJobRepository();
 
-    // Apply pagination
-    queryBuilder
-      .skip(skip)
-      .take(limit || totalCount);
-
-    const grnReportData = await queryBuilder.getMany();
-
-    // Process and format data
-    const groupedData = groupByContainerNo(grnReportData);
-    const fetchedData = await Promise.all(
-      groupedData.map((data) => formatData(data, getTiPackdetSeriesData))
+    await repository.update(
+      {
+        company_code: params.company_code,
+        prin_code: params.prin_code,
+        job_no: params.job_no,
+      },
+      {
+        ...updateData,
+      }
     );
 
-    return {
-      totalCount,
-      data: fetchedData
-    };
+    // Return the updated record
+    return await this.findOne(params);
   }
 
-  async getTallyProductData(
-    prin_code: string,
-    job_no: string,
-    container_no: string
-  ) {
-    return await this.packingDetailsRepository
-      .createQueryBuilder('packing')
-      .leftJoinAndSelect('packing.product', 'product')
-      .where('packing.prin_code = :prin_code', { prin_code })
-      .andWhere('packing.job_no = :job_no', { job_no })
-      .andWhere('packing.container_no = :container_no', { container_no })
-      .andWhere('product.prin_code = :prin_code', { prin_code })
-      .select([
-        'packing',
-        'product.uom_count'
-      ])
-      .getMany();
+  // Delete an inbound job
+  static async delete(params: {
+    company_code: string;
+    prin_code: string;
+    job_no: string;
+  }): Promise<boolean> {
+    const repository = this.getInboundJobRepository();
+
+    const result = await repository.delete({
+      company_code: params.company_code,
+      prin_code: params.prin_code,
+      job_no: params.job_no,
+    });
+
+    return (result.affected ?? 0) > 0;
+  }
+
+  // Count inbound jobs with optional filters
+  static async count(whereConditions?: any): Promise<number> {
+    const repository = this.getInboundJobRepository();
+    return await repository.count({
+      where: whereConditions,
+    });
   }
 }

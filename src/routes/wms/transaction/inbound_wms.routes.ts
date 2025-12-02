@@ -6,11 +6,11 @@
 
 import * as express from "express";
 import passport from "passport";
-import {
-  getInboundJob,
-  getReports,
-  getTallyProductData,
-} from "../../../controllers/wms/transaction/inbound/inboundJobWms.controller";
+// import {
+//   getInboundJob,
+//   getReports,
+//   getTallyProductData,
+// } from "../../../controllers/wms/transaction/inbound/inboundJobWms.controller";
 // import {
 //   createBulkPAckingDetails, // Create multiple packing details at once
 //   createPackingItem, // Create single packing item
@@ -33,6 +33,7 @@ import {
   createShipmentItem, // Create single shipment item
   deleteShipmentItem, // Delete shipment item
   exportShipmentDetails, // Export shipment details
+  getAllShipmentDetails, // Get all shipment details with pagination
   getShipmentDetail, // Get shipment details
   updateShipmentItem, // Update shipment item
 } from "../../../controllers/wms/transaction/inbound/shipmentdetails_wms.controller";
@@ -44,15 +45,14 @@ import { checkUserAuthorization } from "../../../middleware/checkUserAthorizatio
 // import { updateQualityclearance } from "../../../controllers/wms/transaction/inbound/qualityClearance_wms.controller";
 import createinboundjobWms from "../../../views/wms/transportation/inbound/createinboundJobWms";
 import {executeRawSql,executeRawSqlbody} from "../../../../src/controllers/wms.controller"
-
-
+import {createInboundjob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 // import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
 // import  { getddSiteLocation }   from "../../../../src/views/wms/transportation/inbound/ddSiteLocation"
 // import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
-// import {
-//   createInboundjob, // Create new inbound job
-//   GetsingleInboundjob, // Get single inbound job
-// } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
+import {
+  getInboundJob, // Get single inbound job
+  GetsingleInboundjob, // Update inbound job
+} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 // import {
 //   getconfirmInboundjob, // Get confirmation details
 //   confirmInboundjob, // Confirm inbound job
@@ -80,8 +80,16 @@ router.get(
   getInboundJob
 );
 
+// Update inbound job
+router.put(
+  "/job/:job_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  GetsingleInboundjob
+);
+
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
-// router.post("/inboundjob", createInboundjob);
+router.post("/inboundjob", createInboundjob);
 //router.put("/inboundjob", GetsingleInboundjob);
 
 // router.put(
@@ -93,7 +101,12 @@ router.get(
 
 // --------- Shipment Details---------
 router.get("/shipment_details/export", exportShipmentDetails);
-router.get("/shipment_details", getShipmentDetail);
+router.get(
+  "/shipment_details",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAllShipmentDetails
+);
 router.post(
   "/shipment_details",
   passport.authenticate("jwt", { session: false }),
