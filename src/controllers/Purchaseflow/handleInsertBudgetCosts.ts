@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection";  // <-- use shared connection pool
 import { TCostbudget } from "../../interfaces/Purchaseflow/Budgetflow.interface";
-import { insertBudgetCost } from "./insertBudgetCost"; // Oracle version of insertBudgetCost
+import { insertBudgetCost } from "./insertBudgetCost";
 
 export const handleInsertBudgetCosts = async (
   req: Request,
@@ -31,14 +32,15 @@ export const handleInsertBudgetCosts = async (
   let connection: oracledb.Connection | undefined;
 
   try {
-    // Start Oracle transaction
-    connection = await oracledb.getConnection({
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      connectString: process.env.DB_CONN,
-    });
+    // -----------------------------------------------------------------------------------
+    // ✔ USE EXISTING POOL CONNECTION (NO NEW DB LOGIN)
+    // -----------------------------------------------------------------------------------
+    connection = await oracleDb.getConnection();
 
-    // Delete existing records for the request_number
+    // Start transaction context
+    await connection.execute("BEGIN NULL; END;");
+
+    // 1. DELETE old records
     await connection.execute(
       `
       DELETE FROM MS_PROJ_COST_MONTHWISE_BUDGET
@@ -50,25 +52,25 @@ export const handleInsertBudgetCosts = async (
 
     console.log(`Deleted existing records for request_number: ${request_number}`);
 
-    // Insert new records sequentially (safe for Oracle connections)
+    // 2. INSERT new records using your helper function
     for (const costBudget of values) {
       await insertBudgetCost(costBudget, connection);
     }
 
-    // Call success message procedure
+    // 3. Success message procedure
     await connection.execute(
       `BEGIN
-         PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, ''); 
+         PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, '');
        END;`,
       {
         screen: "BudetAllocation",
         type: "success",
-        document_number: "", // empty string as in original
+        document_number: "",
         userId: updated_by,
       }
     );
 
-    // Commit transaction
+    // 4. Commit transaction
     await connection.commit();
 
     res.status(200).json({
@@ -80,10 +82,9 @@ export const handleInsertBudgetCosts = async (
 
     if (connection) {
       try {
-        // Call error message procedure
         await connection.execute(
           `BEGIN
-             PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, ''); 
+             PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, '');
            END;`,
           {
             screen: "BudetAllocation",
@@ -104,7 +105,7 @@ export const handleInsertBudgetCosts = async (
     });
   } finally {
     if (connection) {
-      await connection.close();
+      await connection.close(); // release back to pool
     }
   }
 };
