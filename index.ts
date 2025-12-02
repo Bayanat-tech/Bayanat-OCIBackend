@@ -42,8 +42,6 @@ app.use("/api/security", secRoutes);
 
 app.use("/api/hr", hrRoutes);
 
-app.use("/api/pf",pfRoutes);
-
 app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
