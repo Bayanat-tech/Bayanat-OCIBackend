@@ -1326,7 +1326,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
-          "prem@bayanattechnology.com",
           ...(cc || []),
         ],
       subject: subject || `Leave Sent Back: ${request_user?.request_number || ""}`,
