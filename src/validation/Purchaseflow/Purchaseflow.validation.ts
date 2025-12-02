@@ -5,22 +5,8 @@ import {
   IItemtmaster,
   ISupplier,
   IMsPsCustomer,
-  IDivisionmaster,
 } from "../../interfaces/Purchaseflow/Purucahseflow.interface";
 import { IProjectmaster } from "../../interfaces/Purchaseflow/Purucahseflow.interface";
-
-export const divisionmasterSchema = (data: IDivisionmaster) => {
-   const schema = Joi.object().keys({
-    company_code: Joi.string().required(),
-    div_code: Joi.string().required(),
-    div_name: Joi.string().required(),
-    updated_at: Joi.date().allow("", null),
-    updated_by: Joi.string().allow(null, ""),
-    created_by: Joi.string().allow(null, ""),
-    created_at: Joi.date().allow("", null),
-  });
-  return schema.validate(data);
-};
 
 export const materialcategorySchema = (data: ICostmaster) => {
   const schema = Joi.object().keys({

@@ -16,6 +16,8 @@ import {
   updateLpoStatusHandler,
   executeRawSql,
   executeRawSqlbody,
+  proc_build_dynamic_sql,
+  executeVendorInvoicePrintHandler
 } from "./vendorupdation.controller";
 import { getVendorrequest } from "./getVendorrequest";
 
@@ -28,7 +30,7 @@ router.get("/accounts", getAccountsList);
 router.get("/getdynamicdata", getdynamicdata);
 router.get("/divisions", getDivisionList);
 router.get("/pending-lpo", getPendingLPOList);
-router.post("/executeRawSql", executeRawSql);
+router.post("/executeRawSql", executeRawSql,proc_build_dynamic_sql);
 router.post("/executeRawSqlbody", executeRawSqlbody);
 router.get("/pending-lpo-detail", getPendingLPODetail);
 router.get("/checkAccountEmployee", checkAccountEmployeeHandler);
@@ -38,5 +40,6 @@ router.get("/getInvoiceStatus", getInvoiceStatusHandler);
 router.get("/tmp-ac-header-with-erp-doc", getTmpAcHeaderWithErpDocNoHandler);
 router.post("/createVendor", createVendor);
 router.post("/updateLpoStatus", updateLpoStatusHandler);
+router.post("/executeVendorInvoicePrintHandler",executeVendorInvoicePrintHandler);
 
 export default router;

@@ -90,6 +90,26 @@ export const validateLeaveHandler = async (req: Request, res: Response) => {
   }
 };
 
+
+export const newvalidateLeaveHandler = async (req: Request, res: Response) => {
+  try {
+    const {
+      leaveStartDate,employeeId,leaveType
+    } = req.query;
+
+    const data = await HrService.newValidaterequest({
+      leaveStartDate: leaveStartDate as string,
+      employeeId: employeeId as string,
+      leaveType: leaveType as string,
+
+    });
+
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message }); 
+  }
+};
+
 export const getLeaveRequestsWithErpDocHandler = async (
   req: Request,
   res: Response
@@ -106,3 +126,41 @@ export const getLeaveRequestsWithErpDocHandler = async (
     res.status(500).json({ error: error.message });
   }
 };
+
+export const insertUploadedFileEmployeeHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const data = req.body;
+
+  if (!data || Object.keys(data).length === 0) {
+    res.status(400).json({ error: "No data provided for insert" });
+    return;
+  }
+
+  // Validate required fields
+  const requiredFields = [
+    "REQUEST_NUMBER",
+    "SR_NO",
+    "ORG_FILE_NAME",
+    "AWS_FILE_LOCN",
+    "EXTENSIONS",
+    "USER_FILE_NAME",
+  ];
+  const missingFields = requiredFields.filter((field) => !data[field]);
+  if (missingFields.length > 0) {
+    res.status(400).json({ error: "Missing required fields", fields: missingFields });
+    return;
+  }
+
+  try {
+    const result = await HrService.insertUploadedFileEmployee(data);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(500).json({
+      error: "Failed to insert uploaded file data",
+      message: error.message,
+    });
+  }
+};
+

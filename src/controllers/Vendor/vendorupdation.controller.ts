@@ -2,7 +2,8 @@ import { oracleDb } from "./../../../src/database/connection";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
 import { VendorService } from "../../services/vendor.service";
-
+import {sendVendorLpoNotifications} from "./sendVendorLpoNotifications";
+import {sendVendorLposendbackNotification} from "./sendVendorLposendbackNotification";
 import { notifyUser } from "../../../src/helpers/functions";
 
 function formatDateForOracle(date: unknown): string | null {
@@ -145,25 +146,28 @@ async function sendDataToDotNetAPI(
         console.error(`Failed to send file data for DOC_NO: ${docNo}`, error);
 
         // Send email notification for file upload failure
-        await notifyUser({
+        const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${
-            error.message || "Unknown error"
-          }`,
+          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
           subject: "Vendor API File Upload Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API File Upload Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${
-              error.message || "Unknown error"
-            }</p>
+            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
             <p><strong>File Details:</strong></p>
             <pre>${JSON.stringify(file, null, 2)}</pre>
           `,
-        });
+        };
+
+        try {
+          console.log("notifyUser payload (file upload):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (file upload):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (file upload):", notifErr);
+        }
         return;
       }
     }
@@ -236,12 +240,13 @@ async function sendDataToDotNetAPI(
       return;
     }
 
-    // Clean header data
+    // Clean header data 
     const cleanedHeaderData = VendorService.cleanDetail(headerData);
 
     // Fetch all columns from TR_AC_LPO_DETAIL
     const detailResult = await oracleDb.query(
       `SELECT 
+        NVL(ITEM_REMARK, '') AS ITEM_REMARK,
         NVL(COMPANY_CODE, '') AS COMPANY_CODE,
         NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
         NVL(DOC_NO, '') AS DOC_NO,
@@ -296,25 +301,28 @@ async function sendDataToDotNetAPI(
         console.error(`Failed to send detail for DOC_NO: ${docNo}`, error);
 
         // Send email notification for detail API failure
-        await notifyUser({
+        const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${
-            error.message || "Unknown error"
-          }`,
+          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
           subject: "Vendor API Detail Data Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API Detail Data Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${
-              error.message || "Unknown error"
-            }</p>
+            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
             <p><strong>Detail Data:</strong></p>
             <pre>${JSON.stringify(detail, null, 2)}</pre>
           `,
-        });
+        };
+
+        try {
+          console.log("notifyUser payload (detail failure):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (detail failure):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (detail failure):", notifErr);
+        }
         return;
       }
     }
@@ -325,25 +333,28 @@ async function sendDataToDotNetAPI(
     } catch (error: any) {
       console.error(`Failed to send header for DOC_NO: ${docNo}`, error);
 
-      await notifyUser({
+      const notifPayload = {
         event: "VENDOR_API_ERROR",
-        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${
-          error.message || "Unknown error"
-        }`,
+        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
         subject: "Vendor API Header Data Failed",
-        request_user:
-          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
         cc: "prem@bayanattechnology.com",
         htmlMessage: `
           <h3>Vendor API Header Data Failed</h3>
           <p><strong>Document No:</strong> ${docNo}</p>
-          <p><strong>Error Message:</strong> ${
-            error.message || "Unknown error"
-          }</p>
+          <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
           <p><strong>Header Data:</strong></p>
           <pre>${JSON.stringify(cleanedHeaderData, null, 2)}</pre>
         `,
-      });
+      };
+
+      try {
+        console.log("notifyUser payload (header failure):", notifPayload);
+        const notifResult: any = await notifyUser(notifPayload);
+        console.log("notifyUser result (header failure):", notifResult);
+      } catch (notifErr) {
+        console.error("notifyUser failed (header failure):", notifErr);
+      }
       return;
     }
 
@@ -446,11 +457,11 @@ async function upsertLpoRequestHeader(
   const rowsResult = await oracleDb.query(
     `SELECT COUNT(*) as cnt 
      FROM TR_AC_LPO_HEADER 
-     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND AC_CODE = :acCode`,
+     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo `,
     {
       companyCode: { val: company_code },
-      docNo: { val: doc_no },
-      acCode: { val: ac_code },
+      docNo: { val: doc_no }
+    
     },
     connection
   );
@@ -569,29 +580,24 @@ async function upsertLpoRequestHeader(
       pdoType: { val: defaultString(data.PDO_TYPE) },
     };
 
-    // Log the query and binds for debugging
-    console.log("Query:", insertQuery);
-    console.log("Binds:", JSON.stringify(replacements, null, 2));
-
     await oracleDb.query(insertQuery, replacements, connection);
   } else {
-    // Update query
     const updateQuery = `
-    UPDATE TR_AC_LPO_HEADER SET 
-      INVOICE_NUMBER = :invoiceNumber, 
-      INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
-      LAST_ACTION = :lastAction,
-      AC_CODE = :acCode, 
-      REF_DOC_NO = :refDocNo, 
-      REF_DATE = CASE WHEN :refDate IS NOT NULL THEN TO_DATE(:refDate, 'YYYY-MM-DD') ELSE NULL END,
-      REMARKS = :remarks,
-      CURR_CODE = :currCode, 
-      EX_RATE = :exRate, 
-      CANCELED = :canceled, 
-      EDIT_USER = :editUser, 
-      EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
-    WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo AND AC_CODE = :acCode
-  `;
+      UPDATE TR_AC_LPO_HEADER SET 
+        INVOICE_NUMBER = :invoiceNumber, 
+        INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
+        LAST_ACTION = :lastAction,
+        AC_CODE = :acCode, 
+        REF_DOC_NO = :refDocNo, 
+        REF_DATE = CASE WHEN :refDate IS NOT NULL THEN TO_DATE(:refDate, 'YYYY-MM-DD') ELSE NULL END,
+        REMARKS = :remarks,
+        CURR_CODE = :currCode, 
+        EX_RATE = :exRate, 
+      
+        EDIT_USER = :editUser, 
+        EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
+      WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo 
+    `;
 
     const updateReplacements = {
       invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
@@ -603,7 +609,7 @@ async function upsertLpoRequestHeader(
       remarks: { val: defaultString(data.REMARKS) },
       currCode: { val: defaultString(data.CURR_CODE) },
       exRate: { val: data.EX_RATE ?? 0 },
-      canceled: { val: data.CANCELED ?? false },
+     
       editUser: { val: defaultString(data.EDIT_USER) },
       editDate: { val: formatDateForOracle(new Date()) },
       companyCode: { val: company_code },
@@ -613,59 +619,7 @@ async function upsertLpoRequestHeader(
 
     await oracleDb.query(updateQuery, updateReplacements, connection);
   }
-
-  // Fetch the updated FLOW_LEVEL and LAST_ACTION
-  const flowLevelResult = await oracleDb.query(
-    `SELECT FLOW_LEVEL, LAST_ACTION 
-     FROM TR_AC_LPO_HEADER 
-     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
-    {
-      companyCode: { val: company_code },
-      docNo: { val: doc_no },
-    },
-    connection
-  ); 
-
-
-  console.log("flowLevelResult", flowLevelResult);
-
-  const flowLevelData = flowLevelResult.rows?.[0] || flowLevelResult[0];
-  const flowLevel = flowLevelData?.FLOW_LEVEL;
-  const lastAction = flowLevelData?.LAST_ACTION;
-
-  if ((lastAction === "SUBMITTED" || lastAction === "APPROVED") && (flowLevel === 1 || flowLevel === 2)) {
-    const emailInfoResult = await oracleDb.query(
-      `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS 
-       FROM VW_VENDOR_EMAIL_INFOR`,
-      {}, 
-      connection
-    );
-
-    const emailInfo = emailInfoResult.rows?.[0] || emailInfoResult[0];
-    const recipientEmails =
-      flowLevel === 1
-        ? emailInfo?.EMP_ID_LEVEL1_EMAILS
-        : emailInfo?.EMP_ID_LEVEL2_EMAILS;
-
-    if (recipientEmails) {
-      const subject = `Vendor Request Approval Required`;
-      const message = `Dear Approver,\n\nThe vendor request with Document No: ${doc_no} is awaiting your approval.\n\nBest regards,\nBayanat Technology`;
-      const htmlMessage = `
-        <p>Dear Approver,</p>
-        <p>The vendor request with <strong>Document No: ${doc_no}</strong> is awaiting your approval.</p>
-        <p>Best regards,<br>Bayanat Technology</p>
-      `;
-
-      await notifyUser({
-        event: "APPROVAL_NOTIFICATION",
-        request_users: recipientEmails,
-        subject,
-        message,
-        htmlMessage,
-      });
-    }
-  }
-
+  await sendVendorLpoNotifications({ companyCode: company_code, docNo: doc_no }, connection);
   return data.DOC_NO ?? "";
 }
 
@@ -703,7 +657,7 @@ async function upsertLpoRequestDetails(
     }
 
     const insertQuery = `
-    INSERT INTO TR_AC_LPO_DETAIL (
+    INSERT INTO TR_AC_LPO_DETAIL (ITEM_REMARK,
       SERIAL_NO, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, AC_CODE,
       HEADER_AC_CODE, REMARKS, AMOUNT, SIGN_IND, CURR_CODE,
       EX_RATE, LCUR_AMOUNT, CANCELLED, JOB_NO, DEPT_CODE, QTY,
@@ -715,7 +669,7 @@ async function upsertLpoRequestDetails(
       TX_COMPNT_LCURAMT_1, TX_COMPNT_LCURAMT_2, TX_COMPNT_LCURAMT_3, TX_COMPNT_LCURAMT_4,
       TX_COMPNT_1_EXPMT, TX_COMPNT_2_EXPMT, TX_COMPNT_3_EXPMT, TX_COMPNT_4_EXPMT,
       EDIT_USER, CREATE_USER
-    ) VALUES (
+    ) VALUES (:ITEM_REMARK,
       :SERIAL_NO, :COMPANY_CODE, :DOC_TYPE, :DOC_NO, 
       TO_DATE(:DOC_DATE, 'YYYY-MM-DD'),
       :AC_CODE, :HEADER_AC_CODE, :REMARKS, :AMOUNT, :SIGN_IND, :CURR_CODE,
@@ -748,6 +702,7 @@ async function upsertLpoRequestDetails(
     }
 
     const replacements = {
+        ITEM_REMARK: { val: safe(defaultString(item.ITEM_REMARK)) },
       SERIAL_NO: { val: safe(item.SERIAL_NO) },
       COMPANY_CODE: { val: safe(companyCode) },
       DOC_TYPE: { val: safe(defaultString(item.DOC_TYPE)) },
@@ -1251,89 +1206,162 @@ export const getTmpAcHeaderWithErpDocNoHandler = async (
   }
 };
 
-export const updateLpoStatusHandler = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+// export const updateLpoStatusHandler = async (
+//   req: Request,
+//   res: Response
+// ): Promise<void> => {
+//   const { doc_no, company_code, flow_level, remarks, action } = req.body;
+
+//   console.log("Updating LPO status:", {
+//     doc_no,
+//     company_code,
+//     flow_level,
+//     remarks,
+//     action,
+//   });
+
+//   if (
+//     !doc_no ||
+//     !company_code ||
+//     typeof flow_level !== "number" ||
+//     !remarks ||
+//     !action
+//   ) {
+//     res.status(400).json({
+//       success: false,
+//       message:
+//         "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
+//     });
+//     return;
+//   }
+
+//   if (action !== "SENTBACK" && action !== "REJECTED") {
+//     res.status(400).json({
+//       success: false,
+//       message: "Invalid action (must be SENTBACK or REJECTED)",
+//     });
+//     return;
+//   }
+
+//   try {
+//     // Check if record exists
+//     const existingResult = await oracleDb.query(
+//       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
+//       {
+//         doc_no: { val: doc_no },
+//         company_code: { val: company_code },
+//       }
+//     );
+
+//     const existing = existingResult.rows?.[0] || existingResult[0];
+
+//     if (!existing) {
+//       res.status(404).json({
+//         success: false,
+//         message: "LPO not found with the provided DOC_NO and COMPANY_CODE",
+//       });
+//       return;
+//     }
+
+//     const historyField =
+//       action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
+
+//     const query = `
+//       UPDATE TR_AC_LPO_HEADER
+//       SET
+//         FLOW_LEVEL = :flow_level,
+//         ${historyField} = COALESCE(${historyField}, '') || ' | ' || :remarks,
+//         LAST_ACTION = :action
+//       WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
+//     `;
+
+//     const updateResult = await oracleDb.query(query, {
+//       flow_level: { val: flow_level },
+//       remarks: { val: remarks },
+//       action: { val: action },
+//       doc_no: { val: doc_no },
+//       company_code: { val: company_code },
+//     });
+
+//     const affectedRows = updateResult.rowsAffected || 0;
+
+//     res.json({
+//       success: true,
+//       message: `LPO marked as ${action.toLowerCase()}`,
+//       affectedRows: affectedRows,
+//     });
+//   } catch (err: any) {
+//     console.error("Error in updateLpoStatusHandler:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: err.message ?? "Internal Server Error",
+//     });
+//   }
+// };
+
+export const updateLpoStatusHandler = async (req: Request, res: Response): Promise<void> => {
   const { doc_no, company_code, flow_level, remarks, action } = req.body;
 
-  console.log("Updating LPO status:", {
-    doc_no,
-    company_code,
-    flow_level,
-    remarks,
-    action,
-  });
-
-  if (
-    !doc_no ||
-    !company_code ||
-    typeof flow_level !== "number" ||
-    !remarks ||
-    !action
-  ) {
+  if (!doc_no || !company_code || typeof flow_level !== "number" || !remarks || !action) {
     res.status(400).json({
       success: false,
-      message:
-        "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
+      message: "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
     });
     return;
   }
 
   if (action !== "SENTBACK" && action !== "REJECTED") {
-    res.status(400).json({
-      success: false,
-      message: "Invalid action (must be SENTBACK or REJECTED)",
-    });
+    res.status(400).json({ success: false, message: "Invalid action (must be SENTBACK or REJECTED)" });
     return;
   }
 
   try {
-    // Check if record exists
     const existingResult = await oracleDb.query(
       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
-      {
-        doc_no: { val: doc_no },
-        company_code: { val: company_code },
-      }
+      { doc_no: { val: doc_no }, company_code: { val: company_code } }
     );
-
     const existing = existingResult.rows?.[0] || existingResult[0];
-
     if (!existing) {
-      res.status(404).json({
-        success: false,
-        message: "LPO not found with the provided DOC_NO and COMPANY_CODE",
-      });
+      res.status(404).json({ success: false, message: "LPO not found with the provided DOC_NO and COMPANY_CODE" });
       return;
     }
 
-    const historyField =
-      action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
+    const historyField = action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
 
+    // Optional: add separator only when existing value is non-empty
     const query = `
       UPDATE TR_AC_LPO_HEADER
-      SET
-        FLOW_LEVEL = :flow_level,
-        ${historyField} = COALESCE(${historyField}, '') || ' | ' || :remarks,
-        LAST_ACTION = :action
-      WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
+         SET FLOW_LEVEL = :flow_level,
+             ${historyField} = CASE
+               WHEN NVL(TRIM(${historyField}), '') = '' THEN :remarks
+               ELSE ${historyField} || ' | ' || :remarks
+             END,
+             LAST_ACTION = :action
+       WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
     `;
 
     const updateResult = await oracleDb.query(query, {
       flow_level: { val: flow_level },
-      remarks: { val: remarks },
+      remarks: { val: remarks },   
       action: { val: action },
       doc_no: { val: doc_no },
       company_code: { val: company_code },
     });
 
-    const affectedRows = updateResult.rowsAffected || 0;
+    // ✅ Send emails now
+    await sendVendorLposendbackNotification(
+      {
+        action,
+        docNo: doc_no,
+        companyCode: company_code,
+        flowLevel: flow_level,
+      }
+    );
 
     res.json({
       success: true,
       message: `LPO marked as ${action.toLowerCase()}`,
-      affectedRows: affectedRows,
+      affectedRows: updateResult.rowsAffected || 0,
     });
   } catch (err: any) {
     console.error("Error in updateLpoStatusHandler:", err);
@@ -1400,6 +1428,156 @@ export const executeRawSqlbody = async (
     res.status(500).json({
       error: "Failed to execute SQL",
       details: error.message,
+    });
+  }
+};
+
+
+export const proc_build_dynamic_sql = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const {
+      parameter,
+      code1,
+      code2,
+      code3,
+      number1,
+      number2,
+      number3,
+      number4,
+      date1,
+      date2,
+      date3,
+      date4,
+    } = req.body;
+
+    if (!parameter) {
+      res.status(400).json({ error: "Missing required parameter 'parameter'" });
+      return;
+    }
+
+    // 1️⃣ Build PL/SQL block (uses a RETURNED OUT bind through your wrapper)
+    const plsql = `
+      DECLARE
+        v_raw_sql VARCHAR2(4000);
+      BEGIN
+        PROC_BUILD_DYNAMIC_SQL(
+          :parameter,
+          :code1,
+          :code2,
+          :code3,
+          :number1,
+          :number2,
+          :number3,
+          :number4,
+          :date1,
+          :date2,
+          :date3,
+          :date4,
+          v_raw_sql
+        );
+        :out_sql := v_raw_sql;
+      END;
+    `;
+
+    // 2️⃣ Execute the stored procedure using your wrapper
+    const procResult = await oracleDb.query(plsql, {
+      parameter,
+      code1,
+      code2,
+      code3,
+      number1,
+      number2,
+      number3,
+      number4,
+      date1,
+      date2,
+      date3,
+      date4,
+      out_sql: { dir: "OUT", type: "STRING", maxSize: 4000 }, // <- works because your wrapper handles this
+    });
+
+    const rawSql =
+      procResult?.outBinds?.out_sql ||
+      procResult?.rows?.out_sql ||
+      procResult?.out_sql;
+
+    if (!rawSql) {
+      res.status(500).json({ error: "Procedure did not return SQL" });
+      return;
+    }
+
+    console.log("Generated SQL:", rawSql);
+
+    // 3️⃣ Execute the returned dynamic SQL
+    const execResult = await oracleDb.query(rawSql);
+
+    const rows = execResult.rows || execResult;
+
+    // 4️⃣ Format dates (same logic used in executeRawSql)
+    const formattedRows = Array.isArray(rows)
+      ? rows.map((row) => formatResultDates(row))
+      : rows;
+
+    res.json({
+      success: true,
+      data: formattedRows,
+      totalCount: Array.isArray(formattedRows) ? formattedRows.length : 0,
+    });
+  } catch (error: any) {
+    console.error("SQL Execution Error:", error);
+    res.status(500).json({
+      error: "Failed to execute SQL",
+      details: error.message,
+    });
+  }
+};
+
+export const executeVendorInvoicePrintHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { COMPANY_CODE, DOC_NO, LOGIN_USER } =
+      req.body && Object.keys(req.body).length
+        ? req.body
+        : (req.query as Record<string, string>);
+
+    if (!COMPANY_CODE || !DOC_NO || !LOGIN_USER) {
+      res.status(400).json({
+        success: false,
+        message: "Missing required parameters: COMPANY_CODE, DOC_NO, LOGIN_USER",
+      });
+      return;
+    }
+
+    const plsql = `
+      BEGIN
+        PROC_VENDOR_INVOICE_PRINT(:companyCode, :docNo, :loginUser);
+      END;
+    `;
+
+    await oracleDb.query(
+      plsql,
+      {
+        companyCode: { val: COMPANY_CODE },
+        docNo: { val: DOC_NO },
+        loginUser: { val: LOGIN_USER },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Procedure executed successfully for ${COMPANY_CODE}/${DOC_NO}`,
+    });
+  } catch (error: any) {
+    console.error("Error executing PROC_VENDOR_INVOICE_PRINT:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to execute procedure",
+      details: error?.message || String(error),
     });
   }
 };

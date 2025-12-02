@@ -1,6 +1,10 @@
 import axios from "axios";
 import https from "https";
 import { LeaveRequestFlow } from "../interfaces/leaveRequestFlow.interface";
+import { oracleDb } from "../database/connection";
+import { RequestWithUser } from "../interfaces/common.interface";
+import { IUser } from "../interfaces/user.interface";
+import constants from "../helpers/constants";
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -54,6 +58,7 @@ export interface LeaveResumeDatesUpdate {
 }
 
 export const HrService = {
+  
   getEmployees: async (
     name?: string,
     loginid?: string,
@@ -101,6 +106,133 @@ export const HrService = {
     );
     return response.data;
   },
+
+
+
+
+
+
+newValidaterequest: async(params: {
+  leaveStartDate: string;
+  employeeId: string;
+  leaveType: string;
+}) => {
+  const { leaveStartDate, employeeId , leaveType } = params;
+
+  console.log("Input leaveStartDate:", leaveStartDate); // '12-11-2025' (DD-MM-YYYY)
+
+  // Your date is already in DD-MM-YYYY format, no conversion needed!
+  const formattedDate = leaveStartDate; // Keep as '12-11-2025'
+
+  const query = `
+    DECLARE
+      v_result VARCHAR2(10);
+    BEGIN
+      v_result := FN_UPDATE_REPORT_DATE(
+        NULL,
+        NULL,
+        NULL,
+         TO_DATE(:leaveDate, 'DD-MM-YYYY'),
+        NULL
+      );
+      
+      -- Store result in a temporary table to retrieve it
+      INSERT INTO TEMP_FUNCTION_RESULT (RESULT_VALUE) VALUES (v_result);
+      COMMIT;
+    END;
+  `;
+
+  const bindParams = {
+    leaveDate: formattedDate
+  };
+
+  console.log("PL/SQL Block:", query);
+  console.log("Bind Parameters:", bindParams);
+
+async function getLeaveBalances(employeeId: string, leaveType: string) {
+  const balanceQuery = `
+    SELECT NO_OF_LEAVES_AVAILABLE 
+    FROM VW_HR_LEAVE_YEARLY_BALANCE_AWARE 
+    WHERE EMPLOYEE_ID = :employeeId 
+    AND LEAVE_TYPE = :leaveType
+  `;
+
+  const bindParams = {
+    employeeId: employeeId,
+    leaveType: leaveType
+  };
+
+  console.log("Requested Leave Balance Query:", balanceQuery);
+  console.log("Balance Bind Parameters:", bindParams);
+
+  try {
+    const result = await oracleDb.query(balanceQuery, bindParams);
+    
+    if (result.rows.length === 0) {
+      console.log(`No balance found for employee ${employeeId} and leave type ${leaveType}`);
+      return null;
+    }
+
+    const balance = result.rows[0]?.NO_OF_LEAVES_AVAILABLE;
+    console.log(`Found balance for ${leaveType}:`, balance);
+
+    return balance;
+
+  } catch (error: any) {
+    console.error("Error fetching requested leave balance:", error);
+    return null;
+  }
+}
+
+  try {
+    // First, ensure temp table exists
+    await ensureTempTableExists();
+    
+    // Execute the function
+    await oracleDb.query(query, bindParams);
+    
+    // Retrieve the result
+    const resultQuery = `SELECT RESULT_VALUE as function_result FROM TEMP_FUNCTION_RESULT WHERE ROWNUM = 1`;
+    const result = await oracleDb.query(resultQuery, {});
+    const functionResult = result.rows[0]?.FUNCTION_RESULT;
+
+    // Clean up
+    await oracleDb.query(`DELETE FROM TEMP_FUNCTION_RESULT WHERE ROWNUM = 1`, {});
+
+    let leaveBalances = null;
+
+    // If function returned "OK", then get leave balances
+    if (functionResult === 'OK') {
+      leaveBalances = await getLeaveBalances(employeeId, leaveType);
+    }
+
+
+    
+
+    return {
+      success: true,
+      leaveType: leaveType,
+      functionResult: functionResult,
+      leaveStartDate: leaveStartDate,
+      formattedDate: formattedDate,
+      availableBalance: leaveBalances,
+      message: 'Validation Successful'
+    };
+
+  } catch (error: any) {
+    console.error("Error in newValidaterequest:", error);
+    return {
+      success: false,
+      functionResult: null,
+      leaveStartDate: leaveStartDate,
+      message: `Validation failed: ${error.message}`
+    };
+  }
+},
+
+
+
+
   validateLeave: async (params: {
     companyCode: string;
     employeeId: string;
@@ -110,6 +242,8 @@ export const HrService = {
     leaveDays: number;
   }) => {
     const response = await axiosInstance.get(
+
+      
       "/api/EmployeeLeave/validateleave",
       {
         params,
@@ -117,6 +251,13 @@ export const HrService = {
     );
     return response.data;
   },
+
+
+
+
+
+
+
   insertLeaveRequest: async (request: LeaveRequestFlow) => {
     try {
       const formattedRequest = {
@@ -249,4 +390,72 @@ export const HrService = {
     );
     return response.data;
   },
+
+  insertUploadedFileEmployee: async (data: Record<string, any>) => {
+    try {
+      // Log the payload being sent
+      console.log("Sending File Data Payload:", data);
+
+      // Call the .NET API
+      const response = await axiosInstance.post(
+        "/api/EmployeeLeave/INSERT_UPLOADED_FILE",
+        data
+      );
+
+      // Log the response for debugging
+      console.log("Response from .NET API:", {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      // Log detailed error information
+      console.error("Error sending file data to .NET API:", {
+        url: error.config?.url,
+        method: error.config?.method,
+        requestHeaders: error.config?.headers,
+        payload: data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        responseHeaders: error.response?.headers,
+        responseData: error.response?.data,
+        message: error.message,
+      });
+
+      throw new Error(`Failed to insert uploaded file data: ${error.message}`);
+    }
+  },
+
 };
+// Helper function to ensure temp table exists
+async function ensureTempTableExists(): Promise<void> {
+  const createTableQuery = `
+    BEGIN
+      EXECUTE IMMEDIATE '
+        CREATE TABLE TEMP_FUNCTION_RESULT (
+          RESULT_VALUE VARCHAR2(100),
+          CREATED_DATE DATE DEFAULT SYSDATE
+        )
+      ';
+    EXCEPTION
+      WHEN OTHERS THEN
+        IF SQLCODE != -955 THEN -- table already exists
+          RAISE;
+        END IF;
+    END;
+  `;
+
+  try {
+    await oracleDb.query(createTableQuery, {});
+  } catch (error:any) {
+    // Ignore "table already exists" errors
+    if (!error.message?.includes('-955')) {
+      console.error("Error creating temp table:", error);
+    }
+  }
+}
+
+
+

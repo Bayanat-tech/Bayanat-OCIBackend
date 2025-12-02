@@ -44,7 +44,7 @@ async function queryEntityWithFilters(
 
   // Apply search filter if exists
   if (filter?.search) {
-    // // You'll need to update getSearchFilterQuery for TypeORM
+    // You'll need to update getSearchFilterQuery for TypeORM
     Object.assign(where, getSearchFilterQuery(filter.search));
   }
 
@@ -104,7 +104,6 @@ export const getHrMaster = async (
       case "Pg_leave_flow_close":
       case "Pg_leave_flow_cancel":
       case "Pg_leave_flow_InProgress": {
-        console.log(`Inside ${masters} handler`);
 
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
@@ -113,8 +112,7 @@ export const getHrMaster = async (
 
 
         const loginid = req.query.code as string;
-        console.log("loginid", loginid);
-        console.log("requestUser", requestUser);
+
 
         if (!requestUser?.company_code || !loginid) {
           console.error("Missing company_code or loginid");
@@ -135,33 +133,76 @@ export const getHrMaster = async (
             whereConditions = `company_code = :company_code
                       AND (
                           (NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) AND FINAL_APPROVED <> 'YES')
+EMPLOYEE_ID =  :loginid ) AND FINAL_APPROVED <> 'YES')
                           OR
                           (IMMEDIATE_SUPERVISOR IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
+EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
                       )
                       AND LAST_ACTION <> 'REJECTED'
                       AND LAST_ACTION <> 'CANCEL'
                       `;
             break;
           case "Pg_leave_flow_Rejected":
-            whereConditions = `company_code = :company_code AND LAST_ACTION = 'REJECTED' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+              whereConditions = `
+  company_code = :company_code
+  AND LAST_ACTION = 'REJECTED'
+  AND (
+        CREATED_BY = :loginid
+        OR IMMEDIATE_SUPERVISOR = :loginid
+        OR HOD = :loginid
+        OR DEPT_HEAD = :loginid
+  )`;
+
             break;
           case "Pg_leave_flow_close":
-            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'YES' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+           whereConditions = `
+  company_code = :company_code
+  AND FINAL_APPROVED = 'YES'
+  AND (
+        CREATED_BY = :loginid
+        OR IMMEDIATE_SUPERVISOR = :loginid
+        OR HOD = :loginid
+        OR DEPT_HEAD = :loginid
+  )`;
+
             break;
           case "Pg_leave_flow_cancel":
-            whereConditions = `company_code = :company_code AND LAST_ACTION = 'CANCEL' AND (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) in (select UPDATED_BY from LEAVE_REQUEST_FLOW_HISTRY)`;
+              whereConditions = `
+  company_code = :company_code
+  AND LAST_ACTION = 'CANCEL'
+  AND (
+        CREATED_BY = :loginid
+        )
+`;
             break;
           case "Pg_leave_flow_InProgress":
-            whereConditions = `company_code = :company_code AND FINAL_APPROVED = 'NO' AND LAST_ACTION NOT IN 
-            ('REJECTED','CANCEL') AND NEXT_ACTION_BY NOT IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid ) AND 
-            (REQUEST_NUMBER IN (SELECT DISTINCT REQUEST_NUMBER FROM LEAVE_REQUEST_FLOW_HISTRY WHERE NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_CODE =  :loginid )))`;
+         case "Pg_leave_flow_InProgress":
+    whereConditions = `
+        company_code = :company_code
+        AND LAST_ACTION <> 'REJECTED'
+        AND FINAL_APPROVED <> 'YES'
+        AND LAST_ACTION <> 'CANCEL'
+        AND NEXT_ACTION_BY NOT IN (
+            SELECT EMPLOYEE_ID 
+            FROM VW_HR_EMPLOYEE_AWARE 
+            WHERE EMPLOYEE_ID = :loginid
+        )
+        AND (
+            :loginid IN (
+                SELECT NEXT_ACTION_BY 
+                FROM LEAVE_REQUEST_FLOW_HISTRY
+            )
+            OR CREATED_BY = :loginid
+        )
+        AND (
+            CREATED_BY = :loginid 
+            OR HOD = :loginid 
+            OR DEPT_HEAD = :loginid 
+            OR IMMEDIATE_SUPERVISOR = :loginid
+        )
+    `;
+
+
             break;
         }
         try {
@@ -193,8 +234,7 @@ EMPLOYEE_CODE =  :loginid )))`;
             limit: limit
           };
 
-          console.log("Fetch Query:", fetchQuery);
-          console.log("Fetch Params:", fetchParams);
+  
 
           const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
 
@@ -216,7 +256,6 @@ EMPLOYEE_CODE =  :loginid )))`;
 
       case "Leaveflow_request": {
         const request_number = req.query.code as string;
-        console.log("request_number", request_number);
 
         const whereConditions = `company_code = :company_code ${request_number ? 'AND request_number = :request_number' : ''}`;
 
@@ -232,21 +271,25 @@ EMPLOYEE_CODE =  :loginid )))`;
         try {
           const fetchQuery = `
       SELECT *
-      FROM VW_LEAVE_REQUEST_FLOW
+      FROM VW_HR_LEAVE_REQUEST_FLOW
       WHERE ${whereConditions}
       ORDER BY request_number ASC
     `;
 
 
-          console.log("Leaveflow_request Query:", fetchQuery);
-          console.log("Leaveflow_request Params:", bindParams);
+  
           
           // const queryParams = [requestUser.company_code];
           // if (request_number) queryParams.push(request_number);
+
+               console.log("Leaveflow_request Query:", fetchQuery);
+          console.log("Leaveflow_request Params:", bindParams);
           
           const fetchedData = await oracleDb.query(fetchQuery, bindParams);
+
+          console.log("fetchedData.rows", fetchedData.rows)
           
-          console.log("fetchedData:", fetchedData);
+
           
 
           res.status(constants.STATUS_CODES.OK).json({
@@ -514,7 +557,7 @@ EMPLOYEE_CODE =  :loginid )))`;
 
 // Delete master data with optional pagination based on the `master` type.
 export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
-  console.log("DeleteMaster Call");
+
 
   try {
     const { master } = req.params;
@@ -525,7 +568,6 @@ export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
       throw new Error("IDs are required");
     }
 
-    console.log(master);
 
     switch (master) {
       case "bank": {
