@@ -14,8 +14,10 @@ import { InboundJobWmsService } from "../../../../services/WMS/transaction/inbou
 
 export const getInboundJob = async (req: RequestWithUser, res: Response) => {
   try {
-    const { prin_code, job_no } = req.query;
+    const { job_no } = req.params;
+    const { prin_code } = req.query;
     console.log("check prin value:", req.query);
+    console.log("job_no from params:", job_no);
     
     const createInboundjob = await InboundJobWmsService.findOne({
       company_code: req.user.company_code,
@@ -94,7 +96,8 @@ export const GetsingleInboundjob = async (
     const requestUser: IUser = req.user;
     console.log(requestUser);
 
-    const { prin_code, job_no } = req.query;
+    const { job_no } = req.params;
+    const { prin_code } = req.query;
 
     const { error } = createInboundSchema(
       req.body,

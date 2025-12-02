@@ -49,10 +49,10 @@ import {createInboundjob} from "../../../controllers/wms/transaction/inbound/cre
 // import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
 // import  { getddSiteLocation }   from "../../../../src/views/wms/transportation/inbound/ddSiteLocation"
 // import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
-// import {
-//   createInboundjob, // Create new inbound job
-//   GetsingleInboundjob, // Get single inbound job
-// } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
+import {
+  getInboundJob, // Get single inbound job
+  GetsingleInboundjob, // Update inbound job
+} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 // import {
 //   getconfirmInboundjob, // Get confirmation details
 //   confirmInboundjob, // Confirm inbound job
@@ -73,12 +73,20 @@ router.post('/executeRawSqlbody', executeRawSqlbody);
 // router.post('/copyEDIToPackdetHandler', copyEDIToPackdetHandler);
 
 // Job routes - Handle individual job operations
-// router.get(
-//   "/job/:job_no",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   getInboundJob
-// );
+router.get(
+  "/job/:job_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getInboundJob
+);
+
+// Update inbound job
+router.put(
+  "/job/:job_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  GetsingleInboundjob
+);
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
 router.post("/inboundjob", createInboundjob);
