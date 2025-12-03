@@ -1452,7 +1452,7 @@ export const proc_build_dynamic_sql = async (
       DECLARE
         v_raw_sql VARCHAR2(4000);
       BEGIN
-        PROC_BUILD_DYNAMIC_SQL(
+        PROC_BUILD_DYNAMIC_SQL_WMS(
           :parameter,
           :code1,
           :code2,
