@@ -85,7 +85,10 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         APP_REF_NO,
         LAST_ACTION,
         INVOICE_NUMBER,
-        PDO_TYPE
+        PDO_TYPE,
+        REF_DOC1,
+        REF_DOC2,
+        REF_DOC3
       FROM TR_AC_LPO_HEADER
       WHERE COMPANY_CODE = 'BSG' 
         AND DOC_NO = :new_doc_no
@@ -94,6 +97,9 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
 
     const queryDetail = `
       SELECT 
+      REF_DOC1,
+      REF_DOC2,
+      REF_DOC3
       ITEM_REMARK,
         COMPANY_CODE,
         DOC_TYPE,
@@ -118,6 +124,9 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         REF_DOC_NO,
         PROD_CODE,
         PDO_TYPE,
+        REF_DOC1,
+        REF_DOC2,
+        REF_DOC3,
         QTY_RCV,
         OTHER_REMARKS,
         AMOUNT_RCV,
