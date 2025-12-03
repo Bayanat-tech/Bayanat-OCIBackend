@@ -53,6 +53,7 @@ import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
 } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
+import { proc_build_dynamic_sql_wms } from "../../../controllers/wms/transaction/inbound/proc_build_dynamic_sql_wms";
 // import {
 //   getconfirmInboundjob, // Get confirmation details
 //   confirmInboundjob, // Confirm inbound job
