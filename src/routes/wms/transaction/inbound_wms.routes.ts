@@ -66,6 +66,8 @@ const router = express.Router();
 // router.put("/upsertPutawaymanualHandler", upsertPutawaymanualHandler);
 router.post('/executeRawSql', executeRawSql);
 router.post('/executeRawSqlbody', executeRawSqlbody);
+router.post("/proc_build_dynamic_sql_wms", proc_build_dynamic_sql_wms);
+
 // router.get('/getddSiteLocation',getddSiteLocation)
 
 // router.get('/getddPrinceProduct',getddPrinceProduct)
