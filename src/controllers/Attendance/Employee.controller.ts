@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { EmployeesController } from "../../services/Attendance/employee.service";
 import { Employee } from "../../models/Attendance/employee.entity";
 import { AppDataSource } from "../../database/connection";
+import { EmployeeService } from "../../services/employee.service";
+import logger from "../../utils/logger";
 // import { v4 as uuidv4 } from "uuid";
 // import { S3Service } from "../../services/s3Upload.service";
 // import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
@@ -16,6 +18,8 @@ import { AppDataSource } from "../../database/connection";
 // import { Employee } from "../../models/Attendance/employee.entity";
 
 export class EmployeeController {
+  static modifyEmployee: any;
+  // static getEmployeeInfo: any;
   // static async registerEmployee(req: Request, res: Response): Promise<void> {
   //   try {
   //     const {
@@ -156,7 +160,7 @@ export class EmployeeController {
       phone_number: data.phone_number ?? employee.phone_number,
     });
 
-    
+  }
 
     // static async modifyEmployee(req: Request, res: Response): Promise<void> {
     //   try {
@@ -188,39 +192,39 @@ export class EmployeeController {
     //       phone_number,
     //     });
 
-    //     // If new face images are provided, process them
-    //     if (files && files.length > 0) {
-    //       // Get FaceRecognitionService instance
-    //       const faceService = await FaceRecognitionService.getInstance();
+        // // If new face images are provided, process them
+        // if (files && files.length > 0) {
+        //   // Get FaceRecognitionService instance
+        //   const faceService = await FaceRecognitionService.getInstance();
 
-    //       // First, deactivate existing face records
-    //       await EmployeeFace.update(
-    //         { is_active: false },
-    //         { where: { employee_id } }
-    //       );
+        //   // First, deactivate existing face records
+        //   await EmployeeFace.update(
+        //     { is_active: false },
+        //     { where: { employee_id } }
+        //   );
 
-    //       // Process each new image
-    //       for (const file of files) {
-    //         // Validate image
-    //         req.file = file;
-    //         validateImage(req, res, () => {});
+        //   // Process each new image
+        //   for (const file of files) {
+        //     // Validate image
+        //     req.file = file;
+        //     validateImage(req, res, () => {});
 
-    //         const s3Key = `employee_faces/${employee_id}/${uuidv4()}.jpg`;
-    //         await S3Service.uploadFile(file.buffer, s3Key, file.mimetype);
+        //     const s3Key = `employee_faces/${employee_id}/${uuidv4()}.jpg`;
+        //     await S3Service.uploadFile(file.buffer, s3Key, file.mimetype);
 
-    //         const descriptor = await faceService.extractFaceDescriptor(
-    //           file.buffer
-    //         );
+        //     const descriptor = await faceService.extractFaceDescriptor(
+        //       file.buffer
+        //     );
 
-    //         await EmployeeFace.create({
-    //           id: uuidv4(),
-    //           employee_id,
-    //           s3_key: s3Key,
-    //           descriptor: descriptor,
-    //           is_active: true,
-    //         });
-    //       }
-    //     }
+        //     await EmployeeFace.create({
+        //       id: uuidv4(),
+        //       employee_id,
+        //       s3_key: s3Key,
+        //       descriptor: descriptor,
+        //       is_active: true,
+        //     });
+        //   }
+        // }
 
     //     logger.info(`Employee ${employee_id} updated successfully`);
     //     res.status(200).json({ success: true, employeeId: employee_id });
@@ -229,33 +233,33 @@ export class EmployeeController {
     //     res.status(500).json({ success: false, message: error.message });
     //   }
     // }
-    //============================================================================
+    // ============================================================================
 
 
-    // static async getEmployeeInfo(req: Request, res: Response): Promise<void> {
-    //   try {
-    //     const { employee_code, name } = req.query;
+    static async getEmployeeInfo(req: Request, res: Response): Promise<void> {
+      try {
+        const { employee_code, name } = req.query;
 
-    //     if (!employee_code && !name) {
-    //       res.status(400).json({
-    //         error: "Either employee_code or name parameter is required",
-    //       });
-    //       return;
-    //     }
+        if (!employee_code && !name) {
+          res.status(400).json({
+            error: "Either employee_code or name parameter is required",
+          });
+          return;
+        }
 
-    //     const employeeInfo = await EmployeeService.getEmployeeInfo({
-    //       employee_code: employee_code as string,
-    //       name: name as string,
-    //     });
+        const employeeInfo = await EmployeeService.getEmployeeInfo({
+          employee_code: employee_code as string,
+          name: name as string,
+        });
 
-    //     res.status(200).json(employeeInfo);
-    //   } catch (error: any) {
-    //     logger.error("Failed to fetch employee info", error);
-    //     res.status(500).json({
-    //       error: "Failed to fetch employee information",
-    //       details: error.message,
-    //     });
-    //   }
-    // }
+        res.status(200).json(employeeInfo);
+      } catch (error: any) {
+        logger.error("Failed to fetch employee info", error);
+        res.status(500).json({
+          error: "Failed to fetch employee information",
+          details: error.message,
+        });
+      }
+    }
   }
-}
+

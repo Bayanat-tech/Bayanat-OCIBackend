@@ -180,18 +180,18 @@ router.put(
 //   }
 // );
 
-// // Add route for employee info lookup
-// router.get(
-//   "/employeeinfo",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { EmployeeController } = await getControllers();
-//     return EmployeeController.getEmployeeInfo(req, res);
-//   }
-// );
+// Add route for employee info lookup
+router.get(
+  "/employeeinfo",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { EmployeeController } = await getControllers();
+    return EmployeeController.getEmployeeInfo(req, res);
+  }
+);
 
 export default router;
