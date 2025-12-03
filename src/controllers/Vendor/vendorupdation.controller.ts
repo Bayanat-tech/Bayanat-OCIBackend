@@ -224,7 +224,10 @@ async function sendDataToDotNetAPI(
         NVL(LAST_ACTION, '') AS LAST_ACTION,
         NVL(INVOICE_NUMBER, '') AS INVOICE_NUMBER,
         TO_CHAR(INVOICE_DATE, 'YYYY-MM-DD') AS INVOICE_DATE,
-        NVL(PDO_TYPE, '') AS PDO_TYPE
+        NVL(PDO_TYPE, '') AS PDO_TYPE,
+        NVL(REF_DOC1, '') AS REF_DOC1,
+        NVL(REF_DOC2, '') AS REF_DOC2,
+        NVL(REF_DOC3, '') AS REF_DOC3
       FROM TR_AC_LPO_HEADER
       WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES'`,
       {
@@ -482,7 +485,7 @@ async function upsertLpoRequestHeader(
         DELIVERY_TO, DLVR_CONTACT, DLVR_EMAIL, DLVR_MOBILE, DLVR_TERM, DIV_CODE,
         CASH_IND, APP_REF_NO, TX_CAT_CODE, TX_COMPNTCAT_CODE_1, TX_COMPNTCAT_CODE_2,
         TX_COMPNTCAT_CODE_3, TX_COMPNTCAT_CODE_4, TX_COMPNT_1_EXPMT, LAST_ACTION, 
-        DATA_TRANSFER, PDO_TYPE
+        DATA_TRANSFER, PDO_TYPE,REF_DOC1,REF_DOC2,REF_DOC3
       ) VALUES (
         :invoiceNumber,
         TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
@@ -528,7 +531,10 @@ async function upsertLpoRequestHeader(
         :txCompnt_1_expmT,
         :lastAction,
         :dataTransfer,
-        :pdoType
+        :pdoType,
+        :refdoc1,
+        :refdoc2,
+        :refdoc3
       )
     `;
 
@@ -578,12 +584,18 @@ async function upsertLpoRequestHeader(
       lastAction: { val: "SAVEASDRAFT" },
       dataTransfer: { val: defaultString(data.DATA_TRANSFER) },
       pdoType: { val: defaultString(data.PDO_TYPE) },
+           refdoc1: { val: defaultString(data.REF_DOC1) },
+            refdoc2: { val: defaultString(data.REF_DOC2) },
+             refdoc3: { val: defaultString(data.REF_DOC3) },
     };
 
     await oracleDb.query(insertQuery, replacements, connection);
   } else {
     const updateQuery = `
       UPDATE TR_AC_LPO_HEADER SET 
+        REF_DOC1 = :refdoc1,
+        REF_DOC2 = :refdoc2,
+        REF_DOC3 = :refdoc3,
         INVOICE_NUMBER = :invoiceNumber, 
         INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
         LAST_ACTION = :lastAction,
@@ -600,6 +612,9 @@ async function upsertLpoRequestHeader(
     `;
 
     const updateReplacements = {
+         refdoc1: { val: defaultString(data.REF_DOC1) },
+            refdoc2: { val: defaultString(data.REF_DOC2) },
+             refdoc3: { val: defaultString(data.REF_DOC3) },
       invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
       invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
       lastAction: { val: defaultString(data.LAST_ACTION) },
