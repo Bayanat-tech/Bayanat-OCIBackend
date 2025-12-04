@@ -136,22 +136,25 @@ export const editPFFiles = async (
   res: Response
 ): Promise<void> => {
   try {
-    // get request_number and aws_file_locn from req.body
     const { aws_file_locn, request_number, user_file_name } = req.body;
-    // get user_file_name from req.query and ensure it's a string
     console.log(user_file_name, aws_file_locn, request_number);
-    // execute direct SQL update query
-    const [updateCount] = await oracleDb.query(
-      `UPDATE UPLOADED_FILES_DLTS 
-       SET user_file_name = :user_file_name 
-       WHERE aws_file_locn = :aws_file_locn AND request_number = :request_number`,
-      {
-        replacements: { user_file_name, aws_file_locn, request_number },
-      }
-    );
 
-    // check if any rows were updated
-    if (Number(updateCount) === 0) {
+    const sql = `
+      UPDATE UPLOADED_FILES_DLTS
+      SET user_file_name = :user_file_name
+      WHERE aws_file_locn = :aws_file_locn
+        AND request_number = :request_number
+    `;
+    const binds = {
+      user_file_name,
+      aws_file_locn,
+      request_number,
+    };
+
+    const result: any = await oracleDb.query(sql, binds);
+    const affected = result.rowsAffected ?? 0;
+
+    if (Number(affected) === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: constants.MESSAGES.FILE_NOT_FOUND,
@@ -159,7 +162,6 @@ export const editPFFiles = async (
       return;
     }
 
-    // send response with direct success message
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "File name updated successfully",
@@ -167,7 +169,7 @@ export const editPFFiles = async (
 
     return;
   } catch (error: any) {
-    // handle error
+    console.error("editPFFiles error:", error);
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
