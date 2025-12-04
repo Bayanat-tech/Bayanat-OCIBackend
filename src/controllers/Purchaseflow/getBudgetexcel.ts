@@ -61,8 +61,20 @@ export const getBudgetexcel = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    // ✅ Convert all column names to lowercase
+    const lowercaseRows = result.rows.map((row: any) => {
+      const newRow: any = {};
+      Object.keys(row).forEach((key) => {
+        newRow[key.toLowerCase()] = row[key];
+      });
+      return newRow;
+    });
+
     await connection.commit();
-    res.status(200).json({ success: true, data: result.rows });
+
+    // Return rows with lowercase keys
+    res.status(200).json({ success: true, data: lowercaseRows });
+
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("Error in getBudgetexcel:", error);

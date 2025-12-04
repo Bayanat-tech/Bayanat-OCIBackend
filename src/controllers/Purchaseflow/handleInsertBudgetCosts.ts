@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { TCostbudget } from "../../interfaces/Purchaseflow/Budgetflow.interface";
-import { insertBudgetCost } from "./insertBudgetCost"; // Oracle version of insertBudgetCost
+import { insertBudgetCost } from "./insertBudgetCost";
+import { oracleDb } from "../../database/connection"; // Use your existing DB wrapper
 
 export const handleInsertBudgetCosts = async (
   req: Request,
@@ -31,12 +32,8 @@ export const handleInsertBudgetCosts = async (
   let connection: oracledb.Connection | undefined;
 
   try {
-    // Start Oracle transaction
-    connection = await oracledb.getConnection({
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      connectString: process.env.DB_CONN,
-    });
+    // Use existing connection from oracleDb wrapper
+    connection = await oracleDb.getConnection();
 
     // Delete existing records for the request_number
     await connection.execute(
@@ -50,7 +47,7 @@ export const handleInsertBudgetCosts = async (
 
     console.log(`Deleted existing records for request_number: ${request_number}`);
 
-    // Insert new records sequentially (safe for Oracle connections)
+    // Insert new records sequentially
     for (const costBudget of values) {
       await insertBudgetCost(costBudget, connection);
     }
@@ -63,7 +60,7 @@ export const handleInsertBudgetCosts = async (
       {
         screen: "BudetAllocation",
         type: "success",
-        document_number: "", // empty string as in original
+        document_number: "",
         userId: updated_by,
       }
     );
@@ -104,7 +101,11 @@ export const handleInsertBudgetCosts = async (
     });
   } finally {
     if (connection) {
-      await connection.close();
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error closing Oracle connection:", closeError);
+      }
     }
   }
 };

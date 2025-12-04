@@ -6,6 +6,7 @@ export const insertBudgetCost = async (
   connection: oracledb.Connection
 ): Promise<void> => {
   try {
+   
     if (value.requested_amt === 0) return;
 
     const sql = `
@@ -49,7 +50,8 @@ export const insertBudgetCost = async (
     };
 
     await connection.execute(sql, params, { autoCommit: false });
-
+ console.log("month_budget")
+    console.log("budget year")
     console.log("Budget cost inserted successfully:", value);
   } catch (error: any) {
     console.error("Error inserting budget cost:", error.message);
