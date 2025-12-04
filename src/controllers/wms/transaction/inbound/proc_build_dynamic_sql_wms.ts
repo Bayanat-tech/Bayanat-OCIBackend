@@ -105,6 +105,7 @@ console.log(rawSql);
       }) || [];
 
     res.json({
+        success: true,
       data: tableData,
       totalCount: tableData.length,
     });
