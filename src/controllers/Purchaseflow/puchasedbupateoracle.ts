@@ -443,6 +443,9 @@ console.log(`type_of_pr: ${data.type_of_pr}`);
     WHERE REQUEST_NUMBER = :request_number
       AND COMPANY_CODE = :company_code
   `;
+console.log('data.type_of_material_supply',data.type_of_material_supply)
+console.log('data.contract_soft_hard', data.contract_soft_hard)
+console.log('data.amc_service_status', data.amc_service_status)
 
   await connection.execute(updateSql, {
     last_updated: data.last_updated ,

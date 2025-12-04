@@ -3,12 +3,19 @@ import { Response } from "express";
 import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
 import { oracleDb } from "../database/connection";
+import { FilesPFService } from "../services/filesPF.service";
 
 let filesVHService: FilesVHService;
+let filesPFService: FilesPFService;
 
 // Initialize service
 (async () => {
   filesVHService = await FilesVHService.getInstance();
+})().catch(console.error);
+
+// Initialize service for PF files
+(async () => {
+  filesPFService = await FilesPFService.getInstance();
 })().catch(console.error);
 
 export const getFiles = async (
@@ -70,7 +77,7 @@ export const getpfFiles = async (
         ? { modules, request_number }
         : { company_code: req.user.company_code, request_number };
 
-    const files = await filesVHService.findAll(conditions);
+    const files = await filesPFService.findAll(conditions);
 
     // send response
     res.status(constants.STATUS_CODES.OK).json({ success: true, data: files });
@@ -108,6 +115,7 @@ export const editFiles = async (
       return;
     }
 
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "File name updated successfully",
@@ -128,22 +136,25 @@ export const editPFFiles = async (
   res: Response
 ): Promise<void> => {
   try {
-    // get request_number and aws_file_locn from req.body
     const { aws_file_locn, request_number, user_file_name } = req.body;
-    // get user_file_name from req.query and ensure it's a string
     console.log(user_file_name, aws_file_locn, request_number);
-    // execute direct SQL update query
-    const [updateCount] = await oracleDb.query(
-      `UPDATE UPLOADED_FILES_DLTS 
-       SET user_file_name = :user_file_name 
-       WHERE aws_file_locn = :aws_file_locn AND request_number = :request_number`,
-      {
-        replacements: { user_file_name, aws_file_locn, request_number },
-      }
-    );
 
-    // check if any rows were updated
-    if (Number(updateCount) === 0) {
+    const sql = `
+      UPDATE UPLOADED_FILES_DLTS
+      SET user_file_name = :user_file_name
+      WHERE aws_file_locn = :aws_file_locn
+        AND request_number = :request_number
+    `;
+    const binds = {
+      user_file_name,
+      aws_file_locn,
+      request_number,
+    };
+
+    const result: any = await oracleDb.query(sql, binds);
+    const affected = result.rowsAffected ?? 0;
+
+    if (Number(affected) === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: constants.MESSAGES.FILE_NOT_FOUND,
@@ -151,7 +162,6 @@ export const editPFFiles = async (
       return;
     }
 
-    // send response with direct success message
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "File name updated successfully",
@@ -159,7 +169,7 @@ export const editPFFiles = async (
 
     return;
   } catch (error: any) {
-    // handle error
+    console.error("editPFFiles error:", error);
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
@@ -226,7 +236,7 @@ export const deleteFilesPF = async (
     }
 
     // query to find the file details
-    const file = await filesVHService.findOne({ request_number, sr_no });
+    const file = await filesPFService.findOne({ request_number, sr_no });
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
