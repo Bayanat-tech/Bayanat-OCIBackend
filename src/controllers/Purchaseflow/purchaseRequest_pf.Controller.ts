@@ -1,6 +1,6 @@
-import oracledb from "oracledb";
+//import oracledb from "oracledb";
+import { Request, Response } from "express";
 import { oracleDb } from "../../database/connection";
-
 import { QueryTypes } from "sequelize";
 import { upsertPurchaseRequest } from "./purchaseRquestdbupdate_pf.Controller";
 import { createLog, notifyUser } from "../../helpers/functions";
@@ -18,14 +18,18 @@ import {
   IBasicPrRequest,
 } from "../../interfaces/Purchaseflow/Purucahseflow.interface";
 
-interface RequestWithUsercrs extends Request {
-  body: {
-    LAST_ACTION: string;
-    REQUEST_NUMBER: string;
-    COMPANY_CODE: string;
-    loginid: string;
-  };
-}
+import { PurchaseRequestHeader } from "../../models/Purchaseflow/purchaserequest_pf.model";
+import { PurchaseRequestDetail } from "../../models/Purchaseflow/purchaserequest_pf.model";
+import { DecimalDataType } from "sequelize";
+
+// interface RequestWithUsercrs extends Request {
+//   body: {
+//     last_action: string;
+//     Rrequest_number: string;
+//     COcompany_code: string;
+//     loginid: string;
+//   };
+//}
 interface VPurchaseRequestHeader {
   request_number: string;
   request_date: Date;
@@ -51,17 +55,13 @@ interface VPurchaseRequestDetail {
   old_item_code: string; // Ensure this exists if you're using it in the update
 }
 
-import { number } from "joi";
-import { PurchaseRequestHeader } from "../../models/Purchaseflow/purchaserequest_pf.model";
-import { PurchaseRequestDetail } from "../../models/Purchaseflow/purchaserequest_pf.model";
-import { DecimalDataType } from "sequelize";
 
 interface RevisionResult {
   REVISION_NUMBER: number;
 }
 
 
-
+//export const getPurchaserequest = async (req: Request & { params: { request_number: string; company_code: string } }, res: Response): Promise<void> => {
 export const getPurchaserequest = async (req: Request, res: Response): Promise<void> => {
   let connection;
 
@@ -75,7 +75,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
     // Replace $$ with /
     const request_number = rawRequestNumber.replace(/\$\$/g, "/");
 
-    connection = await oracledb.getConnection();
+    connection = await oracleDb.getConnection();
 
     // 1️⃣ Count purchase request headers
     const countResult = await connection.execute<{ COUNT: number }>(
@@ -83,7 +83,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
        FROM PURCHASE_REQUEST_HEADER
        WHERE REQUEST_NUMBER = :request_number`,
       { request_number },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      //{ outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const count = countResult.rows?.[0]?.COUNT || 0;
 
@@ -104,8 +104,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
          FROM PURCHASE_REQUEST_DETAILS
          WHERE REQUEST_NUMBER = :request_number
        )`,
-      { request_number },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      //{ outFormat: oracleDb.OUT_FORMAT_OBJECT }
     );
     const ls_prin_code = prinResult.rows?.[0]?.PRIN_CODE;
     if (!ls_prin_code) {
@@ -138,7 +137,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
        WHERE REQUEST_NUMBER = :request_number AND COMPANY_CODE = :company_code
        AND ROWNUM = 1`,
       { request_number, company_code },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      //{ outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     const RequestheaderData = headerResult.rows?.[0];
@@ -157,7 +156,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
        WHERE REQUEST_NUMBER = :request_number AND PRIN_CODE = :ls_prin_code
        ORDER BY ITEM_SEQUENCE_NO`,
       { request_number, ls_prin_code },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      //{ outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     const RequestdetailData = detailResult.rows || [];
@@ -169,7 +168,7 @@ export const getPurchaserequest = async (req: Request, res: Response): Promise<v
        FROM PR_SUPPL_TERM_COND
        WHERE request_number = :request_number`,
       { request_number },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      //{ outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     const Termconditiondata = termResult.rows || [];
@@ -245,7 +244,7 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
   let connection;
 
   try {
-    connection = await oracledb.getConnection();
+    connection = await oracleDb.getConnection();
 
     // Start transaction
     await connection.execute("BEGIN NULL; END;"); // Ensure session for transaction
@@ -290,7 +289,6 @@ export const updatePurchaseOrder = async (req: Request, res: Response): Promise<
       return;
     }
 
-    // -----------------------
     // PO Confirmation
     // -----------------------
     if (last_action === "Confirm") {
@@ -445,7 +443,7 @@ export function mapIncomingRequestDataOracle(data: any): IPurchaseRequestPf {
     flag_sharing_cost: data.flag_sharing_cost,
     budgeted_yes: data.budgeted_yes,
     checked_store_yes: data.checked_store_yes,
-    amount: data.amount ? Number(data.amount) : 0,
+    amount: data.amount ? String(data.amount) : "0",
     need_by_date: data.need_by_date ? new Date(data.need_by_date) : new Date(),
     service_type: data.service_type,
     accommodation: data.accommodation,
@@ -464,6 +462,8 @@ export function mapIncomingRequestDataOracle(data: any): IPurchaseRequestPf {
     barber: data.barber || "N",
     others: data.others || "N",
     requestor_name: data.requestor_name || "",
+    flow_type: data.flow_type || "",
+    last_updated: data.last_updated || "",
   };
 
   // Combine into final Oracle-ready object
@@ -483,17 +483,17 @@ export const getPurchaseRequestLog = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
-    console.log("✅ getPurchaseRequestLog called");
+    console.log("getPurchaseRequestLog called");
 
     const { requestNumber } = req.params;
 
     if (!requestNumber) {
       res
         .status(400)
-        .json({ success: false, message: "❌ requestNumber is required" });
+        .json({ success: false, message: "requestNumber is required" });
       return;
     }
 
@@ -505,7 +505,8 @@ export const getPurchaseRequestLog = async (
       WHERE REQUEST_NUMBER = :requestNumber
     `;
 
-    const result = await connection.execute(query, { requestNumber }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const result = await connection.execute(query, { requestNumber }, 
+    );
 
     // Convert column names to lowercase
     const data = result.rows?.map((row: any) => {
@@ -519,14 +520,14 @@ export const getPurchaseRequestLog = async (
     }) || [];
 
     console.log(
-      "✅ Query executed successfully. Retrieved",
+      "Query executed successfully. Retrieved",
       data.length,
       "records"
     );
 
     res.status(200).json({ success: true, data });
   } catch (error: unknown) {
-    console.error("❌ Error fetching PR log:", error);
+    console.error("Error fetching PR log:", error);
 
     res.status(500).json({
       success: false,
@@ -538,15 +539,13 @@ export const getPurchaseRequestLog = async (
       try {
         await connection.close();
       } catch (closeErr) {
-        console.error("❌ Failed to close Oracle connection:", closeErr);
+        console.error("Failed to close Oracle connection:", closeErr);
       }
     }
   }
 };
 
-/**
- * Convert Oracle DATE or TIMESTAMP to 'YYYY-MM-DD' string
- */
+// Convert Oracle DATE or TIMESTAMP to 'YYYY-MM-DD' string
 export const formatOracleDate = (dateValue: Date | string | null | undefined): string => {
   if (!dateValue) return ""; // Handle null/undefined
 
@@ -560,9 +559,8 @@ export const formatOracleDate = (dateValue: Date | string | null | undefined): s
 };
 
 
-
 export const fetchPRregisterdata = async (req: Request, res: Response): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
     console.log("✅ fetchPRregisterdata called");
@@ -619,11 +617,10 @@ export const fetchPRregisterdata = async (req: Request, res: Response): Promise<
     console.log("✅ Final Query:", query);
     console.log("✅ Bind Parameters:", binds);
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
-    const result = await connection.execute(query, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
+    const result = await connection.execute(query, binds
+   );
 
     const rows = result.rows || [];
 
@@ -635,7 +632,7 @@ export const fetchPRregisterdata = async (req: Request, res: Response): Promise<
     });
 
   } catch (error) {
-    console.error("❌ Error fetching PR register data:", error);
+    console.error("Error fetching PR register data:", error);
     res.status(500).json({
       success: false,
       message: "An error occurred while fetching PR register data.",
@@ -654,7 +651,7 @@ export const fetchPRregisterdata = async (req: Request, res: Response): Promise<
 
 
 export const fetchPOregisterdata = async (req: Request, res: Response): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection:any;
 
   try {
     console.log("✅ fetchPOregisterdata called");
@@ -712,15 +709,13 @@ export const fetchPOregisterdata = async (req: Request, res: Response): Promise<
     console.log("✅ Final Query:", query);
     console.log("✅ Bind Parameters:", binds);
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
-    const result = await connection.execute(query, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
+    const result = await connection.execute(query, binds);
 
     const rows = result.rows || [];
 
-    console.log(`✅ Query executed successfully. Retrieved ${rows.length} records.`);
+    console.log(` Query executed successfully. Retrieved ${rows.length} records.`);
 
     res.status(200).json({
       success: true,
@@ -728,7 +723,7 @@ export const fetchPOregisterdata = async (req: Request, res: Response): Promise<
     });
 
   } catch (error) {
-    console.error("❌ Error fetching PO register data:", error);
+    console.error(" Error fetching PO register data:", error);
     res.status(500).json({
       success: false,
       message: "An error occurred while fetching PO register data.",
@@ -747,10 +742,10 @@ export const fetchPOregisterdata = async (req: Request, res: Response): Promise<
 
 // Fetch request number from GT_SESSION_INFO
 export const fetchRequestNoFromGTSession = async (req: Request, res: Response): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     // Oracle equivalent of MySQL CONNECTION_ID() is SYS_CONTEXT('USERENV', 'SID') or SYS_CONTEXT('USERENV', 'SESSIONID')
     const result = await connection.execute(
@@ -758,7 +753,6 @@ export const fetchRequestNoFromGTSession = async (req: Request, res: Response): 
        FROM GT_SESSION_INFO 
        WHERE session_id = SYS_CONTEXT('USERENV', 'SID') AND ROWNUM = 1`,
       [],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     const sessionData = result.rows?.[0];
@@ -783,7 +777,7 @@ export const fetchRequestNoFromGTSession = async (req: Request, res: Response): 
 
 // Fetch user level from V_USER_FLOW_DETAILS
 export const fetchUserlevel = async (req: Request, res: Response): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
     const { userId, companyCode, flow_code } = req.query;
@@ -793,7 +787,7 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     const result = await connection.execute(
       `SELECT MIN(FLOW_LEVEL) AS flowLevel
@@ -806,7 +800,6 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
         companyCode,
         flowCode: flow_code,
       },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     const userLevel = result.rows?.[0];
@@ -822,7 +815,9 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
     }
   } catch (error) {
     console.error("Error fetching user level:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error" });
   } finally {
     if (connection) await connection.close();
   }
@@ -831,21 +826,24 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
 
 // Check if the user has cost controller role
 export const CheckCostcontroller = async (req: Request, res: Response): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
     const userId = String(req.query.userId || "").trim();
     const companyCode = String(req.query.companyCode || "").trim();
 
     if (!userId || !companyCode) {
-      console.error("❌ Missing userId or companyCode:", { userId, companyCode });
-      res.status(400).json({ success: false, message: "Missing userId or companyCode" });
+      console.error(" Missing userId or companyCode:", { userId, companyCode });
+      res.status(400).json({ 
+        success: false, 
+        message: "Missing userId or companyCode" 
+      });
       return;
     }
 
     console.log("✅ Inside backend CheckCostcontroller", { userId, companyCode });
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     const result = await connection.execute(
       `SELECT CASE WHEN COUNT(*) > 0 THEN 'YES' ELSE 'NO' END AS COSTCONTROLLER
@@ -854,7 +852,6 @@ export const CheckCostcontroller = async (req: Request, res: Response): Promise<
          AND USER_CODE = :userId
          AND COMPANY_CODE = :companyCode`,
       { userId, companyCode },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     const costControllerValue = result.rows?.[0]?.COSTCONTROLLER || "NO";
@@ -862,7 +859,7 @@ export const CheckCostcontroller = async (req: Request, res: Response): Promise<
 
     res.status(200).json({ success: true, data: costControllerValue });
   } catch (error) {
-    console.error("❌ Error fetching Costcontroller:", error);
+    console.error(" Error fetching Costcontroller:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   } finally {
     if (connection) await connection.close();
@@ -871,7 +868,7 @@ export const CheckCostcontroller = async (req: Request, res: Response): Promise<
 
 // Fetch user message box
 export const Fetchmessagebox = async (req: Request, res: Response): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
     const userId = String(req.query.userId || "").trim();
@@ -884,14 +881,13 @@ export const Fetchmessagebox = async (req: Request, res: Response): Promise<void
 
     console.log("✅ Inside backend Fetchmessagebox");
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     const result = await connection.execute(
       `SELECT MESSAGE_BOX, MESSAGE_TYPE 
        FROM GT_SESSION_MESSAGEBOX 
        WHERE USER_ID = :userId`,
       { userId },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     console.log("✅ Messages fetched:", result.rows);
@@ -910,7 +906,7 @@ export const bugetcurstatusprojectwiseconsolidated = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
     console.log("✅ bugetcurstatusprojectwiseconsolidated called");
@@ -926,12 +922,12 @@ export const bugetcurstatusprojectwiseconsolidated = async (
     if (!fromDate || !toDate) {
       res.status(400).json({
         success: false,
-        message: "❌ fromDate and toDate are required.",
+        message: "fromDate and toDate are required.",
       });
       return;
     }
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     let query = `
       SELECT * 
@@ -961,18 +957,16 @@ export const bugetcurstatusprojectwiseconsolidated = async (
     console.log("✅ Final Query:", query);
     console.log("✅ Query Binds:", binds);
 
-    const result = await connection.execute(query, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
+    const result = await connection.execute(query, binds);
 
-    console.log(`✅ Query executed successfully. Retrieved ${result.rows?.length || 0} records.`);
+    console.log(`Query executed successfully. Retrieved ${result.rows?.length || 0} records.`);
 
     res.status(200).json({
       success: true,
       data: result.rows || [],
     });
   } catch (error) {
-    console.error("❌ Error fetching bugetcurstatusprojectwiseconsolidated data:", error);
+    console.error(" Error fetching bugetcurstatusprojectwiseconsolidated data:", error);
     res.status(500).json({
       success: false,
       message: "An error occurred while fetching budget consolidated data.",
@@ -987,7 +981,7 @@ export const fetchProjectwisebudgetAllocation = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection:any;
 
   try {
     console.log("✅ fetchProjectwisebudgetAllocation called");
@@ -1003,17 +997,18 @@ export const fetchProjectwisebudgetAllocation = async (
     if (!fromDate || !toDate) {
       res.status(400).json({
         success: false,
-        message: "❌ fromDate and toDate are required.",
+        message: "fromDate and toDate are required.",
       });
       return;
     }
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     let query = `
       SELECT * 
       FROM VW_PROJECTWISE_BUDGET_ALLOCATION
-      WHERE REQUEST_DATE BETWEEN TO_DATE(:fromDate,'YYYY-MM-DD') AND TO_DATE(:toDate,'YYYY-MM-DD')
+      WHERE REQUEST_DATE BETWEEN TO_DATE(:fromDate,'YYYY-MM-DD') AND 
+      TO_DATE(:toDate,'YYYY-MM-DD')
     `;
 
     const binds: Record<string, string> = { fromDate, toDate };
@@ -1038,9 +1033,7 @@ export const fetchProjectwisebudgetAllocation = async (
     console.log("✅ Final Query:", query);
     console.log("✅ Query Binds:", binds);
 
-    const result = await connection.execute(query, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
+    const result = await connection.execute(query, binds);
 
     console.log(`✅ Query executed successfully. Retrieved ${result.rows?.length || 0} records.`);
 
@@ -1049,7 +1042,7 @@ export const fetchProjectwisebudgetAllocation = async (
       data: result.rows || [],
     });
   } catch (error) {
-    console.error("❌ Error fetching project-wise budget allocation data:", error);
+    console.error(" Error fetching project-wise budget allocation data:", error);
     res.status(500).json({
       success: false,
       message: "An error occurred while fetching project-wise budget allocation data.",
@@ -1066,7 +1059,7 @@ export const fetchCostwisebudgetAllocation = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
     console.log("✅ fetchCostwisebudgetAllocation called");
@@ -1082,12 +1075,12 @@ export const fetchCostwisebudgetAllocation = async (
     if (!fromDate || !toDate) {
       res.status(400).json({
         success: false,
-        message: "❌ fromDate and toDate are required.",
+        message: "fromDate and toDate are required.",
       });
       return;
     }
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     let query = `
       SELECT * 
@@ -1118,9 +1111,7 @@ export const fetchCostwisebudgetAllocation = async (
     console.log("✅ Final Query:", query);
     console.log("✅ Query Binds:", binds);
 
-    const result = await connection.execute(query, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
+    const result = await connection.execute(query, binds);
 
     console.log(`✅ Query executed successfully. Retrieved ${result.rows?.length || 0} records.`);
 
@@ -1140,12 +1131,6 @@ export const fetchCostwisebudgetAllocation = async (
   }
 };
 
-
-
-interface RequestWithUser extends Request {
-  user?: any;
-}
-
 export const saveFile = async (
   req: RequestWithUser,
   res: Response
@@ -1154,7 +1139,8 @@ export const saveFile = async (
 
   // Validate required fields
   if (!request_number || !files || !Array.isArray(files) || files.length === 0) {
-    return res.status(400).json({
+    return res.status(constants.STATUS_CODES.BAD_REQUEST)
+    .json({
       success: false,
       message: "request_number and files are required.",
     });
@@ -1162,10 +1148,10 @@ export const saveFile = async (
 
   const duplicateRecords: string[] = [];
   const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     for (const file of files) {
       const { org_file_name } = file;
@@ -1180,7 +1166,8 @@ export const saveFile = async (
       const duplicateCheckResult = await connection.execute(
         duplicateCheckQuery,
         { request_number, org_file_name },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        {}
+      //  { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
 
       if (duplicateCheckResult.rows?.[0]?.COUNT > 0) {
@@ -1191,10 +1178,10 @@ export const saveFile = async (
       // Insert new file record
       const query = `
         INSERT INTO UPLOADED_FILES_DLTS (
-          SR_NO, company_code, request_number, file_name, extensions, org_file_name, 
+          company_code, request_number, file_name, extensions, org_file_name, 
           aws_file_locn, flow_level, modules, updated_by, created_by, user_file_name, created_at, updated_at
         ) VALUES (
-          UPLOADED_FILES_DLTS_SEQ.NEXTVAL, :company_code, :request_number, :file_name, :extensions, :org_file_name, 
+          :company_code, :request_number, :file_name, :extensions, :org_file_name, 
           :aws_file_locn, :flow_level, :modules, :updated_by, :created_by, :user_file_name, SYSDATE, SYSDATE
         )
       `;
@@ -1244,11 +1231,14 @@ export const saveFile = async (
       const srNoResult = await connection.execute(
         fetchSrNoQuery,
         { request_number, org_file_name },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        {}
       );
 
       if (srNoResult.rows?.[0]?.SR_NO) {
-        successfulRecords.push({ org_file_name, sr_no: srNoResult.rows[0].SR_NO });
+        successfulRecords.push({ 
+          org_file_name, 
+          sr_no: srNoResult.rows[0].SR_NO 
+        });
       }
     }
 
@@ -1262,7 +1252,7 @@ export const saveFile = async (
     });
   } catch (error) {
     console.error("Error storing file data:", error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "An error occurred while storing file data.",
       error: error instanceof Error ? error.message : "Unknown error",
@@ -1271,11 +1261,12 @@ export const saveFile = async (
     if (connection) await connection.close();
   }
 };
+
 export const fetchPurchaseRecovery = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
 
   try {
     console.log("✅ PurchaseRecovery API called");
@@ -1285,13 +1276,16 @@ export const fetchPurchaseRecovery = async (
     if (!type_of_pr) {
       res
         .status(400)
-        .json({ success: false, message: "❌ type_of_pr is required" });
+        .json({ 
+          success: false, 
+          message: "type_of_pr is required" 
+        });
       return;
     }
 
     console.log("🔍 Received type_of_pr:", type_of_pr);
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     const query = `
       SELECT * 
@@ -1300,9 +1294,7 @@ export const fetchPurchaseRecovery = async (
         AND (RECOVERY_CONFIRM = 'NO' OR RECOVERY_CONFIRM IS NULL)
     `;
 
-    const result = await connection.execute(query, { type_of_pr }, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
+    const result = await connection.execute(query, { type_of_pr });
 
     console.log(
       "✅ Query executed successfully. Retrieved",
@@ -1329,7 +1321,8 @@ export const updatecancelrejectsentBack = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const t = await sequelize.transaction();
+  //let connection: any;
+ const t = await oracleDb.getConnection();
   try {
     console.log("Incoming request data:", req.body);
 
@@ -1367,7 +1360,7 @@ export const updatecancelrejectsentBack = async (
       const todaydate: Date = new Date();
       const formattedDate = todaydate.toISOString().split("T")[0];
       // Update PO details
-      await sequelize.query(
+      await oracleDb.query(
         `UPDATE PURCHASE_REQUEST_DETAILS 
          SET PO_CANCEL = 'Y', 
              REASON_FOR_PO_CANCEL = ?, 
@@ -1389,7 +1382,7 @@ export const updatecancelrejectsentBack = async (
 
       if (CREATEPR === "Y") {
         console.log("Calling stored procedure PRO_GEN_PR_FOR_CANCEL_PO...");
-        await sequelize.query(
+        await oracleDb.query(
           `CALL PRO_GEN_PR_FOR_CANCEL_PO(?, ?, 'BUYER', 'FULL', @code)`,
           {
             replacements: [COMPANY_CODE, REQUEST_NUMBER],
@@ -1398,7 +1391,8 @@ export const updatecancelrejectsentBack = async (
         );
 
         console.log("Fetching generated request number...");
-        const [[result]]: any = await sequelize.query(`SELECT @code AS code`, {
+        const [[result]]: any = await oracleDb.query(
+          `SELECT @code AS code`, {
           transaction: t,
         });
 
@@ -1410,7 +1404,7 @@ export const updatecancelrejectsentBack = async (
         }
       }
 
-      await sequelize.query(
+      await oracleDb.query(
         `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,'')`,
         {
           replacements: {
@@ -1492,7 +1486,7 @@ Thank you.`,
     // The following code will only execute for PR requests (not PO cancellations)
     console.log("Updating PURCHASE_REQUEST_HEADER/MATERIAL REQUEST HEADER...");
     if (LAST_ACTION === "SENTBACK" && REQUEST_NUMBER.includes("MAT$")) {
-      await sequelize.query(
+      await oracleDb.query(
         `UPDATE MATERIAL_REQUEST_HEADER 
          SET LAST_ACTION = ?, UPDATED_AT = NOW(), UPDATED_BY = ?, FLOW_LEVEL_RUNNING = ?,
      SENDBACK_HISTRY = CONCAT(IFNULL(SENDBACK_HISTRY, ''), '; ', ?)
@@ -1519,7 +1513,7 @@ Thank you.`,
 
     if (LAST_ACTION === "SENTBACK") {
       console.log("Updating with SENTBACK action...");
-      await sequelize.query(
+      await oracleDb.query(
         `UPDATE PURCHASE_REQUEST_HEADER 
          SET LAST_ACTION = ?, UPDATED_AT = NOW(), UPDATED_BY = ?, FLOW_LEVEL_RUNNING = ?,
          SENDBACK_HISTRY = CONCAT(IFNULL(SENDBACK_HISTRY, ''), '; ', ?)
@@ -1536,7 +1530,7 @@ Thank you.`,
           transaction: t,
         }
       );
-      await sequelize.query(
+      await oracleDb.query(
         `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,'')`,
         {
           replacements: {
@@ -1549,7 +1543,7 @@ Thank you.`,
       );
     } else {
       console.log("Updating without SENTBACK action...");
-      await sequelize.query(
+      await oracleDb.query(
         `UPDATE PURCHASE_REQUEST_HEADER 
          SET LAST_ACTION = ?, UPDATED_AT = NOW(), UPDATED_BY = ?
          WHERE REQUEST_NUMBER = ? AND COMPANY_CODE = ?`,
@@ -1570,7 +1564,7 @@ Thank you.`,
     console.log("Transaction committed successfully!");
 
     // Get CC email from PURCHASE_REQUEST_HEADER joined with SEC_LOGIN
-    const [ccResultRows] = await sequelize.query(
+    const [ccResultRows] = await oracleDb.query(
       `SELECT prh.CREATED_BY, sl.email_id
        FROM PURCHASE_REQUEST_HEADER prh
        LEFT JOIN SEC_LOGIN sl ON prh.CREATED_BY = sl.user_id
@@ -1595,7 +1589,7 @@ Thank you.`,
     const displayRequestNumber = REQUEST_NUMBER.replace(/\$/g, "/");
 
     // Fetch email address of the last updater - modified to handle array result
-    const [emailResultRows] = await sequelize.query(
+    const [emailResultRows] = await oracleDb.query(
       `SELECT email_id FROM SEC_LOGIN 
        WHERE LOGINID IN (
          SELECT DISTINCT LAST_UPDATED 
@@ -2343,10 +2337,10 @@ export const FetchGenPOString = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
   try {
     console.log("✅ Fetching GEN_PO_NUMBER from GT_SESSION_INFO");
-    connection = await oracledb.getConnection(oracleDb);
+    let connection = await oracleDb.getConnection();
 
     const query = `
       SELECT GEN_PO_NUMBER
@@ -2354,11 +2348,11 @@ export const FetchGenPOString = async (
       WHERE ROWNUM = 1
     `;
 
-    const result = await connection.execute(query, {}, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
+    const result = await connection.execute(query, {}) as any;
 
-    const genPoNumber = result.rows?.[0]?.GEN_PO_NUMBER || "NO";
+    const genPoNumber = result?.rows?.[0] && result.rows[0].GEN_PO_NUMBER
+      ? String(result.rows[0].GEN_PO_NUMBER)
+      : "NO";
 
     console.log("✅ GEN_PO_NUMBER fetched:", genPoNumber);
     res.status(200).json({ success: true, data: genPoNumber });
@@ -2375,7 +2369,7 @@ export const cancelFinalApproval = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
   try {
     console.log("✅ cancelFinalApproval API called");
     const { company_code, request_number, user_id } = req.body;
@@ -2383,12 +2377,12 @@ export const cancelFinalApproval = async (
     if (!company_code || !request_number || !user_id) {
       res.status(400).json({
         success: false,
-        message: "❌ company_code, request_number, and user_id are required",
+        message: "company_code, request_number, and user_id are required",
       });
       return;
     }
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     console.log("📞 Calling stored procedure PRO_CANCEL_FINAL_APPROVAL_PR...");
     await connection.execute(
@@ -2401,7 +2395,7 @@ export const cancelFinalApproval = async (
 
     res.status(200).json({
       success: true,
-      message: "✅ Final approval cancelled successfully.",
+      message: "Final approval cancelled successfully.",
     });
   } catch (error) {
     if (connection) await connection.rollback();
@@ -2421,7 +2415,7 @@ export const fetchPOlisting = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection: oracledb.Connection | undefined;
+  let connection: any;
   try {
     console.log("✅ fetchPOlisting API called");
     const { request_number } = req.params;
@@ -2431,7 +2425,7 @@ export const fetchPOlisting = async (
       return;
     }
 
-    connection = await oracledb.getConnection(oracleDb);
+    connection = await oracleDb.getConnection();
 
     console.log("📞 Calling stored procedure PRO_CALL_GEN_JESRA_PO_NO_DRAFT...");
     await connection.execute(
@@ -2448,9 +2442,7 @@ export const fetchPOlisting = async (
       WHERE REQUEST_NUMBER = :request_number
     `;
 
-    const result = await connection.execute(query, { request_number }, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
+    const result = await connection.execute(query, { request_number });
 
     console.log(
       "✅ Query executed successfully. Retrieved",

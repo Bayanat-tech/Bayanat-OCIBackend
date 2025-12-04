@@ -132,7 +132,7 @@ import { createOrUpdateBudgetRequestSequential } from "../../controllers/Purchas
 //   updatecustomer,
 // } from "../../controllers/Purchaseflow/customermaster_pf.controller";
 
-// import { saveFile } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
+ import { saveFile } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
 
 const router = express.Router();
 
@@ -226,7 +226,7 @@ router.post("/updatePrintSignatureInfo", updatePrintSignatureInfo);
 // router.get("/fetchPurchaseRecovery/:type_of_pr", fetchPurchaseRecovery);
 
  router.post("/saveexcelbudgetdata", saveExcelBudgetData);
-// router.post("/saveFile", saveFile as RequestHandler);
+ router.post("/saveFile", saveFile as unknown as RequestHandler);
 
 // //------------------CUSTOMER MASTER------------------
 // router.post("/customermaster", createcustomer);
