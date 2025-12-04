@@ -1,26 +1,8 @@
-// //import oracledb from "oracledb";
-// import { Request, Response } from "express";
-// import { oracleDb } from "../../database/connection";
-// import { QueryTypes } from "sequelize";
-// import { upsertPurchaseRequest } from "./purchaseRquestdbupdate_pf.Controller";
-// import { createLog, notifyUser } from "../../helpers/functions";
-// import constants from "../../helpers/constants";
-// import { format } from "date-fns";
-// import { IFiles, RequestWithUser } from "../../interfaces/common.interface";
-// import { IUser } from "../../interfaces/user.interface";
-// import { setUserLevel } from "../../helpers/globalVariables";
-// import { BoldReportsController } from "../BoldReportsController";
-// import {
-//   IPurchaseOrder,
-//   IPurchaseRequestPf,
-//   IItemPrRequest,
-//   IPrtermnscondition,
-//   IBasicPrRequest,
-// } from "../../interfaces/Purchaseflow/Purucahseflow.interface";
-
-// import { PurchaseRequestHeader } from "../../models/Purchaseflow/purchaserequest_pf.model";
-// import { PurchaseRequestDetail } from "../../models/Purchaseflow/purchaserequest_pf.model";
-// import { DecimalDataType } from "sequelize";
+//import oracledb from "oracledb";
+import { Request, Response } from "express";
+import { oracleDb } from "../../database/connection";
+import constants from "../../helpers/constants";
+import { IFiles, RequestWithUser } from "../../interfaces/common.interface";
 
 // // interface RequestWithUsercrs extends Request {
 // //   body: {
@@ -1131,136 +1113,136 @@
 //   }
 // };
 
-// export const saveFile = async (
-//   req: RequestWithUser,
-//   res: Response
-// ): Promise<Response | void> => {
-//   const { request_number, files } = req.body;
+export const saveFile = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<Response | void> => {
+  const { request_number, files } = req.body;
 
-//   // Validate required fields
-//   if (!request_number || !files || !Array.isArray(files) || files.length === 0) {
-//     return res.status(constants.STATUS_CODES.BAD_REQUEST)
-//     .json({
-//       success: false,
-//       message: "request_number and files are required.",
-//     });
-//   }
+  // Validate required fields
+  if (!request_number || !files || !Array.isArray(files) || files.length === 0) {
+    return res.status(constants.STATUS_CODES.BAD_REQUEST)
+    .json({
+      success: false,
+      message: "request_number and files are required.",
+    });
+  }
 
-//   const duplicateRecords: string[] = [];
-//   const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
-//   let connection: any;
+  const duplicateRecords: string[] = [];
+  const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
+  let connection: any;
 
-//   try {
-//     connection = await oracleDb.getConnection();
+  try {
+    connection = await oracleDb.getConnection();
 
-//     for (const file of files) {
-//       const { org_file_name } = file;
+    for (const file of files) {
+      const { org_file_name } = file;
 
-//       // Check for duplicate entry
-//       const duplicateCheckQuery = `
-//         SELECT COUNT(*) AS COUNT
-//         FROM UPLOADED_FILES_DLTS
-//         WHERE request_number = :request_number AND org_file_name = :org_file_name
-//       `;
+      // Check for duplicate entry
+      const duplicateCheckQuery = `
+        SELECT COUNT(*) AS COUNT
+        FROM UPLOADED_FILES_DLTS
+        WHERE request_number = :request_number AND org_file_name = :org_file_name
+      `;
 
-//       const duplicateCheckResult = await connection.execute(
-//         duplicateCheckQuery,
-//         { request_number, org_file_name },
-//         {}
-//       //  { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//       );
+      const duplicateCheckResult = await connection.execute(
+        duplicateCheckQuery,
+        { request_number, org_file_name },
+        {}
+      //  { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
 
-//       if (duplicateCheckResult.rows?.[0]?.COUNT > 0) {
-//         duplicateRecords.push(org_file_name);
-//         continue;
-//       }
+      if (duplicateCheckResult.rows?.[0]?.COUNT > 0) {
+        duplicateRecords.push(org_file_name);
+        continue;
+      }
 
-//       // Insert new file record
-//       const query = `
-//         INSERT INTO UPLOADED_FILES_DLTS (
-//           company_code, request_number, file_name, extensions, org_file_name, 
-//           aws_file_locn, flow_level, modules, updated_by, created_by, user_file_name, created_at, updated_at
-//         ) VALUES (
-//           :company_code, :request_number, :file_name, :extensions, :org_file_name, 
-//           :aws_file_locn, :flow_level, :modules, :updated_by, :created_by, :user_file_name, SYSDATE, SYSDATE
-//         )
-//       `;
+      // Insert new file record
+      const query = `
+        INSERT INTO UPLOADED_FILES_DLTS (
+          company_code, request_number, file_name, extensions, org_file_name, 
+          aws_file_locn, flow_level, modules, updated_by, created_by, user_file_name, created_at, updated_at
+        ) VALUES (
+          :company_code, :request_number, :file_name, :extensions, :org_file_name, 
+          :aws_file_locn, :flow_level, :modules, :updated_by, :created_by, :user_file_name, SYSDATE, SYSDATE
+        )
+      `;
 
-//       const {
-//         company_code,
-//         file_name,
-//         extensions,
-//         aws_file_locn,
-//         flow_level,
-//         modules,
-//         updated_by,
-//         created_by,
-//         user_file_name,
-//       } = file;
+      const {
+        company_code,
+        file_name,
+        extensions,
+        aws_file_locn,
+        flow_level,
+        modules,
+        updated_by,
+        created_by,
+        user_file_name,
+      } = file;
 
-//       await connection.execute(
-//         query,
-//         {
-//           company_code: company_code || null,
-//           request_number,
-//           file_name: file_name || null,
-//           extensions: extensions || null,
-//           org_file_name: org_file_name || null,
-//           aws_file_locn: aws_file_locn || null,
-//           flow_level: flow_level || null,
-//           modules: modules || null,
-//           updated_by: updated_by || null,
-//           created_by: created_by || null,
-//           user_file_name: user_file_name || null,
-//         },
-//         { autoCommit: true }
-//       );
+      await connection.execute(
+        query,
+        {
+          company_code: company_code || null,
+          request_number,
+          file_name: file_name || null,
+          extensions: extensions || null,
+          org_file_name: org_file_name || null,
+          aws_file_locn: aws_file_locn || null,
+          flow_level: flow_level || null,
+          modules: modules || null,
+          updated_by: updated_by || null,
+          created_by: created_by || null,
+          user_file_name: user_file_name || null,
+        },
+        { autoCommit: true }
+      );
 
-//       // Fetch the SR_NO generated by the sequence
-//       const fetchSrNoQuery = `
-//         SELECT SR_NO
-//         FROM (
-//           SELECT SR_NO
-//           FROM UPLOADED_FILES_DLTS
-//           WHERE request_number = :request_number AND org_file_name = :org_file_name
-//           ORDER BY created_at DESC
-//         )
-//         WHERE ROWNUM = 1
-//       `;
+      // Fetch the SR_NO generated by the sequence
+      const fetchSrNoQuery = `
+        SELECT SR_NO
+        FROM (
+          SELECT SR_NO
+          FROM UPLOADED_FILES_DLTS
+          WHERE request_number = :request_number AND org_file_name = :org_file_name
+          ORDER BY created_at DESC
+        )
+        WHERE ROWNUM = 1
+      `;
 
-//       const srNoResult = await connection.execute(
-//         fetchSrNoQuery,
-//         { request_number, org_file_name },
-//         {}
-//       );
+      const srNoResult = await connection.execute(
+        fetchSrNoQuery,
+        { request_number, org_file_name },
+        {}
+      );
 
-//       if (srNoResult.rows?.[0]?.SR_NO) {
-//         successfulRecords.push({ 
-//           org_file_name, 
-//           sr_no: srNoResult.rows[0].SR_NO 
-//         });
-//       }
-//     }
+      if (srNoResult.rows?.[0]?.SR_NO) {
+        successfulRecords.push({ 
+          org_file_name, 
+          sr_no: srNoResult.rows[0].SR_NO 
+        });
+      }
+    }
 
-//     return res.status(200).json({
-//       success: true,
-//       message: "File data processed successfully.",
-//       data: {
-//         successfulRecords,
-//         duplicateRecords,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error storing file data:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "An error occurred while storing file data.",
-//       error: error instanceof Error ? error.message : "Unknown error",
-//     });
-//   } finally {
-//     if (connection) await connection.close();
-//   }
-// };
+    return res.status(200).json({
+      success: true,
+      message: "File data processed successfully.",
+      data: {
+        successfulRecords,
+        duplicateRecords,
+      },
+    });
+  } catch (error) {
+    console.error("Error storing file data:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while storing file data.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  } finally {
+    if (connection) await connection.close();
+  }
+};
 
 // export const fetchPurchaseRecovery = async (
 //   req: Request,
