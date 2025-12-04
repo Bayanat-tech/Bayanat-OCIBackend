@@ -9,7 +9,6 @@ export const createInboundSchema = (
   const createinboundjobSchema = Joi.object().keys({
     company_code: Joi.string().valid(companyCode).required(),
     prin_code: Joi.any().required(),
-    job_no: Joi.any().optional().allow("", null),
     job_type: Joi.string().required(),
     job_date: Joi.date(),
     job_class: Joi.string().allow(""),
