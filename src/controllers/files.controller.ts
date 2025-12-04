@@ -3,12 +3,19 @@ import { Response } from "express";
 import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
 import { oracleDb } from "../database/connection";
+import { FilesPFService } from "../services/filesPF.service";
 
 let filesVHService: FilesVHService;
+let filesPFService: FilesPFService;
 
 // Initialize service
 (async () => {
   filesVHService = await FilesVHService.getInstance();
+})().catch(console.error);
+
+// Initialize service for PF files
+(async () => {
+  filesPFService = await FilesPFService.getInstance();
 })().catch(console.error);
 
 export const getFiles = async (
@@ -70,7 +77,7 @@ export const getpfFiles = async (
         ? { modules, request_number }
         : { company_code: req.user.company_code, request_number };
 
-    const files = await filesVHService.findAll(conditions);
+    const files = await filesPFService.findAll(conditions);
 
     // send response
     res.status(constants.STATUS_CODES.OK).json({ success: true, data: files });
@@ -108,6 +115,7 @@ export const editFiles = async (
       return;
     }
 
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "File name updated successfully",
@@ -226,7 +234,7 @@ export const deleteFilesPF = async (
     }
 
     // query to find the file details
-    const file = await filesVHService.findOne({ request_number, sr_no });
+    const file = await filesPFService.findOne({ request_number, sr_no });
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
