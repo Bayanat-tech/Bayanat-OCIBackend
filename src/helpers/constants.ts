@@ -14,6 +14,7 @@ export default {
     MS_INDUSTRY_SECTOR: "MS_INDUSTRY_SECTOR",
     MS_PS_FLOW_MASTER: "MS_PS_FLOW_MASTER",
     SEC_ROLE_MASTER: "SEC_ROLE_MASTER",
+    employees:"employees",
     // MS_PS_COST: "MS_PS_COST",
     MS_PORT: "MS_PORT",
     MS_STORAGE: "MS_STORAGE_CHARGE",
