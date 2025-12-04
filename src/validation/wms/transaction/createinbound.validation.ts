@@ -11,6 +11,7 @@ export const createInboundSchema = (
     prin_code: Joi.any().required(),
     job_type: Joi.string().required(),
     job_date: Joi.date(),
+    job_no: Joi.string().allow(""),
     job_class: Joi.string().allow(""),
     dept_code: Joi.string().allow(""),
     transport_mode: Joi.string().allow(""),

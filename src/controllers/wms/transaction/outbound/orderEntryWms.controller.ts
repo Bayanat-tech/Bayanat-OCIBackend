@@ -18,6 +18,45 @@ export const createToOrder = async (
   res: Response
 ): Promise<void> => {
   try {
+    function toOracleDate(dateInput?: string | Date | null): string | null {
+      if (!dateInput) return null;
+
+      try {
+        let dateObj: Date;
+
+        if (dateInput instanceof Date) {
+          dateObj = dateInput;
+        } else if (typeof dateInput === "string") {
+          // Handle different date formats
+          const cleanDate = dateInput.replace(/T.+/, "");
+          const [year, month, day] = cleanDate.split("-").map(Number);
+
+          if (!year || !month || !day) {
+            console.error("Invalid date components:", { year, month, day });
+            return null;
+          }
+
+          dateObj = new Date(year, month - 1, day);
+
+          if (isNaN(dateObj.getTime())) {
+            console.error("Invalid date object created from:", dateInput);
+            return null;
+          }
+        } else {
+          console.error("Unsupported date input type:", typeof dateInput);
+          return null;
+        }
+
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const day = String(dateObj.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      } catch (error) {
+        console.error("Error converting date:", dateInput, error);
+        return null;
+      }
+    }
+
     console.log("createToOrder API called");
     console.log(" Request body:", req.body);
 
@@ -46,6 +85,12 @@ export const createToOrder = async (
       load_end = null
     } = req.body;
 
+    // Convert ISO strings to Oracle DATE format
+    const formatDateForOracle = (dateString: any) => {
+      if (!dateString) return null;
+      return new Date(dateString);
+    };
+
     // Basic validation
     if (!prin_code || !company_code || !job_no) {
       throw new Error('Missing required fields: PRIN_CODE, COMPANY_CODE, and job_no are required');
@@ -57,7 +102,7 @@ export const createToOrder = async (
         SELECT COUNT(*) as count FROM TO_ORDER 
         WHERE order_no = :order_no
       `;
-      
+
       const duplicateCheckResult = await oracleDb.query(checkDuplicateQuery, {
         order_no: order_no
       });
@@ -69,26 +114,30 @@ export const createToOrder = async (
 
     const query = `
       INSERT INTO TO_ORDER (
-        PRIN_CODE, COMPANY_CODE, job_no, cust_code, order_no, 
+        PRIN_CODE, COMPANY_CODE, job_no, cust_code, order_no,
         order_date, order_due_date, curr_code, EX_RATE, UOC,
         MOC1, MOC2, EXP_CONTAINER_NO, EXP_CONTAINER_SIZE, EXP_CONTAINER_TYPE,
         EXP_CONTAINER_SEALNO, CUST_REFERENCE, PACK_START, PACK_END, LOAD_START, LOAD_END
       ) VALUES (
-        :prin_code, :company_code, :job_no, :cust_code, :order_no, 
-        :order_date, :order_due_date, :curr_code, :ex_rate, :uoc,
+        :prin_code, :company_code, :job_no, :cust_code, :order_no,
+        TO_DATE(:order_date, 'YYYY-MM-DD HH24:MI:SS'), 
+        TO_DATE(:order_due_date, 'YYYY-MM-DD HH24:MI:SS'), 
+        :curr_code, :ex_rate, :uoc,
         :moc1, :moc2, :exp_container_no, :exp_container_size, :exp_container_type,
-        :exp_container_sealno, :cust_reference, :pack_start, :pack_end, :load_start, :load_end
+        :exp_container_sealno, :cust_reference, 
+        TO_DATE(:pack_start, 'YYYY-MM-DD HH24:MI:SS'), 
+        TO_DATE(:pack_end, 'YYYY-MM-DD HH24:MI:SS'), 
+        TO_DATE(:load_start, 'YYYY-MM-DD HH24:MI:SS'), 
+        TO_DATE(:load_end, 'YYYY-MM-DD HH24:MI:SS')
       )
     `;
-    
+
     const bindParams = {
       prin_code,
       company_code,
       job_no,
       cust_code,
       order_no,
-      order_date,
-      order_due_date,
       curr_code,
       ex_rate,
       uoc,
@@ -99,10 +148,12 @@ export const createToOrder = async (
       exp_container_type,
       exp_container_sealno,
       cust_reference,
-      pack_start,
-      pack_end,
-      load_start,
-      load_end
+      order_date: toOracleDate(order_date),
+      order_due_date: toOracleDate(order_due_date),
+      pack_start: toOracleDate(pack_start),
+      pack_end: toOracleDate(pack_end),
+      load_start: toOracleDate(load_start),
+      load_end: toOracleDate(load_end)
     };
 
     console.log("Executing query:", query);
@@ -117,14 +168,14 @@ export const createToOrder = async (
       "SELECT MAX(TO_ORDER_ID) as INSERTID FROM TO_ORDER WHERE COMPANY_CODE = :company_code AND PRIN_CODE = :prin_code",
       { company_code, prin_code }
     );
-    
+
     const insertId = lastIdResult.rows?.[0]?.INSERTID;
-    
+
     console.log("Order created successfully with ID:", insertId);
-    res.status(201).json({ 
-      success: true, 
+    res.status(201).json({
+      success: true,
       message: 'Order created successfully',
-      orderId: insertId 
+      orderId: insertId
     });
 
   } catch (error: unknown) {
@@ -168,7 +219,7 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
       WHERE COMPANY_CODE = :company_code
         AND JOB_NO = :job_no
     `;
-    
+
     const bindParams: any = {
       company_code: req.user.company_code,
       job_no: job_no
@@ -191,7 +242,7 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
     const orderEntries = result.rows || [];
 
     if (!orderEntries.length) {
-      return res.status(constants.STATUS_CODES.NO_CONTENT).json({ 
+      return res.status(constants.STATUS_CODES.NO_CONTENT).json({
         success: true,
         message: `No order entries found for job_no: ${job_no}`,
         data: [],
@@ -199,8 +250,8 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
       });
     }
 
-    return res.status(constants.STATUS_CODES.OK).json({ 
-      success: true, 
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
       data: orderEntries,
       count: orderEntries.length
     });
@@ -208,9 +259,9 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
   } catch (error: unknown) {
     console.error("Error in getAllOrderEntries:", error);
     const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
-      success: false, 
-      message 
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message
     });
   }
 };
@@ -230,28 +281,28 @@ export const getSingleOrderEntry = async (req: RequestWithUser, res: Response) =
       `SELECT * FROM TO_ORDER WHERE CUST_CODE = :cust_code`,
       { cust_code }
     );
-    
+
     const orderEntry = result.rows?.[0];
 
     if (!orderEntry) {
-      return res.status(constants.STATUS_CODES.NOT_FOUND).json({ 
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: true,
         message: `No order entry found for cust_code: ${cust_code}`,
         data: null
       });
     }
 
-    return res.status(constants.STATUS_CODES.OK).json({ 
-      success: true, 
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
       data: orderEntry
     });
 
   } catch (error: unknown) {
     console.error("Error in getOrderEntryByCustomerCode:", error);
     const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
-      success: false, 
-      message 
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message
     });
   }
 };
@@ -270,7 +321,7 @@ export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response
     // Build dynamic UPDATE query
     const setClauses = [];
     const bindParams: any = { id };
-    
+
     for (const [key, value] of Object.entries(updateData)) {
       setClauses.push(`${key} = :${key}`);
       bindParams[key] = value;
@@ -284,7 +335,7 @@ export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response
 
     await oracleDb.withTransaction(async (connection: any) => {
       const result = await oracleDb.query(query, bindParams, connection);
-      
+
       // Check if row was updated (Oracle returns row count differently)
       if (result.rowsAffected === 0) {
         throw new Error(`No order entry found with id: ${id}`);
@@ -296,27 +347,27 @@ export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response
         { id },
         connection
       );
-      
+
       return updatedResult.rows?.[0];
     }).then((updatedEntry) => {
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         data: updatedEntry
       });
     });
 
   } catch (error) {
     console.error("Error:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
 
 export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     console.log('id', id);
 
     if (!id) {
@@ -333,7 +384,7 @@ export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
     );
 
     if (!checkResult.rows?.[0]?.COUNT || checkResult.rows[0].COUNT === 0) {
-      return res.status(constants.STATUS_CODES.NOT_FOUND).json({ 
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: `No order entry found for id: ${id}`
       });
@@ -347,23 +398,23 @@ export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
 
     // Check if deletion was successful
     if (deleteResult.rowsAffected === 0) {
-      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: 'Order entry could not be deleted'
       });
     }
 
-    return res.status(constants.STATUS_CODES.OK).json({ 
-      success: true, 
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
       message: 'Order entry deleted successfully'
     });
 
   } catch (error: unknown) {
     console.error("Error in deleteOrderEntry:", error);
     const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
-      success: false, 
-      message 
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message
     });
   }
 };
@@ -381,7 +432,7 @@ export const getPickingItemPreferenceDetails = async (
     const filter: ISearch = req.query.filter
       ? JSON.parse(req.query.filter)
       : {};
-    
+
     // You'll need to adapt getSearchFilterQuery for raw SQL
     // This is a placeholder - you'll need to implement proper filtering
     let whereClause = `WHERE company_code = :company_code`;
@@ -403,27 +454,27 @@ export const getPickingItemPreferenceDetails = async (
       FROM VW_WM_OUB_JOB_PICK_FILTER 
       ${whereClause}
     `;
-    
+
     const result = await oracleDb.query(resultQuery, bindParams);
 
     if (!result.rows) {
-      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
-        success: false, 
-        message: 'No data found' 
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: 'No data found'
       });
       return;
     }
 
-    res.status(constants.STATUS_CODES.OK).json({ 
-      success: true, 
-      data: { tableData: result.rows, count: resultCount } 
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: { tableData: result.rows, count: resultCount }
     });
-    
+
   } catch (error: unknown) {
     const knownError = error as { message: string };
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
-      success: false, 
-      message: "error:" + knownError.message 
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "error:" + knownError.message
     });
   }
 };
@@ -432,9 +483,9 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
   try {
     const { error } = pickOrderSchema(req.body);
     if (error) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
-        success: false, 
-        message: error.message 
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message
       });
     }
 
@@ -463,8 +514,8 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
     await oracleDb.withTransaction(async (connection: any) => {
       // Set selected = 'Y'
       const updateResult = await oracleDb.query(
-        updateSelectedSql, 
-        bindParams, 
+        updateSelectedSql,
+        bindParams,
         connection
       );
       toggledPackets = updateResult.rowsAffected || 0;
@@ -522,7 +573,7 @@ export const exportPickingDetails = async (
       fastCsv.FormatterRow,
       fastCsv.FormatterRow
     >;
-    
+
     const filter: ISearch = req.query.filter
       ? JSON.parse(req.query.filter)
       : {};
@@ -551,7 +602,7 @@ export const exportPickingDetails = async (
     );
 
     // Write data to the CSV stream
-    fetchedData.forEach((plainData:any) => {
+    fetchedData.forEach((plainData: any) => {
       csvTransform.write(plainData);
     });
 
@@ -573,7 +624,7 @@ export const exportPickingStockDeatils = async (
       fastCsv.FormatterRow,
       fastCsv.FormatterRow
     >;
-    
+
     const filter: ISearch = req.query.filter
       ? JSON.parse(req.query.filter)
       : {};
@@ -600,7 +651,7 @@ export const exportPickingStockDeatils = async (
       `attachment; filename="stock_detail.csv"`
     );
 
-    fetchedData.forEach((plainData:any) => {
+    fetchedData.forEach((plainData: any) => {
       csvTransform.write(plainData);
     });
 
@@ -619,8 +670,8 @@ export const deleteToOrderDetHandler = async (
 ): Promise<void> => {
   const { company_code, prin_code, job_no, serial_no } = req.query;
   console.log('deleteToOrderDetHandler called with params:', req.query);
-  
-  if (!company_code || !prin_code || !job_no || !serial_no) { 
+
+  if (!company_code || !prin_code || !job_no || !serial_no) {
     res.status(400).json({ success: false, message: "Missing required fields" });
     return;
   }
@@ -730,9 +781,9 @@ export const getTotalAvailableQty = async (
       exp_date_from: req.body.exp_date_from,
       exp_date_to: req.body.exp_date_to,
     };
- 
+
     console.log("PROC_GET_TOTAL_QTY_AVL SQL Params:", params);
- 
+
     // For Oracle, use OUT parameter binding
     const result = await oracleDb.query(
       `DECLARE
@@ -813,3 +864,5 @@ export const getddLotNum = async (
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
