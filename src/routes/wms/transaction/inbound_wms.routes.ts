@@ -11,14 +11,16 @@ import passport from "passport";
 //   getReports,
 //   getTallyProductData,
 // } from "../../../controllers/wms/transaction/inbound/inboundJobWms.controller";
-// import {
-//   createBulkPAckingDetails, // Create multiple packing details at once
-//   createPackingItem, // Create single packing item
-//   deletePackingItem, // Delete packing item
-//   exportPackingDetails, // Export packing details
-//   getPackingDetail, // Get packing details
-//   updatePackingItem, // Update packing item
-// } from "../../../controllers/wms/transaction/inbound/packingDetails_wms.controller";
+import {
+  createBulkPAckingDetails, // Create multiple packing details at once
+  createPackingItem, // Create single packing item
+  deletePackingItem, // Delete packing item
+  exportPackingDetails, // Export packing details
+  getPackingDetail, // Get packing details
+  updatePackingItem, // Update packing item
+  addReceivingDetails, // Add receiving details (qty1_arrived, qty2_arrived)
+  updateClearanceStatus, // Update clearance status to 'Y'
+} from "../../../controllers/wms/transaction/inbound/packingDetails_wms.controller";
 // import {
 //   createBulkTallyDetails, // Create multiple tally details
 //   createTallyItem, // Create single tally item
@@ -37,10 +39,10 @@ import {
   getShipmentDetail, // Get shipment details
   updateShipmentItem, // Update shipment item
 } from "../../../controllers/wms/transaction/inbound/shipmentdetails_wms.controller";
-// import {
-//   exportPutwayPackingItem, // Export putway packing items
-//   putwayPackingItem, // Update putway packing item
-// } from "../../../controllers/wms/transaction/inbound/putwayPackingItem_wms.controller";
+import {
+  exportPutwayPackingItem, // Export putway packing items
+  putwayPackingItem, // Update putway packing item
+} from "../../../controllers/wms/transaction/inbound/putwayPackingItem_wms.controller";
 import { checkUserAuthorization } from "../../../middleware/checkUserAthorization"; // Middleware for user authorization
 // import { updateQualityclearance } from "../../../controllers/wms/transaction/inbound/qualityClearance_wms.controller";
 import createinboundjobWms from "../../../views/wms/transportation/inbound/createinboundJobWms";
@@ -130,12 +132,12 @@ router.post(
 // // Packing Details routes - Handle all packing related operations
 // router.get("/packing_details/export", exportPackingDetails);
 // router.get("/packing_details", getPackingDetail);
-// router.post(
-//   "/packing_details",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   createPackingItem
-// );
+router.post(
+  "/packing_details",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  createPackingItem
+);
 // router.post("/packing_details/bulk", createBulkPAckingDetails);
 // router.post(
 //   "/packing_details/delete",
@@ -149,6 +151,22 @@ router.post(
 //   checkUserAuthorization,
 //   updatePackingItem
 // );
+
+// Add receiving details route - Update qty1_arrived and qty2_arrived
+router.put(
+  "/packing_details/receiving",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  addReceivingDetails
+);
+
+// Update clearance status route - Update clearance to 'Y'
+router.put(
+  "/packing_details/clearance",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  updateClearanceStatus
+);
 
 // Tally Details routes - Handle all tally related operations
 // router.get("/tally_details/export", exportTallyDetails);
@@ -189,13 +207,13 @@ router.post(
 // );
 
 // Putway routes - Handle putway operations
-// router.get("/putway_details/export", exportPutwayPackingItem);
-// router.put(
-//   "/putway_details/:job_no",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   putwayPackingItem
-// );
+router.get("/putway_details/export", exportPutwayPackingItem);
+router.put(
+  "/putway_details/:job_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  putwayPackingItem
+);
 
 // Job Confirmation routes - Handle job confirmation operations
 // router.get("/job_confirmation", getconfirmInboundjob);

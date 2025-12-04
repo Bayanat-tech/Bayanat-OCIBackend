@@ -121,8 +121,6 @@ console.log('inside createPackingItem1f');
     const response = await PackingDetailsService.create({
       ...req.body,
       company_code: requestUser.company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
     });
 console.log('inside createPackingItem2');
     if (!response) {
@@ -225,7 +223,6 @@ console.log('inside createPackingItem');
       {
         ...req.body,
         packdet_no: Number(packdet_no),
-        updated_by: requestUser.loginid,
       }
     );
 
@@ -306,8 +303,6 @@ export const createBulkPAckingDetails = async (
         acc[constants.CSVFIELDNAME.PACKING_DETAILS[index]] = value;
         return acc;
       }, {}),
-      updated_by: requestUser.loginid,
-      created_by: requestUser.loginid,
       company_code: requestUser.company_code,
     }));
 
@@ -399,5 +394,174 @@ export const exportPackingDetails = async (
   } catch (error: any) {
     console.error("Export Error:", error); // Log the error for debugging
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Add receiving details (update qty1_arrived and qty2_arrived)
+export const addReceivingDetails = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const requestUser: IUser = req.user;
+    const { prin_code, job_no, packdet_no } = req.query;
+    const { qty1_arrived, qty2_arrived } = req.body;
+
+    // Validate required query parameters
+    if (!prin_code || !job_no || !packdet_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "prin_code, job_no, and packdet_no are required",
+      });
+      return;
+    }
+
+    // Validate that at least one quantity is provided
+    if (qty1_arrived === undefined && qty2_arrived === undefined) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "At least one of qty1_arrived or qty2_arrived must be provided",
+      });
+      return;
+    }
+
+    // Check if packing details exists
+    const packingDetails = await PackingDetailsService.findOne({
+      company_code: requestUser.company_code,
+      prin_code: prin_code as string,
+      job_no: job_no as string,
+      packdet_no: Number(packdet_no),
+    });
+
+    if (!packingDetails) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Packing Details " + constants.MESSAGES.NOT_FOUND,
+      });
+      return;
+    }
+
+    // Prepare receiving data
+    const receivingData: { qty1_arrived?: number; qty2_arrived?: number } = {};
+    if (qty1_arrived !== undefined) {
+      receivingData.qty1_arrived = Number(qty1_arrived);
+    }
+    if (qty2_arrived !== undefined) {
+      receivingData.qty2_arrived = Number(qty2_arrived);
+    }
+
+    // Update receiving details
+    const response = await PackingDetailsService.updateReceivingDetails(
+      {
+        company_code: requestUser.company_code,
+        prin_code: prin_code as string,
+        job_no: job_no as string,
+        packdet_no: Number(packdet_no),
+      },
+      receivingData
+    );
+
+    if (!response) {
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to update receiving details",
+      });
+      return;
+    }
+
+    // Fetch updated record to return
+    const updatedPackingDetails = await PackingDetailsService.findOne({
+      company_code: requestUser.company_code,
+      prin_code: prin_code as string,
+      job_no: job_no as string,
+      packdet_no: Number(packdet_no),
+    });
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Receiving Details " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
+      data: updatedPackingDetails,
+    });
+    return;
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+    return;
+  }
+};
+
+// Update clearance status to 'Y' for packing details
+export const updateClearanceStatus = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const requestUser: IUser = req.user;
+    const { company_code, prin_code, job_no, packdet_no } = req.body;
+
+    // Validate required parameters
+    if (!company_code || !prin_code || !job_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code, prin_code, and job_no are required",
+      });
+      return;
+    }
+
+    // Verify company code matches the authenticated user
+    if (company_code !== requestUser.company_code) {
+      res.status(constants.STATUS_CODES.FORBIDDEN).json({
+        success: false,
+        message: "Company code does not match authenticated user",
+      });
+      return;
+    }
+
+    // Prepare clearance data
+    const clearanceData: {
+      clearance: string;
+      cleared_user?: string;
+      cleared_date?: Date;
+    } = {
+      clearance: "Y",
+      cleared_user: requestUser.user_id,
+      cleared_date: new Date(),
+    };
+
+    // Update clearance for the specified record(s)
+    const affectedCount = await PackingDetailsService.updateClearance(
+      {
+        company_code: company_code,
+        prin_code: prin_code,
+        job_no: job_no,
+        packdet_no: packdet_no ? Number(packdet_no) : undefined,
+      },
+      clearanceData
+    );
+
+    if (affectedCount === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "No packing details found to update",
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: `Clearance status updated successfully for ${affectedCount} record(s)`,
+      data: {
+        affected_count: affectedCount,
+      },
+    });
+    return;
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+    return;
   }
 };

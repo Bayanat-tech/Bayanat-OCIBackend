@@ -2,8 +2,6 @@ import {
   Entity,
   Column,
   PrimaryColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from "typeorm";
 
 @Entity({ name: "TI_PACKDET" })
@@ -304,16 +302,4 @@ export class PackingDetailsInboundWms {
 
   @Column({ type: "varchar2", length: 20, nullable: true })
   batch_no?: string;
-
-  @Column({ type: "varchar2", length: 20, nullable: true })
-  created_by?: string;
-
-  @Column({ type: "varchar2", length: 20, nullable: true })
-  updated_by?: string;
-
-  @CreateDateColumn({ type: "date", name: "created_at" })
-  created_at?: Date;
-
-  @UpdateDateColumn({ type: "date", name: "updated_at" })
-  updated_at?: Date;
 }
