@@ -44,7 +44,7 @@ import {
 import { checkUserAuthorization } from "../../../middleware/checkUserAthorization"; // Middleware for user authorization
 // import { updateQualityclearance } from "../../../controllers/wms/transaction/inbound/qualityClearance_wms.controller";
 import createinboundjobWms from "../../../views/wms/transportation/inbound/createinboundJobWms";
-import {executeRawSql,executeRawSqlbody} from "../../../../src/controllers/wms.controller"
+import {executeRawSql,executeRawSqlbody, proc_build_dynamic_sql_wms} from "../../../../src/controllers/wms.controller"
 import {createInboundjob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 // import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
 // import  { getddSiteLocation }   from "../../../../src/views/wms/transportation/inbound/ddSiteLocation"
@@ -53,7 +53,6 @@ import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
 } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
-import { proc_build_dynamic_sql_wms } from "../../../controllers/wms/transaction/inbound/proc_build_dynamic_sql_wms";
 // import {
 //   getconfirmInboundjob, // Get confirmation details
 //   confirmInboundjob, // Confirm inbound job
