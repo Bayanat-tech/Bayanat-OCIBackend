@@ -184,8 +184,9 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
     }
 
     res.status(constants.STATUS_CODES.OK).json({
-      success: true,
+      
       data: {
+        success: true,
         ...VendorHeaderData,
         items: VendorDetailData,
       },
