@@ -30,15 +30,43 @@ export class FilesPFService {
     return this.repository;
   }
 
+  private mapConditionsToEntity(conditions: any): any {
+    if (!conditions || typeof conditions !== "object") return {};
+    const mapping: Record<string, string> = {
+      request_number: "requestNumber",
+      requestnumber: "requestNumber",
+      request_no: "requestNumber",
+
+      company_code: "companyCode",
+      companycode: "companyCode",
+
+      sr_no: "srNo",
+      srno: "srNo",
+
+      aws_file_locn: "awsFileLocn",
+      awsfilelocn: "awsFileLocn",
+
+      user_file_name: "userFileName",
+      userfilename: "userFileName",
+
+      modules: "modules",
+    };
+
+    const mapped: any = {};
+    for (const key of Object.keys(conditions)) {
+      const normalizedKey = key.toString().toLowerCase();
+      const targetKey = mapping[normalizedKey] || key;
+      mapped[targetKey] = (conditions as any)[key];
+    }
+    return mapped;
+  }
+
   async findAll(conditions: any): Promise<FilesPFEntity[]> {
     const repo = await this.ensureRepository();
 
     try {
-      const mappedConditions = {
-        companyCode: conditions.company_code,
-        requestNumber: conditions.request_number,
-        modules: conditions.modules,
-      };
+      // map incoming condition keys to entity property names
+      const mappedConditions = this.mapConditionsToEntity(conditions);
 
       console.log("Finding files with conditions:", mappedConditions);
 
@@ -62,16 +90,19 @@ export class FilesPFService {
 
   async findOne(conditions: any): Promise<FilesPFEntity | null> {
     const repo = await this.ensureRepository();
-    return await repo.findOne({ where: conditions });
+    const mapped = this.mapConditionsToEntity(conditions);
+    return await repo.findOne({ where: mapped });
   }
 
   async update(conditions: any, updateData: any) {
     const repo = await this.ensureRepository();
-    return await repo.update(conditions, updateData);
+    const mapped = this.mapConditionsToEntity(conditions);
+    return await repo.update(mapped, updateData);
   }
 
   async delete(conditions: any) {
     const repo = await this.ensureRepository();
-    return await repo.delete(conditions);
+    const mapped = this.mapConditionsToEntity(conditions);
+    return await repo.delete(mapped);
   }
 }

@@ -568,9 +568,20 @@ export async function processApprovedLeaveRequests(options?: {
         );
 
         // notify about file transfer failure
+        const detailedError =
+          error?.response?.data ??
+          error?.response ??
+          error?.message ??
+          String(error);
+
+        const detailedErrorText =
+          typeof detailedError === "string"
+            ? detailedError
+            : JSON.stringify(detailedError, null, 2);
+
         const notifPayload = {
           event: "HR_API_ERROR",
-          message: `Failed to upload file to HR .NET API for Request: ${options?.specificRequestNumber}\nError: ${error?.message || "Unknown error"}`,
+          message: `Failed to upload file to HR .NET API for Request: ${options?.specificRequestNumber}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
           subject: "HR API File Upload Failed",
           request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
@@ -578,6 +589,8 @@ export async function processApprovedLeaveRequests(options?: {
             <h3>HR API File Upload Failed</h3>
             <p><strong>Request Number:</strong> ${options?.specificRequestNumber}</p>
             <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
+            <p><strong>Error Details:</strong></p>
+            <pre>${detailedErrorText}</pre>
             <p><strong>File Details:</strong></p>
             <pre>${JSON.stringify(file, null, 2)}</pre>
           `,
@@ -695,12 +708,25 @@ export async function processApprovedLeaveRequests(options?: {
         console.error("Failed to insert request:", {
           requestNumber: request.requestNumber,
           error: error.message,
+          fullError: error?.response?.data ?? error,
         });
 
-        // notify about transfer failure for this request
+        // build detailed error text for notification
+        const detailedError =
+          error?.response?.data ??
+          error?.response ??
+          error?.message ??
+          String(error);
+
+        const detailedErrorText =
+          typeof detailedError === "string"
+            ? detailedError
+            : JSON.stringify(detailedError, null, 2);
+
+        // notify HR team about transfer failure for this request
         const notifPayload = {
           event: "HR_API_ERROR",
-          message: `Failed to transfer leave request to HR .NET API.\nRequestNumber: ${request.requestNumber}\nCompanyCode: ${request.companyCode}\nError: ${error?.message || "Unknown error"}`,
+          message: `Failed to transfer leave request to HR .NET API.\nRequestNumber: ${request.requestNumber}\nCompanyCode: ${request.companyCode}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
           subject: "HR API Leave Transfer Failed",
           request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
@@ -709,10 +735,13 @@ export async function processApprovedLeaveRequests(options?: {
             <p><strong>Request Number:</strong> ${request.requestNumber}</p>
             <p><strong>Company Code:</strong> ${request.companyCode}</p>
             <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
+            <p><strong>Error Details:</strong></p>
+            <pre>${detailedErrorText}</pre>
             <p><strong>Request Payload:</strong></p>
             <pre>${JSON.stringify(request, null, 2)}</pre>
           `,
         };
+
         try {
           console.log("notifyUser payload (HR leave transfer):", notifPayload);
           const notifResult: any = await notifyUser(notifPayload);

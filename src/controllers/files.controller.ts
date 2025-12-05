@@ -220,6 +220,7 @@ export const deleteFiles = async (
   }
 };
 
+
 export const deleteFilesPF = async (
   req: RequestWithUser,
   res: Response
@@ -246,7 +247,7 @@ export const deleteFilesPF = async (
       return;
     }
 
-    const result = await filesVHService.delete({ request_number, sr_no });
+    const result = await filesPFService.delete({ request_number, sr_no });
 
     if (result.affected === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
