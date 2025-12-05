@@ -3,7 +3,7 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import constants from "../../helpers/constants";
 import { customerSchema } from "../../validation/Purchaseflow/Purchaseflow.validation";
-import { CustomerMasterService } from "../../services/Purchaseflow/customermaster.service";
+import { CustomerMasterService } from "../../services/purchaseflow/customermaster.service";
 
 export class CustomerMasterController {
 
