@@ -252,7 +252,30 @@ export async function upsertPurchaseRequestHeader(
   }
 
   let ls_new_flag = "No";
-
+  console.log('after mapping');
+  console.log(`contract_soft_hard: ${data.contract_soft_hard}`);
+console.log(`amc_service_status: ${data.amc_service_status}`);
+console.log(`material_mechanical: ${data.material_mechanical}`);
+console.log(`material_electrical: ${data.material_electrical}`);
+console.log(`material_plumbing: ${data.material_plumbing}`);
+console.log(`material_tools: ${data.material_tools}`);
+console.log(`material_civil: ${data.material_civil}`);
+console.log(`material_ac: ${data.material_ac}`);
+console.log(`material_cleaning: ${data.material_cleaning}`);
+console.log(`material_other: ${data.material_other}`);
+console.log(`services_temp_staff: ${data.services_temp_staff}`);
+console.log(`services_rentals: ${data.services_rentals}`);
+console.log(`services_subcon_conslt: ${data.services_subcon_conslt}`);
+console.log(`services_other: ${data.services_other}`);
+console.log(`other_stationery: ${data.other_stationery}`);
+console.log(`other_it: ${data.other_it}`);
+console.log(`other_new_uniform_ppe: ${data.other_new_uniform_ppe}`);
+console.log(`other_rplcmt_uniform: ${data.other_rplcmt_uniform}`);
+console.log(`other_other: ${data.other_other}`);
+console.log(`good_material_request: ${data.good_material_request}`);
+console.log(`service_request: ${data.service_request}`);
+console.log(`type_of_contract: ${data.type_of_contract}`);
+console.log(`type_of_pr: ${data.type_of_pr}`);
   // New record insertion
   if (!data.requestNumber || data.requestNumber.trim() === "") {
     ls_new_flag = "Yes";
@@ -286,29 +309,7 @@ export async function upsertPurchaseRequestHeader(
         :type_of_pr, :covered_by_contract_yes, :flag_sharing_cost, :budgeted_yes, :checked_store_yes
       )
     `;
-console.log(`contract_soft_hard: ${data.contract_soft_hard}`);
-console.log(`amc_service_status: ${data.amc_service_status}`);
-console.log(`material_mechanical: ${data.material_mechanical}`);
-console.log(`material_electrical: ${data.material_electrical}`);
-console.log(`material_plumbing: ${data.material_plumbing}`);
-console.log(`material_tools: ${data.material_tools}`);
-console.log(`material_civil: ${data.material_civil}`);
-console.log(`material_ac: ${data.material_ac}`);
-console.log(`material_cleaning: ${data.material_cleaning}`);
-console.log(`material_other: ${data.material_other}`);
-console.log(`services_temp_staff: ${data.services_temp_staff}`);
-console.log(`services_rentals: ${data.services_rentals}`);
-console.log(`services_subcon_conslt: ${data.services_subcon_conslt}`);
-console.log(`services_other: ${data.services_other}`);
-console.log(`other_stationery: ${data.other_stationery}`);
-console.log(`other_it: ${data.other_it}`);
-console.log(`other_new_uniform_ppe: ${data.other_new_uniform_ppe}`);
-console.log(`other_rplcmt_uniform: ${data.other_rplcmt_uniform}`);
-console.log(`other_other: ${data.other_other}`);
-console.log(`good_material_request: ${data.good_material_request}`);
-console.log(`service_request: ${data.service_request}`);
-console.log(`type_of_contract: ${data.type_of_contract}`);
-console.log(`type_of_pr: ${data.type_of_pr}`);
+
 
     await connection.execute(insertSql, {
       amc_from: data.amc_from,
