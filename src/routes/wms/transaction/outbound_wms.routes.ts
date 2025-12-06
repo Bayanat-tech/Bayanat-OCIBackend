@@ -22,7 +22,8 @@ import {
 } from "../../../controllers/wms/transaction/outbound/pickingDetails_wms.controller";
 import { pickOrder,confirmorder,oubcancelPick } from "../../../controllers/wms/transaction/outbound/pickingDetails_wms.controller";
 import { getOutboundJob, getOutboundJobOrder } from "../../../controllers/wms/transaction/outbound/outboundJobWms.controller";
-import { createToOrder, deleteOrderEntry, getAllOrderEntries, getSingleOrderEntry, updateSingleOrderEntry,deleteToOrderDetHandler, getddSiteCode, getddLocationCode, getddLotNum,getTotalAvailableQty } from "../../../controllers/wms/transaction/outbound/orderEntryWms.controller";
+import { deleteOrderEntry, getAllOrderEntries, getSingleOrderEntry, updateSingleOrderEntry,deleteToOrderDetHandler, getddSiteCode, getddLocationCode, getddLotNum,getTotalAvailableQty } from "../../../controllers/wms/transaction/outbound/orderEntryWms.controller";
+import { createToOrder } from "../../../controllers/wms/transaction/outbound/createToOrder";
 
 // Ensure getToOrder uses Express.Request and Express.Response types for compatibility.
 

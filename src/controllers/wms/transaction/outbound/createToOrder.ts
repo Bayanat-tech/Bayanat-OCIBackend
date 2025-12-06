@@ -6,7 +6,8 @@ import { IToOrderEntry } from "../../../../interfaces/wms/transaction/outbound/o
 /* ============================================================
    SAFE HELPERS
 ============================================================ */
-const safeDate = (v: any) => (v ? new Date(v) : null);
+const safeDate = (v: any) =>
+  v ? (v instanceof Date ? v : new Date(v instanceof Object && v.toDate ? v.toDate() : v)) : null;
 
 /* ============================================================
    CHECK IF ORDER EXISTS
@@ -34,6 +35,26 @@ async function orderExists(
   );
 
   return (r.rows?.length || 0) > 0;
+}
+
+/* ============================================================
+   DELETE ORDER FUNCTION
+============================================================ */
+async function deleteOrder(
+  company_code: string,
+  prin_code: string,
+  job_no: string,
+  order_no: string,
+  connection: Connection
+): Promise<void> {
+  const deleteSQL = `
+    DELETE FROM TO_ORDER
+    WHERE company_code = :company_code
+      AND prin_code = :prin_code
+      AND job_no = :job_no
+      AND order_no = :order_no
+  `;
+  await connection.execute(deleteSQL, { company_code, prin_code, job_no, order_no }, { autoCommit: false });
 }
 
 /* ============================================================
@@ -104,7 +125,11 @@ export async function upsertOrderDetail(
     manu_code: data.manu_code,
   };
 
+  console.log('pick_start', data.pack_start);
+  console.log('pick_end', data.pack_end);
+
   if (exists) {
+    console.log('before update');
     const updateSQL = `
       UPDATE TO_ORDER SET
         cust_code=:cust_code,
@@ -160,6 +185,7 @@ export async function upsertOrderDetail(
     `;
 
     await connection.execute(updateSQL, binds, { autoCommit: false });
+    console.log('after update');
     return data.order_no;
   }
 
@@ -197,13 +223,38 @@ export async function upsertOrderDetail(
 }
 
 /* ============================================================
-   MAIN HANDLER — NO OVERLOAD ERROR, NO REQUESTHANDLER TYPE
+   MAIN HANDLER
 ============================================================ */
-export const createInboundjob = async (req: Request, res: Response): Promise<void> => {
+export const createToOrder = async (req: Request, res: Response): Promise<void> => {
   let connection: Connection | undefined;
-
+  console.log('inside createToOrder');
   try {
     const data: IToOrderEntry = req.body;
+ console.log('checking job delete',data.job_no)
+    // Extract actual job_no and check DELETE
+    const splitJobNo = (data.job_no || '$$$').split('$$$');
+    data.job_no = splitJobNo[0];
+    const deleteFlag = splitJobNo[1];
+
+    if (deleteFlag && deleteFlag.toUpperCase() === "DELETE") {
+      connection = await oracleDb.getConnection();
+
+      await deleteOrder(
+        data.company_code,
+        data.prin_code,
+        data.job_no,
+        data.order_no,
+        connection
+      );
+
+      await connection.commit();
+
+      res.status(200).json({
+        success: true,
+        message: `Order deleted successfully: ${data.order_no}`,
+      });
+      return; // Ensure void return type
+    }
 
     const required: (keyof IToOrderEntry)[] = [
       "company_code",
