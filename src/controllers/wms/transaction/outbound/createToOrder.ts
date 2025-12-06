@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import oracledb, { BindParameters, Connection } from "oracledb";
-import { oracleDb } from "../../../database/connection"
-
-import { IToOrderEntry } from "../../../../src/interfaces/wms/transaction/outbound/orderEntryWms.interface"
+import { oracleDb } from "../../../../database/connection";
+import { IToOrderEntry } from "../../../../interfaces/wms/transaction/outbound/orderEntryWms.interface";
 
 /* ============================================================
    SAFE HELPERS
