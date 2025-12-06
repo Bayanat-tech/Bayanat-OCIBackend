@@ -215,7 +215,7 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
     }
 
     let query = `
-      SELECT * FROM TO_ORDER 
+      SELECT * FROM VW_TO_ORDER 
       WHERE COMPANY_CODE = :company_code
         AND JOB_NO = :job_no
     `;
