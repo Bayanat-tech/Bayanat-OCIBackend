@@ -51,6 +51,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
     // Handle POGEN case separately
     if (data.last_action === "POGEN" && data.requestNumber) {
       const key_request_number = data.requestNumber.replace(/\//g, "$");
+      console.log('inside POGEN');
       await connection.execute(
         `BEGIN PRO_GEN_JESRA_PO_NO(:companyCode, :requestNumber, :userId, :prinCode); END;`,
         {
