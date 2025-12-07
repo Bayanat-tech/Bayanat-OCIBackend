@@ -47,11 +47,11 @@ export const getRequestRejectedData = async (
 
     } else if (master === "Request_Rejected_history") {
       await conn.execute(
-        `BEGIN PROC_POPULATE_GT_REJECTED_HIST(:p_user, :p_company); END;`,
+        `BEGIN PROC_POPULATE_GT_REJECTED_HISTORY(:p_user, :p_company); END;`,
         { p_user: loginid, p_company: company_code }
       );
 
-      console.log("Executed → PROC_POPULATE_GT_REJECTED_HIST");
+      console.log("Executed → PROC_POPULATE_GT_REJECTED_HISTORY");
 
     } else {
       throw new Error(`Invalid master: ${master}`);
