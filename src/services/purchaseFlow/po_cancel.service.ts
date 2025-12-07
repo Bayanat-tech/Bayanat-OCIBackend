@@ -18,7 +18,8 @@ export const getCancelledRequests = async (
   company_code: string,
   filter?: Filter,
   page = 1,
-  limit = 4000
+  limit = 4000,
+  master?: string
 ) => {
   let conn: Connection | null = null;
 
@@ -37,10 +38,26 @@ export const getCancelledRequests = async (
     console.log("Calling cancelled request procedure with:", company_code, loginid);
 
     // ✅ CALL CANCELLED PROCEDURE
-    await conn.execute(
-      `BEGIN PROC_POPULATE_GT_CANCEL(:p_user,:p_company); END;`,
-      { p_company: company_code, p_user: loginid }
-    );
+    if (master === "po_cancel") {
+  await conn.execute(
+    `BEGIN PROC_POPULATE_GT_CANCEL(:p_user, :p_company); END;`,
+    { p_user: loginid, p_company: company_code }
+  );
+
+  console.log("Inside po_cancel block...");
+} 
+else if (master === "po_cancel_history") {
+  await conn.execute(
+    `BEGIN PROC_POPULATE_GT_CANCEL_HISTORY(:p_user, :p_company); END;`,
+    { p_user: loginid, p_company: company_code }
+  );
+
+  console.log("Inside po_cancel_history block...");
+} 
+else {
+  throw new Error(`Invalid master value: ${master}`);
+}
+
 
     console.log("Cancelled request procedure executed successfully");
 
@@ -86,7 +103,8 @@ export const getCancelledRequests = async (
       count: totalCount, // frontend expects: response.data.count
       message: "Cancelled requests fetched successfully.",
     };
-  } catch (err: unknown) {
+    
+} catch (err: unknown) {
     const message =
       err instanceof Error
         ? err.message

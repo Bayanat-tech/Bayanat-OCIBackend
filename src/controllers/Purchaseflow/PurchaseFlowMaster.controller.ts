@@ -3,44 +3,25 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 
 import { Response } from "express";
-import { PurchaseFlowMasterService } from "../../services/Purchaseflow/PfMaster.service";
-import { DdcostmasterService } from "../../services/Purchaseflow/ddcostmasterservice";
-import { DropdownProjectMasterService } from "../../services/Purchaseflow/dropdwonprojectmaster.service";
-import { ProjectMasterService } from "../../services/Purchaseflow/project_master.service";
-import { DdcurrencyService } from "../../services/Purchaseflow/ddCurrency.service";
-import { DdProdmasterService } from "../../services/Purchaseflow/ddprodmaster.service";
-import { DduommasterService } from "../../services/Purchaseflow/dduommaster.service";
-import { DdEmployeeMasterService } from "../../services/Purchaseflow/ddemployeemaster.service";
-import { getPoModifyData } from "../../services/Purchaseflow/po_modify_close.service";
-import { getPoNotGenerated } from "../../services/Purchaseflow/ponotgenerated.service";
-import { getCancelledRequests } from "../../services/Purchaseflow/po_cancel.service";
-import { WorkflowService } from "../../services/Purchaseflow/sentbackrollselection_mat.service";
-import { FlowRoleService } from "../../services/Purchaseflow/sentbackrollselection.service";
-import { getMyHistory } from "../../services/Purchaseflow/My_History.service";
-import { getRequestRejectedData } from "../../services/Purchaseflow/my_rejected.service";
-import { getMyClosedRequests } from "../../services/Purchaseflow/MyItem_CloseRequest.service";
-import { getMyTaskData } from "../../services/Purchaseflow/my_task.service";
+import { PurchaseFlowMasterService } from "../../services/purchaseFlow/PfMaster.service";
+import { DdcostmasterService } from "../../services/purchaseFlow/ddcostmasterservice";
+import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
+// import { ProjectMasterService } from "../../services/Purchaseflow/projectmaster.service";
+import { DduommasterService } from "../../services/purchaseFlow/dduommaster.service";
+import { DdcurrencyService } from "../../services/purchaseFlow/ddCurrency.service";
+import { DdProdmasterService } from "../../services/purchaseFlow/ddprodmaster.service";
+import { DdEmployeeMasterService } from "../../services/purchaseFlow/ddemployeemaster.service";
 import { getPoModifyRatechangeData } from "./getPoModifyRatechangeData ";
-//import { ItemMasterService } from "../../services/Purchaseflow/itemmaster.service";
-
-// import { PurchaseFlowMasterService } from "../../services/purchaseFlow/Pg_Material_flow_InProgress.service";
-// import { DdcostmasterService } from "../../services/purchaseFlow/ddcostmasterservice";
-// import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
-// import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
-// import { DduommasterService } from "../../services/purchaseFlow/dduommaster.service";
-// import { DdcurrencyService } from "../../services/purchaseFlow/ddCurrency.service";
-// import { DdProdmasterService } from "../../services/purchaseFlow/ddprodmaster.service";
-// import { DdEmployeeMasterService } from "../../services/purchaseFlow/ddemployeemaster.service";
-// import { getPoModifyData } from "../../services/purchaseFlow/po_modify_close.service";
-// import { getPoNotGenerated } from "../../services/purchaseFlow/ponotgenerated.service";
-// import { getCancelledRequests } from "../../services/purchaseFlow/po_cancel.service";
-// import { WorkflowService } from "../../services/purchaseFlow/sentbackrollselection_mat.service";
-// import { FlowRoleService } from "../../services/purchaseFlow/sentbackrollselection.service";
-// import { getMyHistory } from "../../services/purchaseFlow/My_History.service";
-// import { getRequestRejectedData } from "../../services/purchaseFlow/my_rejected.service";
-// import { getMyClosedRequests } from "../../services/purchaseFlow/MyItem_CloseRequest.service";
-// import { getMyTaskData } from "../../services/purchaseFlow/my_task.service";
-// import { ItemMasterService } from "../../services/purchaseFlow/my_itemmaster.service";
+import { getPoModifyData } from "../../services/purchaseFlow/po_modify_close.service";
+import { getPoNotGenerated } from "../../services/purchaseFlow/ponotgenerated.service";
+import { getCancelledRequests } from "../../services/purchaseFlow/po_cancel.service";
+import { WorkflowService } from "../../services/purchaseFlow/sentbackrollselection_mat.service";
+import { FlowRoleService } from "../../services/purchaseFlow/sentbackrollselection.service";
+import { getMyHistory } from "../../services/purchaseFlow/My_History.service";
+import { getRequestRejectedData } from "../../services/purchaseFlow/my_rejected.service";
+import { getMyClosedRequests } from "../../services/purchaseFlow/MyItem_CloseRequest.service";
+import { getMyTaskData } from "../../services/purchaseFlow/my_task.service";
+import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
 
 
 
@@ -227,19 +208,19 @@ case "po_modify_rate_change":
 
     return;
   }
+  break;
 
 
 case "po_modify":
-
-
+case "po_modify_history":   
   try {
     const result1 = await getPoModifyData(
       requestUser.loginid,
       requestUser.company_code,
       undefined,
       page,
-      limit
-    );
+      limit,
+      master  );
 
     // Send response and exit function
     res.json({
@@ -249,7 +230,8 @@ case "po_modify":
       message: result1.message || "",
     });
     return; // exit after sending response
-
+    
+    
   } catch (err) {
     console.error("❌ Error in po_modify route:", err);
 
@@ -262,9 +244,7 @@ case "po_modify":
     });
     return; // exit after sending response
   }
-
-
-
+  break;
 
  case "ponotgenerated":
   console.log("inside ponotgenerated");
@@ -306,13 +286,7 @@ case "po_modify":
 
     return;
   }
-
   break;
-
-
-
-
-
 
       /* case "dddivision":
          result = await DddivisionmasterService.getDdDivision(
@@ -330,22 +304,30 @@ case "po_modify":
       //   );
       //   break;
 
- case "po_cancel":
+case "po_cancel":
+case "po_cancel_history":
   console.log("inside po_cancel");
 
   try {
-    const cancelledResult = await getCancelledRequests(
-      requestUser.loginid,       // loginid
-      requestUser.company_code,  // company_code
-      undefined,                 // optional filter
-      page,
-      limit
-    );
+    const cancelledResult =
+      (await getCancelledRequests(
+        requestUser.loginid,
+        requestUser.company_code,
+        undefined,
+        page,
+        limit,
+        master
+      )) ?? {
+        success: false,
+        data: [],
+        count: 0,
+        message: "No data returned",
+      };
 
     const responsePayload = {
       success: cancelledResult.success,
-      data: cancelledResult.data || [],    // renamed from tableData
-      count: cancelledResult.count || 0,   // renamed from totalCount
+      data: cancelledResult.data || [],
+      count: cancelledResult.count || 0,
       message: cancelledResult.message || "",
     };
 
@@ -372,8 +354,6 @@ case "po_modify":
   }
 
   break;
-
-
 
       case "sentbackrollselection_mat":
         result = {
@@ -405,8 +385,8 @@ case "po_modify":
 
     const responsePayload = {
       success: historyResult.success,
-      data: historyResult.data || [],   // <-- use data
-      count: historyResult.count || 0,  // <-- use count
+      data: historyResult.data || [],   
+      count: historyResult.count || 0,  
       message: historyResult.message || "",
     };
 
@@ -415,8 +395,7 @@ case "po_modify":
       return;
     }
 
-    return; // stop further execution
-
+    return; 
   } catch (err) {
     console.error("❌ Error in My_History route:", err);
 
@@ -437,15 +416,17 @@ case "po_modify":
 
 
 case "Request_Rejected":
+  case "Request_Rejected_history":
   console.log("inside Request_Rejected");
 
   try {
     const rejectedResult = await getRequestRejectedData(
-      requestUser.loginid,        // loginid
-      requestUser.company_code,   // company_code
-      undefined,                  // filter
+      requestUser.loginid,        
+      requestUser.company_code,   
+      undefined,                  
       page,
-      limit
+      limit,
+      master
     );
 
     const responsePayload = {
@@ -455,18 +436,13 @@ case "Request_Rejected":
       message: rejectedResult.message || "",
     };
 
-    // Send response only if headers not sent
     if (!res.headersSent) {
       res.json(responsePayload);
       return;
     }
-
-    return; // safe exit
-
+    return; 
   } catch (err) {
     console.error("❌ Error in Request_Rejected route:", err);
-
-    // Send error only if headers not sent
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
@@ -484,22 +460,18 @@ case "Request_Rejected":
 
       case "MyItem_ClosedRequest":
     console.log("inside MyItem_ClosedRequest");
-
     try {
       const resultClosed = await getMyClosedRequests(
-        requestUser.loginid,          // loginid (first parameter)
+        requestUser.loginid,          
         requestUser.company_code,     // company_code (second parameter)
         undefined,                    // filter
         page,
         limit
       );
-
       // Send response once
       res.json(resultClosed);
-
       // Important: stop execution after response
       return;
-
     } catch (err) {
       console.error("❌ Error in MyItem_ClosedRequest route:", err);
 

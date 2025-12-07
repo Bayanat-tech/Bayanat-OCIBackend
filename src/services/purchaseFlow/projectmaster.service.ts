@@ -3,7 +3,10 @@ import { ProjectMaster } from "../../entity/PurchaseFlow/projectmaster.entity";
 
 
 export class ProjectMasterService {
-  private static getRepository() {
+  static getProjectMaster(loginid: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+    throw new Error("Method not implemented.");
+  }
+  private static getRepository(company_code: string, page: number, limit: number) {
     return getRepository(ProjectMaster);
   }
 

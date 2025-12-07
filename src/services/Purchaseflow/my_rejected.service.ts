@@ -18,7 +18,8 @@ export const getRequestRejectedData = async (
   company_code: string,
   filter?: Filter,
   page = 1,
-  limit = 4000
+  limit = 4000,
+  master?: string          
 ) => {
   let conn: Connection | null = null;
 
@@ -34,20 +35,28 @@ export const getRequestRejectedData = async (
 
     conn = await oracleDb.getConnection();
 
-    console.log("Calling rejected request procedure with:", company_code, loginid);
+    console.log("Calling rejected request procedure:", { company_code, loginid, master });
 
-    // Call procedure to populate GT_REJECTED
-    await conn.execute(
-      `BEGIN PROC_POPULATE_GT_REJECTED(:p_user, :p_company); END;`,
-      {
-        p_company: company_code,
-        p_user: loginid,
-      }
-    );
+    if (master === "Request_Rejected") {
+      await conn.execute(
+        `BEGIN PROC_POPULATE_GT_REJECTED(:p_user, :p_company); END;`,
+        { p_user: loginid, p_company: company_code }
+      );
 
-    console.log("Rejected request procedure executed successfully");
+      console.log("Executed → PROC_POPULATE_GT_REJECTED");
 
-    // Sorting
+    } else if (master === "Request_Rejected_history") {
+      await conn.execute(
+        `BEGIN PROC_POPULATE_GT_REJECTED_HIST(:p_user, :p_company); END;`,
+        { p_user: loginid, p_company: company_code }
+      );
+
+      console.log("Executed → PROC_POPULATE_GT_REJECTED_HIST");
+
+    } else {
+      throw new Error(`Invalid master: ${master}`);
+    }
+
     let orderBy = "";
     if (filter?.sort?.field_name) {
       orderBy = ` ORDER BY "${filter.sort.field_name.toUpperCase()}" ${
@@ -57,11 +66,13 @@ export const getRequestRejectedData = async (
 
     const offset = (page - 1) * limit;
 
-    // Fetch data with total count
+    const tableName =
+      master === "Request_Rejected" ? "GT_REJECTED" : "GT_REJECTED_HIST";
+
     const dataResult: Result<RequestRejectedRow> = await conn.execute(
       `
       SELECT t.*, COUNT(*) OVER() AS TOTAL_COUNT
-      FROM GT_REJECTED t
+      FROM ${tableName} t
       ${orderBy}
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
@@ -70,8 +81,6 @@ export const getRequestRejectedData = async (
     );
 
     const rows = (dataResult.rows as RequestRejectedRow[]) || [];
-
-    // Convert column names to lowercase
     const tableData = rows.map((row) => {
       const newObj: RequestRejectedRow = {};
       Object.keys(row).forEach((key) => {
@@ -82,12 +91,10 @@ export const getRequestRejectedData = async (
 
     const totalCount = tableData.length > 0 ? tableData[0].total_count || 0 : 0;
 
-    console.log("Rejected Request Result:", { tableData, totalCount });
-
     return {
       success: true,
-      data: tableData,   // frontend expects: response.data.data
-      count: totalCount, // frontend expects: response.data.count
+      data: tableData,
+      count: totalCount,
       message: "Rejected requests fetched successfully.",
     };
   } catch (err: unknown) {

@@ -13,12 +13,14 @@ interface PoModifyRow {
   total_count?: number;
 }
 
+
 export const getPoModifyData = async (
   loginid: string,
   company_code: string,
   filter?: Filter,
   page = 1,
-  limit = 4000
+  limit = 4000,
+  master?: string
 ) => {
   let conn: Connection | null = null;
 
@@ -36,11 +38,23 @@ export const getPoModifyData = async (
 
     console.log("Calling procedure with:", company_code, loginid);
 
-    // Execute procedure
-    await conn.execute(
-      `BEGIN PROC_POPULATE_GT_CLOSE(:p_user, :p_company); END;`,
-      { p_company: company_code, p_user: loginid }
-    );
+    // Execute correct stored procedure based on master flag
+    if (master === "po_modify") {
+      await conn.execute(
+        `BEGIN PROC_POPULATE_GT_CLOSE(:p_user, :p_company); END;`,
+        { p_user: loginid, p_company: company_code } 
+      );
+
+      console.log("Inside po_modify if block.........");
+      
+    } else {
+      await conn.execute(
+        `BEGIN PROC_POPULATE_GT_CLOSE_HISTORY(:p_user, :p_company); END;`,
+        { p_user: loginid, p_company: company_code }
+      );
+
+          console.log("Inside po_modify else block........");
+    }
 
     console.log("Procedure executed successfully");
 
@@ -54,7 +68,7 @@ export const getPoModifyData = async (
 
     const offset = (page - 1) * limit;
 
-    // Fetch data + total count in single query
+    // Fetch data
     const dataResult: Result<PoModifyRow> = await conn.execute(
       `
       SELECT t.*, COUNT(*) OVER() AS TOTAL_COUNT
@@ -77,17 +91,17 @@ export const getPoModifyData = async (
       return newObj;
     });
 
-    const totalCount = tableData.length > 0 ? tableData[0].total_count || 0 : 0;
-
-   // console.log("Po Modify Result:", { tableData, totalCount });
+    const totalCount =
+      tableData.length > 0 ? tableData[0].total_count || 0 : 0;
 
     return {
       success: true,
-      data: tableData,   // frontend expects: response.data.data
-      count: totalCount, // frontend expects: response.data.count
+      data: tableData,
+      count: totalCount,
       message: "Data fetched successfully.",
     };
-  } catch (err: unknown) {
+  } 
+  catch (err: unknown) {
     const message =
       err instanceof Error
         ? err.message
