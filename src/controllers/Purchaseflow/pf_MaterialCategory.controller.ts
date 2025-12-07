@@ -3,7 +3,7 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { materialcategorySchema } from "../../validation/Purchaseflow/Purchaseflow.validation";
 import constants from "../../helpers/constants";
-import { MaterialCategoryService } from "../../services/Purchaseflow/MaterialCategoryMaster.service";
+import { MaterialCategoryService } from "../../services/purchaseflow/MaterialCategoryMaster.service";
 
 export class MaterialCategoryController { 
   
