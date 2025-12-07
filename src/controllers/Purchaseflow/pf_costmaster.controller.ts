@@ -3,7 +3,7 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import constants from "../../helpers/constants";
 import { costmasterSchema } from "../../validation/Purchaseflow/Purchaseflow.validation";
-import { CostmasterService } from "../../services/purchaseflow/costmaster.service";
+import { CostmasterService } from "../../services/Purchaseflow/costmaster.service";
 
 export class CostmasterController {
   static async createcostmaster(

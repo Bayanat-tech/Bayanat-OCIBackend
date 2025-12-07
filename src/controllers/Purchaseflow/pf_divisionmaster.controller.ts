@@ -3,7 +3,7 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import constants from "../../helpers/constants";
 import { divisionmasterSchema } from "../../validation/Purchaseflow/Purchaseflow.validation";
-import { DivisionMasterService } from "../../services/purchaseflow/divisionmaster.service";
+import { DivisionMasterService } from "../../services/Purchaseflow/divisionmaster.service";
 
 export class DivisionMasterController {
   

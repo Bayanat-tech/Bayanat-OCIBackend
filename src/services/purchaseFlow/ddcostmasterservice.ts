@@ -1,5 +1,8 @@
 import { getRepository } from "../../database/connection";
 import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
+// import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
+// import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
+
 
 export interface Master<T> {
   fetchedData: T[];
