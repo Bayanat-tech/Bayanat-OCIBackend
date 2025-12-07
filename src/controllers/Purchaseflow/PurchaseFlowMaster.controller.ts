@@ -69,7 +69,7 @@ export const getPurchasefMaster = async (
         );
         break;
 
-      case "supplier_master":
+      case "ddsupplier":
         result = await PurchaseFlowMasterService.getSupplierMaster(
           requestUser.company_code,
           page,

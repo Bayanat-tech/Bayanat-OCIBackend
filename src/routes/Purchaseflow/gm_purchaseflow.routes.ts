@@ -104,7 +104,7 @@ import { createOrUpdateBudgetRequestSequential } from "../../controllers/Purchas
 // } from "../../controllers/Purchaseflow/purchaseRquestdbupdate_pf.Controller";
 // import { UpdPurchaseRecoveryData } from "../../controllers/Purchaseflow/purchaserecovery_pf.controller";
 // import { deletepfMaster } from "../../controllers/Purchaseflow/purchaseflow.controller";
-// import { getPfglobalsearch } from "../../controllers/Purchaseflow/purchaseflow.globalserch.controller";
+// import { getPfglobalseearch } from "../../controllers/Purchaseflow/purchaseflow.globalserch.controller";
 // /*import {
 //   createcostmaster,
 //   updatecostmaster,
@@ -181,16 +181,11 @@ router.get("/purchaseRequest/:request_number", getPurchaserequest);
 //   fetchProjectwisebudgetAllocation
 // );
 
-// router.get("/getddProjectMaster", getddProjectMaster);
-router.get("/getddProductMaster", 
-  getddProductMaster);
+
+router.get("/getddProductMaster", getddProductMaster);
+
 
 router.get("/fetchCostwisebudgetAllocation", fetchCostwisebudgetAllocation);
-// router.get("/fetchPOregisterdata", fetchPOregisterdata);
-// router.get(
-//   "/bugetcurstatusprojectwiseconsolidated",
-//   bugetcurstatusprojectwiseconsolidated
-// );
 
 // //below is to get data from temp_load and display on the screen.
  router.get("/excebudget/:request_number", getBudgetexcel);
@@ -207,9 +202,9 @@ router.get("/fetchUserlevel", fetchUserlevel);
  router.get("/CheckCostcontroller", CheckCostcontroller);
 router.get("/Fetchmessagebox", Fetchmessagebox);
 router.get("/FetchGenPOString", FetchGenPOString);
-// console.log("inside purchase router");
 
 router.post("/budgetrequest/cost", handleInsertBudgetCosts);
+
 
 router.post("/purchaserequest", createOrUpdatePurchaseRequestSequential);
 // router.post("/materialrequest", createOrUpdateMaterialRequestSequential);
