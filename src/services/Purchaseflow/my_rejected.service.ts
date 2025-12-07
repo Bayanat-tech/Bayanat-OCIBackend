@@ -66,8 +66,8 @@ export const getRequestRejectedData = async (
 
     const offset = (page - 1) * limit;
 
-    const tableName =
-      master === "Request_Rejected" ? "GT_REJECTED" : "GT_REJECTED_HIST";
+    const tableName = 'GT_REJECTED';
+     // master === "Request_Rejected" ? "GT_REJECTED" : "GT_REJECTED_HIST";
 
     const dataResult: Result<RequestRejectedRow> = await conn.execute(
       `
