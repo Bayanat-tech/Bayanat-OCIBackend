@@ -1,4 +1,3 @@
-
 import { Request, Response, NextFunction } from "express";
 import { oracleDb } from "../../database/connection"; // your custom oracle file
 
@@ -17,44 +16,43 @@ export const getddProductMaster = async (
       });
       return;
     }
-    const result = await oracleDb.query(
-      `
-      SELECT
-    prod_code,
-    prod_name,
-    upp,
-    uppp,
-    p_uom,
-    l_uom,
-    prin_code
-FROM MS_PRODUCT
-WHERE PRIN_CODE IN (
-    SELECT A.prin_code
-    FROM MS_PRINCIPAL A
-    JOIN MS_DEPARTMENT B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
-    JOIN MS_HR_DIVISION C ON B.div_code = C.DIV_CODE
-    WHERE C.DIV_CODE = :div_code
-)
-UNION ALL
-SELECT
-    'NEWITEM' AS prod_code,
-    'ITEM NEW' AS prod_name,
-    10000 AS upp,
-    1 AS uppp,
-    'PCS' AS p_uom,
-    'BOX' AS l_uom,
-    (SELECT MIN(A.prin_code) /* or MAX, or FIRST value, Oracle 11g only allows MIN/MAX in subqueries, not FETCH FIRST */
-        FROM MS_PRINCIPAL A
-        JOIN MS_DEPARTMENT B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
-        JOIN MS_HR_DIVISION C ON B.div_code = C.DIV_CODE
-        WHERE C.DIV_CODE = :div_code
-    ) AS prin_code
-FROM DUAL
-FETCH FIRST 5000 ROWS ONLY; `,
-      {
-        div_code: { val: div_code },
-      }
-    );
+    const sql = `
+      SELECT * FROM (
+        SELECT
+          prod_code,
+          prod_name,
+          upp,
+          uppp,
+          p_uom,
+          l_uom,
+          prin_code
+        FROM MS_PRODUCT
+        WHERE PRIN_CODE IN (
+          SELECT A.prin_code
+          FROM MS_PRINCIPAL A
+          JOIN MS_DEPARTMENT B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
+          JOIN MS_HR_DIVISION C ON B.div_code = C.DIV_CODE
+          WHERE C.DIV_CODE = :div_code
+        )
+        UNION ALL
+        SELECT
+          'NEWITEM' AS prod_code,
+          'ITEM NEW' AS prod_name,
+          10000 AS upp,
+          1 AS uppp,
+          'PCS' AS p_uom,
+          'BOX' AS l_uom,
+          (SELECT MIN(A.prin_code)
+             FROM MS_PRINCIPAL A
+             JOIN MS_DEPARTMENT B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
+             JOIN MS_HR_DIVISION C ON B.div_code = C.DIV_CODE
+            WHERE C.DIV_CODE = :div_code
+          ) AS prin_code
+        FROM DUAL
+      ) WHERE ROWNUM <= 5000
+    `;
+
+    const result = await oracleDb.query(sql, { div_code: { val: div_code } });
 
     const data = result?.rows || result;
 

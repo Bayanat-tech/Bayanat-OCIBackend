@@ -129,7 +129,7 @@ export const getPurchasefMaster = async (
         result = await ProjectMasterService.getRepository(
           requestUser.company_code,
           page,
-          limit
+          limit                 
         )
 
         break;
@@ -551,6 +551,9 @@ case "Request_Rejected":
     }
 
 
+    if (res.headersSent) {
+      return;
+    }
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
