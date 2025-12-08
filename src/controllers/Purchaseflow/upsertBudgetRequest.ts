@@ -1,9 +1,11 @@
 import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
-import {
-  TBasicBrequest,
-  TCostbudget,
-} from "../../interfaces/Purchaseflow/Budgetflow.interface";
+import { TBasicBrequest } from "../../interfaces/Purchaseflow/Budgetflow.interface";
+
+/**
+ * Convert undefined → null (Oracle does NOT accept undefined bind values)
+ */
+const safe = (val: any) => (val === undefined ? null : val);
 
 /**
  * Upsert Budget Request using existing connection from oracleDb
@@ -12,27 +14,20 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
   let connection: oracledb.Connection | undefined;
 
   try {
-    // Use existing connection wrapper
     connection = await oracleDb.getConnection();
 
     console.log("Starting upsertBudgetRequest...");
     console.log("Request Number:", data.request_number);
 
-    // -----------------------------------------
-    // DECIDE INSERT OR UPDATE
-    // -----------------------------------------
-    let ls_insert = "NO";
+    const isInsert = !data.request_number || data.request_number === "";
+    console.log("isInsert:", isInsert);
 
-    if (!data.request_number || data.request_number === "") {
-      ls_insert = "YES";
-    }
-
-    console.log("ls_insert:", ls_insert);
-
-    // -----------------------------------------
+    // ===================================================================
     // UPDATE LOGIC
-    // -----------------------------------------
-    if (data.last_action === "SUBMITTED" || ls_insert === "NO") {
+    // ===================================================================
+    if (data.last_action === "SUBMITTED" || !isInsert) {
+      console.log(">>> Running UPDATE block");
+
       await connection.execute(
         `
         UPDATE PURCHASE_REQUEST_HEADER
@@ -47,38 +42,41 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
           AND company_code = :companyCode
         `,
         {
-          lastAction: data.last_action,
-          description: data.description,
-          remarks: data.remarks,
-          updatedBy: data.updated_by,
-          requestNumber: data.request_number,
-          companyCode: data.company_code,
+          lastAction: safe(data.last_action),
+          description: safe(data.description),
+          remarks: safe(data.remarks),
+          updatedBy: safe(data.updated_by),
+          requestNumber: safe(data.request_number),
+          companyCode: safe(data.company_code),
         },
         { autoCommit: false }
       );
 
-      // Message call
       await connection.execute(
         `BEGIN 
-            PROC_LOADMESSAGEBOX(:screen, :type, :doc, :user, 'Transaction Updated Successfully'); 
+            PROC_LOADMESSAGEBOX(:screen, :msgType, :doc, :usr, :message); 
          END;`,
         {
           screen: "BUDGETSUBMIT",
-          type: "success",
-          doc: data.request_number,
-          user: data.updated_by,
+          msgType: "success",
+          doc: safe(data.request_number),
+          usr: safe(data.updated_by),
+          message: "Transaction Updated Successfully",
         }
       );
 
       await connection.commit();
+      console.log(">>> UPDATE committed successfully");
 
       return { requestNumber: data.request_number };
     }
 
-    // -----------------------------------------
+    // ===================================================================
     // INSERT LOGIC
-    // -----------------------------------------
-    let requestDate =
+    // ===================================================================
+    console.log(">>> Running INSERT block");
+
+    const requestDate =
       data.request_date && !isNaN(new Date(data.request_date).getTime())
         ? new Date(data.request_date)
         : new Date();
@@ -117,53 +115,53 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
       )
       `,
       {
-        company: data.company_code,
+        company: safe(data.company_code),
         reqDate: requestDate,
-        description: data.description,
-        remarks: data.remarks,
-        lastAction: data.last_action,   // fixed bind name
-        project: data.project_code,
-        updatedBy: data.updated_by,     // fixed bind name
-        createdBy: data.created_by,     // fixed bind name
+        description: safe(data.description),
+        remarks: safe(data.remarks),
+        lastAction: safe(data.last_action),
+        project: safe(data.project_code),
+        updatedBy: safe(data.updated_by),
+        createdBy: safe(data.created_by),
       },
       { autoCommit: false }
     );
 
-    // ------------------------------------------------------
-    // GET GENERATED REQUEST NUMBER FROM GT_SESSION_INFO
-    // ------------------------------------------------------
-    const result = await connection.execute<{ CODE: string }>(
-      `
-      SELECT CODE 
-      FROM GT_SESSION_INFO
-      WHERE USER_ID = :uid
-      FETCH FIRST 1 ROW ONLY
-      `,
-      { uid: data.updated_by },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+    console.log("1");
 
+    // ===================================================================
+    // GET GENERATED REQUEST NUMBER
+    // ===================================================================
+
+   const result = await connection.execute<{ CODE: string }>(
+  `
+  SELECT CODE 
+  FROM GT_SESSION_INFO
+  FETCH FIRST 1 ROW ONLY
+  `,
+  {}, // No bind variables needed
+  { outFormat: oracledb.OUT_FORMAT_OBJECT }
+);
     const generatedRequestNumber = result.rows?.[0]?.CODE;
 
-    console.log("Generated Request Number (GT_SESSION_INFO):", generatedRequestNumber);
+    console.log("Generated Request Number:", generatedRequestNumber);
+    console.log("2");
 
-    // -----------------------------------------
-    // MESSAGE CALL
-    // -----------------------------------------
     await connection.execute(
       `BEGIN 
-         PROC_LOADMESSAGEBOX(:screen, :type, :doc, :user, :msg); 
+         PROC_LOADMESSAGEBOX(:screen, :msgType, :doc, :usr, :message); 
        END;`,
       {
         screen: "BUDGETSUBMIT",
-        type: "success",
+        msgType: "success",
         doc: generatedRequestNumber,
-        user: data.updated_by,
-        msg: `Generated Request Number: ${generatedRequestNumber}`,
+        usr: safe(data.updated_by),
+        message: `Generated Request Number: ${generatedRequestNumber}`,
       }
     );
 
     await connection.commit();
+    console.log("3");
 
     return { requestNumber: generatedRequestNumber };
   } catch (error) {
@@ -172,16 +170,17 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
     if (connection) {
       await connection.execute(
         `BEGIN 
-           PROC_LOADMESSAGEBOX('TRNFAIL', 'error', :doc, :user, ''); 
+           PROC_LOADMESSAGEBOX('TRNFAIL', 'error', :doc, :usr, ''); 
          END;`,
         {
-          doc: data.request_number || "",
-          user: data.updated_by,
+          doc: safe(data.request_number),
+          usr: safe(data.updated_by),
         }
       );
 
       await connection.rollback();
     }
+    console.log("4");
 
     throw error;
   } finally {
