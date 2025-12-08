@@ -48,9 +48,6 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
 
     const queryHeader = `
       SELECT 
-      REF_DOC1,
-      REF_DOC2,
-      REF_DOC3,
         COMPANY_CODE,
         DOC_TYPE,
         DOC_NO,
@@ -184,9 +181,8 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
     }
 
     res.status(constants.STATUS_CODES.OK).json({
-      
+      success: true,
       data: {
-        success: true,
         ...VendorHeaderData,
         items: VendorDetailData,
       },
