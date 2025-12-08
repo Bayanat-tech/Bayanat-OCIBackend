@@ -14,6 +14,8 @@ import {
   getEmployeeFiles,
   editEmployeeFiles,
   deleteEmployeeFiles,
+  getFilesBySrNo,
+  getAllVendorFiles,
 } from "../controllers/files.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import {
@@ -84,6 +86,20 @@ router.put(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   editHrVendorFiles
+);
+
+router.get(
+  "/filesBySrNo",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getFilesBySrNo
+);
+
+router.get(
+  "/allVendorFiles",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAllVendorFiles
 );
 
 router.put(

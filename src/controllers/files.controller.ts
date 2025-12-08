@@ -331,18 +331,129 @@ export const getHrVendorFiles = async (
   }
 };
 
+// export const editHrVendorFiles = async (
+//   req: RequestWithUser,
+//   res: Response
+// ): Promise<void> => {
+//   try {
+//     const { aws_file_locn, request_number, user_file_name } = req.body;
+
+//     const result = await filesVendorService.update(
+//       {
+//         awsFileLocn: aws_file_locn,
+//         requestNumber: request_number,
+//       },
+//       {
+//         userFileName: user_file_name,
+//       }
+//     );
+
+//     if (result.affected === 0) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: constants.MESSAGES.FILE_NOT_FOUND,
+//       });
+//       return;
+//     }
+
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       message: "File name updated successfully",
+//     });
+//   } catch (error: any) {
+//     console.error("Error in editHrVendorFiles:", error);
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+// export const deleteHrVendorFiles = async (
+//   req: RequestWithUser,
+//   res: Response
+// ): Promise<void> => {
+//   try {
+//     const { request_number, sr_no } = req.params;
+//     console.log("Deleting file:", { request_number, sr_no });
+
+//     if (!request_number) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: constants.MESSAGES.BAD_REQUEST,
+//       });
+//       return;
+//     }
+
+//     const file = await filesVendorService.findOne({
+//       requestNumber: request_number,
+//       srNo: sr_no,
+//     });
+
+//     if (!file) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: constants.MESSAGES.FILE_NOT_FOUND,
+//       });
+//       return;
+//     }
+
+//     const result = await filesVHService.delete({
+//       requestNumber: request_number,
+//       srNo: sr_no,
+//     });
+
+//     if (result.affected === 0) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "Delete operation failed",
+//       });
+//       return;
+//     }
+
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       message: constants.MESSAGES.DELETED_SUCCESSFULLY,
+//     });
+//   } catch (error: any) {
+//     console.error("Error in deleteHrVendorFiles:", error);
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 export const editHrVendorFiles = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-    const { aws_file_locn, request_number, user_file_name } = req.body;
+    const { 
+      aws_file_locn, 
+      request_number, 
+      user_file_name,
+      sr_no,           // Add SR_NO for specificity
+      attachment_sr_no // Add ATTACHMENT_SR_NO for more specificity
+    } = req.body;
+
+    // Build WHERE conditions
+    const whereConditions: any = {
+      awsFileLocn: aws_file_locn,
+      requestNumber: request_number,
+    };
+
+    // Add SR_NO if provided
+    if (sr_no !== undefined) {
+      whereConditions.srNo = sr_no;
+    }
+
+    // Add ATTACHMENT_SR_NO if provided
+    if (attachment_sr_no !== undefined) {
+      whereConditions.attachmentSrNo = attachment_sr_no;
+    }
 
     const result = await filesVendorService.update(
-      {
-        awsFileLocn: aws_file_locn,
-        requestNumber: request_number,
-      },
+      whereConditions,
       {
         userFileName: user_file_name,
       }
@@ -369,13 +480,132 @@ export const editHrVendorFiles = async (
   }
 };
 
-export const deleteHrVendorFiles = async (
+export const getFilesBySrNo = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
     const { request_number, sr_no } = req.params;
-    console.log("Deleting file:", { request_number, sr_no });
+    const { modules } = req.query;
+
+    if (!request_number || !sr_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "request_number and sr_no are required",
+      });
+      return;
+    }
+
+    const conditions: any = {
+      requestNumber: request_number,
+      srNo: parseInt(sr_no),
+      companyCode: req.user.company_code,
+    };
+
+    // Optional modules filter
+    if (modules) {
+      conditions.modules = modules;
+    }
+
+    console.log("Searching files by SR_NO with conditions:", conditions);
+
+    const files = await filesVendorService.findAll(conditions);
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: files || [],
+      message: files && files.length > 0 
+        ? "Files retrieved successfully" 
+        : "No files found for the given request number and SR_NO",
+    });
+    
+  } catch (error: any) {
+    console.error("Error in getFilesBySrNo:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to retrieve files by SR_NO",
+      error: error.message,
+    });
+  }
+};
+
+export const getAllVendorFiles = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { request_number } = req.params;
+    const { modules } = req.query;
+
+    if (!request_number) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "request_number is required",
+      });
+      return;
+    }
+
+    const conditions: any = {
+      requestNumber: request_number,
+      companyCode: req.user.company_code,
+    };
+
+    // Optional modules filter
+    if (modules) {
+      conditions.modules = modules;
+    }
+
+    console.log("Searching all vendor files with conditions:", conditions);
+
+    const files = await filesVendorService.findAll(conditions);
+
+    // Group files by SR_NO for better organization
+    const groupedFiles = (files || []).reduce((acc: any, file: any) => {
+      const srNo = file.srNo || 0;
+      if (!acc[srNo]) {
+        acc[srNo] = [];
+      }
+      acc[srNo].push(file);
+      return acc;
+    }, {});
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: {
+        allFiles: files || [],
+        groupedBySrNo: groupedFiles,
+        statistics: {
+          totalFiles: (files || []).length,
+          filesBySrNo: Object.keys(groupedFiles).reduce((acc: any, srNo) => {
+            acc[`SR_${srNo}`] = groupedFiles[srNo].length;
+            return acc;
+          }, {}),
+          globalFiles: groupedFiles[0]?.length || 0,
+          itemFiles: Object.keys(groupedFiles)
+            .filter(srNo => srNo !== '0')
+            .reduce((sum, srNo) => sum + groupedFiles[srNo].length, 0)
+        }
+      },
+      message: "All vendor files retrieved successfully",
+    });
+    
+  } catch (error: any) {
+    console.error("Error in getAllVendorFiles:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to retrieve all vendor files",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteHrVendorFiles = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { request_number, sr_no, attachment_sr_no } = req.params;
+    console.log("Deleting file:", { request_number, sr_no, attachment_sr_no });
 
     if (!request_number) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -385,10 +615,20 @@ export const deleteHrVendorFiles = async (
       return;
     }
 
-    const file = await filesVendorService.findOne({
+    // Build query conditions based on what's provided
+    const conditions: any = {
       requestNumber: request_number,
-      srNo: sr_no,
-    });
+    };
+
+    if (sr_no !== undefined) {
+      conditions.srNo = sr_no;
+    }
+
+    if (attachment_sr_no !== undefined) {
+      conditions.attachmentSrNo = attachment_sr_no;
+    }
+
+    const file = await filesVendorService.findOne(conditions);
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -398,10 +638,7 @@ export const deleteHrVendorFiles = async (
       return;
     }
 
-    const result = await filesVHService.delete({
-      requestNumber: request_number,
-      srNo: sr_no,
-    });
+    const result = await filesVendorService.delete(conditions);
 
     if (result.affected === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -423,7 +660,6 @@ export const deleteHrVendorFiles = async (
     });
   }
 };
-
 export const getEmployeeFiles = async (
   req: RequestWithUser,
   res: Response
