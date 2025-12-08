@@ -35,4 +35,5 @@ export type TLeaveApproval = {
   CANCEL_REMARK?: string;
   AIR_ROUTE?: string;
   AIR_TICKET?: string;  
+  UUID?: string;
 };  

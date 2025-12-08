@@ -67,26 +67,236 @@ async function retryOnDeadlock<T>(
   }
 }
 
+// export async function upsertLeaveApproval(
+//   data: TLeaveApproval
+// ): Promise<string> {
+//   const { requestNumber, finalApproved } = await oracleDb.withTransaction(
+//     async (connection: oracledb.Connection) => {
+//       // perform insert or update
+//       const exists = await recordExists(
+//         data.REQUEST_NUMBER,
+//         data.COMPANY_CODE,
+//         connection
+//       );
+//       console.log("record exists:", exists);
+
+//       if (exists) {
+//         console.log("update path");
+//         await updateLeaveApproval(data, connection);
+//       } else {
+//         console.log("insert path");
+//         await insertLeaveApproval(data, connection);
+//       }
+
+//       let finalReq =
+//         data.REQUEST_NUMBER && data.REQUEST_NUMBER.trim() !== ""
+//           ? data.REQUEST_NUMBER
+//           : null;
+
+//       // 1) Try GT_SESSION_INFO (existing approach)
+//       if (!finalReq) {
+//         try {
+//           const codeRes: any = await connection.execute(
+//             `SELECT code FROM GT_SESSION_INFO WHERE session_id = SYS_CONTEXT('USERENV','SESSIONID') AND ROWNUM = 1`,
+//             {},
+//             { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//           );
+//           finalReq = codeRes.rows?.[0]?.CODE || null;
+//           console.log("Derived request number from GT_SESSION_INFO:", finalReq);
+//         } catch (err) {
+//           console.warn("Failed to read GT_SESSION_INFO for request number:", err);
+//         }
+//       }
+
+//       // 2) Fallback: query the newly inserted row inside the same transaction
+//       if (!finalReq) {
+//         try {
+//           const fallbackSql = `
+//             SELECT REQUEST_NUMBER FROM (
+//               SELECT REQUEST_NUMBER
+//               FROM LEAVE_REQUEST_FLOW
+//               WHERE COMPANY_CODE = :company_code
+//                 AND NVL(CREATED_BY, :created_by) = :created_by
+//                 AND NVL(EMPLOYEE_CODE, :employee_code) = :employee_code
+//               ORDER BY CREATED_AT DESC
+//             ) WHERE ROWNUM = 1
+//           `;
+
+//           const bindsFallback = {
+//             company_code: data.COMPANY_CODE,
+//             created_by: data.CREATED_BY || data.UPDATED_BY || "",
+//             employee_code: data.EMPLOYEE_CODE || "",
+//           };
+
+//           const fallbackRes: any = await connection.execute(fallbackSql, bindsFallback, {
+//             outFormat: oracledb.OUT_FORMAT_OBJECT,
+//           });
+
+//           finalReq = fallbackRes.rows?.[0]?.REQUEST_NUMBER || null;
+//           console.log("Derived request number from LEAVE_REQUEST_FLOW fallback:", finalReq, bindsFallback);
+//         } catch (fbErr) {
+//           console.warn("Fallback query for request number failed:", fbErr);
+//         }
+//       }
+
+//       finalReq = finalReq || "";
+
+//       const sql = `
+//         SELECT TRIM(FINAL_APPROVED) AS FINAL_APPROVED
+//         FROM LEAVE_REQUEST_FLOW
+//         WHERE REQUEST_NUMBER = :req
+//           AND COMPANY_CODE   = :comp
+//         FETCH FIRST 1 ROWS ONLY
+//       `;
+
+//       const binds = { req: finalReq, comp: data.COMPANY_CODE };
+//       console.log("Checking FINAL_APPROVED from DB with same txn:", binds);
+
+//       const res = await connection.execute<{ FINAL_APPROVED?: string }>(
+//         sql,
+//         binds,
+//         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//       );
+
+//       const dbFlag = res.rows?.[0]?.FINAL_APPROVED ?? null;
+//       const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? "")
+//         .toString()
+//         .trim()
+//         .toUpperCase();
+
+//       return {
+//         requestNumber: finalReq,
+//         finalApproved: normalizedFlag === "YES",
+//       };
+//     }
+//   );
+
+//   sendLeaveNotifications(requestNumber, data.COMPANY_CODE).catch((err) => {
+//     console.error("sendLeaveNotifications failed for", requestNumber, err);
+//   });
+
+//   if (finalApproved) {
+//     console.log('Triggering background processing for approved leave (post-commit)');
+//     processApprovedLeaveRequestsForSingleRecord(requestNumber, data.COMPANY_CODE)
+//       .catch((error) => {
+//         console.error('Background processing failed:', error);
+//       });
+//   }
+
+//   return requestNumber;
+// }
+
 export async function upsertLeaveApproval(
   data: TLeaveApproval
-): Promise<string> {
+): Promise<{ requestNumber: string; uuid: string }> {
+  // Generate UUID if not provided (for new records)
+  const uuid = data.UUID || generateUUID();
+  
   const { requestNumber, finalApproved } = await oracleDb.withTransaction(
     async (connection: oracledb.Connection) => {
+      // For SAVEASDRAFT, try to find existing draft by UUID first
+      let finalReq = data.REQUEST_NUMBER;
+      
+      // If we have a UUID but no request number, look for existing draft
+      if (!finalReq && data.LAST_ACTION === 'SAVEASDRAFT') {
+        const draftCheck = await connection.execute(
+          `SELECT REQUEST_NUMBER 
+           FROM LEAVE_REQUEST_FLOW 
+           WHERE UUID = :uuid 
+             AND COMPANY_CODE = :company_code
+             AND ROWNUM = 1`,
+          {
+            uuid: { val: uuid },
+            company_code: { val: data.COMPANY_CODE }
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        // cast execute result rows to any[] and handle both possible column name casings
+        const draftRows: any[] = (draftCheck.rows as any[]) || [];
+        if (draftRows.length > 0 && draftRows[0]) {
+          // REQUEST_NUMBER may be returned as REQUEST_NUMBER or request_number depending on driver settings
+          finalReq = draftRows[0].REQUEST_NUMBER ?? draftRows[0].request_number ?? null;
+          console.log("Found existing draft by UUID:", { uuid, requestNumber: finalReq });
+        }
+      }
+      
+      // Update data with found request number and UUID
+      const dataWithUUID = {
+        ...data,
+        REQUEST_NUMBER: finalReq || data.REQUEST_NUMBER,
+        UUID: uuid
+      };
+      
+      // Check if record exists
       const exists = await recordExists(
-        data.REQUEST_NUMBER,
-        data.COMPANY_CODE,
+        dataWithUUID.REQUEST_NUMBER,
+        dataWithUUID.COMPANY_CODE,
         connection
       );
-      console.log('record exists:', exists);
+      console.log("Record exists check:", exists, "for request:", dataWithUUID.REQUEST_NUMBER);
 
       if (exists) {
-        console.log('update path');
-        await updateLeaveApproval(data, connection);
+        console.log("Update path for:", dataWithUUID.REQUEST_NUMBER);
+        await updateLeaveApproval(dataWithUUID, connection);
       } else {
-        console.log('insert path');
-        await insertLeaveApproval(data, connection);
+        console.log("Insert path with UUID:", uuid);
+        await insertLeaveApproval(dataWithUUID, connection);
+        
+        // After insert, get the trigger-generated request number
+        if (!dataWithUUID.REQUEST_NUMBER) {
+          try {
+            const newReqResult: any = await connection.execute(
+              `SELECT REQUEST_NUMBER 
+               FROM LEAVE_REQUEST_FLOW 
+               WHERE UUID = :uuid 
+                 AND COMPANY_CODE = :company_code
+                 AND ROWNUM = 1`,
+              {
+                uuid: { val: uuid },
+                company_code: { val: data.COMPANY_CODE }
+              },
+              { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            const rows: any[] = (newReqResult.rows as any[]) || [];
+            if (rows.length > 0 && rows[0]) {
+              const candidate = rows[0].REQUEST_NUMBER ?? rows[0].request_number;
+              if (candidate != null) {
+                finalReq = String(candidate);
+                console.log("Retrieved trigger-generated REQUEST_NUMBER:", finalReq);
+              }
+            }
+          } catch (err) {
+            console.warn("Failed to retrieve new REQUEST_NUMBER:", err);
+          }
+        }
       }
 
+      // Final fallback for request number
+      if (!finalReq) {
+        finalReq = dataWithUUID.REQUEST_NUMBER;
+        
+        if (!finalReq) {
+          // Try GT_SESSION_INFO
+          try {
+            const codeRes: any = await connection.execute(
+              `SELECT code FROM GT_SESSION_INFO 
+               WHERE session_id = SYS_CONTEXT('USERENV','SESSIONID') 
+               AND ROWNUM = 1`,
+              {},
+              { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            finalReq = codeRes.rows?.[0]?.CODE || null;
+          } catch (err) {
+            console.warn("GT_SESSION_INFO lookup failed:", err);
+          }
+        }
+      }
+
+      finalReq = finalReq || "";
+
+      // Get FINAL_APPROVED status
       const sql = `
         SELECT TRIM(FINAL_APPROVED) AS FINAL_APPROVED
         FROM LEAVE_REQUEST_FLOW
@@ -94,11 +304,8 @@ export async function upsertLeaveApproval(
           AND COMPANY_CODE   = :comp
         FETCH FIRST 1 ROWS ONLY
       `;
-     
-      const binds = { req: data.REQUEST_NUMBER, comp: data.COMPANY_CODE };
 
-      console.log('Checking FINAL_APPROVED from DB with same txn:', binds);
-
+      const binds = { req: finalReq, comp: data.COMPANY_CODE };
       const res = await connection.execute<{ FINAL_APPROVED?: string }>(
         sql,
         binds,
@@ -106,31 +313,32 @@ export async function upsertLeaveApproval(
       );
 
       const dbFlag = res.rows?.[0]?.FINAL_APPROVED ?? null;
-
-      const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? '')
+      const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? "")
         .toString()
         .trim()
         .toUpperCase();
+
       return {
-        requestNumber: data.REQUEST_NUMBER,
-        finalApproved: normalizedFlag === 'YES',
+        requestNumber: finalReq,
+        finalApproved: normalizedFlag === "YES",
       };
     }
   );
 
+  // Send notifications (outside transaction)
   sendLeaveNotifications(requestNumber, data.COMPANY_CODE).catch((err) => {
     console.error("sendLeaveNotifications failed for", requestNumber, err);
   });
 
   if (finalApproved) {
-    console.log('Triggering background processing for approved leave (post-commit)');
+    console.log('Triggering background processing for approved leave');
     processApprovedLeaveRequestsForSingleRecord(requestNumber, data.COMPANY_CODE)
       .catch((error) => {
         console.error('Background processing failed:', error);
       });
   }
 
-  return requestNumber;
+  return { requestNumber, uuid };
 }
 
 export async function processApprovedLeaveRequestsForSingleRecord(
@@ -250,7 +458,8 @@ async function recordExists(
     AIR_ROUTE = NVL(:air_route, AIR_ROUTE),
 
     UPDATED_BY = :updated_by,
-    UPDATED_AT = SYSTIMESTAMP
+    UPDATED_AT = SYSTIMESTAMP,
+    UUID = NVL(:uuid, UUID)
 
   WHERE COMPANY_CODE = :company_code
     AND REQUEST_NUMBER = :request_number
@@ -295,6 +504,7 @@ const params = {
 
   air_route: { val: data.AIR_ROUTE || null },
   air_ticket: { val: data.AIR_TICKET || null },
+  uuid: { val: data.UUID },
 };
 
 
@@ -323,7 +533,6 @@ const formatDate = (date: string | number | Date | undefined) => {
 };
 
 async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
-  // Validate required dates
   console.log(
     "before date conversion",
     data.LEAVE_START_DATE,
@@ -354,7 +563,7 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     EMPLOYEE_CODE, LEAVE_TYPE, LEAVE_START_DATE, LEAVE_END_DATE,
     LEAVE_DAYS, AIR_TICKET, AIR_ROUTE, LAST_ACTION, CURRENT_STEP, 
     FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
-    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL
+    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL, UUID
 ) VALUES (
     :employee_name, :half_day,
     CASE WHEN :duty_resume_date IS NOT NULL THEN TO_DATE(:duty_resume_date, 'YYYY-MM-DD') ELSE NULL END,
@@ -370,7 +579,7 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     TO_DATE(:leave_start_date, 'YYYY-MM-DD'),
     TO_DATE(:leave_end_date, 'YYYY-MM-DD'),
     :leave_days, :air_ticket, :air_route, :last_action, 1, 1, 4, :create_user, SYSDATE,
-    :created_by, SYSDATE, 4
+    :created_by, SYSDATE, 4, :uuid
 )
 `;
 
@@ -403,11 +612,12 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     leave_end_date: { val: leaveEndDate },
     leave_days: { val: data.LEAVE_DAYS },
     last_action: { val: data.LAST_ACTION },
-air_route: { val: data.AIR_ROUTE || null },
-air_ticket: { val: data.AIR_TICKET || null },
+    air_route: { val: data.AIR_ROUTE || null },
+    air_ticket: { val: data.AIR_TICKET || null },
 
     create_user: { val: data.UPDATED_BY },
     created_by: { val: data.CREATED_BY },
+    uuid: { val: data.UUID },
 
   };
 
@@ -455,6 +665,14 @@ console.log("--------------------------------------------------");
   }
 }
 
+export function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // === Express handler ===
 export const upsertLeaveApprovalHandler = async (
   req: Request,
@@ -477,19 +695,10 @@ export const upsertLeaveApprovalHandler = async (
 
     console.log("Upsert Leave Approval Request Data:", data);
 
-    // const missingFields = requiredFields.filter((field) => !data[field]);
-
-    // if (missingFields.length > 0) {
-    //   res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-    //     success: false,
-    //     message: `Missing required field(s): ${missingFields.join(", ")}`,
-    //   });
-    //   return;
-    // }
 
     const leaveApprovalData: TLeaveApproval = {
       ...data,
-      COMPANY_CODE: "BSG", // Hardcoded company code
+      COMPANY_CODE: "BSG", 
     };
 
     const requestNumber = await upsertLeaveApproval(leaveApprovalData);
@@ -514,7 +723,7 @@ export const upsertLeaveApprovalHandler = async (
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `${requestNumber} ${messageType} successfully.`,
+      message: `${messageType} successfully.`,
       request_number: requestNumber,
     });
   } catch (error: any) {
