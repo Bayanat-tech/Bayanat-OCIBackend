@@ -1,4 +1,5 @@
 import { FilesVHService } from "../services/filesVH.service";
+import {FilesVendorService} from "../services/filesVendor.service";
 import { Response } from "express";
 import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
@@ -7,6 +8,7 @@ import { FilesPFService } from "../services/filesPF.service";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
+let filesVendorService: FilesVendorService;
 
 // Initialize service
 (async () => {
@@ -16,6 +18,11 @@ let filesPFService: FilesPFService;
 // Initialize service for PF files
 (async () => {
   filesPFService = await FilesPFService.getInstance();
+})().catch(console.error);
+
+// Initialize service for Vendor files
+(async () => {
+  filesVendorService = await FilesVendorService.getInstance();
 })().catch(console.error);
 
 export const getFiles = async (
@@ -296,7 +303,7 @@ export const getHrVendorFiles = async (
 
     console.log("Searching with conditions:", conditions);
 
-    const files = await filesVHService.findAll(conditions);
+    const files = await filesVendorService.findAll(conditions);
 
     // Handle no records found
     if (!files || files.length === 0) {
@@ -331,7 +338,7 @@ export const editHrVendorFiles = async (
   try {
     const { aws_file_locn, request_number, user_file_name } = req.body;
 
-    const result = await filesVHService.update(
+    const result = await filesVendorService.update(
       {
         awsFileLocn: aws_file_locn,
         requestNumber: request_number,
@@ -378,7 +385,7 @@ export const deleteHrVendorFiles = async (
       return;
     }
 
-    const file = await filesVHService.findOne({
+    const file = await filesVendorService.findOne({
       requestNumber: request_number,
       srNo: sr_no,
     });
@@ -470,8 +477,6 @@ export const getEmployeeFiles = async (
     });
   }
 };
-
-
 
 export const editEmployeeFiles = async (
   req: RequestWithUser,
