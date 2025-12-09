@@ -82,7 +82,7 @@ import PackingDetailsInboundWmsView from "../views/wms/transportation/inbound/pa
 import JobOubListingView from "../views/wms/transportation/outbound/outboundJobWms.view";
 import PickingDetailsOutboundWmsView from "../views/wms/transportation/outbound/pickingDetailsWms.view";
 // import OrderDetail from "../../src/models/wms/transaction/outbound/toOrderDetail_wms.model"
-import ConfirmInboundInboundWms from "../models/wms/transaction/inbound/confirmInboundjob_wms.model";
+// import ConfirmInboundInboundWms from "../models/wms/transaction/inbound/confirmInboundjob_wms.model";
 
 // Importing additional interfaces and models
 import {

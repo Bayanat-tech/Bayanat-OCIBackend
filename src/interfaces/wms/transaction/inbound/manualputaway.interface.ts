@@ -92,6 +92,7 @@ export interface TPutawaymanual {
   BATCH_NO?: string;
   EDIT_USER?: string;
   CARTON_NO?: string;
+  SERIALIZE?: string;
 
   created_at?: string | Date;
   created_by?: string;

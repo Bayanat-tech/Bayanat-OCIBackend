@@ -6,12 +6,13 @@ import {
   ISearch,
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
-import ConfirmInboundInboundWms from "../../../../models/wms/transaction/inbound/confirmInboundjob_wms.model";
+import { ConfirmInboundjobService } from "../../../../services/WMS/confirmInboundjob.service";
+// import ConfirmInboundInboundWms from "../../../../models/wms/transaction/inbound/confirmInboundjob_wms.model";
 
 
 /**
  * @function getconfirmInboundjob
- * @description Fetch a confirm inbound job record from Oracle
+ * @description Fetch a confirm inbound job record from Oracle using TypeORM
  */
 export const getconfirmInboundjob = async (
   req: RequestWithUser,
@@ -23,10 +24,12 @@ export const getconfirmInboundjob = async (
 
     console.log("Fetching confirm inbound job:", { prin_code, job_no });
 
-    // Use ORM model or a direct query — ORM remains unchanged here
-    const confirminbound = await ConfirmInboundInboundWms.findOne({
-      where: { prin_code, job_no, company_code },
-    });
+    // Use TypeORM service
+    const confirminbound = await ConfirmInboundjobService.findByJobNo(
+      prin_code as string,
+      job_no as string,
+      company_code
+    );
 
     if (!confirminbound) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({

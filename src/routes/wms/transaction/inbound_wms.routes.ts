@@ -55,17 +55,17 @@ import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
 } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
-// import {
-//   getconfirmInboundjob, // Get confirmation details
-//   confirmInboundjob, // Confirm inbound job
-// } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
+import {
+  // getconfirmInboundjob, // Get confirmation details
+  confirmInboundjob, // Confirm inbound job
+} from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
 
 // import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
-// import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
+import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 const router = express.Router();
 
 // router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
-// router.put("/upsertPutawaymanualHandler", upsertPutawaymanualHandler);
+router.post("/upsertPutawaymanualHandler", upsertPutawaymanualHandler);
 router.post('/executeRawSql', executeRawSql);
 router.post('/executeRawSqlbody', executeRawSqlbody);
 // router.get('/getddSiteLocation',getddSiteLocation)
@@ -217,12 +217,12 @@ router.put(
 
 // Job Confirmation routes - Handle job confirmation operations
 // router.get("/job_confirmation", getconfirmInboundjob);
-// router.put(
-//   "/job_confirmation/:job_no", // This expects `job_no` as a URL parameter
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   confirmInboundjob
-// );
+router.put(
+  "/job_confirmation/:job_no", // This expects `job_no` as a URL parameter
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  confirmInboundjob
+);
 
 // --------- Reports ---------
 router.get(
