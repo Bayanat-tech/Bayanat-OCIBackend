@@ -37,7 +37,7 @@ export class FilesVendorService {
       const mappedConditions = {
         companyCode: conditions.company_code,
         requestNumber: conditions.request_number,
-        modules: conditions.modules,
+        srNo: conditions.sr_no,
       };
 
       console.log("Finding files with conditions:", mappedConditions);
