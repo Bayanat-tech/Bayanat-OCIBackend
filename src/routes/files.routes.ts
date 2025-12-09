@@ -89,14 +89,14 @@ router.put(
 );
 
 router.get(
-  "/filesBySrNo",
+  "/getFilesBySrNo/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getFilesBySrNo
 );
 
 router.get(
-  "/allVendorFiles",
+  "/getAllVendorFiles/:request_number",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getAllVendorFiles

@@ -130,8 +130,8 @@ async function sendDataToDotNetAPI(
   try {
     const fileDataResult = await oracleDb.query(
       `SELECT 
-        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME
-      FROM UPLOADED_FILES_DLTS_VH
+        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME, ATTACHMENT_SR_NO
+      FROM UPLOADED_FILES_DLTS_VENDOR
       WHERE REQUEST_NUMBER = :docNo AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
       { docNo: { val: docNo } },
       transaction
@@ -174,7 +174,7 @@ async function sendDataToDotNetAPI(
 
     if (fileData.length > 0) {
       await oracleDb.query(
-        `UPDATE UPLOADED_FILES_DLTS_VH 
+        `UPDATE UPLOADED_FILES_DLTS_VENDOR
          SET FILE_TRANSFER = 'Y' 
          WHERE REQUEST_NUMBER = :requestNumber`,
         {
@@ -1220,17 +1220,17 @@ export const saveFileVendorHR = async (
           company_code, request_number, sr_no, file_name, extensions, 
           org_file_name, aws_file_locn, flow_level, modules, updated_by, 
           created_by, user_file_name, created_at, updated_at,
-          type, file_transfer, attachment_sr_no
+          type, file_transfer
         ) VALUES (
           :company_code, :request_number, :sr_no, :file_name, :extensions, 
           :org_file_name, :aws_file_locn, :flow_level, :modules, :updated_by, 
           :created_by, :user_file_name, SYSDATE, SYSDATE,
-          :type, :file_transfer, :attachment_sr_no
+          :type, :file_transfer
         )`,
         {
           company_code: { val: company_code || null },
           request_number: { val: request_number },
-          sr_no: { val: sr_no || null },  // NULL will become 0 via trigger
+          sr_no: { val: sr_no || null },  
           file_name: { val: file_name || null },
           extensions: { val: extensions || null },
           org_file_name: { val: org_file_name || null },

@@ -487,6 +487,7 @@ export const getFilesBySrNo = async (
   try {
     const { request_number, sr_no } = req.params;
     const { modules } = req.query;
+    console.log("Fetching files for:", { request_number, sr_no, modules });
 
     if (!request_number || !sr_no) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -496,25 +497,51 @@ export const getFilesBySrNo = async (
       return;
     }
 
-    const conditions: any = {
-      requestNumber: request_number,
-      srNo: parseInt(sr_no),
-      companyCode: req.user.company_code,
+    // Use raw SQL with correct column names
+    const query = `
+      SELECT 
+        COMPANY_CODE as "companyCode",
+        REQUEST_NUMBER as "requestNumber",
+        SR_NO as "srNo",
+        ATTACHMENT_SR_NO as "attachmentSrNo",
+        FILE_NAME as "fileName",
+        ORG_FILE_NAME as "orgFileName",
+        AWS_FILE_LOCN as "awsFileLocn",
+        FLOW_LEVEL as "flowLevel",
+        MODULES as "modules",
+        UPDATED_AT as "updatedAt",
+        UPDATED_BY as "updatedBy",
+        CREATED_BY as "createdBy",
+        CREATED_AT as "createdAt",
+        EXTENSIONS as "extensions",
+        USER_FILE_NAME as "userFileName",
+        TYPE as "type",
+        FILE_TRANSFER as "fileTransfer"
+      FROM UPLOADED_FILES_DLTS_VENDOR 
+      WHERE REQUEST_NUMBER = :request_number 
+        AND SR_NO = :sr_no
+        AND COMPANY_CODE = :company_code
+        ${modules ? "AND MODULES = :modules" : ""}
+      ORDER BY ATTACHMENT_SR_NO ASC, CREATED_AT DESC
+    `;
+    
+    const params: any = {
+      request_number: { val: request_number },
+      sr_no: { val: parseInt(sr_no) },
+      company_code: { val: req.user.company_code }
     };
-
-    // Optional modules filter
+    
     if (modules) {
-      conditions.modules = modules;
+      params.modules = { val: modules };
     }
-
-    console.log("Searching files by SR_NO with conditions:", conditions);
-
-    const files = await filesVendorService.findAll(conditions);
+    
+    const result = await oracleDb.query(query, params);
+    const files = result.rows || [];
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: files || [],
-      message: files && files.length > 0 
+      data: files,
+      message: files.length > 0 
         ? "Files retrieved successfully" 
         : "No files found for the given request number and SR_NO",
     });
@@ -528,7 +555,6 @@ export const getFilesBySrNo = async (
     });
   }
 };
-
 export const getAllVendorFiles = async (
   req: RequestWithUser,
   res: Response

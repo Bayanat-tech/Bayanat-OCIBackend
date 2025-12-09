@@ -14,7 +14,7 @@ export class FilesVendorEntity {
   @Column({ name: "REQUEST_NUMBER", length: 25, nullable: true })
   requestNumber: string;
 
-  @PrimaryColumn({ name: "SR_NO", type: "number", precision: 10 })
+  @PrimaryColumn({ name:"SR_NO", type: "number", precision: 10 })
   srNo: number;
 
   @Column({ name: "FILE_NAME", length: 180, nullable: true })
@@ -55,4 +55,7 @@ export class FilesVendorEntity {
 
   @Column({ name: "FILE_TRANSFER", length: 10, nullable: true })
   fileTransfer: string;
+
+  @Column({ name: "ATTACHMENT_SR_NO", type: "number", precision: 10, nullable: true })
+  attachmentSrNo: number;
 }
