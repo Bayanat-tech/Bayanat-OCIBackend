@@ -175,7 +175,6 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         )
 `;
             break;
-          case "Pg_leave_flow_InProgress":
          case "Pg_leave_flow_InProgress":
     whereConditions = `
         company_code = :company_code
