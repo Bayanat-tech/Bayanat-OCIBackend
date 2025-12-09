@@ -24,7 +24,13 @@ import {
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
 } from "../services/ociUpload.service";
-// router for files operations
+
+import {
+  downloadAllAttachments,
+  downloadAttachmentsBySrNo,
+  downloadSingleFile,
+  getDownloadStats
+} from '../controllers/download.controller';
 
 const router = express.Router();
 const upload = multer({
@@ -102,6 +108,30 @@ router.get(
   getAllVendorFiles
 );
 
+router.get('/downloadAllAttachments/:request_number',
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  downloadAllAttachments
+);
+
+router.get('/downloadAttachmentsBySrNo/:request_number/:sr_no',
+   passport.authenticate("jwt", { session: false }),
+   checkUserAuthorization,
+   downloadAttachmentsBySrNo
+);
+
+router.get('/downloadSingleFile/:request_number/:sr_no?/:attachment_sr_no?',
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization, 
+  downloadSingleFile
+);
+
+router.get('/getDownloadStats/:request_number', 
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getDownloadStats
+);
+
 router.put(
   "/editEmployeeFile",
   passport.authenticate("jwt", { session: false }),
@@ -156,7 +186,7 @@ router.delete(
 );
 
 router.delete(
-  "/deleteVendorAttachment/:request_number/:sr_no",
+  "/deleteVendorAttachment/:request_number/:sr_no/:attachment_sr_no?",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   deleteHrVendorFiles

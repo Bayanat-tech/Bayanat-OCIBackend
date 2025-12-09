@@ -508,59 +508,81 @@ export const getAllVendorFiles = async (
       return;
     }
 
-    const conditions: any = {
-      requestNumber: request_number,
-      companyCode: req.user.company_code,
+    const sql = `
+      SELECT
+        COMPANY_CODE as "companyCode",
+        REQUEST_NUMBER as "requestNumber",
+        NVL(SR_NO,0) as "srNo",
+        ATTACHMENT_SR_NO as "attachmentSrNo",
+        FILE_NAME as "fileName",
+        ORG_FILE_NAME as "orgFileName",
+        AWS_FILE_LOCN as "awsFileLocn",
+        FLOW_LEVEL as "flowLevel",
+        MODULES as "modules",
+        UPDATED_AT as "updatedAt",
+        UPDATED_BY as "updatedBy",
+        CREATED_BY as "createdBy",
+        CREATED_AT as "createdAt",
+        EXTENSIONS as "extensions",
+        USER_FILE_NAME as "userFileName",
+        TYPE as "type",
+        FILE_TRANSFER as "fileTransfer"
+      FROM UPLOADED_FILES_DLTS_VENDOR
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+        ${modules ? "AND MODULES = :modules" : ""}
+      ORDER BY NVL(SR_NO,0) ASC, NVL(ATTACHMENT_SR_NO,0) ASC, CREATED_AT DESC
+    `;
+
+    const binds: any = {
+      request_number: { val: request_number },
+      company_code: { val: req.user.company_code },
     };
+    if (modules) binds.modules = { val: modules };
 
-    // Optional modules filter
-    if (modules) {
-      conditions.modules = modules;
-    }
+    console.log("Executing getAllVendorFiles SQL:", { sql, binds });
+    const result = await oracleDb.query(sql, binds);
+    const files = result.rows || [];
 
-    console.log("Searching all vendor files with conditions:", conditions);
-
-    const files = await filesVendorService.findAll(conditions);
-
-    // Group files by SR_NO for better organization
     const groupedFiles = (files || []).reduce((acc: any, file: any) => {
-      const srNo = file.srNo || 0;
-      if (!acc[srNo]) {
-        acc[srNo] = [];
-      }
+      const srNo = Number(file.srNo ?? 0);
+      if (!acc[srNo]) acc[srNo] = [];
       acc[srNo].push(file);
       return acc;
-    }, {});
+    }, {} as Record<number, any[]>);
 
+    const filesBySrNo: Record<string, number> = {};
+    let globalFiles = groupedFiles[0]?.length || 0;
+    let itemFiles = 0;
+    for (const [k, arr] of Object.entries(groupedFiles) as [string, any[]][]) {
+      filesBySrNo[`SR_${k}`] = arr.length;
+      if (Number(k) !== 0) itemFiles += arr.length;
+    }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {
-        allFiles: files || [],
+        allFiles: files,
         groupedBySrNo: groupedFiles,
         statistics: {
-          totalFiles: (files || []).length,
-          filesBySrNo: Object.keys(groupedFiles).reduce((acc: any, srNo) => {
-            acc[`SR_${srNo}`] = groupedFiles[srNo].length;
-            return acc;
-          }, {}),
-          globalFiles: groupedFiles[0]?.length || 0,
-          itemFiles: Object.keys(groupedFiles)
-            .filter(srNo => srNo !== '0')
-            .reduce((sum, srNo) => sum + groupedFiles[srNo].length, 0)
-        }
+          totalFiles: files.length,
+          filesBySrNo,
+          globalFiles,
+          itemFiles,
+        },
       },
       message: "All vendor files retrieved successfully",
     });
-    
-  } catch (error: any) {
-    console.error("Error in getAllVendorFiles:", error);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Failed to retrieve all vendor files",
-      error: error.message,
-    });
-  }
-};
+     
+   } catch (error: any) {
+     console.error("Error in getAllVendorFiles:", error);
+     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+       success: false,
+       message: "Failed to retrieve all vendor files",
+       error: error.message,
+     });
+   }
+ };
 
 export const deleteHrVendorFiles = async (
   req: RequestWithUser,
@@ -577,8 +599,7 @@ export const deleteHrVendorFiles = async (
       });
       return;
     }
-
-    // Build query conditions based on what's provided
+    
     const conditions: any = {
       requestNumber: request_number,
     };
