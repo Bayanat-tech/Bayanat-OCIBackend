@@ -1114,7 +1114,13 @@ export const notifyUser = async (args: SendEmailInterface) => {
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        cc: cc,
+        cc: [
+          "Sagar.b@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "Srishti.nayal@bayanattechnology.com",
+          ...(cc || []),
+        ],
         subject: "Notification From BT-PMS",
         text: message || "A new transaction has been successfully completed.",
         html: htmlMessage,
@@ -1182,7 +1188,14 @@ export const notifyUser = async (args: SendEmailInterface) => {
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        cc: cc,
+        //cc: cc,
+        cc: [
+          "Sagar.b@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "Srishti.nayal@bayanattechnology.com",
+          ...(cc || []),
+        ],
         subject: subject || `Purchase Request Rejected`,
         text:
           message ||
@@ -1195,7 +1208,13 @@ export const notifyUser = async (args: SendEmailInterface) => {
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        cc: cc,
+        cc: [
+          "Sagar.b@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
+          "Sandeep.dandekar@bayanattechnology.com",
+          "Srishti.nayal@bayanattechnology.com",
+          ...(cc || []),
+        ],
         subject: subject || `Purchase Request Sent Back`,
         text:
           message ||

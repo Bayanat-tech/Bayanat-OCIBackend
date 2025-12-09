@@ -28,10 +28,11 @@ export const updateCancelRejectSentBack = async (req: Request, res: Response): P
     let generatedRequestNumber: string | null = null;
 
     console.log("STEP:1 Start");
+    console.log(`Request Number: ${requestNoForDb}, Last Action: ${LAST_ACTION}`);
 
-    // ---------------------------------------------------------------------
-    // 1. PO CANCELLATION
-    // ---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+   // 1. PO CANCELLATION
+   // ---------------------------------------------------------------------
     if (REQUEST_NUMBER.includes("PO$")) {
       const formattedDate = new Date().toISOString().split("T")[0];
 
@@ -55,7 +56,7 @@ export const updateCancelRejectSentBack = async (req: Request, res: Response): P
 
       console.log("STEP:2 Cancellation Updated");
 
-      if (CREATEPR === "Y") {
+     if (CREATEPR === "Y") {
         const spResult = await connection.execute(
           `BEGIN PRO_GEN_PR_FOR_CANCEL_PO(:companyCode, :reqNumber, 'BUYER', 'FULL', :outCode); END;`,
           {
@@ -217,6 +218,8 @@ console.log('updated sentback');
         : userEmail;
 
     console.log("STEP:5 Email fetched");
+    console.log("CC Email:", ccEmail);
+    console.log("User Emails:", finalUserEmails);
 
     res.status(200).json({
       success: true,
