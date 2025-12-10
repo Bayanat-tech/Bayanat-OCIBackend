@@ -1,4 +1,5 @@
 import { FilesVHService } from "../services/filesVH.service";
+import {FilesVendorService} from "../services/filesVendor.service";
 import { Response } from "express";
 import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
@@ -7,6 +8,7 @@ import { FilesPFService } from "../services/filesPF.service";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
+let filesVendorService: FilesVendorService;
 
 // Initialize service
 (async () => {
@@ -16,6 +18,11 @@ let filesPFService: FilesPFService;
 // Initialize service for PF files
 (async () => {
   filesPFService = await FilesPFService.getInstance();
+})().catch(console.error);
+
+// Initialize service for Vendor files
+(async () => {
+  filesVendorService = await FilesVendorService.getInstance();
 })().catch(console.error);
 
 export const getFiles = async (
@@ -257,7 +264,6 @@ export const deleteFilesPF = async (
       return;
     }
 
-    // send response
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.DELETED_SUCCESSFULLY,
@@ -278,7 +284,7 @@ export const getHrVendorFiles = async (
 ): Promise<void> => {
   try {
     const { request_number } = req.params;
-    const { modules } = req.query;
+    const { sr_no } = req.query;
 
     if (!request_number) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -288,17 +294,47 @@ export const getHrVendorFiles = async (
       return;
     }
 
-    const conditions = {
-      request_number,
-      modules: modules || "vendor",
-      company_code: req.user.company_code,
+    // Build SQL with optional SR_NO filter
+    let sql = `
+      SELECT 
+        COMPANY_CODE as "companyCode",
+        REQUEST_NUMBER as "requestNumber",
+        SR_NO as "srNo",
+        ATTACHMENT_SR_NO as "attachmentSrNo",
+        FILE_NAME as "fileName",
+        ORG_FILE_NAME as "orgFileName",
+        AWS_FILE_LOCN as "awsFileLocn",
+        FLOW_LEVEL as "flowLevel",
+        MODULES as "modules",
+        UPDATED_AT as "updatedAt",
+        UPDATED_BY as "updatedBy",
+        CREATED_BY as "createdBy",
+        CREATED_AT as "createdAt",
+        EXTENSIONS as "extensions",
+        USER_FILE_NAME as "userFileName",
+        TYPE as "type",
+        FILE_TRANSFER as "fileTransfer"
+      FROM UPLOADED_FILES_DLTS_VENDOR
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+    `;
+
+    const binds: any = {
+      request_number: { val: request_number },
+      company_code: { val: req.user.company_code },
     };
 
-    console.log("Searching with conditions:", conditions);
+    if (sr_no !== undefined && sr_no !== null && String(sr_no).trim() !== "") {
+      sql += " AND SR_NO = :sr_no";
+      binds.sr_no = { val: Number(sr_no) };
+    }
 
-    const files = await filesVHService.findAll(conditions);
+    sql += " ORDER BY ATTACHMENT_SR_NO ASC, CREATED_AT DESC";
 
-    // Handle no records found
+    console.log("Executing getHrVendorFiles SQL:", { sql, binds });
+    const result = await oracleDb.query(sql, binds);
+    const files = result.rows || [];
+
     if (!files || files.length === 0) {
       res.status(constants.STATUS_CODES.OK).json({
         success: true,
@@ -329,13 +365,32 @@ export const editHrVendorFiles = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { aws_file_locn, request_number, user_file_name } = req.body;
+    const { 
+      aws_file_locn, 
+      request_number, 
+      user_file_name,
+      sr_no,          
+      attachment_sr_no 
+    } = req.body;
 
-    const result = await filesVHService.update(
-      {
-        awsFileLocn: aws_file_locn,
-        requestNumber: request_number,
-      },
+    // Build WHERE conditions
+    const whereConditions: any = {
+      awsFileLocn: aws_file_locn,
+      requestNumber: request_number,
+    };
+
+    // Add SR_NO if provided
+    if (sr_no !== undefined) {
+      whereConditions.srNo = sr_no;
+    }
+
+    // Add ATTACHMENT_SR_NO if provided
+    if (attachment_sr_no !== undefined) {
+      whereConditions.attachmentSrNo = attachment_sr_no;
+    }
+
+    const result = await filesVendorService.update(
+      whereConditions,
       {
         userFileName: user_file_name,
       }
@@ -362,13 +417,180 @@ export const editHrVendorFiles = async (
   }
 };
 
-export const deleteHrVendorFiles = async (
+export const getFilesBySrNo = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
     const { request_number, sr_no } = req.params;
-    console.log("Deleting file:", { request_number, sr_no });
+    const { modules } = req.query;
+    console.log("Fetching files for:", { request_number, sr_no, modules });
+
+    if (!request_number || !sr_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "request_number and sr_no are required",
+      });
+      return;
+    }
+
+    // Use raw SQL with correct column names
+    const query = `
+      SELECT 
+        COMPANY_CODE as "companyCode",
+        REQUEST_NUMBER as "requestNumber",
+        SR_NO as "srNo",
+        ATTACHMENT_SR_NO as "attachmentSrNo",
+        FILE_NAME as "fileName",
+        ORG_FILE_NAME as "orgFileName",
+        AWS_FILE_LOCN as "awsFileLocn",
+        FLOW_LEVEL as "flowLevel",
+        MODULES as "modules",
+        UPDATED_AT as "updatedAt",
+        UPDATED_BY as "updatedBy",
+        CREATED_BY as "createdBy",
+        CREATED_AT as "createdAt",
+        EXTENSIONS as "extensions",
+        USER_FILE_NAME as "userFileName",
+        TYPE as "type",
+        FILE_TRANSFER as "fileTransfer"
+      FROM UPLOADED_FILES_DLTS_VENDOR 
+      WHERE REQUEST_NUMBER = :request_number 
+        AND SR_NO = :sr_no
+        AND COMPANY_CODE = :company_code
+        ${modules ? "AND MODULES = :modules" : ""}
+      ORDER BY ATTACHMENT_SR_NO ASC, CREATED_AT DESC
+    `;
+    
+    const params: any = {
+      request_number: { val: request_number },
+      sr_no: { val: parseInt(sr_no) },
+      company_code: { val: req.user.company_code }
+    };
+    
+    if (modules) {
+      params.modules = { val: modules };
+    }
+    
+    const result = await oracleDb.query(query, params);
+    const files = result.rows || [];
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: files,
+      message: files.length > 0 
+        ? "Files retrieved successfully" 
+        : "No files found for the given request number and SR_NO",
+    });
+    
+  } catch (error: any) {
+    console.error("Error in getFilesBySrNo:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to retrieve files by SR_NO",
+      error: error.message,
+    });
+  }
+};
+export const getAllVendorFiles = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { request_number } = req.params;
+    const { modules } = req.query;
+
+    if (!request_number) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "request_number is required",
+      });
+      return;
+    }
+
+    const sql = `
+      SELECT
+        COMPANY_CODE as "companyCode",
+        REQUEST_NUMBER as "requestNumber",
+        NVL(SR_NO,0) as "srNo",
+        ATTACHMENT_SR_NO as "attachmentSrNo",
+        FILE_NAME as "fileName",
+        ORG_FILE_NAME as "orgFileName",
+        AWS_FILE_LOCN as "awsFileLocn",
+        FLOW_LEVEL as "flowLevel",
+        MODULES as "modules",
+        UPDATED_AT as "updatedAt",
+        UPDATED_BY as "updatedBy",
+        CREATED_BY as "createdBy",
+        CREATED_AT as "createdAt",
+        EXTENSIONS as "extensions",
+        USER_FILE_NAME as "userFileName",
+        TYPE as "type",
+        FILE_TRANSFER as "fileTransfer"
+      FROM UPLOADED_FILES_DLTS_VENDOR
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+        ${modules ? "AND MODULES = :modules" : ""}
+      ORDER BY NVL(SR_NO,0) ASC, NVL(ATTACHMENT_SR_NO,0) ASC, CREATED_AT DESC
+    `;
+
+    const binds: any = {
+      request_number: { val: request_number },
+      company_code: { val: req.user.company_code },
+    };
+    if (modules) binds.modules = { val: modules };
+
+    console.log("Executing getAllVendorFiles SQL:", { sql, binds });
+    const result = await oracleDb.query(sql, binds);
+    const files = result.rows || [];
+
+    const groupedFiles = (files || []).reduce((acc: any, file: any) => {
+      const srNo = Number(file.srNo ?? 0);
+      if (!acc[srNo]) acc[srNo] = [];
+      acc[srNo].push(file);
+      return acc;
+    }, {} as Record<number, any[]>);
+
+    const filesBySrNo: Record<string, number> = {};
+    let globalFiles = groupedFiles[0]?.length || 0;
+    let itemFiles = 0;
+    for (const [k, arr] of Object.entries(groupedFiles) as [string, any[]][]) {
+      filesBySrNo[`SR_${k}`] = arr.length;
+      if (Number(k) !== 0) itemFiles += arr.length;
+    }
+    
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: {
+        allFiles: files,
+        groupedBySrNo: groupedFiles,
+        statistics: {
+          totalFiles: files.length,
+          filesBySrNo,
+          globalFiles,
+          itemFiles,
+        },
+      },
+      message: "All vendor files retrieved successfully",
+    });
+     
+   } catch (error: any) {
+     console.error("Error in getAllVendorFiles:", error);
+     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+       success: false,
+       message: "Failed to retrieve all vendor files",
+       error: error.message,
+     });
+   }
+ };
+
+export const deleteHrVendorFiles = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { request_number, sr_no, attachment_sr_no } = req.params;
+    console.log("Deleting file:", { request_number, sr_no, attachment_sr_no });
 
     if (!request_number) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -377,11 +599,20 @@ export const deleteHrVendorFiles = async (
       });
       return;
     }
-
-    const file = await filesVHService.findOne({
+    
+    const conditions: any = {
       requestNumber: request_number,
-      srNo: sr_no,
-    });
+    };
+
+    if (sr_no !== undefined) {
+      conditions.srNo = sr_no;
+    }
+
+    if (attachment_sr_no !== undefined) {
+      conditions.attachmentSrNo = attachment_sr_no;
+    }
+
+    const file = await filesVendorService.findOne(conditions);
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -391,10 +622,7 @@ export const deleteHrVendorFiles = async (
       return;
     }
 
-    const result = await filesVHService.delete({
-      requestNumber: request_number,
-      srNo: sr_no,
-    });
+    const result = await filesVendorService.delete(conditions);
 
     if (result.affected === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -416,7 +644,6 @@ export const deleteHrVendorFiles = async (
     });
   }
 };
-
 export const getEmployeeFiles = async (
   req: RequestWithUser,
   res: Response
@@ -470,8 +697,6 @@ export const getEmployeeFiles = async (
     });
   }
 };
-
-
 
 export const editEmployeeFiles = async (
   req: RequestWithUser,

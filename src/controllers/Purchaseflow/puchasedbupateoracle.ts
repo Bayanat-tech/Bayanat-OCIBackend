@@ -51,6 +51,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
     // Handle POGEN case separately
     if (data.last_action === "POGEN" && data.requestNumber) {
       const key_request_number = data.requestNumber.replace(/\//g, "$");
+      console.log('inside POGEN');
       await connection.execute(
         `BEGIN PRO_GEN_JESRA_PO_NO(:companyCode, :requestNumber, :userId, :prinCode); END;`,
         {
@@ -99,12 +100,8 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
     // ----------------------
     if (data.last_action !== "SAVEASDRAFT") {
       try {
-        console.log("Preparing to send notification email...");
         const request_users = await getRequestUsers(data, connection);
         const cc = await getCCList(data, request_users, generatedRequestNumber, connection);
-
-        console.log("Request Users:", request_users);
-        console.log("CC List:", cc);
 
         const createdByResult = await connection.execute<PurchaseRequestHeaderRow>(
           `SELECT CREATED_BY FROM PURCHASE_REQUEST_HEADER WHERE REQUEST_NUMBER = :requestNumber`,
@@ -113,7 +110,6 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
         );
 
         const createdBy = createdByResult.rows?.[0]?.CREATED_BY ?? "Unknown";
-        console.log("Created By:", createdBy);
 
         const htmlMessage = await generateEmailTemplate(data, generatedRequestNumber, createdBy);
 
@@ -124,7 +120,6 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
           message: "",
           htmlMessage,
         });
-         console.log("send notification :",notifyUser);
       } catch (emailError) {
         console.error("Error sending notification:", emailError);
       }
@@ -145,7 +140,6 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
     // Close connection safely
     if (connection) {
       try {
-        console.log('closing oracle connection');
         await connection.close();
       } catch (closeError) {
         console.error("Error closing Oracle connection:", closeError);
@@ -188,7 +182,6 @@ export async function getRequestUsers(
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    console.log('result rows in getRequestUsers',result.rows);
 
     // ✅ TypeScript-safe access
     const email_cc = result.rows?.[0]?.EMAIL_CC ?? "";
