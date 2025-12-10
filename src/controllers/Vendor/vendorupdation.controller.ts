@@ -130,8 +130,8 @@ async function sendDataToDotNetAPI(
   try {
     const fileDataResult = await oracleDb.query(
       `SELECT 
-        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME
-      FROM UPLOADED_FILES_DLTS_VH
+        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME, ATTACHMENT_SR_NO
+      FROM UPLOADED_FILES_DLTS_VENDOR
       WHERE REQUEST_NUMBER = :docNo AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
       { docNo: { val: docNo } },
       transaction
@@ -174,7 +174,7 @@ async function sendDataToDotNetAPI(
 
     if (fileData.length > 0) {
       await oracleDb.query(
-        `UPDATE UPLOADED_FILES_DLTS_VH 
+        `UPDATE UPLOADED_FILES_DLTS_VENDOR
          SET FILE_TRANSFER = 'Y' 
          WHERE REQUEST_NUMBER = :requestNumber`,
         {
@@ -1030,6 +1030,124 @@ export const getPartyOutstanding = async (
   }
 };
 //save attachment
+// export const saveFileVendorHR = async (
+//   req: Request,
+//   res: Response
+// ): Promise<Response | void> => {
+//   const { request_number, files } = req.body;
+
+//   if (!request_number) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "request_number is required.",
+//     });
+//   }
+
+//   if (!files || !Array.isArray(files) || files.length === 0) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "files must be a non-empty array.",
+//     });
+//   }
+
+//   const duplicateRecords: string[] = [];
+//   const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
+
+//   try {
+//     for (const file of files) {
+//       const { org_file_name } = file;
+
+//       const duplicateCheckResult = await oracleDb.query(
+//         `SELECT COUNT(*) AS COUNT 
+//          FROM UPLOADED_FILES_DLTS_VH 
+//          WHERE request_number = :request_number AND org_file_name = :org_file_name`,
+//         {
+//           request_number: { val: request_number },
+//           org_file_name: { val: org_file_name },
+//         }
+//       );
+
+//       const count = duplicateCheckResult.rows?.[0]?.COUNT || 0;
+
+//       if (count > 0) {
+//         duplicateRecords.push(org_file_name);
+//         continue;
+//       }
+
+//       const {
+//         company_code,
+//         file_name,
+//         extensions,
+//         aws_file_locn,
+//         flow_level,
+//         modules,
+//         updated_by,
+//         created_by,
+//         user_file_name,
+//       } = file;
+
+//       await oracleDb.query(
+//         `INSERT INTO UPLOADED_FILES_DLTS_VH (
+//           company_code, request_number, file_name, extensions, org_file_name,
+//           aws_file_locn, flow_level, modules, updated_by, created_by, 
+//           user_file_name, created_at, updated_at
+//         ) VALUES (
+//           :company_code, :request_number, :file_name, :extensions, :org_file_name,
+//           :aws_file_locn, :flow_level, :modules, :updated_by, :created_by,
+//           :user_file_name, SYSDATE, SYSDATE
+//         )`,
+//         {
+//           company_code: { val: company_code || null },
+//           request_number: { val: request_number },
+//           file_name: { val: file_name || null },
+//           extensions: { val: extensions || null },
+//           org_file_name: { val: org_file_name || null },
+//           aws_file_locn: { val: aws_file_locn || null },
+//           flow_level: { val: flow_level || null },
+//           modules: { val: modules || null },
+//           updated_by: { val: updated_by || null },
+//           created_by: { val: created_by || null },
+//           user_file_name: { val: user_file_name || null },
+//         }
+//       );
+
+//       // Fetch SR_NO
+//       const srNoResult = await oracleDb.query(
+//         `SELECT SR_NO 
+//          FROM UPLOADED_FILES_DLTS_VH 
+//          WHERE request_number = :request_number 
+//          AND org_file_name = :org_file_name 
+//          ORDER BY created_at DESC 
+//          FETCH FIRST 1 ROW ONLY`,
+//         {
+//           request_number: { val: request_number },
+//           org_file_name: { val: org_file_name },
+//         }
+//       );
+
+//       const sr_no = srNoResult.rows?.[0]?.SR_NO;
+//       if (sr_no) {
+//         successfulRecords.push({ org_file_name, sr_no });
+//       }
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "File data processed successfully.",
+//       data: {
+//         successfulRecords,
+//         duplicateRecords,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error storing file data:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "An error occurred while storing file data.",
+//       error: error instanceof Error ? error.message : String(error),
+//     });
+//   }
+// };
 export const saveFileVendorHR = async (
   req: Request,
   res: Response
@@ -1051,19 +1169,27 @@ export const saveFileVendorHR = async (
   }
 
   const duplicateRecords: string[] = [];
-  const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
+  const successfulRecords: { 
+    org_file_name: string; 
+    sr_no: number; 
+    attachment_sr_no: number 
+  }[] = [];
 
   try {
     for (const file of files) {
-      const { org_file_name } = file;
+      const { org_file_name, sr_no } = file;
 
+      // Check for duplicates (now checking with SR_NO too)
       const duplicateCheckResult = await oracleDb.query(
         `SELECT COUNT(*) AS COUNT 
-         FROM UPLOADED_FILES_DLTS_VH 
-         WHERE request_number = :request_number AND org_file_name = :org_file_name`,
+         FROM UPLOADED_FILES_DLTS_VENDOR 
+         WHERE request_number = :request_number 
+           AND org_file_name = :org_file_name
+           AND (sr_no = :sr_no OR (:sr_no IS NULL AND sr_no = 0))`,
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
+          sr_no: { val: sr_no || null },
         }
       );
 
@@ -1084,21 +1210,27 @@ export const saveFileVendorHR = async (
         updated_by,
         created_by,
         user_file_name,
+        type,
+        file_transfer,
       } = file;
 
+      // INSERT with all columns including the new ones
       await oracleDb.query(
-        `INSERT INTO UPLOADED_FILES_DLTS_VH (
-          company_code, request_number, file_name, extensions, org_file_name,
-          aws_file_locn, flow_level, modules, updated_by, created_by, 
-          user_file_name, created_at, updated_at
+        `INSERT INTO UPLOADED_FILES_DLTS_VENDOR (
+          company_code, request_number, sr_no, file_name, extensions, 
+          org_file_name, aws_file_locn, flow_level, modules, updated_by, 
+          created_by, user_file_name, created_at, updated_at,
+          type, file_transfer
         ) VALUES (
-          :company_code, :request_number, :file_name, :extensions, :org_file_name,
-          :aws_file_locn, :flow_level, :modules, :updated_by, :created_by,
-          :user_file_name, SYSDATE, SYSDATE
+          :company_code, :request_number, :sr_no, :file_name, :extensions, 
+          :org_file_name, :aws_file_locn, :flow_level, :modules, :updated_by, 
+          :created_by, :user_file_name, SYSDATE, SYSDATE,
+          :type, :file_transfer
         )`,
         {
           company_code: { val: company_code || null },
           request_number: { val: request_number },
+          sr_no: { val: sr_no || null },  
           file_name: { val: file_name || null },
           extensions: { val: extensions || null },
           org_file_name: { val: org_file_name || null },
@@ -1108,26 +1240,36 @@ export const saveFileVendorHR = async (
           updated_by: { val: updated_by || null },
           created_by: { val: created_by || null },
           user_file_name: { val: user_file_name || null },
+          type: { val: type || null },
+          file_transfer: { val: file_transfer || null }
         }
       );
 
-      // Fetch SR_NO
-      const srNoResult = await oracleDb.query(
-        `SELECT SR_NO 
-         FROM UPLOADED_FILES_DLTS_VH 
+      // Fetch both SR_NO and ATTACHMENT_SR_NO
+      const result = await oracleDb.query(
+        `SELECT SR_NO, ATTACHMENT_SR_NO 
+         FROM UPLOADED_FILES_DLTS_VENDOR 
          WHERE request_number = :request_number 
-         AND org_file_name = :org_file_name 
+           AND org_file_name = :org_file_name 
+           AND (sr_no = :sr_no OR (:sr_no IS NULL AND sr_no = 0))
          ORDER BY created_at DESC 
          FETCH FIRST 1 ROW ONLY`,
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
+          sr_no: { val: sr_no || null },
         }
       );
 
-      const sr_no = srNoResult.rows?.[0]?.SR_NO;
-      if (sr_no) {
-        successfulRecords.push({ org_file_name, sr_no });
+      const sr_no_result = result.rows?.[0]?.SR_NO;
+      const attachment_sr_no = result.rows?.[0]?.ATTACHMENT_SR_NO;
+      
+      if (sr_no_result !== undefined) {
+        successfulRecords.push({ 
+          org_file_name, 
+          sr_no: sr_no_result, 
+          attachment_sr_no 
+        });
       }
     }
 
