@@ -536,7 +536,7 @@ export async function upsertPurchaseRequestDetails(
     const result = await connection.execute<{
       CODE: string;
     }>(
-      `SELECT CODE FROM GT_SESSION_INFO`,
+      `SELECT CODE FROM GT_SESSION_INFO_JASRA`,
       [],
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
