@@ -85,7 +85,10 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         APP_REF_NO,
         LAST_ACTION,
         INVOICE_NUMBER,
-        PDO_TYPE
+        PDO_TYPE,
+        REF_DOC1,
+        REF_DOC2,
+        REF_DOC3
       FROM TR_AC_LPO_HEADER
       WHERE COMPANY_CODE = 'BSG' 
         AND DOC_NO = :new_doc_no
