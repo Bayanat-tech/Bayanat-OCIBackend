@@ -26,7 +26,7 @@ export const getddProductMaster = async (
           p_uom,
           l_uom,
           prin_code
-        FROM MS_PRODUCT
+        FROM MS_PRODUCT_JASRA
         WHERE PRIN_CODE IN (
           SELECT A.prin_code
           FROM MS_PRINCIPAL_JASRA A
