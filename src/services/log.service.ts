@@ -22,7 +22,7 @@ export class LogService {
   ): Promise<number> {
     const logRepository = this.getLogRepository();
     return await logRepository.count({
-      where: { company_code, loginid, read: "N" },
+      where: { company_code, loginid, read_flag: "N" },
     });
   }
 
@@ -44,8 +44,8 @@ export class LogService {
   ): Promise<boolean> {
     const logRepository = this.getLogRepository();
     const result = await logRepository.update(
-      { company_code, loginid, read: "N" },
-      { read: "Y", updated_by }
+      { company_code, loginid, read_flag: "N" },
+      { read_flag: "Y", updated_by }
     );
 
     return result.affected ? result.affected > 0 : false;
