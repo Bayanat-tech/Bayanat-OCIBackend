@@ -25,13 +25,6 @@ import {
   uploadEmployeeAttachmentToS3,
 } from "../services/ociUpload.service";
 
-import {
-  downloadAllAttachments,
-  downloadAttachmentsBySrNo,
-  downloadSingleFile,
-  getDownloadStats
-} from '../controllers/download.controller';
-
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -106,30 +99,6 @@ router.get(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getAllVendorFiles
-);
-
-router.get('/downloadAllAttachments/:request_number',
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  downloadAllAttachments
-);
-
-router.get('/downloadAttachmentsBySrNo/:request_number/:sr_no',
-   passport.authenticate("jwt", { session: false }),
-   checkUserAuthorization,
-   downloadAttachmentsBySrNo
-);
-
-router.get('/downloadSingleFile/:request_number/:sr_no?/:attachment_sr_no?',
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization, 
-  downloadSingleFile
-);
-
-router.get('/getDownloadStats/:request_number', 
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getDownloadStats
 );
 
 router.put(
