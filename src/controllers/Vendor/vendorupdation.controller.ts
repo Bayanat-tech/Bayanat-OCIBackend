@@ -145,19 +145,28 @@ async function sendDataToDotNetAPI(
       } catch (error: any) {
         console.error(`Failed to send file data for DOC_NO: ${docNo}`, error);
 
-        // Send email notification for file upload failure
+        // Extract detailed error info from AxiosError
+        const apiError = error?.response?.data ?? error;
+        const apiMessage =
+          (apiError && (apiError.message || apiError.error)) ||
+          error?.message ||
+          String(error);
+
         const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
+          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
           subject: "Vendor API File Upload Failed",
-          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
+          request_user:
+            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API File Upload Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
+            <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
+            <p><strong>API Response:</strong></p>
+            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
             <p><strong>File Details:</strong></p>
-            <pre>${JSON.stringify(file, null, 2)}</pre>
+            <pre>${escapeHtml(JSON.stringify(file, null, 2))}</pre>
           `,
         };
 
@@ -297,6 +306,7 @@ async function sendDataToDotNetAPI(
     console.log("Sending Header Data:", cleanedHeaderData);
     console.log("Sending Detail Data:", cleanedDetailData);
 
+    // Send detail rows
     for (const detail of cleanedDetailData) {
       try {
         await VendorService.insertAcDetail(detail);
@@ -304,18 +314,27 @@ async function sendDataToDotNetAPI(
         console.error(`Failed to send detail for DOC_NO: ${docNo}`, error);
 
         // Send email notification for detail API failure
+        const apiError = error?.response?.data ?? error;
+        const apiMessage =
+          (apiError && (apiError.message || apiError.error)) ||
+          error?.message ||
+          String(error);
+
         const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
+          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
           subject: "Vendor API Detail Data Failed",
-          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
+          request_user:
+            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API Detail Data Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
+            <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
+            <p><strong>API Response:</strong></p>
+            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
             <p><strong>Detail Data:</strong></p>
-            <pre>${JSON.stringify(detail, null, 2)}</pre>
+            <pre>${escapeHtml(JSON.stringify(detail, null, 2))}</pre>
           `,
         };
 
@@ -336,18 +355,27 @@ async function sendDataToDotNetAPI(
     } catch (error: any) {
       console.error(`Failed to send header for DOC_NO: ${docNo}`, error);
 
+      const apiError = error?.response?.data ?? error;
+      const apiMessage =
+        (apiError && (apiError.message || apiError.error)) ||
+        error?.message ||
+        String(error);
+
       const notifPayload = {
         event: "VENDOR_API_ERROR",
-        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${error?.message || "Unknown error"}`,
+        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
         subject: "Vendor API Header Data Failed",
-        request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
+        request_user:
+          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
         cc: "prem@bayanattechnology.com",
         htmlMessage: `
           <h3>Vendor API Header Data Failed</h3>
           <p><strong>Document No:</strong> ${docNo}</p>
-          <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
+          <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
+          <p><strong>API Response:</strong></p>
+          <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
           <p><strong>Header Data:</strong></p>
-          <pre>${JSON.stringify(cleanedHeaderData, null, 2)}</pre>
+          <pre>${escapeHtml(JSON.stringify(cleanedHeaderData, null, 2))}</pre>
         `,
       };
 
@@ -370,12 +398,24 @@ async function sendDataToDotNetAPI(
   }
 }
 
+// small helper to avoid injecting raw HTML from API errors
+function escapeHtml(input: any): string {
+  if (input == null) return "";
+  const s = typeof input === "string" ? input : JSON.stringify(input);
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 async function upsertLpoRequest(data: TVendorMain) {
   let connection: any;
   let committed = false;
   try {
     connection = await oracleDb.getConnection();
-    await connection.execute("BEGIN NULL; END;"); // Start transaction
+    await connection.execute("BEGIN NULL; END;"); 
 
     const isAddMode = !data.DOC_NO;
     let generatedRequestNumber = data.DOC_NO;
