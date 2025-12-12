@@ -102,6 +102,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
       try {
         const request_users = await getRequestUsers(data, connection);
         const cc = await getCCList(data, request_users, generatedRequestNumber, connection);
+        console.log("Request user: ", request_users)
 
         const createdByResult = await connection.execute<PurchaseRequestHeaderRow>(
           `SELECT CREATED_BY FROM PURCHASE_REQUEST_HEADER WHERE REQUEST_NUMBER = :requestNumber`,
@@ -120,6 +121,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
           message: "",
           htmlMessage,
         });
+        console.log("Send notification:",notifyUser)
       } catch (emailError) {
         console.error("Error sending notification:", emailError);
       }
@@ -241,8 +243,6 @@ export async function getCCList(
     }
   }
 }
-
-
 
 export async function upsertPurchaseRequestHeader(
   data: IPurchaseRequestPf,
