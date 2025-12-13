@@ -80,6 +80,10 @@ console.log(`good_material_request: ${data.good_material_request}`);
 console.log(`service_request: ${data.service_request}`);
 console.log(`type_of_contract: ${data.type_of_contract}`);
 console.log(`type_of_pr: ${data.type_of_pr}`);
+console.log(`covered_by_contract_yes: ${data.covered_by_contract_yes}`);
+console.log(`flag_sharing_cost: ${data.flag_sharing_cost}`);
+console.log(`budgeted_yes: ${data.budgeted_yes}`);
+console.log(`checked_store_yes: ${data.checked_store_yes}`);
   const mapItems: IItemPrRequest[] = Array.isArray(data.items)
     ? data.items.map((item: any) => ({
         item_code: item.item_code || "",
@@ -152,6 +156,10 @@ const basicPrRequest: IBasicPrRequest = {
   flow_level_running: Number(data.flow_level_running) || 0,
   amount: String(data.amount || "0"),
   need_by_date: data.need_by_date ? new Date(data.need_by_date) : new Date(),
+  covered_by_contract_yes: data.covered_by_contract_yes || "N",
+  flag_sharing_cost: data.flag_sharing_cost || "N",
+  budgeted_yes: data.budgeted_yes || "N",
+  checked_store_yes: data.checked_store_yes || "N",
 
   // -------------------------
   // 🔥 MATERIAL FLAGS
@@ -214,6 +222,9 @@ const basicPrRequest: IBasicPrRequest = {
   created_at: data.created_at ? new Date(data.created_at) : new Date(),
   updated_at: data.updated_at ? new Date(data.updated_at) : new Date(),
 };
+console.log("Basic PR Request:", basicPrRequest);
+
+
 
 
   // Combine into final object

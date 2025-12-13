@@ -1188,14 +1188,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        //cc: cc,
-        cc: [
-          "Sagar.b@bayanattechnology.com",
-          "gaurang.pai@bayanattechnology.com",
-          "Sandeep.dandekar@bayanattechnology.com",
-          "Srishti.nayal@bayanattechnology.com",
-          ...(cc || []),
-        ],
+        cc: cc,
         subject: subject || `Purchase Request Rejected`,
         text:
           message ||

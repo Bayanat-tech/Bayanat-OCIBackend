@@ -424,7 +424,7 @@ break;
             ...whereClause, // Keep the existing conditions
             prin_code: {
               [Op.in]: sequelize.literal(
-                `(SELECT prin_code FROM MS_PRINCIPAL WHERE PRIN_DEPT_CODE = '${code}')`
+                `(SELECT prin_code FROM MS_PRINCIPAL_JASRA WHERE PRIN_DEPT_CODE = '${code}')`
               ),
             },
           };

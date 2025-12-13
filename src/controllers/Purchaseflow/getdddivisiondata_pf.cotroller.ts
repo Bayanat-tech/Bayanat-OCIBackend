@@ -26,12 +26,12 @@ export const getddProductMaster = async (
           p_uom,
           l_uom,
           prin_code
-        FROM MS_PRODUCT
+        FROM MS_PRODUCT_JASRA
         WHERE PRIN_CODE IN (
           SELECT A.prin_code
-          FROM MS_PRINCIPAL A
-          JOIN MS_DEPARTMENT B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
-          JOIN MS_HR_DIVISION C ON B.div_code = C.DIV_CODE
+          FROM MS_PRINCIPAL_JASRA A
+          JOIN MS_DEPARTMENT_JASRA B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
+          JOIN MS_HR_DIVISION_JASRA C ON B.div_code = C.DIV_CODE
           WHERE C.DIV_CODE = :div_code
         )
         UNION ALL
@@ -43,9 +43,9 @@ export const getddProductMaster = async (
           'PCS' AS p_uom,
           'BOX' AS l_uom,
           (SELECT MIN(A.prin_code)
-             FROM MS_PRINCIPAL A
-             JOIN MS_DEPARTMENT B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
-             JOIN MS_HR_DIVISION C ON B.div_code = C.DIV_CODE
+             FROM MS_PRINCIPAL_JASRA A
+             JOIN MS_DEPARTMENT_JASRA B ON A.PRIN_DEPT_CODE = B.DEPT_CODE
+             JOIN MS_HR_DIVISION_JASRA C ON B.div_code = C.DIV_CODE
             WHERE C.DIV_CODE = :div_code
           ) AS prin_code
         FROM DUAL

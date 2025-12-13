@@ -70,10 +70,11 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
     // ---------------------------------------------------------------------
     if (isAddMode) {
       try {
+        console
         const result = await connection.execute(
           `
           SELECT CODE 
-          FROM GT_SESSION_INFO 
+          FROM GT_SESSION_INFO_JASRA
           WHERE SESSION_ID = SYS_CONTEXT('USERENV','SID') 
           AND ROWNUM = 1
         `,

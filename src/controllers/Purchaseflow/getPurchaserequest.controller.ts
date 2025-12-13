@@ -141,7 +141,7 @@ if (ls_request_number.includes("PO$")) {
     // -----------------------
     const prinQuery = `
       SELECT prin_code 
-      FROM MS_PRINCIPAL 
+      FROM MS_PRINCIPAL_JASRA 
       WHERE PRIN_DEPT_CODE IN (
         SELECT DISTINCT div_code 
         FROM PURCHASE_REQUEST_DETAILS

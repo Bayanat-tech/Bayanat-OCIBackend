@@ -492,7 +492,7 @@ Thank you.`,
 
       if (supplier) {
         const emailResult = await sequelize.query(
-          "SELECT SUPP_EMAIL1 FROM MS_SUPPLIER WHERE SUPP_CODE = ?",
+          "SELECT SUPP_EMAIL1 FROM MS_SUPPLIER_JASRA WHERE SUPP_CODE = ?",
           { replacements: [supplier], type: QueryTypes.SELECT }
         );
         const supplierEmail =
