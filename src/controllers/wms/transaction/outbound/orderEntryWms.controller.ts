@@ -278,7 +278,7 @@ export const getSingleOrderEntry = async (req: RequestWithUser, res: Response) =
     }
 
     const result = await oracleDb.query(
-      `SELECT * FROM TO_ORDER WHERE CUST_CODE = :cust_code`,
+      `SELECT * FROM VW_TO_ORDER WHERE CUST_CODE = :cust_code`,
       { cust_code }
     );
 

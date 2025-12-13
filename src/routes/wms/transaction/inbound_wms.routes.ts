@@ -49,7 +49,7 @@ import {executeRawSql,executeRawSqlbody, proc_build_dynamic_sql_wms} from "../..
 import {createInboundjob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 // import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
 // import  { getddSiteLocation }   from "../../../../src/views/wms/transportation/inbound/ddSiteLocation"
-// import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
+import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
 import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
@@ -73,7 +73,7 @@ router.post("/proc_build_dynamic_sql_wms", proc_build_dynamic_sql_wms);
 
 // router.get('/getddSiteLocation',getddSiteLocation)
 
-// router.get('/getddPrinceProduct',getddPrinceProduct)
+router.get('/getddPrinceProduct',getddPrinceProduct)
 // router.get('/getEDIPackdetHandler', getEDIPackdetHandler);
 // router.post('/copyEDIToPackdetHandler', copyEDIToPackdetHandler);
 

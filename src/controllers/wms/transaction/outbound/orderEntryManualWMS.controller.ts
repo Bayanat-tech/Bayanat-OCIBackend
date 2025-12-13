@@ -251,42 +251,391 @@ async function orderDetailExists(
 // ====================
 // Handlers converted to Oracle
 // ====================
+// export const upsertOutboundOrderDetailManualHandler = async (
+//   req: Request,
+//   res: Response
+// ): Promise<void> => {
+//   let connection: Connection | undefined;
+  
+//   // Generate a unique request ID for tracking
+//   const requestId = Math.random().toString(36).substring(7);
+  
+//   try {
+//     console.log(`=== [${requestId}] START upsertOutboundOrderDetailManualHandler ===`);
+//     console.log(`[${requestId}] Request URL: ${req.url}`);
+//     console.log(`[${requestId}] Request Method: ${req.method}`);
+    
+//     const data: TOrderDetail = req.body;
+//     console.log(`[${requestId}] Request body received:`, JSON.stringify(data, null, 2));
+//     console.log(`[${requestId}] Request body type: ${typeof data}`);
+//     console.log(`[${requestId}] Request body keys:`, Object.keys(data));
+
+//     // Validate required fields
+//     console.log(`[${requestId}] Validating required fields...`);
+//     const requiredFields: (keyof TOrderDetail)[] = ["job_no", "prin_code", "company_code"];
+//     const missingFields = requiredFields.filter((field) => !data[field]);
+    
+//     console.log(`[${requestId}] Checking field values:`);
+//     requiredFields.forEach(field => {
+//       console.log(`  - ${field}: ${data[field]} (type: ${typeof data[field]})`);
+//     });
+    
+//     if (missingFields.length > 0) {
+//       console.error(`[${requestId}] Missing required fields:`, missingFields);
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: `Missing required field(s): ${missingFields.join(", ")}`,
+//         requestId: requestId
+//       });
+//       return;
+//     }
+    
+//     console.log(`[${requestId}] All required fields present`);
+    
+//     // Get database connection
+//     console.log(`[${requestId}] Attempting to get database connection...`);
+//     connection = await oracleDb.getConnection();
+//     console.log(`[${requestId}] Database connection established successfully`);
+    
+//     // Start transaction
+//     console.log(`[${requestId}] Starting transaction...`);
+//     await connection.execute("BEGIN NULL; END;");
+//     console.log(`[${requestId}] Transaction started`);
+    
+//     // Call upsertOrderDetail
+//     console.log(`[${requestId}] Calling upsertOrderDetail function...`);
+//     console.time(`[${requestId}] upsertOrderDetail execution time`);
+    
+//     const result = await upsertOrderDetail(data, connection);
+    
+//     console.timeEnd(`[${requestId}] upsertOrderDetail execution time`);
+//     console.log(`[${requestId}] upsertOrderDetail completed successfully`);
+//     console.log(`[${requestId}] Returned order_no: ${result}`);
+    
+//     // Commit transaction
+//     console.log(`[${requestId}] Committing transaction...`);
+//     await connection.commit();
+//     console.log(`[${requestId}] Transaction committed successfully`);
+    
+//     console.log(`[${requestId}] Sending success response...`);
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       message: "Order detail upserted successfully",
+//       requestId: requestId,
+//       orderNo: result
+//     });
+    
+//     console.log(`[${requestId}] Response sent successfully`);
+    
+//   } catch (error: any) {
+//     console.error(`\n=== [${requestId}] ERROR in upsertOutboundOrderDetailManualHandler ===`);
+//     console.error(`[${requestId}] Error time: ${new Date().toISOString()}`);
+    
+//     // Log full error details
+//     console.error(`[${requestId}] Error name: ${error.name}`);
+//     console.error(`[${requestId}] Error message: ${error.message}`);
+//     console.error(`[${requestId}] Error code: ${error.code || 'N/A'}`);
+//     console.error(`[${requestId}] Error errorNum: ${error.errorNum || 'N/A'}`);
+//     console.error(`[${requestId}] Error offset: ${error.offset || 'N/A'}`);
+    
+//     // Log Oracle-specific error details if available
+//     if (error.errorNum) {
+//       console.error(`[${requestId}] Oracle Error ${error.errorNum}: ${error.message}`);
+//       if (error.offset) {
+//         console.error(`[${requestId}] Error at position: ${error.offset}`);
+//       }
+//     }
+    
+//     // Log the stack trace for debugging
+//     console.error(`[${requestId}] Error stack trace:`);
+//     console.error(error.stack);
+    
+//     // Check for specific ORA-00904 error
+//     if (error.errorNum === 904 || error.message?.includes('ORA-00904')) {
+//       console.error(`\n[${requestId}] DETECTED ORA-00904 ERROR - INVALID IDENTIFIER`);
+//       console.error(`[${requestId}] This usually means a column name in SQL doesn't exist in the table`);
+      
+//       if (error.message.includes('CREATED_AT')) {
+//         console.error(`[${requestId}] The invalid identifier is: CREATED_AT`);
+//         console.error(`[${requestId}] Please check if TO_ORDER table has a CREATED_AT column`);
+//         console.error(`[${requestId}] If it does, add it to your INSERT statement in upsertOrderDetail`);
+//         console.error(`[${requestId}] If not, check for triggers or other functions that might reference it`);
+//       }
+//     }
+    
+//     // Rollback transaction if connection exists
+//     if (connection) {
+//       console.log(`[${requestId}] Attempting to rollback transaction...`);
+//       try {
+//         await connection.rollback();
+//         console.log(`[${requestId}] Transaction rolled back successfully`);
+//       } catch (rollbackError: any) {
+//         console.error(`[${requestId}] Failed to rollback transaction:`, rollbackError.message);
+//       }
+//     } else {
+//       console.log(`[${requestId}] No active connection to rollback`);
+//     }
+    
+//     console.log(`[${requestId}] Sending error response...`);
+//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//       success: false,
+//       message: error.message || "Failed to upsert order detail",
+//       requestId: requestId,
+//       errorCode: error.errorNum || error.code,
+//       errorDetails: {
+//         oracleErrorNum: error.errorNum,
+//         offset: error.offset,
+//         timestamp: new Date().toISOString()
+//       }
+//     });
+    
+//     console.log(`[${requestId}] Error response sent`);
+    
+//   } finally {
+//     // Close connection
+//     if (connection) {
+//       console.log(`[${requestId}] Closing database connection...`);
+//       try {
+//         await connection.close();
+//         console.log(`[${requestId}] Database connection closed successfully`);
+//       } catch (closeError: any) {
+//         console.error(`[${requestId}] Error closing connection:`, closeError.message);
+//       }
+//     }
+    
+//     console.log(`=== [${requestId}] END upsertOutboundOrderDetailManualHandler ===\n`);
+//   }
+// };
+
 export const upsertOutboundOrderDetailManualHandler = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const requestId = crypto.randomUUID(); // Better unique ID
   let connection: Connection | undefined;
-  try {
-    const data: TOrderDetail = req.body;
 
-    const requiredFields: (keyof TOrderDetail)[] = ["job_no", "prin_code", "company_code"];
-    const missingFields = requiredFields.filter((field) => !data[field]);
-    if (missingFields.length > 0) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+  try {
+    // 1. Log request start
+    console.log(`[${requestId}] Starting order detail upsert for TO_ORDER_DET table`);
+    
+    // 2. Parse and validate request body
+    const data = req.body;
+    
+    if (!data || typeof data !== 'object') {
+      res.status(400).json({
         success: false,
-        message: `Missing required field(s): ${missingFields.join(", ")}`,
+        message: "Invalid request body",
+        requestId
       });
       return;
     }
 
-    connection = await oracleDb.getConnection();
-    await connection.execute("BEGIN NULL; END;"); // dummy to start transaction
-    await upsertOrderDetail(data, connection);
-    await connection.commit();
+    // 3. Define required fields for TO_ORDER_DET table
+    const requiredFields = ["job_no", "prin_code", "company_code"];
+    const missingFields = requiredFields.filter(field => 
+      data[field] === undefined || data[field] === null || data[field] === ''
+    );
 
-    res.status(constants.STATUS_CODES.OK).json({
+    if (missingFields.length > 0) {
+      res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(", ")}`,
+        requestId
+      });
+      return;
+    }
+
+    // 4. Get database connection
+    connection = await oracleDb.getConnection();
+    
+    // 5. Check if record exists
+    const checkQuery = `
+      SELECT COUNT(*) as count 
+      FROM TO_ORDER_DET 
+      WHERE job_no = :job_no 
+        AND prin_code = :prin_code 
+        AND company_code = :company_code
+    `;
+    
+    const checkResult = await connection.execute(checkQuery, {
+      job_no: data.job_no,
+      prin_code: data.prin_code,
+      company_code: data.company_code
+    }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+
+    const exists = checkResult.rows && (checkResult.rows[0] as any).COUNT > 0;
+
+    let result: any;
+
+    if (exists) {
+      // 6a. UPDATE existing record
+      console.log(`[${requestId}] Updating existing record in TO_ORDER_DET`);
+      
+      const updateFields = [];
+      const updateValues: any = {
+        job_no: data.job_no,
+        prin_code: data.prin_code,
+        company_code: data.company_code
+      };
+
+      // Build dynamic update query based on provided fields
+      const updatableFields = [
+        'order_no', 'prin_name', 'factory_code', 'factory_name',
+        'color', 'sizes', 'ratio', 'qty', 'unit_price', 'total_price',
+        'currency', 'remark', 'status', 'updated_by', 'updated_at'
+      ];
+
+      updatableFields.forEach(field => {
+        if (data[field] !== undefined) {
+          updateFields.push(`${field} = :${field}`);
+          updateValues[field] = data[field];
+        }
+      });
+
+      // Add timestamp
+      updateFields.push('updated_at = SYSDATE');
+      
+      if (updateFields.length > 0) {
+        const updateQuery = `
+          UPDATE TO_ORDER_DET 
+          SET ${updateFields.join(', ')}
+          WHERE job_no = :job_no 
+            AND prin_code = :prin_code 
+            AND company_code = :company_code
+          RETURNING order_no INTO :order_no
+        `;
+
+        updateValues.order_no = { dir: oracledb.BIND_OUT, type: oracledb.STRING };
+        
+        result = await connection.execute(updateQuery, updateValues);
+        
+        // Get the returned order_no
+        const orderNo = (updateValues.order_no as any).value;
+        console.log(`[${requestId}] Updated record with order_no: ${orderNo}`);
+        result = orderNo;
+      }
+    } else {
+      // 6b. INSERT new record
+      console.log(`[${requestId}] Inserting new record into TO_ORDER_DET`);
+      
+      // Generate order_no if not provided (assuming sequence or logic)
+      const orderNo = data.order_no || `ORD${Date.now()}${Math.random().toString(36).substr(2, 6)}`;
+      
+      // Define all possible columns for TO_ORDER_DET
+      const insertColumns = [
+        'order_no', 'job_no', 'prin_code', 'company_code',
+        'prin_name', 'factory_code', 'factory_name', 'color',
+        'sizes', 'ratio', 'qty', 'unit_price', 'total_price',
+        'currency', 'remark', 'status', 'created_by', 'created_at'
+      ];
+      
+      const insertValues: any = {};
+      const columnNames: string[] = [];
+      const bindNames: string[] = [];
+      
+      insertColumns.forEach(column => {
+        if (column === 'order_no') {
+          columnNames.push(column);
+          bindNames.push(`:${column}`);
+          insertValues[column] = orderNo;
+        } else if (data[column] !== undefined) {
+          columnNames.push(column);
+          bindNames.push(`:${column}`);
+          insertValues[column] = data[column];
+        } else if (column === 'created_at') {
+          columnNames.push(column);
+          bindNames.push('SYSDATE');
+        } else if (column === 'status') {
+          // Set default status if not provided
+          columnNames.push(column);
+          bindNames.push(`:${column}`);
+          insertValues[column] = data.status || 'PENDING';
+        }
+      });
+      
+      const insertQuery = `
+        INSERT INTO TO_ORDER_DET (${columnNames.join(', ')})
+        VALUES (${bindNames.join(', ')})
+        RETURNING order_no INTO :order_no
+      `;
+      
+      insertValues.order_no = { dir: oracledb.BIND_OUT, type: oracledb.STRING };
+      
+      result = await connection.execute(insertQuery, insertValues, {
+        autoCommit: false
+      });
+      
+      // Get the returned order_no
+      const returnedOrderNo = (insertValues.order_no as any).value;
+      console.log(`[${requestId}] Inserted new record with order_no: ${returnedOrderNo}`);
+      result = returnedOrderNo;
+    }
+    
+    // 7. Commit transaction
+    await connection.commit();
+    
+    // 8. Send success response
+    res.status(200).json({
       success: true,
-      message: "Order detail upserted successfully",
+      message: exists ? "Order detail updated successfully" : "Order detail inserted successfully",
+      requestId,
+      orderNo: result,
+      action: exists ? "UPDATE" : "INSERT"
     });
+    
+    console.log(`[${requestId}] Operation completed successfully`);
+
   } catch (error: any) {
-    if (connection) await connection.rollback();
-    console.error("Upsert Order Detail Error:", error);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    console.error(`[${requestId}] Error:`, error);
+    
+    // Rollback if connection exists
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error(`[${requestId}] Rollback failed:`, rollbackError);
+      }
+    }
+    
+    // Handle specific Oracle errors
+    let errorMessage = error.message || "Failed to upsert order detail";
+    let errorCode = error.errorNum || error.code;
+    
+    // ORA-00904: Invalid identifier
+    if (errorMessage.includes('ORA-00904') || errorCode === 904) {
+      const match = errorMessage.match(/"[^"]*"/);
+      const invalidColumn = match ? match[0] : 'unknown column';
+      errorMessage = `Database column ${invalidColumn} does not exist in TO_ORDER_DET table`;
+    }
+    
+    // ORA-01400: Cannot insert NULL
+    if (errorMessage.includes('ORA-01400') || errorCode === 1400) {
+      errorMessage = "Cannot insert NULL into a required column";
+    }
+    
+    // ORA-00001: Unique constraint violated
+    if (errorMessage.includes('ORA-00001') || errorCode === 1) {
+      errorMessage = "Duplicate record already exists";
+    }
+    
+    res.status(500).json({
       success: false,
-      message: error.message || "Failed to upsert order detail",
+      message: errorMessage,
+      requestId,
+      errorCode,
+      timestamp: new Date().toISOString()
     });
+
   } finally {
-    if (connection) await connection.close();
+    // Close connection
+    if (connection) {
+      try {
+        await connection.close();
+        console.log(`[${requestId}] Connection closed`);
+      } catch (closeError) {
+        console.error(`[${requestId}] Error closing connection:`, closeError);
+      }
+    }
   }
 };
 
