@@ -176,7 +176,8 @@ if (ls_request_number.includes("PO$")) {
       WHERE request_number = :REQ
       FETCH FIRST 1 ROWS ONLY
     `;
-
+console.log('prin',prinCode);
+console.log('prin',ls_request_number);
     const detailQuery = `
       SELECT *
       FROM VW_PURCHASE_REQUEST_TRANSACTION1
