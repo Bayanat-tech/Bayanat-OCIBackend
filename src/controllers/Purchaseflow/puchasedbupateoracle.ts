@@ -43,7 +43,6 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf): Promise<s
   try {
     connection = await oracleDb.getConnection();
 
-    // Start dummy transaction block (Oracle implicitly starts transaction)
     await connection.execute("BEGIN NULL; END;");
 
     let generatedRequestNumber = data.requestNumber;
@@ -158,12 +157,11 @@ export async function getRequestUsers(
   let conn: oracledb.Connection | undefined = connection;
 
   try {
-    // If no connection is passed, get a new one
     if (!conn) {
       conn = await oracleDb.getConnection();
     }
-
-    // 1️⃣ Call the procedure PROC_LOADMESSAGEBOX
+    
+    // First, execute the procedure
     await conn.execute(
       `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :emptyStr); END;`,
       {
@@ -175,24 +173,82 @@ export async function getRequestUsers(
       }
     );
 
-    // 2️⃣ Query to get the email string
-    const result = await conn.execute<{ EMAIL_CC: string }>(
-      `SELECT FUN_EMAIL_SENT_STRING(:companyCode, FUN_GET_FLOW_ROLE_JAS(:updatedBy, :companyCode)) AS EMAIL_CC FROM DUAL`,
+    // Get the flow role first
+    const roleResult = await conn.execute<{ ROLE_NAME: string }>(
+      `SELECT FUN_GET_FLOW_ROLE_JAS(:updatedBy, :companyCode) AS ROLE_NAME FROM DUAL`,
       {
-        companyCode: data.companyCode,
         updatedBy: data.updated_by,
+        companyCode: data.companyCode,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    // ✅ TypeScript-safe access
-    const email_cc = result.rows?.[0]?.EMAIL_CC ?? "";
-    return email_cc;
-  } catch (error) {
+    const userRole = roleResult.rows?.[0]?.ROLE_NAME || "";
+    
+    if (!userRole) {
+      console.warn("[getRequestUsers] No role found for user", {
+        updatedBy: data.updated_by,
+        companyCode: data.companyCode
+      });
+      return "";
+    }
+
+    // Direct query to replace FUN_EMAIL_SENT_STRING
+    const queryResult = await conn.execute<{ CONTACT_EMAIL: string }>(
+      `SELECT DISTINCT b.contact_email
+       FROM ms_ps_user_role_mapping a
+       JOIN sec_login b ON a.user_name = b.loginid
+       WHERE b.company_code = :companyCode
+         AND a.company_code = :companyCode
+         AND a.user_role = :userRole
+         AND b.contact_email IS NOT NULL`,
+      {
+        companyCode: data.companyCode,
+        userRole: userRole
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    // Build email list
+    const emails: string[] = [];
+    
+    if (queryResult.rows) {
+      for (const row of queryResult.rows) {
+        const email = (row as any).CONTACT_EMAIL;
+        if (email && email.trim() !== "") {
+          emails.push(email.trim());
+        }
+      }
+    }
+
+    return emails.join(';');
+    
+  } catch (error: any) {
     console.error("Error fetching request users:", error);
-    throw error;
+    
+    // Fallback logic - try to get at least some emails
+    try {
+      if (conn) {
+        const fallbackResult = await conn.execute<{ CONTACT_EMAIL: string }>(
+          `SELECT contact_email FROM sec_login 
+           WHERE loginid = :userId AND company_code = :companyCode
+           AND contact_email IS NOT NULL`,
+          {
+            userId: data.updated_by,
+            companyCode: data.companyCode
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        const email = fallbackResult.rows?.[0]?.CONTACT_EMAIL;
+        return email || "";
+      }
+    } catch (fallbackError) {
+      console.error("Fallback also failed:", fallbackError);
+    }
+    
+    return "";
   } finally {
-    // Close the connection only if we opened it here
     if (!connection && conn) {
       try {
         await conn.close();
@@ -202,7 +258,6 @@ export async function getRequestUsers(
     }
   }
 }
-
 
 export async function getCCList(
   data: IPurchaseRequestPf,
@@ -216,23 +271,87 @@ export async function getCCList(
     if (!conn) {
       conn = await oracleDb.getConnection();
     }
+    const formattedRequestNumber = requestNumber.replace(/\//g, "$");
 
-    const result = await conn.execute(
-      `SELECT FUN_EMAIL_CC_STRING(:companyCode, :createdBy, :requestUsers, :requestNumber) AS EMAIL_CC FROM DUAL`,
+    const creatorResult = await conn.execute<{ CONTACT_EMAIL: string }>(
+      `SELECT contact_email
+       FROM SEC_LOGIN
+       WHERE loginid = :createdBy
+         AND company_code = :companyCode`,
       {
-        companyCode: data.companyCode,
         createdBy: data.created_by,
-        requestUsers: request_users,
-        requestNumber,
+        companyCode: data.companyCode
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const row = result.rows?.[0] as { EMAIL_CC: string } | undefined;
-    return row?.EMAIL_CC || "";
-  } catch (error) {
+    const creatorEmail = creatorResult.rows?.[0]?.CONTACT_EMAIL || "";
+
+    const statsResult = await conn.execute<{ CONTACT_EMAIL: string }>(
+      `SELECT DISTINCT b.contact_email
+       FROM PURCHASE_REQUST_RUNING_STATS a
+       JOIN SEC_LOGIN b ON a.LAST_UPDATED = b.loginid
+       WHERE a.request_number = :requestNumber
+         AND b.company_code = :companyCode
+         AND a.company_code = :companyCode
+         AND b.contact_email IS NOT NULL`,
+      {
+        requestNumber: formattedRequestNumber,
+        companyCode: data.companyCode
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const ccEmails = new Set<string>();
+    
+    if (creatorEmail) {
+      ccEmails.add(creatorEmail.trim());
+    }
+
+    if (statsResult.rows) {
+      const toEmails = request_users.split(';').map(email => email.trim().toLowerCase());
+      
+      for (const row of statsResult.rows) {
+        const email = (row as any).CONTACT_EMAIL?.trim();
+        if (email && email !== "") {
+          const emailLower = email.toLowerCase();
+          
+          if (toEmails.includes(emailLower)) {
+            continue;
+          }
+          
+          if (creatorEmail && emailLower === creatorEmail.trim().toLowerCase()) {
+            continue;
+          }
+          
+          ccEmails.add(email);
+        }
+      }
+    }
+    return Array.from(ccEmails).join(';');
+
+  } catch (error: any) {
     console.error("Error fetching CC list:", error);
-    throw error;
+    try {
+      if (conn && data.created_by) {
+        const fallbackResult = await conn.execute<{ CONTACT_EMAIL: string }>(
+          `SELECT contact_email FROM SEC_LOGIN 
+           WHERE loginid = :createdBy AND company_code = :companyCode`,
+          {
+            createdBy: data.created_by,
+            companyCode: data.companyCode
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        const email = fallbackResult.rows?.[0]?.CONTACT_EMAIL;
+        return email || "";
+      }
+    } catch (fallbackError) {
+      console.error("Fallback also failed:", fallbackError);
+    }
+    
+    return "";
   } finally {
     if (!connection && conn) {
       try {
