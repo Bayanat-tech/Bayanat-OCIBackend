@@ -2,6 +2,7 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import { initializeAllConnections } from "./src/database/connection";
 import "./src/utils/passport";
+import { startTransferScheduler } from "./src/scripts/awsToOciTransfer.scheduler";
 
 const app = express();
 
@@ -66,6 +67,26 @@ async function startServerWithTypeORM() {
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
       console.log(`TypeORM is ready for model conversion`);
+
+      // Start AWS -> OCI transfer scheduler if enabled by env
+      if (
+        process.env.ENABLE_AWS_TO_OCI_TRANSFER === "true" ||
+        !!process.env.SCHEDULE_CRON
+      ) {
+        startTransferScheduler()
+          .then(() =>
+            console.log(
+              "awsToOci transfer scheduler started (enabled by env)"
+            )
+          )
+          .catch((err) =>
+            console.error("awsToOci transfer scheduler failed to start:", err)
+          );
+      } else {
+        console.log(
+          "awsToOci transfer scheduler not enabled (set ENABLE_AWS_TO_OCI_TRANSFER=true or SCHEDULE_CRON)"
+        );
+      }
     });
   } catch (err) {
     console.log("Error in database connection:", err);

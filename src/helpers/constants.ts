@@ -782,6 +782,13 @@ export default {
     CONFLICT: 409,
     NO_CONTENT: 204,
   },
+  AWS_S3_CREDENTIALS: {
+    ACCESS_KEY: String(process.env.S3_ACCESS_KEY),
+    SECRET_ACCESS_KEY: String(process.env.S3_SECRET_ACCESS_KEY),
+    S3_BUCKET: String(process.env.S3_BUCKET_NAME),
+    REGION: String(process.env.S3_REGION),
+    AWS_S3_URL: (file_name: string) => `${process.env.AWS_S3_URL}/${file_name}`,
+  },
   OCI_S3_COMPATIBILITY: {
     ACCESS_KEY_ID: String(process.env.OCI_ACCESS_KEY_ID),
     SECRET_ACCESS_KEY: String(process.env.OCI_SECRET_ACCESS_KEY),

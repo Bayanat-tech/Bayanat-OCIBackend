@@ -53,7 +53,7 @@ export const uploadPFToS3 = async (req: any, res: any) => {
   const requestNumber = req.body.request_number;
   const requestType = req.body.type;
 
-  const fileName: string = `AMSFiles/${requestType}/${new Date().getFullYear()}/${
+  const fileName: string = `UploadWorkflow/${requestType}/${new Date().getFullYear()}/${
     new Date().getMonth() + 1
   }/${requestNumber}/${file.originalname}`;
   
