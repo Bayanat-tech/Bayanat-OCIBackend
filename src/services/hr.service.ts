@@ -5,6 +5,7 @@ import { oracleDb } from "../database/connection";
 import { RequestWithUser } from "../interfaces/common.interface";
 import { IUser } from "../interfaces/user.interface";
 import constants from "../helpers/constants";
+import { notifyUser } from "../helpers/functions";
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -377,7 +378,50 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
       );
       return response.data;
     } catch (error: any) {
-      console.error("Error in updateLeaveResume:", error);
+      // Detailed logging
+      console.error("Error in updateLeaveResume:", {
+        message: error.message,
+        responseStatus: error.response?.status,
+        responseData: error.response?.data,
+        requestConfig: error.config ? { url: error.config.url, method: error.config.method } : undefined,
+        payload: request,
+      });
+
+      // Build notification payload similar to other failures
+      const apiError = error?.response?.data ?? error;
+      const apiMessage =
+        (apiError && (apiError.message || apiError.error)) ||
+        error?.message ||
+        String(error);
+
+      const detailedErrorText =
+        typeof apiError === "string" ? apiError : JSON.stringify(apiError, null, 2);
+
+      const notifPayload = {
+        event: "HR_API_ERROR",
+        message: `Failed to call updateResumeDates for RequestNumber: ${request.requestNumber}\nError: ${apiMessage}`,
+        subject: "HR API updateResumeDates Failed",
+        request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,arun.colaco@bayanattechnology.com",
+        cc: "prem@bayanattechnology.com",
+        htmlMessage: `
+          <h3>HR API updateResumeDates Failed</h3>
+          <p><strong>Request Number:</strong> ${request.requestNumber}</p>
+          <p><strong>Error Message:</strong> ${apiMessage}</p>
+          <h4>API Response / Details</h4>
+          <pre>${detailedErrorText}</pre>
+          <h4>Payload Sent</h4>
+          <pre>${JSON.stringify(request, null, 2)}</pre>
+        `,
+      };
+
+      try {
+        await notifyUser(notifPayload);
+        console.log("notifyUser sent for updateLeaveResume failure");
+      } catch (notifErr) {
+        console.error("notifyUser failed for updateLeaveResume:", notifErr);
+      }
+
+      // rethrow so callers remain aware of the failure
       throw error;
     }
   },
