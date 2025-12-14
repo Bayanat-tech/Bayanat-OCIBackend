@@ -17,15 +17,15 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
     // Take prin_code, job_no from query, everything else from body
     const { prin_code, job_no } = req.query as { prin_code: string; job_no: string };
     const requestUser = req.body.user || { loginid: "SYSTEM", company_code: req.body.company_code || "" };
-
+/*
     if (!prin_code || !job_no || !requestUser.company_code) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "Missing prin_code, job_no, or company_code",
       });
       return;
-    }
-
+    }*/
+console.log('1');
     // Validate payload
     const { error } = createInboundSchema(req.body, false, requestUser.company_code);
     if (error) {
@@ -35,7 +35,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
       });
       return;
     }
-
+console.log('2');
     // Prepare data for insert/update
     const data = {
       ...req.body,
@@ -45,7 +45,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
     };
-
+console.log('3');
     connection = await oracledb.getConnection();
 
     // Check if job exists
@@ -56,7 +56,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
       { company_code: data.company_code, job_no: data.job_no },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+console.log('4');
     const countRow = result.rows?.[0] as { COUNT: number } | undefined;
     const exists = (countRow?.COUNT ?? 0) > 0;
 
@@ -66,7 +66,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
         .filter((key) => key !== "company_code" && key !== "job_no")
         .map((key) => `${key} = :${key}`)
         .join(", ");
-
+console.log('5');
       const updateQuery = `
         UPDATE TI_JOB
         SET ${updateFields}, updated_at = SYSDATE
@@ -80,9 +80,12 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
       });
     } else {
       // INSERT new job
-      const insertColumns = Object.keys(data).join(", ");
-      const insertValues = Object.keys(data).map((key) => `:${key}`).join(", ");
+ const columns = Object.keys(data)
+  .filter((key, index, self) => data[key] !== undefined && self.indexOf(key) === index);
 
+const insertColumns = columns.join(", ");
+const insertValues = columns.map((key) => `:${key}`).join(", ");
+console.log('6');
       const insertQuery = `
         INSERT INTO TI_JOB (${insertColumns}, created_at, updated_at)
         VALUES (${insertValues}, SYSDATE, SYSDATE)
