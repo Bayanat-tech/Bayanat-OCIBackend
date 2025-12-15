@@ -407,237 +407,200 @@ async function orderDetailExists(
 //   }
 // };
 
+
+
 export const upsertOutboundOrderDetailManualHandler = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const requestId = crypto.randomUUID(); // Better unique ID
+  const requestId = crypto.randomUUID();
   let connection: Connection | undefined;
 
   try {
-    // 1. Log request start
-    console.log(`[${requestId}] Starting order detail upsert for TO_ORDER_DET table`);
-    
-    // 2. Parse and validate request body
-    const data = req.body;
-    
-    if (!data || typeof data !== 'object') {
-      res.status(400).json({
-        success: false,
-        message: "Invalid request body",
-        requestId
-      });
-      return;
-    }
+    const d = req.body;
 
-    // 3. Define required fields for TO_ORDER_DET table
-    const requiredFields = ["job_no", "prin_code", "company_code"];
-    const missingFields = requiredFields.filter(field => 
-      data[field] === undefined || data[field] === null || data[field] === ''
+    connection = await oracledb.getConnection();
+
+    /* =========================
+       CHECK EXISTENCE
+    ========================= */
+    const checkSql = `
+      SELECT COUNT(*) CNT
+      FROM TO_ORDER_DET
+      WHERE company_code = :company_code
+        AND prin_code = :prin_code
+        AND job_no = :job_no
+        AND cust_code = :cust_code
+        AND order_no = :order_no
+    `;
+
+    const check = await connection.execute<any>(
+      checkSql,
+      {
+        company_code: d.company_code,
+        prin_code: d.prin_code,
+        job_no: d.job_no,
+        cust_code: d.cust_code,
+        order_no: d.order_no
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    if (missingFields.length > 0) {
-      res.status(400).json({
-        success: false,
-        message: `Missing required fields: ${missingFields.join(", ")}`,
-        requestId
-      });
+    const exists = (check.rows?.[0]?.CNT ?? 0) > 0;
+
+    /* =========================
+       UPDATE
+    ========================= */
+    if (exists) {
+      const updateSql = `
+        UPDATE TO_ORDER_DET SET
+          prod_code = :prod_code,
+          qty_puom = :qty_puom,
+          p_uom = :p_uom,
+          qty_luom = :qty_luom,
+          quantity = :quantity,
+          doc_ref = :doc_ref,
+          lot_no = :lot_no,
+          po_no = :po_no,
+          imp_job_no = :imp_job_no,
+          manu_code = :manu_code,
+          container_no = :container_no,
+          production_from = :production_from,
+          production_to = :production_to,
+          expiry_from = :expiry_from,
+          expiry_to = :expiry_to,
+          unit_price = :unit_price,
+          site_code = :site_code,
+          loc_code_from = :loc_code_from,
+          loc_code_to = :loc_code_to,
+          picked = :picked,
+          confirmed = :confirmed,
+          confirmed_date = :confirmed_date,
+          l_uom = :l_uom,
+          uppp = :uppp,
+          selected = :selected,
+          aisle_from = :aisle_from,
+          aisle_to = :aisle_to,
+          height_from = :height_from,
+          height_to = :height_to,
+          column_from = :column_from,
+          column_to = :column_to,
+          gate_no = :gate_no,
+          sales_rate = :sales_rate,
+          exp_container_no = :exp_container_no,
+          exp_container_size = :exp_container_size,
+          exp_container_type = :exp_container_type,
+          exp_container_sealno = :exp_container_sealno,
+          moc1 = :moc1,
+          moc2 = :moc2,
+          order_serial = :order_serial,
+          origin_country = :origin_country,
+          bal_pack_qty = :bal_pack_qty,
+          multi_series = :multi_series,
+          prod_attrib_code = :prod_attrib_code,
+          prod_grade1 = :prod_grade1,
+          prod_grade2 = :prod_grade2,
+          tx_identity_number = :tx_identity_number,
+          ref_txn_code = :ref_txn_code,
+          ref_txn_slno = :ref_txn_slno,
+          so_txn_code = :so_txn_code,
+          inbound_done = :inbound_done,
+          ref_txn_doc = :ref_txn_doc,
+          supp_code = :supp_code,
+          supp_reference = :supp_reference,
+          orig_prod_code = :orig_prod_code,
+          salesman_code = :salesman_code,
+          hs_code = :hs_code,
+          batch_no = :batch_no,
+          act_order_qty = :act_order_qty,
+          bal_order_qty = :bal_order_qty,
+          minperiod_exppick = :minperiod_exppick,
+          ignore_minexp_period = :ignore_minexp_period,
+          stock_owner = :stock_owner,
+          ind_code = :ind_code,
+          git_no = :git_no,
+          priority = :priority,
+          updated_by = :updated_by,
+          updated_at = SYSDATE
+        WHERE company_code = :company_code
+          AND prin_code = :prin_code
+          AND job_no = :job_no
+          AND cust_code = :cust_code
+          AND order_no = :order_no
+      `;
+
+      await connection.execute(updateSql, d, { autoCommit: true });
+
+      res.json({ success: true, action: "UPDATE", requestId });
       return;
     }
 
-    // 4. Get database connection
-    connection = await oracleDb.getConnection();
-    
-    // 5. Check if record exists
-    const checkQuery = `
-      SELECT COUNT(*) as count 
-      FROM TO_ORDER_DET 
-      WHERE job_no = :job_no 
-        AND prin_code = :prin_code 
-        AND company_code = :company_code
+    /* =========================
+       INSERT
+    ========================= */
+    const insertSql = `
+      INSERT INTO TO_ORDER_DET (
+        company_code, prin_code, job_no, cust_code, order_no,
+        serial_no,
+        prod_code, qty_puom, p_uom, qty_luom, quantity,
+        doc_ref, lot_no, po_no, imp_job_no, manu_code,
+        container_no, production_from, production_to,
+        expiry_from, expiry_to, unit_price, site_code,
+        loc_code_from, loc_code_to, picked, confirmed,
+        confirmed_date, l_uom, uppp, selected,
+        aisle_from, aisle_to, height_from, height_to,
+        column_from, column_to, gate_no, sales_rate,
+        exp_container_no, exp_container_size,
+        exp_container_type, exp_container_sealno,
+        moc1, moc2, order_serial, origin_country,
+        bal_pack_qty, multi_series, prod_attrib_code,
+        prod_grade1, prod_grade2, tx_identity_number,
+        ref_txn_code, ref_txn_slno, so_txn_code,
+        inbound_done, ref_txn_doc, supp_code,
+        supp_reference, orig_prod_code, salesman_code,
+        hs_code, batch_no, act_order_qty, bal_order_qty,
+        minperiod_exppick, ignore_minexp_period,
+        stock_owner, ind_code, git_no, priority,
+        created_by, created_at
+      )
+      VALUES (
+        :company_code, :prin_code, :job_no, :cust_code, :order_no,
+        TO_ORDER_DET_SEQ.NEXTVAL,
+        :prod_code, :qty_puom, :p_uom, :qty_luom, :quantity,
+        :doc_ref, :lot_no, :po_no, :imp_job_no, :manu_code,
+        :container_no, :production_from, :production_to,
+        :expiry_from, :expiry_to, :unit_price, :site_code,
+        :loc_code_from, :loc_code_to, :picked, :confirmed,
+        :confirmed_date, :l_uom, :uppp, :selected,
+        :aisle_from, :aisle_to, :height_from, :height_to,
+        :column_from, :column_to, :gate_no, :sales_rate,
+        :exp_container_no, :exp_container_size,
+        :exp_container_type, :exp_container_sealno,
+        :moc1, :moc2, :order_serial, :origin_country,
+        :bal_pack_qty, :multi_series, :prod_attrib_code,
+        :prod_grade1, :prod_grade2, :tx_identity_number,
+        :ref_txn_code, :ref_txn_slno, :so_txn_code,
+        :inbound_done, :ref_txn_doc, :supp_code,
+        :supp_reference, :orig_prod_code, :salesman_code,
+        :hs_code, :batch_no, :act_order_qty, :bal_order_qty,
+        :minperiod_exppick, :ignore_minexp_period,
+        :stock_owner, :ind_code, :git_no, :priority,
+        :created_by, SYSDATE
+      )
     `;
-    
-    const checkResult = await connection.execute(checkQuery, {
-      job_no: data.job_no,
-      prin_code: data.prin_code,
-      company_code: data.company_code
-    }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
 
-    const exists = checkResult.rows && (checkResult.rows[0] as any).COUNT > 0;
+    await connection.execute(insertSql, d, { autoCommit: true });
 
-    let result: any;
+    res.json({ success: true, action: "INSERT", requestId });
 
-    if (exists) {
-      // 6a. UPDATE existing record
-      console.log(`[${requestId}] Updating existing record in TO_ORDER_DET`);
-      
-      const updateFields = [];
-      const updateValues: any = {
-        job_no: data.job_no,
-        prin_code: data.prin_code,
-        company_code: data.company_code
-      };
-
-      // Build dynamic update query based on provided fields
-      const updatableFields = [
-        'order_no', 'prin_name', 'factory_code', 'factory_name',
-        'color', 'sizes', 'ratio', 'qty', 'unit_price', 'total_price',
-        'currency', 'remark', 'status', 'updated_by', 'updated_at'
-      ];
-
-      updatableFields.forEach(field => {
-        if (data[field] !== undefined) {
-          updateFields.push(`${field} = :${field}`);
-          updateValues[field] = data[field];
-        }
-      });
-
-      // Add timestamp
-      updateFields.push('updated_at = SYSDATE');
-      
-      if (updateFields.length > 0) {
-        const updateQuery = `
-          UPDATE TO_ORDER_DET 
-          SET ${updateFields.join(', ')}
-          WHERE job_no = :job_no 
-            AND prin_code = :prin_code 
-            AND company_code = :company_code
-          RETURNING order_no INTO :order_no
-        `;
-
-        updateValues.order_no = { dir: oracledb.BIND_OUT, type: oracledb.STRING };
-        
-        result = await connection.execute(updateQuery, updateValues);
-        
-        // Get the returned order_no
-        const orderNo = (updateValues.order_no as any).value;
-        console.log(`[${requestId}] Updated record with order_no: ${orderNo}`);
-        result = orderNo;
-      }
-    } else {
-      // 6b. INSERT new record
-      console.log(`[${requestId}] Inserting new record into TO_ORDER_DET`);
-      
-      // Generate order_no if not provided (assuming sequence or logic)
-      const orderNo = data.order_no || `ORD${Date.now()}${Math.random().toString(36).substr(2, 6)}`;
-      
-      // Define all possible columns for TO_ORDER_DET
-      const insertColumns = [
-        'order_no', 'job_no', 'prin_code', 'company_code',
-        'prin_name', 'factory_code', 'factory_name', 'color',
-        'sizes', 'ratio', 'qty', 'unit_price', 'total_price',
-        'currency', 'remark', 'status', 'created_by', 'created_at'
-      ];
-      
-      const insertValues: any = {};
-      const columnNames: string[] = [];
-      const bindNames: string[] = [];
-      
-      insertColumns.forEach(column => {
-        if (column === 'order_no') {
-          columnNames.push(column);
-          bindNames.push(`:${column}`);
-          insertValues[column] = orderNo;
-        } else if (data[column] !== undefined) {
-          columnNames.push(column);
-          bindNames.push(`:${column}`);
-          insertValues[column] = data[column];
-        } else if (column === 'created_at') {
-          columnNames.push(column);
-          bindNames.push('SYSDATE');
-        } else if (column === 'status') {
-          // Set default status if not provided
-          columnNames.push(column);
-          bindNames.push(`:${column}`);
-          insertValues[column] = data.status || 'PENDING';
-        }
-      });
-      
-      const insertQuery = `
-        INSERT INTO TO_ORDER_DET (${columnNames.join(', ')})
-        VALUES (${bindNames.join(', ')})
-        RETURNING order_no INTO :order_no
-      `;
-      
-      insertValues.order_no = { dir: oracledb.BIND_OUT, type: oracledb.STRING };
-      
-      result = await connection.execute(insertQuery, insertValues, {
-        autoCommit: false
-      });
-      
-      // Get the returned order_no
-      const returnedOrderNo = (insertValues.order_no as any).value;
-      console.log(`[${requestId}] Inserted new record with order_no: ${returnedOrderNo}`);
-      result = returnedOrderNo;
-    }
-    
-    // 7. Commit transaction
-    await connection.commit();
-    
-    // 8. Send success response
-    res.status(200).json({
-      success: true,
-      message: exists ? "Order detail updated successfully" : "Order detail inserted successfully",
-      requestId,
-      orderNo: result,
-      action: exists ? "UPDATE" : "INSERT"
-    });
-    
-    console.log(`[${requestId}] Operation completed successfully`);
-
-  } catch (error: any) {
-    console.error(`[${requestId}] Error:`, error);
-    
-    // Rollback if connection exists
-    if (connection) {
-      try {
-        await connection.rollback();
-      } catch (rollbackError) {
-        console.error(`[${requestId}] Rollback failed:`, rollbackError);
-      }
-    }
-    
-    // Handle specific Oracle errors
-    let errorMessage = error.message || "Failed to upsert order detail";
-    let errorCode = error.errorNum || error.code;
-    
-    // ORA-00904: Invalid identifier
-    if (errorMessage.includes('ORA-00904') || errorCode === 904) {
-      const match = errorMessage.match(/"[^"]*"/);
-      const invalidColumn = match ? match[0] : 'unknown column';
-      errorMessage = `Database column ${invalidColumn} does not exist in TO_ORDER_DET table`;
-    }
-    
-    // ORA-01400: Cannot insert NULL
-    if (errorMessage.includes('ORA-01400') || errorCode === 1400) {
-      errorMessage = "Cannot insert NULL into a required column";
-    }
-    
-    // ORA-00001: Unique constraint violated
-    if (errorMessage.includes('ORA-00001') || errorCode === 1) {
-      errorMessage = "Duplicate record already exists";
-    }
-    
-    res.status(500).json({
-      success: false,
-      message: errorMessage,
-      requestId,
-      errorCode,
-      timestamp: new Date().toISOString()
-    });
-
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
   } finally {
-    // Close connection
-    if (connection) {
-      try {
-        await connection.close();
-        console.log(`[${requestId}] Connection closed`);
-      } catch (closeError) {
-        console.error(`[${requestId}] Error closing connection:`, closeError);
-      }
-    }
+    if (connection) await connection.close();
   }
 };
+
 
 export const getOutboundOrderDetailManualHandler = async (
   req: Request,
