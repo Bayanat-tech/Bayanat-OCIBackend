@@ -1,7 +1,7 @@
 import oracledb from "oracledb";
 import { Request, Response } from "express";
-import { oracleDb } from "../../database/connection";
-import constants from "../../helpers/constants";
+import { oracleDb } from "../../../../database/connection";
+import constants from "../../../../helpers/constants";
 
 /* ================= helpers ================= */
 

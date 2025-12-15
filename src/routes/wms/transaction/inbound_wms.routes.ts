@@ -54,8 +54,8 @@ import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
 } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
-// import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
-import { upsertTIJobHandler } from "../../../controllers/Purchaseflow/updateinsertti_job";
+import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
+//import { upsertTIJobHandler } from "../../../controllers/Purchaseflow/updateinsertti_job";
 //import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
 // import {
 //   getconfirmInboundjob, // Get confirmation details
@@ -95,8 +95,9 @@ router.put(
 );
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
-router.post("/inboundjob", upsertTIJobHandler );
-// router.put("/inboundjob",createOrUpdateJob);
+router.post("/inboundjob",createOrUpdateJob);
+
+router.put("/inboundjob",createOrUpdateJob);
 
 
 //router.put("/inboundjob", GetsingleInboundjob);
