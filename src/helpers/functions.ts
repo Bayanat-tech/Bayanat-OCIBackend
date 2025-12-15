@@ -1227,6 +1227,16 @@ export const notifyUser = async (args: SendEmailInterface) => {
       };
       break;
 
+    case constants.EVENTS.RESET_PASSWORD:
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        subject: subject || "Password Reset Notification",
+        text: message || "Your password has been reset successfully.",
+        html: htmlMessage,
+      };
+      break;
+
     case "VENDOR_API_ERROR":
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
