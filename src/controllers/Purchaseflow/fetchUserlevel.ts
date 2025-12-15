@@ -23,7 +23,7 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
 
     const userIdStr = String(userId);
     const companyCodeStr = 'JASRA';
-    const flowCodeStr = '001';
+    const flowCodeStr = flow_code;
 
     // Use wrapper's getConnection or raw oracledb connection
     connection = await oracleDb.getConnection();
