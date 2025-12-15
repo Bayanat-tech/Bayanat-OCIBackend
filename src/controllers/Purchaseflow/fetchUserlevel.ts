@@ -22,8 +22,8 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
     }
 
     const userIdStr = String(userId);
-    const companyCodeStr = String(companyCode);
-    const flowCodeStr = String(flow_code);
+    const companyCodeStr = 'JASRA';
+    const flowCodeStr = '001';
 
     // Use wrapper's getConnection or raw oracledb connection
     connection = await oracleDb.getConnection();
@@ -44,7 +44,7 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
     );
 
     const userLevel = result.rows?.[0]?.FLOWLEVEL;
-
+console.log('userLevel',userLevel);
     if (userLevel !== null && userLevel !== undefined) {
       res.status(200).json({ success: true, data: userLevel });
     } else {
