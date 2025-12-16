@@ -409,6 +409,9 @@ async function orderDetailExists(
 
 
 
+
+
+
 export const upsertOutboundOrderDetailManualHandler = async (
   req: Request,
   res: Response
@@ -418,32 +421,91 @@ export const upsertOutboundOrderDetailManualHandler = async (
 
   try {
     const d = req.body;
-   const bindData = {
-    location_from: d.location_from,
-location_to: d.location_to,
-expiry_date_from: d.expiry_date_from,
-expiry_date_to: d.expiry_date_to,
-  company_code: d.company_code,
-  prin_code: d.prin_code,
-  job_no: d.job_no,
-  cust_code: d.cust_code,
-  order_no: d.order_no,
-  prod_code: d.prod_code,
 
-  qty_puom: d.qty_puom ?? null,
-  p_uom: d.p_uom ?? null,
-  l_uom: d.l_uom ?? null,
-  qty_luom: d.qty_luom ?? null,
-  quantity: d.quantity,
-
-  picked: d.picked ?? 'N',
-  confirmed: d.confirmed ?? 'N',
-
-  minperiod_exppick: d.minperiod_exppick ?? 0,
-  ignore_minexp_period: d.ignore_minexp_period ?? 'N',
-
-  created_by: d.created_by
-};
+    // =========================
+    // Prepare bind data
+    // =========================
+     const bindData = {
+      company_code: d.company_code ?? null,
+      prin_code: d.prin_code ?? null,
+      job_no: d.job_no ?? null,
+      cust_code: d.cust_code ?? null,
+      order_no: d.order_no ?? null,
+      serial_no: d.serial_no ?? null,
+      prod_code: d.prod_code ?? null,
+      qty_puom: d.qty_puom ?? null,
+      p_uom: d.p_uom ?? null,
+      qty_luom: d.qty_luom ?? null,
+      quantity: d.quantity ?? null,
+      doc_ref: d.doc_ref ?? null,
+      lot_no: d.lot_no ?? null,
+      po_no: d.po_no ?? null,
+      imp_job_no: d.imp_job_no ?? null,
+      manu_code: d.manu_code ?? null,
+      container_no: d.container_no ?? null,
+      production_from: d.production_from ?? null,
+      production_to: d.production_to ?? null,
+      expiry_from: d.expiry_from ?? null,
+      expiry_to: d.expiry_to ?? null,
+      unit_price: d.unit_price ?? null,
+      site_code: d.site_code ?? null,
+      loc_code_from: d.loc_code_from ?? null,
+      loc_code_to: d.loc_code_to ?? null,
+      picked: d.picked ?? null,
+      confirmed: d.confirmed ?? null,
+      confirmed_date: d.confirmed_date ?? null,
+  
+      l_uom: d.l_uom ?? null,
+      uppp: d.uppp ?? null,
+      selected: d.selected ?? null,
+      aisle_from: d.aisle_from ?? null,
+      aisle_to: d.aisle_to ?? null,
+      height_from: d.height_from ?? null,
+      height_to: d.height_to ?? null,
+      column_from: d.column_from ?? null,
+      column_to: d.column_to ?? null,
+      gate_no: d.gate_no ?? null,
+      sales_rate: d.sales_rate ?? null,
+      exp_container_no: d.exp_container_no ?? null,
+      exp_container_size: d.exp_container_size ?? null,
+      exp_container_type: d.exp_container_type ?? null,
+      exp_container_sealno: d.exp_container_sealno ?? null,
+      moc1: d.moc1 ?? null,
+      moc2: d.moc2 ?? null,
+      order_serial: d.order_serial ?? null,
+      origin_country: d.origin_country ?? null,
+      bal_pack_qty: d.bal_pack_qty ?? null,
+      multi_series: d.multi_series ?? null,
+      prod_attrib_code: d.prod_attrib_code ?? null,
+      prod_grade1: d.prod_grade1 ?? null,
+      prod_grade2: d.prod_grade2 ?? null,
+      tx_identity_number: d.tx_identity_number ?? null,
+      ref_txn_code: d.ref_txn_code ?? null,
+      ref_txn_slno: d.ref_txn_slno ?? null,
+      so_txn_code: d.so_txn_code ?? null,
+      inbound_done: d.inbound_done ?? null,
+      ref_txn_doc: d.ref_txn_doc ?? null,
+      supp_code: d.supp_code ?? null,
+      supp_reference: d.supp_reference ?? null,
+      orig_prod_code: d.orig_prod_code ?? null,
+      salesman_code: d.salesman_code ?? null,
+      hs_code: d.hs_code ?? null,
+      batch_no: d.batch_no ?? null,
+      act_order_qty: d.act_order_qty ?? null,
+      bal_order_qty: d.bal_order_qty ?? null,
+      minperiod_exppick: d.minperiod_exppick ?? 0,
+      ignore_minexp_period: d.ignore_minexp_period ?? 'N',
+      stock_owner: d.stock_owner ?? null,
+      ind_code: d.ind_code ?? null,
+      git_no: d.git_no ?? null,
+      priority: d.priority ?? null,
+      serialize: d.serialize ?? null,
+      pallet_id: d.pallet_id ?? null,
+      created_at: d.created_at ?? null,
+      updated_at: d.updated_at ?? null,
+      created_by: d.created_by ?? null,
+      updated_by: d.updated_by ?? null,
+    };
 
 
     connection = await oracledb.getConnection();
@@ -452,7 +514,7 @@ expiry_date_to: d.expiry_date_to,
     // CHECK EXISTENCE
     // =========================
     const checkSql = `
-      SELECT COUNT(*) CNT
+      SELECT COUNT(*) AS CNT
       FROM TO_ORDER_DET
       WHERE company_code = :company_code
         AND prin_code = :prin_code
@@ -460,47 +522,123 @@ expiry_date_to: d.expiry_date_to,
         AND cust_code = :cust_code
         AND order_no = :order_no
     `;
-
     const check = await connection.execute<any>(checkSql, {
       company_code: d.company_code,
       prin_code: d.prin_code,
       job_no: d.job_no,
       cust_code: d.cust_code,
-      order_no: d.order_no
+      order_no: d.order_no,
     }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
 
     const exists = (check.rows?.[0]?.CNT ?? 0) > 0;
 
     // =========================
+    // Helper to log SQL with values
+    // =========================
+    function formatValue(value: any): string {
+      if (value === null || value === undefined) return "NULL";
+      if (typeof value === "number") return value.toString();
+      if (value instanceof Date) return `TO_DATE('${value.toISOString().slice(0, 19).replace("T", " ")}', 'YYYY-MM-DD HH24:MI:SS')`;
+      return `'${value.toString().replace(/'/g, "''")}'`;
+    }
+
+    function getSqlWithValues(sqlTemplate: string, bindData: any): string {
+      let finalSql = sqlTemplate;
+      for (const key in bindData) {
+        const regex = new RegExp(`:${key}\\b`, "g");
+        finalSql = finalSql.replace(regex, formatValue(bindData[key]));
+      }
+      return finalSql;
+    }
+
+    // =========================
     // UPDATE
     // =========================
     if (exists) {
-     const updateSql = `
-  UPDATE TO_ORDER_DET SET
-   location_from = :location_from,
-location_to =  :location_to,
-expiry_date_from =  :expiry_date_from,
-expiry_date_to =  :expiry_date_to,
-    prod_code = :prod_code,
-    qty_puom = :qty_puom,
-    p_uom = :p_uom,
-    l_uom = :l_uom,
-    qty_luom = :qty_luom,
-    quantity = :quantity,
-    picked = :picked,
-    confirmed = :confirmed,
-    minperiod_exppick = :minperiod_exppick,
-    ignore_minexp_period = :ignore_minexp_period,
-    created_by = :created_by,
-    updated_at = SYSDATE
-  WHERE company_code = :company_code
-    AND prin_code = :prin_code
-    AND job_no = :job_no
-    AND cust_code = :cust_code
-    AND order_no = :order_no
-`;
+      const updateSql = `
+        UPDATE TO_ORDER_DET SET
+          serial_no = :serial_no,
+          prod_code = :prod_code,
+          qty_puom = :qty_puom,
+          p_uom = :p_uom,
+          qty_luom = :qty_luom,
+          quantity = :quantity,
+          doc_ref = :doc_ref,
+          lot_no = :lot_no,
+          po_no = :po_no,
+          imp_job_no = :imp_job_no,
+          manu_code = :manu_code,
+          container_no = :container_no,
+          production_from = :production_from,
+          production_to = :production_to,
+          expiry_from = :expiry_from,
+          expiry_to = :expiry_to,
+          unit_price = :unit_price,
+          site_code = :site_code,
+          loc_code_from = :loc_code_from,
+          loc_code_to = :loc_code_to,
+          picked = :picked,
+          confirmed = :confirmed,
+          confirmed_date = :confirmed_date,
+     
+          l_uom = :l_uom,
+          uppp = :uppp,
+          selected = :selected,
+          aisle_from = :aisle_from,
+          aisle_to = :aisle_to,
+          height_from = :height_from,
+          height_to = :height_to,
+          column_from = :column_from,
+          column_to = :column_to,
+          gate_no = :gate_no,
+          sales_rate = :sales_rate,
+          exp_container_no = :exp_container_no,
+          exp_container_size = :exp_container_size,
+          exp_container_type = :exp_container_type,
+          exp_container_sealno = :exp_container_sealno,
+          moc1 = :moc1,
+          moc2 = :moc2,
+          order_serial = :order_serial,
+          origin_country = :origin_country,
+          bal_pack_qty = :bal_pack_qty,
+          multi_series = :multi_series,
+          prod_attrib_code = :prod_attrib_code,
+          prod_grade1 = :prod_grade1,
+          prod_grade2 = :prod_grade2,
+          tx_identity_number = :tx_identity_number,
+          ref_txn_code = :ref_txn_code,
+          ref_txn_slno = :ref_txn_slno,
+          so_txn_code = :so_txn_code,
+          inbound_done = :inbound_done,
+          ref_txn_doc = :ref_txn_doc,
+          supp_code = :supp_code,
+          supp_reference = :supp_reference,
+          orig_prod_code = :orig_prod_code,
+          salesman_code = :salesman_code,
+          hs_code = :hs_code,
+          batch_no = :batch_no,
+          act_order_qty = :act_order_qty,
+          bal_order_qty = :bal_order_qty,
+          minperiod_exppick = :minperiod_exppick,
+          ignore_minexp_period = :ignore_minexp_period,
+          stock_owner = :stock_owner,
+          ind_code = :ind_code,
+          git_no = :git_no,
+          priority = :priority,
+          serialize = :serialize,
+          pallet_id = :pallet_id,
+          created_at = :created_at,
+          updated_at = :updated_at,
+          created_by = :created_by,
+          updated_by = :updated_by
+        WHERE company_code = :company_code
+          AND prin_code = :prin_code
+          AND job_no = :job_no
+          AND cust_code = :cust_code
+          AND order_no = :order_no
+      `;
 
-
+      console.log("UPDATE SQL with actual values:\n", getSqlWithValues(updateSql, bindData));
       await connection.execute(updateSql, bindData, { autoCommit: true });
       res.json({ success: true, action: "UPDATE", requestId });
       return;
@@ -509,59 +647,34 @@ expiry_date_to =  :expiry_date_to,
     // =========================
     // INSERT
     // =========================
-    console.log('prin code',d.prin_code);
-    console.log('p_uom',d.p_uom);
-    console.log('l_uom',d.l_uom);
-   const insertSql = `
-  INSERT INTO TO_ORDER_DET (
-  location_from ,
-location_to,
-expiry_date_from ,
-expiry_date_to ,
-    company_code,
-    prin_code,
-    job_no,
-    cust_code,
-    order_no,
-    prod_code,
-    qty_puom,
-    p_uom,
-    l_uom,
-    qty_luom,
-    quantity,
-    picked,
-    confirmed,
-    minperiod_exppick,
-    ignore_minexp_period,
-    created_by,
-    created_at
-  )
-  VALUES (
-   :location_from ,
-:location_to,
-:expiry_date_from ,
-:expiry_date_to ,
-    :company_code,
-    :prin_code,
-    :job_no,
-    :cust_code,
-    :order_no,
-    :prod_code,
-    :qty_puom,
-    :p_uom,
-    :l_uom,
-    :qty_luom,
-    :quantity,
-    :picked,
-    :confirmed,
-    :minperiod_exppick,
-    :ignore_minexp_period,
-    :created_by,
-    SYSDATE
-  )
-`;
+    console.log('p_uom',d.p_uom)
+        console.log('l_uom',d.l_uom)
+    const insertSql = `
+      INSERT INTO TO_ORDER_DET (
+        company_code, prin_code, job_no, cust_code, order_no, serial_no, prod_code, qty_puom, p_uom, qty_luom, quantity,
+        doc_ref, lot_no, po_no, imp_job_no, manu_code, container_no, production_from, production_to, expiry_from, expiry_to,
+        unit_price, site_code, loc_code_from, loc_code_to, picked, confirmed, confirmed_date, l_uom,
+        uppp, selected, aisle_from, aisle_to, height_from, height_to, column_from, column_to, gate_no, sales_rate,
+        exp_container_no, exp_container_size, exp_container_type, exp_container_sealno, moc1, moc2, order_serial,
+        origin_country, bal_pack_qty, multi_series, prod_attrib_code, prod_grade1, prod_grade2, tx_identity_number,
+        ref_txn_code, ref_txn_slno, so_txn_code, inbound_done, ref_txn_doc, supp_code, supp_reference, orig_prod_code,
+        salesman_code, hs_code, batch_no, act_order_qty, bal_order_qty, minperiod_exppick, ignore_minexp_period,
+        stock_owner, ind_code, git_no, priority, serialize, pallet_id, created_at, updated_at, created_by, updated_by
+      )
+      VALUES (
+        :company_code, :prin_code, :job_no, :cust_code, :order_no, :serial_no, :prod_code, :qty_puom, :p_uom, :qty_luom, :quantity,
+        :doc_ref, :lot_no, :po_no, :imp_job_no, :manu_code, :container_no, :production_from, :production_to, :expiry_from, :expiry_to,
+        :unit_price, :site_code, :loc_code_from, :loc_code_to, :picked, :confirmed, :confirmed_date,  :l_uom,
+        :uppp, :selected, :aisle_from, :aisle_to, :height_from, :height_to, :column_from, :column_to, :gate_no, :sales_rate,
+        :exp_container_no, :exp_container_size, :exp_container_type, :exp_container_sealno, :moc1, :moc2, :order_serial,
+        :origin_country, :bal_pack_qty, :multi_series, :prod_attrib_code, :prod_grade1, :prod_grade2, :tx_identity_number,
+        :ref_txn_code, :ref_txn_slno, :so_txn_code, :inbound_done, :ref_txn_doc, :supp_code, :supp_reference, :orig_prod_code,
+        :salesman_code, :hs_code, :batch_no, :act_order_qty, :bal_order_qty, :minperiod_exppick, :ignore_minexp_period,
+        :stock_owner, :ind_code, :git_no, :priority, :serialize, :pallet_id, :created_at, :updated_at, :created_by, :updated_by
+      )
+    `;
 
-
+    console.log("INSERT SQL with actual values:\n", getSqlWithValues(insertSql, bindData));
     await connection.execute(insertSql, bindData, { autoCommit: true });
     res.json({ success: true, action: "INSERT", requestId });
 
@@ -572,6 +685,11 @@ expiry_date_to ,
     if (connection) await connection.close();
   }
 };
+
+
+
+
+
 
 
 
