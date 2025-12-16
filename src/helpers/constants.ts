@@ -125,6 +125,12 @@ export default {
     SMS_DEAL_PROBABILITY: "SMS_DEAL_PROBABILITY",
     SMS_SALES_REQUEST: "SMS_SALES_REQUEST",
     SMS_UPLOADED_FILES: "SMS_UPLOADED_FILES",
+
+    // ------------ Attendance Table ----------
+    employees: "employees",
+    employee_faces: "employee_faces",
+    attendance_records: "attendance_records",
+    attendance_events: "attendance_events",
   },
 
   VIEW: {
@@ -812,6 +818,7 @@ export default {
     LEAVE_SENTBACK: "LEAVE_SENTBACK",
     LEAVE_INFO: "LEAVE_INFO",
     LEAVE_REJECTED : "LEAVE_REJECTED",
+    PROXY_ATTENDANCE_DETECTED : "PROXY_ATTENDANCE_DETECTED",
   },
   MODULE: {
     WMS: "WMS",

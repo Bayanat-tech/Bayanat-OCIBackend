@@ -2,9 +2,12 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand
 } from "@aws-sdk/client-s3";
 import constants from "../helpers/constants";
 import { UploadToS3ObjectInterface } from "../interfaces/common.interface";
+import { response } from "express";
+import logger from "../utils/logger";
 
 // Configure S3 client for OCI S3 Compatibility API
 const s3Client = new S3Client({
@@ -98,6 +101,72 @@ export const deleteFileFromS3 = async (awsFileLocation: string) => {
     }
   }
 };
+
+// export const uploadEmployeeFace = async (buffer: Buffer,
+//     key: string,) => {
+//   // const file = req.file;
+//   // const employeeId = req.body.employeeId;
+  
+//   const fileName: string = `employee_faces/${employeeId}/${file.originalname}`;
+
+//   const objectParams: UploadToS3ObjectInterface = {
+//     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+//     Key: fileName,
+//     Body: file.buffer,
+//     ContentType: file.mimetype,
+//   };
+
+export const uploadEmployeeFace = async (
+  buffer: Buffer,
+  employeeId: string,
+  originalname: string,
+  // res: Response
+): Promise<any> => {
+  const fileName = `employee_faces/${employeeId}/${originalname}`;
+
+  const objectParams: UploadToS3ObjectInterface = {
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+    Key: fileName,
+    Body: buffer,
+    ContentType: "image/jpeg", 
+  };
+  
+  try {
+    await s3Client.send(new PutObjectCommand(objectParams));
+
+    const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
+
+    return response.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: URL,
+    });
+  } catch (error: any) {
+    return response.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getSignedUrl = async (key: string, expiresIn = 3600): Promise<any> => {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+      Key: key,
+   });
+    // Use type assertion to handle version mismatch
+    const presigner = getSignedUrl as unknown as (
+      client: S3Client,
+      command: GetObjectCommand,
+      options: { expiresIn: number }
+    ) => Promise<string>;
+
+    return await presigner(s3Client, command, { expiresIn });
+  } catch (error) {
+    logger.error("Failed to generate signed URL", error);
+    throw new Error("Failed to generate signed URL for file");
+  };
+}
 
 export const uploadVendorAttachmentToS3 = async (req: any, res: any) => {
   const file = req.file;
