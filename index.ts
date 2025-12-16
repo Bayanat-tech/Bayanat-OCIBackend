@@ -30,6 +30,11 @@ import wmsRoutes from "./src/routes/wms.routes";
 import boldReportsRoutes from "./src/routes/boldreports.routes";
 import cfsRoutes from "./src/routes/SMS/sms.routes";
 
+import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
+import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
+import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
+import { AttendanceService } from "./src/services/Attendance/Attendance.service"; 
+
 //----------------routes-------------
 
 app.use("/api/files", fileRoutes);
@@ -47,6 +52,8 @@ app.use("/api/pf",pfRoutes);
 app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
+
+app.use("/api/attendance", attendanceRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(constants.STATUS_CODES.OK).send("Server is up and running.");
@@ -67,6 +74,11 @@ async function startServerWithTypeORM() {
       console.log(`Server is running on port ${PORT}`);
       console.log(`TypeORM is ready for model conversion`);
     });
+
+    // console.log('Initializing attendance scheduler...');
+    // AttendanceEventScheduler.initializeScheduler();
+    // console.log('All services initialized successfully');
+  
   } catch (err) {
     console.log("Error in database connection:", err);
     process.exit(1);
