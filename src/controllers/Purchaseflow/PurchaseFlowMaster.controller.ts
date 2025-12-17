@@ -1,29 +1,25 @@
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-
 import { Response } from "express";
-import { PurchaseFlowMasterService } from "../../services/purchaseflow/PfMaster.service";
-import { DdcostmasterService } from "../../services/purchaseflow/ddcostmasterservice";
-import { DropdownProjectMasterService } from "../../services/purchaseflow/dropdwonprojectmaster.service";
-import { ProjectMasterService } from "../../services/purchaseflow/project_master.service";
-import { DdcurrencyService } from "../../services/purchaseflow/ddCurrency.service";
-import { DdProdmasterService } from "../../services/purchaseflow/ddprodmaster.service";
-import { DduommasterService } from "../../services/purchaseflow/dduommaster.service";
-import { DdEmployeeMasterService } from "../../services/purchaseflow/ddemployeemaster.service";
-import { getPoModifyData } from "../../services/purchaseflow/po_modify_close.service";
-import { getPoNotGenerated } from "../../services/purchaseflow/ponotgenerated.service";
-import { getCancelledRequests } from "../../services/purchaseflow/po_cancel.service";
-import { WorkflowService } from "../../services/purchaseflow/sentbackrollselection_mat.service";
-import { FlowRoleService } from "../../services/purchaseflow/sentbackrollselection.service";
-import { getMyHistory } from "../../services/purchaseflow/My_History.service";
-import { getRequestRejectedData } from "../../services/purchaseflow/my_rejected.service";
-import { getMyClosedRequests } from "../../services/purchaseflow/MyItem_CloseRequest.service";
-import { getMyTaskData } from "../../services/purchaseflow/my_task.service";
+import { PurchaseFlowMasterService } from "../../services/purchaseFlow/PfMaster.service";
+import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
 import { getPoModifyRatechangeData } from "./getPoModifyRatechangeData ";
-
-
-
+import { DdcostmasterService } from "../../services/purchaseFlow/ddcostmasterservice";
+import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
+import { DduommasterService } from "../../services/purchaseFlow/dduommaster.service";
+import { DdcurrencyService } from "../../services/purchaseFlow/ddCurrency.service";
+import { DdProdmasterService } from "../../services/purchaseFlow/ddprodmaster.service";
+import { DdEmployeeMasterService } from "../../services/purchaseFlow/ddemployeemaster.service";
+import { getPoModifyData } from "../../services/purchaseFlow/po_modify_close.service";
+import { getPoNotGenerated } from "../../services/purchaseFlow/ponotgenerated.service";
+import { getCancelledRequests } from "../../services/purchaseFlow/po_cancel.service";
+import { WorkflowService } from "../../services/purchaseFlow/sentbackrollselection_mat.service";
+import { FlowRoleService } from "../../services/purchaseFlow/sentbackrollselection.service";
+import { getMyHistory } from "../../services/purchaseFlow/My_History.service";
+import { getRequestRejectedData } from "../../services/purchaseFlow/my_rejected.service";
+import { getMyClosedRequests } from "../../services/purchaseFlow/MyItem_CloseRequest.service";
+import { getMyTaskData } from "../../services/purchaseFlow/my_task.service";
 
 export const getPurchasefMaster = async (
   req: RequestWithUser,
@@ -63,6 +59,14 @@ export const getPurchasefMaster = async (
 
       case "matcat_master":
         result = await PurchaseFlowMasterService.getMaterialCategoryMaster(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "supplier_master":
+        result = await PurchaseFlowMasterService.getSupplierMaster (
           requestUser.company_code,
           page,
           limit
@@ -109,7 +113,6 @@ export const getPurchasefMaster = async (
         );
         break;
 
-
       case "dropdwonprojectmaster":
         result = await DropdownProjectMasterService.getDropdownProjectMaster(
           requestUser.company_code,
@@ -125,14 +128,14 @@ export const getPurchasefMaster = async (
           limit
         ); break;
 
-      case "projectmaster":
-        result = await ProjectMasterService.getRepository(
-          requestUser.company_code,
-          page,
-          limit                 
-        )
+      // case "projectmaster":
+      //   result = await ProjectMasterService.getRepository(
+      //     requestUser.company_code,
+      //     page,
+      //     limit                 
+      //   )
+      //   break;
 
-        break;
       case "ddcostmaster":
         result = await DdcostmasterService.getDdCostMaster(
           requestUser.company_code,
@@ -481,8 +484,6 @@ case "Request_Rejected":
     }
 
     break;
-
-
      
  case "my_task":
   console.log("inside my_task");
@@ -560,7 +561,5 @@ case "Request_Rejected":
     });
   }
 };
-// function getRequestRejectedData(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
-//   throw new Error("Function not implemented.");
-// }
+
 
