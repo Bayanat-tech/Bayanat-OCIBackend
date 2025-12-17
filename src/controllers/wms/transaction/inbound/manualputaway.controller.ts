@@ -292,7 +292,7 @@ async function insertPutawaymanual(
     JOB_NO: data.JOB_NO,
     TXN_TYPE: data.TXN_TYPE,
     TXN_DATE: toOracleDate(data.TXN_DATE),
-    PACKDET_NO: data.PACKDET_NO || 0,
+    PACKDET_NO: data.PACKDET_NO,
     KEY_NUMBER: data.KEY_NUMBER || null,
     PROD_CODE: data.PROD_CODE,
     SITE_CODE: data.SITE_CODE,
@@ -443,11 +443,12 @@ export const upsertPutawaymanualHandlerTypeORM = async (
       return;
     }
 
-    const jobNo = await TtBatchService.upsertPutawaymanual(data);
+    const result = await TtBatchService.upsertPutawaymanual(data);
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "TT_BATCH record upserted successfully (TypeORM).",
-      job_no: jobNo,
+      job_no: result.JOB_NO,
+      packdet_no: result.PACKDET_NO,
     });
   } catch (error: any) {
     console.error("Upsert TT_BATCH Error (TypeORM):", error);

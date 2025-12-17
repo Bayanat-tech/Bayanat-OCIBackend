@@ -61,11 +61,11 @@ import {
 } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
 
 // import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
-import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
+import {upsertPutawaymanualHandlerTypeORM} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 const router = express.Router();
 
 // router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
-router.post("/upsertPutawaymanualHandler", upsertPutawaymanualHandler);
+router.post("/upsertPutawaymanualHandler", upsertPutawaymanualHandlerTypeORM);
 router.post('/executeRawSql', executeRawSql);
 router.post('/executeRawSqlbody', executeRawSqlbody);
 // router.get('/getddSiteLocation',getddSiteLocation)

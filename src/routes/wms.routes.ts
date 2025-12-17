@@ -9,13 +9,13 @@ import stocktransferWmsRouter from "./wms/transaction/stocktransfer_wms.routes";
 import stockAdjustmentRouter from "./StockAdjustment/stockAdjustment.routes";
 //import jobOutboundRouter from "./wms/transaction/outbound_wms.routes";
 import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; // ✅ CORRECT
-// import {
-//   getAllReports,
-//   getAllOutboundReports,
-//   getAllVendorReports,
-//   getAllEmployeeReports,
-//   getAllDynamicReports,
-// } from "../controllers/wms/transaction/inbound/allReport_wms.controller";
+import {
+  getAllReports,
+  // getAllOutboundReports,
+  // getAllVendorReports,
+  // getAllEmployeeReports,
+  // getAllDynamicReports,
+} from "../controllers/wms/transaction/inbound/allReport_wms.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
 
@@ -23,12 +23,12 @@ import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
 const router = express.Router();
 
 // Route to get all inbound reports
-// router.get(
-//   "/inbound-reports",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   getAllReports
-// );
+router.get(
+  "/inbound-reports",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAllReports
+);
 
 // Route to get all outbound reports
 // router.get(
