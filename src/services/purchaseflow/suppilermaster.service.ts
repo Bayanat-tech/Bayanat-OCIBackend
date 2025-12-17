@@ -1,5 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
-import { SupplierMaster } from "../../entity/Purchaseflow/suppliermaster_pf.entity";
+import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
 import constants from "../../helpers/constants";
 
 export class SupplierMasterService {
