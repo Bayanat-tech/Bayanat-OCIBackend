@@ -4,18 +4,7 @@ import { Employee } from "../../models/Attendance/employee.entity";
 import { AppDataSource } from "../../database/connection";
 import { EmployeeService } from "../../services/employee.service";
 import logger from "../../utils/logger";
-// import { v4 as uuidv4 } from "uuid";
-// import { S3Service } from "../../services/s3Upload.service";
-// import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
-// import Employee from "../../models/Attendance/employee.entity";
-// import EmployeeFace from "../../models/Attendance/employee_face";
-// import logger from "../../utils/logger";
-// import { validateImage } from "../../middleware/security.middleware";
-// import { EmployeeService } from "../../services/employee.service";
-// import { EmployeesController } from "../../services/Attendance/employee.service";
-// import { AppDataSource } from "../../database/connection";
-// import { Employee } from "../../models/Attendance/employee.entity";
-// import { Employee } from "../../models/Attendance/employee.entity";
+
 
 export class EmployeeController {
   static modifyEmployee: any;
