@@ -190,6 +190,8 @@ export async function upsertOrderDetail(
         AND prin_code=:prin_code
         AND job_no=:job_no
         AND serial_no=:serial_no
+        AND cust_code= :cust_code
+        AND order_no= :order_no
     `;
     await connection.execute(updateQuery, binds, { autoCommit: false });
   } else {
@@ -235,15 +237,18 @@ async function orderDetailExists(
   serial_no: number,
   connection: Connection
 ): Promise<boolean> {
+   
   const query = `
     SELECT 1 FROM TO_ORDER_DET
     WHERE company_code=:company_code
       AND prin_code=:prin_code
       AND job_no=:job_no
       AND serial_no=:serial_no
+      AND cust_code=:cust_code
+      AND order_no=:order_no
       AND ROWNUM = 1
   `;
-  const binds = { company_code: companyCode, prin_code: prinCode, job_no: jobNo, serial_no };
+  const binds = { company_code: companyCode, prin_code: prinCode, job_no: jobNo, serial_no: serial_no };
   const result = await connection.execute(query, binds);
   return (result.rows?.length || 0) > 0;
 }
@@ -521,6 +526,7 @@ export const upsertOutboundOrderDetailManualHandler = async (
         AND job_no = :job_no
         AND cust_code = :cust_code
         AND order_no = :order_no
+        AND serial_no= :serial_no
     `;
     const check = await connection.execute<any>(checkSql, {
       company_code: d.company_code,
@@ -528,9 +534,12 @@ export const upsertOutboundOrderDetailManualHandler = async (
       job_no: d.job_no,
       cust_code: d.cust_code,
       order_no: d.order_no,
+      serial_no: d.serial_no
     }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
 
     const exists = (check.rows?.[0]?.CNT ?? 0) > 0;
+
+  console.log('exists',exists);
 
     // =========================
     // Helper to log SQL with values
@@ -636,6 +645,7 @@ export const upsertOutboundOrderDetailManualHandler = async (
           AND job_no = :job_no
           AND cust_code = :cust_code
           AND order_no = :order_no
+          AND serial_no = serial_no
       `;
 
       console.log("UPDATE SQL with actual values:\n", getSqlWithValues(updateSql, bindData));
