@@ -311,11 +311,28 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 // Function to pick an order
 export const pickOrder = async (req: Request, res: Response): Promise<void> => {
   try {
+    // DEBUG: Log incoming request data
+    console.log("=== PICK ORDER DEBUG START ===");
+    console.log("📥 REQUEST DATA:");
+    console.log("Params:", JSON.stringify(req.params, null, 2));
+    console.log("Query:", JSON.stringify(req.query, null, 2));
+    console.log("Body:", JSON.stringify(req.body, null, 2));
+    console.log("User:", {
+      company_code: (req.user as any)?.company_code,
+      loginid: (req.user as any)?.loginid
+    });
+
     const { job_no } = req.params;
     const { prin_code } = req.query;
     let { serial_no } = req.body;
 
+    console.log("📋 EXTRACTED PARAMETERS:");
+    console.log("- job_no:", job_no);
+    console.log("- prin_code:", prin_code);
+    console.log("- serial_no (raw):", serial_no, "Type:", typeof serial_no);
+
     if (!prin_code) {
+      console.log("❌ DEBUG: Missing prin_code");
       res.status(400).json({
         success: false,
         message: "Missing prin_code",
@@ -324,6 +341,7 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
     }
 
     if (!Array.isArray(serial_no)) {
+      console.log("❌ DEBUG: serial_no is not an array. Value:", serial_no);
       res.status(400).json({
         success: false,
         message: "serial_no must be an array of numbers",
@@ -331,11 +349,15 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    console.log("✅ DEBUG: serial_no is array, length:", serial_no.length);
+    console.log("🔢 DEBUG: serial_no values:", serial_no);
+
     const invalidEntries = serial_no.filter((item: number) => isNaN(item));
     if (invalidEntries.length > 0) {
+      console.log("❌ DEBUG: Invalid serial_no entries:", invalidEntries);
       res.status(400).json({
         success: false,
-        message: "All serial_no entries must be valid numbers p",
+        message: "All serial_no entries must be valid numbers",
       });
       return;
     }
@@ -343,7 +365,13 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
     const company_code = (req.user as any).company_code;
     let toggledPackets = 0;
 
+    console.log("🏢 DEBUG: Company Code:", company_code);
+    console.log("🔄 DEBUG: Starting transaction...");
+
     await oracleDb.withTransaction(async (connection: any) => {
+      // DEBUG: Log before update
+      console.log("🗄️ DEBUG: Database connection established");
+
       // Handle array binding for IN clause
       if (serial_no.length > 0) {
         const placeholders = serial_no.map((_, i) => `:serial_no_${i}`).join(',');
@@ -366,15 +394,35 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
           bindParams[`serial_no_${i}`] = sn;
         });
 
+        console.log("📝 DEBUG: UPDATE SQL:");
+        console.log(updateSql);
+        console.log("🔧 DEBUG: Bind Parameters:");
+        console.log(JSON.stringify(bindParams, null, 2));
+
         const updateResult = await oracleDb.query(updateSql, bindParams, connection);
         toggledPackets = updateResult.rowsAffected || 0;
+        
+        console.log("✅ DEBUG: UPDATE RESULT:");
+        console.log("- Rows Affected:", toggledPackets);
+        console.log("- Full Result:", JSON.stringify(updateResult, null, 2));
+      } else {
+        console.log("⚠️ DEBUG: serial_no array is empty, skipping update");
       }
 
       if (toggledPackets > 0) {
+        console.log("🎯 DEBUG: Calling stored procedure...");
+        console.log("🔧 DEBUG: Procedure Parameters:");
+        console.log({
+          vs_company_code: company_code,
+          vs_principal_code: prin_code,
+          vs_job_no: job_no,
+          vs_sort: ""
+        });
+
         try {
           // Call Oracle stored procedure
-          await oracleDb.query(
-            `BEGIN SP_WM_OUB_PICKING_V3(:vs_company_code, :vs_principal_code, :vs_job_no, :vs_sort); END;`,
+          const procResult = await oracleDb.query(
+            `BEGIN SP_WM_OUB_PICKING(:vs_company_code, :vs_principal_code, :vs_job_no, :vs_sort); END;`,
             {
               vs_company_code: company_code,
               vs_principal_code: prin_code,
@@ -383,9 +431,15 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
             },
             connection
           );
+          
+          console.log("✅ DEBUG: STORED PROCEDURE EXECUTED SUCCESSFULLY");
+          console.log("- Procedure Result:", JSON.stringify(procResult, null, 2));
+          
         } catch (procError) {
           // Procedure failed: revert update
-          console.error("SP_WM_OUB_PICKING_V3 failed, reverting TO_ORDER_DET changes:", procError);
+          console.error("❌ DEBUG: SP_WM_OUB_PICKING FAILED:");
+          console.error("- Error Details:", JSON.stringify(procError, null, 2));
+          console.log("↩️ DEBUG: Reverting TO_ORDER_DET changes...");
 
           if (serial_no.length > 0) {
             const placeholders = serial_no.map((_, i) => `:serial_no_${i}`).join(',');
@@ -408,23 +462,62 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
               bindParams[`serial_no_${i}`] = sn;
             });
 
-            await oracleDb.query(unselectSql, bindParams, connection);
+            console.log("📝 DEBUG: REVERT SQL:");
+            console.log(unselectSql);
+            console.log("🔧 DEBUG: Revert Bind Parameters:");
+            console.log(JSON.stringify(bindParams, null, 2));
+
+            const revertResult = await oracleDb.query(unselectSql, bindParams, connection);
+            console.log("✅ DEBUG: REVERT COMPLETE:");
+            console.log("- Rows Reverted:", revertResult.rowsAffected || 0);
           }
 
           throw procError;
         }
+      } else {
+        console.log("⚠️ DEBUG: No rows updated, skipping stored procedure call");
       }
+      
+      console.log("🏁 DEBUG: Transaction operations completed");
     });
+
+    console.log("✅ DEBUG: Transaction committed successfully");
+    console.log("📊 DEBUG: Final toggledPackets:", toggledPackets);
+
+    const responseMessage = toggledPackets > 0
+      ? "Order picked successfully."
+      : "No packet updated.";
+
+    console.log("📤 DEBUG: Sending response to client:");
+    console.log("- Success: true");
+    console.log("- Message:", responseMessage);
+    console.log("=== PICK ORDER DEBUG END ===\n");
 
     res.status(200).json({
       success: true,
-      message:
-        toggledPackets > 0
-          ? "Order picked successfully."
-          : "No packet updated.",
+      message: responseMessage,
     });
+
   } catch (err: any) {
-    console.error("pickOrder error:", err);
+    console.error("=== PICK ORDER ERROR DEBUG ===");
+    console.error("❌ ERROR DETAILS:");
+    console.error("- Message:", err.message);
+    console.error("- Stack:", err.stack);
+    
+    // Log additional Oracle error details if available
+    if (err.errorNum) {
+      console.error("- Oracle Error Code:", err.errorNum);
+    }
+    if (err.message && err.message.includes("ORA-")) {
+      console.error("- Oracle Error:", err.message);
+    }
+    
+    console.error("📋 ERROR CONTEXT:");
+    console.error("- Params:", req.params);
+    console.error("- Query:", req.query);
+    console.error("- Body:", req.body);
+    console.error("=== PICK ORDER ERROR END ===\n");
+
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Failed to process pick order.",
