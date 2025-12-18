@@ -2,11 +2,12 @@ import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { S3Service } from "../../services/s3Upload.service";
 import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
-import Employee from "../../models/Attendance/employee";
-import EmployeeFace from "../../models/Attendance/employee_face";
 import logger from "../../utils/logger";
 import { validateImage } from "../../middleware/security.middleware";
 import { EmployeeService } from "../../services/employee.service";
+import { AppDataSource } from "../../database/connection";
+import { Employee } from "../../entity/Attendance/employee.entity";
+import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
 
 export class EmployeeController {
   static async registerEmployee(req: Request, res: Response): Promise<void> {
@@ -23,8 +24,11 @@ export class EmployeeController {
     } = req.body;
     const files = req.files as Express.Multer.File[];
 
+    const EmployeeRecord = AppDataSource.getRepository(Employee);
+    const Face = AppDataSource.getRepository(EmployeeFace);
+
     // Check if employee_id already exists
-    const existingEmployee = await Employee.findOne({
+    const existingEmployee = await EmployeeRecord.findOne({
       where: { employee_id, employee_code },
     });
     if (existingEmployee) {
@@ -56,7 +60,7 @@ export class EmployeeController {
     }
 
     // Create employee record
-    const employee = await Employee.create({
+    const employee = await EmployeeRecord.create({
       id: uuidv4(),
       employee_id,
       employee_code,
@@ -79,13 +83,14 @@ export class EmployeeController {
       // Use instance method instead of static method
       const descriptor = await faceService.extractFaceDescriptor(file.buffer);
 
-      await EmployeeFace.create({
+      const face = Face.create({ 
         id: uuidv4(),
         employee_id,
         s3_key: s3Key,
         descriptor: descriptor,
-        is_active: true,
+        is_active: "true",
       });
+      await Face.save(face);
     }
 
     logger.info(`Employee ${employee_id} registered successfully`);
@@ -100,11 +105,28 @@ export class EmployeeController {
   }
 }
 
+  // static async getEmployees(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const employees = await Employee.findAll({
+  //       order: [["full_name", "ASC"]],
+  //     });
+  //     res.status(200).json(employees);
+  //   } catch (error: any) {
+  //     logger.error("Failed to fetch employees", error);
+  //     res.status(500).json({ success: false, message: error.message });
+  //   }
+  // }
+
   static async getEmployees(req: Request, res: Response): Promise<void> {
     try {
-      const employees = await Employee.findAll({
-        order: [["full_name", "ASC"]],
+      const employeeRepository = AppDataSource.getRepository(Employee);
+
+      const employees = await employeeRepository.find({
+        order: {
+          full_name: "ASC", 
+        },
       });
+
       res.status(200).json(employees);
     } catch (error: any) {
       logger.error("Failed to fetch employees", error);
@@ -112,7 +134,7 @@ export class EmployeeController {
     }
   }
 
-  static async modifyEmployee(req: Request, res: Response): Promise<void> {
+  static async modifyEmployee(req: Request, res: Response ,data: any): Promise<void> {
     try {
       const { employee_id } = req.params;
       const {
@@ -125,22 +147,27 @@ export class EmployeeController {
       } = req.body;
       const files = req.files as Express.Multer.File[];
 
+      const EmployeesFace = AppDataSource.getRepository(EmployeeFace);
+      const repo = AppDataSource.getRepository(Employee);
+
       // Find employee
-      const employee = await Employee.findOne({ where: { employee_id } });
+      const employee = await repo.findOne({
+        where: { employee_id },
+      });
+
       if (!employee) {
         res.status(404).json({ error: "Employee not found" });
         return;
       }
 
-      // Update employee basic information
-      await employee.update({
-        full_name,
-        email,
-        department,
-        position,
-        hire_date: hire_date ? new Date(hire_date) : undefined,
-        phone_number,
-      });
+      Object.assign(employee, {
+      full_name: data.full_name ?? employee.full_name,
+      email: data.email ?? employee.email,
+      department: data.department ?? employee.department,
+      position: data.position ?? employee.position,
+      hire_date: data.hire_date ? new Date(data.hire_date) : employee.hire_date,
+      phone_number: data.phone_number ?? employee.phone_number,
+    });
 
       // If new face images are provided, process them
       if (files && files.length > 0) {
@@ -148,9 +175,9 @@ export class EmployeeController {
         const faceService = await FaceRecognitionService.getInstance();
 
         // First, deactivate existing face records
-        await EmployeeFace.update(
-          { is_active: false },
-          { where: { employee_id } }
+        await EmployeesFace.update(
+          { employee_id },
+          { is_active: "false" }
         );
 
         // Process each new image
@@ -166,12 +193,12 @@ export class EmployeeController {
             file.buffer
           );
 
-          await EmployeeFace.create({
+          await EmployeesFace.create({
             id: uuidv4(),
             employee_id,
             s3_key: s3Key,
             descriptor: descriptor,
-            is_active: true,
+            is_active: "true",
           });
         }
       }

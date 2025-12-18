@@ -1,4 +1,3 @@
-// controllers/AttendanceController.ts - UPDATED
 import { Request, Response } from "express";
 import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
 import { AttendanceService } from "../../services/Attendance/Attendance.service";

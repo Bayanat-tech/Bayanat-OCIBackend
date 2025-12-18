@@ -40,8 +40,8 @@ export class Employee {
   @Column({ type: "varchar2", length: 20, nullable: true })
   phone_number!: string | null;
 
-  @Column({ type: "char", length: 1, default: "Y"})
- is_active!: "Y" | "N";
+  @Column({ type: "varchar2", length: 5, default: "true"})
+ is_active!: "true" | "false";
 
   @CreateDateColumn({ type: "timestamp" })
   created_at!: Date;

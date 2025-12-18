@@ -17,8 +17,8 @@ export class EmployeeFace {
   @Column({ type: "clob" })
   descriptor!: object;
 
- @Column({ type: "char", length: 1, default: "Y"})
- is_active!: "Y" | "N";
+ @Column({ type: "varchar2", length: 5, default: "true"})
+ is_active!: "true" | "false";
 
   @CreateDateColumn({ type: "timestamp" })
   created_at!: Date;

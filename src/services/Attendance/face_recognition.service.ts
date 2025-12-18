@@ -8,6 +8,7 @@ import EmployeeFace from "../../models/Attendance/employee_face";
 import path from "path";
 import fs from "fs";
 import fetch from "node-fetch";
+import { AppDataSource } from "../../database/connection";
 
 // NOTE: Do NOT require @tensorflow/tfjs-node at module load time.
 // We'll attempt to load it lazily inside initializeTensorFlow() and handle failures gracefully.
@@ -331,17 +332,18 @@ export class FaceRecognitionService {
       return faceMatcher;
     }
 
-    const activeFaces = await EmployeeFace.findAll({
+    const Employeeface = AppDataSource.getRepository(EmployeeFace);
+    const activeFaces = await Employeeface.find({
       where: { is_active: true },
-      attributes: ["employee_id", "descriptor"],
-      raw: true, // Faster database query
+      select: ["employee_id", "descriptor"],
+     // raw: true, // Faster database query
     });
 
     if (activeFaces.length === 0) {
       throw new Error("No registered faces found in database");
     }
 
-    const labeledDescriptors = activeFaces.map((face) => {
+    const labeledDescriptors = activeFaces.map((face:any) => {
       let descriptorArray: number[];
 
       if (Array.isArray(face.descriptor)) {
