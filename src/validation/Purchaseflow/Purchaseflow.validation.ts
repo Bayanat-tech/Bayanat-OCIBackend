@@ -103,7 +103,7 @@ export const supplierSchema = (data: ISupplier) => {
   supp_contact1: Joi.string().optional().allow(null, ""),
   supp_telno1: Joi.string().optional().allow(null, ""),
   supp_faxno1: Joi.string().optional().allow(null, ""),
-  supp_email1: Joi.string().email().optional().allow(null, ""),
+  supp_email1: Joi.string().optional().allow(null, ""),
 
   supp_contact2: Joi.string().optional().allow(null, ""),
   supp_telno2: Joi.string().optional().allow(null, ""),
