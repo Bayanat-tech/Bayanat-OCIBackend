@@ -209,9 +209,9 @@ router.put(
     return checkUserAuthorization(req, res, next);
   },
   upload.array("images", 5),
-  async (req, res) => {
+  async (req, res, data) => {
     const { EmployeeController } = await getControllers();
-    return EmployeeController.modifyEmployee(req, res);
+    return EmployeeController.modifyEmployee(req, res, data);
   }
 );
 
