@@ -3,6 +3,7 @@ import cron from "node-cron";
 import logger from "../../utils/logger";
 import AttendanceEvent from "../../models/Attendance/attendance_event";
 import { HrService } from "../../services/hr.service";
+import { AppDataSource } from "../../database/connection";
 
 export class AttendanceEventScheduler {
   private static isRunning = false;
@@ -24,20 +25,21 @@ export class AttendanceEventScheduler {
       logger.info("Scheduler is already running, skipping this execution");
       return;
     }
-
     this.isRunning = true;
 
+    const Attendance =AppDataSource.getRepository(AttendanceEvent);
     try {
       logger.info("Starting to process unsent attendance events...");
 
-      
-      const unsentEvents = await AttendanceEvent.findAll({
-        where: {
-          data_transfer: "N",
+      const unsentEvents = await Attendance.find({
+      where: {
+          data_transfer: "N",     
           status: "confirmed",
         },
-        limit: this.BATCH_SIZE,
-        order: [["event_time", "ASC"]], 
+        take: this.BATCH_SIZE,
+        order: {
+          event_time: "ASC",
+        },
       });
 
       if (unsentEvents.length === 0) {
@@ -48,7 +50,7 @@ export class AttendanceEventScheduler {
       logger.info(`Found ${unsentEvents.length} unsent attendance events`);
 
       // Transform events for API
-      const eventsToSend = unsentEvents.map((event) => ({
+      const eventsToSend = unsentEvents.map((event:any) => ({
         id: event.id,
         employeeId: event.employee_id,
         employeeCode: event.employee_code,
@@ -61,7 +63,7 @@ export class AttendanceEventScheduler {
       // Send to .NET API
       const result = await HrService.bulkInsertAttendanceEvents(eventsToSend);
       if (result && result.successfulInserts > 0) {
-        const eventIds = unsentEvents.map((event) => event.id);
+        const eventIds = unsentEvents.map((event: any) => event.id);
 
         await AttendanceEvent.update(
           {

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { Op } from "sequelize";
-import { sequelize } from "../../database/connection";
-import Employee from "../../models/Attendance/employee";
-import AttendanceRecord from "../../models/Attendance/attendance_record";
+//import { Op } from "sequelize";
+//import { sequelize } from "../../database/connection";
+import { Employee } from "../../entity/Attendance/employee.entity";
+import { AttendanceRecord }from "../../entity/Attendance/attendance_record.entity";
 import logger from "../../utils/logger";
 import {
   startOfMonth,
@@ -11,6 +11,7 @@ import {
   endOfDay,
   subDays,
 } from "date-fns";
+import { AppDataSource, oracleDb } from "../../database/connection";
 
 interface DepartmentSummary {
   total: number;
@@ -69,12 +70,13 @@ export class DashboardController {
     try {
       const today = new Date();
 
-      const summary = (await AttendanceRecord.findAll({
+      const Attendance = AppDataSource.getRepository(AttendanceRecord);
+      const summary = (await Attendance.find({
         where: {
-          date: {
-            [Op.gte]: startOfDay(today),
-            [Op.lte]: endOfDay(today),
-          },
+          date: Between(
+             startOfDay(today),
+             endOfDay(today),
+          ),
         },
         include: [
           {
@@ -131,7 +133,7 @@ export class DashboardController {
         : endOfMonth(new Date());
 
       // Use a raw query to avoid the ambiguous column issue
-      const [results] = await sequelize.query(
+      const [results] = await oracleDb.query(
         `
         SELECT 
           DATE(ar.date) as date,
@@ -193,7 +195,7 @@ export class DashboardController {
       const monthEnd = endOfMonth(date);
 
       // Use a raw query to avoid the ambiguous column issue
-      const [results] = await sequelize.query(
+      const [results] = await oracleDb.query(
         `
         SELECT 
           DATE_FORMAT(date, '%Y-%m-%d') as date,
@@ -276,7 +278,7 @@ export class DashboardController {
       const startDate = subDays(new Date(), Number(days));
 
       // Use a raw query to avoid the ambiguous column issue
-      const [results] = await sequelize.query(
+      const [results] = await oracleDb.query(
         `
         SELECT 
           DATE(date) as date,

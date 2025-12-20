@@ -197,7 +197,8 @@ router.get(
   },
   async (req, res) => {
     const { EmployeeController } = await getControllers();
-    return EmployeeController.getEmployees(req, res);
+    //return EmployeeController.getEmployees(req, res);
+    return EmployeeController.getEmployee(req, res);
   }
 );
 

@@ -1,8 +1,8 @@
-import { Op } from "sequelize";
+//import { Op } from "sequelize";
 import { differenceInMinutes } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 import constants from "../../helpers/constants";
-import { sequelize } from "../../database/connection";
+//import { sequelize } from "../../database/connection";
 import { notifyUser } from '../../helpers/functions'; 
 import logger from "../../utils/logger";
 import {
@@ -15,6 +15,7 @@ import {
 import { FaceRecognitionService } from "./face_recognition.service";
 import { getSignedUrl, uploadEmployeeFace } from "../../services/ociUpload.service";
 import { CacheService } from "./cache.service";
+import { oracleDb }from "../../database/connection"
 
 // 🎯 FIXED PERFORMANCE CONSTANTS
 const AUTO_CONFIRM_DELAY_MS = 10000; // 🆕 INCREASED TO 10 SECONDS FOR FRONTEND BUFFER
@@ -262,7 +263,9 @@ export class AttendanceService {
     let employee = await this.cache.get(cacheKey);
     if (employee) return employee;
 
-    const databasePromise = Employee.findOne({
+    
+    // const databasePromise = Employee.findOne({
+    const databasePromise = (Employee as any).findOne({
       where: { employee_id: employeeId },
       attributes: ['employee_id', 'employee_code', 'full_name', 'department'],
       raw: true
@@ -309,7 +312,7 @@ export class AttendanceService {
         });
       }
 
-      await AttendanceEvent.create(eventData);
+      await (AttendanceEvent as any).create(eventData);
       logger.info(`[DB-SAVE] Record saved for UUID: ${data.uuid}`);
       
     } catch (error) {
@@ -364,9 +367,10 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
   }
   // 🎯 DATABASE CONFIRMATION
   private static async confirmAttendanceFromDatabase(uuid: string, confirmedBy: string): Promise<any> {
-    const transaction = await sequelize.transaction();
+    const transaction = await (oracleDb as any).transaction();
+
     try {
-      const event = await AttendanceEvent.findOne({
+      const event = await (AttendanceEvent as any).findOne({
         where: { uuid },
         transaction,
         lock: transaction.LOCK.UPDATE
@@ -391,7 +395,7 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
       today.setHours(0, 0, 0, 0);
       const now = new Date();
 
-      const [record] = await AttendanceRecord.findOrCreate({
+      const [record] = await (AttendanceRecord as any).findOrCreate({
         where: { employee_id: event.employee_id, date: today },
         defaults: {
           id: uuidv4(),
@@ -416,7 +420,7 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
         if (!record.first_check_in || event.event_time < record.first_check_in) {
           updates.first_check_in = event.event_time;
         }
-        await AttendanceRecord.update(updates, { where: { id: record.id }, transaction });
+        await (AttendanceRecord as any).update(updates, { where: { id: record.id }, transaction });
       } else {
         const updates: any = { check_out: event.event_time };
         if (!record.last_check_out || event.event_time > record.last_check_out) {
@@ -426,10 +430,10 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
           const minutes = differenceInMinutes(event.event_time, record.first_check_in);
           updates.total_hours = Number((minutes / 60).toFixed(2));
         }
-        await AttendanceRecord.update(updates, { where: { id: record.id }, transaction });
+        await (AttendanceRecord as any).update(updates, { where: { id: record.id }, transaction });
       }
 
-      await AttendanceEvent.update({
+      await (AttendanceEvent as any).update({
         status: 'confirmed',
         confirmed_by: confirmedBy,
         confirmed_at: now,

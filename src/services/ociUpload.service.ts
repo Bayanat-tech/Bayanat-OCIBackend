@@ -116,6 +116,31 @@ export const deleteFileFromS3 = async (awsFileLocation: string) => {
 //     ContentType: file.mimetype,
 //   };
 
+
+export const uploadFile = async (
+  buffer: Buffer,
+  key: string,
+  originalname: string,
+  // res: Response
+): Promise<any> => {
+  const objectParams: UploadToS3ObjectInterface = {
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ACL: "public-read",
+    ContentType: "contentType",
+  }
+
+  try {
+    await s3Client.send(new PutObjectCommand(objectParams));
+    logger.info(`File uploaded to OCI Object Storage: ${key}`);
+    return constants.OCI_S3_COMPATIBILITY.getObjectUrl(key);
+  } catch (error) {
+    logger.error("OCI upload failed", error);
+    throw new Error(constants.MESSAGES.SOMETHING_WENT_WRONG);
+  }
+}
+
 export const uploadEmployeeFace = async (
   buffer: Buffer,
   employeeId: string,
@@ -133,9 +158,7 @@ export const uploadEmployeeFace = async (
   
   try {
     await s3Client.send(new PutObjectCommand(objectParams));
-
     const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
-
     return response.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: URL,
@@ -147,6 +170,20 @@ export const uploadEmployeeFace = async (
     });
   }
 };
+
+export const deleteFile= async (key: string): Promise<void> => {
+  try {
+    await s3Client.send(
+      new DeleteObjectCommand({
+      Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+      Key: key,
+    }));
+      logger.info(`File deleted from OCI Object Storage: ${key}`);
+    } catch (error) {
+      logger.error("OCI delete failed", error);
+    throw new Error("Failed to delete file from OCI Object Storage");
+  }
+}
 
 export const getSignedUrl = async (key: string, expiresIn = 3600): Promise<any> => {
   try {
