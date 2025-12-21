@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-//import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
+import { FaceRecognitionService } from "../../services/Attendance/face_recognition.service";
 import logger from "../../utils/logger";
 import { validateImage } from "../../middleware/security.middleware";
 import { EmployeeService } from "../../services/Attendance/employee.service";
@@ -76,25 +76,25 @@ export class EmployeeController {
     await EmployeeRecord.save(employee);
 
     // Get FaceRecognitionService instance
-    // const faceService = await FaceRecognitionService.getInstance();
+    const faceService = await FaceRecognitionService.getInstance();
 
-    // // Process each image
-    // for (const file of files) {
-    //   const s3Key = `employee_faces/${employee_id}/${uuidv4()}.jpg`;
-    //   await uploadFile(file.buffer, s3Key, file.mimetype);
+    // Process each image
+    for (const file of files) {
+      const s3Key = `employee_faces/${employee_id}/${uuidv4()}.jpg`;
+      await uploadFile(file.buffer, s3Key, file.mimetype);
 
-    //   // Use instance method instead of static method
-    //   const descriptor = await faceService.extractFaceDescriptor(file.buffer);
+      // Use instance method instead of static method
+      const descriptor = await faceService.extractFaceDescriptor(file.buffer);
 
-    //   const face = Face.create({ 
-    //     id: uuidv4(),
-    //     employee_id,
-    //     s3_key: s3Key,
-    //     descriptor: descriptor,
-    //     is_active: "true",
-    //   });
-    //   await Face.save(face);
-    // }
+      const face = Face.create({ 
+        id: uuidv4(),
+        employee_id,
+        s3_key: s3Key,
+        descriptor: descriptor,
+        is_active: "1",
+      });
+      await Face.save(face);
+    }
 
     logger.info(`Employee ${employee_id} registered successfully`);
     res.status(201).json({ success: true, employeeId: employee_id });
@@ -137,82 +137,85 @@ export class EmployeeController {
     }
   }
 
-  // static async modifyEmployee(req: Request, res: Response ,data: any): Promise<void> {
-  //   try {
-  //     const { employee_id } = req.params;
-  //     const {
-  //       full_name,
-  //       email,
-  //       department,
-  //       position,
-  //       hire_date,
-  //       phone_number,
-  //     } = req.body;
-  //     const files = req.files as Express.Multer.File[];
+  static async modifyEmployee(req: Request, res: Response ): Promise<void> {
+    try {
+      const { employee_id } = req.params;
+      const {
+        full_name,
+        email,
+        department,
+        position,
+        hire_date,
+        phone_number,
+      } = req.body;
+      const files = req.files as Express.Multer.File[];
 
-  //     const EmployeesFace = AppDataSource.getRepository(EmployeeFace);
-  //     const repo = AppDataSource.getRepository(Employee);
+      const EmployeesFace = AppDataSource.getRepository(EmployeeFace);
+      const repo = AppDataSource.getRepository(Employee);
 
-  //     // Find employee
-  //     const employee = await repo.findOne({
-  //       where: { employee_id },
-  //     });
+      // Find employee
+      const employee = await repo.findOne({
+        where: { employee_id },
+      });
 
-  //     if (!employee) {
-  //       res.status(404).json({ error: "Employee not found" });
-  //       return;
-  //     }
+      if (!employee) {
+        res.status(404).json({ error: "Employee not found" });
+        return;
+      }
 
-  //     Object.assign(employee, {
-  //     full_name: data.full_name ?? employee.full_name,
-  //     email: data.email ?? employee.email,
-  //     department: data.department ?? employee.department,
-  //     position: data.position ?? employee.position,
-  //     hire_date: data.hire_date ? new Date(data.hire_date) : employee.hire_date,
-  //     phone_number: data.phone_number ?? employee.phone_number,
-  //   });
+      Object.assign(employee, {
+      full_name: req.body.full_name ?? employee.full_name,
+      email: req.body.email ?? employee.email,
+      department: req.body.department ?? employee.department,
+      position: req.body.position ?? employee.position,
+      hire_date: req.body.hire_date ? new Date(req.body.hire_date) : employee.hire_date,
+      phone_number: req.body.phone_number ?? employee.phone_number,
+    });
 
-  //     // If new face images are provided, process them
-  //     if (files && files.length > 0) {
-  //       // Get FaceRecognitionService instance
-  //       const faceService = await FaceRecognitionService.getInstance();
+    await repo.save(employee);
 
-  //       // First, deactivate existing face records
-  //       await EmployeesFace.update(
-  //         { employee_id },
-  //         { is_active: "false" }
-  //       );
+      // If new face images are provided, process them
+      if (files && files.length > 0) {
+        // Get FaceRecognitionService instance
+        const faceService = await FaceRecognitionService.getInstance();
 
-  //       // Process each new image
-  //       for (const file of files) {
-  //         // Validate image
-  //         req.file = file;
-  //         validateImage(req, res, () => {});
+        // First, deactivate existing face records
+        await EmployeesFace.update(
+          { employee_id },
+          { is_active: "0" }
+        );
 
-  //         const s3Key = `employee_faces/${employee_id}/${uuidv4()}.jpg`;
-  //         await uploadFile(file.buffer, s3Key, file.mimetype);
+        // Process each new image
+        for (const file of files) {
+          // Validate image
+          req.file = file;
+          validateImage(req, res, () => {});
 
-  //         const descriptor = await faceService.extractFaceDescriptor(
-  //           file.buffer
-  //         );
+          const s3Key = `employee_faces/${employee_id}/${uuidv4()}.jpg`;
+          await uploadFile(file.buffer, s3Key, file.mimetype);
 
-  //         await EmployeesFace.create({
-  //           id: uuidv4(),
-  //           employee_id,
-  //           s3_key: s3Key,
-  //           descriptor: descriptor,
-  //           is_active: "true",
-  //         });
-  //       }
-  //     }
+          const descriptor = await faceService.extractFaceDescriptor(
+            file.buffer
+          );
 
-  //     logger.info(`Employee ${employee_id} updated successfully`);
-  //     res.status(200).json({ success: true, employeeId: employee_id });
-  //   } catch (error: any) {
-  //     logger.error("Employee modification failed", error);
-  //     res.status(500).json({ success: false, message: error.message });
-  //   }
-  // }
+          const face = EmployeesFace.create({
+            id: uuidv4(),
+            employee_id,
+            s3_key: s3Key,
+            descriptor: descriptor,
+            is_active: "1",
+          });
+          await EmployeesFace.save(face);
+        }
+      }
+
+      logger.info(`Employee ${employee_id} updated successfully`);
+      res.status(200).json({ success: true, employeeId: employee_id });
+    } catch (error: any) {
+      logger.error("Employee modification failed", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 
   static async getEmployeeInfo(req: Request, res: Response): Promise<void> {
     try {
@@ -246,6 +249,9 @@ export class EmployeeController {
 
 
 //////////////////////////////////////////////////////////////////////////////////////
+
+
+
 // import { Request, Response } from "express";
 // //import { EmployeesController } from "../../services/Attendance/employee.service";
 // import { Employee } from "../../entity/Attendance/employee.entity";

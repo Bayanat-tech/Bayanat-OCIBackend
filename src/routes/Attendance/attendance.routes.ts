@@ -174,19 +174,19 @@ console;
 //   }
 // );
 
-// router.post(
-//   "/employees",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   upload.array("images", 5),
-//   async (req, res) => {
-//     const { EmployeeController } = await getControllers();
-//     return EmployeeController.registerEmployee(req, res);
-//   }
-// );
+router.post(
+  "/employees",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  upload.array("images", 5),
+  async (req, res) => {
+    const { EmployeeController } = await getControllers();
+    return EmployeeController.registerEmployee(req, res);
+  }
+);
 
 router.get(
   "/employees",
@@ -197,24 +197,23 @@ router.get(
   },
   async (req, res) => {
     const { EmployeeController } = await getControllers();
-    //return EmployeeController.getEmployees(req, res);
     return EmployeeController.getEmployees(req, res);
   }
 );
 
-// router.put(
-//   "/employees/:employee_id",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   upload.array("images", 5),
-//   async (req, res, data) => {
-//     const { EmployeeController } = await getControllers();
-//     return EmployeeController.modifyEmployee(req, res, data);
-//   }
-// );
+router.put(
+  "/employees/:employee_id",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  upload.array("images", 5),
+  async (req, res, data) => {
+    const { EmployeeController } = await getControllers();
+    return EmployeeController.modifyEmployee(req, res);
+  }
+);
 
 // Add route for employee info lookup
 router.get(
