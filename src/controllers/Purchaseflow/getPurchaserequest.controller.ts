@@ -22,19 +22,20 @@ export const getPurchaserequest: RequestHandler = async (
 
   try {
     const requestUser: IUser = req.user;
-    console.log("inside getrequest");
     const { request_number, company_code } = req.params;
 
-    console.log("request_number:", request_number);
-
-    let ls_request_number: string;
-    if (typeof request_number === "string") {
-      ls_request_number = request_number.replace(/\$\$/g, "/");
-      console.log("Replacement successful:", ls_request_number);
-    } else {
-      console.error("Error: request_number is not a string.", request_number);
-      ls_request_number = String(request_number);
+    if (!request_number) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Missing request_number parameter",
+      });
+      return;
     }
+
+    const ls_request_number: string =
+      typeof request_number === "string"
+        ? request_number.replace(/\$\$/g, "/")
+        : String(request_number);
 
     connection = await oracledb.getConnection();
 
@@ -52,89 +53,86 @@ export const getPurchaserequest: RequestHandler = async (
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const count = (countResult.rows?.[0] as OracleRow)?.COUNT || 0;
-    console.log(`Count for request_number ${ls_request_number}:`, count);
+
+    if (count === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: `Purchase Request ${constants.MESSAGES.DOES_NOT_EXISTS}`,
+      });
+      return;
+    }
 
     // -----------------------
     // 2. PO PRINT LOGIC
     // -----------------------
-   // -----------------------
-// 2. PO PRINT LOGIC
-// -----------------------
-if (ls_request_number.includes("PO$")) {
+    if (ls_request_number.includes("PO$")) {
+      const poQueryDetail = `SELECT * FROM GT_PO_PRINT_DETAILS ORDER BY ITEM_SEQUENCE_NO`;
+      const procedureQuery = `BEGIN PRO_PO_PRINT_DATA(:REQ_NUM, :COMP_CODE); END;`;
 
-  const poquerydetail = `SELECT * FROM GT_PO_PRINT_DETAILS ORDER BY ITEM_SEQUENCE_NO`;
-  const procedureQuery = `BEGIN PRO_PO_PRINT_DATA(:REQ_NUM, :COMP_CODE); END;`;
+      await connection.execute(procedureQuery, {
+        REQ_NUM: ls_request_number,
+        COMP_CODE: requestUser.company_code,
+      });
 
-  await connection.execute(procedureQuery, {
-    REQ_NUM: ls_request_number,
-    COMP_CODE: requestUser.company_code,
-  });
+      const headerPO = await connection.execute(
+        `SELECT * FROM GT_PO_PRINT_HEADER`,
+        {},
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      let headerRow = (headerPO.rows?.[0] as OracleRow) || {};
+      headerRow = toLowerKeys(headerRow);
 
-  const headerPO = await connection.execute(
-    `SELECT * FROM GT_PO_PRINT_HEADER`,
-    {},
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
-  let headerRow = (headerPO.rows?.[0] as OracleRow) || {};
-  headerRow = toLowerKeys(headerRow);
+      const detailPO = await connection.execute(
+        poQueryDetail,
+        {},
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      let detailRows = (detailPO.rows as OracleRows) || [];
+      detailRows = detailRows.map(toLowerKeys);
 
-  const detailPO = await connection.execute(
-    poquerydetail,
-    {},
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
-  let detailRows = (detailPO.rows as OracleRows) || [];
-  detailRows = detailRows.map((r) => toLowerKeys(r));
+      if (!headerRow || !detailRows) {
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: `Purchase Request ${constants.MESSAGES.DOES_NOT_EXISTS}`,
+        });
+        return;
+      }
 
-  if (!headerRow || !detailRows) {
-    res.status(constants.STATUS_CODES.NOT_FOUND).json({
-      success: false,
-      message: "Purchase Request " + constants.MESSAGES.DOES_NOT_EXISTS,
-    });
-    return;
-  }
+      const formattedData = {
+        doc_no: headerRow.doc_no ?? 0,
+        doc_date: headerRow.doc_date ?? null,
+        ref_doc_no: headerRow.ref_doc_no,
+        supplier: headerRow.supplier,
+        request_number: headerRow.request_number,
+        div_code: headerRow.div_code,
+        po_confirm: headerRow.po_confirm,
+        po_cancel: headerRow.po_cancel,
+        cancel_type: headerRow.cancel_type,
+        supp_name: headerRow.supp_name,
+        dlvr_term: headerRow.dlvr_term,
+        supp_addr1: headerRow.supp_addr1,
+        supp_addr2: headerRow.supp_addr2,
+        supp_addr3: headerRow.supp_addr3,
+        supp_addr4: headerRow.supp_addr4,
+        supp_telno1: headerRow.supp_telno1,
+        supp_faxno1: headerRow.supp_faxno1,
+        supp_email1: headerRow.supp_email1,
+        project_code: headerRow.project_code,
+        project_name: headerRow.project_name,
+        wo_number: headerRow.wo_number,
+        remarks: headerRow.remarks,
+        payment_terms: headerRow.payment_terms,
+        last_action: headerRow.last_action,
+        quotation_reference: headerRow.quotation_reference,
+        items: detailRows,
+      };
 
-  // ⭐ REQUIRED RESPONSE FORMAT ⭐
-  const formattedData = {
-    doc_no: headerRow.doc_no ?? 0,
-    doc_date: headerRow.doc_date ?? null,
-    ref_doc_no: headerRow.ref_doc_no,
-    supplier: headerRow.supplier,
-    request_number: headerRow.request_number,
-    div_code: headerRow.div_code,
-    po_confirm: headerRow.po_confirm,
-    po_cancel: headerRow.po_cancel,
-    cancel_type: headerRow.cancel_type,
-    supp_name: headerRow.supp_name,
-    dlvr_term: headerRow.dlvr_term,
-    supp_addr1: headerRow.supp_addr1,
-    supp_addr2: headerRow.supp_addr2,
-    supp_addr3: headerRow.supp_addr3,
-    supp_addr4: headerRow.supp_addr4,
-    supp_telno1: headerRow.supp_telno1,
-    supp_faxno1: headerRow.supp_faxno1,
-    supp_email1: headerRow.supp_email1,
-    project_code: headerRow.project_code,
-    project_name: headerRow.project_name,
-    wo_number: headerRow.wo_number,
-    remarks: headerRow.remarks,
-    payment_terms: headerRow.payment_terms,
-    last_action: headerRow.last_action,
-    quotation_reference: headerRow.quotation_reference,
-    items: detailRows
-  };
-
-  res.status(constants.STATUS_CODES.OK).json({
-    success: true,
-    data: formattedData,
-  });
-
-  return;
-}
-
-
-    console.log("company_code:", company_code);
-    console.log("Count is not zero, proceeding with other operations.");
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        data: formattedData,
+      });
+      return;
+    }
 
     // -----------------------
     // 3. GET PRINCIPAL CODE
@@ -156,7 +154,10 @@ if (ls_request_number.includes("PO$")) {
     const prinCode = (prinRes.rows?.[0] as OracleRow)?.PRIN_CODE;
 
     if (!prinCode) {
-      console.log("No PRIN_CODE found, exiting.");
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "No principal code found for this request",
+      });
       return;
     }
 
@@ -181,7 +182,7 @@ if (ls_request_number.includes("PO$")) {
       SELECT *
       FROM VW_PURCHASE_REQUEST_TRANSACTION1
       WHERE REQUEST_NUMBER = :REQ
-      AND PRIN_CODE = :PRIN
+        AND PRIN_CODE = :PRIN
       ORDER BY ITEM_SEQUENCE_NO
     `;
 
@@ -191,41 +192,15 @@ if (ls_request_number.includes("PO$")) {
       WHERE request_number = :REQ
     `;
 
-    const headerRes = await connection.execute(
-      headerQuery,
-      { REQ: ls_request_number },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    let headerRow = (headerRes.rows?.[0] as OracleRow) || {};
-    headerRow = toLowerKeys(headerRow); // 🔥 lowercase
+    const [headerRes, detailRes, tcRes] = await Promise.all([
+      connection.execute(headerQuery, { REQ: ls_request_number }, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      connection.execute(detailQuery, { REQ: ls_request_number, PRIN: prinCode }, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      connection.execute(termconditionQuery, { REQ: ls_request_number }, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+    ]);
 
-    const detailRes = await connection.execute(
-      detailQuery,
-      { REQ: ls_request_number, PRIN: prinCode },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    let detailRows = (detailRes.rows as OracleRows) || [];
-    detailRows = detailRows.map((r) => toLowerKeys(r)); // 🔥 lowercase
-
-    const tcRes = await connection.execute(
-      termconditionQuery,
-      { REQ: ls_request_number },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    let tcRows = (tcRes.rows as OracleRows) || [];
-    tcRows = tcRows.map((r) => toLowerKeys(r)); // 🔥 lowercase
-
-    console.log(headerRow);
-    console.log(detailRows);
-    console.log(tcRows);
-
-    if (!headerRow || !detailRows) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "Purchase Request " + constants.MESSAGES.DOES_NOT_EXISTS,
-      });
-      return;
-    }
+    const headerRow = toLowerKeys((headerRes.rows?.[0] as OracleRow) || {});
+    const detailRows = ((detailRes.rows as OracleRows) || []).map(toLowerKeys);
+    const tcRows = ((tcRes.rows as OracleRows) || []).map(toLowerKeys);
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,

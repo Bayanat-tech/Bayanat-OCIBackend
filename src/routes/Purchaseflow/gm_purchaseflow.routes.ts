@@ -96,7 +96,7 @@ import { createOrUpdateBudgetRequestSequential } from "../../controllers/Purchas
 //   getddProductMaster,
 // } from "../../controllers/Purchaseflow/getdddivisiondata_pf.cotroller";
 
-// import { executeRawSql, getDashboardData,handleGenerateExpenseAdj ,handleSaveExpSamt} from "../../controllers/Purchaseflow/getDashboardData_pf_controller";
+// import { executeRawSql } from "../../controllers/Purchaseflow/getDashboardData_pf_controller";
 
 // import {
 //   updateReasonForPO,
@@ -132,7 +132,9 @@ import { createOrUpdateBudgetRequestSequential } from "../../controllers/Purchas
 //   updatecustomer,
 // } from "../../controllers/Purchaseflow/customermaster_pf.controller";
 
- import { saveFile } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
+import { saveFile } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
+import { executeRawSql } from "../../controllers/Purchaseflow/executeRawSql";
+// import { executeRawSql } from "../../controllers/Purchaseflow/getDashboardData_pf_controller";
 
 const router = express.Router();
 
@@ -172,7 +174,7 @@ router.get("/purchaseRequest/:request_number", getPurchaserequest);
 // router.get("/fetchPRregisterdata", fetchPRregisterdata);
  router.get("/fetchPOlisting/:request_number", fetchPOlisting);
 // router.get("/MaterialRequestListing", MaterialRequestListing);
-// router.post("/executeRawSql", executeRawSql);
+ router.post("/executeRawSql", executeRawSql);
  router.post("/handleGenerateExpenseAdj", handleGenerateExpenseAdj);
  router.post("/handleSaveExpSamt", handleSaveExpSamt);
 
@@ -229,5 +231,5 @@ router.post("/updatePrintSignatureInfo", updatePrintSignatureInfo);
 
 
 
-// router.post("/upsertAMCDetails",upsertAMCDetails);
+router.post("/upsertAMCDetails",upsertAMCDetails);
 export default router;
