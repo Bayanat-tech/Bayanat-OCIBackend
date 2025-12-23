@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index, ManyToOne, JoinColumn } from "typeorm";
 import constants from "../../helpers/constants";
+import { Employee } from "./employee.entity";
 
 @Entity({ name: constants.TABLE.employee_faces })
 @Index(["employee_id"])
@@ -22,4 +23,8 @@ export class EmployeeFace {
 
   @Column({ type: "timestamp" })
   created_at!: Date;
+
+  @ManyToOne(() => Employee, employee => employee.employeeFaces)
+  @JoinColumn({ name: "EMPLOYEE_ID", referencedColumnName: "employee_id" })
+  employee!: Employee;
 }

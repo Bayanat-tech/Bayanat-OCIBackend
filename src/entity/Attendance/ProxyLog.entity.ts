@@ -3,7 +3,12 @@ import {
   Column,
   PrimaryColumn,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToOne,
 } from "typeorm";
+import { Employee } from "./employee.entity";
+import { AttendanceEvent } from "./attendance_events.entity";
 
 @Entity({ name: "proxy_logs" })
 export class ProxyLog {
@@ -54,4 +59,20 @@ export class ProxyLog {
 
   @Column({ type: "varchar2", length: 400, nullable: false })
   reason!: string | null;
+  attendanceEvent: any;
+
+ //Relations
+  @ManyToOne(() => Employee, employee => employee.proxyLogsAsProxy)
+  @JoinColumn({ name: "PROXY_EMPLOYEE_CODE", referencedColumnName: "employee_code" })
+  proxyEmployee!: Employee;
+
+  // Actual employee
+  @ManyToOne(() => Employee, employee => employee.proxyLogsAsActual)
+  @JoinColumn({ name: "ACTUAL_EMPLOYEE_CODE", referencedColumnName: "employee_code" })
+  actualEmployee!: Employee;
+
+  //Attendance event
+  @OneToOne(() => AttendanceEvent, event => event.proxyLog)
+  @JoinColumn({ name: "UUID", referencedColumnName: "uuid" })
+  attendanceEvents!: AttendanceEvent;
 }

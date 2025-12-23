@@ -2,16 +2,16 @@
 import express from "express";
 import multer from "multer";
 import passport from "passport";
-//import { AttendanceController } from "../../controllers/Attendance/attendance.controller";
+import { AttendanceController } from "../../controllers/Attendance/attendance.controller";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Lazy load controllers
 const getControllers = async () => {
-  // const { AttendanceController } = await import(
-  //   "../../controllers/Attendance/attendance.controller"
-  // );
+  const { AttendanceController } = await import(
+    "../../controllers/Attendance/attendance.controller"
+  );
   const { EmployeeController } = await import(
     "../../controllers/Attendance/Employee.controller"
   );
@@ -24,7 +24,7 @@ const getControllers = async () => {
   const { EmployeeService } = await import("../../services/Attendance/employee.service");
 
   return {
-    //AttendanceController,
+    AttendanceController,
     EmployeeController,
     //DashboardController,
     checkUserAuthorization,
@@ -151,18 +151,18 @@ console;
 // );
 
 // Protected routes
-// router.get(
-//   "/report",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { AttendanceController } = await getControllers();
-//     return AttendanceController.getAttendanceReport(req, res);
-//   }
-// );
+router.get(
+  "/report",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.getAttendanceReport(req, res);
+  }
+);
 
 // router.post('/stop-auto-confirm',
 //   passport.authenticate("jwt", { session: false }),

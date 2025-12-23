@@ -3,9 +3,12 @@ import {
   Column,
   PrimaryColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
 import constants from "../../helpers/constants";
 import { AttendanceEvent } from "./attendance_events.entity";
+import { Employee } from "./employee.entity";
 
 @Entity({ name: constants.TABLE.attendance_records })
 export class AttendanceRecord {
@@ -39,9 +42,13 @@ export class AttendanceRecord {
   @Column({ type: "varchar2", length: 20 })
   status!: string;
 
+  //Relation
+  @ManyToOne(() => Employee, employee => employee.attendanceRecords)
+  @JoinColumn({ name: "EMPLOYEE_ID", referencedColumnName: "employee_id" })
+  employee!: Employee;
+
   //relaonship with AttendanceEvent
-  @OneToMany(
-    () => AttendanceEvent,
+  @OneToMany(() => AttendanceEvent,
     (event) => event.attendance_record_id,
     { eager: false }
   )

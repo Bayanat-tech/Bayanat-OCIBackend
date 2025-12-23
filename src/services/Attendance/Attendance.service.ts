@@ -5,18 +5,23 @@ import constants from "../../helpers/constants";
 //import { sequelize } from "../../database/connection";
 import { notifyUser } from '../../helpers/functions'; 
 import logger from "../../utils/logger";
-import {
-  Employee,
-  AttendanceRecord,
-  AttendanceEvent,
-  ProxyLog,
-  EmployeeFace,
-} from "../../models/Attendance/associations";
+// import {
+//   Employee,
+//   AttendanceRecord,
+//   AttendanceEvent,
+//   ProxyLog,
+//   EmployeeFace,
+// } from "../../models/Attendance/associations";
 import { FaceRecognitionService } from "./face_recognition.service";
 import { getSignedUrl, uploadEmployeeFace } from "../../services/ociUpload.service";
 import { CacheService } from "./cache.service";
-import { oracleDb }from "../../database/connection"
-
+import { AppDataSource, oracleDb }from "../../database/connection"
+import { Between, In } from "typeorm";
+import { Employee} from "../../entity/Attendance/employee.entity";
+import {AttendanceRecord} from "../../entity/Attendance/attendance_record.entity";
+import { AttendanceEvent } from "../../entity/Attendance/attendance_events.entity";
+import { ProxyLog } from "../../entity/Attendance/ProxyLog.entity";
+  
 // 🎯 FIXED PERFORMANCE CONSTANTS
 const AUTO_CONFIRM_DELAY_MS = 10000; // 🆕 INCREASED TO 10 SECONDS FOR FRONTEND BUFFER
 const FACE_RECOGNITION_TIMEOUT = 2500;
@@ -1389,9 +1394,11 @@ private static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode:
       ];
     }
 
-    const { count, rows } = await ProxyLog.findAndCountAll({
+    const AttendanceLog = AppDataSource.getRepository(ProxyLog)
+    const [ count, rows ]  = await AttendanceLog.findAndCount
+    // const { count, rows } = await ProxyLog.findAndCount({
       where: whereClause,
-      order: [['timestamp', 'DESC']],
+      order: {'timestamp', 'DESC'},
       offset,
       limit: parseInt(limit)
     });
@@ -1425,14 +1432,15 @@ private static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode:
     adjustedEndDate.setHours(23, 59, 59, 999);
 
     const eventWhereClause: any = {
-      event_time: { [Op.between]: [adjustedStartDate, adjustedEndDate] },
-      status: { [Op.in]: ['confirmed','pending_auto_confirm'] },
+      event_time:  Between(adjustedStartDate, adjustedEndDate) ,
+      status:  In(['confirmed','pending_auto_confirm']),
     };
 
     let employeeWhereClause = {};
     if (department) employeeWhereClause = { department };
 
-    const { count, rows } = await AttendanceEvent.findAndCountAll({
+    const AttendanceReport = AppDataSource.getRepository(AttendanceEvent)
+    const [ rows, count ]  = await AttendanceReport.findAndCount({
       where: eventWhereClause,
       include: [
         {
@@ -1448,7 +1456,7 @@ private static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode:
           attributes: ["date", "status", "total_hours"],
         },
       ],
-      order: [["event_time", "DESC"]],
+      order: {"event_time": "DESC"},
       offset,
       limit,
     });

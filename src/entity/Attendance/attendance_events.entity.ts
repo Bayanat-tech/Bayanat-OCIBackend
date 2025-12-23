@@ -1,6 +1,8 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn, OneToOne } from "typeorm";
 import constants from "../../helpers/constants";
 import { AttendanceRecord } from "./attendance_record.entity";
+import { ProxyLog } from "./ProxyLog.entity";
+import { Employee } from "./employee.entity";
 
 export enum AttendanceEventType {
   CHECK_IN = "check_in",
@@ -118,9 +120,17 @@ export class AttendanceEvent {
     };
   }
 
- @ManyToOne(() => AttendanceRecord, record => record.events)
- @JoinColumn({ name: "attendance_record_id" })
- attendance_record?: AttendanceRecord;
+  @ManyToOne(() => Employee, employee => employee.attendanceEvents)
+  @JoinColumn({ name: "EMPLOYEE_ID", referencedColumnName: "employee_id" })
+  employee!: Employee;
+
+  @ManyToOne(() => AttendanceRecord, record => record.events)
+  @JoinColumn({ name: "ATTENDANCE_RECORD_ID" })
+  record!: AttendanceRecord;
+
+  // AttendanceEvent to ProxyLog 
+  @OneToOne(() => ProxyLog, log => log.attendanceEvent)
+  proxyLog!: ProxyLog;
 
 }
 
