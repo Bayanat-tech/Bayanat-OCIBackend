@@ -2,24 +2,24 @@ import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { Response } from "express";
-import { PurchaseFlowMasterService } from "../../services/purchaseFlow/PfMaster.service";
-import { ProjectMasterService } from "../../services/purchaseFlow/project_master.service";
+import { PurchaseFlowMasterService } from "../../services/purchaseflow/PfMaster.service";
+import { ProjectMasterService } from "../../services/purchaseflow/project_master.service";
 import { getPoModifyRatechangeData } from "./getPoModifyRatechangeData ";
-import { DdcostmasterService } from "../../services/purchaseFlow/ddcostmasterservice";
-import { DropdownProjectMasterService } from "../../services/purchaseFlow/dropdwonprojectmaster.service";
-import { DduommasterService } from "../../services/purchaseFlow/dduommaster.service";
-import { DdcurrencyService } from "../../services/purchaseFlow/ddCurrency.service";
-import { DdProdmasterService } from "../../services/purchaseFlow/ddprodmaster.service";
-import { DdEmployeeMasterService } from "../../services/purchaseFlow/ddemployeemaster.service";
-import { getPoModifyData } from "../../services/purchaseFlow/po_modify_close.service";
-import { getPoNotGenerated } from "../../services/purchaseFlow/ponotgenerated.service";
-import { getCancelledRequests } from "../../services/purchaseFlow/po_cancel.service";
-import { WorkflowService } from "../../services/purchaseFlow/sentbackrollselection_mat.service";
-import { FlowRoleService } from "../../services/purchaseFlow/sentbackrollselection.service";
-import { getMyHistory } from "../../services/purchaseFlow/My_History.service";
-import { getRequestRejectedData } from "../../services/purchaseFlow/my_rejected.service";
-import { getMyClosedRequests } from "../../services/purchaseFlow/MyItem_CloseRequest.service";
-import { getMyTaskData } from "../../services/purchaseFlow/my_task.service";
+import { DdcostmasterService } from "../../services/purchaseflow/ddcostmasterservice";
+import { DropdownProjectMasterService } from "../../services/purchaseflow/dropdwonprojectmaster.service";
+import { DduommasterService } from "../../services/purchaseflow/dduommaster.service";
+import { DdcurrencyService } from "../../services/purchaseflow/ddCurrency.service";
+import { DdProdmasterService } from "../../services/purchaseflow/ddprodmaster.service";
+import { DdEmployeeMasterService } from "../../services/purchaseflow/ddemployeemaster.service";
+import { getPoModifyData } from "../../services/purchaseflow/po_modify_close.service";
+import { getPoNotGenerated } from "../../services/purchaseflow/ponotgenerated.service";
+import { getCancelledRequests } from "../../services/purchaseflow/po_cancel.service";
+import { WorkflowService } from "../../services/purchaseflow/sentbackrollselection_mat.service";
+import { FlowRoleService } from "../../services/purchaseflow/sentbackrollselection.service";
+import { getMyHistory } from "../../services/purchaseflow/My_History.service";
+import { getRequestRejectedData } from "../../services/purchaseflow/my_rejected.service";
+import { getMyClosedRequests } from "../../services/purchaseflow/MyItem_CloseRequest.service";
+import { getMyTaskData } from "../../services/purchaseflow/my_task.service";
 
 export const getPurchasefMaster = async (
   req: RequestWithUser,
@@ -187,8 +187,8 @@ case "po_modify_rate_change":
     res.json({
       success: result1.success,
       data: {
-        tableData: result1.data || [],   // ✅ wrapped for frontend
-        count: result1.count || 0        // ✅ inside data object
+        tableData: result1.data || [],   
+        count: result1.count || 0       
       },
       message: result1.message || ""
     });
