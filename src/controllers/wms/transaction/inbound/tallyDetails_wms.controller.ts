@@ -7,34 +7,34 @@ import { IUser } from "../../../../interfaces/user.interface";
 //import { packingDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
 import { tallyDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
 import constants from "../../../../helpers/constants";
-import Product from "../../../../models/wms/product_wms.model";
-import Country from "../../../../models/wms/warehouse_wms.model";
-//import PackingDetailsInboundWms from "../../../../models/wms/transaction/inbound/packingDetails_wms.model";
-import TallyDetailsInboundWms from "../../../../models/wms/transaction/inbound/tallyDetails_wms.model";
+import { Product } from "../../../../entity/WMS/product.entity";
+import { CountryMaster } from "../../../../entity/WMS/country.entity";
+import { TiTallyDetail } from "../../../../entity/WMS/TiTallyDetail.entity";
 //import { IPackingDetails } from "../../../../interfaces/wms/transaction/inbound/packingDetails_wms.interface";
 import { ITallyDetailsWms } from "../../../../interfaces/wms/transaction/inbound/tallyDetails_wms.interface";
 import * as fastCsv from "fast-csv";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
-import { Op, QueryTypes } from "sequelize";
-import { sequelize } from "../../../../database/connection";
+import { Like } from "typeorm";
+import { getRepository, AppDataSource } from "../../../../database/connection";
 
 export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
   try {
-    const { prin_code, packdet_no, job_no,seq_number } = req.query;
+    const { prin_code, packdet_no, job_no, seq_number } = req.query;
 
     // console.log(req.query);
     // console.log(
     //   "hum yaha hai tally karne k liye"
     // );
 
-    const tallyDetails = await TallyDetailsInboundWms.findOne({
+    const tallyDetailsRepo = getRepository(TiTallyDetail);
+    const tallyDetails = await tallyDetailsRepo.findOne({
       where: {
-        prin_code,
-        packdet_no,
-        job_no,
+        prin_code: prin_code as string,
+        packdet_no: Number(packdet_no),
+        job_no: job_no as string,
         company_code: req.user.company_code,
-        seq_number
+        seq_number: Number(seq_number)
       },
     });
 
@@ -45,19 +45,22 @@ export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
       });
       return;
     }
-    const productInfo = await Product.findOne({
+
+    const productRepo = getRepository(Product);
+    const productInfo = await productRepo.findOne({
       where: {
-        prod_code: tallyDetails.dataValues.prod_code,
-        company_code: req.user.company_code,
+        prodCode: tallyDetails.prod_code,
+        companyCode: req.user.company_code,
       },
     });
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {
-        ...tallyDetails.dataValues,
-        prod_name: productInfo?.dataValues.prod_name,
-        uom_count: productInfo?.dataValues.uom_count,
-        uppp: productInfo?.dataValues.uppp,
+        ...tallyDetails,
+        prod_name: productInfo?.prodName,
+        uom_count: productInfo?.uomCount,
+        uppp: productInfo?.uppp,
       },
     });
     return;
@@ -94,12 +97,11 @@ export const createTallyItem = async (req: RequestWithUser, res: Response) => {
       return;
     }
     if (!!req.body.prod_code) {
-      const productResponse = await Product.findOne({
+      const productRepo = getRepository(Product);
+      const productResponse = await productRepo.findOne({
         where: {
-          [Op.and]: [
-            { company_code: requestUser.company_code },
-            { prod_code: req.body.prod_code },
-          ],
+          companyCode: requestUser.company_code,
+          prodCode: req.body.prod_code,
         },
       });
       if (!productResponse) {
@@ -111,12 +113,11 @@ export const createTallyItem = async (req: RequestWithUser, res: Response) => {
       }
     }
     if (!!req.body.country_code) {
-      const countryResponse = await Country.findOne({
+      const countryRepo = getRepository(CountryMaster);
+      const countryResponse = await countryRepo.findOne({
         where: {
-          [Op.and]: [
-            { company_code: requestUser.company_code },
-            { country_code: req.body.country_code },
-          ],
+          company_code: requestUser.company_code,
+          country_code: req.body.country_code,
         },
       });
       if (!countryResponse) {
@@ -127,15 +128,31 @@ export const createTallyItem = async (req: RequestWithUser, res: Response) => {
         return;
       }
     }
-    const response = await TallyDetailsInboundWms.create({
+
+    const tallyDetailsRepo = getRepository(TiTallyDetail);
+    
+    // Get the maximum seq_number for this combination
+    const maxSeqResult = await tallyDetailsRepo
+      .createQueryBuilder("tally")
+      .select("MAX(tally.seq_number)", "max")
+      .where("tally.company_code = :company_code", { company_code: requestUser.company_code })
+      .andWhere("tally.job_no = :job_no", { job_no })
+      .andWhere("tally.prin_code = :prin_code", { prin_code })
+      .andWhere("tally.packdet_no = :packdet_no", { packdet_no })
+      .getRawOne();
+    
+    const nextSeqNumber = (maxSeqResult?.max || 0) + 1;
+    
+    const response = await tallyDetailsRepo.save({
       ...req.body,
-      packdet_no: "",
+      packdet_no: packdet_no,
+      seq_number: nextSeqNumber,
       company_code: requestUser.company_code,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
     });
 
-    const result: any = await sequelize.query(
+    const result: any = await AppDataSource.query(
       `UPDATE TI_PACKDET
       SET QTY1_ARRIVED = :v_pda_qty_puom,
           QTY2_ARRIVED = :v_pda_qty_luom,
@@ -145,20 +162,17 @@ export const createTallyItem = async (req: RequestWithUser, res: Response) => {
           AND PRIN_CODE = :v_prin_code
           AND PROD_CODE = :v_prod_code
           AND PACKDET_NO = :v_packdet_no`,
-   {
-          replacements: {
-              v_pda_qty_puom: pda_qty_puom, 
-              v_pda_qty_luom: pda_qty_luom, 
-              v_pda_quantity: pda_quantity,
-              v_company_code: requestUser.company_code, 
-              v_job_no: job_no, 
-              v_prin_code: prin_code, 
-              v_prod_code: prod_code,
-              v_packdet_no: packdet_no
-            },
-            type: QueryTypes.RAW,
-          }
-        );
+      [
+          pda_qty_puom, 
+          pda_qty_luom, 
+          pda_quantity,
+          requestUser.company_code, 
+          job_no, 
+          prin_code, 
+          prod_code,
+          packdet_no
+        ]
+    );
   
 
     if (!response) {
@@ -197,15 +211,14 @@ console.log ('seq_number',seq_number);
       return;
     }
 
-    const tallyResponse = await TallyDetailsInboundWms.findOne({
+    const tallyDetailsRepo = getRepository(TiTallyDetail);
+    const tallyResponse = await tallyDetailsRepo.findOne({
       where: {
-        [Op.and]: [
-          { company_code: requestUser.company_code },
-          { packdet_no },
-          { prin_code },
-          { job_no },
-          { seq_number},
-        ],
+        company_code: requestUser.company_code,
+        packdet_no: Number(packdet_no),
+        prin_code: prin_code as string,
+        job_no: job_no as string,
+        seq_number: Number(seq_number),
       },
     });
     if (!tallyResponse) {
@@ -216,12 +229,11 @@ console.log ('seq_number',seq_number);
       return;
     }
     if (!!req.body?.prod_code) {
-      const productResponse = await Product.findOne({
+      const productRepo = getRepository(Product);
+      const productResponse = await productRepo.findOne({
         where: {
-          [Op.and]: [
-            { company_code: requestUser.company_code },
-            { prod_code: req.body.prod_code },
-          ],
+          companyCode: requestUser.company_code,
+          prodCode: req.body.prod_code,
         },
       });
       if (!productResponse) {
@@ -234,12 +246,11 @@ console.log ('seq_number',seq_number);
     }
 
     if (!!req.body?.country_code) {
-      const countryResponse = await Country.findOne({
+      const countryRepo = getRepository(CountryMaster);
+      const countryResponse = await countryRepo.findOne({
         where: {
-          [Op.and]: [
-            { company_code: requestUser.company_code },
-            { country_code: req.body.country_code },
-          ],
+          company_code: requestUser.company_code,
+          country_code: req.body.country_code,
         },
       });
       if (!countryResponse) {
@@ -251,22 +262,18 @@ console.log ('seq_number',seq_number);
       }
     }
 
-    const response = await TallyDetailsInboundWms.update(
+    const response = await tallyDetailsRepo.update(
+      {
+        company_code: requestUser.company_code,
+        packdet_no: Number(packdet_no),
+        prin_code: prin_code as string,
+        job_no: job_no as string,
+        seq_number: Number(seq_number)
+      },
       {
         ...req.body,
         packdet_no: Number(packdet_no),
         updated_by: requestUser.loginid,
-      },
-      {
-        where: {
-          [Op.and]: [
-            { company_code: requestUser.company_code },
-            { packdet_no },
-            { prin_code },
-            { job_no },
-            { seq_number}
-          ],
-        },
       }
     );
     if (!response) {
@@ -302,6 +309,7 @@ export const deleteTallyItem = async (
       });
     }
 
+    const tallyDetailsRepo = getRepository(TiTallyDetail);
     await Promise.all(
       tally_details.map(
         async (TallyDetail: {
@@ -311,13 +319,11 @@ export const deleteTallyItem = async (
         }) => {
           const { prin_code, job_no, packdet_no } = TallyDetail;
 
-          return await TallyDetailsInboundWms.destroy({
-            where: {
-              prin_code,
-              job_no,
-              packdet_no,
-              company_code: requestUser.company_code,
-            },
+          return await tallyDetailsRepo.delete({
+            prin_code,
+            job_no,
+            packdet_no,
+            company_code: requestUser.company_code,
           });
         }
       )
@@ -358,7 +364,8 @@ export const createBulkTallyDetails = async (
       created_by: requestUser.loginid,
     }));
 
-    TallyDetailsInboundWms.bulkCreate(req.body, { ignoreDuplicates: true });
+    const tallyDetailsRepo = getRepository(TiTallyDetail);
+    await tallyDetailsRepo.insert(req.body);
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -384,22 +391,29 @@ export const exportTallyDetails = async (
     let fetchedData: any[] = [];
 
     const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
+      ? JSON.parse(req.query.filter as string)
       : {};
 
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [{ company_code: req.user.company_code }],
-      };
+    const whereConditions: any = {
+      company_code: req.user.company_code,
+    };
 
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
-      filter: filter.search,
-      outsideQuery,
+    // Apply search filters if present
+    if (filter.search) {
+      // Add TypeORM compatible search filters
+      // Example: if searching by prod_code
+      Object.keys(filter.search).forEach((key: string) => {
+        if ((filter.search as any)[key]) {
+          whereConditions[key] = Like(`%${(filter.search as any)[key]}%`);
+        }
+      });
+    }
+
+    const tallyDetailsRepo = getRepository(TiTallyDetail);
+    fetchedData = await tallyDetailsRepo.find({
+      where: whereConditions,
     });
-    fetchedData = await TallyDetailsInboundWms.findAll({
-      where: outsideQuery,
-    });
+
     csvTransform = fastCsv.format({
       headers: WmsCsvHeaders.TANSACTION.INBOUND.TALLY_DETAIL,
     });
@@ -413,8 +427,7 @@ export const exportTallyDetails = async (
 
     // Write data to the CSV stream
     fetchedData.forEach((eachData) => {
-      const plainData = eachData.get({ plain: true });
-      csvTransform.write(plainData); // Write each row to the CSV stream
+      csvTransform.write(eachData); // Write each row to the CSV stream
     });
 
     // End the CSV stream and pipe it to the response

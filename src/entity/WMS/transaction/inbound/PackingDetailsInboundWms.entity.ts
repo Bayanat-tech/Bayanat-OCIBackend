@@ -16,7 +16,7 @@ export class PackingDetailsInboundWms {
   @PrimaryColumn({ type: "varchar2", length: 10 })
   job_no: string;
 
-  @PrimaryColumn({ type: "number" })
+  @PrimaryColumn({ type: "number", name: "PACKDET_NO" })
   packdet_no: number;
 
   // Required columns

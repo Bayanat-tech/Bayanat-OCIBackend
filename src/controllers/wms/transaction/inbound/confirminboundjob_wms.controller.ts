@@ -111,21 +111,19 @@ export const confirmInboundjob = async (
 
     /**
      * Step 2️⃣: Call the Oracle stored procedure
-     * MySQL: CALL SP_WM_INB_PUTAWAY_CONFIRM(:a, :b, :c, NOW(), :d)
-     * Oracle: BEGIN SP_WM_INB_PUTAWAY_CONFIRM(:a, :b, :c, SYSDATE, :d); END;
+     * EXEC SP_putaway_confirm('BSG', '10000', 'IB25120005', SYSDATE);
      */
     const callProc = `
       BEGIN
-        SP_WM_INB_PUTAWAY_CONFIRM(:vs_company_code, :principal_code, :vs_job_no, SYSDATE, :vs_user);
+        SP_putaway_confirm(:vs_company_code, :principal_code, :vs_job_no, SYSDATE);
       END;
     `;
 
-    console.log("Calling stored procedure SP_WM_INB_PUTAWAY_CONFIRM...");
+    console.log("Calling stored procedure SP_putaway_confirm...");
     await connection.execute(callProc, {
       vs_company_code: company_code,
       principal_code: prin_code,
       vs_job_no: job_no,
-      vs_user: user_id,
     });
 
     // Commit all updates + procedure

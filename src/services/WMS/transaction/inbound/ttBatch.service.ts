@@ -89,7 +89,7 @@ export class TtBatchService {
       JOB_NO: data.JOB_NO,
       TXN_TYPE: data.TXN_TYPE,
       TXN_DATE: this.toDate(data.TXN_DATE) || new Date(),
-      // PACKDET_NO: data.PACKDET_NO,
+      PACKDET_NO: data.PACKDET_NO,
       KEY_NUMBER: data.KEY_NUMBER,
       PROD_CODE: data.PROD_CODE,
       SITE_CODE: data.SITE_CODE,

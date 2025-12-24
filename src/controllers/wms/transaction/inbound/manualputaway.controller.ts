@@ -80,7 +80,8 @@ export async function upsertPutawaymanualOracle(
         data.JOB_NO,
         data.TXN_TYPE,
         data.KEY_NUMBER ?? "",
-        connection
+        connection,
+        data.PACKDET_NO || 0
       );
 
       if (exists) {
@@ -88,6 +89,16 @@ export async function upsertPutawaymanualOracle(
       } else {
         await insertPutawaymanual(data, connection);
       }
+
+      // Update all records with the same JOB_NO
+      await connection.execute(
+        `UPDATE TT_BATCH 
+         SET CONFIRMED = 'N', 
+             SELECTED = 'Y', 
+             ALLOCATED = 'Y' 
+         WHERE JOB_NO = :jobNo`,
+        { jobNo: data.JOB_NO }
+      );
 
       await connection.commit();
       return data.JOB_NO;
@@ -117,7 +128,8 @@ async function recordExists(
   jobNo: string,
   txnType: string,
   keyNumber: string,
-  connection: oracledb.Connection
+  connection: oracledb.Connection,
+  packdetNo: any
 ): Promise<boolean> {
   const result = await connection.execute(
     `SELECT 1 

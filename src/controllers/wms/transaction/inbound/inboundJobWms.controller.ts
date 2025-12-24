@@ -1,27 +1,27 @@
-// /**
-//  * @fileoverview Controller for handling inbound job operations in WMS
-//  * @imports Required dependencies and models
-//  */
-// import { Response } from "express";
-// import constants from "../../../../helpers/constants";
-// import {
-//   ISearch,
-//   RequestWithUser,
-// } from "../../../../interfaces/common.interface";
-// import { IUser } from "../../../../interfaces/user.interface";
-// import { InboundJobWmsService } from "../../../../services/WMS/transaction/inbound/inboundJobWms.service";
-// import { AppDataSource } from "../../../../database/connection"; // Update with your TypeORM DataSource
+/**
+ * @fileoverview Controller for handling inbound job operations in WMS
+ * @imports Required dependencies and models
+ */
+import { Response } from "express";
+import constants from "../../../../helpers/constants";
+import {
+  ISearch,
+  RequestWithUser,
+} from "../../../../interfaces/common.interface";
+import { IUser } from "../../../../interfaces/user.interface";
+import { InboundJobWmsService } from "../../../../services/WMS/transaction/inbound/inboundJobWms.service";
+import { AppDataSource } from "../../../../database/connection"; // Update with your TypeORM DataSource
 
-// // Initialize service
-// const inboundJobWmsService = new InboundJobWmsService(AppDataSource);
+// Initialize service
+const inboundJobWmsService = new InboundJobWmsService();
 
-// /**
-//  * @function getInboundJob
-//  * @description Retrieves a single inbound job by job number
-//  * @param {RequestWithUser} req - Express request object with user data
-//  * @param {Response} res - Express response object
-//  * @returns {Promise<void>} JSON response with job data or error
-//  */
+/**
+ * @function getInboundJob
+ * @description Retrieves a single inbound job by job number
+ * @param {RequestWithUser} req - Express request object with user data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>} JSON response with job data or error
+ */
 // export const getInboundJob = async (req: RequestWithUser, res: Response) => {
 //   try {
 //     console.log("Fetching inbound job with params:", req.params);
@@ -75,13 +75,13 @@
 //   }
 // };
 
-// /**
-//  * @function getReports
-//  * @description Retrieves GRN reports with pagination, filtering and sorting
-//  * @param {RequestWithUser} req - Express request object with user data
-//  * @param {Response} res - Express response object
-//  * @returns {Promise<void>} JSON response with formatted report data or error
-//  */
+/**
+ * @function getReports
+ * @description Retrieves GRN reports with pagination, filtering and sorting
+ * @param {RequestWithUser} req - Express request object with user data
+ * @param {Response} res - Express response object
+ * @returns {Promise<void>} JSON response with formatted report data or error
+ */
 // export const getReports = async (req: RequestWithUser, res: Response) => {
 //   try {
 //     // Extract request parameters and setup pagination
@@ -120,30 +120,30 @@
 //   }
 // };
 
-// export const getTallyProductData = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   const requestUser: IUser = req.user;
-//   const uniqueCode = req.query.prin_code as string;
-//   const uniqueCode2 = req.query.job_no as string;
-//   const uniqueCode3 = req.query.container_no as string;
+export const getTallyProductData = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  const requestUser: IUser = req.user;
+  const uniqueCode = req.query.prin_code as string;
+  const uniqueCode2 = req.query.job_no as string;
+  const uniqueCode3 = req.query.container_no as string;
   
-//   try {
-//     console.log("Fetching tally product data with params:", { uniqueCode, uniqueCode2, uniqueCode3 });
-//     const fetchedData = await inboundJobWmsService.getTallyProductData(
-//       uniqueCode,
-//       uniqueCode2,
-//       uniqueCode3
-//     );
+  try {
+    console.log("Fetching tally product data with params:", { uniqueCode, uniqueCode2, uniqueCode3 });
+    const fetchedData = await inboundJobWmsService.getTallyProductData(
+      uniqueCode,
+      uniqueCode2,
+      uniqueCode3
+    );
 
-//     res.status(200).json({
-//       success: true,
-//       data: fetchedData,
-//     });
-//     return;
-//   } catch (error: any) {
-//     console.error("Error in getTallyProductData:", error.message);
-//     res.status(400).json({ success: false, message: error.message });
-//   }
-// };
+    res.status(200).json({
+      success: true,
+      data: fetchedData,
+    });
+    return;
+  } catch (error: any) {
+    console.error("Error in getTallyProductData:", error.message);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};

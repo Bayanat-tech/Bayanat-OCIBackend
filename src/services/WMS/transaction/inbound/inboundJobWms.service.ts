@@ -1,9 +1,41 @@
 import { getRepository } from "../../../../database/connection";
 import { InboundJobWms } from "../../../../entity/WMS/transaction/inbound/InboundJobWms.entity";
+import { PackingDetailsInboundWms } from "../../../../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity";
 import { IJobInboundWms } from "../../../../interfaces/wms/transaction/inbound/inboundJobWms.interface";
 import { FindManyOptions } from "typeorm";
+import {TiTallyDetail} from "../../../../entity/WMS/TiTallyDetail.entity"
 
 export class InboundJobWmsService {
+  async getTallyProductData(prin_code: string, job_no: string, container_no: string) {
+    try {
+      const repository = getRepository(PackingDetailsInboundWms);
+      
+      // Build where conditions
+      const whereConditions: any = {
+        prin_code: prin_code,
+        job_no: job_no,
+      };
+      
+      // Add container_no filter if provided
+      if (container_no) {
+        whereConditions.container_no = container_no;
+      }
+      
+      // Query the packing details for tally data
+      const tallyData = await repository.find({
+        where: whereConditions,
+        order: {
+          packdet_no: "ASC"
+        }
+      });
+      
+      return tallyData;
+    } catch (error: any) {
+      console.error("Error fetching tally product data:", error);
+      throw new Error(`Failed to fetch tally product data: ${error.message}`);
+    }
+  }
+  
   private static getInboundJobRepository() {
     return getRepository(InboundJobWms);
   }

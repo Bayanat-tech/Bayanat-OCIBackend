@@ -6,11 +6,11 @@
 
 import * as express from "express";
 import passport from "passport";
-// import {
-//   getInboundJob,
-//   getReports,
-//   getTallyProductData,
-// } from "../../../controllers/wms/transaction/inbound/inboundJobWms.controller";
+import {
+  // getInboundJob,
+  // getReports,
+  getTallyProductData,
+} from "../../../controllers/wms/transaction/inbound/inboundJobWms.controller";
 import {
   createBulkPAckingDetails, // Create multiple packing details at once
   createPackingItem, // Create single packing item
@@ -21,14 +21,14 @@ import {
   addReceivingDetails, // Add receiving details (qty1_arrived, qty2_arrived)
   updateClearanceStatus, // Update clearance status to 'Y'
 } from "../../../controllers/wms/transaction/inbound/packingDetails_wms.controller";
-// import {
-//   createBulkTallyDetails, // Create multiple tally details
-//   createTallyItem, // Create single tally item
-//   deleteTallyItem, // Delete tally item
-//   exportTallyDetails, // Export tally details
-//   getTallyDetail, // Get tally details
-//   updateTallyItem, // Update tally item
-// } from "../../../controllers/wms/transaction/inbound/tallyDetails_wms.controller";
+import {
+  // createBulkTallyDetails, // Create multiple tally details
+  createTallyItem, // Create single tally item
+  // deleteTallyItem, // Delete tally item
+  // exportTallyDetails, // Export tally details
+  // getTallyDetail, // Get tally details
+  // updateTallyItem, // Update tally item
+} from "../../../controllers/wms/transaction/inbound/tallyDetails_wms.controller";
 
 import {
   createBulkShipmentDetails, // Create multiple shipment details
@@ -61,11 +61,18 @@ import {
 } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
 
 // import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
-import {upsertPutawaymanualHandlerTypeORM} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
+import {upsertPutawaymanualOracle} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 const router = express.Router();
 
 // router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
-router.post("/upsertPutawaymanualHandler", upsertPutawaymanualHandlerTypeORM);
+router.post("/upsertPutawaymanualHandler", async (req, res, next) => {
+  try {
+    const result = await upsertPutawaymanualOracle(req.body);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
 router.post('/executeRawSql', executeRawSql);
 router.post('/executeRawSqlbody', executeRawSqlbody);
 // router.get('/getddSiteLocation',getddSiteLocation)
@@ -171,19 +178,19 @@ router.put(
 // Tally Details routes - Handle all tally related operations
 // router.get("/tally_details/export", exportTallyDetails);
 // router.get("/tally_details", getTallyDetail);
-// router.get("/tally_product_data", getTallyProductData);
+router.get("/tally_product_data", getTallyProductData);
 
 // router.post(
 //   "/Putawaywithpalletid",  Putawaywithpalletid
 // );
 
 
-// router.post(
-//   "/tally_details",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   createTallyItem
-// );
+router.post(
+  "/tally_details",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  createTallyItem
+);
 // router.post("/tally_details/bulk", createBulkTallyDetails);
 // router.post(
 //   "/tally_details/delete",
