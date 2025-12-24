@@ -12,6 +12,9 @@ export const getddPrinceProduct = async (
   try {
     const { company_code, prin_code } = req.query;
 
+    const company_code_copy = 'BSG';
+    const prin_code_copy = '10006';
+
     if (!company_code || !prin_code) {
       res.status(400).json({
         success: false,
@@ -43,15 +46,18 @@ export const getddPrinceProduct = async (
     //   }
     // );
 
+    console.log("Fetching product data for company_code:", company_code, "prin_code:", prin_code);
+    console.log("Fetching product data for company_code copy:", company_code_copy, "prin_code_copy:", prin_code_copy);
+
     // Option 2: Using your view (without filters)
     const productData = await oracleDb.query(
       `SELECT * FROM VW_PRODUCT_AVL_QTY
-       WHERE COMPANY_CODE = :company_code 
-         AND PRIN_CODE = :prin_code
+       WHERE COMPANY_CODE = ':company_code_copy' 
+         AND PRIN_CODE = ':prin_code_copy'
          AND ROWNUM <= 5000`,
       {
-        company_code,
-        prin_code
+        company_code_copy,
+        prin_code_copy
       }
     );
 

@@ -493,13 +493,22 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
     const { prin_code, preference, pick, min_qty, exp_period } = req.query;
     const { serial_no } = req.body;
 
+    // const updateSelectedSql = `
+    //   UPDATE TO_ORDER_DET
+    //   SET selected = 'Y'
+    //   WHERE company_code = :company_code 
+    //     AND prin_code = :prin_code 
+    //     AND job_no = :job_no 
+    //     AND serial_no = :serial_no
+    // `;
+ 
+
     const updateSelectedSql = `
-      UPDATE TO_ORDER_DET
-      SET selected = 'Y'
+      UPDATE TO_ORDER_DET 
+      SET PICKED = 'N', selected = 'Y'
       WHERE company_code = :company_code 
         AND prin_code = :prin_code 
         AND job_no = :job_no 
-        AND serial_no = :serial_no
     `;
 
     const bindParams = {
