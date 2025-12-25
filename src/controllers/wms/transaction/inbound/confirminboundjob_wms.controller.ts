@@ -90,21 +90,21 @@ export const confirmInboundjob = async (
         SET SELECTED = 'Y'
         WHERE COMPANY_CODE = :company_code
           AND JOB_NO = :job_no
-          AND PRIN_CODE = :prin_code
-          AND KEY_NUMBER IN (${packdet_no.map((_, i) => `:key${i}`).join(", ")})
-      `;
-
+          AND PRIN_CODE = :prin_code  `;
+     //    AND KEY_NUMBER IN (${packdet_no.map((_, i) => `:key${i}`).join(", ")})
+    //  `;
+console.log('updateQuery',updateQuery);
       const binds: Record<string, any> = {
         company_code,
         job_no,
         prin_code,
       };
 
-      packdet_no.forEach((val: string, i: number) => {
-        binds[`key${i}`] = val;
-      });
+   //   packdet_no.forEach((val: string, i: number) => {
+  //      binds[`key${i}`] = val;
+  //    });
 
-      console.log("Executing TT_BATCH update...");
+      console.log("Executing TT_BATCH update...",updateQuery);
       await connection.execute(updateQuery, binds, { autoCommit: false });
       console.log("TT_BATCH update completed.");
     }
@@ -115,7 +115,7 @@ export const confirmInboundjob = async (
      */
     const callProc = `
       BEGIN
-        SP_putaway_confirm(:vs_company_code, :principal_code, :vs_job_no, SYSDATE);
+        SP_putaway_confirm(:vs_company_code, :principal_code, :vs_job_no, SYSDATE + 1);
       END;
     `;
 
