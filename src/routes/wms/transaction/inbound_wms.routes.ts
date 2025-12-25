@@ -48,7 +48,7 @@ import { checkUserAuthorization } from "../../../middleware/checkUserAthorizatio
 import createinboundjobWms from "../../../views/wms/transportation/inbound/createinboundJobWms";
 import {executeRawSql,executeRawSqlbody} from "../../../../src/controllers/wms.controller"
 import {createInboundjob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
-// import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
+ import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
 // import  { getddSiteLocation }   from "../../../../src/views/wms/transportation/inbound/ddSiteLocation"
 // import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
 import {
@@ -180,9 +180,9 @@ router.put(
 // router.get("/tally_details", getTallyDetail);
 router.get("/tally_product_data", getTallyProductData);
 
-// router.post(
-//   "/Putawaywithpalletid",  Putawaywithpalletid
-// );
+router.post(
+   "/Putawaywithpalletid",  Putawaywithpalletid
+ );
 
 
 router.post(
