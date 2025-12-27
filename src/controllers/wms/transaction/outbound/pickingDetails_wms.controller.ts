@@ -238,7 +238,7 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
             AND job_no = :job_no
             AND key_number IN (${placeholders})
         `;
-        
+console.log('placeholders',placeholders)      ;  
         const bindParams: any = {
           company_code,
           prin_code,
@@ -256,7 +256,7 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
       if (toggledPackets > 0) {
         // Call Oracle stored procedure
         await oracleDb.query(
-          `BEGIN SP_WM_PICK_CONFIRM1(:vs_company_code, :vs_principal_code, :vs_job_no, :vdt_confirm); END;`,
+          `BEGIN SP_WM_PICK_CONFIRM(:vs_company_code, :vs_principal_code, :vs_job_no, :vdt_confirm); END;`,
           {
             vs_company_code: company_code,
             vs_principal_code: prin_code,

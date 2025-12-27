@@ -8,8 +8,9 @@ export const getddPrinceProduct = async (
 ): Promise<void> => {
   try {
     // Temporary hardcoded values
-    const company_code = "BSG";
-    const prin_code = "10006";
+    const { company_code, prin_code } = req.query;
+    //const company_code = "BSG";
+   // const prin_code = "10006";
 
     const sql = `
       SELECT
