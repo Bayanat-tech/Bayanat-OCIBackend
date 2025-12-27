@@ -7,14 +7,9 @@ export const getddPrinceProduct = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // 🔹 Temporary hardcoded values (for now)
+    // Temporary hardcoded values
     const company_code = "BSG";
     const prin_code = "10006";
-
-    // 🔹 Future-ready (uncomment later)
-    // const { company_code, prin_code } = req.query;
-
-    console.log("Fetching product data:", company_code, prin_code);
 
     const sql = `
       SELECT
@@ -35,11 +30,16 @@ export const getddPrinceProduct = async (
 
     const binds = { company_code, prin_code };
 
-    // 🔹 Execute using existing pooled connection
     const result = await oracleDb.query(sql, binds);
 
-    // 🔹 AG Grid-friendly response
-    res.status(200).json(result.rows ?? []);
+    const rows = result.rows ?? [];
+
+    // ✅ Required response format
+    res.status(200).json({
+      success: true,
+      data: rows,
+      totalCount: rows.length
+    });
 
   } catch (error) {
     console.error("Error fetching product data:", error);
