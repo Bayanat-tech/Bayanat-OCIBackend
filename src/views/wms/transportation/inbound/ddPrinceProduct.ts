@@ -7,46 +7,41 @@ export const getddPrinceProduct = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { company_code, prin_code } = req.query;
+    // 🔹 Temporary hardcoded values (for now)
+    const company_code = "BSG";
+    const prin_code = "10006";
 
-    // Temporary hardcoded values
-    const company_code_copy = "BSG";
-    const prin_code_copy = "10006";
+    // 🔹 Future-ready (uncomment later)
+    // const { company_code, prin_code } = req.query;
 
-    if (!company_code || !prin_code) {
-      res.status(400).json({
-        success: false,
-        message: "Parameters 'company_code' and 'prin_code' are required.",
-      });
-      return;
-    }
-
-    console.log(
-      "Fetching product data:",
-      company_code_copy,
-      prin_code_copy
-    );
+    console.log("Fetching product data:", company_code, prin_code);
 
     const sql = `
-      SELECT *
+      SELECT
+        COMPANY_CODE,
+        PRIN_CODE,
+        PROD_CODE,
+        PROD_NAME,
+        P_UOM,
+        L_UOM,
+        UPPP,
+        UPP,
+        QTY_AVL
       FROM VW_PRODUCT_AVL_QTY
-      WHERE COMPANY_CODE = :1
-        AND PRIN_CODE = :2
+      WHERE COMPANY_CODE = :company_code
+        AND PRIN_CODE = :prin_code
         AND ROWNUM <= 5000
     `;
 
-    const productData = await oracleDb.query(sql, [
-      company_code_copy,
-      prin_code_copy
-    ]);
+    const binds = { company_code, prin_code };
 
-    const data = productData || [];
+    // 🔹 Execute using existing pooled connection
+    const result = await oracleDb.query(sql, binds);
 
-    res.status(200).json({
-      success: true,
-      data
-    });
-  } catch (error: any) {
+    // 🔹 AG Grid-friendly response
+    res.status(200).json(result.rows ?? []);
+
+  } catch (error) {
     console.error("Error fetching product data:", error);
     next(error);
   }
