@@ -198,6 +198,7 @@ export const executeRawSql = async (req: Request, res: Response): Promise<void> 
 
 export const executeRawSqlbody = async (req: Request, res: Response): Promise<void> => {
   let connection: any = null;
+  let rawSql: string | undefined = undefined;
   try {
     const { query_parameter, query_where, query_updatevalues } = req.body;
 
@@ -213,6 +214,13 @@ export const executeRawSqlbody = async (req: Request, res: Response): Promise<vo
 
     console.log("Final WHERE string:", cleanWhere);
     console.log("Final UPDATE values string:", cleanUpdate);
+
+    const parameterMatch = query_parameter.match(/^([^$]+)\$+(.+)$/);
+    const extractedParameter = parameterMatch ? parameterMatch[1] : query_parameter;
+    const extractedCompanyCode = parameterMatch ? parameterMatch[2] : "unknown";
+    
+    console.log("Extracted Parameter:", extractedParameter);
+    console.log("Extracted Company Code:", extractedCompanyCode);
 
     connection = await oracledb.getConnection();
 
@@ -248,21 +256,23 @@ export const executeRawSqlbody = async (req: Request, res: Response): Promise<vo
       res.status(400).json({ 
         error: "Invalid or missing SQL template", 
         details: rawSql || "No SQL returned from procedure",
+        requiredTemplate: {
+          parameter: extractedParameter,
+          companyCode: extractedCompanyCode,
+          message: `Template required in TBL_SQL_STRING_INFO with PARAMETER='${extractedParameter}' and COMPANY_CODE='${extractedCompanyCode}'`
+        },
         parameters: { query_parameter, cleanWhere, cleanUpdate }
       });
       return;
     }
 
-    // 🧹 Strip trailing semicolon
     rawSql = rawSql.trim().replace(/;$/, "");
     console.log("Generated rawSql:", rawSql);
 
-    // 2️⃣ Execute the SELECT statement returned by procedure
     const dataResult = await connection.execute(rawSql, [], {
       outFormat: oracledb.OUT_FORMAT_ARRAY
     }) as any;
 
-    // Safely map rows to lowercase keys
     const tableData =
       dataResult.rows?.map((row: any) => {
         const obj: Record<string, any> = {};
@@ -273,8 +283,6 @@ export const executeRawSqlbody = async (req: Request, res: Response): Promise<vo
       }) || [];
 
     console.log("Query executed successfully, rows returned:", tableData.length);
-
-    // 3️⃣ Send rows to frontend
     res.json({
       success: true,
       data: tableData,
@@ -283,11 +291,27 @@ export const executeRawSqlbody = async (req: Request, res: Response): Promise<vo
   } catch (error: any) {
     console.error("SQL Execution Error:", error);
     console.error("Error details - Code:", error.code, "Message:", error.message);
-    res.status(500).json({
-      error: "Failed to execute SQL",
-      details: error.message,
-      code: error.code || "UNKNOWN",
-    });
+    
+    // For ORA-00904 (invalid identifier), provide column debugging info
+    if (error.code === 904) {
+      console.error("Invalid column name in ORDER BY or SELECT clause");
+      console.error("Generated SQL:", rawSql);
+      
+      res.status(400).json({
+        error: "Invalid column in generated SQL",
+        details: error.message,
+        code: error.code,
+        generatedSql: rawSql,
+        hint: "Check that the ORDER_BY column exists in the view/table. Verify TBL_SQL_STRING_INFO template has valid column names.",
+        parameters: { query_parameter: req.body?.query_parameter }
+      });
+    } else {
+      res.status(500).json({
+        error: "Failed to execute SQL",
+        details: error.message,
+        code: error.code || "UNKNOWN",
+      });
+    }
   } finally {
     // Close connection
     if (connection) {
@@ -381,10 +405,13 @@ export const proc_build_dynamic_sql_wms = async (req: Request, res: Response): P
 
     console.log("Procedure output_sql (raw):", rawSql);
 
-    if (!rawSql || rawSql.toLowerCase().includes("no sql") || rawSql.toLowerCase().includes("error")) {
+    if (!rawSql || 
+        rawSql.toLowerCase().includes("no sql") || 
+        rawSql.toLowerCase().includes("error") ||
+        rawSql.toLowerCase().includes("invalid parameter")) {
       console.error("Procedure returned an error or invalid SQL:", rawSql);
       res.status(400).json({ 
-        error: "Invalid or missing SQL template", 
+        error: "Invalid parameter or missing SQL template", 
         details: rawSql || "No SQL returned from procedure",
         parameters: { parameter, loginid, code1, code2, code3, code4, number1, number2, number3, number4, date1, date2, date3, date4 }
       });
