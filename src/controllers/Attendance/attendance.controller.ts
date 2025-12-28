@@ -197,7 +197,7 @@ export class AttendanceController {
     const message = error instanceof Error ? error.message : String(error);
     res.status(500).json({ success: false, message });
   }
-}
+ }
 
   // 🆕 GET PROXY LOGS (Admin)
   static async getProxyLogs(req: Request, res: Response): Promise<void> {

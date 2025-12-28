@@ -12,6 +12,8 @@ import {
   subDays,
 } from "date-fns";
 import { AppDataSource, oracleDb } from "../../database/connection";
+import { Between, MoreThanOrEqual } from "typeorm";
+import employee from "../../models/Attendance/employee";
 
 interface DepartmentSummary {
   total: number;
@@ -71,25 +73,18 @@ export class DashboardController {
       const today = new Date();
 
       const Attendance = AppDataSource.getRepository(AttendanceRecord);
-      const summary = (await Attendance.find({
+      const summary = await Attendance.find({
         where: {
-          date: Between(
+          record_date: Between(
              startOfDay(today),
              endOfDay(today),
           ),
         },
-        include: [
-          {
-            model: Employee,
-            as: "employee",
-            attributes: ["full_name", "department"],
-            required: true,
-          },
-        ],
-        attributes: ["status", "check_in", "check_out", "employee_id"],
-        raw: true,
-        nest: true,
-      })) as unknown as AttendanceWithEmployee[];
+        relations: {
+          employee: true,
+        },
+        select: ["status", "check_in", "check_out", "employee_id"],
+      }) as unknown as AttendanceWithEmployee[];
 
       const stats: DailySummaryStats = {
         total: summary.length,
@@ -239,20 +234,27 @@ export class DashboardController {
       const { days = 30 } = req.query;
       const startDate = subDays(new Date(), Number(days));
 
-      const history = await AttendanceRecord.findAll({
+      const attendanceRecord = AppDataSource.getRepository(AttendanceRecord);
+
+      const history = await attendanceRecord.find({
         where: {
           employee_id,
-          date: { [Op.gte]: startDate },
+          record_date: MoreThanOrEqual(startDate),
         },
-        include: [
-          {
-            model: Employee,
-            as: "employee",
-            attributes: ["full_name", "department"],
+        relations: {
+            employee: true,
           },
-        ],
-        attributes: ["date", "check_in", "check_out", "status"],
-        order: [["date", "DESC"]],
+         select: {
+              record_date: true,
+              check_in: true,
+              check_out: true,
+              status: true,
+              employee: {
+                full_name: true,
+                department: true,
+              },
+          },
+        order: { record_date: "DESC" },
       });
 
       const stats = {

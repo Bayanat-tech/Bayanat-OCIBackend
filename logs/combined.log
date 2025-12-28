@@ -1,0 +1,764 @@
+2025-12-26 14:01:22 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 14:01:22 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 14:01:22 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 14:01:22 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 14:01:22 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 14:01:22 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 14:01:23 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 14:01:23 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 14:01:23 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 14:31:22 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 14:45:23 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-26 14:45:23 [[33mwarn[39m]: Face descriptor extraction failed (attempting to reload models): 
+2025-12-26 14:45:25 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-26 14:45:25 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-26 14:45:55 [[32minfo[39m]: Face descriptor extracted in 2424ms 
+2025-12-26 14:46:01 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 14:46:01 [[32minfo[39m]: Match found: 801 in 6573ms (62.2% confidence) 
+2025-12-26 14:46:01 [[31merror[39m]: Attendance marking error: employee_entity_1.Employee.findOne is not a function 
+TypeError: employee_entity_1.Employee.findOne is not a function
+    at Function.getEmployeeWithCache (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:274:47)
+    at async Promise.all (index 0)
+    at async Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:90:36)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 14:46:01 [[31merror[39m]: Attendance marking error employee_entity_1.Employee.findOne is not a function 
+TypeError: employee_entity_1.Employee.findOne is not a function
+    at Function.getEmployeeWithCache (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:274:47)
+    at async Promise.all (index 0)
+    at async Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:90:36)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 14:46:03 [[32minfo[39m]: Face descriptor extracted in 1872ms 
+2025-12-26 14:46:03 [[32minfo[39m]: Match found: 801 in 7ms (62.2% confidence) 
+2025-12-26 14:50:07 [[32minfo[39m]: Face descriptor extracted in 4618ms 
+2025-12-26 14:50:07 [[32minfo[39m]: Match found: 801 in 25ms (60.5% confidence) 
+2025-12-26 14:50:07 [[31merror[39m]: Attendance marking error: employee_entity_1.Employee.findOne is not a function 
+TypeError: employee_entity_1.Employee.findOne is not a function
+    at Function.getEmployeeWithCache (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:274:47)
+    at async Promise.all (index 0)
+    at async Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:90:36)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 14:50:07 [[31merror[39m]: Attendance marking error employee_entity_1.Employee.findOne is not a function 
+TypeError: employee_entity_1.Employee.findOne is not a function
+    at Function.getEmployeeWithCache (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:274:47)
+    at async Promise.all (index 0)
+    at async Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:90:36)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 14:50:10 [[32minfo[39m]: Face descriptor extracted in 3785ms 
+2025-12-26 14:50:10 [[32minfo[39m]: Match found: 801 in 22ms (60.5% confidence) 
+2025-12-26 15:01:22 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 15:03:17 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 15:03:17 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 15:03:17 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 15:03:17 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 15:03:17 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 15:03:18 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 15:03:21 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 15:03:21 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 15:03:21 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 15:03:26 [[32minfo[39m]: Face descriptor extracted in 5295ms 
+2025-12-26 15:03:35 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 15:03:35 [[32minfo[39m]: Match found: 801 in 8717ms (56.2% confidence) 
+2025-12-26 15:03:39 [[32minfo[39m]: Face descriptor extracted in 4412ms 
+2025-12-26 15:03:39 [[32minfo[39m]: Match found: 801 in 31ms (56.2% confidence) 
+2025-12-26 15:03:40 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:97:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 15:03:40 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:97:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 15:20:06 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 15:20:06 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 15:20:06 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 15:20:06 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 15:20:06 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 15:20:06 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 15:20:09 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 15:20:09 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 15:20:09 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 15:22:31 [[32minfo[39m]: File uploaded to OCI Object Storage: employee_faces/00801/496798bf-2ebb-46c9-ad68-063fa83e531a.jpg 
+2025-12-26 15:22:36 [[32minfo[39m]: Face descriptor extracted in 5266ms 
+2025-12-26 15:22:38 [[31merror[39m]: Employee registration failed ORA-01484: arrays can only be bound to PL/SQL statements 
+QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
+    at OracleQueryRunner.query (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async InsertQueryBuilder.execute (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\InsertQueryBuilder.ts:164:33)
+    at async SubjectExecutor.executeInsertOperations (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\persistence\SubjectExecutor.ts:467:25)
+    at async SubjectExecutor.execute (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\persistence\SubjectExecutor.ts:137:9)
+    at async EntityPersistExecutor.execute (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\persistence\EntityPersistExecutor.ts:182:21)
+    at async Function.registerEmployee (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:96:7)
+2025-12-26 15:36:30 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 15:36:30 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 15:36:31 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 15:36:31 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 15:36:31 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 15:36:31 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 15:36:33 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 15:36:33 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 15:36:33 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 15:37:57 [[33mwarn[39m]: Registration attempt with duplicate employee_id: 00801 
+2025-12-26 15:39:08 [[32minfo[39m]: Face descriptor extracted in 6795ms 
+2025-12-26 15:39:16 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 15:39:16 [[32minfo[39m]: Match found: 801 in 7812ms (57.2% confidence) 
+2025-12-26 15:39:22 [[32minfo[39m]: Face descriptor extracted in 6517ms 
+2025-12-26 15:39:22 [[32minfo[39m]: Match found: 801 in 38ms (57.2% confidence) 
+2025-12-26 15:39:22 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:97:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 15:39:22 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:97:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 16:06:31 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 16:36:31 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 16:48:04 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 16:48:04 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 16:48:04 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 16:48:04 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 16:48:04 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 16:48:04 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 16:48:07 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 16:48:07 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 16:48:07 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 16:48:12 [[32minfo[39m]: Face descriptor extracted in 4566ms 
+2025-12-26 16:48:20 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 16:48:20 [[32minfo[39m]: Match found: 801 in 7870ms (57.8% confidence) 
+2025-12-26 16:48:24 [[32minfo[39m]: Face descriptor extracted in 4076ms 
+2025-12-26 16:48:24 [[32minfo[39m]: Match found: 801 in 23ms (57.8% confidence) 
+2025-12-26 16:48:24 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:91:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 16:48:24 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:91:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 17:18:04 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 17:49:57 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 18:25:50 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 19:15:09 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 19:54:02 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 20:09:37 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 20:09:37 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 20:09:37 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 20:09:37 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 20:09:37 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 20:09:37 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 20:09:40 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 20:09:40 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 20:09:40 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 20:13:10 [[32minfo[39m]: Face descriptor extracted in 6013ms 
+2025-12-26 20:13:20 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 20:13:20 [[32minfo[39m]: Match found: 801 in 9326ms (63.2% confidence) 
+2025-12-26 20:13:25 [[32minfo[39m]: Face descriptor extracted in 4947ms 
+2025-12-26 20:13:25 [[32minfo[39m]: Match found: 801 in 18ms (63.2% confidence) 
+2025-12-26 20:13:25 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:88:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 20:13:25 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:88:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 20:15:44 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 20:15:44 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 20:15:44 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 20:15:44 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 20:15:44 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 20:15:44 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 20:15:48 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 20:15:48 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 20:15:48 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 20:15:53 [[32minfo[39m]: Face descriptor extracted in 5235ms 
+2025-12-26 20:16:02 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 20:16:02 [[32minfo[39m]: Match found: 801 in 8642ms (63.5% confidence) 
+2025-12-26 20:16:06 [[32minfo[39m]: Face descriptor extracted in 4491ms 
+2025-12-26 20:16:06 [[32minfo[39m]: Match found: 801 in 13ms (63.5% confidence) 
+2025-12-26 20:16:06 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:88:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 20:16:06 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:88:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 20:45:44 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-26 21:34:08 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 21:34:08 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 21:34:08 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 21:34:08 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 21:34:08 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 21:34:09 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 21:34:12 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 21:34:12 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 21:34:12 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 21:34:17 [[32minfo[39m]: Face descriptor extracted in 5302ms 
+2025-12-26 21:34:24 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 21:34:24 [[32minfo[39m]: Match found: 801 in 7020ms (61.8% confidence) 
+2025-12-26 21:34:24 [[32minfo[39m]: getEmployeeWithCache: 
+2025-12-26 21:34:29 [[32minfo[39m]: Face descriptor extracted in 5104ms 
+2025-12-26 21:34:29 [[32minfo[39m]: Match found: 801 in 20ms (61.8% confidence) 
+2025-12-26 21:34:29 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 21:34:29 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 21:50:03 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 21:50:03 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 21:50:03 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 21:50:04 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 21:50:04 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 21:50:04 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 21:50:08 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 21:50:08 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 21:50:08 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 21:50:13 [[32minfo[39m]: Face descriptor extracted in 5420ms 
+2025-12-26 21:50:19 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 21:50:19 [[32minfo[39m]: Match found: 801 in 6566ms (58.2% confidence) 
+2025-12-26 21:50:20 [[32minfo[39m]: 🔍 getEmployeeWithCache called with employeeId: 
+2025-12-26 21:50:24 [[32minfo[39m]: Face descriptor extracted in 4338ms 
+2025-12-26 21:50:24 [[32minfo[39m]: Match found: 801 in 20ms (58.2% confidence) 
+2025-12-26 21:50:24 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 21:50:24 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 22:16:41 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 22:16:42 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 22:16:42 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 22:16:42 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 22:16:42 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 22:16:42 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 22:16:46 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 22:16:46 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 22:16:46 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 22:16:52 [[32minfo[39m]: Face descriptor extracted in 6010ms 
+2025-12-26 22:16:58 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 22:16:58 [[32minfo[39m]: Match found: 444 in 6065ms (54.2% confidence) 
+2025-12-26 22:17:03 [[32minfo[39m]: Face descriptor extracted in 5213ms 
+2025-12-26 22:17:03 [[32minfo[39m]: Match found: 444 in 19ms (54.2% confidence) 
+2025-12-26 22:17:04 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:91:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 22:17:04 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:91:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 22:39:07 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-26 22:39:08 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-26 22:39:08 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-26 22:39:08 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-26 22:39:08 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-26 22:39:08 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-26 22:39:16 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-26 22:39:16 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-26 22:39:16 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-26 22:39:26 [[32minfo[39m]: Face descriptor extracted in 10592ms 
+2025-12-26 22:39:34 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-26 22:39:34 [[32minfo[39m]: Match found: 801 in 7971ms (60.6% confidence) 
+2025-12-26 22:39:43 [[32minfo[39m]: Face descriptor extracted in 8950ms 
+2025-12-26 22:39:43 [[32minfo[39m]: Match found: 801 in 34ms (60.6% confidence) 
+2025-12-26 22:39:43 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 22:39:43 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-26 23:10:16 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 15:38:52 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 16:08:52 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 16:31:22 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-27 16:31:22 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-27 16:31:22 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-27 16:31:22 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-27 16:31:22 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-27 16:31:23 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-27 16:31:25 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-27 16:31:25 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-27 16:31:25 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-27 16:31:26 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-27 16:31:26 [[33mwarn[39m]: Face descriptor extraction failed (attempting to reload models): 
+2025-12-27 16:31:27 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-27 16:31:27 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-27 16:31:58 [[32minfo[39m]: Face descriptor extracted in 6140ms 
+2025-12-27 16:32:08 [[32minfo[39m]: Face matcher cache updated with 226 employees 
+2025-12-27 16:32:08 [[32minfo[39m]: Match found: 801 in 10144ms (70.0% confidence) 
+2025-12-27 16:32:13 [[32minfo[39m]: Face descriptor extracted in 4936ms 
+2025-12-27 16:32:13 [[32minfo[39m]: Match found: 801 in 218ms (70.0% confidence) 
+2025-12-27 16:32:13 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-27 16:32:13 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-27 17:01:22 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 17:31:22 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 18:01:22 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 19:04:59 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 19:53:23 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 20:41:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 21:11:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 21:41:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 22:11:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 22:41:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 23:11:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-27 23:41:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 00:11:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 00:41:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 01:11:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 01:41:20 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 02:11:53 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 05:43:23 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 06:46:26 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 07:16:26 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 07:46:26 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 08:16:26 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 08:46:26 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 09:59:03 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 10:43:01 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 10:58:27 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-28 10:58:28 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-28 10:58:28 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-28 10:58:28 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-28 10:58:28 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-28 10:58:28 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-28 10:58:30 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-28 10:58:30 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-28 10:58:30 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-28 10:58:31 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-28 10:58:31 [[33mwarn[39m]: Face descriptor extraction failed (attempting to reload models): 
+2025-12-28 10:58:31 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 10:58:31 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 10:58:50 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-28 10:58:50 [[33mwarn[39m]: Face descriptor extraction failed (attempting to reload models): 
+2025-12-28 10:58:51 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 10:58:51 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 11:03:39 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2025-12-28 11:03:39 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2025-12-28 11:03:39 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2025-12-28 11:03:39 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2025-12-28 11:03:39 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2025-12-28 11:03:39 [[32minfo[39m]: Loading optimized face recognition models... 
+2025-12-28 11:03:41 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2025-12-28 11:03:41 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2025-12-28 11:03:41 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2025-12-28 11:03:42 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-28 11:03:42 [[33mwarn[39m]: Face descriptor extraction failed (attempting to reload models): 
+2025-12-28 11:03:42 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 11:03:42 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 11:04:03 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-28 11:04:03 [[33mwarn[39m]: Face descriptor extraction failed (attempting to reload models): 
+2025-12-28 11:04:04 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 11:04:04 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-28 11:33:39 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2025-12-28 12:03:39 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 

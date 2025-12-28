@@ -15,9 +15,9 @@ const getControllers = async () => {
   const { EmployeeController } = await import(
     "../../controllers/Attendance/Employee.controller"
   );
-  // const { DashboardController } = await import(
-  //   "../../controllers/Attendance/dashboard.controller"
-  // );
+  const { DashboardController } = await import(
+    "../../controllers/Attendance/dashboard.controller"
+  );
   const { checkUserAuthorization } = await import(
     "../../middleware/checkUserAthorization"
   );
@@ -26,117 +26,117 @@ const getControllers = async () => {
   return {
     AttendanceController,
     EmployeeController,
-    //DashboardController,
+    DashboardController,
     checkUserAuthorization,
     EmployeeService,
   };
 };
 console;
 // Dashboard routes
-// router.get(
-//   "/dashboard/daily",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { DashboardController } = await getControllers();
-//     return DashboardController.getDailySummary(req, res);
-//   }
-// );
+router.get(
+  "/dashboard/daily",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { DashboardController } = await getControllers();
+    return DashboardController.getDailySummary(req, res);
+  }
+);
 
-// router.get(
-//   "/dashboard/departments",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { DashboardController } = await getControllers();
-//     return DashboardController.getDepartmentStats(req, res);
-//   }
-// );
+router.get(
+  "/dashboard/departments",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { DashboardController } = await getControllers();
+    return DashboardController.getDepartmentStats(req, res);
+  }
+);
 
-// router.get(
-//   "/dashboard/monthly",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { DashboardController } = await getControllers();
-//     return DashboardController.getMonthlyStats(req, res);
-//   }
-// );
+router.get(
+  "/dashboard/monthly",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { DashboardController } = await getControllers();
+    return DashboardController.getMonthlyStats(req, res);
+  }
+);
 
-// router.get(
-//   "/dashboard/employee/:employee_id/history",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { DashboardController } = await getControllers();
-//     return DashboardController.getEmployeeHistory(req, res);
-//   }
-// );
+router.get(
+  "/dashboard/employee/:employee_id/history",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { DashboardController } = await getControllers();
+    return DashboardController.getEmployeeHistory(req, res);
+  }
+);
 
-// router.get(
-//   "/dashboard/trends/late",
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { DashboardController } = await getControllers();
-//     return DashboardController.getLateArrivalTrends(req, res);
-//   }
-// );
+router.get(
+  "/dashboard/trends/late",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { DashboardController } = await getControllers();
+    return DashboardController.getLateArrivalTrends(req, res);
+  }
+);
 /*--dashboard routes end--*/
 
 // Public route
-// router.post(
-//   "/mark",
-//   upload.single("file"),
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { AttendanceController } = await getControllers();
-//     return AttendanceController.markAttendance(req, res);
-//   }
-// );
+router.post(
+  "/mark",
+  upload.single("file"),
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.markAttendance(req, res);
+  }
+);
 
-// router.post('/confirm', 
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   }, 
-//   async (req, res) => {
-//     const { AttendanceController } = await getControllers();
-//     return AttendanceController.confirmAttendance(req, res);
-//   }
-// );
+router.post('/confirm', 
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  }, 
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.confirmAttendance(req, res);
+  }
+);
 
-// router.post('/cancel',
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { AttendanceController } = await getControllers();
-//     return AttendanceController.cancelAttendance(req, res);
-//   }
-// );
+router.post('/cancel',
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.cancelAttendance(req, res);
+  }
+);
 
 // router.get('/proxy-logs', 
 //   passport.authenticate("jwt", { session: false }),

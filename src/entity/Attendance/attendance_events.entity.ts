@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn, OneToOne } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToOne, PrimaryColumn } from "typeorm";
 import constants from "../../helpers/constants";
 import { AttendanceRecord } from "./attendance_record.entity";
 import { ProxyLog } from "./ProxyLog.entity";
@@ -20,67 +20,68 @@ export enum AttendanceStatus {
   CANCELLED = "cancelled",
 }
 
-@Entity({ name: constants.TABLE.attendance_events })
+@Entity({ name: constants.TABLE.ATTENDANCE_EVENTS })
 export class AttendanceEvent {
-  @PrimaryGeneratedColumn("uuid")
+  // @PrimaryGeneratedColumn("uuid")
+  @PrimaryColumn({ name: "ID", type: "varchar2", length: 36 })
   id!: string;
 
-  @Column({ type: "varchar2", length: 20 })
+  @Column({ name: "EMPLOYEE_ID", type: "varchar2", length: 20 })
   employee_id!: string;
 
-  @Column({ type: "varchar2", length: 50 })
+  @Column({ name: "EMPLOYEE_CODE", type: "varchar2", length: 50 })
   employee_code!: string;
 
-  @Column({ type: "varchar2", nullable: true })
+  @Column({ name: "ATTENDANCE_RECORD_ID", type: "varchar2", nullable: true })
   attendance_record_id?: string | null;
 
-  @Column({ type: "timestamp" })
+  @Column({ name: "EVENT_TIME", type: "timestamp" })
   event_time!: Date;
 
-  @Column({ type: "varchar2", length: 20, enum: AttendanceEventType})
+  @Column({ name: "EVENT_TYPE", type: "varchar2", length: 20, enum: AttendanceEventType})
   event_type!: AttendanceEventType;
 
-  @Column({ type: "char", length: 1, enum: DataTransferFlag, default: DataTransferFlag.N,})
+  @Column({ name: "DATA_TRANSFER", type: "char", length: 1, enum: DataTransferFlag, default: DataTransferFlag.N,})
   data_transfer!: DataTransferFlag;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ name: "TRANSFER_DATE", type: "timestamp", nullable: true })
   transfer_date!: Date | null;
 
-  @CreateDateColumn({ type: "timestamp" })
+  @Column({ name: "CREATED_AT", type: "timestamp" })
   created_at!: Date;
 
-  @Column({ type: "number", precision: 10, scale: 8, nullable: true })
+  @Column({ name: "LATITUDE", type: "number", precision: 10, scale: 8, nullable: true })
   latitude!: number | null;
 
-  @Column({ type: "number", precision: 11, scale: 8, nullable: true })
+  @Column({ name: "LONGITUDE", type: "number", precision: 11, scale: 8, nullable: true })
   longitude!: number | null;
 
-  @Column({ type: "number", precision: 8, scale: 2, nullable: true })
+  @Column({ name: "ACCURACY", type: "number", precision: 8, scale: 2, nullable: true })
   accuracy!: number | null;
 
-  @Column({
+  @Column({ name: "LOCATION_TYPE",
     type: "varchar2",
     length: 20,
     default: "unknown",
   })
   location_type!: string;
 
-  @Column({ type: "clob", nullable: true })
+  @Column({ name: "ADDRESS", type: "clob", nullable: true })
   address!: any;
 
-  @Column({ type: "varchar2", length: 100, nullable: true })
+  @Column({ name: "OFFICE_NAME", type: "varchar2", length: 100, nullable: true })
   office_name!: string | null;
 
-  @Column({ type: "varchar2", length: 100, nullable: true })
+  @Column({ name: "UUID", type: "varchar2", length: 100, nullable: true })
   uuid!: string | null;
 
-  @Column({ type: "number", precision: 5, scale: 2, nullable: true })
+  @Column({ name: "CONFIDENCE", type: "number", precision: 5, scale: 2, nullable: true })
   confidence!: number | null;
 
-  @Column({ type: "varchar2", length: 500, nullable: true })
+  @Column({ name: "S3_IMAGE_URL", type: "varchar2", length: 500, nullable: true })
   s3_image_url!: string | null;
 
-  @Column({
+  @Column({ name: "STATUS",
     type: "varchar2",
     length: 30,
     enum: AttendanceStatus,
@@ -88,14 +89,17 @@ export class AttendanceEvent {
   })
   status!: AttendanceStatus;
 
-  @Column({ type: "varchar2", length: 50, nullable: true })
+  @Column({ name: "CONFIRMED_BY", type: "varchar2", length: 50, nullable: true })
   confirmed_by!: string | null;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ name: "CONFIRMED_AT", type: "timestamp", nullable: true })
   confirmed_at!: Date | null;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ name: "AUTO_CONFIRM_TIME", type: "timestamp", nullable: true })
   auto_confirm_time!: Date | null;
+
+  @Column({ name: "CANCELLATION_REASON", type: "varchar2", length: 500, nullable: true })
+  cancellation_reason!: string;
 
   //Virtual composed field — NOT stored in DB (avoids selecting non-existing column)
   get location_data() {
@@ -133,4 +137,3 @@ export class AttendanceEvent {
   proxyLog!: ProxyLog;
 
 }
-

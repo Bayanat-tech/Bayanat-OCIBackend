@@ -28,7 +28,7 @@ export class EmployeeController {
     const Face = AppDataSource.getRepository(EmployeeFace);
 
     // Check if employee_id already exists
-    const existingEmployee = await EmployeeRecord.findOne({
+    const existingEmployee = await EmployeeRecord.find({
       where: [{ employee_id, employee_code }
       ],
     });
@@ -90,7 +90,7 @@ export class EmployeeController {
         id: uuidv4(),
         employee_id,
         s3_key: s3Key,
-        descriptor: descriptor,
+        descriptor: JSON.stringify(descriptor),
         is_active: "1",
       });
       await Face.save(face);
@@ -202,7 +202,7 @@ export class EmployeeController {
             id: uuidv4(),
             employee_id,
             s3_key: s3Key,
-            descriptor: descriptor,
+            descriptor: JSON.stringify(descriptor),
             is_active: "1",
           });
           await EmployeesFace.save(face);
@@ -243,34 +243,3 @@ export class EmployeeController {
     }
   }
 }
-
-
-
-
-
-//     static async getEmployeeInfo(req: Request, res: Response): Promise<void> {
-//       try {
-//         const { employee_code, name } = req.query;
-
-//         if (!employee_code && !name) {
-//           res.status(400).json({
-//             error: "Either employee_code or name parameter is required",
-//           });
-//           return;
-//         }
-
-//         const employeeInfo = await EmployeeService.getEmployeeInfo({
-//           employee_code: employee_code as string,
-//           name: name as string,
-//         });
-
-//         res.status(200).json(employeeInfo);
-//       } catch (error: any) {
-//         logger.error("Failed to fetch employee info", error);
-//         res.status(500).json({
-//           error: "Failed to fetch employee information",
-//           details: error.message,
-//         });
-//       }
-//     }
-//   }

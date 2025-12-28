@@ -127,11 +127,10 @@ export default {
     SMS_UPLOADED_FILES: "SMS_UPLOADED_FILES",
 
     // ------------ Attendance Table ----------
-    // employees: "employees",
     EMPLOYEES: "EMPLOYEES",
-    employee_faces: "employee_faces",
-    attendance_records: "attendance_records",
-    attendance_events: "attendance_events",
+    EMPLOYEE_FACES: "EMPLOYEE_FACES",
+    ATTENDANCE_RECORDS: "ATTENDANCE_RECORDS",
+    ATTENDANCE_EVENTS: "ATTENDANCE_EVENTS",
   },
 
   VIEW: {
