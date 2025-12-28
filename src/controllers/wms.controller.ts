@@ -1,6 +1,7 @@
 // Importing necessary modules and interfaces
 import { Response } from "express";
 import constants from "../helpers/constants";
+import oracledb from 'oracledb';
 // import { QueryTypes } from "sequelize"; 
 // import { WhereOptions } from "sequelize";
 import { ISearch, RequestWithUser } from "../interfaces/common.interface";
@@ -82,7 +83,7 @@ import PackingDetailsInboundWmsView from "../views/wms/transportation/inbound/pa
 import JobOubListingView from "../views/wms/transportation/outbound/outboundJobWms.view";
 import PickingDetailsOutboundWmsView from "../views/wms/transportation/outbound/pickingDetailsWms.view";
 // import OrderDetail from "../../src/models/wms/transaction/outbound/toOrderDetail_wms.model"
-// import ConfirmInboundInboundWms from "../models/wms/transaction/inbound/confirmInboundjob_wms.model";
+
 
 // Importing additional interfaces and models
 import {
@@ -93,7 +94,7 @@ import {
 import JobInboundWms from "../models/wms/transaction/inbound/inboundJobWms.model";
 //import JobInboundWmsview from "../models/wms/transaction/inbound/inbounJobWms.model.view";
 
-// import DDdepartmentjob from "../views/wms/transportation/inbound/dddepartmentobWms";
+
 import DDdivisionjob from "../views/wms/transportation/inbound/dddivisionobWms";
 import DDPrincipaljob from "../views/wms/transportation/inbound/ddprincipalJobWms";
 import TallyDetailsInboundWms from "../models/wms/transaction/inbound/tallyDetails_wms.model";
@@ -130,7 +131,6 @@ import { SupplierService } from "../services/WMS/suppliermaster.service"; // Add
 import { getConnection } from "typeorm";
 import { FlowMasterService } from "../services/Security/flowmaster.service"; // Add FlowMasterService import
 import { AppDataSource, TypeORMService } from "../database/connection";
-import oracledb from "oracledb";
 
 export const executeRawSql = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -197,6 +197,7 @@ export const executeRawSql = async (req: Request, res: Response): Promise<void> 
 };
 
 export const executeRawSqlbody = async (req: Request, res: Response): Promise<void> => {
+  let connection: any = null;
   try {
     const { query_parameter, query_where, query_updatevalues } = req.body;
 
@@ -207,74 +208,100 @@ export const executeRawSqlbody = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // 🚀 Clean inputs
     const cleanWhere = query_where.replace(/`/g, "").trim();
     const cleanUpdate = (query_updatevalues || "").replace(/`/g, "").trim();
 
     console.log("Final WHERE string:", cleanWhere);
     console.log("Final UPDATE values string:", cleanUpdate);
 
-    // Get TypeORM connection
-    const connection = getConnection();
-    const queryRunner = connection.createQueryRunner();
-    
-    try {
-    // Begin transaction
-    await queryRunner.startTransaction();
-    
-    // 1️⃣ Call procedure to generate SQL
-    await queryRunner.query(
-      `CALL SP_CREATE_SQL_change(?, ?, ?, @out_sql)`,
-      [query_parameter, cleanWhere, cleanUpdate]
+    connection = await oracledb.getConnection();
+
+    const result = await connection.execute(
+      `
+      DECLARE
+        v_sql VARCHAR2(32767);
+      BEGIN
+        SP_CREATE_SQL_change(
+          :parameter,
+          :where_clause,
+          :update_values,
+          v_sql
+        );
+        :out_sql := v_sql;
+      END;
+      `,
+      {
+        parameter: query_parameter,
+        where_clause: cleanWhere,
+        update_values: cleanUpdate,
+        out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
+      }
     );
-    
-    // 2️⃣ Fetch generated SQL
-    const outSqlResultRows = await queryRunner.query(`SELECT @out_sql AS vs_return_string`);
-    const outSqlResult = Array.isArray(outSqlResultRows) && outSqlResultRows.length
-      ? outSqlResultRows[0]
-      : outSqlResultRows;
-    
-    let rawSql: string = (outSqlResult as any)?.vs_return_string;
-    if (!rawSql) {
-      res.status(500).json({ error: "Procedure did not return SQL" });
+
+    const outBinds = result.outBinds as any;
+    let rawSql: string = outBinds?.out_sql;
+
+    console.log("Procedure output_sql (raw):", rawSql);
+
+    if (!rawSql || rawSql.toLowerCase().includes("no sql") || rawSql.toLowerCase().includes("error")) {
+      console.error("Procedure returned an error or invalid SQL:", rawSql);
+      res.status(400).json({ 
+        error: "Invalid or missing SQL template", 
+        details: rawSql || "No SQL returned from procedure",
+        parameters: { query_parameter, cleanWhere, cleanUpdate }
+      });
       return;
     }
-      
-      // 🧹 Strip trailing semicolon
-      rawSql = rawSql.trim().replace(/;$/, "");
-      console.log("Generated rawSql:", rawSql);
-      
-      // 3️⃣ Execute the SELECT statement returned by procedure
-      const results = await queryRunner.query(rawSql);
-      
-      // Commit transaction
-      await queryRunner.commitTransaction();
-      
-      // 4️⃣ Send rows to frontend
-      res.json({
-        success: true,
-        data: results,
-        totalCount: results.length,
-      });
-    } catch (error) {
-      // Rollback transaction in case of error
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      // Release query runner
-      await queryRunner.release();
-    }
+
+    // 🧹 Strip trailing semicolon
+    rawSql = rawSql.trim().replace(/;$/, "");
+    console.log("Generated rawSql:", rawSql);
+
+    // 2️⃣ Execute the SELECT statement returned by procedure
+    const dataResult = await connection.execute(rawSql, [], {
+      outFormat: oracledb.OUT_FORMAT_ARRAY
+    }) as any;
+
+    // Safely map rows to lowercase keys
+    const tableData =
+      dataResult.rows?.map((row: any) => {
+        const obj: Record<string, any> = {};
+        dataResult.metaData?.forEach((col: any, i: number) => {
+          obj[col.name.toLowerCase()] = row[i];
+        });
+        return obj;
+      }) || [];
+
+    console.log("Query executed successfully, rows returned:", tableData.length);
+
+    // 3️⃣ Send rows to frontend
+    res.json({
+      success: true,
+      data: tableData,
+      totalCount: tableData.length,
+    });
   } catch (error: any) {
     console.error("SQL Execution Error:", error);
+    console.error("Error details - Code:", error.code, "Message:", error.message);
     res.status(500).json({
       error: "Failed to execute SQL",
       details: error.message,
+      code: error.code || "UNKNOWN",
     });
+  } finally {
+    // Close connection
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 };
 
 export const proc_build_dynamic_sql_wms = async (req: Request, res: Response): Promise<void> => {
-  let connection;
+  let connection: any = null;
 
   try {
     const {
@@ -293,14 +320,18 @@ export const proc_build_dynamic_sql_wms = async (req: Request, res: Response): P
       date3,
       date4
     } = req.body;
-console.log('check dynamic sql',req.body);
+    
+    console.log('check dynamic sql', req.body);
+
     if (!parameter) {
       res.status(400).json({ error: "Missing required parameter 'parameter'" });
       return;
     }
 
+    // Use raw Oracle connection - no TypeORM dependency
     connection = await oracledb.getConnection();
 
+    // 1️⃣ Call procedure to generate SQL using proper Oracle syntax
     const result = await connection.execute(
       `
       DECLARE
@@ -344,58 +375,69 @@ console.log('check dynamic sql',req.body);
         out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
       }
     );
-    
 
-    interface ProcOutBinds {
-      out_sql: string;
-    }
+    const outBinds = result.outBinds as any;
+    let rawSql: string = outBinds?.out_sql;
 
-    const outBinds = result.outBinds as ProcOutBinds;
-    const rawSql = outBinds?.out_sql;
-console.log(rawSql);
-    if (!rawSql) {
-      res.status(500).json({ error: "Procedure did not return SQL" });
+    console.log("Procedure output_sql (raw):", rawSql);
+
+    if (!rawSql || rawSql.toLowerCase().includes("no sql") || rawSql.toLowerCase().includes("error")) {
+      console.error("Procedure returned an error or invalid SQL:", rawSql);
+      res.status(400).json({ 
+        error: "Invalid or missing SQL template", 
+        details: rawSql || "No SQL returned from procedure",
+        parameters: { parameter, loginid, code1, code2, code3, code4, number1, number2, number3, number4, date1, date2, date3, date4 }
+      });
       return;
     }
 
-    console.log("Generated SQL:", rawSql);
+    // 🧹 Strip trailing semicolon
+    rawSql = rawSql.trim().replace(/;$/, "");
+    console.log("Generated rawSql:", rawSql);
 
-    // Execute dynamic SQL with OUT_FORMAT_ARRAY
-    const dataResult = await connection.execute<any[]>(rawSql, [], {
+    // 2️⃣ Execute the SELECT statement returned by procedure
+    const dataResult = await connection.execute(rawSql, [], {
       outFormat: oracledb.OUT_FORMAT_ARRAY
-    });
+    }) as any;
 
     // Safely map rows to lowercase keys
     const tableData =
-      dataResult.rows?.map((row) => {
+      dataResult.rows?.map((row: any) => {
         const obj: Record<string, any> = {};
-        dataResult.metaData?.forEach((col, i) => {
+        dataResult.metaData?.forEach((col: any, i: number) => {
           obj[col.name.toLowerCase()] = row[i];
         });
         return obj;
       }) || [];
 
+    console.log("Query executed successfully, rows returned:", tableData.length);
+
+    // 3️⃣ Send rows to frontend
     res.json({
-        success: true,
+      success: true,
       data: tableData,
       totalCount: tableData.length,
     });
 
   } catch (error: any) {
-    console.error("Oracle Error:", error);
-    res.status(500).json({ error: "Failed to execute SQL", details: error.message });
+    console.error("SQL Execution Error:", error);
+    console.error("Error details - Code:", error.code, "Message:", error.message);
+    res.status(500).json({
+      error: "Failed to execute SQL",
+      details: error.message,
+      code: error.code || "UNKNOWN",
+    });
   } finally {
+    // Close connection
     if (connection) {
       try {
         await connection.close();
       } catch (closeErr) {
-        console.error("Failed to close connection:", closeErr);
+        console.error("Error closing connection:", closeErr);
       }
     }
   }
 };
-
-
 
 // Retrieves master data (country,Port , department, territory, etc.) with optional pagination based on the `master` type.
 export const getWmsMaster = async (req: RequestWithUser, res: Response) => {
@@ -1232,7 +1274,7 @@ case "supplier":
 //     })) as unknown[] as IDepartmentjob[];
 //     // Log fetched data for debugging purposes
 //     console.log(fetchedData);
-//   }  
+//   }
 //   break;
 // Fetching dddivision data from the DDdivisionjob model
 // case "dddivision":
@@ -1920,6 +1962,66 @@ case "activitysubgroup":
     }
   }
   break;
+
+// Fetching billing activity data from the ActivityBillingTable model
+// case "billing_activity":
+//   {
+//     // Initialize inside and outside query variables
+//     let insideQuery: any = [],
+//       outsideQuery = {
+//         [Op.and]: [
+//           { company_code: requestUser.company_code },
+//           {
+//             ...(!!uniqueCode && {
+//               prin_code: uniqueCode,
+//             }),
+//           },
+//           {
+//             user_id: requestUser.loginid,
+//           },
+//         ],
+//       };
+
+//     // Apply search filter to the outside query
+//     outsideQuery = getSearchFilterQuery({
+//       insideQuery,
+//       filter: filter.search,
+//       outsideQuery,
+//     });
+
+//     // Count the total number of records
+//     totalCount = await ActivityBillingTable.count({
+//       where: outsideQuery,
+//     });
+
+//     // Fetch billing activity data with optional pagination and sorting
+//     fetchedData = await ActivityBillingTable.findAll({
+//       where: outsideQuery,
+//       ...(!!filter?.sort &&
+//         Object.keys(filter?.sort).length > 0 && {
+//           order: [
+//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
+//           ],
+//         }),
+//       ...paginationOptions,
+//     });
+//   }
+//   break;
+// Fetching activity data from the Activity model
+// case "activity": {
+//   // Fetching data using the Activity model
+//   fetchedData = (await Activity.findAll({
+//     attributes: ["activity_code", "activity", "activity_group_code"],
+//     where: {
+//       company_code: requestUser.company_code,
+//     },
+//     ...paginationOptions,
+//   })) as unknown[] as IActivity[];
+
+//   break;
+// }
+
+// Fetching activity KPI data from the ActivityKPI model
 case "activitykpi": {
   try {
     // Get pagination parameters
@@ -2555,6 +2657,19 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
           }
         }
         break;
+
+      // Delete alert data
+      // case "alert":
+      //   {
+      //     // Destroy alert data with company code and op code
+      //     await Alert.destroy({
+      //       where: {
+      //         company_code: requestUser.company_code,
+      //         op_code: ids,
+      //       },
+      //     });
+      //   }
+      //   break;
 
       // Delete department data
       case "department":
