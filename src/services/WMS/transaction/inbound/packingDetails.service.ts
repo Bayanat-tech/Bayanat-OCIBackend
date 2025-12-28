@@ -353,4 +353,27 @@ export class PackingDetailsService {
 
     return result.affected || 0;
   }
+
+  /**
+   * Update SELECTED and ALLOCATED flags for a job
+   * @param companyCode Company code
+   * @param jobNo Job number
+   */
+  static async updateSelectedForJob(
+    companyCode: string,
+    jobNo: string
+  ): Promise<void> {
+    const repository = this.getPackingDetailsRepository();
+    
+    await repository
+      .createQueryBuilder()
+      .update()
+      .set({
+        selected: "Y",
+        allocated: "N",
+      })
+      .where("JOB_NO = :jobNo", { jobNo })
+      .andWhere("COMPANY_CODE = :companyCode", { companyCode })
+      .execute();
+  }
 }
