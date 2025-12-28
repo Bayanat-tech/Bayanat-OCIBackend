@@ -1,7 +1,7 @@
 import { Entity, PrimaryColumn, Column } from "typeorm";
 import constants from "../../helpers/constants";
 
-@Entity(constants.TABLE.MS_SUPPLIER)
+@Entity(constants.TABLE.MS_SUPPLIER_JASRA)
 export class SupplierMaster {
 
   @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 5 })
