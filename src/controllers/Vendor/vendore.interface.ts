@@ -35,6 +35,9 @@ export interface HeaderTVendor {
   DOC_TYPE: string;
   DATA_TRANSFER?: string;
   PDO_TYPE?: string;
+   REF_DOC1?: string;
+    REF_DOC2?: string;
+     REF_DOC3?: string;
   DOC_DATE: string;
   AC_CODE: string;
   REF_NO: string;
@@ -77,6 +80,7 @@ export interface HeaderTVendor {
   INVOICE_DATE?: string | null; // or Date | string | null, depending on how you handle dates
 }
 export interface DetailsTVendor {
+  ITEM_REMARK:string;
   COMPANY_CODE: string;
   DOC_TYPE: string;
   DOC_NO: string;

@@ -53,9 +53,10 @@ export const uploadPFToS3 = async (req: any, res: any) => {
   const requestNumber = req.body.request_number;
   const requestType = req.body.type;
 
-  const fileName: string = `UploadWorkflow/${requestType}/${new Date().getFullYear()}/${
+  const fileName: string = `PMSFiles/${requestType}/${new Date().getFullYear()}/${
     new Date().getMonth() + 1
   }/${requestNumber}/${file.originalname}`;
+  
 
   const objectParams: UploadToS3ObjectInterface = {
     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,

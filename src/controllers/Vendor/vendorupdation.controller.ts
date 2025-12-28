@@ -130,8 +130,8 @@ async function sendDataToDotNetAPI(
   try {
     const fileDataResult = await oracleDb.query(
       `SELECT 
-        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME
-      FROM UPLOADED_FILES_DLTS_VH
+        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME, ATTACHMENT_SR_NO
+      FROM UPLOADED_FILES_DLTS_VENDOR
       WHERE REQUEST_NUMBER = :docNo AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
       { docNo: { val: docNo } },
       transaction
@@ -145,33 +145,45 @@ async function sendDataToDotNetAPI(
       } catch (error: any) {
         console.error(`Failed to send file data for DOC_NO: ${docNo}`, error);
 
-        // Send email notification for file upload failure
-        await notifyUser({
+        // Extract detailed error info from AxiosError
+        const apiError = error?.response?.data ?? error;
+        const apiMessage =
+          (apiError && (apiError.message || apiError.error)) ||
+          error?.message ||
+          String(error);
+
+        const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${
-            error.message || "Unknown error"
-          }`,
+          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
           subject: "Vendor API File Upload Failed",
           request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API File Upload Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${
-              error.message || "Unknown error"
-            }</p>
+            <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
+            <p><strong>API Response:</strong></p>
+            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
             <p><strong>File Details:</strong></p>
-            <pre>${JSON.stringify(file, null, 2)}</pre>
+            <pre>${escapeHtml(JSON.stringify(file, null, 2))}</pre>
           `,
-        });
+        };
+
+        try {
+          console.log("notifyUser payload (file upload):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (file upload):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (file upload):", notifErr);
+        }
         return;
       }
     }
 
     if (fileData.length > 0) {
       await oracleDb.query(
-        `UPDATE UPLOADED_FILES_DLTS_VH 
+        `UPDATE UPLOADED_FILES_DLTS_VENDOR
          SET FILE_TRANSFER = 'Y' 
          WHERE REQUEST_NUMBER = :requestNumber`,
         {
@@ -221,7 +233,10 @@ async function sendDataToDotNetAPI(
         NVL(LAST_ACTION, '') AS LAST_ACTION,
         NVL(INVOICE_NUMBER, '') AS INVOICE_NUMBER,
         TO_CHAR(INVOICE_DATE, 'YYYY-MM-DD') AS INVOICE_DATE,
-        NVL(PDO_TYPE, '') AS PDO_TYPE
+        NVL(PDO_TYPE, '') AS PDO_TYPE,
+        NVL(REF_DOC1, '') AS REF_DOC1,
+        NVL(REF_DOC2, '') AS REF_DOC2,
+        NVL(REF_DOC3, '') AS REF_DOC3
       FROM TR_AC_LPO_HEADER
       WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES'`,
       {
@@ -237,12 +252,13 @@ async function sendDataToDotNetAPI(
       return;
     }
 
-    // Clean header data
+    // Clean header data 
     const cleanedHeaderData = VendorService.cleanDetail(headerData);
 
     // Fetch all columns from TR_AC_LPO_DETAIL
     const detailResult = await oracleDb.query(
       `SELECT 
+        NVL(ITEM_REMARK, '') AS ITEM_REMARK,
         NVL(COMPANY_CODE, '') AS COMPANY_CODE,
         NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
         NVL(DOC_NO, '') AS DOC_NO,
@@ -290,6 +306,7 @@ async function sendDataToDotNetAPI(
     console.log("Sending Header Data:", cleanedHeaderData);
     console.log("Sending Detail Data:", cleanedDetailData);
 
+    // Send detail rows
     for (const detail of cleanedDetailData) {
       try {
         await VendorService.insertAcDetail(detail);
@@ -297,25 +314,37 @@ async function sendDataToDotNetAPI(
         console.error(`Failed to send detail for DOC_NO: ${docNo}`, error);
 
         // Send email notification for detail API failure
-        await notifyUser({
+        const apiError = error?.response?.data ?? error;
+        const apiMessage =
+          (apiError && (apiError.message || apiError.error)) ||
+          error?.message ||
+          String(error);
+
+        const notifPayload = {
           event: "VENDOR_API_ERROR",
-          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${
-            error.message || "Unknown error"
-          }`,
+          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
           subject: "Vendor API Detail Data Failed",
           request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API Detail Data Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${
-              error.message || "Unknown error"
-            }</p>
+            <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
+            <p><strong>API Response:</strong></p>
+            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
             <p><strong>Detail Data:</strong></p>
-            <pre>${JSON.stringify(detail, null, 2)}</pre>
+            <pre>${escapeHtml(JSON.stringify(detail, null, 2))}</pre>
           `,
-        });
+        };
+
+        try {
+          console.log("notifyUser payload (detail failure):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (detail failure):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (detail failure):", notifErr);
+        }
         return;
       }
     }
@@ -326,25 +355,37 @@ async function sendDataToDotNetAPI(
     } catch (error: any) {
       console.error(`Failed to send header for DOC_NO: ${docNo}`, error);
 
-      await notifyUser({
+      const apiError = error?.response?.data ?? error;
+      const apiMessage =
+        (apiError && (apiError.message || apiError.error)) ||
+        error?.message ||
+        String(error);
+
+      const notifPayload = {
         event: "VENDOR_API_ERROR",
-        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${
-          error.message || "Unknown error"
-        }`,
+        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
         subject: "Vendor API Header Data Failed",
         request_user:
-          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
         cc: "prem@bayanattechnology.com",
         htmlMessage: `
           <h3>Vendor API Header Data Failed</h3>
           <p><strong>Document No:</strong> ${docNo}</p>
-          <p><strong>Error Message:</strong> ${
-            error.message || "Unknown error"
-          }</p>
+          <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
+          <p><strong>API Response:</strong></p>
+          <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
           <p><strong>Header Data:</strong></p>
-          <pre>${JSON.stringify(cleanedHeaderData, null, 2)}</pre>
+          <pre>${escapeHtml(JSON.stringify(cleanedHeaderData, null, 2))}</pre>
         `,
-      });
+      };
+
+      try {
+        console.log("notifyUser payload (header failure):", notifPayload);
+        const notifResult: any = await notifyUser(notifPayload);
+        console.log("notifyUser result (header failure):", notifResult);
+      } catch (notifErr) {
+        console.error("notifyUser failed (header failure):", notifErr);
+      }
       return;
     }
 
@@ -357,12 +398,24 @@ async function sendDataToDotNetAPI(
   }
 }
 
+// small helper to avoid injecting raw HTML from API errors
+function escapeHtml(input: any): string {
+  if (input == null) return "";
+  const s = typeof input === "string" ? input : JSON.stringify(input);
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 async function upsertLpoRequest(data: TVendorMain) {
   let connection: any;
   let committed = false;
   try {
     connection = await oracleDb.getConnection();
-    await connection.execute("BEGIN NULL; END;"); // Start transaction
+    await connection.execute("BEGIN NULL; END;"); 
 
     const isAddMode = !data.DOC_NO;
     let generatedRequestNumber = data.DOC_NO;
@@ -447,11 +500,11 @@ async function upsertLpoRequestHeader(
   const rowsResult = await oracleDb.query(
     `SELECT COUNT(*) as cnt 
      FROM TR_AC_LPO_HEADER 
-     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND AC_CODE = :acCode`,
+     WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo `,
     {
       companyCode: { val: company_code },
-      docNo: { val: doc_no },
-      acCode: { val: ac_code },
+      docNo: { val: doc_no }
+    
     },
     connection
   );
@@ -472,7 +525,7 @@ async function upsertLpoRequestHeader(
         DELIVERY_TO, DLVR_CONTACT, DLVR_EMAIL, DLVR_MOBILE, DLVR_TERM, DIV_CODE,
         CASH_IND, APP_REF_NO, TX_CAT_CODE, TX_COMPNTCAT_CODE_1, TX_COMPNTCAT_CODE_2,
         TX_COMPNTCAT_CODE_3, TX_COMPNTCAT_CODE_4, TX_COMPNT_1_EXPMT, LAST_ACTION, 
-        DATA_TRANSFER, PDO_TYPE
+        DATA_TRANSFER, PDO_TYPE,REF_DOC1,REF_DOC2,REF_DOC3
       ) VALUES (
         :invoiceNumber,
         TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
@@ -518,7 +571,10 @@ async function upsertLpoRequestHeader(
         :txCompnt_1_expmT,
         :lastAction,
         :dataTransfer,
-        :pdoType
+        :pdoType,
+        :refdoc1,
+        :refdoc2,
+        :refdoc3
       )
     `;
 
@@ -568,12 +624,18 @@ async function upsertLpoRequestHeader(
       lastAction: { val: "SAVEASDRAFT" },
       dataTransfer: { val: defaultString(data.DATA_TRANSFER) },
       pdoType: { val: defaultString(data.PDO_TYPE) },
+           refdoc1: { val: defaultString(data.REF_DOC1) },
+            refdoc2: { val: defaultString(data.REF_DOC2) },
+             refdoc3: { val: defaultString(data.REF_DOC3) },
     };
 
     await oracleDb.query(insertQuery, replacements, connection);
   } else {
     const updateQuery = `
       UPDATE TR_AC_LPO_HEADER SET 
+        REF_DOC1 = :refdoc1,
+        REF_DOC2 = :refdoc2,
+        REF_DOC3 = :refdoc3,
         INVOICE_NUMBER = :invoiceNumber, 
         INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
         LAST_ACTION = :lastAction,
@@ -583,13 +645,16 @@ async function upsertLpoRequestHeader(
         REMARKS = :remarks,
         CURR_CODE = :currCode, 
         EX_RATE = :exRate, 
-        CANCELED = :canceled, 
+      
         EDIT_USER = :editUser, 
         EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
-      WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo AND AC_CODE = :acCode
+      WHERE COMPANY_CODE = :companyCode AND DOC_TYPE = :docType AND DOC_NO = :docNo 
     `;
 
     const updateReplacements = {
+         refdoc1: { val: defaultString(data.REF_DOC1) },
+            refdoc2: { val: defaultString(data.REF_DOC2) },
+             refdoc3: { val: defaultString(data.REF_DOC3) },
       invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
       invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
       lastAction: { val: defaultString(data.LAST_ACTION) },
@@ -599,7 +664,7 @@ async function upsertLpoRequestHeader(
       remarks: { val: defaultString(data.REMARKS) },
       currCode: { val: defaultString(data.CURR_CODE) },
       exRate: { val: data.EX_RATE ?? 0 },
-      canceled: { val: data.CANCELED ?? false },
+     
       editUser: { val: defaultString(data.EDIT_USER) },
       editDate: { val: formatDateForOracle(new Date()) },
       companyCode: { val: company_code },
@@ -647,7 +712,7 @@ async function upsertLpoRequestDetails(
     }
 
     const insertQuery = `
-    INSERT INTO TR_AC_LPO_DETAIL (
+    INSERT INTO TR_AC_LPO_DETAIL (ITEM_REMARK,
       SERIAL_NO, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, AC_CODE,
       HEADER_AC_CODE, REMARKS, AMOUNT, SIGN_IND, CURR_CODE,
       EX_RATE, LCUR_AMOUNT, CANCELLED, JOB_NO, DEPT_CODE, QTY,
@@ -659,7 +724,7 @@ async function upsertLpoRequestDetails(
       TX_COMPNT_LCURAMT_1, TX_COMPNT_LCURAMT_2, TX_COMPNT_LCURAMT_3, TX_COMPNT_LCURAMT_4,
       TX_COMPNT_1_EXPMT, TX_COMPNT_2_EXPMT, TX_COMPNT_3_EXPMT, TX_COMPNT_4_EXPMT,
       EDIT_USER, CREATE_USER
-    ) VALUES (
+    ) VALUES (:ITEM_REMARK,
       :SERIAL_NO, :COMPANY_CODE, :DOC_TYPE, :DOC_NO, 
       TO_DATE(:DOC_DATE, 'YYYY-MM-DD'),
       :AC_CODE, :HEADER_AC_CODE, :REMARKS, :AMOUNT, :SIGN_IND, :CURR_CODE,
@@ -692,6 +757,7 @@ async function upsertLpoRequestDetails(
     }
 
     const replacements = {
+        ITEM_REMARK: { val: safe(defaultString(item.ITEM_REMARK)) },
       SERIAL_NO: { val: safe(item.SERIAL_NO) },
       COMPANY_CODE: { val: safe(companyCode) },
       DOC_TYPE: { val: safe(defaultString(item.DOC_TYPE)) },
@@ -1004,6 +1070,124 @@ export const getPartyOutstanding = async (
   }
 };
 //save attachment
+// export const saveFileVendorHR = async (
+//   req: Request,
+//   res: Response
+// ): Promise<Response | void> => {
+//   const { request_number, files } = req.body;
+
+//   if (!request_number) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "request_number is required.",
+//     });
+//   }
+
+//   if (!files || !Array.isArray(files) || files.length === 0) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "files must be a non-empty array.",
+//     });
+//   }
+
+//   const duplicateRecords: string[] = [];
+//   const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
+
+//   try {
+//     for (const file of files) {
+//       const { org_file_name } = file;
+
+//       const duplicateCheckResult = await oracleDb.query(
+//         `SELECT COUNT(*) AS COUNT 
+//          FROM UPLOADED_FILES_DLTS_VH 
+//          WHERE request_number = :request_number AND org_file_name = :org_file_name`,
+//         {
+//           request_number: { val: request_number },
+//           org_file_name: { val: org_file_name },
+//         }
+//       );
+
+//       const count = duplicateCheckResult.rows?.[0]?.COUNT || 0;
+
+//       if (count > 0) {
+//         duplicateRecords.push(org_file_name);
+//         continue;
+//       }
+
+//       const {
+//         company_code,
+//         file_name,
+//         extensions,
+//         aws_file_locn,
+//         flow_level,
+//         modules,
+//         updated_by,
+//         created_by,
+//         user_file_name,
+//       } = file;
+
+//       await oracleDb.query(
+//         `INSERT INTO UPLOADED_FILES_DLTS_VH (
+//           company_code, request_number, file_name, extensions, org_file_name,
+//           aws_file_locn, flow_level, modules, updated_by, created_by, 
+//           user_file_name, created_at, updated_at
+//         ) VALUES (
+//           :company_code, :request_number, :file_name, :extensions, :org_file_name,
+//           :aws_file_locn, :flow_level, :modules, :updated_by, :created_by,
+//           :user_file_name, SYSDATE, SYSDATE
+//         )`,
+//         {
+//           company_code: { val: company_code || null },
+//           request_number: { val: request_number },
+//           file_name: { val: file_name || null },
+//           extensions: { val: extensions || null },
+//           org_file_name: { val: org_file_name || null },
+//           aws_file_locn: { val: aws_file_locn || null },
+//           flow_level: { val: flow_level || null },
+//           modules: { val: modules || null },
+//           updated_by: { val: updated_by || null },
+//           created_by: { val: created_by || null },
+//           user_file_name: { val: user_file_name || null },
+//         }
+//       );
+
+//       // Fetch SR_NO
+//       const srNoResult = await oracleDb.query(
+//         `SELECT SR_NO 
+//          FROM UPLOADED_FILES_DLTS_VH 
+//          WHERE request_number = :request_number 
+//          AND org_file_name = :org_file_name 
+//          ORDER BY created_at DESC 
+//          FETCH FIRST 1 ROW ONLY`,
+//         {
+//           request_number: { val: request_number },
+//           org_file_name: { val: org_file_name },
+//         }
+//       );
+
+//       const sr_no = srNoResult.rows?.[0]?.SR_NO;
+//       if (sr_no) {
+//         successfulRecords.push({ org_file_name, sr_no });
+//       }
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "File data processed successfully.",
+//       data: {
+//         successfulRecords,
+//         duplicateRecords,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error storing file data:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "An error occurred while storing file data.",
+//       error: error instanceof Error ? error.message : String(error),
+//     });
+//   }
+// };
 export const saveFileVendorHR = async (
   req: Request,
   res: Response
@@ -1025,19 +1209,27 @@ export const saveFileVendorHR = async (
   }
 
   const duplicateRecords: string[] = [];
-  const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
+  const successfulRecords: { 
+    org_file_name: string; 
+    sr_no: number; 
+    attachment_sr_no: number 
+  }[] = [];
 
   try {
     for (const file of files) {
-      const { org_file_name } = file;
+      const { org_file_name, sr_no } = file;
 
+      // Check for duplicates (now checking with SR_NO too)
       const duplicateCheckResult = await oracleDb.query(
         `SELECT COUNT(*) AS COUNT 
-         FROM UPLOADED_FILES_DLTS_VH 
-         WHERE request_number = :request_number AND org_file_name = :org_file_name`,
+         FROM UPLOADED_FILES_DLTS_VENDOR 
+         WHERE request_number = :request_number 
+           AND org_file_name = :org_file_name
+           AND (sr_no = :sr_no OR (:sr_no IS NULL AND sr_no = 0))`,
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
+          sr_no: { val: sr_no || null },
         }
       );
 
@@ -1058,21 +1250,27 @@ export const saveFileVendorHR = async (
         updated_by,
         created_by,
         user_file_name,
+        type,
+        file_transfer,
       } = file;
 
+      // INSERT with all columns including the new ones
       await oracleDb.query(
-        `INSERT INTO UPLOADED_FILES_DLTS_VH (
-          company_code, request_number, file_name, extensions, org_file_name,
-          aws_file_locn, flow_level, modules, updated_by, created_by, 
-          user_file_name, created_at, updated_at
+        `INSERT INTO UPLOADED_FILES_DLTS_VENDOR (
+          company_code, request_number, sr_no, file_name, extensions, 
+          org_file_name, aws_file_locn, flow_level, modules, updated_by, 
+          created_by, user_file_name, created_at, updated_at,
+          type, file_transfer
         ) VALUES (
-          :company_code, :request_number, :file_name, :extensions, :org_file_name,
-          :aws_file_locn, :flow_level, :modules, :updated_by, :created_by,
-          :user_file_name, SYSDATE, SYSDATE
+          :company_code, :request_number, :sr_no, :file_name, :extensions, 
+          :org_file_name, :aws_file_locn, :flow_level, :modules, :updated_by, 
+          :created_by, :user_file_name, SYSDATE, SYSDATE,
+          :type, :file_transfer
         )`,
         {
           company_code: { val: company_code || null },
           request_number: { val: request_number },
+          sr_no: { val: sr_no || null },  
           file_name: { val: file_name || null },
           extensions: { val: extensions || null },
           org_file_name: { val: org_file_name || null },
@@ -1082,26 +1280,36 @@ export const saveFileVendorHR = async (
           updated_by: { val: updated_by || null },
           created_by: { val: created_by || null },
           user_file_name: { val: user_file_name || null },
+          type: { val: type || null },
+          file_transfer: { val: file_transfer || null }
         }
       );
 
-      // Fetch SR_NO
-      const srNoResult = await oracleDb.query(
-        `SELECT SR_NO 
-         FROM UPLOADED_FILES_DLTS_VH 
+      // Fetch both SR_NO and ATTACHMENT_SR_NO
+      const result = await oracleDb.query(
+        `SELECT SR_NO, ATTACHMENT_SR_NO 
+         FROM UPLOADED_FILES_DLTS_VENDOR 
          WHERE request_number = :request_number 
-         AND org_file_name = :org_file_name 
+           AND org_file_name = :org_file_name 
+           AND (sr_no = :sr_no OR (:sr_no IS NULL AND sr_no = 0))
          ORDER BY created_at DESC 
          FETCH FIRST 1 ROW ONLY`,
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
+          sr_no: { val: sr_no || null },
         }
       );
 
-      const sr_no = srNoResult.rows?.[0]?.SR_NO;
-      if (sr_no) {
-        successfulRecords.push({ org_file_name, sr_no });
+      const sr_no_result = result.rows?.[0]?.SR_NO;
+      const attachment_sr_no = result.rows?.[0]?.ATTACHMENT_SR_NO;
+      
+      if (sr_no_result !== undefined) {
+        successfulRecords.push({ 
+          org_file_name, 
+          sr_no: sr_no_result, 
+          attachment_sr_no 
+        });
       }
     }
 
@@ -1520,6 +1728,53 @@ export const proc_build_dynamic_sql = async (
     res.status(500).json({
       error: "Failed to execute SQL",
       details: error.message,
+    });
+  }
+};
+
+export const executeVendorInvoicePrintHandler = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { COMPANY_CODE, DOC_NO, LOGIN_USER } =
+      req.body && Object.keys(req.body).length
+        ? req.body
+        : (req.query as Record<string, string>);
+
+    if (!COMPANY_CODE || !DOC_NO || !LOGIN_USER) {
+      res.status(400).json({
+        success: false,
+        message: "Missing required parameters: COMPANY_CODE, DOC_NO, LOGIN_USER",
+      });
+      return;
+    }
+
+    const plsql = `
+      BEGIN
+        PROC_VENDOR_INVOICE_PRINT(:companyCode, :docNo, :loginUser);
+      END;
+    `;
+
+    await oracleDb.query(
+      plsql,
+      {
+        companyCode: { val: COMPANY_CODE },
+        docNo: { val: DOC_NO },
+        loginUser: { val: LOGIN_USER },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Procedure executed successfully for ${COMPANY_CODE}/${DOC_NO}`,
+    });
+  } catch (error: any) {
+    console.error("Error executing PROC_VENDOR_INVOICE_PRINT:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to execute procedure",
+      details: error?.message || String(error),
     });
   }
 };

@@ -1,7 +1,7 @@
 import { Response } from "express";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
-import { MessageBoxService } from "../../services/Purchaseflow/purchaseRequest.service";
+import { MessageBoxService } from "../../services/purchaseflow/purchaseRequest.service";
 
 export const fetchMessageBox = async (
      req: RequestWithUser, res: Response
