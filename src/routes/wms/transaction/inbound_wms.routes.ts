@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Inbound WMS Routes - Handles all inbound warehouse management system routes
  * @requires express
@@ -46,11 +47,11 @@ import {
 import { checkUserAuthorization } from "../../../middleware/checkUserAthorization"; // Middleware for user authorization
 // import { updateQualityclearance } from "../../../controllers/wms/transaction/inbound/qualityClearance_wms.controller";
 import createinboundjobWms from "../../../views/wms/transportation/inbound/createinboundJobWms";
-import {executeRawSql,executeRawSqlbody} from "../../../../src/controllers/wms.controller"
+import {executeRawSql,executeRawSqlbody, proc_build_dynamic_sql_wms} from "../../../../src/controllers/wms.controller"
 import {createInboundjob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
  import {Putawaywithpalletid} from "../../../../src/controllers/wms/transaction/inbound/putwaywithtally_wms_controller"
 // import  { getddSiteLocation }   from "../../../../src/views/wms/transportation/inbound/ddSiteLocation"
-// import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
+import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/inbound/ddPrinceProduct"
 import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
@@ -59,6 +60,13 @@ import {
   // getconfirmInboundjob, // Get confirmation details
   confirmInboundjob, // Confirm inbound job
 } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
+import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
+//import { upsertTIJobHandler } from "../../../controllers/Purchaseflow/updateinsertti_job";
+//import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
+// import {
+//   getconfirmInboundjob, // Get confirmation details
+//   confirmInboundjob, // Confirm inbound job
+// } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
 
 // import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
 import {upsertPutawaymanualOracle} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
@@ -75,9 +83,11 @@ router.post("/upsertPutawaymanualHandler", async (req, res, next) => {
 });
 router.post('/executeRawSql', executeRawSql);
 router.post('/executeRawSqlbody', executeRawSqlbody);
+router.post("/proc_build_dynamic_sql_wms", proc_build_dynamic_sql_wms);
+
 // router.get('/getddSiteLocation',getddSiteLocation)
 
-// router.get('/getddPrinceProduct',getddPrinceProduct)
+router.get('/getddPrinceProduct',getddPrinceProduct)
 // router.get('/getEDIPackdetHandler', getEDIPackdetHandler);
 // router.post('/copyEDIToPackdetHandler', copyEDIToPackdetHandler);
 
@@ -98,7 +108,11 @@ router.put(
 );
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
-router.post("/inboundjob", createInboundjob);
+router.post("/inboundjob",createOrUpdateJob);
+
+router.put("/inboundjob",createOrUpdateJob);
+
+
 //router.put("/inboundjob", GetsingleInboundjob);
 
 // router.put(

@@ -1,314 +1,227 @@
-// import { DataTypes, Model } from "sequelize";
+// models/wms/transaction/outbound/toOrderDetail_wms.model.ts
+import { Entity, Column, PrimaryColumn, ViewEntity } from "typeorm";
+import { IToOrderDetail } from "../../../../interfaces/wms/transaction/outbound/outboundJobWms.interface";
 
-// import { sequelize } from "../../../../database/connection";
-// import constants from "../../../../helpers/constants";
-// import { IToOrderDetail } from "../../../../interfaces/wms/transaction/outbound/outboundJobWms.interface";
+@Entity("VW_TO_ORDER_DET")
+export class OrderDetail {
+  @PrimaryColumn({ name: "JOB_NO", type: "varchar2", length: 10 })
+  job_no: string;
 
-// class OrderDetail extends Model<IToOrderDetail> {}
+  @PrimaryColumn({ name: "SERIAL_NO", type: "number" })
+  serial_no: number;
 
-// OrderDetail.init(
-//   {
-//     company_code: {
-//       type: DataTypes.STRING(7),
-//       allowNull: false,
-//     },
-//     prin_code: {
-//       type: DataTypes.STRING(5),
-//       allowNull: false,
-//     },
-//     job_no: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     cust_code: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     order_no: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     serial_no: {
-//       type: DataTypes.INTEGER,
-//       allowNull: false,
-//     },
-//     prod_code: {
-//       type: DataTypes.STRING(40),
-//       allowNull: false,
-//     },
-//     qty_puom: {
-//       type: DataTypes.DECIMAL(12, 1),
-//       allowNull: false,
-//     },
-//     p_uom: {
-//       type: DataTypes.STRING(5),
-//       allowNull: false,
-//     },
-//     qty_luom: {
-//       type: DataTypes.DECIMAL(12, 1),
-//       allowNull: false,
-//     },
-//     quantity: {
-//       type: DataTypes.DECIMAL(12, 1),
-//       allowNull: false,
-//     },
-//     doc_ref: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     lot_no: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     po_no: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     imp_job_no: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     manu_code: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     container_no: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     production_from: {
-//       type: DataTypes.DATEONLY,
-//       allowNull: false,
-//     },
-//     production_to: {
-//       type: DataTypes.DATEONLY,
-//       allowNull: false,
-//     },
-//     expiry_from: {
-//       type: DataTypes.DATEONLY,
-//       allowNull: false,
-//     },
-//     expiry_to: {
-//       type: DataTypes.DATEONLY,
-//       allowNull: false,
-//     },
-//     unit_price: {
-//       type: DataTypes.DECIMAL(16, 6),
-//       allowNull: false,
-//     },
-//     site_code: {
-//       type: DataTypes.STRING(5),
-//       allowNull: false,
-//     },
-//     loc_code_from: {
-//       type: DataTypes.STRING(15),
-//       allowNull: false,
-//     },
-//     loc_code_to: {
-//       type: DataTypes.STRING(15),
-//       allowNull: false,
-//     },
-//     picked: {
-//       type: DataTypes.STRING(1),
-//       allowNull: false,
-//     },
-//     confirmed: {
-//       type: DataTypes.STRING(1),
-//       allowNull: false,
-//     },
-//     confirmed_date: {
-//       type: DataTypes.DATEONLY,
-//       allowNull: false,
-//     },
-//     l_uom: {
-//       type: DataTypes.STRING(6),
-//       allowNull: false,
-//     },
-//     uppp: {
-//       type: DataTypes.INTEGER,
-//       allowNull: false,
-//     },
-//     selected: {
-//       type: DataTypes.STRING(1),
-//       allowNull: false,
-//     },
-//     aisle_from: {
-//       type: DataTypes.STRING(2),
-//       allowNull: false,
-//     },
-//     aisle_to: {
-//       type: DataTypes.STRING(2),
-//       allowNull: false,
-//     },
-//     height_from: {
-//       type: DataTypes.STRING(2),
-//       allowNull: false,
-//     },
-//     height_to: {
-//       type: DataTypes.STRING(2),
-//       allowNull: false,
-//     },
-//     column_from: {
-//       type: DataTypes.STRING(2),
-//       allowNull: false,
-//     },
-//     column_to: {
-//       type: DataTypes.STRING(2),
-//       allowNull: false,
-//     },
-//     gate_no: {
-//       type: DataTypes.STRING(3),
-//       allowNull: false,
-//     },
-//     sales_rate: {
-//       type: DataTypes.DECIMAL(18, 4),
-//       allowNull: false,
-//     },
-//     exp_container_no: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     exp_container_size: {
-//       type: DataTypes.DECIMAL(10, 0),
-//       allowNull: false,
-//     },
-//     exp_container_type: {
-//       type: DataTypes.STRING(40),
-//       allowNull: false,
-//     },
-//     exp_container_sealno: {
-//       type: DataTypes.STRING(50),
-//       allowNull: false,
-//     },
-//     moc1: {
-//       type: DataTypes.STRING(3),
-//       allowNull: false,
-//     },
-//     moc2: {
-//       type: DataTypes.STRING(5),
-//       allowNull: false,
-//     },
-//     order_serial: {
-//       type: DataTypes.INTEGER,
-//       allowNull: false,
-//     },
-//     origin_country: {
-//       type: DataTypes.STRING(5),
-//       allowNull: false,
-//     },
-//     bal_pack_qty: {
-//       type: DataTypes.DECIMAL(12, 1),
-//       allowNull: false,
-//     },
-//     multi_series: {
-//       type: DataTypes.STRING(1),
-//       allowNull: false,
-//     },
-//     prod_attrib_code: {
-//       type: DataTypes.STRING(50),
-//       allowNull: false,
-//     },
-//     prod_grade1: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     prod_grade2: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     tx_identity_number: {
-//       type: DataTypes.STRING(30),
-//       allowNull: false,
-//     },
-//     ref_txn_code: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     ref_txn_slno: {
-//       type: DataTypes.INTEGER,
-//       allowNull: false,
-//     },
-//     so_txn_code: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     inbound_done: {
-//       type: DataTypes.STRING(1),
-//       allowNull: false,
-//     },
-//     ref_txn_doc: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     supp_code: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     supp_reference: {
-//       type: DataTypes.STRING(25),
-//       allowNull: false,
-//     },
-//     orig_prod_code: {
-//       type: DataTypes.STRING(40),
-//       allowNull: false,
-//     },
-//     salesman_code: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     hs_code: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     batch_no: {
-//       type: DataTypes.STRING(20),
-//       allowNull: false,
-//     },
-//     act_order_qty: {
-//       type: DataTypes.DECIMAL(12, 1),
-//       allowNull: false,
-//     },
-//     bal_order_qty: {
-//       type: DataTypes.DECIMAL(12, 1),
-//       allowNull: false,
-//     },
-//     minperiod_exppick: {
-//       type: DataTypes.INTEGER,
-//       allowNull: false,
-//     },
-//     ignore_minexp_period: {
-//       type: DataTypes.STRING(1),
-//       allowNull: false,
-//     },
-//     stock_owner: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     ind_code: {
-//       type: DataTypes.STRING(30),
-//       allowNull: false,
-//     },
-//     git_no: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//      qty_string: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//     priority: {
-//       type: DataTypes.STRING(10),
-//       allowNull: false,
-//     },
-//   },
-//   {
-//     sequelize,
-//     modelName: "OrderDetail",
-//     tableName: "VW_TO_ORDER_DET",
-//     timestamps: false,
-//     // createdAt: "created_at",
-//     // updatedAt: "updated_at",
-//   }
-// );
-// OrderDetail.removeAttribute("id");
-// export default OrderDetail;
+  @Column({ name: "COMPANY_CODE", type: "varchar2", length: 7 })
+  company_code: string;
+
+  @Column({ name: "PRIN_CODE", type: "varchar2", length: 5 })
+  prin_code: string;
+
+  @Column({ name: "CUST_CODE", type: "varchar2", length: 20 })
+  cust_code: string;
+
+  @Column({ name: "ORDER_NO", type: "varchar2", length: 20 })
+  order_no: string;
+
+  @Column({ name: "PROD_CODE", type: "varchar2", length: 40 })
+  prod_code: string;
+
+  @Column({ name: "QTY_PUOM", type: "decimal", precision: 12, scale: 1 })
+  qty_puom: number;
+
+  @Column({ name: "P_UOM", type: "varchar2", length: 5 })
+  p_uom: string;
+
+  @Column({ name: "QTY_LUOM", type: "decimal", precision: 12, scale: 1 })
+  qty_luom: number;
+
+  @Column({ name: "QUANTITY", type: "decimal", precision: 12, scale: 1 })
+  quantity: number;
+
+  @Column({ name: "DOC_REF", type: "varchar2", length: 20 })
+  doc_ref: string;
+
+  @Column({ name: "LOT_NO", type: "varchar2", length: 20 })
+  lot_no: string;
+
+  @Column({ name: "PO_NO", type: "varchar2", length: 20 })
+  po_no: string;
+
+  @Column({ name: "IMP_JOB_NO", type: "varchar2", length: 10 })
+  imp_job_no: string;
+
+  @Column({ name: "MANU_CODE", type: "varchar2", length: 10 })
+  manu_code: string;
+
+  @Column({ name: "CONTAINER_NO", type: "varchar2", length: 20 })
+  container_no: string;
+
+  @Column({ name: "PRODUCTION_FROM", type: "date" })
+  production_from: Date;
+
+  @Column({ name: "PRODUCTION_TO", type: "date" })
+  production_to: Date;
+
+  @Column({ name: "EXPIRY_FROM", type: "date" })
+  expiry_from: Date;
+
+  @Column({ name: "EXPIRY_TO", type: "date" })
+  expiry_to: Date;
+
+  @Column({ name: "UNIT_PRICE", type: "decimal", precision: 16, scale: 6 })
+  unit_price: number;
+
+  @Column({ name: "SITE_CODE", type: "varchar2", length: 5 })
+  site_code: string;
+
+  @Column({ name: "LOC_CODE_FROM", type: "varchar2", length: 15 })
+  loc_code_from: string;
+
+  @Column({ name: "LOC_CODE_TO", type: "varchar2", length: 15 })
+  loc_code_to: string;
+
+  @Column({ name: "PICKED", type: "varchar2", length: 1 })
+  picked: string;
+
+  @Column({ name: "CONFIRMED", type: "varchar2", length: 1 })
+  confirmed: string;
+
+  @Column({ name: "CONFIRMED_DATE", type: "date" })
+  confirmed_date: Date;
+
+  @Column({ name: "L_UOM", type: "varchar2", length: 6 })
+  l_uom: string;
+
+  @Column({ name: "UPPP", type: "number" })
+  uppp: number;
+
+  @Column({ name: "SELECTED", type: "varchar2", length: 1 })
+  selected: string;
+
+  @Column({ name: "AISLE_FROM", type: "varchar2", length: 2 })
+  aisle_from: string;
+
+  @Column({ name: "AISLE_TO", type: "varchar2", length: 2 })
+  aisle_to: string;
+
+  @Column({ name: "HEIGHT_FROM", type: "varchar2", length: 2 })
+  height_from: string;
+
+  @Column({ name: "HEIGHT_TO", type: "varchar2", length: 2 })
+  height_to: string;
+
+  @Column({ name: "COLUMN_FROM", type: "varchar2", length: 2 })
+  column_from: string;
+
+  @Column({ name: "COLUMN_TO", type: "varchar2", length: 2 })
+  column_to: string;
+
+  @Column({ name: "GATE_NO", type: "varchar2", length: 3 })
+  gate_no: string;
+
+  @Column({ name: "SALES_RATE", type: "decimal", precision: 18, scale: 4 })
+  sales_rate: number;
+
+  @Column({ name: "EXP_CONTAINER_NO", type: "varchar2", length: 20 })
+  exp_container_no: string;
+
+  @Column({ name: "EXP_CONTAINER_SIZE", type: "decimal", precision: 10, scale: 0 })
+  exp_container_size: number;
+
+  @Column({ name: "EXP_CONTAINER_TYPE", type: "varchar2", length: 40 })
+  exp_container_type: string;
+
+  @Column({ name: "EXP_CONTAINER_SEALNO", type: "varchar2", length: 50 })
+  exp_container_sealno: string;
+
+  @Column({ name: "MOC1", type: "varchar2", length: 3 })
+  moc1: string;
+
+  @Column({ name: "MOC2", type: "varchar2", length: 5 })
+  moc2: string;
+
+  @Column({ name: "ORDER_SERIAL", type: "number" })
+  order_serial: number;
+
+  @Column({ name: "ORIGIN_COUNTRY", type: "varchar2", length: 5 })
+  origin_country: string;
+
+  @Column({ name: "BAL_PACK_QTY", type: "decimal", precision: 12, scale: 1 })
+  bal_pack_qty: number;
+
+  @Column({ name: "MULTI_SERIES", type: "varchar2", length: 1 })
+  multi_series: string;
+
+  @Column({ name: "PROD_ATTRIB_CODE", type: "varchar2", length: 50 })
+  prod_attrib_code: string;
+
+  @Column({ name: "PROD_GRADE1", type: "varchar2", length: 20 })
+  prod_grade1: string;
+
+  @Column({ name: "PROD_GRADE2", type: "varchar2", length: 20 })
+  prod_grade2: string;
+
+  @Column({ name: "TX_IDENTITY_NUMBER", type: "varchar2", length: 30 })
+  tx_identity_number: string;
+
+  @Column({ name: "REF_TXN_CODE", type: "varchar2", length: 10 })
+  ref_txn_code: string;
+
+  @Column({ name: "REF_TXN_SLNO", type: "number" })
+  ref_txn_slno: number;
+
+  @Column({ name: "SO_TXN_CODE", type: "varchar2", length: 20 })
+  so_txn_code: string;
+
+  @Column({ name: "INBOUND_DONE", type: "varchar2", length: 1 })
+  inbound_done: string;
+
+  @Column({ name: "REF_TXN_DOC", type: "varchar2", length: 20 })
+  ref_txn_doc: string;
+
+  @Column({ name: "SUPP_CODE", type: "varchar2", length: 10 })
+  supp_code: string;
+
+  @Column({ name: "SUPP_REFERENCE", type: "varchar2", length: 25 })
+  supp_reference: string;
+
+  @Column({ name: "ORIG_PROD_CODE", type: "varchar2", length: 40 })
+  orig_prod_code: string;
+
+  @Column({ name: "SALESMAN_CODE", type: "varchar2", length: 10 })
+  salesman_code: string;
+
+  @Column({ name: "HS_CODE", type: "varchar2", length: 20 })
+  hs_code: string;
+
+  @Column({ name: "BATCH_NO", type: "varchar2", length: 20 })
+  batch_no: string;
+
+  @Column({ name: "ACT_ORDER_QTY", type: "decimal", precision: 12, scale: 1 })
+  act_order_qty: number;
+
+  @Column({ name: "BAL_ORDER_QTY", type: "decimal", precision: 12, scale: 1 })
+  bal_order_qty: number;
+
+  @Column({ name: "MINPERIOD_EXPPICK", type: "number" })
+  minperiod_exppick: number;
+
+  @Column({ name: "IGNORE_MINEXP_PERIOD", type: "varchar2", length: 1 })
+  ignore_minexp_period: string;
+
+  @Column({ name: "STOCK_OWNER", type: "varchar2", length: 10 })
+  stock_owner: string;
+
+  @Column({ name: "IND_CODE", type: "varchar2", length: 30 })
+  ind_code: string;
+
+  @Column({ name: "GIT_NO", type: "varchar2", length: 10 })
+  git_no: string;
+
+  @Column({ name: "QTY_STRING", type: "varchar2", length: 10 })
+  qty_string: string;
+
+  @Column({ name: "PRIORITY", type: "varchar2", length: 10 })
+  priority: string;
+}
+
+export default OrderDetail;
