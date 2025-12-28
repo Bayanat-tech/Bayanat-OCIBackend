@@ -14,6 +14,8 @@ import {
   getEmployeeFiles,
   editEmployeeFiles,
   deleteEmployeeFiles,
+  getFilesBySrNo,
+  getAllVendorFiles,
 } from "../controllers/files.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import {
@@ -22,7 +24,6 @@ import {
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
 } from "../services/ociUpload.service";
-// router for files operations
 
 const router = express.Router();
 const upload = multer({
@@ -86,6 +87,20 @@ router.put(
   editHrVendorFiles
 );
 
+router.get(
+  "/getFilesBySrNo/:request_number/:sr_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getFilesBySrNo
+);
+
+router.get(
+  "/getAllVendorFiles/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAllVendorFiles
+);
+
 router.put(
   "/editEmployeeFile",
   passport.authenticate("jwt", { session: false }),
@@ -140,7 +155,7 @@ router.delete(
 );
 
 router.delete(
-  "/deleteVendorAttachment/:request_number/:sr_no",
+  "/deleteVendorAttachment/:request_number/:sr_no/:attachment_sr_no?",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   deleteHrVendorFiles

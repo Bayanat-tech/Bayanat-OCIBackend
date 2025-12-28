@@ -5,6 +5,7 @@ import constants from "../../helpers/constants";
 import { HrService } from "../../services/hr.service";
 import { TLeaveApproval } from "../../interfaces/Hr/hr_leave_approval";
 import {sendLeaveNotifications} from "./sendLeaveNotifications";
+import { notifyUser } from "../../helpers/functions";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -18,7 +19,6 @@ function toOracleDate(dateInput?: string | Date | null): string | null {
     if (dateInput instanceof Date) {
       dateObj = dateInput;
     } else if (typeof dateInput === "string") {
-      // Handle different date formats
       const cleanDate = dateInput.replace(/T.+/, "");
       const [year, month, day] = cleanDate.split("-").map(Number);
 
@@ -67,26 +67,236 @@ async function retryOnDeadlock<T>(
   }
 }
 
+// export async function upsertLeaveApproval(
+//   data: TLeaveApproval
+// ): Promise<string> {
+//   const { requestNumber, finalApproved } = await oracleDb.withTransaction(
+//     async (connection: oracledb.Connection) => {
+//       // perform insert or update
+//       const exists = await recordExists(
+//         data.REQUEST_NUMBER,
+//         data.COMPANY_CODE,
+//         connection
+//       );
+//       console.log("record exists:", exists);
+
+//       if (exists) {
+//         console.log("update path");
+//         await updateLeaveApproval(data, connection);
+//       } else {
+//         console.log("insert path");
+//         await insertLeaveApproval(data, connection);
+//       }
+
+//       let finalReq =
+//         data.REQUEST_NUMBER && data.REQUEST_NUMBER.trim() !== ""
+//           ? data.REQUEST_NUMBER
+//           : null;
+
+//       // 1) Try GT_SESSION_INFO (existing approach)
+//       if (!finalReq) {
+//         try {
+//           const codeRes: any = await connection.execute(
+//             `SELECT code FROM GT_SESSION_INFO WHERE session_id = SYS_CONTEXT('USERENV','SESSIONID') AND ROWNUM = 1`,
+//             {},
+//             { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//           );
+//           finalReq = codeRes.rows?.[0]?.CODE || null;
+//           console.log("Derived request number from GT_SESSION_INFO:", finalReq);
+//         } catch (err) {
+//           console.warn("Failed to read GT_SESSION_INFO for request number:", err);
+//         }
+//       }
+
+//       // 2) Fallback: query the newly inserted row inside the same transaction
+//       if (!finalReq) {
+//         try {
+//           const fallbackSql = `
+//             SELECT REQUEST_NUMBER FROM (
+//               SELECT REQUEST_NUMBER
+//               FROM LEAVE_REQUEST_FLOW
+//               WHERE COMPANY_CODE = :company_code
+//                 AND NVL(CREATED_BY, :created_by) = :created_by
+//                 AND NVL(EMPLOYEE_CODE, :employee_code) = :employee_code
+//               ORDER BY CREATED_AT DESC
+//             ) WHERE ROWNUM = 1
+//           `;
+
+//           const bindsFallback = {
+//             company_code: data.COMPANY_CODE,
+//             created_by: data.CREATED_BY || data.UPDATED_BY || "",
+//             employee_code: data.EMPLOYEE_CODE || "",
+//           };
+
+//           const fallbackRes: any = await connection.execute(fallbackSql, bindsFallback, {
+//             outFormat: oracledb.OUT_FORMAT_OBJECT,
+//           });
+
+//           finalReq = fallbackRes.rows?.[0]?.REQUEST_NUMBER || null;
+//           console.log("Derived request number from LEAVE_REQUEST_FLOW fallback:", finalReq, bindsFallback);
+//         } catch (fbErr) {
+//           console.warn("Fallback query for request number failed:", fbErr);
+//         }
+//       }
+
+//       finalReq = finalReq || "";
+
+//       const sql = `
+//         SELECT TRIM(FINAL_APPROVED) AS FINAL_APPROVED
+//         FROM LEAVE_REQUEST_FLOW
+//         WHERE REQUEST_NUMBER = :req
+//           AND COMPANY_CODE   = :comp
+//         FETCH FIRST 1 ROWS ONLY
+//       `;
+
+//       const binds = { req: finalReq, comp: data.COMPANY_CODE };
+//       console.log("Checking FINAL_APPROVED from DB with same txn:", binds);
+
+//       const res = await connection.execute<{ FINAL_APPROVED?: string }>(
+//         sql,
+//         binds,
+//         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//       );
+
+//       const dbFlag = res.rows?.[0]?.FINAL_APPROVED ?? null;
+//       const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? "")
+//         .toString()
+//         .trim()
+//         .toUpperCase();
+
+//       return {
+//         requestNumber: finalReq,
+//         finalApproved: normalizedFlag === "YES",
+//       };
+//     }
+//   );
+
+//   sendLeaveNotifications(requestNumber, data.COMPANY_CODE).catch((err) => {
+//     console.error("sendLeaveNotifications failed for", requestNumber, err);
+//   });
+
+//   if (finalApproved) {
+//     console.log('Triggering background processing for approved leave (post-commit)');
+//     processApprovedLeaveRequestsForSingleRecord(requestNumber, data.COMPANY_CODE)
+//       .catch((error) => {
+//         console.error('Background processing failed:', error);
+//       });
+//   }
+
+//   return requestNumber;
+// }
+
 export async function upsertLeaveApproval(
   data: TLeaveApproval
-): Promise<string> {
+): Promise<{ requestNumber: string; uuid: string }> {
+  // Generate UUID if not provided (for new records)
+  const uuid = data.UUID || generateUUID();
+  
   const { requestNumber, finalApproved } = await oracleDb.withTransaction(
     async (connection: oracledb.Connection) => {
+      // For SAVEASDRAFT, try to find existing draft by UUID first
+      let finalReq = data.REQUEST_NUMBER;
+      
+      // If we have a UUID but no request number, look for existing draft
+      if (!finalReq && data.LAST_ACTION === 'SAVEASDRAFT') {
+        const draftCheck = await connection.execute(
+          `SELECT REQUEST_NUMBER 
+           FROM LEAVE_REQUEST_FLOW 
+           WHERE UUID = :uuid 
+             AND COMPANY_CODE = :company_code
+             AND ROWNUM = 1`,
+          {
+            uuid: { val: uuid },
+            company_code: { val: data.COMPANY_CODE }
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        
+        // cast execute result rows to any[] and handle both possible column name casings
+        const draftRows: any[] = (draftCheck.rows as any[]) || [];
+        if (draftRows.length > 0 && draftRows[0]) {
+          // REQUEST_NUMBER may be returned as REQUEST_NUMBER or request_number depending on driver settings
+          finalReq = draftRows[0].REQUEST_NUMBER ?? draftRows[0].request_number ?? null;
+          console.log("Found existing draft by UUID:", { uuid, requestNumber: finalReq });
+        }
+      }
+      
+      // Update data with found request number and UUID
+      const dataWithUUID = {
+        ...data,
+        REQUEST_NUMBER: finalReq || data.REQUEST_NUMBER,
+        UUID: uuid
+      };
+      
+      // Check if record exists
       const exists = await recordExists(
-        data.REQUEST_NUMBER,
-        data.COMPANY_CODE,
+        dataWithUUID.REQUEST_NUMBER,
+        dataWithUUID.COMPANY_CODE,
         connection
       );
-      console.log('record exists:', exists);
+      console.log("Record exists check:", exists, "for request:", dataWithUUID.REQUEST_NUMBER);
 
       if (exists) {
-        console.log('update path');
-        await updateLeaveApproval(data, connection);
+        console.log("Update path for:", dataWithUUID.REQUEST_NUMBER);
+        await updateLeaveApproval(dataWithUUID, connection);
       } else {
-        console.log('insert path');
-        await insertLeaveApproval(data, connection);
+        console.log("Insert path with UUID:", uuid);
+        await insertLeaveApproval(dataWithUUID, connection);
+        
+        // After insert, get the trigger-generated request number
+        if (!dataWithUUID.REQUEST_NUMBER) {
+          try {
+            const newReqResult: any = await connection.execute(
+              `SELECT REQUEST_NUMBER 
+               FROM LEAVE_REQUEST_FLOW 
+               WHERE UUID = :uuid 
+                 AND COMPANY_CODE = :company_code
+                 AND ROWNUM = 1`,
+              {
+                uuid: { val: uuid },
+                company_code: { val: data.COMPANY_CODE }
+              },
+              { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            
+            const rows: any[] = (newReqResult.rows as any[]) || [];
+            if (rows.length > 0 && rows[0]) {
+              const candidate = rows[0].REQUEST_NUMBER ?? rows[0].request_number;
+              if (candidate != null) {
+                finalReq = String(candidate);
+                console.log("Retrieved trigger-generated REQUEST_NUMBER:", finalReq);
+              }
+            }
+          } catch (err) {
+            console.warn("Failed to retrieve new REQUEST_NUMBER:", err);
+          }
+        }
       }
 
+      // Final fallback for request number
+      if (!finalReq) {
+        finalReq = dataWithUUID.REQUEST_NUMBER;
+        
+        if (!finalReq) {
+          // Try GT_SESSION_INFO
+          try {
+            const codeRes: any = await connection.execute(
+              `SELECT code FROM GT_SESSION_INFO 
+               WHERE session_id = SYS_CONTEXT('USERENV','SESSIONID') 
+               AND ROWNUM = 1`,
+              {},
+              { outFormat: oracledb.OUT_FORMAT_OBJECT }
+            );
+            finalReq = codeRes.rows?.[0]?.CODE || null;
+          } catch (err) {
+            console.warn("GT_SESSION_INFO lookup failed:", err);
+          }
+        }
+      }
+
+      finalReq = finalReq || "";
+
+      // Get FINAL_APPROVED status
       const sql = `
         SELECT TRIM(FINAL_APPROVED) AS FINAL_APPROVED
         FROM LEAVE_REQUEST_FLOW
@@ -94,11 +304,8 @@ export async function upsertLeaveApproval(
           AND COMPANY_CODE   = :comp
         FETCH FIRST 1 ROWS ONLY
       `;
-     
-      const binds = { req: data.REQUEST_NUMBER, comp: data.COMPANY_CODE };
 
-      console.log('Checking FINAL_APPROVED from DB with same txn:', binds);
-
+      const binds = { req: finalReq, comp: data.COMPANY_CODE };
       const res = await connection.execute<{ FINAL_APPROVED?: string }>(
         sql,
         binds,
@@ -106,31 +313,32 @@ export async function upsertLeaveApproval(
       );
 
       const dbFlag = res.rows?.[0]?.FINAL_APPROVED ?? null;
-
-      const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? '')
+      const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? "")
         .toString()
         .trim()
         .toUpperCase();
+
       return {
-        requestNumber: data.REQUEST_NUMBER,
-        finalApproved: normalizedFlag === 'YES',
+        requestNumber: finalReq,
+        finalApproved: normalizedFlag === "YES",
       };
     }
   );
 
+  // Send notifications (outside transaction)
   sendLeaveNotifications(requestNumber, data.COMPANY_CODE).catch((err) => {
     console.error("sendLeaveNotifications failed for", requestNumber, err);
   });
 
   if (finalApproved) {
-    console.log('Triggering background processing for approved leave (post-commit)');
+    console.log('Triggering background processing for approved leave');
     processApprovedLeaveRequestsForSingleRecord(requestNumber, data.COMPANY_CODE)
       .catch((error) => {
         console.error('Background processing failed:', error);
       });
   }
 
-  return requestNumber;
+  return { requestNumber, uuid };
 }
 
 export async function processApprovedLeaveRequestsForSingleRecord(
@@ -181,6 +389,7 @@ async function recordExists(
 }
 
   async function updateLeaveApproval(data: TLeaveApproval, connection: any) {
+    console.log('date end',data.TRAVEL_END_DATE)
   const sql = `
   UPDATE LEAVE_REQUEST_FLOW
   SET
@@ -204,13 +413,13 @@ async function recordExists(
     TRAVEL_DATE = CASE 
       WHEN :travel_date IS NOT NULL 
       THEN TO_DATE(:travel_date, 'YYYY-MM-DD') 
-      ELSE TRAVEL_DATE 
+      ELSE NULL
     END,
 
     TRAVEL_END_DATE = CASE 
       WHEN :travel_end_date IS NOT NULL 
       THEN TO_DATE(:travel_end_date, 'YYYY-MM-DD') 
-      ELSE TRAVEL_END_DATE 
+      ELSE NULL
     END,
 
     NAME_OF_REPLACEMENT = NVL(:name_of_replacement, NAME_OF_REPLACEMENT),
@@ -228,15 +437,17 @@ async function recordExists(
 
     LEAVE_TYPE = NVL(:leave_type, LEAVE_TYPE),
 
-    LEAVE_START_DATE = CASE
-  WHEN :leave_start_date IS NOT NULL THEN TO_DATE(:leave_start_date, 'YYYY-MM-DD')
-  ELSE NULL
-END,
+    LEAVE_START_DATE = CASE 
+      WHEN :leave_start_date IS NOT NULL 
+      THEN TO_DATE(:leave_start_date, 'YYYY-MM-DD') 
+      ELSE LEAVE_START_DATE 
+    END,
 
-LEAVE_END_DATE = CASE
-  WHEN :leave_end_date IS NOT NULL THEN TO_DATE(:leave_end_date, 'YYYY-MM-DD')
-  ELSE NULL
-END
+    LEAVE_END_DATE = CASE 
+      WHEN :leave_end_date IS NOT NULL 
+      THEN TO_DATE(:leave_end_date, 'YYYY-MM-DD') 
+      ELSE LEAVE_END_DATE 
+    END,
 
     LEAVE_DAYS = NVL(:leave_days, LEAVE_DAYS),
     LAST_ACTION = NVL(:last_action, LAST_ACTION),
@@ -247,7 +458,8 @@ END
     AIR_ROUTE = NVL(:air_route, AIR_ROUTE),
 
     UPDATED_BY = :updated_by,
-    UPDATED_AT = SYSTIMESTAMP
+    UPDATED_AT = SYSTIMESTAMP,
+    UUID = NVL(:uuid, UUID)
 
   WHERE COMPANY_CODE = :company_code
     AND REQUEST_NUMBER = :request_number
@@ -261,19 +473,9 @@ const params = {
   leave_allowance: { val: data.LEAVE_ALLOWANCE },
   adv_payment: { val: data.ADV_PAYMENT },
   cause_type: { val: data.CAUSE_TYPE },
-
-  travel_date: {
-  val: data.TRAVEL_DATE && data.TRAVEL_DATE.trim() !== '' 
-       ? new Date(data.TRAVEL_DATE) 
-       : null,
-  type: oracledb.DATE
-},
-travel_end_date: {
-  val: data.TRAVEL_END_DATE && data.TRAVEL_END_DATE.trim() !== ''
-       ? new Date(data.TRAVEL_END_DATE)
-       : null,
-  type: oracledb.DATE
-},
+  
+    travel_date: { val: toOracleDate(data.TRAVEL_DATE) || "" },
+    travel_end_date: { val: toOracleDate(data.TRAVEL_END_DATE) || "" },
 
   name_of_replacement: { val: data.NAME_OF_REPLACEMENT },
   contact_details_during_leave: { val: data.CONTACT_DETAILS_DURING_LEAVE },
@@ -302,6 +504,7 @@ travel_end_date: {
 
   air_route: { val: data.AIR_ROUTE || null },
   air_ticket: { val: data.AIR_TICKET || null },
+  uuid: { val: data.UUID },
 };
 
 
@@ -329,17 +532,7 @@ const formatDate = (date: string | number | Date | undefined) => {
   return null;
 };
 
-function parseOracleDate(value: string | Date | undefined | null): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;          // Already a Date
-  if (typeof value === "string" && value.trim() !== "") {
-    return new Date(value);
-  }
-  return null;
-}
-
 async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
-  // Validate required dates
   console.log(
     "before date conversion",
     data.LEAVE_START_DATE,
@@ -363,20 +556,21 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
   const sql = `
  INSERT INTO LEAVE_REQUEST_FLOW (
     EMPLOYEE_NAME, HALF_DAY, DUTY_RESUME_DATE, ACTUAL_RESUME_DATE,
-    LEAVE_ALLOWANCE, ADV_PAYMENT, CAUSE_TYPE, TRAVEL_DATE,
+    LEAVE_ALLOWANCE, ADV_PAYMENT, CAUSE_TYPE, TRAVEL_DATE,TRAVEL_END_DATE,
     NAME_OF_REPLACEMENT, CONTACT_DETAILS_DURING_LEAVE, REMARKS,
     FLOW_CODE, HOD, UPDATED_BY, IMMEDIATE_SUPERVISOR, DEPT_HEAD,
     COMPANY_CODE, REQUEST_NUMBER, REQUEST_DATE,
     EMPLOYEE_CODE, LEAVE_TYPE, LEAVE_START_DATE, LEAVE_END_DATE,
     LEAVE_DAYS, AIR_TICKET, AIR_ROUTE, LAST_ACTION, CURRENT_STEP, 
     FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
-    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL
+    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL, UUID
 ) VALUES (
     :employee_name, :half_day,
     CASE WHEN :duty_resume_date IS NOT NULL THEN TO_DATE(:duty_resume_date, 'YYYY-MM-DD') ELSE NULL END,
     CASE WHEN :actual_resume_date IS NOT NULL THEN TO_DATE(:actual_resume_date, 'YYYY-MM-DD') ELSE NULL END,
     :leave_allowance, :adv_payment, :cause_type,
     CASE WHEN :travel_date IS NOT NULL THEN TO_DATE(:travel_date, 'YYYY-MM-DD') ELSE NULL END,
+     CASE WHEN :travel_end_date IS NOT NULL THEN TO_DATE(:travel_date, 'YYYY-MM-DD') ELSE NULL END,
     :name_of_replacement, :contact_details_during_leave, :remarks,
     :flow_code, :hod, :updated_by, :immediate_supervisor, :dept_head,
     :company_code, :request_number,
@@ -385,42 +579,47 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     TO_DATE(:leave_start_date, 'YYYY-MM-DD'),
     TO_DATE(:leave_end_date, 'YYYY-MM-DD'),
     :leave_days, :air_ticket, :air_route, :last_action, 1, 1, 4, :create_user, SYSDATE,
-    :created_by, SYSDATE, 4
+    :created_by, SYSDATE, 4, :uuid
 )
 `;
 
- const params = {
-  employee_name: { val: data.EMPLOYEE_NAME },
-  half_day: { val: data.HALF_DAY || "N" },
-  duty_resume_date: { val: parseOracleDate(data.DUTY_RESUME_DATE), type: oracledb.DATE },
-  actual_resume_date: { val: parseOracleDate(data.ACTUAL_RESUME_DATE), type: oracledb.DATE },
-  leave_allowance: { val: data.LEAVE_ALLOWANCE },
-  adv_payment: { val: data.ADV_PAYMENT },
-  cause_type: { val: data.CAUSE_TYPE },
-  travel_date: { val: parseOracleDate(data.TRAVEL_DATE), type: oracledb.DATE },
-  travel_end_date: { val: parseOracleDate(data.TRAVEL_END_DATE), type: oracledb.DATE },
-  name_of_replacement: { val: data.NAME_OF_REPLACEMENT },
-  contact_details_during_leave: { val: data.CONTACT_DETAILS_DURING_LEAVE },
-  remarks: { val: data.REMARKS },
-  flow_code: { val: "004" },
-  hod: { val: data.HOD },
-  updated_by: { val: data.UPDATED_BY },
-  immediate_supervisor: { val: data.IMMEDIATE_SUPERVISOR },
-  dept_head: { val: data.DEPT_HEAD },
-  company_code: { val: data.COMPANY_CODE },
-  request_number: { val: data.REQUEST_NUMBER },
-  request_date: { val: parseOracleDate(data.REQUEST_DATE), type: oracledb.DATE },
-  employee_code: { val: data.EMPLOYEE_CODE },
-  leave_type: { val: data.LEAVE_TYPE },
-  leave_start_date: { val: parseOracleDate(data.LEAVE_START_DATE), type: oracledb.DATE },
-  leave_end_date: { val: parseOracleDate(data.LEAVE_END_DATE), type: oracledb.DATE },
-  leave_days: { val: data.LEAVE_DAYS },
-  air_ticket: { val: data.AIR_TICKET || null },
-  air_route: { val: data.AIR_ROUTE || null },
-  last_action: { val: data.LAST_ACTION },
-  create_user: { val: data.UPDATED_BY },
-  created_by: { val: data.CREATED_BY }
-};
+  const params = {
+    employee_name: { val: data.EMPLOYEE_NAME },
+    half_day: { val: data.HALF_DAY || "N" },
+    duty_resume_date: { val: toOracleDate(data.DUTY_RESUME_DATE) || null },
+    actual_resume_date: { val: toOracleDate(data.ACTUAL_RESUME_DATE) || null },
+    leave_allowance: { val: data.LEAVE_ALLOWANCE },
+    adv_payment: { val: data.ADV_PAYMENT },
+    cause_type: { val: data.CAUSE_TYPE },
+    travel_date: { val: toOracleDate(data.TRAVEL_DATE) || "" },
+    travel_end_date: { val: toOracleDate(data.TRAVEL_END_DATE) || "" },
+    name_of_replacement: { val: data.NAME_OF_REPLACEMENT },
+    contact_details_during_leave: { val: data.CONTACT_DETAILS_DURING_LEAVE },
+    remarks: { val: data.REMARKS },
+    flow_code: { val: "004" },
+    hod: { val: data.HOD },
+    updated_by: { val: data.UPDATED_BY },
+    immediate_supervisor: { val: data.IMMEDIATE_SUPERVISOR },
+    dept_head: { val: data.DEPT_HEAD },
+    company_code: { val: data.COMPANY_CODE },
+    request_number: { val: data.REQUEST_NUMBER },
+    request_date: {
+      val: toOracleDate(data.REQUEST_DATE) || leaveStartDate || "",
+    },
+    employee_code: { val: data.EMPLOYEE_CODE },
+    leave_type: { val: data.LEAVE_TYPE },
+    leave_start_date: { val: leaveStartDate },
+    leave_end_date: { val: leaveEndDate },
+    leave_days: { val: data.LEAVE_DAYS },
+    last_action: { val: data.LAST_ACTION },
+    air_route: { val: data.AIR_ROUTE || null },
+    air_ticket: { val: data.AIR_TICKET || null },
+
+    create_user: { val: data.UPDATED_BY },
+    created_by: { val: data.CREATED_BY },
+    uuid: { val: data.UUID },
+
+  };
 
   // Debug: log parameters
   console.log("Parameters for insert:", JSON.stringify(params, null, 2));
@@ -466,6 +665,14 @@ console.log("--------------------------------------------------");
   }
 }
 
+export function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // === Express handler ===
 export const upsertLeaveApprovalHandler = async (
   req: Request,
@@ -488,19 +695,10 @@ export const upsertLeaveApprovalHandler = async (
 
     console.log("Upsert Leave Approval Request Data:", data);
 
-    // const missingFields = requiredFields.filter((field) => !data[field]);
-
-    // if (missingFields.length > 0) {
-    //   res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-    //     success: false,
-    //     message: `Missing required field(s): ${missingFields.join(", ")}`,
-    //   });
-    //   return;
-    // }
 
     const leaveApprovalData: TLeaveApproval = {
       ...data,
-      COMPANY_CODE: "BSG", // Hardcoded company code
+      COMPANY_CODE: "BSG", 
     };
 
     const requestNumber = await upsertLeaveApproval(leaveApprovalData);
@@ -525,7 +723,7 @@ export const upsertLeaveApprovalHandler = async (
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `${requestNumber} ${messageType} successfully.`,
+      message: `${messageType} successfully.`,
       request_number: requestNumber,
     });
   } catch (error: any) {
@@ -577,6 +775,44 @@ export async function processApprovedLeaveRequests(options?: {
           `Failed to send file data for REQUEST_NUMBER: ${options?.specificRequestNumber}`,
           error
         );
+
+        // notify about file transfer failure
+        const detailedError =
+          error?.response?.data ??
+          error?.response ??
+          error?.message ??
+          String(error);
+
+        const detailedErrorText =
+          typeof detailedError === "string"
+            ? detailedError
+            : JSON.stringify(detailedError, null, 2);
+
+        const notifPayload = {
+          event: "HR_API_ERROR",
+          message: `Failed to upload file to HR .NET API for Request: ${options?.specificRequestNumber}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
+          subject: "HR API File Upload Failed",
+          request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,arun.colaco@bayanattechnology.com",
+          cc: "prem@bayanattechnology.com",
+          htmlMessage: `
+            <h3>HR API File Upload Failed</h3>
+            <p><strong>Request Number:</strong> ${options?.specificRequestNumber}</p>
+            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
+            <p><strong>Error Details:</strong></p>
+            <pre>${detailedErrorText}</pre>
+            <p><strong>File Details:</strong></p>
+            <pre>${JSON.stringify(file, null, 2)}</pre>
+          `,
+        };
+
+        try {
+          console.log("notifyUser payload (HR file upload):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (HR file upload):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (HR file upload):", notifErr);
+        }
+
         return;
       }
     }
@@ -681,7 +917,47 @@ export async function processApprovedLeaveRequests(options?: {
         console.error("Failed to insert request:", {
           requestNumber: request.requestNumber,
           error: error.message,
+          fullError: error?.response?.data ?? error,
         });
+
+        // build detailed error text for notification
+        const detailedError =
+          error?.response?.data ??
+          error?.response ??
+          error?.message ??
+          String(error);
+
+        const detailedErrorText =
+          typeof detailedError === "string"
+            ? detailedError
+            : JSON.stringify(detailedError, null, 2);
+
+        // notify HR team about transfer failure for this request
+        const notifPayload = {
+          event: "HR_API_ERROR",
+          message: `Failed to transfer leave request to HR .NET API.\nRequestNumber: ${request.requestNumber}\nCompanyCode: ${request.companyCode}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
+          subject: "HR API Leave Transfer Failed",
+          request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,arun.colaco@bayanattechnology.com",
+          cc: "prem@bayanattechnology.com",
+          htmlMessage: `
+            <h3>HR API Leave Transfer Failed</h3>
+            <p><strong>Request Number:</strong> ${request.requestNumber}</p>
+            <p><strong>Company Code:</strong> ${request.companyCode}</p>
+            <p><strong>Error Message:</strong> ${error?.message || "Unknown error"}</p>
+            <p><strong>Error Details:</strong></p>
+            <pre>${detailedErrorText}</pre>
+            <p><strong>Request Payload:</strong></p>
+            <pre>${JSON.stringify(request, null, 2)}</pre>
+          `,
+        };
+
+        try {
+          console.log("notifyUser payload (HR leave transfer):", notifPayload);
+          const notifResult: any = await notifyUser(notifPayload);
+          console.log("notifyUser result (HR leave transfer):", notifResult);
+        } catch (notifErr) {
+          console.error("notifyUser failed (HR leave transfer):", notifErr);
+        }
       }
     }
 

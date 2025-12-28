@@ -16,7 +16,8 @@ import {
   updateLpoStatusHandler,
   executeRawSql,
   executeRawSqlbody,
-  proc_build_dynamic_sql
+  proc_build_dynamic_sql,
+  executeVendorInvoicePrintHandler
 } from "./vendorupdation.controller";
 import { getVendorrequest } from "./getVendorrequest";
 
@@ -39,5 +40,6 @@ router.get("/getInvoiceStatus", getInvoiceStatusHandler);
 router.get("/tmp-ac-header-with-erp-doc", getTmpAcHeaderWithErpDocNoHandler);
 router.post("/createVendor", createVendor);
 router.post("/updateLpoStatus", updateLpoStatusHandler);
+router.post("/executeVendorInvoicePrintHandler",executeVendorInvoicePrintHandler);
 
 export default router;

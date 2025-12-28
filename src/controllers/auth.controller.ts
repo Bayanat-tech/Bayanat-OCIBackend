@@ -433,25 +433,55 @@ export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
     // Update user's password using email
     await AuthService.updateUserPassword(user.email_id, hashedPassword);
 
-    // Send confirmation email
-    await notifyUser({
-      event: constants.EVENTS.RESET_PASSWORD,
-      request_users: user.email_id,
-      subject: "Password Reset Successful",
-      htmlMessage: `
-        <p>Dear ${user.username || 'User'},</p>
-        <p>Your password has been successfully reset for login ID: ${loginId}</p>
-        <p>If you did not make this change, please contact support immediately.</p>
-        <p>Best regards,</p>
-        <p>Bayanat Technology</p>
-      `,
-    });
+    // Check if company_code contains JASRA (case-insensitive)
+    const isJasraCompany = user.company_code && 
+                           user.company_code.toUpperCase().includes("JASRA");
+    
+    if (isJasraCompany) {
+      // For JASRA users: Send password reset link via email
+      await notifyUser({
+        event: constants.EVENTS.RESET_PASSWORD,
+        request_users: user.email_id,
+        subject: "Password Reset Link",
+        htmlMessage: `
+          <p>Dear ${user.username || 'User'},</p>
+          <p>Please click on the following link to reset your password:</p>
+          <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.email_id}">Reset Password</a></p>
+          <p>If you did not request this, please ignore this email.</p>
+          <p>Best regards,</p>
+          <p>Bayanat Technology</p>
+        `,
+      });
 
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message: "Password has been reset successfully",
-    });
-    return;
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: "Password reset link has been sent to your email",
+        emailSent: true,
+      });
+      return;
+    } else {
+      // For non-JASRA users: Reset password directly
+      // Send confirmation email
+      await notifyUser({
+        event: constants.EVENTS.RESET_PASSWORD,
+        request_users: user.email_id,
+        subject: "Password Reset Successful",
+        htmlMessage: `
+          <p>Dear ${user.username || 'User'},</p>
+          <p>Your password has been successfully reset for login ID: ${loginId}</p>
+          <p>If you did not make this change, please contact support immediately.</p>
+          <p>Best regards,</p>
+          <p>Bayanat Technology</p>
+        `,
+      });
+
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: "Password has been reset successfully",
+        emailSent: false,
+      });
+      return;
+    }
   } catch (error: any) {
     console.error("Reset Password With Login ID Error:", error);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
