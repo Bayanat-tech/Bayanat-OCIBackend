@@ -7,7 +7,7 @@ import { FaceRecognitionService } from "./face_recognition.service";
 import { getSignedUrl, uploadEmployeeFace } from "../../services/ociUpload.service";
 import { CacheService } from "./cache.service";
 import { AppDataSource, oracleDb }from "../../database/connection"
-import { Between, In } from "typeorm";
+import { Between, In, Or } from "typeorm";
 import { Employee} from "../../entity/Attendance/employee.entity";
 import {AttendanceRecord} from "../../entity/Attendance/attendance_record.entity";
 import { AttendanceEvent, AttendanceEventType, AttendanceStatus, DataTransferFlag } from "../../entity/Attendance/attendance_events.entity";
@@ -753,84 +753,88 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 }
 
   // 🎯 LOG PROXY ATTEMPT
-  // private static async logProxyAttempt(data: any, actualEmployeeCode: string, actualEmployeeName: string, reason: string): Promise<any> {
-  //   const transaction = await sequelize.transaction();
-  //   const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
+  private static async logProxyAttempt(data: any, actualEmployeeCode: string, actualEmployeeName: string, reason: string): Promise<any> {
+    const transaction = AppDataSource.createQueryRunner();
+    await transaction.connect();
+    await transaction.startTransaction();
     
-  //   try {
-  //     let event = await attendanceEvent.findOne({ where: { uuid: data.uuid }, transaction });
+    try {
+      const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
+      const ProxyLogs = AppDataSource.getRepository(ProxyLog);
+      const employee = transaction.manager.getRepository(Employee);
+      
+      let event = await attendanceEvent.findOne({ where: { uuid: data.uuid } });
 
-  //     if (!event) {
-  //       const eventData: any = {
-  //         id: uuidv4(),
-  //         employee_id: data.employee_id,
-  //         employee_code: data.employee_code,
-  //         event_time: data.timestamp,
-  //         event_type: data.action === "check-in" ? "check_in" : "check_out",
-  //         data_transfer: "A",
-  //         uuid: data.uuid,
-  //         confidence: data.confidence,
-  //         s3_image_url: data.s3_image_url,
-  //         status: 'cancelled',
-  //         confirmed_by: 'cancelled_by_user',
-  //         confirmed_at: new Date(),
-  //       };
+      if (!event) {
+        const eventData: any = {
+          id: uuidv4(),
+          employee_id: data.employee_id,
+          employee_code: data.employee_code,
+          event_time: data.timestamp,
+          event_type: data.action === "check-in" ? "check_in" : "check_out",
+          data_transfer: "A",
+          uuid: data.uuid,
+          confidence: data.confidence,
+          s3_image_url: data.s3_image_url,
+          status: 'cancelled', //
+          confirmed_by: 'cancelled_by_user',
+          confirmed_at: new Date(),
+        };
 
-  //       if (data.location_data) {
-  //         Object.assign(eventData, {
-  //           latitude: data.location_data.latitude,
-  //           longitude: data.location_data.longitude,
-  //           accuracy: data.location_data.accuracy,
-  //           location_type: data.location_data.locationType,
-  //           address: data.location_data.address,
-  //           office_name: data.location_data.officeName
-  //         });
-  //       }
+        if (data.location_data) {
+          Object.assign(eventData, {
+            latitude: data.location_data.latitude,
+            longitude: data.location_data.longitude,
+            accuracy: data.location_data.accuracy,
+            location_type: data.location_data.locationType,
+            address: data.location_data.address,
+            office_name: data.location_data.officeName
+          });
+        }
+  
 
-  //       event = await AttendanceEvent.create(eventData, { transaction });
-  //     } else {
-  //       await event.update({
-  //         status: 'cancelled',
-  //         confirmed_by: 'cancelled_by_user',
-  //         confirmed_at: new Date(),
-  //       }, { transaction });
-  //     }
+      event = await attendanceEvent.save(eventData);
+      } else {
+        event.status = AttendanceStatus.CANCELLED;
+        event.confirmed_by = 'cancelled_by_user';
+        event.confirmed_at = new Date();
+        await attendanceEvent.save(event);
+      }
 
-  //     const proxyEmployee = await Employee.findOne({
-  //       where: { employee_code: data.employee_code },
-  //       transaction,
-  //       raw: true
-  //     });
+      const proxyEmployee = await employee.findOne({
+        where: { employee_code: data.employee_code },
+      });
 
-  //     const proxyLog = await ProxyLog.create({
-  //       id: uuidv4(),
-  //       uuid: data.uuid,
-  //       timestamp: new Date(),
-  //       proxy_employee_code: data.employee_code,
-  //       proxy_employee_name: proxyEmployee?.full_name || 'Unknown',
-  //       actual_employee_code: actualEmployeeCode,
-  //       actual_employee_name: actualEmployeeName,
-  //       confidence: data.confidence,
-  //       s3_image_url: data.s3_image_url,
-  //       location_data: data.location_data,
-  //       action: data.action === "check-in" ? "check_in" : "check_out",
-  //       action_taken: 'cancelled_by_user',
-  //       device_type: 'web',
-  //       status: 'reported',
-  //       reason: reason,
-  //     }, { transaction });
+      const proxyLog = ProxyLogs.create({
+        id: uuidv4(),
+        uuid: data.uuid,
+        timestamp: new Date(),  
+        proxy_employee_code: data.employee_code,
+        proxy_employee_name: proxyEmployee?.full_name || 'Unknown',
+        actual_employee_code: actualEmployeeCode,
+        actual_employee_name: actualEmployeeName,
+        confidence: data.confidence,
+        s3_image_url: data.s3_image_url,
+        location_data: data.location_data,
+        action: data.action === "check-in" ? "check_in" : "check_out",
+        action_taken: 'cancelled_by_user',
+        device_type: 'web',
+        status: 'reported',
+        reason: reason,
+      });
+      await ProxyLogs.save(proxyLog);
 
-  //     await transaction.commit();
-  //     return { proxyLog, cancelledEvent: event };
+      await transaction.commitTransaction();
+      return { proxyLog, cancelledEvent: event };
 
-  //   } catch (error) {
-  //     await transaction.rollback();
-  //     logger.error('Failed to log proxy attempt:', error);
-  //     throw error;
-  //   }
-  // }
+    } catch (error) {
+      await transaction.rollbackTransaction();
+      logger.error('Failed to log proxy attempt:', error);
+      throw error;
+    }
+  }
 
-// static async debugEmailFlow(uuid: string): Promise<void> {
+ // static async debugEmailFlow(uuid: string): Promise<void> {
 //   try {
 //     logger.info(`🔍 [EMAIL DEBUG] Starting email debug for UUID: ${uuid}`);
     
@@ -1154,7 +1158,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 //   }
 // }
 
-// private static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string, actualEmployeeName: string, s3ImageUrl: string | null): Promise<boolean> {
+ // private static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string, actualEmployeeName: string, s3ImageUrl: string | null): Promise<boolean> {
 //   try {
 //     logger.info(`📧 [EMAIL] Starting proxy email for UUID: ${data.uuid}`);
     
@@ -1402,47 +1406,39 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
   }
 
   // 🎯 GET PROXY LOGS
-  // static async getProxyLogs(filters: any = {}): Promise<any> {
-  //   const { page = 1, limit = 50, start_date, end_date, employee_code } = filters;
+  static async getProxyLogs(filters: any = {}): Promise<any> {
+    const { page = 1, limit = 50, start_date, end_date, employee_code } = filters;
     
-  //   const cacheKey = `proxy_logs:${page}:${limit}:${start_date}:${end_date}:${employee_code}`;
-  //   const cached = await this.cache.get(cacheKey);
-  //   if (cached) return cached;
+    const cacheKey = `proxy_logs:${page}:${limit}:${start_date}:${end_date}:${employee_code}`;
+    const cached = await this.cache.get(cacheKey);
+    if (cached) return cached;
 
-  //   const offset = (page - 1) * limit;
-  //   const whereClause: any = {};
+    const offset = (page - 1) * limit;
+    const whereClause: any = {};
 
-  //   if (start_date && end_date) {
-  //     whereClause.timestamp = { [Op.between]: [new Date(start_date), new Date(end_date)] };
-  //   }
+    if (start_date && end_date) {
+      whereClause.timestamp = Between(new Date(start_date), new Date(end_date));
+    }
 
-  //   if (employee_code) {
-  //     whereClause[Op.or] = [
-  //       { proxy_employee_code: employee_code },
-  //       { actual_employee_code: employee_code }
-  //     ];
-  //   }
+    const AttendanceLog = AppDataSource.getRepository(ProxyLog)
+    const [ rows, count ]  = await AttendanceLog.findAndCount({
+      where: whereClause,
+      order: {timestamp: 'DESC'},
+      skip: offset,
+      take: parseInt(limit)
+    });
 
-  //   const AttendanceLog = AppDataSource.getRepository(ProxyLog)
-  //   const [ count , rows ]  = await AttendanceLog.findAndCount
-  //   // const { count, rows } = await ProxyLog.findAndCount({
-  //     where: whereClause,
-  //     order: {'timestamp', 'DESC'},
-  //     offset,
-  //     limit: parseInt(limit)
-  //   };
+    const result = {
+      total: count,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total_pages: Math.ceil(count / limit),
+      proxy_logs: rows
+    };
 
-  //   const result = {
-  //     total: count,
-  //     page: parseInt(page),
-  //     limit: parseInt(limit),
-  //     total_pages: Math.ceil(count / limit),
-  //     proxy_logs: rows
-  //   };
-
-  //   await this.cache.set(cacheKey, result, 120);
-  //   return result;
-  // }
+    await this.cache.set(cacheKey, result, 120);
+    return result;
+  }
 
   // 🎯 GET ATTENDANCE REPORT
   static async getAttendanceReport(

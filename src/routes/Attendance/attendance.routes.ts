@@ -138,17 +138,17 @@ router.post('/cancel',
   }
 );
 
-// router.get('/proxy-logs', 
-//   passport.authenticate("jwt", { session: false }),
-//   async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },
-//   async (req, res) => {
-//     const { AttendanceController } = await getControllers();
-//     return AttendanceController.getProxyLogs(req, res);
-//   }
-// );
+router.get('/proxy-logs', 
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.getProxyLogs(req, res);
+  }
+);
 
 // Protected routes
 router.get(
@@ -164,15 +164,15 @@ router.get(
   }
 );
 
-// router.post('/stop-auto-confirm',
-//   passport.authenticate("jwt", { session: false }),
-//     async (req, res, next) => {
-//     const { checkUserAuthorization } = await getControllers();
-//     return checkUserAuthorization(req, res, next);
-//   },async (req, res) => {
-//     const { AttendanceController } = await getControllers(); return AttendanceController.stopAutoConfirm(req, res);
-//   }
-// );
+router.post('/stop-auto-confirm',
+  passport.authenticate("jwt", { session: false }),
+    async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },async (req, res) => {
+    const { AttendanceController } = await getControllers(); return AttendanceController.stopAutoConfirm(req, res);
+  }
+);
 
 router.post(
   "/employees",
