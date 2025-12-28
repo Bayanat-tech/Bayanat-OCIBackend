@@ -15,6 +15,61 @@ import { AppDataSource } from "../../../../database/connection";
 
 const shipmentService = new ShipmentDetailsService(AppDataSource);
 
+export const getAllShipmentDetails = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { code, code2, page = 1, limit = 100 } = req.query;
+    const requestUser: IUser = req.user;
+
+    // Parse filter from query
+    const filter: ISearch = req.query.filter
+      ? JSON.parse(req.query.filter as string)
+      : {};
+
+    // Prepare filters
+    const filters: any = {
+      company_code: requestUser.company_code,
+    };
+
+    // Map code to job_no and code2 to prin_code
+    if (code && code !== "undefined" && code !== "null") {
+      filters.job_no = code;
+    }
+    if (code2 && code2 !== "undefined" && code2 !== "null") {
+      filters.prin_code = code2;
+    }
+
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 100;
+
+    // Get sort from filter
+    const sort = filter?.sort;
+
+    const { data, total } = await shipmentService.findAllWithPagination(
+      filters,
+      pageNum,
+      limitNum,
+      sort
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+    });
+    return;
+  } catch (error: unknown) {
+    const knownError = error as { message: string };
+    res
+      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: knownError.message });
+  }
+};
+
 export const getShipmentDetail = async (
   req: RequestWithUser,
   res: Response

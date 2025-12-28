@@ -6,12 +6,13 @@ import {
   ISearch,
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
-import ConfirmInboundInboundWms from "../../../../models/wms/transaction/inbound/confirmInboundjob_wms.model";
+import { ConfirmInboundjobService } from "../../../../services/WMS/confirmInboundjob.service";
+// import ConfirmInboundInboundWms from "../../../../models/wms/transaction/inbound/confirmInboundjob_wms.model";
 
 
 /**
  * @function getconfirmInboundjob
- * @description Fetch a confirm inbound job record from Oracle
+ * @description Fetch a confirm inbound job record from Oracle using TypeORM
  */
 export const getconfirmInboundjob = async (
   req: RequestWithUser,
@@ -23,10 +24,12 @@ export const getconfirmInboundjob = async (
 
     console.log("Fetching confirm inbound job:", { prin_code, job_no });
 
-    // Use ORM model or a direct query — ORM remains unchanged here
-    const confirminbound = await ConfirmInboundInboundWms.findOne({
-      where: { prin_code, job_no, company_code },
-    });
+    // Use TypeORM service
+    const confirminbound = await ConfirmInboundjobService.findByJobNo(
+      prin_code as string,
+      job_no as string,
+      company_code
+    );
 
     if (!confirminbound) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -87,42 +90,40 @@ export const confirmInboundjob = async (
         SET SELECTED = 'Y'
         WHERE COMPANY_CODE = :company_code
           AND JOB_NO = :job_no
-          AND PRIN_CODE = :prin_code
-          AND KEY_NUMBER IN (${packdet_no.map((_, i) => `:key${i}`).join(", ")})
-      `;
-
+          AND PRIN_CODE = :prin_code  `;
+     //    AND KEY_NUMBER IN (${packdet_no.map((_, i) => `:key${i}`).join(", ")})
+    //  `;
+console.log('updateQuery',updateQuery);
       const binds: Record<string, any> = {
         company_code,
         job_no,
         prin_code,
       };
 
-      packdet_no.forEach((val: string, i: number) => {
-        binds[`key${i}`] = val;
-      });
+   //   packdet_no.forEach((val: string, i: number) => {
+  //      binds[`key${i}`] = val;
+  //    });
 
-      console.log("Executing TT_BATCH update...");
+      console.log("Executing TT_BATCH update...",updateQuery);
       await connection.execute(updateQuery, binds, { autoCommit: false });
       console.log("TT_BATCH update completed.");
     }
 
     /**
      * Step 2️⃣: Call the Oracle stored procedure
-     * MySQL: CALL SP_WM_INB_PUTAWAY_CONFIRM(:a, :b, :c, NOW(), :d)
-     * Oracle: BEGIN SP_WM_INB_PUTAWAY_CONFIRM(:a, :b, :c, SYSDATE, :d); END;
+     * EXEC SP_putaway_confirm('BSG', '10000', 'IB25120005', SYSDATE);
      */
     const callProc = `
       BEGIN
-        SP_WM_INB_PUTAWAY_CONFIRM(:vs_company_code, :principal_code, :vs_job_no, SYSDATE, :vs_user);
+        SP_putaway_confirm(:vs_company_code, :principal_code, :vs_job_no, SYSDATE + 1);
       END;
     `;
 
-    console.log("Calling stored procedure SP_WM_INB_PUTAWAY_CONFIRM...");
+    console.log("Calling stored procedure SP_putaway_confirm...");
     await connection.execute(callProc, {
       vs_company_code: company_code,
       principal_code: prin_code,
       vs_job_no: job_no,
-      vs_user: user_id,
     });
 
     // Commit all updates + procedure
