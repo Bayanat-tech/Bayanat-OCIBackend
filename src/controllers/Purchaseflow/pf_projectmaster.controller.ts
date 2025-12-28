@@ -4,7 +4,7 @@ import { IUser } from "../../interfaces/user.interface";
 
 import constants from "../../helpers/constants";
 import { projectmasterSchema } from "../../validation/Purchaseflow/Purchaseflow.validation";
-import { ProjectMasterService } from "../../services/Purchaseflow/projectmaster.service";
+import { ProjectMasterService } from "../../services/purchaseflow/projectmaster.service";
 
 export const createprojectmaster = async (
   req: RequestWithUser,

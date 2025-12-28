@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import { ItemMasterService } from "../../services/Purchaseflow/itemmaster.service";
+import { ItemMasterService } from "../../services/purchaseflow/itemmaster.service";
 
 export class ItemMasterController {
   static async createItem(req: RequestWithUser, res: Response) {

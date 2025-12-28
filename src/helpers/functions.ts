@@ -233,8 +233,7 @@ export const buildTree = (
 };
 
 export const getSearchFilterQuery = (
-  args: GetFilterQueryInterface
-): FindOptionsWhere<any> => {
+args: GetFilterQueryInterface, p0?: string[]): FindOptionsWhere<any> => {
   try {
     const { filter, outsideQuery } = args;
 
@@ -1216,6 +1215,16 @@ export const notifyUser = async (args: SendEmailInterface) => {
       };
       break;
 
+    case constants.EVENTS.RESET_PASSWORD:
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        subject: subject || "Password Reset Notification",
+        text: message || "Your password has been reset successfully.",
+        html: htmlMessage,
+      };
+      break;
+
     case "VENDOR_API_ERROR":
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
@@ -1223,6 +1232,19 @@ export const notifyUser = async (args: SendEmailInterface) => {
         cc: cc,
         subject: subject || "Vendor API Error Notification",
         text: message || "An error occurred in the Vendor API integration.",
+        html: htmlMessage,
+        attachments: attachments || [],
+      };
+      break;
+
+    // HR integration errors
+    case "HR_API_ERROR":
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        cc: cc,
+        subject: subject || "HR API Error Notification",
+        text: message || "An error occurred in the HR API integration.",
         html: htmlMessage,
         attachments: attachments || [],
       };
@@ -1254,7 +1276,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
-          "prem@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || `Leave Approval Required: ${request_user?.request_number || ""}`,
@@ -1274,7 +1295,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
-          "prem@bayanattechnology.com",
           "HR@almadinalogistics.com",
           ...(cc || []),
         ],
@@ -1315,7 +1335,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
-          "prem@bayanattechnology.com",
           ...(cc || []),
         ],
       subject: subject || `Leave Sent Back: ${request_user?.request_number || ""}`,
@@ -1333,7 +1352,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
         to: request_users,
         cc: [
           "Sagar.b@bayanattechnology.com",
-           "gaurang.pai@bayanattechnology.com",
+          "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "pratik.shirke@bayanattechnology.com",
           ...(cc || []),

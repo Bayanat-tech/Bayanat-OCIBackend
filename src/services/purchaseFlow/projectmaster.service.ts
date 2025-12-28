@@ -1,8 +1,12 @@
 import { getRepository } from "../../database/connection";
-import { ProjectMaster } from "../../entity/Purchaseflow/projectmaster.entity";
+import { ProjectMaster } from "../../entity/PurchaseFlow/projectmaster.entity";
+
 
 export class ProjectMasterService {
-  private static getRepository() {
+  static getProjectMaster(loginid: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
+    throw new Error("Method not implemented.");
+  }
+  private static getRepository(company_code: string, page: number, limit: number) {
     return getRepository(ProjectMaster);
   }
 
@@ -19,17 +23,17 @@ export class ProjectMasterService {
   }
 
   // Create
-  static async createProject(data: any): Promise<ProjectMaster> {
-    const repo = this.getRepository();
+  // static async createProject(data: any): Promise<ProjectMaster> {
+  //   const repo = this.getRepository();
 
-    const project = repo.create({
-      ...data,
-      created_at: new Date(),
-      updated_at: new Date()
-    });
+  //   const project = repo.create({
+  //     ...data,
+  //     created_at: new Date(),
+  //     updated_at: new Date()
+  //   });
 
-    return await repo.save(project);
-  }
+  //   return await repo.save(project);
+  // }
 
   // Update
   static async updateProject(
