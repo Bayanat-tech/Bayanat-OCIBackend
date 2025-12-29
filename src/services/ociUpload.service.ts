@@ -4,6 +4,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand
 } from "@aws-sdk/client-s3";
+import { getSignedUrl as getSignedUrlFromSdk } from "@aws-sdk/s3-request-presigner";
 import constants from "../helpers/constants";
 import { UploadToS3ObjectInterface } from "../interfaces/common.interface";
 import { response } from "express";
@@ -190,20 +191,15 @@ export const getSignedUrl = async (key: string, expiresIn = 3600): Promise<any> 
     const command = new GetObjectCommand({
       Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
       Key: key,
-   });
-    // Use type assertion to handle version mismatch
-    const presigner = getSignedUrl as unknown as (
-      client: S3Client,
-      command: GetObjectCommand,
-      options: { expiresIn: number }
-    ) => Promise<string>;
+    });
 
-    return await presigner(s3Client, command, { expiresIn });
+    const signedUrl = await getSignedUrlFromSdk(s3Client, command, { expiresIn });
+    return signedUrl;
   } catch (error) {
     logger.error("Failed to generate signed URL", error);
     throw new Error("Failed to generate signed URL for file");
-  };
-}
+  }
+};
 
 export const uploadVendorAttachmentToS3 = async (req: any, res: any) => {
   const file = req.file;

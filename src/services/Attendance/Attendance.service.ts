@@ -6,7 +6,7 @@ import logger from "../../utils/logger";
 import { FaceRecognitionService } from "./face_recognition.service";
 import { getSignedUrl, uploadEmployeeFace } from "../../services/ociUpload.service";
 import { CacheService } from "./cache.service";
-import { AppDataSource, oracleDb }from "../../database/connection"
+import { AppDataSource, oracleDb, TypeORMService } from "../../database/connection"
 import { Between, In, Or } from "typeorm";
 import { Employee} from "../../entity/Attendance/employee.entity";
 import {AttendanceRecord} from "../../entity/Attendance/attendance_record.entity";
@@ -299,7 +299,7 @@ export class AttendanceService {
         employee_code: data.employee_code,
         event_time: data.timestamp,
         event_type: data.action === "check-in" ? "check_in" : "check_out",
-        data_transfer: "A",
+        data_transfer: "N",
         uuid: data.uuid,
         confidence: data.confidence,
         s3_image_url: null, // 🆕 NO S3 URL INITIALLY
@@ -318,7 +318,9 @@ export class AttendanceService {
         });
       }
 
-      await (AttendanceEvent as any).create(eventData);
+      const attendanceRepo = AppDataSource.getRepository(AttendanceEvent);
+      const newEvent = attendanceRepo.create(eventData);
+      await attendanceRepo.save(newEvent);
       logger.info(`[DB-SAVE] Record saved for UUID: ${data.uuid}`);
       
     } catch (error) {
@@ -357,7 +359,7 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
     // 🆕 REDUCE TIMEOUT FOR DATABASE CONFIRMATION
     const databasePromise = this.confirmAttendanceFromDatabase(uuid, confirmedBy);
     const timeoutPromise = new Promise<any>((_, reject) => 
-      setTimeout(() => reject(new Error('Confirmation timeout - system busy')), 5000) // Reduced to 5 seconds
+      setTimeout(() => reject(new Error('Confirmation timeout - system busy')), 5000) 
     );
 
     const result = await Promise.race([databasePromise, timeoutPromise]);
@@ -381,10 +383,12 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
       await transaction.connect();
       await transaction.startTransaction();
       
-      const event = await attendanceEvent.findOne({
-        where: { uuid },
-        lock: { mode: "pessimistic_write" }
-      });
+      // Use QueryBuilder with transaction manager for pessimistic lock
+      const event = await transaction.manager.getRepository(AttendanceEvent)
+        .createQueryBuilder('event')
+        .where('event.uuid = :uuid', { uuid })
+        .setLock("pessimistic_write")
+        .getOne();
 
       if (!event) {
         await transaction.rollbackTransaction();
@@ -558,17 +562,16 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
 
   let transaction;
   try {
-   await AppDataSource.transaction (async (entity) => {
-      const attendanceEvent = entity.getRepository(AttendanceEvent);
-      // await oracleDb.transaction();
+    // 🆕 ENSURE CONNECTION HEALTH BEFORE TRANSACTION
+    await TypeORMService.ensureConnection();
     
-    // 🆕 CORRECT LOCK SYNTAX - NO TIMEOUT PARAMETER
-    const event = await attendanceEvent.findOne({
-      where: { uuid },
-      transaction,
-      lock: { mode: "pessimistic_write" } 
-      //skipLocked: true // This prevents waiting for locks
-    });
+   await AppDataSource.transaction (async (entity) => {
+    const attendanceEvent = entity.getRepository(AttendanceEvent);
+    const event = await attendanceEvent
+      .createQueryBuilder('event')
+      .where('event.uuid = :uuid', { uuid })
+      .setLock("pessimistic_write")
+      .getOne();
 
     if (!event) {
       //await transaction.rollback();
@@ -576,7 +579,6 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
       return;
     }
 
-    // 🆕 CRITICAL: Check if cancelled in database under lock
     if (event.status === AttendanceStatus.CANCELLED) {
       //await transaction.rollback();
       this.pendingConfirmations.delete(uuid);
@@ -612,14 +614,20 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
 
     });
   } catch (error: any) {
-    // 🆕 SAFE TRANSACTION CLEANUP
-    // if (transaction) {
-    //   try {
-    //     await transaction.rollback();
-    //   } catch (rollbackError) {
-    //     logger.error('Auto-confirm transaction rollback failed:', rollbackError);
-    //   }
-    // }
+    // 🆕 CONNECTION ERROR HANDLING
+    const errorMsg = error?.message || String(error);
+    
+    // Check for connection errors
+    if (errorMsg.includes('ORA-03113') || errorMsg.includes('NJS-500') || errorMsg.includes('not connected')) {
+      logger.error(`[AUTO-CONFIRM] Connection error for ${uuid}: ${errorMsg}`);
+      try {
+        await TypeORMService.ensureConnection();
+        logger.info(`[AUTO-CONFIRM] Connection restored, but skipping auto-confirm for ${uuid}`);
+      } catch (reconnectErr) {
+        logger.error(`[AUTO-CONFIRM] Failed to restore connection:`, reconnectErr);
+      }
+      return;
+    }
     
     // 🆕 SPECIFIC ERROR HANDLING
     if (error && (error as any).name === 'SequelizeTimeoutError') {
@@ -772,7 +780,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
           employee_code: data.employee_code,
           event_time: data.timestamp,
           event_type: data.action === "check-in" ? "check_in" : "check_out",
-          data_transfer: "A",
+          data_transfer: "N",
           uuid: data.uuid,
           confidence: data.confidence,
           s3_image_url: data.s3_image_url,
@@ -887,12 +895,12 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     await transaction.connect();
     await transaction.startTransaction();
 
-    // 🆕 CORRECT LOCK SYNTAX
-    const event = await attendanceEvent.findOne({
-      where: { uuid },
-      lock: { mode: "pessimistic_write" }
-      //skipLocked: true // This prevents waiting if locked by another transaction
-    });
+    // 🆕 CORRECT LOCK SYNTAX - Use QueryBuilder for pessimistic lock within transaction
+    const event = await transaction.manager.getRepository(AttendanceEvent)
+      .createQueryBuilder('event')
+      .where('event.uuid = :uuid', { uuid })
+      .setLock("pessimistic_write")
+      .getOne();
 
     if (!event) {
       logger.error(`[CANCEL] Event not found for UUID: ${uuid}`);

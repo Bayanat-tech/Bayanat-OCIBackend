@@ -66,7 +66,13 @@ async function startServerWithTypeORM() {
   try {
     console.log("Initializing TypeORM and Oracle connections...");
 
-    await initializeAllConnections();
+    const connectionPromise = initializeAllConnections();
+    
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Database connection timeout (30s)")), 30000)
+    );
+
+    await Promise.race([connectionPromise, timeoutPromise]);
 
     console.log("All database connections established");
 
@@ -74,14 +80,17 @@ async function startServerWithTypeORM() {
       console.log(`Server is running on port ${PORT}`);
       console.log(`TypeORM is ready for model conversion`);
     });
-
-    // console.log('Initializing attendance scheduler...');
-    // AttendanceEventScheduler.initializeScheduler();
-    // console.log('All services initialized successfully');
   
   } catch (err) {
-    console.log("Error in database connection:", err);
+    console.error("Error in database connection:", err);
+    console.error("Full error:", err instanceof Error ? err.stack : String(err));
     process.exit(1);
   }
 }
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 startServerWithTypeORM();
