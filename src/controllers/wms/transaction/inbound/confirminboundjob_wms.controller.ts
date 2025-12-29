@@ -66,14 +66,12 @@ export const confirmInboundjob = async (
     console.log("Starting confirmInboundjob process...");
     const { job_no } = req.params;
     const { prin_code } = req.query;
-    const { packdet_no } = req.body; // array of key numbers
     const company_code = req.user.company_code;
     const user_id = req.user.loginid;
 
     console.log("Job No:", job_no);
     console.log("Principal:", prin_code);
     console.log("Company Code:", company_code);
-    console.log("Packdet Numbers:", packdet_no);
 
     connection = await oracleDb.getConnection();
 
@@ -82,44 +80,29 @@ export const confirmInboundjob = async (
 
     /**
      * Step 1️⃣: Update TT_BATCH
-     * Convert IN (:array) handling properly in Oracle with binding.
      */
-    if (Array.isArray(packdet_no) && packdet_no.length > 0) {
-      const updateQuery = `
-        UPDATE TT_BATCH
-        SET SELECTED = 'Y'
-        WHERE COMPANY_CODE = :company_code
-          AND JOB_NO = :job_no
-          AND PRIN_CODE = :prin_code  `;
-     //    AND KEY_NUMBER IN (${packdet_no.map((_, i) => `:key${i}`).join(", ")})
-    //  `;
-console.log('updateQuery',updateQuery);
-      const binds: Record<string, any> = {
-        company_code,
-        job_no,
-        prin_code,
-      };
+    const updateQuery = `
+      UPDATE TT_BATCH
+      SET CONFIRMED = 'N',
+          SELECTED = 'Y',
+          ALLOCATED = 'Y'
+      WHERE JOB_NO = :job_no
+    `;
 
-   //   packdet_no.forEach((val: string, i: number) => {
-  //      binds[`key${i}`] = val;
-  //    });
-
-      console.log("Executing TT_BATCH update...",updateQuery);
-      await connection.execute(updateQuery, binds, { autoCommit: false });
-      console.log("TT_BATCH update completed.");
-    }
+    console.log('Executing TT_BATCH update...');
+    await connection.execute(updateQuery, { job_no }, { autoCommit: false });
+    console.log("TT_BATCH update completed.");
 
     /**
      * Step 2️⃣: Call the Oracle stored procedure
-     * EXEC SP_putaway_confirm('BSG', '10000', 'IB25120005', SYSDATE);
      */
     const callProc = `
       BEGIN
-        SP_putaway_confirm_withtally(:vs_company_code, :principal_code, :vs_job_no, SYSDATE + 1);
+        SP_PUTAWAY_CONFIRM_NORMAL(:vs_company_code, :principal_code, :vs_job_no, SYSDATE);
       END;
     `;
 
-    console.log("Calling stored procedure SP_putaway_confirm...");
+    console.log("Calling stored procedure SP_PUTAWAY_CONFIRM_NORMAL...");
     await connection.execute(callProc, {
       vs_company_code: company_code,
       principal_code: prin_code,
