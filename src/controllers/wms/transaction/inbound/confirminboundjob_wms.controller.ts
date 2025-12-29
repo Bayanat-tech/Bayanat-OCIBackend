@@ -115,7 +115,7 @@ console.log('updateQuery',updateQuery);
      */
     const callProc = `
       BEGIN
-        SP_putaway_confirm(:vs_company_code, :principal_code, :vs_job_no, SYSDATE + 1);
+        SP_putaway_confirm_withtally(:vs_company_code, :principal_code, :vs_job_no, SYSDATE + 1);
       END;
     `;
 

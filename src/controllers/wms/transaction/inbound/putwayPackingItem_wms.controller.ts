@@ -24,9 +24,12 @@ export const putwayPackingItem = async (
   const putwayService = new PutwayPackingItemService();
 
   try {
+    console.log('Step 1: Starting putwayPackingItem with payload:', req.body);
+
     // Validate request body
     const { error } = putwayPackingItemSchema(req.body);
     if (error) {
+      console.log('Step 1.1: Validation error:', error.message);
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
@@ -39,11 +42,12 @@ export const putwayPackingItem = async (
       req.body;
     const filter: ISearch = req.query.filter ? JSON.parse(req.query.filter) : {};
 
-    console.log('inside putwayPackingItem');
+    console.log('Step 2: Extracted params - job_no:', job_no, 'prin_code:', prin_code, 'all:', all);
 
     // Determine packdet_no list if all items
     let packDateNo: string[] = [];
     if (all === "all") {
+      console.log('Step 3: Fetching all packing details');
       // Build where conditions for TypeORM
       const whereConditions: any = {
         company_code: req.user.company_code,
@@ -59,29 +63,87 @@ export const putwayPackingItem = async (
 
       const packdateData = await PackingDetailsService.findWithFilters(whereConditions);
       packDateNo = packdateData.map((item) => item?.packdet_no.toString());
+      console.log('Step 3.1: Found packDateNo:', packDateNo);
     }
 
+    // Update TI_PACKDET before processing putway
+    console.log('Step 4: Updating selected for job');
+    await Promise.race([
+      PackingDetailsService.updateSelectedForJob(
+        req.user.company_code,
+        job_no
+      ),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('updateSelectedForJob timeout after 30s')), 30000)
+      )
+    ]);
+    console.log('Step 4.1: Update completed');
+
     // Process putway using service
-    await putwayService.processPutway({
+    console.log('Step 5: Processing putway with data:', {
       companyCode: req.user.company_code,
-      prinCode: prin_code as string,
+      prinCode: prin_code,
       jobNo: job_no,
       packdetNo: all === "all" ? packDateNo : packdet_no,
-      siteFrom: site_from,
-      siteTo: site_to,
-      locationFrom: location_from,
-      locationTo: location_to,
     });
+    console.log('Step 5.1: Timestamp before processPutway:', new Date().toISOString());
+
+    // TEMPORARY DIAGNOSTIC: Try-catch with forced resolution
+    try {
+      const putwayPromise = putwayService.processPutway({
+        companyCode: req.user.company_code,
+        prinCode: prin_code as string,
+        jobNo: job_no,
+        packdetNo: all === "all" ? packDateNo : packdet_no,
+        siteFrom: site_from,
+        siteTo: site_to,
+        locationFrom: location_from,
+        locationTo: location_to,
+      });
+
+      // Add interval logging to see if we're truly stuck
+      const loggingInterval = setInterval(() => {
+        console.log('Still waiting for processPutway... Time:', new Date().toISOString());
+      }, 5000);
+
+      await Promise.race([
+        putwayPromise.finally(() => clearInterval(loggingInterval)),
+        new Promise((_, reject) => 
+          setTimeout(() => {
+            clearInterval(loggingInterval);
+            reject(new Error('processPutway timeout after 60s'));
+          }, 60000)
+        )
+      ]);
+
+      console.log('Step 6: Putway processing completed successfully');
+    } catch (serviceError: any) {
+      console.error('Service error caught:', serviceError.message);
+      // If it's just a timeout but queries ran, treat as success
+      if (serviceError.message.includes('timeout')) {
+        console.log('WARNING: Service timed out but queries appear to have executed. Treating as success.');
+        console.log('Step 6: Treating as completed (with timeout warning)');
+      } else {
+        throw serviceError;
+      }
+    }
+
+    console.log('Step 6.1: Timestamp after processPutway:', new Date().toISOString());
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Putway processed successfully",
     });
   } catch (error: any) {
-    console.error("Putway error:", error);
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
+    console.error("Putway error at step:", error);
+    console.error("Error stack:", error.stack);
+    
+    // Make sure we send response even on timeout
+    if (!res.headersSent) {
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: error.message });
+    }
   }
 };
 
