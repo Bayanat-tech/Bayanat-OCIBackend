@@ -189,11 +189,11 @@ export const getPickingItemPreferenceDetails = async (
 // Function to confirm an order 
 export const confirmorder = async (req: Request, res: Response): Promise<void> => {
   let connection: any;
+
   try {
     const { job_no } = req.params;
     const { prin_code, confirm_date } = req.query;
-    let { serial_no } = req.body;
-    
+
     if (!prin_code) {
       res.status(400).json({
         success: false,
@@ -202,93 +202,82 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    if (!Array.isArray(serial_no)) {
-      res.status(400).json({
-        success: false,
-        message: "serial_no must be an array of numbers",
-      });
-      return;
-    }
-
     const company_code = (req.user as any).company_code;
-    const updateSql = `
-      UPDATE TO_BATCH SET selected = 'Y'
-      WHERE company_code = :company_code
-        AND prin_code = :prin_code
-        AND job_no = :job_no
-        AND key_number IN (:serial_no)
-    `;
+
+    // ---- FIX: format confirm date for Oracle ----
+    const confirmDateObj = confirm_date
+      ? new Date(confirm_date as string)
+      : new Date();
+
+    const formattedConfirmDate = confirmDateObj
+      .toISOString()
+      .replace('T', ' ')
+      .substring(0, 19); // YYYY-MM-DD HH24:MI:SS
+    // --------------------------------------------
 
     let toggledPackets = 0;
 
     await oracleDb.withTransaction(async (conn: any) => {
       connection = conn;
-      
-      console.log('Executing update with sql:', updateSql);
-      
-      // Oracle doesn't support array binding directly for IN clause
-      // We need to handle it differently
-      if (serial_no.length > 0) {
-        // Build dynamic IN clause
-        const placeholders = serial_no.map((_, i) => `:serial_no_${i}`).join(',');
-        const updateSqlDynamic = `
-          UPDATE TO_BATCH SET selected = 'Y'
-          WHERE company_code = :company_code
-            AND prin_code = :prin_code
-            AND job_no = :job_no
-            AND key_number IN (${placeholders})
-        `;
-console.log('placeholders',placeholders)      ;  
-        const bindParams: any = {
+
+      const updateSql = `
+        UPDATE TO_BATCH
+        SET selected = 'Y'
+        WHERE company_code = :company_code
+          AND prin_code   = :prin_code
+          AND job_no      = :job_no
+      `;
+
+      const updateResult = await oracleDb.query(
+        updateSql,
+        {
           company_code,
           prin_code,
-          job_no
-        };
-        
-        serial_no.forEach((sn, i) => {
-          bindParams[`serial_no_${i}`] = sn;
-        });
+          job_no,
+        },
+        connection
+      );
 
-        const updateResult = await oracleDb.query(updateSqlDynamic, bindParams, connection);
-        toggledPackets = updateResult.rowsAffected || 0;
-      }
+      toggledPackets = updateResult.rowsAffected || 0;
 
       if (toggledPackets > 0) {
-        // Call Oracle stored procedure
+        // ---- FIXED procedure call ----
         await oracleDb.query(
-          `BEGIN SP_WM_PICK_CONFIRM(:vs_company_code, :vs_principal_code, :vs_job_no, :vdt_confirm); END;`,
+          `BEGIN
+             SP_PICK_CONFIRM(
+               :vs_company_code,
+               :vs_principal_code,
+               :vs_job_no,
+               TO_DATE(:vdt_confirm, 'YYYY-MM-DD HH24:MI:SS')
+             );
+           END;`,
           {
             vs_company_code: company_code,
             vs_principal_code: prin_code,
             vs_job_no: job_no,
-            vdt_confirm: confirm_date || new Date(),
+            vdt_confirm: formattedConfirmDate,
           },
           connection
         );
 
         // Unselect after procedure call
-        if (serial_no.length > 0) {
-          const placeholders = serial_no.map((_, i) => `:serial_no_${i}`).join(',');
-          const unselectSql = `
-            UPDATE TO_BATCH SET selected = 'Y'
-            WHERE company_code = :company_code
-              AND prin_code = :prin_code
-              AND job_no = :job_no
-              AND key_number IN (${placeholders})
-          `;
-          
-          const bindParams: any = {
+        const unselectSql = `
+          UPDATE TO_BATCH
+          SET selected = 'N'
+          WHERE company_code = :company_code
+            AND prin_code   = :prin_code
+            AND job_no      = :job_no
+        `;
+
+        await oracleDb.query(
+          unselectSql,
+          {
             company_code,
             prin_code,
-            job_no
-          };
-          
-          serial_no.forEach((sn, i) => {
-            bindParams[`serial_no_${i}`] = sn;
-          });
-
-          await oracleDb.query(unselectSql, bindParams, connection);
-        }
+            job_no,
+          },
+          connection
+        );
       }
     });
 
@@ -296,9 +285,10 @@ console.log('placeholders',placeholders)      ;
       success: true,
       message:
         toggledPackets > 0
-          ? "Order Confirm successfully."
-          : "No TO_BATCH updated.",
+          ? "Order confirmed successfully."
+          : "No TO_BATCH records updated.",
     });
+
   } catch (err: any) {
     console.error("Confirm Order error:", err);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
@@ -307,6 +297,8 @@ console.log('placeholders',placeholders)      ;
     });
   }
 };
+
+
 
 // Function to pick an order
 export const pickOrder = async (req: Request, res: Response): Promise<void> => {
