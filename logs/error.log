@@ -63120,3 +63120,923 @@ Error: Confirmation timeout - system busy
     at Timeout._onTimeout (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:362:31)
     at listOnTimeout (node:internal/timers:588:17)
     at processTimers (node:internal/timers:523:7)
+2025-12-29 12:08:35 [[31merror[39m]: Proxy logs fetch error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getManyAndCount (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getProxyLogs (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1432:30)
+    at async Function.getProxyLogs (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:207:22)
+2025-12-29 12:09:51 [[31merror[39m]: Proxy logs fetch error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getManyAndCount (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getProxyLogs (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1432:30)
+    at async Function.getProxyLogs (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:207:22)
+2025-12-29 12:36:41 [[31merror[39m]: Proxy logs fetch error ORA-00904: "ProxyLog"."timestamp": invalid identifier 
+QueryFailedError: ORA-00904: "ProxyLog"."timestamp": invalid identifier
+    at OracleQueryRunner.query (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getManyAndCount (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getProxyLogs (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1433:30)
+    at async Function.getProxyLogs (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:207:22)
+2025-12-29 14:04:35 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 14:04:36 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:04:36 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:05:19 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 14:05:21 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:05:21 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:07:00 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 14:07:00 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:07:00 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:07:49 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 14:07:49 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:07:49 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:08:17 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 14:08:18 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:08:18 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:12:44 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 14:12:44 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:12:44 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 14:13:44 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-29 14:13:44 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-29 16:07:38 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 16:07:39 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 16:07:39 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 16:08:01 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 16:08:05 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 16:08:05 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:32:28 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:32:28 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:33:11 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:33:12 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:33:12 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:33:44 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:33:47 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:33:47 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:34:14 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:34:16 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:34:16 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:34:56 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:34:56 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:35:28 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:35:28 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:38:31 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:38:34 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:38:34 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:39:06 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:39:08 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:39:08 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:39:33 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:39:35 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:39:35 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:41:56 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:41:58 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:41:58 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:42:56 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:42:56 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:44:50 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:44:53 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:44:53 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:49:45 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:49:45 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-29 17:55:40 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 17:55:40 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 17:55:40 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:00:22 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-29 18:00:22 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-29 18:37:26 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 18:37:26 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:37:26 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:38:07 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-29 18:38:07 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-29 18:44:50 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 18:44:51 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:44:51 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:45:20 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 18:45:21 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:45:21 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:46:08 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 18:46:08 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:46:08 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:46:29 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-29 18:46:30 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:46:30 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-29 18:47:04 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-29 18:47:04 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-30 12:03:17 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:03:18 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:03:18 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:03:58 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:04:00 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:04:00 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:04:31 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:04:32 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:04:32 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:05:04 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:05:05 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:05:05 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:11:16 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:11:18 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:11:18 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:23:54 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:23:55 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:23:55 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:25:39 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:25:41 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:25:41 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:26:52 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:26:54 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:26:54 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:27:37 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:27:38 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:27:38 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:32:12 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:32:14 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:32:14 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:42:18 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:42:18 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:42:18 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:43:32 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:43:34 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:43:34 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:47:27 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:47:29 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:47:29 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:48:27 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 12:48:31 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:48:31 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 12:49:59 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:49:59 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:50:47 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:50:47 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:52:10 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:52:10 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:56:48 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:56:48 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:57:28 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:57:28 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:59:01 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 12:59:01 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 13:00:20 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 13:00:21 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 13:00:21 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 13:01:26 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 13:01:26 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 13:11:24 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 13:11:24 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 13:11:24 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 13:22:51 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-30 13:22:51 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2025-12-30 16:16:24 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:16:25 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:16:25 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:19:56 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:19:56 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:22:23 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:22:23 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:23:11 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:23:12 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:23:41 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:23:41 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:24:23 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:24:24 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:24:24 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:25:59 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:26:00 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:26:00 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:27:30 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:27:31 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:27:31 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:28:40 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:28:41 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:28:41 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:30:22 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:30:23 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:30:23 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:31:00 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:31:00 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:31:28 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:31:28 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:32:08 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:32:09 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:32:09 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:32:34 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:32:36 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:32:36 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:37:41 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:37:42 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:37:42 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:38:22 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:38:22 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:41:55 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:41:56 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:41:56 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:42:59 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:42:59 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:43:45 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:43:45 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:47:22 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:47:22 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:47:56 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:47:56 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:49:19 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:49:19 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:49:56 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:49:56 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at processTimers (node:internal/timers:520:9)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:50:59 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:51:00 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:51:00 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:53:51 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:53:51 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 16:54:19 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:54:21 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:54:21 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:54:56 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2025-12-30 16:54:56 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 16:54:56 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:283:15)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2025-12-30 17:02:38 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2025-12-30 17:02:38 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)

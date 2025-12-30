@@ -78,7 +78,7 @@ export class AttendanceService {
 
   try {
     console.log("🟢 employeeId =", employeeId);
-    // 🎯 PARALLEL OPERATIONS - NO S3 UPLOAD HERE
+    //  PARALLEL OPERATIONS - NO S3 UPLOAD HERE
     const [employee, confidence] = await Promise.all([
       this.getEmployeeWithCache(employeeId),
       this.calculateFaceConfidenceBalanced(employeeId, imageBuffer),
@@ -91,7 +91,7 @@ export class AttendanceService {
 
     const firstName = this.getFirstName(employee.full_name);
 
-    // 🎯 STORE IN MEMORY WITH AUTO-CONFIRM TIME AND IMAGE BUFFER
+    // STORE IN MEMORY WITH AUTO-CONFIRM TIME AND IMAGE BUFFER
     const pendingData = {
       uuid,
       employee_id: employeeId,
@@ -173,7 +173,7 @@ export class AttendanceService {
   }
 }
 
-  // 🎯 BALANCED FACE CONFIDENCE CALCULATION
+  //  BALANCED FACE CONFIDENCE CALCULATION
   private static async calculateFaceConfidenceBalanced(employeeId: string, imageBuffer: Buffer): Promise<number> {
     try {
       if (!this.faceService) {
@@ -436,7 +436,11 @@ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Prom
         if (!record.first_check_in || event.event_time < record.first_check_in) {
           updates.first_check_in = event.event_time;
         }
-        await (AttendanceRecord as any).update(updates, { where: { id: record.id }, transaction });
+        await attendanceRecord.update(
+            { id: record.id },
+             updates
+        );
+
       } else {
         const updates: any = { check_out: event.event_time };
         if (!record.last_check_out || event.event_time > record.last_check_out) {
@@ -682,7 +686,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       if (!record.first_check_in || data.timestamp < record.first_check_in) {
         updates.first_check_in = data.timestamp;
       }
-      await attendanceRecord.update(updates, { id: record.id });
+      await attendanceRecord.update({ id: record.id }, updates);
     } else {
       const updates: any = { check_out: data.timestamp };
       if (!record.last_check_out || data.timestamp > record.last_check_out) {
@@ -761,7 +765,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 }
 
   // 🎯 LOG PROXY ATTEMPT
-  private static async logProxyAttempt(data: any, actualEmployeeCode: string, actualEmployeeName: string, reason: string): Promise<any> {
+  static async logProxyAttempt(data: any, actualEmployeeCode: string, actualEmployeeName: string, reason: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
     await transaction.connect();
     await transaction.startTransaction();
@@ -772,8 +776,10 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       const employee = transaction.manager.getRepository(Employee);
       
       let event = await attendanceEvent.findOne({ where: { uuid: data.uuid } });
+      console.log("event found for proxy log:", event);
 
       if (!event) {
+        console.log("event found for proxy log 2:", event);
         const eventData: any = {
           id: uuidv4(),
           employee_id: data.employee_id,
@@ -788,6 +794,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
           confirmed_by: 'cancelled_by_user',
           confirmed_at: new Date(),
         };
+        console.log("eventData for proxy log:", eventData);
 
         if (data.location_data) {
           Object.assign(eventData, {
@@ -799,7 +806,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
             office_name: data.location_data.officeName
           });
         }
-  
+        console.log("eventData with location for proxy log:", eventData);
 
       event = await attendanceEvent.save(eventData);
       } else {
@@ -831,6 +838,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         reason: reason,
       });
       await ProxyLogs.save(proxyLog);
+      console.log("proxyLog saved in DB:", proxyLog);
 
       await transaction.commitTransaction();
       return { proxyLog, cancelledEvent: event };
@@ -842,41 +850,45 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     }
   }
 
- // static async debugEmailFlow(uuid: string): Promise<void> {
-//   try {
-//     logger.info(`🔍 [EMAIL DEBUG] Starting email debug for UUID: ${uuid}`);
+  static async debugEmailFlow(uuid: string): Promise<void> {
+  try {
+    logger.info(`🔍 [EMAIL DEBUG] Starting email debug for UUID: ${uuid}`);
     
-//     // Check if UUID exists in pending confirmations
-//     const pendingData = this.pendingConfirmations.get(uuid);
-//     logger.info(`🔍 [EMAIL DEBUG] Pending data exists: ${!!pendingData}`);
+    // Check if UUID exists in pending confirmations
+    const pendingData = this.pendingConfirmations.get(uuid);
+    logger.info(`🔍 [EMAIL DEBUG] Pending data exists: ${!!pendingData}`);
     
-//     if (pendingData) {
-//       logger.info(`🔍 [EMAIL DEBUG] Pending data:`, {
-//         employee_code: pendingData.employee_code,
-//         confidence: pendingData.confidence,
-//         is_cancelled: pendingData.is_cancelled
-//       });
-//     }
+    if (pendingData) {
+      logger.info(`🔍 [EMAIL DEBUG] Pending data:`, {
+        employee_code: pendingData.employee_code,
+        confidence: pendingData.confidence,
+        is_cancelled: pendingData.is_cancelled
+      });
+    }
     
-//     // Check database status
-//     const event = await AttendanceEvent.findOne({ where: { uuid } });
-//     logger.info(`🔍 [EMAIL DEBUG] Database event:`, {
-//       exists: !!event,
-//       status: event?.status,
-//       employee_code: event?.employee_code
-//     });
+    // Check database status
+    const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
+    const event = await attendanceEvent.findOne({ where: { uuid } });
+
+    logger.info(`🔍 [EMAIL DEBUG] Database event:`, {
+      exists: !!event,
+      status: event?.status,
+      employee_code: event?.employee_code
+    });
     
-//     // Check proxy log
-//     const proxyLog = await ProxyLog.findOne({ where: { uuid } });
-//     logger.info(`🔍 [EMAIL DEBUG] Proxy log:`, {
-//       exists: !!proxyLog,
-//       reason: proxyLog?.reason
-//     });
+    // Check proxy log
+    const ProxyLogRepo = AppDataSource.getRepository(ProxyLog);
+    const proxyLog = await ProxyLogRepo.findOne({ where: { uuid } });
+
+    logger.info(`🔍 [EMAIL DEBUG] Proxy log:`, {
+      exists: !!proxyLog,
+      reason: proxyLog?.reason
+    });
     
-//   } catch (error) {
-//     logger.error(`🔍 [EMAIL DEBUG] Error:`, error);
-//   }
-// }
+  } catch (error) {
+    logger.error(`🔍 [EMAIL DEBUG] Error:`, error);
+  }
+}
   
   private static async cancelAttendanceFromDatabase(
   uuid: string, 
@@ -939,29 +951,29 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       await transaction.commitTransaction();
 
       // 🆕 SEND SPECIAL EMAIL FOR LATE CANCELLATION ATTEMPT
-      // let emailSent = false;
-      // if (reason === 'proxy_detected_by_user') {
-      //   emailSent = await this.sendLateCancellationEmail(proxyLog, actualEmployeeCode, actualEmployeeName);
-      // }
+      let emailSent = false;
+      if (reason === 'proxy_detected_by_user') {
+        emailSent = await this.sendLateCancellationEmail(proxyLog, actualEmployeeCode, actualEmployeeName);
+      }
 
       return { 
         success: false,
         alreadyConfirmed: true,
         proxyLog, 
-        //emailSent,
+        emailSent,
         message: 'Attendance was already confirmed and cannot be cancelled'
       };
     }
 
     // 🆕 CHECK IF ALREADY CANCELLED
     if (event.status === AttendanceStatus.CANCELLED) {
-      await transaction.rollbackTransaction();
+      // await transaction.rollbackTransaction();
       logger.info(`[CANCEL] Already cancelled for UUID: ${uuid}`);
-      return { 
-        success: true, 
-        alreadyCancelled: true, 
-        message: "Attendance already cancelled" 
-      };
+      // return { 
+      //   success: true, 
+      //   alreadyCancelled: true, 
+      //   message: "Attendance already cancelled" 
+      // };
     }
 
     if (event.status !== AttendanceStatus.PENDING) {
@@ -977,7 +989,6 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
     // 🎯 MARK AS CANCELLED
     logger.info(`[CANCEL] Marking as cancelled for UUID: ${uuid}`);
-    // await event.update({
       event.status = AttendanceStatus.CANCELLED;
       event.confirmed_by = 'cancelled_by_user';
       event.confirmed_at = new Date();
@@ -1020,21 +1031,21 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
     logger.info(`[CANCEL] Successfully cancelled attendance for UUID: ${uuid}`);
 
-    // 🎯 SEND EMAIL ONLY FOR PROXY DETECTION
-    // let emailSent = false;
-    // if (reason === 'proxy_detected_by_user') {
-    //   logger.info(`[CANCEL] Triggering email for proxy detection - UUID: ${uuid}`);
-    //   emailSent = await this.sendProxyAlertEmailBackgroundFromDB(proxyLog, actualEmployeeCode, actualEmployeeName);
-    //   logger.info(`[CANCEL] Email sent result: ${emailSent} for UUID: ${uuid}`);
-    // } else {
-    //   logger.info(`[CANCEL] No email sent - reason: ${reason} for UUID: ${uuid}`);
-    // }
+    // SEND EMAIL ONLY FOR PROXY DETECTION
+    let emailSent = false;
+    if (reason === 'proxy_detected_by_user') {
+      logger.info(`[CANCEL] Triggering email for proxy detection - UUID: ${uuid}`);
+      emailSent = await this.sendProxyAlertEmailBackgroundFromDB(proxyLog, actualEmployeeCode, actualEmployeeName);
+      logger.info(`[CANCEL] Email sent result: ${emailSent} for UUID: ${uuid}`);
+    } else {
+      logger.info(`[CANCEL] No email sent - reason: ${reason} for UUID: ${uuid}`);
+    }
 
     return { 
       success: true,
       proxyLog, 
       cancelledEvent: event,
-      //emailSent,
+      emailSent,
       message: 'Attendance cancelled successfully'
     };
 
@@ -1059,251 +1070,251 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     }
   }
 }
-// 🎯 HANDLE LATE CANCELLATION ATTEMPTS
-// private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode: string, actualEmployeeName: string): Promise<boolean> {
-//   try {
-//     const [proxyEmployee, actualEmployee] = await Promise.all([
-//       Employee.findOne({ 
-//         where: { employee_code: proxyLog.proxy_employee_code },
-//         attributes: ['full_name', 'department'],
-//         raw: true
-//       }),
-//       Employee.findOne({ 
-//         where: { employee_code: actualEmployeeCode },
-//         attributes: ['full_name', 'department'],
-//         raw: true
-//       })
-//     ]);
+// HANDLE LATE CANCELLATION ATTEMPTS
+private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode: string, actualEmployeeName: string): Promise<boolean> {
+  try {
+    const employeeRepo = AppDataSource.getRepository(Employee);
+    const [proxyEmployee, actualEmployee] = await Promise.all([
+      employeeRepo.findOne({ 
+        where: { employee_code: proxyLog.proxy_employee_code },
+        select: ['full_name', 'department'],
+      }),
+      employeeRepo.findOne({ 
+        where: { employee_code: actualEmployeeCode },
+        select: ['full_name', 'department'],
+      })
+    ]);
 
-//     const proxyData = {
-//       uuid: proxyLog.uuid,
-//       timestamp: proxyLog.timestamp || new Date(),
-//       proxy_employee_code: proxyLog.proxy_employee_code,
-//       proxy_employee_name: proxyEmployee?.full_name || proxyLog.proxy_employee_name || 'Unknown',
-//       proxy_department: proxyEmployee?.department || 'Unknown',
-//       actual_employee_code: actualEmployeeCode,
-//       actual_employee_name: actualEmployeeName,
-//       actual_department: actualEmployee?.department || 'Unknown',
-//       confidence: proxyLog.confidence || 0,
-//       action_taken: proxyLog.action_taken,
-//       s3_image_url: proxyLog.s3_image_url || null,
-//       location_data: proxyLog.location_data || null,
-//       image_available: !!proxyLog.s3_image_url
-//     };
+    const proxyData = {
+      uuid: proxyLog.uuid,
+      timestamp: proxyLog.timestamp || new Date(),
+      proxy_employee_code: proxyLog.proxy_employee_code,
+      proxy_employee_name: proxyEmployee?.full_name || proxyLog.proxy_employee_name || 'Unknown',
+      proxy_department: proxyEmployee?.department || 'Unknown',
+      actual_employee_code: actualEmployeeCode,
+      actual_employee_name: actualEmployeeName,
+      actual_department: actualEmployee?.department || 'Unknown',
+      confidence: proxyLog.confidence || 0,
+      action_taken: proxyLog.action_taken,
+      s3_image_url: proxyLog.s3_image_url || null,
+      location_data: proxyLog.location_data || null,
+      image_available: !!proxyLog.s3_image_url
+    };
 
-//     const adminEmails = ["Sagar.b@bayanattechnology.com"];
-
-//     const lateCancellationHtml = `
-// <!DOCTYPE html>
-// <html>
-// <head>
-//   <style>
-//     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-//     .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
-//     .header { background: #ff9800; color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }
-//     .content { padding: 20px; background: #f9f9f9; }
-//     .warning { background: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin: 10px 0; }
-//   </style>
-// </head>
-// <body>
-//   <div class="container">
-//     <div class="header">
-//       <h2>⚠️ LATE CANCELLATION ATTEMPT</h2>
-//       <p>User tried to cancel after auto-confirmation</p>
-//     </div>
+    //const adminEmails = ["Sagar.b@bayanattechnology.com"];
+    const adminEmails = ["srishti.nayal@bayanattechnology.com"];
+   
+    const lateCancellationHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+    .header { background: #ff9800; color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { padding: 20px; background: #f9f9f9; }
+    .warning { background: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>⚠️ LATE CANCELLATION ATTEMPT</h2>
+      <p>User tried to cancel after auto-confirmation</p>
+    </div>
     
-//     <div class="content">
-//       <div class="warning">
-//         <h3>⚠️ Attention Required</h3>
-//         <p><strong>This attendance was already auto-confirmed before the user could cancel it.</strong></p>
-//         <p>The user attempted to report a proxy detection after the system had already confirmed the attendance.</p>
-//       </div>
+    <div class="content">
+      <div class="warning">
+        <h3>⚠️ Attention Required</h3>
+        <p><strong>This attendance was already auto-confirmed before the user could cancel it.</strong></p>
+        <p>The user attempted to report a proxy detection after the system had already confirmed the attendance.</p>
+      </div>
       
-//       <div class="section">
-//         <p><strong>UUID:</strong> ${proxyData.uuid}</p>
-//         <p><strong>Timestamp:</strong> ${new Date(proxyData.timestamp).toLocaleString()}</p>
-//         <p><strong>Action:</strong> ${proxyData.action_taken}</p>
-//         <p><strong>Confidence Level:</strong> ${proxyData.confidence}%</p>
-//       </div>
+      <div class="section">
+        <p><strong>UUID:</strong> ${proxyData.uuid}</p>
+        <p><strong>Timestamp:</strong> ${new Date(proxyData.timestamp).toLocaleString()}</p>
+        <p><strong>Action:</strong> ${proxyData.action_taken}</p>
+        <p><strong>Confidence Level:</strong> ${proxyData.confidence}%</p>
+      </div>
 
-//       <div class="section">
-//         <h3>👤 System-Recognized Employee</h3>
-//         <p><strong>Employee Code:</strong> ${proxyData.proxy_employee_code}</p>
-//         <p><strong>Name:</strong> ${proxyData.proxy_employee_name}</p>
-//         <p><strong>Department:</strong> ${proxyData.proxy_department}</p>
-//       </div>
+      <div class="section">
+        <h3>👤 System-Recognized Employee</h3>
+        <p><strong>Employee Code:</strong> ${proxyData.proxy_employee_code}</p>
+        <p><strong>Name:</strong> ${proxyData.proxy_employee_name}</p>
+        <p><strong>Department:</strong> ${proxyData.proxy_department}</p>
+      </div>
 
-//       <div class="section">
-//         <h3>👥 Reporting Employee</h3>
-//         <p><strong>Reported By:</strong> ${proxyData.actual_employee_name}</p>
-//         <p><strong>Employee Code:</strong> ${proxyData.actual_employee_code}</p>
-//       </div>
+      <div class="section">
+        <h3>👥 Reporting Employee</h3>
+        <p><strong>Reported By:</strong> ${proxyData.actual_employee_name}</p>
+        <p><strong>Employee Code:</strong> ${proxyData.actual_employee_code}</p>
+      </div>
 
-//       <div class="warning">
-//         <h3>📋 Required Action</h3>
-//         <p>Please manually review this attendance record and take appropriate action if this was indeed a proxy attempt.</p>
-//         <p><strong>Current Status:</strong> Attendance remains CONFIRMED in the system.</p>
-//       </div>
-//     </div>
-//   </div>
-// </body>
-// </html>
-//     `;
+      <div class="warning">
+        <h3>📋 Required Action</h3>
+        <p>Please manually review this attendance record and take appropriate action if this was indeed a proxy attempt.</p>
+        <p><strong>Current Status:</strong> Attendance remains CONFIRMED in the system.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+    `;
 
-//     await notifyUser({
-//       event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
-//       request_user: proxyData, 
-//       request_users: adminEmails.join(','), 
-//       subject: `⚠️ LATE CANCELLATION ATTEMPT - ${proxyData.proxy_employee_name}`,
-//       htmlMessage: lateCancellationHtml,
-//       attachments: [] 
-//     });
+    await notifyUser({
+      event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
+      request_user: proxyData, 
+      request_users: adminEmails.join(','), 
+      subject: `⚠️ LATE CANCELLATION ATTEMPT - ${proxyData.proxy_employee_name}`,
+      htmlMessage: lateCancellationHtml,
+      attachments: [] 
+    });
 
-//     return true;
-//   } catch (error) {
-//     logger.error('Late cancellation email failed:', error);
-//     return false;
-//   }
-// }
+    return true;
+  } catch (error) {
+    logger.error('Late cancellation email failed:', error);
+    return false;
+  }
+}
 
- // private static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string, actualEmployeeName: string, s3ImageUrl: string | null): Promise<boolean> {
-//   try {
-//     logger.info(`📧 [EMAIL] Starting proxy email for UUID: ${data.uuid}`);
+static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string, actualEmployeeName: string, s3ImageUrl: string | null): Promise<boolean> {
+  try {
+    const proxyEmployeeRepo = AppDataSource.getRepository(Employee);
+    logger.info(`📧 [EMAIL] Starting proxy email for UUID: ${data.uuid}`);
     
-//     let proxyEmployee: any = null;
-//     let actualEmployee: any = null;
+    let proxyEmployee: any = null;
+    let actualEmployee: any = null;
     
-//     [proxyEmployee, actualEmployee] = await Promise.all([
-//       Employee.findOne({ 
-//         where: { employee_code: data.employee_code },
-//         attributes: ['full_name', 'department', 'email'],
-//         raw: true
-//       }),
-//       Employee.findOne({ 
-//         where: { employee_code: actualEmployeeCode },
-//         attributes: ['full_name', 'department', 'email'],
-//         raw: true
-//       })
-//     ]);
+    [proxyEmployee, actualEmployee] = await Promise.all([
+      proxyEmployeeRepo.findOne({ 
+        where: { employee_code: data.employee_code },
+        select: ['full_name', 'department', 'email']
+      }),
+      proxyEmployeeRepo.findOne({
+        where: { employee_code: actualEmployeeCode },
+        select: ['full_name', 'department', 'email'],
+      })
+    ]);
 
-//     const proxyData = {
-//       uuid: data.uuid,
-//       timestamp: data.timestamp,
-//       proxy_employee_code: data.employee_code,
-//       proxy_employee_name: proxyEmployee?.full_name || 'Unknown',
-//       proxy_department: proxyEmployee?.department || 'Unknown',
-//       proxy_email: proxyEmployee?.email || 'N/A',
-//       actual_employee_code: actualEmployeeCode,
-//       actual_employee_name: actualEmployeeName,
-//       actual_department: actualEmployee?.department || 'Unknown',
-//       actual_email: actualEmployee?.email || 'N/A',
-//       confidence: data.confidence,
-//       action_taken: 'cancelled_by_user',
-//       s3_image_url: s3ImageUrl,
-//       location_data: data.location_data,
-//       image_available: !!s3ImageUrl,
-//       event_type: data.action === "check-in" ? "Check In" : "Check Out"
-//     };
+    const proxyData = {
+      uuid: data.uuid,
+      timestamp: data.timestamp,
+      proxy_employee_code: data.employee_code,
+      proxy_employee_name: proxyEmployee?.full_name || 'Unknown',
+      proxy_department: proxyEmployee?.department || 'Unknown',
+      proxy_email: proxyEmployee?.email || 'N/A',
+      actual_employee_code: actualEmployeeCode,
+      actual_employee_name: actualEmployeeName,
+      actual_department: actualEmployee?.department || 'Unknown',
+      actual_email: actualEmployee?.email || 'N/A',
+      confidence: data.confidence,
+      action_taken: 'cancelled_by_user',
+      s3_image_url: s3ImageUrl,
+      location_data: data.location_data,
+      image_available: !!s3ImageUrl,
+      event_type: data.action === "check-in" ? "Check In" : "Check Out"
+    };
 
-//     const adminEmails = ["Sagar.b@bayanattechnology.com"];
+    // const adminEmails = ["Sagar.b@bayanattechnology.com"];
+    const adminEmails = ["srishti.nayal@bayanattechnology.com"];
 
-//     logger.info(`📧 [EMAIL] Sending to: ${adminEmails.join(', ')}`);
-//     logger.info(`📧 [EMAIL] Proxy data:`, {
-//       proxy_name: proxyData.proxy_employee_name,
-//       actual_name: proxyData.actual_employee_name,
-//       confidence: proxyData.confidence,
-//       has_image: !!s3ImageUrl
-//     });
+    logger.info(`📧 [EMAIL] Sending to: ${adminEmails.join(', ')}`);
+    logger.info(`📧 [EMAIL] Proxy data:`, {
+      proxy_name: proxyData.proxy_employee_name,
+      actual_name: proxyData.actual_employee_name,
+      confidence: proxyData.confidence,
+      has_image: !!s3ImageUrl
+    });
 
-//     // 🆕 ENHANCED EMAIL SENDING WITH PROPER ERROR HANDLING
-//     try {
-//       const emailPromise = notifyUser({
-//         event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
-//         request_user: proxyData, 
-//         request_users: adminEmails.join(','), 
-//         subject: `🚨 PROXY ATTENDANCE DETECTED - ${proxyData.proxy_employee_name} (${proxyData.proxy_employee_code})`,
-//         message: `Proxy attendance detected and cancelled by user. Confidence: ${proxyData.confidence}%`,
-//         attachments: [] 
-//       });
+    // 🆕 ENHANCED EMAIL SENDING WITH PROPER ERROR HANDLING
+    try {
+      const emailPromise = notifyUser({
+        event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
+        request_user: proxyData, 
+        request_users: adminEmails.join(','), 
+        subject: `🚨 PROXY ATTENDANCE DETECTED - ${proxyData.proxy_employee_name} (${proxyData.proxy_employee_code})`,
+        message: `Proxy attendance detected and cancelled by user. Confidence: ${proxyData.confidence}%`,
+        attachments: [] 
+      });
 
-//       // Add timeout to prevent hanging
-//       const timeoutPromise = new Promise<boolean>((resolve) => 
-//         setTimeout(() => {
-//           logger.warn(`📧 [EMAIL] Email sending timeout for UUID: ${data.uuid}`);
-//           resolve(false);
-//         }, 10000) // 10 second timeout
-//       );
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<boolean>((resolve) => 
+        setTimeout(() => {
+          logger.warn(`📧 [EMAIL] Email sending timeout for UUID: ${data.uuid}`);
+          resolve(false);
+        }, 10000) // 10 second timeout
+      );
 
-//       const result = await Promise.race([emailPromise, timeoutPromise]);
+      const result = await Promise.race([emailPromise, timeoutPromise]);
       
-//       if (result) {
-//         logger.info(`✅ [EMAIL] Proxy email sent successfully for UUID: ${data.uuid}`);
-//         return true;
-//       } else {
-//         logger.error(`❌ [EMAIL] Proxy email failed or timed out for UUID: ${data.uuid}`);
-//         return false;
-//       }
+      if (result) {
+        logger.info(`✅ [EMAIL] Proxy email sent successfully for UUID: ${data.uuid}`);
+        return true;
+      } else {
+        logger.error(`❌ [EMAIL] Proxy email failed or timed out for UUID: ${data.uuid}`);
+        return false;
+      }
       
-//     } catch (emailError) {
-//       logger.error(`❌ [EMAIL] Proxy email exception for UUID: ${data.uuid}:`, emailError);
-//       return false;
-//     }
+    } catch (emailError) {
+      logger.error(`❌ [EMAIL] Proxy email exception for UUID: ${data.uuid}:`, emailError);
+      return false;
+    }
 
-//   } catch (error) {
-//     logger.error('❌ [EMAIL] Proxy email setup failed:', error);
-//     return false;
-//   }
-// }
+  } catch (error) {
+    logger.error('❌ [EMAIL] Proxy email setup failed:', error);
+    return false;
+  }
+}
 
-  // 🎯 BACKGROUND EMAIL SEND
-  // private static async sendProxyAlertEmailBackgroundFromDB(proxyLog: any, actualEmployeeCode: string, actualEmployeeName: string): Promise<boolean> {
-  //   try {
-  //     const [proxyEmployee, actualEmployee] = await Promise.all([
-  //       Employee.findOne({ 
-  //         where: { employee_code: proxyLog.proxy_employee_code },
-  //         attributes: ['full_name', 'department'],
-  //         raw: true
-  //       }),
-  //       Employee.findOne({ 
-  //         where: { employee_code: actualEmployeeCode },
-  //         attributes: ['full_name', 'department'],
-  //         raw: true
-  //       })
-  //     ]);
+ // 🎯 BACKGROUND EMAIL SEND
+  private static async sendProxyAlertEmailBackgroundFromDB(proxyLog: any, actualEmployeeCode: string, actualEmployeeName: string): Promise<boolean> {
+    try {
+      const employeeRepo = AppDataSource.getRepository(Employee);
+      const [proxyEmployee, actualEmployee] = await Promise.all([
+        employeeRepo.findOne({ 
+          where: { employee_code: proxyLog.proxy_employee_code },
+          select: ['full_name', 'department'],
+        }),
+        employeeRepo.findOne({ 
+          where: { employee_code: actualEmployeeCode },
+          select: ['full_name', 'department'],
+        })
+      ]);
 
-  //     const proxyData = {
-  //       uuid: proxyLog.uuid,
-  //       timestamp: proxyLog.timestamp || new Date(),
-  //       proxy_employee_code: proxyLog.proxy_employee_code,
-  //       proxy_employee_name: proxyEmployee?.full_name || proxyLog.proxy_employee_name || 'Unknown',
-  //       proxy_department: proxyEmployee?.department || 'Unknown',
-  //       actual_employee_code: actualEmployeeCode,
-  //       actual_employee_name: actualEmployeeName,
-  //       actual_department: actualEmployee?.department || 'Unknown',
-  //       confidence: proxyLog.confidence || 0,
-  //       action_taken: 'cancelled_by_user',
-  //       s3_image_url: proxyLog.s3_image_url || null,
-  //       location_data: proxyLog.location_data || null,
-  //       image_available: !!proxyLog.s3_image_url
-  //     };
+      const proxyData = {
+        uuid: proxyLog.uuid,
+        timestamp: proxyLog.timestamp || new Date(),
+        proxy_employee_code: proxyLog.proxy_employee_code,
+        proxy_employee_name: proxyEmployee?.full_name || proxyLog.proxy_employee_name || 'Unknown',
+        proxy_department: proxyEmployee?.department || 'Unknown',
+        actual_employee_code: actualEmployeeCode,
+        actual_employee_name: actualEmployeeName,
+        actual_department: actualEmployee?.department || 'Unknown',
+        confidence: proxyLog.confidence || 0,
+        action_taken: 'cancelled_by_user',
+        s3_image_url: proxyLog.s3_image_url || null,
+        location_data: proxyLog.location_data || null,
+        image_available: !!proxyLog.s3_image_url
+      };
 
-  //     const adminEmails = ["Sagar.b@bayanattechnology.com"];
+      //const adminEmails = ["Sagar.b@bayanattechnology.com"];
+      const adminEmails = ["srishti.nayal@bayanattechnology.com"];
 
-  //     await notifyUser({
-  //       event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
-  //       request_user: proxyData, 
-  //       request_users: adminEmails.join(','), 
-  //       subject: `🚨 PROXY ATTENDANCE DETECTED - ${proxyData.proxy_employee_name}`,
-  //       message: this.generateProxyEmailMessage(proxyData, actualEmployeeName, !!proxyLog.s3_image_url),
-  //       attachments: [] 
-  //     });
+      await notifyUser({
+        event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
+        request_user: proxyData, 
+        request_users: adminEmails.join(','), 
+        subject: `🚨 PROXY ATTENDANCE DETECTED - ${proxyData.proxy_employee_name}`,
+        message: this.generateProxyEmailMessage(proxyData, actualEmployeeName, !!proxyLog.s3_image_url),
+        attachments: [] 
+      });
 
-  //     return true;
-  //   } catch (error) {
-  //     logger.error('Background email failed:', error);
-  //     return false;
-  //   }
-  // }
+      return true;
+    } catch (error) {
+      logger.error('Background email failed:', error);
+      return false;
+    }
+  }
 
   // 🎯 GET EMPLOYEE IMAGE
   private static async getEmployeeImage(employeeId: string): Promise<string | null> {
@@ -1351,17 +1362,13 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     try {
       const attendanceEvent =AppDataSource.getRepository(AttendanceEvent);
       const result = await attendanceEvent.update(
+        { uuid },
         { 
-            uuid, 
-            status: AttendanceStatus.PENDING
-        },
-        { 
-          status: AttendanceStatus.CANCELLED,
-          confirmed_by: 'cancelled_by_user',
-          confirmed_at: new Date(),
-          cancellation_reason: 'cancelled_by_user'
-        },
-        
+         status: AttendanceStatus.CANCELLED,
+         confirmed_by: 'cancelled_by_user',
+         confirmed_at: new Date(),
+         cancellation_reason: 'cancelled_by_user'
+        }
       );
       
       if (result.affected && result.affected > 0) {
@@ -1419,15 +1426,26 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     
     const cacheKey = `proxy_logs:${page}:${limit}:${start_date}:${end_date}:${employee_code}`;
     const cached = await this.cache.get(cacheKey);
-    if (cached) return cached;
+    console.log('Proxy_Log_Cache Key:', cacheKey);
+    if (cached) {
+       console.log('Cached proxy logs:', cached);
+      return cached;
+    }
 
     const offset = (page - 1) * limit;
     const whereClause: any = {};
 
     if (start_date && end_date) {
-      whereClause.timestamp = Between(new Date(start_date), new Date(end_date));
+      const start = new Date(start_date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(end_date);
+      end.setHours(23, 59, 59, 999);
+      whereClause.timestamp = Between(start, end);
     }
 
+    if (employee_code) {
+      whereClause.proxy_employee_code = employee_code;
+    }
     const AttendanceLog = AppDataSource.getRepository(ProxyLog)
     const [ rows, count ]  = await AttendanceLog.findAndCount({
       where: whereClause,

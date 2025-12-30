@@ -2,62 +2,62 @@ import {
   Entity,
   Column,
   PrimaryColumn,
-  CreateDateColumn,
   ManyToOne,
   JoinColumn,
   OneToOne,
 } from "typeorm";
 import { Employee } from "./employee.entity";
 import { AttendanceEvent } from "./attendance_events.entity";
+import constants from "../../helpers/constants";
 
-@Entity({ name: "proxy_logs" })
+@Entity({ name: constants.TABLE.PROXY_LOGS })
 export class ProxyLog {
-  @PrimaryColumn({ type: "varchar2", length: 36 })
+  @PrimaryColumn({ name: "ID", type: "varchar2", length: 36 })
   id!: string;
 
-  @Column({ type: "varchar2", length: 100, nullable: true })
+  @Column({ name: "UUID", type: "varchar2", length: 100, nullable: true })
   uuid!: string | null;
 
-  @Column({ type: "timestamp" })
+  @Column({ name: "TIMESTAMP", type: "timestamp" })
   timestamp!: Date;
 
-  @Column({ type: "varchar2", length: 100 })
+  @Column({ name: "PROXY_EMPLOYEE_CODE", type: "varchar2", length: 100 })
   proxy_employee_code!: string;
 
-  @Column({ type: "varchar2", length: 255 })
+  @Column({ name: "PROXY_EMPLOYEE_NAME", type: "varchar2", length: 255 })
   proxy_employee_name!: string;
 
-  @Column({ type: "varchar2", length: 100, nullable: true })
+  @Column({ name: "ACTUAL_EMPLOYEE_CODE", type: "varchar2", length: 100, nullable: true })
   actual_employee_code!: string | null;
 
-  @Column({ type: "varchar2", length: 255, nullable: true })
+  @Column({ name: "ACTUAL_EMPLOYEE_NAME", type: "varchar2", length: 255, nullable: true })
   actual_employee_name!: string | null;
 
-  @Column({ type: "number", precision: 5, scale: 2 })
+  @Column({ name: "CONFIDENCE", type: "number", precision: 5, scale: 2 })
   confidence!: number;
 
-  @Column({ type: "varchar2", length: 500, nullable: true })
+  @Column({ name: "S3_IMAGE_URL", type: "varchar2", length: 500, nullable: true })
   s3_image_url!: string | null;
 
-  @Column({ type: "clob", nullable: true })
+  @Column({ name: "LOCATION_DATA", type: "clob", nullable: true })
   location_data!: any | null;
 
-  @Column({ type: "varchar2", length: 20 })
+  @Column({ name: "ACTION", type: "varchar2", length: 20 })
   action!: "check_in" | "check_out";
 
-  @Column({ type: "varchar2", length: 60 })
+  @Column({ name: "ACTION_TAKEN", type: "varchar2", length: 60 })
   action_taken!: "cancelled_by_user" | "auto_rejected" | "attempted_cancellation_after_confirmation";
 
-  @Column({ type: "varchar2", length: 255, nullable: true })
+  @Column({ name: "DEVICE_TYPE", type: "varchar2", length: 255, nullable: true })
   device_type!: string | null;
 
-  @Column({ type: "varchar2", length: 50, default: "reported" })
+  @Column({ name: "STATUS", type: "varchar2", length: 50, default: "reported" })
   status!: string;
 
-  @CreateDateColumn({ type: "timestamp", nullable: true })
+  @Column({ name: "CREATED_AT", type: "timestamp", nullable: true })
   created_at!: Date | null;
 
-  @Column({ type: "varchar2", length: 400, nullable: false })
+  @Column({ name: "REASON", type: "varchar2", length: 400, nullable: false })
   reason!: string | null;
   attendanceEvent: any;
 
