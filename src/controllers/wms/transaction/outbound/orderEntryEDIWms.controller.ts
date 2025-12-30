@@ -166,7 +166,7 @@ export const getEDIOrderDetailHandler = async (
 
    const result = await connection.execute(
   `SELECT *
-   FROM VW_TO_ORDER_EDI
+   FROM TO_ORDER_EDI
    WHERE user_id = :user_id
      AND company_code = :company_code
      AND prin_code = :prin_code
