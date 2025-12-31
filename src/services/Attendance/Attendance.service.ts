@@ -330,7 +330,7 @@ export class AttendanceService {
 
   // 🎯 FAST CONFIRM ATTENDANCE
   // 🎯 FAST CONFIRM ATTENDANCE WITH BETTER TIMEOUT
-static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Promise<any> {
+ static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Promise<any> {
   const startTime = Date.now();
   
   if (!await this.acquireRequestSlot()) {
@@ -771,15 +771,14 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     await transaction.startTransaction();
     
     try {
-      const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
-      const ProxyLogs = AppDataSource.getRepository(ProxyLog);
+      const attendanceEvent = transaction.manager.getRepository(AttendanceEvent);
+      const ProxyLogs = transaction.manager.getRepository(ProxyLog);
       const employee = transaction.manager.getRepository(Employee);
       
       let event = await attendanceEvent.findOne({ where: { uuid: data.uuid } });
-      console.log("event found for proxy log:", event);
 
       if (!event) {
-        console.log("event found for proxy log 2:", event);
+        console.log("event found for proxy log:", event);
         const eventData: any = {
           id: uuidv4(),
           employee_id: data.employee_id,
@@ -819,6 +818,8 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       const proxyEmployee = await employee.findOne({
         where: { employee_code: data.employee_code },
       });
+    
+      logger.info('[PROXY] Saving proxy log for UUID:', data.uuid);
 
       const proxyLog = ProxyLogs.create({
         id: uuidv4(),
@@ -1101,8 +1102,7 @@ private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode
       image_available: !!proxyLog.s3_image_url
     };
 
-    //const adminEmails = ["Sagar.b@bayanattechnology.com"];
-    const adminEmails = ["srishti.nayal@bayanattechnology.com"];
+    const adminEmails = ["Sagar.b@bayanattechnology.com"];
    
     const lateCancellationHtml = `
 <!DOCTYPE html>
@@ -1215,8 +1215,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
       event_type: data.action === "check-in" ? "Check In" : "Check Out"
     };
 
-    // const adminEmails = ["Sagar.b@bayanattechnology.com"];
-    const adminEmails = ["srishti.nayal@bayanattechnology.com"];
+    const adminEmails = ["Sagar.b@bayanattechnology.com"];
 
     logger.info(`📧 [EMAIL] Sending to: ${adminEmails.join(', ')}`);
     logger.info(`📧 [EMAIL] Proxy data:`, {
@@ -1297,8 +1296,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         image_available: !!proxyLog.s3_image_url
       };
 
-      //const adminEmails = ["Sagar.b@bayanattechnology.com"];
-      const adminEmails = ["srishti.nayal@bayanattechnology.com"];
+      const adminEmails = ["Sagar.b@bayanattechnology.com"];
 
       await notifyUser({
         event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
