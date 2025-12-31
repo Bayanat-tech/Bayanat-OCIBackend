@@ -68,11 +68,13 @@ import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound
 //   confirmInboundjob, // Confirm inbound job
 // } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
 
-// import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
+import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
 import {upsertPutawaymanualOracle} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 const router = express.Router();
 
-// router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
+router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
+router.get("/getEDIPackdetHandler", getEDIPackdetHandler);
+router.post("/copyEDIToPackdetHandler", copyEDIToPackdetHandler);
 router.post("/upsertPutawaymanualHandler", async (req, res, next) => {
   try {
     const result = await upsertPutawaymanualOracle(req.body);

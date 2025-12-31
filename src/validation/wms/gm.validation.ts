@@ -118,18 +118,17 @@ export const alertSchema = (
   return isBulkOperation ? schema.validate(data) : baseSchema.validate(data);
 };
 
-export const productSchema = (data: IProduct) => {
-  const schema = Joi.object().keys({
-    // Required String Fields
+export const productSchema = (data: any) => {
+  const schema = Joi.object({
+    prod_code: Joi.string().optional().allow(null, ''), // Make optional for create
     company_code: Joi.string().required(),
-    prod_code: Joi.string().required(),
+    prin_code: Joi.string().required(),
     prod_name: Joi.string().required(),
 
     // Required Number Fields
     uppp: Joi.number().required(),
 
     // Not Required String Fields
-    prin_code: Joi.string().allow(null, ""),
     brand_code: Joi.string().allow(null, ""),
     group_code: Joi.string().allow(null, ""),
     packdesc: Joi.string().allow(null, ""),

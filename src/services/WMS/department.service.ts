@@ -8,14 +8,16 @@ export class DepartmentService {
 
   // Check for duplicate department by code and name
   static async findDuplicate(params: {
+    company_code: string;
+    div_code: string;
     dept_code: string;
-    dept_name?: string;
   }): Promise<DepartmentMaster | null> {
     const repository = this.getDepartmentRepository();
     return await repository.findOne({
       where: {
+        company_code: params.company_code,
+        div_code: params.div_code,
         dept_code: params.dept_code,
-        dept_name: params.dept_name,
       },
     });
   }
@@ -27,68 +29,65 @@ export class DepartmentService {
   }
 
   // Find department by code
-  static async findByCode(dept_code: string): Promise<DepartmentMaster | null> {
+  static async findByCode(
+    dept_code: string,
+    company_code: string
+  ): Promise<DepartmentMaster | null> {
     const repository = this.getDepartmentRepository();
     return await repository.findOne({
-      where: { dept_code },
+      where: { dept_code, company_code },
     });
   }
 
   // Create new department
   static async createDepartment(deptData: {
-    dept_code: string;
-    dept_name?: string;
-    inv_flag?: string;
-    jobno_seq?: number;
-    invno_seq?: number;
     company_code: string;
-    operation_type?: string;
-    div_code?: string;
-    ac_div_code?: string;
-    dept_email?: string;
-    dn_email?: string;
-    grn_email?: string;
-    inv_gen?: string;
-    inb_oub_related?: string;
-    inv_prefix?: string;
-    created_by?: string;
-    updated_by?: string;
-    wms_inv_prefix?: string;
-    trspt_inv_prefix?: string;
+    div_code: string;
+    dept_code: string;
+    dept_name: string;
+    dept_short_name?: string;
+    dept_addr1: string;
+    dept_addr2?: string;
+    dept_addr3?: string;
+    phone?: string;
+    fax?: string;
+    email?: string;
+    dept_head_id?: string;
+    remarks?: string;
+    status: string;
+    user_id?: string;
+    user_dt?: Date;
+    enterprice_code: string;
   }): Promise<DepartmentMaster> {
     const repository = this.getDepartmentRepository();
-
-    const department = repository.create({
-      ...deptData,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
+    const department = repository.create(deptData);
     return await repository.save(department);
   }
 
   // Update existing department
   static async updateDepartment(
     dept_code: string,
+    company_code: string,
     updateData: Partial<DepartmentMaster>
   ): Promise<boolean> {
     const repository = this.getDepartmentRepository();
-
     const result = await repository.update(
-      { dept_code },
-      {
-        ...updateData,
-        updated_at: new Date(),
-      }
+      { dept_code, company_code },
+      updateData
     );
-
     return result.affected ? result.affected > 0 : false;
   }
 
   // Delete department
-  static async deleteDepartment(dept_code: string): Promise<boolean> {
+  static async deleteDepartment(
+    dept_code: string,
+    company_code?: string
+  ): Promise<boolean> {
     const repository = this.getDepartmentRepository();
-    const result = await repository.delete({ dept_code });
+    const whereClause = company_code
+      ? { dept_code, company_code }
+      : { dept_code };
+    const result = await repository.delete(whereClause);
     return result.affected ? result.affected > 0 : false;
   }
 

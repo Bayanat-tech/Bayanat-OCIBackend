@@ -15,34 +15,19 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
 
-    const { error } = productSchema(req.body);
+    // Remove prod_code from body before validation since it will be auto-generated
+    const { prod_code, ...bodyWithoutProdCode } = req.body;
+
+    const { error } = productSchema(bodyWithoutProdCode);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
     }
-    
-    const { prod_code, company_code } = req.body;
 
-    // Check if product already exists
-    const productExists = await ProductService.checkProductExists(prod_code, company_code);
-
-    if (productExists) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_ALREADY_EXISTS,
-      });
-      return;
-    }
-
-    // Format data for TypeORM entity
-    const productData = {
-      prodCode: prod_code,
-      companyCode: company_code,
-      userId: requestUser.loginid,
-      ...formatProductData(req.body)
-    };
+    // Pass the body without prod_code to formatProductData
+    const productData = formatProductData(bodyWithoutProdCode, requestUser.loginid);
 
     const createdProduct = await ProductService.createProduct(productData);
     
@@ -56,6 +41,7 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_CREATED_SUCCESSFULLY,
+      data: { prodCode: createdProduct.prodCode }
     });
     return;
   } catch (error: any) {
@@ -91,11 +77,8 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Format data for TypeORM entity
-    const productData = {
-      userId: requestUser.loginid,
-      ...formatProductData(req.body)
-    };
+    // Pass the entire request body to formatProductData
+    const productData = formatProductData(req.body, requestUser.loginid);
 
     const updateResult = await ProductService.updateProduct(
       prod_code,
@@ -235,16 +218,102 @@ export const importExcelProducts = async (
 };
 
 // Helper function to convert snake_case fields to camelCase for TypeORM entity
-function formatProductData(data: any): any {
-  const formattedData: any = {};
-  
-  // Map all properties with appropriate casing
-  // Add specific mappings as needed for your Product entity fields
-  if (data.prod_name) formattedData.prodName = data.prod_name;
-  if (data.group_code) formattedData.groupCode = data.group_code;
-  if (data.category_abc) formattedData.categoryAbc = data.category_abc;
-  
-  // Add any other field mappings here
-  
-  return formattedData;
+function formatProductData(data: any, userId?: string): any {
+  return {
+    companyCode: data.company_code,
+    prinCode: data.prin_code,
+    prodName: data.prod_name,
+    brandCode: data.brand_code || null,
+    groupCode: data.group_code || null,
+    packdesc: data.packdesc || null,
+    barcode: data.barcode || null,
+    pUom: data.p_uom,
+    suom: data.suom || null,
+    length: data.length || 0,
+    breadth: data.breadth || 0,
+    height: data.height || 0,
+    volume: data.volume || 0,
+    grossWt: data.gross_wt || 0,
+    netWt: data.net_wt || 0,
+    foc: data.foc || null,
+    cpu: data.cpu || 0,
+    harmCode: data.harm_code || null,
+    imcoCode: data.imco_code || null,
+    kitting: data.kitting || null,
+    manuCode: data.manu_code || null,
+    basePrice: data.base_price || 0,
+    flatStorage: data.flat_storage || 0,
+    siteType: data.site_type || null,
+    siteInd: data.site_ind || null,
+    packKey: data.pack_key || null,
+    prodTi: data.prod_ti || 0,
+    prodHi: data.prod_hi || 0,
+    chargetime: data.chargetime || null,
+    prodStatus: data.prod_status,
+    shelfLife: data.shelf_life || 0,
+    categoryAbc: data.category_abc || null,
+    reordLevel: data.reord_level || 0,
+    reordQty: data.reord_qty || 0,
+    altProdCode: data.alt_prod_code || null,
+    prefSite: data.pref_site || null,
+    prefLocFrom: data.pref_loc_from || null,
+    prefLocTo: data.pref_loc_to || null,
+    prefAisleFrom: data.pref_aisle_from || null,
+    prefAisleTo: data.pref_aisle_to || null,
+    prefColFrom: data.pref_col_from || 0,
+    prefColTo: data.pref_col_to || 0,
+    prefHtFrom: data.pref_ht_from || 0,
+    prefHtTo: data.pref_ht_to || 0,
+    uppp: data.uppp || 0,
+    chkManucode: data.chk_manucode || null,
+    chkLotno: data.chk_lotno || null,
+    chkMfgexpdt: data.chk_mfgexpdt || null,
+    puomVolume: data.puom_volume || 0,
+    puomNetwt: data.puom_netwt || 0,
+    puomGrosswt: data.puom_grosswt || 0,
+    lUom: data.l_uom,
+    luppp: data.luppp || 0,
+    uomCount: data.uom_count || 0,
+    prodType: data.prod_type || 0,
+    twoplusUom: data.twoplus_uom || null,
+    upp: data.upp || 0,
+    waveCode: data.wave_code || 0,
+    productStage: data.product_stage || null,
+    coPack: data.co_pack || null,
+    modelNumber: data.model_number || null,
+    variantCode: data.variant_code || null,
+    cntOrigin: data.cnt_origin || null,
+    serialize: data.serialize || null,
+    packing: data.packing || null,
+    oldUpp: data.old_upp || 0,
+    avgConsumption: data.avg_consumption || 0,
+    prodImagePathWeb: data.prod_image_path_web || null,
+    minperiodExppick: data.minperiod_exppick || 0,
+    rcptExpLimit: data.rcpt_exp_limit || 0,
+    qtyAsWt: data.qty_as_wt || null,
+    hazmatInd: data.hazmat_ind || null,
+    hazmatClass: data.hazmat_class || null,
+    foodInd: data.food_ind || null,
+    pharmaInd: data.pharma_ind || null,
+    specialInstructions: data.special_instructions || null,
+    strength: data.strength || null,
+    packSize: data.pack_size || 0,
+    groupCodeBk: data.group_code_bk || null,
+    batchType: data.batch_type || 0,
+    sapProdCode: data.sap_prod_code || null,
+    sapProdDesc: data.sap_prod_desc || null,
+    tempCode: data.temp_code || null,
+    editUser: data.edit_user || null,
+    class: data.class || null,
+    wob: data.wob || 0,
+    unifiedCode: data.unified_code || null,
+    currentSeason: data.current_season || null,
+    productCategory: data.product_category || null,
+    genericArticle: data.generic_article || null,
+    prodGender: data.prod_gender || null,
+    prodColor: data.prod_color || null,
+    prodSize: data.prod_size || null,
+    prntPCode: data.prnt_p_code || null,
+    userId: userId || data.user_id,
+  };
 }

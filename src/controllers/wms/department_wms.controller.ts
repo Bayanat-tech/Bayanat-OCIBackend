@@ -20,12 +20,13 @@ export const createDepartment = async (req: RequestWithUser, res: Response) => {
       });
     }
 
-    const { dept_code, dept_name, company_code } = req.body;
+    const { dept_code, dept_name, company_code, div_code } = req.body;
 
-    // Check if department already exists
+    // Check if department already exists using composite key
     const existingDepartment = await DepartmentService.findDuplicate({
+      company_code: company_code || requestUser.company_code,
+      div_code: div_code || '01',
       dept_code,
-      dept_name,
     });
 
     if (existingDepartment) {
@@ -35,12 +36,16 @@ export const createDepartment = async (req: RequestWithUser, res: Response) => {
       });
     }
 
-    // Create new department
+    // Create new department with required fields
     const newDepartment = await DepartmentService.createDepartment({
       ...req.body,
-      company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
+      company_code: company_code || requestUser.company_code,
+      div_code: div_code || '01',
+      enterprice_code: req.body.enterprice_code || '01',
+      status: req.body.status || 'A',
+      dept_addr1: req.body.dept_addr1 || '',
+      user_id: requestUser.loginid,
+      user_dt: new Date(),
     });
 
     if (!newDepartment) {
@@ -89,10 +94,13 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
       });
     }
 
-    const { dept_code } = req.body;
+    const { dept_code, company_code } = req.body;
 
-    // Check if department exists
-    const existingDepartment = await DepartmentService.findByCode(dept_code);
+    // Check if department exists using composite key
+    const existingDepartment = await DepartmentService.findByCode(
+      dept_code,
+      company_code || requestUser.company_code
+    );
 
     if (!existingDepartment) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -102,10 +110,15 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
     }
 
     // Update department record
-    const isUpdated = await DepartmentService.updateDepartment(dept_code, {
-      ...req.body,
-      updated_by: requestUser.loginid,
-    });
+    const isUpdated = await DepartmentService.updateDepartment(
+      dept_code,
+      company_code || requestUser.company_code,
+      {
+        ...req.body,
+        user_id: requestUser.loginid,
+        user_dt: new Date(),
+      }
+    );
 
     if (!isUpdated) {
       return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
@@ -142,6 +155,7 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
 // ✅ Delete one or multiple Departments
 export const deleteDepartments = async (req: RequestWithUser, res: Response) => {
   try {
+    const requestUser: IUser = req.user;
     const deptCodes: string[] = req.body;
 
     if (!deptCodes || !deptCodes.length) {
@@ -154,9 +168,9 @@ export const deleteDepartments = async (req: RequestWithUser, res: Response) => 
     let deletedCount = 0;
 
     for (const code of deptCodes) {
-      const exists = await DepartmentService.findByCode(code);
+      const exists = await DepartmentService.findByCode(code, requestUser.company_code);
       if (exists) {
-        await DepartmentService.deleteDepartment(code);
+        await DepartmentService.deleteDepartment(code, requestUser.company_code);
         deletedCount++;
       }
     }

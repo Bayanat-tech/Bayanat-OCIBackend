@@ -268,13 +268,22 @@ export class PrincipalMaster {
   @Column({ name: "PRIN_LICENSE", type: "varchar2", length: 100, nullable: true })
   prin_licence?: string;
 
-  @Column({ name: "CREATED_AT", type: "date", insert: false, update: false, select: false, nullable: true })
+  @Column({ name: "DIV_CODE", type: "varchar2", length: 10, nullable: true })
+  div_code?: string;
+
+  @Column({ name: "BACKORDER_PICK", type: "varchar2", length: 5, nullable: true })
+  backorder_pick?: string;
+
+  @Column({ name: "BOX_NO", type: "varchar2", length: 10, nullable: true })
+  box_no?: string;
+
+  @Column({ name: "CREATED_AT", type: "date", nullable: true })
   created_at?: Date;
 
   @Column({ name: "CREATED_BY", type: "varchar2", length: 20, nullable: true })
   created_by?: string;
 
-  @Column({ name: "UPDATED_AT", type: "date", insert: false, update: false, select: false, nullable: true })
+  @Column({ name: "UPDATED_AT", type: "date", nullable: true })
   updated_at?: Date;
 
   @Column({ name: "UPDATED_BY", type: "varchar2", length: 50, nullable: true })

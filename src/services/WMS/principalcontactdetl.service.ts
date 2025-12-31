@@ -58,11 +58,7 @@ export class PrincipalContactDetlService {
     updated_by: string;
   }): Promise<PrincipalContactDetl> {
     const repository = this.getRepository();
-    const record = repository.create({
-      ...data,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+    const record = repository.create(data);
     return await repository.save(record);
   }
 
@@ -76,10 +72,7 @@ export class PrincipalContactDetlService {
 
     const result = await repository.update(
       { prin_code, company_code },
-      {
-        ...updateData,
-        updated_at: new Date(),
-      }
+      updateData
     );
 
     return result.affected ? result.affected > 0 : false;

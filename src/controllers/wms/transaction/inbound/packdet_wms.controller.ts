@@ -38,42 +38,40 @@ export async function insertPackDetailEDI(data: IPackDetailEDI, connection: orac
   `;
 
   await connection.execute(
+    sql,
     {
-      sql,
-      bindParams: {
-        user_id: safeString(data.user_id),
-        company_code: safeString(data.company_code),
-        prin_code: safeString(data.prin_code),
-        job_no: safeString(data.job_no),
-        packdet_no: safeString(data.packdet_no),
-        container_no: safeString(data.container_no),
-        vessel_name: safeString(data.vessel_name),
-        voyage_no: safeString(data.voyage_no),
-        prod_code: safeString(data.product_code),
-        puom: safeString(data.puom),
-        qty_puom: safeNumber(data.qty_puom),
-        luom: safeString(data.luom),
-        qty_luom: safeNumber(data.qty_luom),
-        unit_price: safeNumber(data.unit_price),
-        curr_code: safeString(data.curr_code),
-        lot_no: safeString(data.lot_no),
-        mfg_date: safeDate(data.mfg_date),
-        exp_date: safeDate(data.exp_date),
-        manu_code: safeString(data.manu_code),
-        origin_country: safeString(data.origin_country),
-        from_site: safeString(data.from_site),
-        to_site: safeString(data.to_site),
-        location_from: safeString(data.location_from),
-        location_to: safeString(data.location_to),
-        batch_no: safeString(data.batch_no),
-        po_no: safeString(data.po_no),
-        created_at: data.created_at ?? new Date(),
-        created_by: safeString(data.created_by),
-        updated_at: data.updated_at ?? new Date(),
-        updated_by: safeString(data.updated_by)
-      },
-      autoCommit: false
-    }
+      user_id: safeString(data.user_id),
+      company_code: safeString(data.company_code),
+      prin_code: safeString(data.prin_code),
+      job_no: safeString(data.job_no),
+      packdet_no: safeString(data.packdet_no),
+      container_no: safeString(data.container_no),
+      vessel_name: safeString(data.vessel_name),
+      voyage_no: safeString(data.voyage_no),
+      prod_code: safeString(data.product_code),
+      puom: safeString(data.puom),
+      qty_puom: safeNumber(data.qty_puom),
+      luom: safeString(data.luom),
+      qty_luom: safeNumber(data.qty_luom),
+      unit_price: safeNumber(data.unit_price),
+      curr_code: safeString(data.curr_code),
+      lot_no: safeString(data.lot_no),
+      mfg_date: safeDate(data.mfg_date),
+      exp_date: safeDate(data.exp_date),
+      manu_code: safeString(data.manu_code),
+      origin_country: safeString(data.origin_country),
+      from_site: safeString(data.from_site),
+      to_site: safeString(data.to_site),
+      location_from: safeString(data.location_from),
+      location_to: safeString(data.location_to),
+      batch_no: safeString(data.batch_no),
+      po_no: safeString(data.po_no),
+      created_at: data.created_at ?? new Date(),
+      created_by: safeString(data.created_by),
+      updated_at: data.updated_at ?? new Date(),
+      updated_by: safeString(data.updated_by)
+    },
+    { autoCommit: false }
   );
 }
 
@@ -105,11 +103,14 @@ export const upsertPackDetailEDIHandler = async (req: Request, res: Response) =>
     }
 
     connection = await oracleDb.getConnection();
-    await connection.execute("BEGIN NULL; END;"); // dummy block to ensure connection
-
-    await connection.execute(`DELETE FROM TI_PACKDET_EDI WHERE USER_ID = :user_id`, {
-      user_id: records[0].user_id
-    });
+    
+    const bindParams: oracledb.BindParameters = { user_id: records[0].user_id };
+    
+    await connection.execute(
+      `DELETE FROM TI_PACKDET_EDI WHERE USER_ID = :user_id`,
+      bindParams,
+      { autoCommit: false }
+    );
 
     for (const record of records) {
       await insertPackDetailEDI(record, connection);
@@ -141,13 +142,18 @@ export const copyEDIToPackdetHandler = async (req: Request, res: Response) => {
 
     connection = await oracleDb.getConnection();
 
+    const bindParams: oracledb.BindParameters = { 
+      P_loginid: login_id, 
+      P_jobno: job_no, 
+      P_princode: prin_code, 
+      P_company_code: company_code 
+    };
+
     const sql = `BEGIN PRO_COPY_INWARDEDI_TO_PACKDET(:P_loginid, :P_jobno, :P_princode, :P_company_code); END;`;
     await connection.execute(
-      {
-        sql,
-        bindParams: { P_loginid: login_id, P_jobno: job_no, P_princode: prin_code, P_company_code: company_code },
-        autoCommit: true
-      }
+      sql,
+      bindParams,
+      { autoCommit: true }
     );
 
     res.status(constants.STATUS_CODES.OK).json({
@@ -161,7 +167,7 @@ export const copyEDIToPackdetHandler = async (req: Request, res: Response) => {
       message: error.message || "An error occurred while copying EDI records",
     });
   } finally {
-    if (connection) await connection?.close();
+    if (connection) await connection.close();
   }
 };
 
@@ -181,19 +187,22 @@ export const getEDIPackdetHandler = async (req: Request, res: Response) => {
 
     connection = await oracleDb.getConnection();
 
+    const bindParams: oracledb.BindParameters = { 
+      user_id: String(user_id), 
+      company_code: String(company_code), 
+      prin_code: String(prin_code), 
+      job_no: String(job_no) 
+    };
+
     const result = await connection.execute(
-      {
-        sql: `
-          SELECT *
-          FROM TI_PACKDET_EDI
-          WHERE user_id = :user_id
-            AND company_code = :company_code
-            AND prin_code = :prin_code
-            AND job_no = :job_no
-        `,
-        bindParams: { user_id, company_code, prin_code, job_no },
-        outFormat: oracledb.OUT_FORMAT_OBJECT
-      }
+      `SELECT *
+       FROM TI_PACKDET_EDI
+       WHERE user_id = :user_id
+         AND company_code = :company_code
+         AND prin_code = :prin_code
+         AND job_no = :job_no`,
+      bindParams,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     if (!result.rows || result.rows.length === 0) {
@@ -215,6 +224,6 @@ export const getEDIPackdetHandler = async (req: Request, res: Response) => {
       message: error.message || 'Failed to fetch EDI pack detail using Oracle SQL',
     });
   } finally {
-    if (connection) await connection?.close();
+    if (connection) await connection.close();
   }
 };

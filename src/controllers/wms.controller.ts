@@ -1118,7 +1118,7 @@ case "department":
     const page = Number(req.query.page) || 1;
     const pageLimit = Number(req.query.limit) || 100;
     
-    // Prepare filters
+    // Prepare filters - match entity property names
     const filters: any = { company_code: requestUser.company_code };
     
     // Apply search filter if present
@@ -2706,11 +2706,11 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
             // If ids is an array of department codes
             if (Array.isArray(ids)) {
               for (const deptCode of ids) {
-                await DepartmentService.deleteDepartment(deptCode);
+                await DepartmentService.deleteDepartment(deptCode, requestUser.company_code);
               }
             } else {
               // If ids is a single department code
-              await DepartmentService.deleteDepartment(ids);
+              await DepartmentService.deleteDepartment(ids, requestUser.company_code);
             }
           } else {
             throw new Error("Department code is required");

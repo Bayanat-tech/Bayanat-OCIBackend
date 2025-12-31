@@ -30,22 +30,6 @@ export class ProductService {
   static async createProduct(productData: Partial<Product>): Promise<Product> {
     const repository = this.getProductRepository();
 
-    // Generate product code if not provided
-    if (!productData.prodCode) {
-      const maxProdCode = await repository
-        .createQueryBuilder("product")
-        .select("MAX(product.prodCode)", "max")
-        .getRawOne();
-
-      let nextProdCode = "PROD0001";
-      if (maxProdCode?.max) {
-        const currentMax = parseInt(maxProdCode.max.replace("PROD", ""));
-        nextProdCode = `PROD${(currentMax + 1).toString().padStart(4, "0")}`;
-      }
-      
-      productData.prodCode = nextProdCode;
-    }
-
     const product = repository.create(productData);
     return await repository.save(product);
   }

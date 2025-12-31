@@ -1,77 +1,57 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryColumn, Column } from "typeorm";
 import constants from "../../helpers/constants";
 
-@Entity(constants.TABLE.MS_DEPARTMENT)
+@Entity(constants.TABLE.MS_HR_DEPARTMENT)
 export class DepartmentMaster {
 
-  @PrimaryColumn({ name: "DEPT_CODE", type: "varchar2", length: 10 })
-  dept_code!: string;
-
-  @Column({ name: "DEPT_NAME", type: "varchar2", length: 25, nullable: true })
-  dept_name?: string;
-
-  @Column({ name: "INV_FLAG", type: "varchar2", length: 2, nullable: true })
-  inv_flag?: string;
-
-  @Column({ name: "JOBNO_SEQ", type: "number", nullable: true })
-  jobno_seq?: number;
-
-  @Column({ name: "INVNO_SEQ", type: "number", nullable: true })
-  invno_seq?: number;
-
-  @Column({ name: "COMPANY_CODE", type: "varchar2", length: 20 })
+  @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 5 })
   company_code!: string;
 
-  @Column({ name: "OPERATION_TYPE", type: "varchar2", length: 1, nullable: true })
-  operation_type?: string;
-
-  @Column({ name: "DIV_CODE", type: "varchar2", length: 5, default: () => "'01'" })
+  @PrimaryColumn({ name: "DIV_CODE", type: "varchar2", length: 5 })
   div_code!: string;
 
-  @Column({ name: "AC_DIV_CODE", type: "varchar2", length: 5, default: () => "'10'" })
-  ac_div_code!: string;
+  @PrimaryColumn({ name: "DEPT_CODE", type: "varchar2", length: 5 })
+  dept_code!: string;
 
-  @Column({ name: "DEPT_EMAIL", type: "varchar2", length: 250, nullable: true })
-  dept_email?: string;
+  @Column({ name: "DEPT_NAME", type: "varchar2", length: 50 })
+  dept_name!: string;
 
-  @Column({ name: "DN_EMAIL", type: "varchar2", length: 250, nullable: true })
-  dn_email?: string;
+  @Column({ name: "DEPT_SHORT_NAME", type: "varchar2", length: 10, nullable: true })
+  dept_short_name?: string;
 
-  @Column({ name: "GRN_EMAIL", type: "varchar2", length: 250, nullable: true })
-  grn_email?: string;
+  @Column({ name: "DEPT_ADDR1", type: "varchar2", length: 50 })
+  dept_addr1!: string;
 
-  @Column({ name: "INV_GEN", type: "char", length: 1, default: () => "'N'" })
-  inv_gen!: string;
+  @Column({ name: "DEPT_ADDR2", type: "varchar2", length: 50, nullable: true })
+  dept_addr2?: string;
 
-  @Column({ name: "INB_OUB_RELATED", type: "char", length: 1, default: () => "'N'" })
-  inb_oub_related!: string;
+  @Column({ name: "DEPT_ADDR3", type: "varchar2", length: 50, nullable: true })
+  dept_addr3?: string;
 
-  @Column({ name: "INV_PREFIX", type: "varchar2", length: 2, nullable: true })
-  inv_prefix?: string;
+  @Column({ name: "PHONE", type: "varchar2", length: 25, nullable: true })
+  phone?: string;
 
-  @Column({ name: "UPDATED_BY", type: "varchar2", length: 50, nullable: true })
-  updated_by?: string;
+  @Column({ name: "FAX", type: "varchar2", length: 25, nullable: true })
+  fax?: string;
 
-  @Column({ name: "CREATED_BY", type: "varchar2", length: 20, nullable: true })
-  created_by?: string;
+  @Column({ name: "EMAIL", type: "varchar2", length: 50, nullable: true })
+  email?: string;
 
-  @Column({ name: "WMS_INV_PREFIX", type: "varchar2", length: 100, nullable: true })
-  wms_inv_prefix?: string;
+  @Column({ name: "DEPT_HEAD_ID", type: "varchar2", length: 10, nullable: true })
+  dept_head_id?: string;
 
-  @Column({ name: "TRSPT_INV_PREFIX", type: "varchar2", length: 100, nullable: true })
-  trspt_inv_prefix?: string;
+  @Column({ name: "REMARKS", type: "varchar2", length: 100, nullable: true })
+  remarks?: string;
 
-  @CreateDateColumn({
-    name: "CREATED_AT",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
-  })
-  created_at!: Date;
+  @Column({ name: "STATUS", type: "varchar2", length: 1 })
+  status!: string;
 
-  @UpdateDateColumn({
-    name: "UPDATED_AT",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
-  })
-  updated_at!: Date;
+  @Column({ name: "USER_ID", type: "varchar2", length: 10, nullable: true })
+  user_id?: string;
+
+  @Column({ name: "USER_DT", type: "date", nullable: true })
+  user_dt?: Date;
+
+  @Column({ name: "ENTERPRICE_CODE", type: "varchar2", length: 5 })
+  enterprice_code!: string;
 }

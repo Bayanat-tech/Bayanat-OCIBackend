@@ -54,13 +54,13 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
       updated_by = requestUser.loginid;
 
     // Ensure prin_code is not null
-    if (!prinicipalPayload.prin_code) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "Principal code is required",
-      });
-      return;
-    }
+    // if (!prinicipalPayload.prin_code) {
+    //   res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    //     success: false,
+    //     message: "Principal code is required",
+    //   });
+    //   return;
+    // }
 
     // Remove user_date if present in payload
     // if ('user_dt' in prinicipalPayload) {
@@ -84,7 +84,7 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Create principal record
+    // Create principal record (don't set created_at, let DB handle it)
     const principalData = await PrincipalService.createPrincipal({
       created_by,
       updated_by,
@@ -98,10 +98,20 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Create contact details
+    // Fetch the principal to get the trigger-generated prin_code
+    const createdPrincipal = await PrincipalService.findByCode(principalData.prin_code);
+    
+    if (!createdPrincipal) {
+      res
+        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: "Failed to retrieve created principal" });
+      return;
+    }
+
+    // Create contact details with the generated prin_code
     const contactDetails = await PrincipalContactDetlService.createPrincipalContact({
       company_code: req.body.company_code,
-      prin_code: principalData.prin_code,
+      prin_code: createdPrincipal.prin_code,
       prin_cont1,
       prin_cont2,
       prin_cont3,
@@ -121,7 +131,7 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
 
     if (!contactDetails) {
       // Rollback principal creation if contact details fail
-      await PrincipalService.deletePrincipal(principalData.prin_code);
+      await PrincipalService.deletePrincipal(createdPrincipal.prin_code);
       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: `Principal contact details creation failed`,
@@ -135,7 +145,7 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
         await UploadedFilesDltsService.createFile({
           ...file,
           company_code: req.body.company_code,
-          request_number: "PRI" + principalData.prin_code,
+          request_number: "PRI" + createdPrincipal.prin_code,
           created_by,
         });
       }
@@ -144,7 +154,7 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
     // Return success response
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `${principalData.prin_code} Principal ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
+      message: `${createdPrincipal.prin_code} Principal ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
     });
     return;
   } catch (error: unknown) {
@@ -209,7 +219,7 @@ export const updatePrincipal = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Update principal data
+    // Update principal data (don't set updated_at, let DB handle it)
     const isPrincipalUpdated = await PrincipalService.updatePrincipal(
       prin_code, 
       {
@@ -419,10 +429,17 @@ export const createBulkPrincipal = async (
               });
       
               if (newPrincipal) {
+                // Fetch the created principal to get trigger-generated prin_code
+                const createdPrincipal = await PrincipalService.findByCode(newPrincipal.prin_code);
+                
+                if (!createdPrincipal) {
+                  continue;
+                }
+
                 // Create contact details for the newly created principal
                 const contactDetails = await PrincipalContactDetlService.createPrincipalContact({
                   company_code: principalPayload.company_code || requestUser.company_code,
-                  prin_code: newPrincipal.prin_code,
+                  prin_code: createdPrincipal.prin_code,
                   prin_cont1,
                   prin_cont2,
                   prin_cont3,
@@ -442,7 +459,7 @@ export const createBulkPrincipal = async (
       
                 if (!contactDetails) {
                   // Rollback principal if contact creation failed
-                  await PrincipalService.deletePrincipal(newPrincipal.prin_code);
+                  await PrincipalService.deletePrincipal(createdPrincipal.prin_code);
                   continue;
                 }
       
@@ -452,7 +469,7 @@ export const createBulkPrincipal = async (
                     await UploadedFilesDltsService.createFile({
                       ...file,
                       company_code: principalPayload.company_code || requestUser.company_code,
-                      request_number: "PRI" + newPrincipal.prin_code,
+                      request_number: "PRI" + createdPrincipal.prin_code,
                       created_by: requestUser.loginid,
                     });
                   }

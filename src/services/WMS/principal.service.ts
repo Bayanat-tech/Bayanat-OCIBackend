@@ -78,10 +78,7 @@ export class PrincipalService {
 
     const result = await repository.update(
       { prin_code },
-      {
-        ...updateData,
-        updated_at: new Date(),
-      }
+      updateData
     );
 
     return result.affected ? result.affected > 0 : false;
