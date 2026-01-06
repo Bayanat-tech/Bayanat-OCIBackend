@@ -689,7 +689,7 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
       if (toggledPackets > 0) {
         // Call Oracle stored procedure
         await oracleDb.query(
-          `BEGIN sp_pick_cancel_confirmed(:vs_company_code, :vs_prin_code, :vs_job_no, :vs_freeze); END;`,
+          `BEGIN sp_pick_cancel(:vs_company_code, :vs_prin_code, :vs_job_no, :vs_freeze); END;`,
           {
             vs_company_code: company_code,
             vs_prin_code: prin_code,
