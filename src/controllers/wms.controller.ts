@@ -2762,7 +2762,7 @@ break;
       {
         console.log ('Fetching customer data...');
         const page = Number(req.query.page) || 1;
-        const pageLimit = Number(req.query.limit) || 100;
+        const pageLimit = Number(req.query.limit) || 1000;
         const filters: any = { company_code: requestUser.company_code };
 
           const { data, total } = await CustomerService.getCustomers(
