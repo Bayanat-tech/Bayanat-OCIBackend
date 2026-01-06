@@ -1,9 +1,9 @@
 import { Response } from "express";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import { customerSchema } from "../../validation/Purchaseflow/Purchaseflow.validation";
 import constants from "../../helpers/constants";
 import { CustomerService } from "../../services/WMS/customer.service";
+import { customerSchemaWms } from "../../validation/wms/gm.validation";
 
 export class CustomerMasterController {
   
@@ -14,7 +14,7 @@ export class CustomerMasterController {
   ) {
     try {
       const user: IUser = req.user;
-      const { error } = customerSchema(req.body);
+      const { error } = customerSchemaWms(req.body);
 
       if (error) {
         res
@@ -27,8 +27,6 @@ export class CustomerMasterController {
 
       const result = await CustomerService.createCustomer({
         ...req.body,
-        created_by: user.loginid,
-        updated_by: user.loginid,
       });
 
       res.status(constants.STATUS_CODES.OK).json({
@@ -52,7 +50,7 @@ export class CustomerMasterController {
     try {
       const user: IUser = req.user;
 
-      const { error } = customerSchema(req.body);
+      const { error } = customerSchemaWms(req.body);
       if (error) {
         res
           .status(constants.STATUS_CODES.BAD_REQUEST)
@@ -67,7 +65,6 @@ export class CustomerMasterController {
         cust_code,
         {
           ...req.body,
-          updated_by: user.loginid,
         }
       );
 

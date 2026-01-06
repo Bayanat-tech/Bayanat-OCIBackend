@@ -958,7 +958,7 @@ export const LocationtypeSchema = (data: ILocationType) => {
   return schema.validate(data);
 };
 
-export const customerSchema = (data: ICustomer) => {
+export const customerSchemaWms = (data: ICustomer) => {
   const schema = Joi.object().keys({
   company_code: Joi.string().required(),
   prin_code: Joi.string().required(),
@@ -1008,6 +1008,6 @@ export const customerSchema = (data: ICustomer) => {
   act_code: Joi.string().allow("", null),
   zone_id: Joi.string().allow("", null),
 });
+return schema.validate(data);
 }
-
 

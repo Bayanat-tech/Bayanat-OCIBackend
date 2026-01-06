@@ -55,8 +55,6 @@ import { AppDataSource } from "../../database/connection";
 
     const customer = repo.create({
       ...data,
-      created_at: new Date(),
-      updated_at: new Date()
     });
 
     const saved = await repo.save(customer);
@@ -91,7 +89,6 @@ import { AppDataSource } from "../../database/connection";
       { company_code, cust_code },
       {
         ...updateData,
-        updated_at: new Date()
       }
     );
 
