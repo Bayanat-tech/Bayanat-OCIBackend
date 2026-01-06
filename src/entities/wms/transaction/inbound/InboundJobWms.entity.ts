@@ -443,4 +443,10 @@ export class InboundJobWms {
 
   @Column({ name: "WALKIN_PRIN_CODE", type: "varchar2", length: 10, nullable: true })
   walkin_prin_code?: string;
+
+    @Column({ name: "UPDATED_BY", type: "varchar2", length: 20, nullable: true })
+  updated_by?: string;
+
+    @Column({ name: "UPDATED_AT", type: "date", nullable: true })
+  updated_at?: Date;
 }
