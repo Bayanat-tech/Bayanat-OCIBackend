@@ -132,6 +132,7 @@ import { SupplierService } from "../services/WMS/suppliermaster.service"; // Add
 import { getConnection } from "typeorm";
 import { FlowMasterService } from "../services/Security/flowmaster.service"; // Add FlowMasterService import
 import { AppDataSource, TypeORMService } from "../database/connection";
+import { CustomerService } from "../services/WMS/customer.service";
 
 export type TGroup = {
   group_code: string;
@@ -2757,8 +2758,24 @@ break;
         }
       }
       break;
+    case "customer":
+      {
+        console.log ('Fetching customer data...');
+        const page = Number(req.query.page) || 1;
+        const pageLimit = Number(req.query.limit) || 100;
+        const filters: any = { company_code: requestUser.company_code };
 
-}
+          const { data, total } = await CustomerService.getCustomers(
+            filters,
+            page,
+            pageLimit
+          );
+
+          fetchedData = data;
+          totalCount = total;
+        }
+        break;
+      }
 
 // Return a successful response with the fetched data and total count
 res.status(constants.STATUS_CODES.OK).json({
