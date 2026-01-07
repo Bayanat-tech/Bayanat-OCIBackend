@@ -1585,11 +1585,15 @@ case "currency":
 
     try {
       // Use CurrencyService to fetch currencies with pagination
-      const { data: currencyData, total } = await CurrencyService.getCurrencies(
-        filters,
-        page,
-        pageLimit
-      );
+      const currencyData = await CurrencyService.findAll();
+
+      
+      //       const { data: currencyData, total } = await CurrencyService.getCurrencies(
+      //   filters,
+      //   page,
+      //   pageLimit
+      // );
+
 
       // Map entity fields to expected frontend shape if needed
       fetchedData = currencyData.map((item: any) => ({
@@ -1604,7 +1608,7 @@ case "currency":
         updated_at: item.updatedAt ?? item.updated_at,
       }));
 
-      totalCount = total;
+      totalCount = currencyData.length;
     } catch (error) {
       console.error("Error fetching currencies:", error);
       fetchedData = [];
