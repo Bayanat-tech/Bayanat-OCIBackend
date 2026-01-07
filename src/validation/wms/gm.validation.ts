@@ -366,9 +366,20 @@ export const manufactureSchema = (data: IManufacture) => {
 export const groupSchema = (data: IGroup) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
-    group_code: Joi.string().allow("", null),
+    group_code: Joi.string().allow("", null).optional(), // Add .optional()
     group_name: Joi.string().required(),
     prin_code: Joi.string().allow("", null),
+    // Add these optional fields to fix the "not allowed" errors
+    pref_site: Joi.string().allow(null, "").optional(),
+    pref_loc_from: Joi.string().allow(null, "").optional(),
+    pref_loc_to: Joi.string().allow(null, "").optional(),
+    pref_aisle_from: Joi.string().allow(null, "").optional(),
+    pref_aisle_to: Joi.string().allow(null, "").optional(),
+    pref_col_from: Joi.number().allow(null, "").optional(),
+    pref_col_to: Joi.number().allow(null, "").optional(),
+    pref_ht_from: Joi.number().allow(null, "").optional(),
+    pref_ht_to: Joi.number().allow(null, "").optional(),
+    expiry_cons_days: Joi.number().allow(null).optional()
   });
   return schema.validate(data);
 };
