@@ -2,6 +2,7 @@
 import { Response } from "express";
 import constants from "../helpers/constants";
 import oracledb from 'oracledb';
+
 // import { QueryTypes } from "sequelize"; 
 // import { WhereOptions } from "sequelize";
 import { ISearch, RequestWithUser } from "../interfaces/common.interface";
@@ -131,6 +132,18 @@ import { SupplierService } from "../services/WMS/suppliermaster.service"; // Add
 import { getConnection } from "typeorm";
 import { FlowMasterService } from "../services/Security/flowmaster.service"; // Add FlowMasterService import
 import { AppDataSource, TypeORMService } from "../database/connection";
+import { CustomerService } from "../services/WMS/customer.service";
+
+export type TGroup = {
+  group_code: string;
+  group_name: string;
+  company_code?: string;
+  prin_code?: string;
+  updated_at?: Date;
+  updated_by?: string;
+  created_by?: string;
+  created_at?: Date;
+};
 
 export const executeRawSql = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -938,6 +951,52 @@ case "manufacturer":
 // break;
   
 // Fetching group data using GroupService
+case "ddgroup": {
+  let queryRunner;
+
+  const sql = `
+    SELECT
+      group_code AS "group_code",
+      group_name AS "group_name",
+      prin_code AS "prin_code"
+    FROM ms_prodgroup
+    WHERE company_code = :company_code
+    ORDER BY group_name
+  `;
+
+  const params = [
+    requestUser.company_code
+  ];
+
+  try {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+
+    queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+
+    const results = await queryRunner.query(sql, params);
+
+    fetchedData = results as TGroup[];
+    console.log(fetchedData);
+  } catch (error) {
+    console.error("Error fetching ddgroup:", error);
+    fetchedData = [];
+  } finally {
+    if (queryRunner) {
+      try {
+        await queryRunner.release();
+      } catch (_) {}
+    }
+  }
+}
+break;
+
+
+
+
+  
 case "group":
   {
     // Get pagination parameters
@@ -1025,24 +1084,102 @@ case "group":
 //           console.log(fetchedData);
 //         }
 //         break;
-      // case "ddepartment":
-      //   {
-      //     (fetchedData = await DDdepartmentjob.findAll({
-      //       where: { company_code: requestUser.company_code },
-      //       ...paginationOptions,
-      //     })) as unknown[] as IDepartmentjob[];
-      //     console.log(fetchedData);
-      //   }
-      //   break;
-      // case "dddivision":
-      //   {
-      //     (fetchedData = await DDdivisionjob.findAll({
-      //       where: { company_code: requestUser.company_code },
-      //       ...paginationOptions,
-      //     })) as unknown[] as IDivisionjob[];
-      //     console.log(fetchedData);
-      //   }
-      //   break;
+    case "ddepartment": {
+  let queryRunner; // declare outside try for finally block
+
+  const sql = `
+    SELECT
+      dept_code AS "dept_code",
+      dept_name AS "dept_name"
+    FROM ms_hr_department
+    WHERE company_code = :company_code
+  `;
+
+  const params = [requestUser.company_code];
+
+  try {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+
+    queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const results = await queryRunner.query(sql, params);
+
+    await queryRunner.commitTransaction();
+
+    fetchedData = results as IDepartmentjob[]; // replace with your TS type
+    console.log(fetchedData);
+  } catch (error) {
+    if (queryRunner) {
+      try {
+        await queryRunner.rollbackTransaction();
+      } catch (_) {}
+    }
+    console.error("Error fetching ddepartment:", error);
+    fetchedData = [];
+  } finally {
+    if (queryRunner) {
+      try {
+        await queryRunner.release();
+      } catch (_) {}
+    }
+  }
+}
+break;
+
+        
+        break;
+  case "dddivision": {
+  let queryRunner; // ✅ declare outside try so finally can access it
+
+  const sql = `
+    SELECT
+      div_code AS "div_code",
+      div_name AS "div_name"
+    FROM ms_hr_division
+    WHERE company_code = :company_code
+  `;
+
+  const params = [requestUser.company_code];
+
+  try {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+
+    queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const results = await queryRunner.query(sql, params);
+
+    await queryRunner.commitTransaction();
+
+    fetchedData = results as IDivisionjob[];
+    console.log(fetchedData);
+  } catch (error) {
+    if (queryRunner) {
+      try {
+        await queryRunner.rollbackTransaction();
+      } catch (_) {}
+    }
+    console.error("Error fetching dddivision:", error);
+    fetchedData = [];
+  } finally {
+    if (queryRunner) {
+      try {
+        await queryRunner.release();
+      } catch (_) {}
+    }
+  }
+}
+break;
+
+
+
   //     case "assePrincipal":
   //       {
   //         let insideQuery: any = [],
@@ -2621,8 +2758,24 @@ break;
         }
       }
       break;
+    case "customer":
+      {
+        console.log ('Fetching customer data...');
+        const page = Number(req.query.page) || 1;
+        const pageLimit = Number(req.query.limit) || 1000;
+        const filters: any = { company_code: requestUser.company_code };
 
-}
+          const { data, total } = await CustomerService.getCustomers(
+            filters,
+            page,
+            pageLimit
+          );
+
+          fetchedData = data;
+          totalCount = total;
+        }
+        break;
+      }
 
 // Return a successful response with the fetched data and total count
 res.status(constants.STATUS_CODES.OK).json({

@@ -207,6 +207,7 @@ import {
   updateLocationType,
   getAllLocationTypes, // <-- Add this import
 } from "../../controllers/wms/locationtype_wms.controller";
+import { CustomerMasterController } from "../../controllers/wms/customer_wms.controller";
 
 // Country Routes - Handle country management
 router.post("/country", createCountry as unknown as express.RequestHandler); // Create new country
@@ -444,6 +445,9 @@ router.post("/locationtype", createLocationType); // Create new location type
 router.put("/locationtype", updateLocationType); // Update existing location type
 router.post("/locationtype/bulk", createBulkLocationType); // Create multiple location types
 router.get("/locationtype", getAllLocationTypes); // Get all location types as JSON
+
+router.post("/customer", CustomerMasterController.createCustomerMaster); 
+router.put("/customer", CustomerMasterController.updateCustomerMaster); 
 
 export default router;
 router.post("/locationtype/bulk", createBulkLocationType); // Create multiple location types

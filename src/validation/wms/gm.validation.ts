@@ -40,6 +40,7 @@ import { IHrBank } from "../../interfaces/Hr/hr_bank";
 import { IAssetgroup } from "../../interfaces/wms/assetgroup_wms.interface";
 import { IWarehouse } from "../../interfaces/wms/warehouse_wms";
 import { ILocationType } from "../../interfaces/wms/locationtype_wms.interface";
+import { ICustomer } from "../../interfaces/wms/customer_wms.interface";
 
 export const countrySchema = (
   data: ICountry,
@@ -967,3 +968,57 @@ export const LocationtypeSchema = (data: ILocationType) => {
   });
   return schema.validate(data);
 };
+
+export const customerSchemaWms = (data: ICustomer) => {
+  const schema = Joi.object().keys({
+  company_code: Joi.string().required(),
+  prin_code: Joi.string().required(),
+  cust_code: Joi.string().required(),
+  curr_code: Joi.string().allow("", null),
+  country_code: Joi.string().allow("", null),
+  cust_name: Joi.string().required(),
+  cust_addr1: Joi.string().allow("", null),
+  cust_addr2: Joi.string().allow("", null),
+  cust_addr3: Joi.string().allow("", null),
+  cust_addr4: Joi.string().allow("", null),
+  cust_city: Joi.string().allow("", null),
+  cust_contact1: Joi.string().allow("", null),
+  cust_telno1: Joi.string().allow("", null),
+  cust_faxno1: Joi.string().allow("", null),
+  cust_email1: Joi.string().email().allow("", null),
+  cust_contact2: Joi.string().allow("", null),
+  cust_telno2: Joi.string().allow("", null),
+  cust_faxno2: Joi.string().allow("", null),
+  cust_email2: Joi.string().email().allow("", null),
+  cust_contact3: Joi.string().allow("", null),
+  cust_telno3: Joi.string().allow("", null),
+  cust_faxno3: Joi.string().allow("", null),
+  cust_ref1: Joi.string().allow("", null),
+  cust_ref2: Joi.string().allow("", null),
+  cust_ref3: Joi.string().allow("", null),
+  service_date: Joi.date().allow(null),
+  cust_acref: Joi.string().allow("", null),
+  cust_credit: Joi.number().allow(null),
+  cust_stat: Joi.string().allow("", null),
+  cust_imp_code: Joi.string().allow("", null),
+  cust_lic_no: Joi.string().allow("", null),
+  cust_lic_type: Joi.string().allow("", null),
+  user_id: Joi.string().allow("", null),
+  date_time: Joi.date().allow(null),
+  price_check: Joi.string().allow("", null),
+  cust_email3: Joi.string().email().allow("", null),
+  payment_terms: Joi.number().allow(null),
+  importer_code: Joi.string().allow("", null),
+  reff_cust_code: Joi.string().allow("", null),
+  min_exp_days: Joi.number().allow(null),
+  cust_mobile_no: Joi.string().allow("", null),
+  vat_no: Joi.string().allow("", null),
+  cust_photo: Joi.string().allow("", null),
+  label_seq_no: Joi.number().allow(null),
+  cust_prefix: Joi.string().allow("", null),
+  act_code: Joi.string().allow("", null),
+  zone_id: Joi.string().allow("", null),
+});
+return schema.validate(data);
+}
+
