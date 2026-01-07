@@ -242,23 +242,22 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
       if (toggledPackets > 0) {
         // ---- FIXED procedure call ----
-        await oracleDb.query(
-          `BEGIN
-             SP_PICK_CONFIRM(
-               :vs_company_code,
-               :vs_principal_code,
-               :vs_job_no,
-               TO_DATE(:vdt_confirm, 'YYYY-MM-DD HH24:MI:SS')
-             );
-           END;`,
-          {
-            vs_company_code: company_code,
-            vs_principal_code: prin_code,
-            vs_job_no: job_no,
-            vdt_confirm: formattedConfirmDate,
-          },
-          connection
-        );
+       await oracleDb.query(
+  `BEGIN
+     SP_PICK_CONFIRM(
+       :vs_company_code,
+       :vs_principal_code,
+       :vs_job_no,
+       SYSDATE
+     );
+   END;`,
+  {
+    vs_company_code: company_code,
+    vs_principal_code: prin_code,
+    vs_job_no: job_no
+  },
+  connection
+);
 
         // Unselect after procedure call
         const unselectSql = `
