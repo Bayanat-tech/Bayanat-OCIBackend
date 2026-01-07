@@ -80,22 +80,21 @@ export const updateGroup = async (req: RequestWithUser, res: Response) => {
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
-    }
-    const {
+    } const {
       group_code,
       company_code,
       prin_code,
       group_name,
-      pref_site,
-      pref_loc_from,
-      pref_loc_to,
-      pref_aisle_from,
-      pref_aisle_to,
-      pref_col_from,
-      pref_col_to,
-      pref_ht_from,
-      pref_ht_to,
-      expiry_cons_days,
+      pref_site,           // This was missing
+      pref_loc_from,       // This was missing
+      pref_loc_to,         // This was missing
+      pref_aisle_from,     // This was missing
+      pref_aisle_to,       // This was missing
+      pref_col_from,       // This was missing
+      pref_col_to,         // This was missing
+      pref_ht_from,        // This was missing
+      pref_ht_to,          // This was missing
+      expiry_cons_days,    // This was missing
     } = req.body;
 
     // Check if group exists

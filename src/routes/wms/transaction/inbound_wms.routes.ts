@@ -67,7 +67,7 @@ import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound
 //   getconfirmInboundjob, // Get confirmation details
 //   confirmInboundjob, // Confirm inbound job
 // } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
-
+import {cancelInboundJob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller"
 import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
 import {upsertPutawaymanualOracle} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 const router = express.Router();
@@ -111,6 +111,8 @@ router.put(
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
 router.post("/inboundjob",createOrUpdateJob);
+
+router.patch("/canceljob", cancelInboundJob)
 
 router.put("/inboundjob",createOrUpdateJob);
 

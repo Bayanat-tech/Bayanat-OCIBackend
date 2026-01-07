@@ -1,6 +1,8 @@
 import { getRepository } from "../../database/connection";
 import { Brand } from "../../entity/WMS/brand.entity";
 import { In } from "typeorm";
+import { AppDataSource, TypeORMService } from "../../../src/database/connection";
+import oracledb from 'oracledb';
 
 export class BrandService {
   private static getBrandRepository() {
@@ -17,17 +19,59 @@ export class BrandService {
     });
   }
 
-  static async findByBrandCodeAndCompany(
-    brandCode: string,
-    companyCode: string,
-    prinCode: string,
-    groupCode: string
-  ): Promise<Brand | null> {
-    const repository = this.getBrandRepository();
-    return await repository.findOne({
-      where: { brandCode, companyCode, prinCode, groupCode },
-    });
+
+
+static async findByBrandCodeAndCompany(
+  brandCode: string,
+  companyCode: string,
+  prinCode: string,
+  groupCode: string
+): Promise<Brand | null> {
+  let queryRunner;
+
+  const sql = `
+    SELECT *
+    FROM ms_prodgroup
+    WHERE brand_code = :brandCode
+      AND company_code = :companyCode
+      AND prin_code = :prinCode
+      AND group_code = :groupCode
+  `;
+
+  const params = [brandCode, companyCode, prinCode, groupCode];
+
+  try {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+
+    queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const results = await queryRunner.query(sql, params);
+
+    await queryRunner.commitTransaction();
+
+    // Return single record or null
+    return results.length > 0 ? (results[0] as Brand) : null;
+  } catch (error) {
+    if (queryRunner) {
+      try {
+        await queryRunner.rollbackTransaction();
+      } catch (_) {}
+    }
+    console.error("Error fetching brand by code:", error);
+    return null;
+  } finally {
+    if (queryRunner) {
+      try {
+        await queryRunner.release();
+      } catch (_) {}
+    }
   }
+}
+
 
   static async createBrand(brandData: {
     companyCode: string;
