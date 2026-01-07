@@ -962,7 +962,7 @@ export const customerSchemaWms = (data: ICustomer) => {
   const schema = Joi.object().keys({
   company_code: Joi.string().required(),
   prin_code: Joi.string().required(),
-  cust_code: Joi.string().required(),
+  cust_code: Joi.string().allow("", null),
   curr_code: Joi.string().allow("", null),
   country_code: Joi.string().allow("", null),
   cust_name: Joi.string().required(),
