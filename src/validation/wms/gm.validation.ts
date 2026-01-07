@@ -960,12 +960,12 @@ export const LocationtypeSchema = (data: ILocationType) => {
 
 export const customerSchemaWms = (data: ICustomer) => {
   const schema = Joi.object().keys({
+  cust_code: Joi.string().allow(""),
   company_code: Joi.string().required(),
+  cust_name: Joi.string().required(),
   prin_code: Joi.string().required(),
-  cust_code: Joi.string().allow("", null),
   curr_code: Joi.string().allow("", null),
   country_code: Joi.string().allow("", null),
-  cust_name: Joi.string().required(),
   cust_addr1: Joi.string().allow("", null),
   cust_addr2: Joi.string().allow("", null),
   cust_addr3: Joi.string().allow("", null),
