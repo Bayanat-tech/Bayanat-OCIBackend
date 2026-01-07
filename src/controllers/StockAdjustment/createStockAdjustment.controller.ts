@@ -344,7 +344,7 @@ export const processAdjustment = async (
   res: Response
 ) => {
   try {
-    const { COMPANY_CODE, PRIN_CODE, ADJ_NO, USERID }: IProcessAdjustmentRequest = req.body;
+    const { COMPANY_CODE, PRIN_CODE, USERID }: IProcessAdjustmentRequest = req.body;
 
     // Validate required fields
     if (!COMPANY_CODE) {
@@ -363,13 +363,13 @@ export const processAdjustment = async (
       return;
     }
 
-    if (!ADJ_NO) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "ADJ_NO is required",
-      });
-      return;
-    }
+    // if (!ADJ_NO) {
+    //   res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    //     success: false,
+    //     message: "ADJ_NO is required",
+    //   });
+    //   return;
+    // }
 
     if (!USERID) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -382,7 +382,7 @@ export const processAdjustment = async (
     console.log('Processing adjustment with data:', {
       COMPANY_CODE,
       PRIN_CODE,
-      ADJ_NO,
+      // ADJ_NO,
       USERID,
     });
 
@@ -390,7 +390,7 @@ export const processAdjustment = async (
     await TaAdjDetailService.processAdjustment({
       COMPANY_CODE,
       PRIN_CODE,
-      ADJ_NO,
+      // ADJ_NO,
       USERID,
     });
 

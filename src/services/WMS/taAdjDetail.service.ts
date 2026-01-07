@@ -105,7 +105,7 @@ export class TaAdjDetailService {
   static async processAdjustment(data: {
     COMPANY_CODE: string;
     PRIN_CODE: string;
-    ADJ_NO: number;
+    // ADJ_NO: number;
     USERID: string;
   }): Promise<void> {
     try {
@@ -116,7 +116,7 @@ export class TaAdjDetailService {
         {
           P_COMPANY_CODE: data.COMPANY_CODE,
           P_PRIN_CODE: data.PRIN_CODE,
-          P_ADJ_NO: data.ADJ_NO,
+          // P_ADJ_NO: data.ADJ_NO,
           P_USERID: data.USERID,
         }
       );

@@ -11,6 +11,8 @@ import * as fastCsv from "fast-csv";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { InboundJobWmsService } from "../../../../services/WMS/transaction/inbound/inboundJobWms.service";
+import oracledb from "oracledb";
+import { oracleDb } from "../../../../database/connection";
 
 export const getInboundJob = async (req: RequestWithUser, res: Response) => {
   try {
@@ -373,5 +375,89 @@ export const cancelInboundJob = async (req: RequestWithUser, res: Response) => {
 //     res.status(400).json({ success: false, message: error.message });
 //   }
 // };
+
+/**
+//  * @function cancelConfirmedInboundJob
+//  * @description Calls Oracle stored procedure sp_cancel_confirmedjob_inb to cancel a confirmed inbound job
+ */
+export const cancelConfirmedInboundJob = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection: oracledb.Connection | null = null;
+
+  try {
+    console.log("Starting cancelConfirmedInboundJob process...");
+    const { prin_code, job_no, remarks } = req.body;
+    const company_code = req.user.company_code;
+
+    // Validate required fields
+    if (!prin_code) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "prin_code is required",
+      });
+      return;
+    }
+
+    if (!job_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "job_no is required",
+      });
+      return;
+    }
+
+    console.log("Parameters:", {
+      company_code,
+      prin_code,
+      job_no,
+      remarks: remarks || "",
+    });
+
+    connection = await oracleDb.getConnection();
+
+    // Call the Oracle stored procedure
+    const callProc = `
+      BEGIN
+        sp_cancel_confirmedjob_inb(:as_company_code, :as_prin_code, :as_jobno, :as_remarks);
+      END;
+    `;
+
+    console.log("Calling stored procedure sp_cancel_confirmedjob_inb...");
+    await connection.execute(
+      callProc,
+      {
+        as_company_code: company_code,
+        as_prin_code: prin_code,
+        as_jobno: job_no,
+        as_remarks: remarks || "",
+      },
+      { autoCommit: true }
+    );
+
+    console.log("Stored procedure executed successfully.");
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: `Confirmed Inbound Job ${job_no} cancelled successfully`,
+    });
+  } catch (error: any) {
+    console.error("Oracle sp_cancel_confirmedjob_inb Error:", error);
+
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message || "Error cancelling confirmed inbound job.",
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error closing Oracle connection:", closeError);
+      }
+    }
+  }
+};
 
 // has context menu
