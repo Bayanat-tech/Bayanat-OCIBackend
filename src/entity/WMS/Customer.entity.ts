@@ -10,31 +10,31 @@ export class CustomerMaster {
   @PrimaryColumn({ name: "CUST_CODE", type: "varchar2", length: 20 })
   cust_code!: string;
 
-  @Column({ name: "COMPANY_CODE", type: "varchar2", length: 5 })
+  @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 10 })
   company_code!: string;
 
-  @Column({ name: "CURR_CODE", type: "varchar2", length: 3, nullable: true })
+  @Column({ name: "CURR_CODE", type: "varchar2", length: 5, nullable: true })
   curr_code?: string;
 
-  @Column({ name: "COUNTRY_CODE", type: "varchar2", length: 5, nullable: true })
+  @Column({ name: "COUNTRY_CODE", type: "varchar2", length: 10, nullable: true })
   country_code?: string;
 
   @Column({ name: "CUST_NAME", type: "varchar2", length: 250, nullable: true })
   cust_name?: string;
 
-  @Column({ name: "CUST_ADDR1", type: "varchar2", length: 50, nullable: true })
+  @Column({ name: "CUST_ADDR1", type: "varchar2", length: 200, nullable: true })
   cust_addr1?: string;
 
-  @Column({ name: "CUST_ADDR2", type: "varchar2", length: 50, nullable: true })
+  @Column({ name: "CUST_ADDR2", type: "varchar2", length: 200, nullable: true })
   cust_addr2?: string;
 
-  @Column({ name: "CUST_ADDR3", type: "varchar2", length: 50, nullable: true })
+  @Column({ name: "CUST_ADDR3", type: "varchar2", length: 200, nullable: true })
   cust_addr3?: string;
 
-  @Column({ name: "CUST_ADDR4", type: "varchar2", length: 50, nullable: true })
+  @Column({ name: "CUST_ADDR4", type: "varchar2", length: 200, nullable: true })
   cust_addr4?: string;
 
-  @Column({ name: "CUST_CITY", type: "varchar2", length: 50, nullable: true })
+  @Column({ name: "CUST_CITY", type: "varchar2", length: 100, nullable: true })
   cust_city?: string;
 
   @Column({ name: "CUST_CONTACT1", type: "varchar2", length: 50, nullable: true })
