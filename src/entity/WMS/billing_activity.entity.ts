@@ -25,7 +25,7 @@ export class BillingActivity {
     bill_amount?: number;
 
     @Column({ name: "USER_DT", type: "date" })
-    activity_date!: Date;
+    user_dt!: Date;
 
     @Column({ name: "INCOME_CODE", type: "varchar2", length: 10 })
     income_code!: string;
@@ -53,6 +53,9 @@ export class BillingActivity {
 
     @Column({ name: "UPDATED_BY", type: "varchar2", length: 50 })
     updated_by!: string;
+
+    @Column({ name: "USER_ID", type: "varchar2", length: 50 })
+    user_id!: string;
 
 //    @Column({ name: "CREATED_BY", type: "varchar2", length: 50 })
 //    created_by!: string;

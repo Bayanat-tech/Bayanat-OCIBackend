@@ -46,4 +46,119 @@ export class ActivityService {
       throw error;
     }
   }
+
+  //Create Billing Activity
+
+  static async createBillingActivity(data: any) {
+    try {
+      const repository = AppDataSource.getRepository(BillingActivity);
+
+      // Check if record already exists
+      const existingRecord = await repository.findOne({
+        where: {
+          company_code: data.company_code,
+          prin_code: data.prin_code,
+        },
+      });
+
+      if (existingRecord) {
+        return {
+          alreadyExists: true,
+          message: "Billing activity already exists",
+          data: existingRecord,
+        };
+      }
+
+      // Create new record
+      const billingactivity = repository.create({
+        company_code: data.company_code,
+        prin_code: data.prin_code,
+        act_code: data.act_code,
+        wip_code: data.wip_code,
+        jobtype: data.jobtype,
+        cost: data.cost,
+        bill_amount: data.bill_amount,
+        income_code: data.income_code,
+        uoc: data.uoc,
+        moc: data.moc,
+        moc1: data.moc1,
+        moc2: data.moc2,
+        cust_code: data.cust_code,
+        freeze_flag: data.freeze_flag,
+        mandatory_flag: data.mandatory_flag,
+        updated_by: data.updated_by,
+        user_dt: data.user_dt,
+        user_id: data.user_id,
+      });
+
+      const savedRecord = await repository.save(billingactivity);
+
+      return {
+        alreadyExists: false,
+        message: "Billing activity created successfully",
+        data: savedRecord,
+      };
+
+    } catch (error) {
+      console.error("Error creating billing activity:", error);
+      throw error;
+    }
+  }
+
+  // UPDATE BILLING ACTIVITY
+  
+  static async updateBillingActivity(data: any) {
+    try {
+      const repository = AppDataSource.getRepository(BillingActivity);
+
+      //  Check if record exists
+      const existingRecord = await repository.findOne({
+        where: {
+          company_code: data.company_code,
+          prin_code: data.prin_code,
+        },
+      });
+
+      if (!existingRecord) {
+        return {
+          notFound: true,
+          message: "Billing activity not found",
+        };
+      }
+
+      // updates
+      repository.merge(existingRecord, {
+        wip_code: data.wip_code,
+        jobtype: data.jobtype,
+        cost: data.cost,
+        bill_amount: data.bill_amount,
+        user_dt: data.user_dt,
+        income_code: data.income_code,
+        uoc: data.uoc,
+        moc: data.moc,
+        moc1: data.moc1,
+        moc2: data.moc2,
+        cust_code: data.cust_code,
+        freeze_flag: data.freeze_flag,
+        mandatory_flag: data.mandatory_flag,
+        updated_by: data.updated_by,
+        updated_at: new Date(),
+      });
+
+      const updatedRecord = await repository.save(existingRecord);
+
+      return {
+        notFound: false,
+        message: "Billing activity updated successfully",
+        data: updatedRecord,
+      };
+
+    } catch (error) {
+      console.error("Error updating billing activity:", error);
+      throw error;
+    }
+  }
 }
+
+
+

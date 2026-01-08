@@ -2177,7 +2177,7 @@ case "activitysubgroup":
        if (!uniqueCode || !requestUser.company_code) {
          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
          success: false,
-         message: "company_code and prin_code are required",
+         //message: "company_code and prin_code are required",
         });
        return;
        }
@@ -2189,19 +2189,19 @@ case "activitysubgroup":
       }
    break;
      
-// Fetching activity data from the Activity model
-// case "activity": {
-//   // Fetching data using the Activity model
-//   fetchedData = (await Activity.findAll({
-//     attributes: ["activity_code", "activity", "activity_group_code"],
-//     where: {
-//       company_code: requestUser.company_code,
-//     },
-//     ...paginationOptions,
-//   })) as unknown[] as IActivity[];
+//Fetching activity data from the Activity model
+case "activity": {
+  // Fetching data using the Activity model
+  fetchedData = (await Activity.findAll({
+    attributes: ["activity_code", "activity", "activity_group_code"],
+    where: {
+      company_code: requestUser.company_code,
+    },
+    ...paginationOptions,
+  })) as unknown[] as IActivity[];
 
-//   break;
-// }
+  break;
+}
 
 // Fetching activity KPI data from the ActivityKPI model
 case "activitykpi": {
