@@ -27,11 +27,11 @@ import {
 
 // Import product type related controllers
 // import {
-//   createBulkProducttypes, // For creating multiple product types
-//   createProducttype, // For creating single product type
-//   deleteProducttypes, // For deleting product types
-//   exportProducttype, // For exporting product type data
-//   updateProducttype, // For updating product type
+//   // createBulkProducttypes, // For creating multiple product types
+//   // createProducttype, // For creating single product type
+//   // deleteProducttypes, // For deleting product types
+//   // exportProducttype, // For exporting product type data
+//   // updateProducttype, // For updating product type
 // } from "../../controllers/wms/producttype_wms.controller";
 
 // Import product management controllers
@@ -244,7 +244,7 @@ router.get(
 ); // Export KPI data
 
 // Product Type Routes - Handle product type management
-// router.post("/Producttype", createProducttype); // Create new product type
+// router.post("/producttype", createProducttype); // Create new product type
 // router.put("/Producttype", updateProducttype); // Update existing product type
 // router.post("/Producttype/bulk", createBulkProducttypes); // Create multiple product types
 // router.get("/Producttype/export", exportProducttype); // Export product type data
