@@ -500,10 +500,6 @@ export class AttendanceService {
   
   const wasPending = this.pendingConfirmations.has(uuid);
   this.cancelledConfirmations.add(uuid);
-
-  this.markAsCancelledInDatabase(uuid).catch(err => 
-    logger.error('Failed to update database cancellation:', err)
-  );
   
   logger.info(`Auto-confirm stopped for UUID: ${uuid}, was pending: ${wasPending}`);
   return wasPending;
@@ -644,7 +640,6 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
     }
 
-    // Find existing attendance event
     let event: AttendanceEvent | null;
     event = await attendanceEvent.findOne({ where: { uuid: data.uuid } });
 
@@ -697,7 +692,6 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
   }
 }
 
-  // 🎯 LOG PROXY ATTEMPT
   static async logProxyAttempt(data: any, actualEmployeeCode: string, actualEmployeeName: string, reason: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
     await transaction.connect();
@@ -1432,7 +1426,6 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     return { total: count, page, limit, data: formattedData };
   }
 
-  // 🎯 HELPER METHODS
   private static calculateStatus(time: Date, startTime: string): "present" | "late" | "half-day" {
     const [hours, minutes] = startTime.split(":").map(Number);
     const lateThreshold = new Date(time);

@@ -63,6 +63,8 @@ export class AttendanceEventScheduler {
         const eventIds = unsentEvents.map((event: any) => event.id);
         const transferDate = new Date();
 
+        logger.info(`Updating ${eventIds.length} records with DATA_TRANSFER = 'Y'`);
+
         for (const eventId of eventIds) {
           await attendanceRepository.update(
             { id: eventId },
@@ -74,7 +76,7 @@ export class AttendanceEventScheduler {
         }
 
         logger.info(
-          `Successfully processed ${unsentEvents.length} attendance events. Transfer date updated.`
+          `Successfully processed ${unsentEvents.length} attendance events. DATA_TRANSFER updated to 'Y'.`
         );
       } else {
         logger.error(
@@ -88,7 +90,6 @@ export class AttendanceEventScheduler {
     }
   }
 
-  // Manual trigger for testing or immediate processing
   static async manualTrigger(): Promise<void> {
     logger.info("Manual trigger for attendance event processing");
     await this.processUnsentEvents();
