@@ -1,6 +1,4 @@
 import { Request, Response } from "express";
-//import { Op } from "sequelize";
-//import { sequelize } from "../../database/connection";
 import { Employee } from "../../entity/Attendance/employee.entity";
 import { AttendanceRecord }from "../../entity/Attendance/attendance_record.entity";
 import logger from "../../utils/logger";

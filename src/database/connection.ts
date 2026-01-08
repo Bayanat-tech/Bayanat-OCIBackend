@@ -92,20 +92,9 @@ class TypeORMService {
         await AppDataSource.initialize();
         console.log("TypeORM Connected to Oracle Database");
 
-        // Set session parameters including idle timeout
         await AppDataSource.query(
           "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
         );
-        
-        // Set idle session kill time to 30 minutes (in minutes)
-        try {
-          await AppDataSource.query(
-            "ALTER SESSION SET SESSION_USER_IDLE_TIMEOUT = 1800"
-          );
-        } catch (err) {
-          console.warn("Could not set SESSION_USER_IDLE_TIMEOUT:", err);
-          // This is optional - continue even if it fails
-        }
 
         this.initialized = true;
         this.initPromise = null;
@@ -131,7 +120,6 @@ class TypeORMService {
     return AppDataSource.getRepository(entity);
   }
 
-  // 🆕 CONNECTION HEALTH CHECK & RECONNECT
   static async ensureConnection(): Promise<void> {
     try {
       if (!AppDataSource.isInitialized) {
@@ -142,8 +130,6 @@ class TypeORMService {
         console.log("✅ Connection restored");
         return;
       }
-
-      // Test connection with a simple query
       await AppDataSource.query("SELECT 1 FROM DUAL");
     } catch (error) {
       console.log("🔄 Connection health check failed - reconnecting...");
@@ -174,18 +160,15 @@ class TypeORMService {
   }
 }
 
-// ==================== BIND PARAMETER HELPER ====================
 function processBindParameters(binds: any): any {
   if (!binds) return {};
 
   const processedBinds: any = {};
 
   for (const [key, value] of Object.entries(binds)) {
-    // Handle undefined, null, and empty objects
     if (value === undefined || value === null) {
       processedBinds[key] = { val: null };
     }
-    // Check if it's already a proper bind object
     else if (
       value &&
       typeof value === "object" &&
@@ -196,7 +179,6 @@ function processBindParameters(binds: any): any {
     ) {
       processedBinds[key] = value;
     }
-    // Handle empty objects
     else if (
       value &&
       typeof value === "object" &&
@@ -264,7 +246,6 @@ export const oracleDb = {
         autoCommit: !useExternalConn,
       };
 
-      // Process bind parameters to ensure proper format
       const processedBinds = processBindParameters(binds || {});
       const result = await connection.execute(sql, processedBinds, options);
       return result;
@@ -302,7 +283,6 @@ export const initializeAllConnections = async (): Promise<void> => {
   try {
     console.log("Starting Oracle connection...");
     
-    // Initialize raw Oracle connection with timeout
     const authPromise = oracleDb.authenticate();
     const timeoutPromise = new Promise<void>((_, reject) =>
       setTimeout(() => reject(new Error("Oracle connection timeout (15s)")), 15000)
@@ -315,7 +295,6 @@ export const initializeAllConnections = async (): Promise<void> => {
       console.warn("Continuing without raw Oracle connection - TypeORM may still work");
     }
 
-    // Test the connection with a simple query if pool exists
     if (oraclePool) {
       try {
         const testResult = await oracleDb.query("SELECT 1 FROM DUAL");

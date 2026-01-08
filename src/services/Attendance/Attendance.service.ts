@@ -14,8 +14,7 @@ import { AttendanceEvent, AttendanceEventType, AttendanceStatus, DataTransferFla
 import { ProxyLog } from "../../entity/Attendance/ProxyLog.entity";
 import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
   
-// 🎯 FIXED PERFORMANCE CONSTANTS
-const AUTO_CONFIRM_DELAY_MS = 10000; // 🆕 INCREASED TO 10 SECONDS FOR FRONTEND BUFFER
+const AUTO_CONFIRM_DELAY_MS = 10000; 
 const FACE_RECOGNITION_TIMEOUT = 2500;
 const DATABASE_QUERY_TIMEOUT = 3000;
 const MAX_CONCURRENT_REQUESTS = 15;
@@ -29,14 +28,12 @@ export class AttendanceService {
   private static faceService: FaceRecognitionService | null = null;
   private static concurrentRequests = 0;
 
-  // 🚀 PRELOAD FACE SERVICE
   static async initializeFaceService(): Promise<void> {
     if (!this.faceService) {
       this.faceService = await FaceRecognitionService.getInstance();
     }
   }
 
-  // 🚀 RATE LIMITING
   private static async acquireRequestSlot(): Promise<boolean> {
     if (this.concurrentRequests >= MAX_CONCURRENT_REQUESTS) {
       return false;
@@ -48,9 +45,6 @@ export class AttendanceService {
   private static releaseRequestSlot(): void {
     this.concurrentRequests = Math.max(0, this.concurrentRequests - 1);
   }
-
-  // 🎯 FIXED MARK ATTENDANCE WITH BETTER TIMING
-  // 🎯 OPTIMIZED: MARK ATTENDANCE WITHOUT IMMEDIATE S3 UPLOAD
   static async markAttendanceWithAutoConfirm(
   employeeId: string,
   action: "check-in" | "check-out",
@@ -77,12 +71,9 @@ export class AttendanceService {
   }
 
   try {
-    console.log("🟢 employeeId =", employeeId);
-    //  PARALLEL OPERATIONS - NO S3 UPLOAD HERE
     const [employee, confidence] = await Promise.all([
       this.getEmployeeWithCache(employeeId),
       this.calculateFaceConfidenceBalanced(employeeId, imageBuffer),
-      // 🆕 REMOVED S3 UPLOAD FROM INITIAL FLOW
     ]);
 
     if (!employee) {
@@ -90,8 +81,6 @@ export class AttendanceService {
     }
 
     const firstName = this.getFirstName(employee.full_name);
-
-    // STORE IN MEMORY WITH AUTO-CONFIRM TIME AND IMAGE BUFFER
     const pendingData = {
       uuid,
       employee_id: employeeId,
@@ -102,22 +91,19 @@ export class AttendanceService {
       confidence,
       timestamp: now,
       location_data: locationData,
-      s3_image_url: null, // 🆕 WILL BE SET ONLY IF CANCELLED
-      image_buffer: imageBuffer, // 🆕 STORE BUFFER FOR POTENTIAL CANCELLATION
+      s3_image_url: null,
+      image_buffer: imageBuffer, 
       auto_confirm_time: new Date(now.getTime() + AUTO_CONFIRM_DELAY_MS),
       is_cancelled: false,
       autoConfirmTimer: null as NodeJS.Timeout | null
     };
 
     this.pendingConfirmations.set(uuid, pendingData);
-
-    // 🎯 FIXED: DELAYED AUTO-CONFIRM SCHEDULING
     const autoConfirmTimer = setTimeout(async () => {
       try {
-        // 🆕 COMPREHENSIVE CANCELLATION CHECK
         const currentData = this.pendingConfirmations.get(uuid);
         if (!currentData || currentData.is_cancelled) {
-          logger.info(`🛑 Auto-confirm cancelled for UUID: ${uuid}`);
+          logger.info(`Auto-confirm cancelled for UUID: ${uuid}`);
           return;
         }
 
@@ -125,7 +111,7 @@ export class AttendanceService {
         if (isCancelledInDB) {
           this.pendingConfirmations.delete(uuid);
           this.cancelledConfirmations.add(uuid);
-          logger.info(`🛑 Auto-confirm skipped - cancelled in DB: ${uuid}`);
+          logger.info(`Auto-confirm skipped - cancelled in DB: ${uuid}`);
           return;
         }
 
@@ -135,11 +121,9 @@ export class AttendanceService {
       }
     }, AUTO_CONFIRM_DELAY_MS);
 
-    // 🆕 STORE TIMER REFERENCE FOR CANCELLATION
     pendingData.autoConfirmTimer = autoConfirmTimer;
     this.pendingConfirmations.set(uuid, pendingData);
 
-    // 🎯 BACKGROUND DATABASE SAVE
     this.saveAttendanceToDatabase(pendingData)
       .catch(err => logger.error('Background database save failed:', err));
 
@@ -173,7 +157,6 @@ export class AttendanceService {
   }
 }
 
-  //  BALANCED FACE CONFIDENCE CALCULATION
   private static async calculateFaceConfidenceBalanced(employeeId: string, imageBuffer: Buffer): Promise<number> {
     try {
       if (!this.faceService) {
@@ -185,7 +168,7 @@ export class AttendanceService {
         return 85;
       }
 
-      let retries = 2; // Balanced retries for accuracy
+      let retries = 2; 
       while (retries > 0) {
         try {
           const extractionPromise = this.faceService.extractFaceDescriptor(imageBuffer);
@@ -225,12 +208,10 @@ export class AttendanceService {
     }
   }
 
-  // 🎯 GET FIRST NAME ONLY FOR VOICE
   private static getFirstName(fullName: string): string {
     return fullName.split(' ')[0] || fullName;
   }
 
-  // 🎯 OPTIMIZED: UPLOAD IMAGE ONLY WHEN NEEDED (CANCELLATION)
   private static async uploadImageIfNeeded(uuid: string): Promise<string | null> {
     try {
       const pendingData = this.pendingConfirmations.get(uuid);
@@ -243,7 +224,6 @@ export class AttendanceService {
       const url = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
       logger.info(`📸 S3 upload completed for cancelled attendance UUID: ${uuid}`);
       
-      // 🆕 CLEAN UP THE BUFFER TO SAVE MEMORY
       pendingData.image_buffer = null;
       this.pendingConfirmations.set(uuid, pendingData);
       
@@ -254,14 +234,10 @@ export class AttendanceService {
     }
   }
 
-  // 🎯 OPTIMIZED EMPLOYEE DATA FETCHING
   private static async getEmployeeWithCache(employeeId: string): Promise<any> {
     const cacheKey = `employee:${employeeId}`;
-
-    console.log("Fetching employee with cache key:", cacheKey);
     let employee = await this.cache.get(cacheKey);
-    if (employee) { 
-      console.log("Employee found in cache: ",employee.employee_code);
+    if (employee) {
     return employee;
   }
     
@@ -279,18 +255,15 @@ export class AttendanceService {
     employee = await Promise.race([databasePromise, timeoutPromise]);
 
     if (employee) {
-      console.log("Employee found in Db:", {employeeId: employee.employee_id, 
-        employee_Code: employee.employee_code, 
-        name: employee.full_name});
+      logger.info("Employee found in DB:", {employeeId: employee.employee_id, code: employee.employee_code, name: employee.full_name});
       await this.cache.set(cacheKey, employee, CACHE_TTL);
     } else {
-      console.log("Employee NOT found in Db for ID: ", employeeId)
+      logger.warn("Employee NOT found in DB for ID:", employeeId);
     }
 
     return employee;
   }
 
-  // 🎯 BACKGROUND DATABASE SAVE
   private static async saveAttendanceToDatabase(data: any): Promise<void> {
     try {
       const eventData: any = {
@@ -298,12 +271,12 @@ export class AttendanceService {
         employee_id: data.employee_id,
         employee_code: data.employee_code,
         event_time: data.timestamp,
-        event_type: data.action === "check-in" ? "check_in" : "check_out",
-        data_transfer: "N",
+        event_type: data.action === "check-in" ? AttendanceEventType.CHECK_IN : AttendanceEventType.CHECK_OUT,
+        data_transfer: DataTransferFlag.N,
         uuid: data.uuid,
         confidence: data.confidence,
-        s3_image_url: null, // 🆕 NO S3 URL INITIALLY
-        status: 'pending_auto_confirm',
+        s3_image_url: null, 
+        status: AttendanceStatus.PENDING,
         auto_confirm_time: data.auto_confirm_time,
       };
 
@@ -327,9 +300,6 @@ export class AttendanceService {
       logger.error('Background save failed:', error);
     }
   }
-
-  // 🎯 FAST CONFIRM ATTENDANCE
-  // 🎯 FAST CONFIRM ATTENDANCE WITH BETTER TIMEOUT
  static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Promise<any> {
   const startTime = Date.now();
   
@@ -338,12 +308,10 @@ export class AttendanceService {
   }
 
   try {
-    // Check cancellation first
     if (this.isAutoConfirmCancelled(uuid) || await this.isCancelledInDatabase(uuid)) {
       throw new Error("Attendance has been cancelled");
     }
 
-    // Check memory first (fastest path)
     const pendingData = this.pendingConfirmations.get(uuid);
     if (pendingData) {
       if (pendingData.is_cancelled) {
@@ -352,18 +320,17 @@ export class AttendanceService {
       
       this.pendingConfirmations.delete(uuid);
       const result = await this.saveConfirmedAttendance(pendingData, confirmedBy);
-      logger.info(`✅ Attendance confirmed from memory in ${Date.now() - startTime}ms`);
+      logger.info(`Attendance confirmed from memory in ${Date.now() - startTime}ms`);
       return result;
     }
 
-    // 🆕 REDUCE TIMEOUT FOR DATABASE CONFIRMATION
     const databasePromise = this.confirmAttendanceFromDatabase(uuid, confirmedBy);
     const timeoutPromise = new Promise<any>((_, reject) => 
       setTimeout(() => reject(new Error('Confirmation timeout - system busy')), 5000) 
     );
 
     const result = await Promise.race([databasePromise, timeoutPromise]);
-    logger.info(`✅ Attendance confirmed from DB in ${Date.now() - startTime}ms`);
+    logger.info(` Attendance confirmed from DB in ${Date.now() - startTime}ms`);
     return result;
 
   } catch (error) {
@@ -373,7 +340,7 @@ export class AttendanceService {
     this.releaseRequestSlot();
   }
   }
-  //🎯 DATABASE CONFIRMATION
+
   private static async confirmAttendanceFromDatabase(uuid: string, confirmedBy: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
     const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
@@ -383,7 +350,6 @@ export class AttendanceService {
       await transaction.connect();
       await transaction.startTransaction();
       
-      // Use QueryBuilder with transaction manager for pessimistic lock
       const event = await transaction.manager.getRepository(AttendanceEvent)
         .createQueryBuilder('event')
         .where('event.uuid = :uuid', { uuid })
@@ -418,17 +384,17 @@ export class AttendanceService {
           employee_id: event.employee_id,
           employee_code: event.employee_code,
           record_date: today,
-          first_check_in: event.event_type === "check_in" ? event.event_time : null,
-          check_in: event.event_type === "check_in" ? event.event_time : null,
+          first_check_in: event.event_type === AttendanceEventType.CHECK_IN ? event.event_time : null,
+          check_in: event.event_type === AttendanceEventType.CHECK_IN ? event.event_time : null,
           status: "present",
-          last_check_out: event.event_type === "check_out" ? event.event_time : null,
-          check_out: event.event_type === "check_out" ? event.event_time : null,
+          last_check_out: event.event_type === AttendanceEventType.CHECK_OUT ? event.event_time : null,
+          check_out: event.event_type === AttendanceEventType.CHECK_OUT ? event.event_time : null,
           total_hours: 0,
         });
         await attendanceRecord.save(record);
       }
       
-      if (event.event_type === "check_in") {
+      if (event.event_type === AttendanceEventType.CHECK_IN) {
         const updates: any = {
           check_in: event.event_time,
           status: this.calculateStatus(event.event_time, "10:00")
@@ -488,23 +454,21 @@ export class AttendanceService {
       logger.warn(`[CANCEL] UUID ${uuid} not found in memory, trying database`);
     }
 
-    // 🆕 CHECK IF ALREADY CONFIRMED IN MEMORY
     const pendingData = this.pendingConfirmations.get(uuid);
     if (pendingData && pendingData.is_cancelled) {
       logger.info(`[CANCEL] UUID ${uuid} already cancelled in memory`);
     }
 
-    // 🎯 ALWAYS TRY DATABASE CANCELLATION FOR EMAIL FUNCTIONALITY
     logger.info(`[CANCEL] Proceeding with database cancellation for UUID: ${uuid}, Reason: ${reason}`);
     const result = await this.cancelAttendanceFromDatabase(uuid, actualEmployeeCode, actualEmployeeName, reason);
     
-    logger.info(`✅ Attendance cancelled in ${Date.now() - startTime}ms`);
+    logger.info(`Attendance cancelled in ${Date.now() - startTime}ms`);
     return result;
 
   } catch (err: unknown) {
     logger.error('Cancellation failed:', err);
     
-    // 🆕 BETTER ERROR MESSAGES (safe handling for unknown)
+
     const errorMessage = err instanceof Error ? err.message : String(err || '');
 
     if (errorMessage.includes('already confirmed')) {
@@ -523,11 +487,11 @@ export class AttendanceService {
   const pendingData = this.pendingConfirmations.get(uuid);
   
   if (pendingData) {
-    // 🆕 CLEAR THE AUTO-CONFIRM TIMER
+
     if (pendingData.autoConfirmTimer) {
       clearTimeout(pendingData.autoConfirmTimer);
       pendingData.autoConfirmTimer = null;
-      logger.info(`🛑 Cleared auto-confirm timer for UUID: ${uuid}`);
+      logger.info(`Cleared auto-confirm timer for UUID: ${uuid}`);
     }
     
     pendingData.is_cancelled = true;
@@ -536,29 +500,28 @@ export class AttendanceService {
   
   const wasPending = this.pendingConfirmations.has(uuid);
   this.cancelledConfirmations.add(uuid);
-  
+
   this.markAsCancelledInDatabase(uuid).catch(err => 
     logger.error('Failed to update database cancellation:', err)
   );
   
-  logger.info(`🛑 Auto-confirm stopped for UUID: ${uuid}, was pending: ${wasPending}`);
+  logger.info(`Auto-confirm stopped for UUID: ${uuid}, was pending: ${wasPending}`);
   return wasPending;
 }
 
   private static async autoConfirmFromMemory(uuid: string): Promise<void> {
   if (this.isAutoConfirmCancelled(uuid)) {
     this.pendingConfirmations.delete(uuid);
-    logger.info(`🛑 Auto-confirm skipped - cancelled in memory: ${uuid}`);
+    logger.info(`Auto-confirm skipped - cancelled in memory: ${uuid}`);
     return;
   }
 
   const pendingData = this.pendingConfirmations.get(uuid);
   if (!pendingData) {
-    logger.warn(`🛑 Auto-confirm skipped - no pending data: ${uuid}`);
+    logger.warn(`Auto-confirm skipped - no pending data: ${uuid}`);
     return;
   }
 
-  // 🆕 FINAL MEMORY CHECK
   if (pendingData.is_cancelled) {
     this.pendingConfirmations.delete(uuid);
     return;
@@ -566,7 +529,7 @@ export class AttendanceService {
 
   let transaction;
   try {
-    // 🆕 ENSURE CONNECTION HEALTH BEFORE TRANSACTION
+    
     await TypeORMService.ensureConnection();
     
    await AppDataSource.transaction (async (entity) => {
@@ -578,50 +541,37 @@ export class AttendanceService {
       .getOne();
 
     if (!event) {
-      //await transaction.rollback();
       logger.warn(`[AUTO-CONFIRM] Event not found in DB: ${uuid}`);
       return;
     }
 
     if (event.status === AttendanceStatus.CANCELLED) {
-      //await transaction.rollback();
       this.pendingConfirmations.delete(uuid);
       this.cancelledConfirmations.add(uuid);
-      logger.info(`🛑 Auto-confirm skipped - cancelled in DB: ${uuid}`);
+      logger.info(`Auto-confirm skipped - cancelled in DB: ${uuid}`);
       return;
     }
 
-    // If already confirmed, skip
-    if (event.status === 'confirmed') {
-      //await transaction.rollback();
+    if (event.status === AttendanceStatus.CONFIRMED) {
       this.pendingConfirmations.delete(uuid);
-      logger.info(`🛑 Auto-confirm skipped - already confirmed: ${uuid}`);
+      logger.info(` Auto-confirm skipped - already confirmed: ${uuid}`);
       return;
     }
 
-    // 🆕 ADDITIONAL CHECK: VERIFY IT'S STILL PENDING_AUTO_CONFIRM
-    if (event.status !== 'pending_auto_confirm') {
-      //await transaction.rollback();
+    if (event.status !== AttendanceStatus.PENDING) {
       this.pendingConfirmations.delete(uuid);
-      logger.info(`🛑 Auto-confirm skipped - invalid state: ${event.status}`);
+      logger.info(`Auto-confirm skipped - invalid state: ${event.status}`);
       return;
     }
 
-    // Remove from memory first to prevent double processing
     this.pendingConfirmations.delete(uuid);
-    
-    // Now proceed with confirmation (NO S3 UPLOAD FOR SUCCESS)
     await this.saveConfirmedAttendance(pendingData, 'auto_system', entity);
-    //await transaction.commit();
     
-    logger.info(`✅ Auto-confirmed: ${uuid} (No S3 upload for successful attendance)`);
+    logger.info(`Auto-confirmed: ${uuid} (No S3 upload for successful attendance)`);
 
     });
   } catch (error: any) {
-    // 🆕 CONNECTION ERROR HANDLING
     const errorMsg = error?.message || String(error);
-    
-    // Check for connection errors
     if (errorMsg.includes('ORA-03113') || errorMsg.includes('NJS-500') || errorMsg.includes('not connected')) {
       logger.error(`[AUTO-CONFIRM] Connection error for ${uuid}: ${errorMsg}`);
       try {
@@ -633,7 +583,6 @@ export class AttendanceService {
       return;
     }
     
-    // 🆕 SPECIFIC ERROR HANDLING
     if (error && (error as any).name === 'SequelizeTimeoutError') {
       logger.warn(`[AUTO-CONFIRM] Transaction timeout for UUID: ${uuid} - might be getting cancelled`);
       return;
@@ -643,12 +592,7 @@ export class AttendanceService {
   }
 }
 
-  // 🎯 SAVE CONFIRMED ATTENDANCE
- // 🎯 UPDATED SAVE CONFIRMED ATTENDANCE WITH TRANSACTION PARAMETER
 private static async saveConfirmedAttendance(data: any, confirmedBy: string, existingTransaction?: any): Promise<any> {
-  // const useExternalTransaction = !!existingTransaction;
-  // const transaction = existingTransaction || await oracleDb.transaction();
-  
   try {
     return await AppDataSource.transaction(async (entity) => {
     const today = new Date(data.timestamp);
@@ -714,7 +658,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         data_transfer: DataTransferFlag.N,
         uuid: data.uuid,
         confidence: data.confidence,
-        s3_image_url: null, // 🆕 NO S3 URL INITIALLY
+        s3_image_url: null,
         status: AttendanceStatus.CONFIRMED,
         confirmed_by: confirmedBy,
         confirmed_at: new Date(),
@@ -744,21 +688,10 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         confirmed_at: new Date(),
         attendance_record_id: record.id
       });
-    }
-
-    // 🆕 ONLY COMMIT IF WE CREATED THE TRANSACTION
-    // if (!useExternalTransaction) {
-    //   await transaction.commit();
-    // }
-    
+    } 
     return { event, record };
     });
   } catch (error) {
-    // 🆕 ONLY ROLLBACK IF WE CREATED THE TRANSACTION
-    // if (!useExternalTransaction && transaction) {
-    //   await transaction.rollback();
-    // }
-    
     logger.error('Failed to save confirmed attendance:', error);
     throw error;
   }
@@ -778,7 +711,6 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       let event = await attendanceEvent.findOne({ where: { uuid: data.uuid } });
 
       if (!event) {
-        console.log("event found for proxy log:", event);
         const eventData: any = {
           id: uuidv4(),
           employee_id: data.employee_id,
@@ -789,11 +721,11 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
           uuid: data.uuid,
           confidence: data.confidence,
           s3_image_url: data.s3_image_url,
-          status: 'cancelled', //
+          status: AttendanceStatus.CANCELLED,
           confirmed_by: 'cancelled_by_user',
           confirmed_at: new Date(),
         };
-        console.log("eventData for proxy log:", eventData);
+        logger.info('[PROXY] Creating event data for proxy log', {uuid: data.uuid});
 
         if (data.location_data) {
           Object.assign(eventData, {
@@ -805,7 +737,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
             office_name: data.location_data.officeName
           });
         }
-        console.log("eventData with location for proxy log:", eventData);
+        logger.info('[PROXY] Event data created with location data', {uuid: data.uuid});
 
       event = await attendanceEvent.save(eventData);
       } else {
@@ -839,7 +771,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         reason: reason,
       });
       await ProxyLogs.save(proxyLog);
-      console.log("proxyLog saved in DB:", proxyLog);
+      logger.info('[PROXY] Proxy log saved to database', {uuid: data.uuid});
 
       await transaction.commitTransaction();
       return { proxyLog, cancelledEvent: event };
@@ -908,7 +840,6 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     await transaction.connect();
     await transaction.startTransaction();
 
-    // 🆕 CORRECT LOCK SYNTAX - Use QueryBuilder for pessimistic lock within transaction
     const event = await transaction.manager.getRepository(AttendanceEvent)
       .createQueryBuilder('event')
       .where('event.uuid = :uuid', { uuid })
@@ -922,16 +853,14 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
     logger.info(`[CANCEL] Found event with status: ${event.status} for UUID: ${uuid}`);
 
-    // 🆕 CHECK IF ALREADY CONFIRMED - PREVENT RACE CONDITION
     if (event.status === AttendanceStatus.CONFIRMED) {
       logger.warn(`[CANCEL] Already confirmed for UUID: ${uuid} - cannot cancel`);
       
-      // 🆕 STILL CREATE PROXY LOG BUT DON'T CHANGE STATUS
-      const proxyEmployee = await employee.findOne({
+      const proxyEmployee = await transaction.manager.getRepository(Employee).findOne({
         where: { employee_code: event.employee_code },
       });
 
-      const proxyLog = ProxyLogs.create({
+      const proxyLog = transaction.manager.getRepository(ProxyLog).create({
         id: uuidv4(),
         uuid: event.uuid,
         timestamp: new Date(),
@@ -948,15 +877,12 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         status: 'reported',
         reason: reason + '_after_confirmation',
       });
-      await ProxyLogs.save(proxyLog);
+      await transaction.manager.getRepository(ProxyLog).save(proxyLog);
       await transaction.commitTransaction();
-
-      // 🆕 SEND SPECIAL EMAIL FOR LATE CANCELLATION ATTEMPT
       let emailSent = false;
       if (reason === 'proxy_detected_by_user') {
         emailSent = await this.sendLateCancellationEmail(proxyLog, actualEmployeeCode, actualEmployeeName);
       }
-
       return { 
         success: false,
         alreadyConfirmed: true,
@@ -966,15 +892,14 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       };
     }
 
-    // 🆕 CHECK IF ALREADY CANCELLED
     if (event.status === AttendanceStatus.CANCELLED) {
-      // await transaction.rollbackTransaction();
+      await transaction.rollbackTransaction();
       logger.info(`[CANCEL] Already cancelled for UUID: ${uuid}`);
-      // return { 
-      //   success: true, 
-      //   alreadyCancelled: true, 
-      //   message: "Attendance already cancelled" 
-      // };
+      return { 
+        success: true, 
+        alreadyCancelled: true, 
+        message: "Attendance already cancelled" 
+      };
     }
 
     if (event.status !== AttendanceStatus.PENDING) {
@@ -988,28 +913,25 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       };
     }
 
-    // 🎯 MARK AS CANCELLED
     logger.info(`[CANCEL] Marking as cancelled for UUID: ${uuid}`);
       event.status = AttendanceStatus.CANCELLED;
       event.confirmed_by = 'cancelled_by_user';
       event.confirmed_at = new Date();
       event.cancellation_reason = reason;
-    await attendanceEvent.save(event);
+    await transaction.manager.getRepository(AttendanceEvent).save(event);
 
-    // 🎯 LAZY S3 UPLOAD: ONLY UPLOAD IMAGE IF CANCELLATION IS FOR PROXY DETECTION
     let s3ImageUrl = event.s3_image_url;
     if (!s3ImageUrl && reason === 'proxy_detected_by_user') {
       logger.info(`[CANCEL] Uploading image to S3 for proxy detection UUID: ${uuid}`);
       s3ImageUrl = await this.uploadImageIfNeeded(uuid);
     }
 
-    const proxyEmployee = await employee.findOne({
+    const proxyEmployee = await transaction.manager.getRepository(Employee).findOne({
       where: { employee_code: event.employee_code },
     });
 
-    // 🎯 CREATE PROXY LOG
     logger.info(`[CANCEL] Creating proxy log for UUID: ${uuid}`);
-    const proxyLog = ProxyLogs.create({
+    const proxyLog = transaction.manager.getRepository(ProxyLog).create({
       id: uuidv4(),
       uuid: event.uuid,
       timestamp: new Date(),
@@ -1018,7 +940,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       actual_employee_code: actualEmployeeCode,
       actual_employee_name: actualEmployeeName,
       confidence: event.confidence ?? 0,
-      s3_image_url: s3ImageUrl, // 🆕 USE THE UPLOADED S3 URL
+      s3_image_url: s3ImageUrl, 
       location_data: event.location_data,
       action: event.event_type,
       action_taken: 'cancelled_by_user',
@@ -1027,12 +949,11 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       reason: reason,
     });
 
-    await ProxyLogs.save(proxyLog);
+    await transaction.manager.getRepository(ProxyLog).save(proxyLog);
     await transaction.commitTransaction();
 
     logger.info(`[CANCEL] Successfully cancelled attendance for UUID: ${uuid}`);
 
-    // SEND EMAIL ONLY FOR PROXY DETECTION
     let emailSent = false;
     if (reason === 'proxy_detected_by_user') {
       logger.info(`[CANCEL] Triggering email for proxy detection - UUID: ${uuid}`);
@@ -1217,15 +1138,14 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
     const adminEmails = ["Sagar.b@bayanattechnology.com"];
 
-    logger.info(`📧 [EMAIL] Sending to: ${adminEmails.join(', ')}`);
-    logger.info(`📧 [EMAIL] Proxy data:`, {
+    logger.info(`[EMAIL] Sending to: ${adminEmails.join(', ')}`);
+    logger.info(`[EMAIL] Proxy data:`, {
       proxy_name: proxyData.proxy_employee_name,
       actual_name: proxyData.actual_employee_name,
       confidence: proxyData.confidence,
       has_image: !!s3ImageUrl
     });
 
-    // 🆕 ENHANCED EMAIL SENDING WITH PROPER ERROR HANDLING
     try {
       const emailPromise = notifyUser({
         event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
@@ -1236,12 +1156,11 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         attachments: [] 
       });
 
-      // Add timeout to prevent hanging
       const timeoutPromise = new Promise<boolean>((resolve) => 
         setTimeout(() => {
           logger.warn(`📧 [EMAIL] Email sending timeout for UUID: ${data.uuid}`);
           resolve(false);
-        }, 10000) // 10 second timeout
+        }, 10000) 
       );
 
       const result = await Promise.race([emailPromise, timeoutPromise]);
@@ -1323,8 +1242,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
       if (!imageUrl) {
         const employeeFaces = AppDataSource.getRepository(EmployeeFace);
         const employeeFace = await employeeFaces.findOne({
-          where: { employee_id: employeeId, is_active: "1"},
-          //raw: true
+          where: { employee_id: employeeId, is_active: "1" }
         });
         
         imageUrl = employeeFace ? await getSignedUrl(employeeFace.s3_key) : null;
@@ -1348,17 +1266,17 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         where: { uuid },
         select: ['status']
       });
-      return event?.status === 'cancelled';
+      return event?.status === AttendanceStatus.CANCELLED;
     } catch (error) {
       logger.error('Failed to check cancellation status in database:', error);
       return false;
     }
   }
 
-  // 🎯 FIXED MARK AS CANCELLED IN DATABASE
+
   private static async markAsCancelledInDatabase(uuid: string): Promise<void> {
     try {
-      const attendanceEvent =AppDataSource.getRepository(AttendanceEvent);
+      const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
       const result = await attendanceEvent.update(
         { uuid },
         { 
@@ -1377,32 +1295,26 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     }
   }
 
-  // 🎯 CHECK IF AUTO-CONFIRM IS CANCELLED
   static isAutoConfirmCancelled(uuid: string): boolean {
     return this.cancelledConfirmations.has(uuid);
   }
-
-  // 🎯 FIXED PROCESS AUTO-CONFIRM
   static async processAutoConfirm(): Promise<void> {
     const now = new Date();
     let memoryConfirmed = 0;
     let memoryCancelled = 0;
     let memorySkipped = 0;
     
-    // Create a copy to avoid modification during iteration
     const pendingEntries = Array.from(this.pendingConfirmations.entries());
     
     for (const [uuid, data] of pendingEntries) {
       if (data.auto_confirm_time <= now) {
         try {
-          // Skip if already cancelled in memory
           if (data.is_cancelled || this.isAutoConfirmCancelled(uuid)) {
             this.pendingConfirmations.delete(uuid);
             memoryCancelled++;
             continue;
           }
 
-          // Process auto-confirm with enhanced checks
           await this.autoConfirmFromMemory(uuid);
           memoryConfirmed++;
           
@@ -1418,17 +1330,12 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     }
   }
 
-  // 🎯 GET PROXY LOGS
   static async getProxyLogs(filters: any = {}): Promise<any> {
     const { page = 1, limit = 50, start_date, end_date, employee_code } = filters;
     
     const cacheKey = `proxy_logs:${page}:${limit}:${start_date}:${end_date}:${employee_code}`;
     const cached = await this.cache.get(cacheKey);
-    console.log('Proxy_Log_Cache Key:', cacheKey);
-    if (cached) {
-       console.log('Cached proxy logs:', cached);
-      return cached;
-    }
+    if (cached) return cached;
 
     const offset = (page - 1) * limit;
     const whereClause: any = {};
@@ -1444,10 +1351,10 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     if (employee_code) {
       whereClause.proxy_employee_code = employee_code;
     }
-    const AttendanceLog = AppDataSource.getRepository(ProxyLog)
+    const AttendanceLog = AppDataSource.getRepository(ProxyLog);
     const [ rows, count ]  = await AttendanceLog.findAndCount({
       where: whereClause,
-      order: {timestamp: 'DESC'},
+      order: { timestamp: 'DESC' },
       skip: offset,
       take: parseInt(limit)
     });
@@ -1464,7 +1371,6 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     return result;
   }
 
-  // 🎯 GET ATTENDANCE REPORT
   static async getAttendanceReport(
     startDate: Date,
     endDate: Date,
@@ -1481,8 +1387,8 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     adjustedEndDate.setHours(23, 59, 59, 999);
 
     const eventWhereClause: any = {
-      event_time:  Between(adjustedStartDate, adjustedEndDate) ,
-      status:  In(['confirmed','pending_auto_confirm']),
+      event_time: Between(adjustedStartDate, adjustedEndDate),
+      status: In([AttendanceStatus.CONFIRMED, AttendanceStatus.PENDING]),
     };
 
     let employeeWhereClause = {};
@@ -1570,7 +1476,6 @@ This is an automated alert from the Smart Attendance System.
     `;
   }
 
-  // 🎯 MONITORING
   static getPerformanceMetrics() {
     return {
       pendingConfirmations: this.pendingConfirmations.size,
@@ -1582,7 +1487,6 @@ This is an automated alert from the Smart Attendance System.
     };
   }
 
-  // 🎯 CLEANUP
   static async cleanupOldData(): Promise<void> {
     try {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -1591,12 +1495,10 @@ This is an automated alert from the Smart Attendance System.
       
       for (const [uuid, data] of this.pendingConfirmations.entries()) {
         if (data.timestamp < oneHourAgo) {
-          // Clear any pending timers
           if (data.autoConfirmTimer) {
             clearTimeout(data.autoConfirmTimer);
           }
           
-          // 🆕 CLEAN UP IMAGE BUFFER TO SAVE MEMORY
           if (data.image_buffer) {
             data.image_buffer = null;
             bufferCleanedCount++;
@@ -1621,27 +1523,22 @@ This is an automated alert from the Smart Attendance System.
     }
   }
 
-  // 🎯 GET PENDING CONFIRMATIONS COUNT
   static getPendingConfirmationsCount(): number {
     return this.pendingConfirmations.size;
   }
   
-  // 🎯 CHECK IF UUID IS PENDING IN MEMORY
   static isPendingInMemory(uuid: string): boolean {
     return this.pendingConfirmations.has(uuid);
   }
   
-  // 🎯 GET CANCELLED CONFIRMATIONS COUNT
   static getCancelledConfirmationsCount(): number {
     return this.cancelledConfirmations.size;
   }
 
-  // 🎯 GET PENDING CONFIRMATION DATA
   static getPendingConfirmation(uuid: string): any {
     return this.pendingConfirmations.get(uuid);
   }
 
-  // 🎯 FORCE CANCEL ALL PENDING (FOR TESTING/ADMIN)
   static async forceCancelAllPending(): Promise<number> {
     let cancelledCount = 0;
     const uuids = Array.from(this.pendingConfirmations.keys());
@@ -1660,17 +1557,14 @@ This is an automated alert from the Smart Attendance System.
   }
 }
 
-// 🚀 INITIALIZE SERVICE ON STARTUP
 AttendanceService.initializeFaceService().catch(err => {
   logger.error('Failed to initialize face service:', err);
 });
 
-// 🚀 REGULAR CLEANUP EVERY 30 MINUTES (more frequent to save memory)
 setInterval(() => {
   AttendanceService.cleanupOldData();
 }, 30 * 60 * 1000);
 
-// 🚀 REGULAR AUTO-CONFIRM PROCESSING EVERY 30 SECONDS
 setInterval(() => {
   AttendanceService.processAutoConfirm();
 }, 30000);

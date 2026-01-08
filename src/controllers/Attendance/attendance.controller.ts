@@ -158,7 +158,6 @@ export class AttendanceController {
     }
   }
 
-  // 🆕 CANCEL ATTENDANCE (Proxy)
   static async cancelAttendance(req: Request, res: Response): Promise<void> {
   try {
     const { 
@@ -175,7 +174,6 @@ export class AttendanceController {
       return;
     }
 
-    // 🆕 ALLOW UNREGISTERED EMPLOYEES (employee_code can be null/empty)
     const validatedEmployeeCode = actual_employee_code || 'UNREGISTERED_' + Date.now();
     const validatedEmployeeName = actual_employee_name || 'Unknown Employee';
 
@@ -198,8 +196,6 @@ export class AttendanceController {
     res.status(500).json({ success: false, message });
   }
  }
-
-  // 🆕 GET PROXY LOGS (Admin)
   static async getProxyLogs(req: Request, res: Response): Promise<void> {
     try {
       const { page, limit, start_date, end_date, employee_code } = req.query;
@@ -229,7 +225,7 @@ export class AttendanceController {
    
     try {
       const { from_date, to_date, department, page, limit } = req.query;
-      console.log("Received query parameters:", req.query);
+      logger.info("Received query parameters:", req.query);
 
       if (!from_date || !to_date) {
         res.status(400).json({ error: "From date and to date are required" });

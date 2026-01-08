@@ -1,7 +1,3 @@
-import { Request, Response } from "express";
-import { AppDataSource } from "../../database/connection";
-import { Employee } from "../../entity/Attendance/employee.entity";
-import constants from "../../helpers/constants";
 import axios from "axios";
 import https from "https";
 

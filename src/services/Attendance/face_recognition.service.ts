@@ -3,15 +3,12 @@ import * as faceapi from "face-api.js";
 import { createCanvas, Image, ImageData } from "canvas";
 import sharp from "sharp";
 import logger from "../../utils/logger";
-import constants from "../../helpers/constants";
 import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
 import path from "path";
 import fs from "fs";
 import fetch from "node-fetch";
 import { AppDataSource } from "../../database/connection";
 
-// NOTE: Do NOT require @tensorflow/tfjs-node at module load time.
-// We'll attempt to load it lazily inside initializeTensorFlow() and handle failures gracefully.
 let tfjsNodeAttempted = false;
 let tfjsNodeLoaded = false;
 
@@ -105,18 +102,16 @@ class FaceApiResponse implements Response {
 export class FaceRecognitionService {
   private static instance: FaceRecognitionService;
   private static isInitialized = false;
-  public modelsLoaded = false; // make instance flag public for ensureModelsLoaded
+  public modelsLoaded = false; 
 
-  // **OPTIMIZED DETECTION OPTIONS FOR SPEED**
   private readonly tinyFaceDetectorOptions =
     new faceapi.TinyFaceDetectorOptions({
-      inputSize: 128, // Smaller = faster (was 160)
-      scoreThreshold: 0.3, // Lower threshold for faster detection
+      inputSize: 128, 
+      scoreThreshold: 0.3, 
     });
 
-  // **FASTER MATCHING THRESHOLD**
   private static readonly MATCH_THRESHOLD = 0.55;
-  private static readonly OPTIMIZED_IMAGE_SIZE = 224; // Reduced from 480 for speed
+  private static readonly OPTIMIZED_IMAGE_SIZE = 224; 
 
   private constructor() {
     logger.info(
@@ -150,7 +145,6 @@ export class FaceRecognitionService {
 
   private static async initializeTensorFlow(): Promise<void> {
     try {
-      // Try to load native tfjs-node only here, and handle errors without crashing.
       if (!tfjsNodeAttempted) {
         tfjsNodeAttempted = true;
         if (process.env.ENABLE_TFJS_NODE !== "false") {

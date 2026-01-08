@@ -1076,7 +1076,7 @@ export function formatRolePermissions(rows: any[]) {
 
   return formattedData;
 }
-// Email function remains the same (no database dependencies)
+// Email function 
 export const notifyUser = async (args: SendEmailInterface) => {
   const {
     event,
@@ -1126,8 +1126,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
         html: htmlMessage,
       };
       break;
-
-    // New cases for PO operations
     case constants.EVENTS.PO_MODIFIED:
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
@@ -1141,7 +1139,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
         attachments: attachments || [],
       };
       break;
-
     case constants.EVENTS.PO_CONFIRMED:
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
@@ -1346,7 +1343,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
       html: htmlMessage,
       attachments: attachments || [],
       };
-  break;
+    break;
 
     case constants.EVENTS.LEAVE_INFO:
     mailOptions = {
@@ -1363,7 +1360,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
         text: message || `Notification regarding leave request (${request_user?.request_number || ""}).`,
         html: htmlMessage,
       };
-  break;
+    break;
 
     case constants.EVENTS.LEAVE_REJECTED:
       mailOptions = {
@@ -1383,8 +1380,8 @@ export const notifyUser = async (args: SendEmailInterface) => {
       break;
 
     case constants.EVENTS.PROXY_ATTENDANCE_DETECTED:
-     const proxyData = request_user; 
-  const defaultProxyHtml = `
+    const proxyData = request_user; 
+    const defaultProxyHtml = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -1444,8 +1441,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
     from: constants.ENV.EMAIL_USER,
     to: request_users, 
     cc: [
-      //"prem@bayanattechnology.com",
-      "srishti.nayal@bayanattechnology.com"
+      ''
     ],
     subject: subject || `🚨 PROXY ATTENDANCE DETECTED - ${proxyData?.timestamp ? new Date(proxyData.timestamp).toLocaleDateString() : new Date().toLocaleDateString()}`,
     html: htmlMessage || defaultProxyHtml,

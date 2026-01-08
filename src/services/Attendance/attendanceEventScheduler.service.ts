@@ -1,9 +1,8 @@
-import { Op } from "sequelize";
 import cron from "node-cron";
 import logger from "../../utils/logger";
-import AttendanceEvent from "../../models/Attendance/attendance_event";
 import { HrService } from "../../services/hr.service";
 import { AppDataSource } from "../../database/connection";
+import { AttendanceEvent, DataTransferFlag, AttendanceStatus } from "../../entity/Attendance/attendance_events.entity";
 
 export class AttendanceEventScheduler {
   private static isRunning = false;
@@ -27,14 +26,14 @@ export class AttendanceEventScheduler {
     }
     this.isRunning = true;
 
-    const Attendance =AppDataSource.getRepository(AttendanceEvent);
+    const attendanceRepository = AppDataSource.getRepository(AttendanceEvent);
     try {
       logger.info("Starting to process unsent attendance events...");
 
-      const unsentEvents = await Attendance.find({
-      where: {
-          data_transfer: "N",     
-          status: "confirmed",
+      const unsentEvents = await attendanceRepository.find({
+        where: {
+          data_transfer: DataTransferFlag.N,
+          status: AttendanceStatus.CONFIRMED,
         },
         take: this.BATCH_SIZE,
         order: {
@@ -49,8 +48,7 @@ export class AttendanceEventScheduler {
 
       logger.info(`Found ${unsentEvents.length} unsent attendance events`);
 
-      // Transform events for API
-      const eventsToSend = unsentEvents.map((event:any) => ({
+      const eventsToSend = unsentEvents.map((event: any) => ({
         id: event.id,
         employeeId: event.employee_id,
         employeeCode: event.employee_code,
@@ -60,30 +58,25 @@ export class AttendanceEventScheduler {
         createdAt: event.created_at,
       }));
 
-      // Send to .NET API
       const result = await HrService.bulkInsertAttendanceEvents(eventsToSend);
       if (result && result.successfulInserts > 0) {
         const eventIds = unsentEvents.map((event: any) => event.id);
+        const transferDate = new Date();
 
-        await AttendanceEvent.update(
-          {
-            data_transfer: "Y",
-            transfer_date: new Date(),
-          },
-          {
-            where: {
-              id: {
-                [Op.in]: eventIds,
-              },
-            },
-          }
-        );
+        for (const eventId of eventIds) {
+          await attendanceRepository.update(
+            { id: eventId },
+            {
+              data_transfer: DataTransferFlag.Y,
+              transfer_date: transferDate,
+            }
+          );
+        }
 
         logger.info(
           `Successfully processed ${unsentEvents.length} attendance events. Transfer date updated.`
         );
       } else {
-        
         logger.error(
           `API call completed but reported a failure: ${result.message}`
         );
@@ -101,24 +94,24 @@ export class AttendanceEventScheduler {
     await this.processUnsentEvents();
   }
 
-  // Get statistics about unsent events
   static async getTransferStats(): Promise<{
     totalUnsent: number;
     totalSent: number;
     lastTransfer: Date | null;
-  }> 
-  {
-    const totalUnsent = await AttendanceEvent.count({
-      where: { data_transfer: "N", status: "confirmed" },
+  }> {
+    const attendanceRepository = AppDataSource.getRepository(AttendanceEvent);
+
+    const totalUnsent = await attendanceRepository.count({
+      where: { data_transfer: DataTransferFlag.N, status: AttendanceStatus.CONFIRMED },
     });
 
-    const totalSent = await AttendanceEvent.count({
-      where: { data_transfer: "Y", status: "confirmed" },
+    const totalSent = await attendanceRepository.count({
+      where: { data_transfer: DataTransferFlag.Y, status: AttendanceStatus.CONFIRMED },
     });
 
-    const lastTransferRecord = await AttendanceEvent.findOne({
-      where: { data_transfer: "Y", status: "confirmed" },
-      order: [["transfer_date", "DESC"]],
+    const lastTransferRecord = await attendanceRepository.findOne({
+      where: { data_transfer: DataTransferFlag.Y, status: AttendanceStatus.CONFIRMED },
+      order: { transfer_date: "DESC" },
     });
 
     return {

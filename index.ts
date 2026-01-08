@@ -31,7 +31,7 @@ import boldReportsRoutes from "./src/routes/boldreports.routes";
 import cfsRoutes from "./src/routes/SMS/sms.routes";
 
 import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
-//import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
+import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
 import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
 import { AttendanceService } from "./src/services/Attendance/Attendance.service"; 
 
@@ -73,8 +73,8 @@ async function startServerWithTypeORM() {
     );
 
     await Promise.race([connectionPromise, timeoutPromise]);
-
-    console.log("All database connections established");
+    await initializeAllConnections();
+    await AttendanceEventScheduler.initializeScheduler();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);

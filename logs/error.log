@@ -64040,3 +64040,158 @@ Error: Employee not found
 Error: Employee not found
     at Function.markAttendanceWithAutoConfirm (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
     at async Function.markAttendance (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2026-01-07 17:03:58 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-07 17:03:58 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-07 18:05:12 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-07 18:05:12 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:343:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-07 18:05:47 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2026-01-07 18:05:47 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:89:13)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2026-01-07 18:43:03 [[31merror[39m]: Confirmation failed: Confirmation timeout - system busy 
+Error: Confirmation timeout - system busy
+    at Timeout._onTimeout (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:335:31)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-01-07 18:43:03 [[31merror[39m]: Attendance confirmation error Confirmation timeout - system busy 
+Error: Confirmation timeout - system busy
+    at Timeout._onTimeout (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:335:31)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-01-07 18:47:20 [[31merror[39m]: [AUTO-CONFIRM] Connection error for 69cd70ef-b7d8-4ab7-921f-bc2ea4960276: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 37367
+Session ID: 538 Serial number: 60857 
+2026-01-07 18:52:49 [[31merror[39m]: [AUTO-CONFIRM] Connection error for 518cdbb9-12c9-4d71-abbb-7c2f0cf2c113: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 42326
+Session ID: 77 Serial number: 35341 
+2026-01-07 18:55:14 [[31merror[39m]: [AUTO-CONFIRM] Connection error for 30b17d8d-c40c-40bd-80fd-8b506d9d86e3: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 46398
+Session ID: 194 Serial number: 56282 
+2026-01-07 19:06:02 [[31merror[39m]: Confirmation failed: Confirmation timeout - system busy 
+Error: Confirmation timeout - system busy
+    at Timeout._onTimeout (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:335:31)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-01-07 19:06:02 [[31merror[39m]: Attendance confirmation error Confirmation timeout - system busy 
+Error: Confirmation timeout - system busy
+    at Timeout._onTimeout (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:335:31)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-01-07 19:19:09 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:318:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-07 19:19:09 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:318:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-07 19:22:04 [[31merror[39m]: [AUTO-CONFIRM] Connection error for d1d6921c-0df1-4814-a1fd-5566e4e5d89a: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 66350
+Session ID: 542 Serial number: 1740 
+2026-01-07 22:00:00 [[31merror[39m]: Error processing unsent attendance events: No metadata for "AttendanceEvent" was found. 
+EntityMetadataNotFoundError: No metadata for "AttendanceEvent" was found.
+    at DataSource.getMetadata (D:\Bayanat-OCIBackend\node_modules\src\data-source\DataSource.ts:451:30)
+    at Repository.get metadata [as metadata] (D:\Bayanat-OCIBackend\node_modules\src\repository\Repository.ts:54:40)
+    at Repository.find (D:\Bayanat-OCIBackend\node_modules\src\repository\Repository.ts:573:39)
+    at Function.processUnsentEvents (D:\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:33:55)
+    at D:\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:18
+    at Runner.onMatch (D:\Bayanat-OCIBackend\node_modules\node-cron\src\tasks\inline-scheduled-task.ts:70:14)
+    at Timeout._onTimeout (D:\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:41)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-01-07 23:06:12 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-07 23:06:12 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-08 10:41:08 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-08 10:41:08 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-08 10:53:45 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-08 10:53:45 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-08 11:10:16 [[31merror[39m]: Confirmation failed: Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-08 11:10:16 [[31merror[39m]: Attendance confirmation error Attendance has been cancelled 
+Error: Attendance has been cancelled
+    at Function.confirmAttendance (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:312:13)
+    at async Function.confirmAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:146:22)
+2026-01-08 11:51:07 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (D:\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:277:15)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:64:22)
+2026-01-08 11:51:07 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (D:\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:277:15)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2026-01-08 11:51:07 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (D:\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:277:15)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:78:22)
+2026-01-08 11:51:35 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:80:13)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2026-01-08 11:51:35 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:80:13)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2026-01-08 11:51:59 [[31merror[39m]: Attendance marking error: Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:80:13)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2026-01-08 11:51:59 [[31merror[39m]: Attendance marking error Employee not found 
+Error: Employee not found
+    at Function.markAttendanceWithAutoConfirm (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:80:13)
+    at async Function.markAttendance (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:109:22)
+2026-01-08 11:59:05 [[31merror[39m]: [AUTO-CONFIRM] Connection error for 81bc992d-df28-42a9-9537-cca33811b261: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 44681
+Session ID: 212 Serial number: 8840 
+2026-01-08 12:00:01 [[31merror[39m]: Error processing unsent attendance events: ORA-01484: arrays can only be bound to PL/SQL statements 
+QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async UpdateQueryBuilder.execute (D:\Bayanat-OCIBackend\node_modules\src\query-builder\UpdateQueryBuilder.ts:145:33)
+    at async Function.processUnsentEvents (D:\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:65:9)
+    at async D:\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (D:\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)

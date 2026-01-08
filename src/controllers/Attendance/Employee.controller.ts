@@ -27,10 +27,8 @@ export class EmployeeController {
     const EmployeeRecord = AppDataSource.getRepository(Employee);
     const Face = AppDataSource.getRepository(EmployeeFace);
 
-    // Check if employee_id already exists
-    const existingEmployee = await EmployeeRecord.find({
-      where: [{ employee_id, employee_code }
-      ],
+    const existingEmployee = await EmployeeRecord.findOne({
+      where: { employee_id },
     });
     if (existingEmployee) {
       logger.warn(
@@ -59,9 +57,6 @@ export class EmployeeController {
       req.file = file;
       validateImage(req, res, () => {});
     }
-
-    // Create employee record
-    // const employee = await EmployeeRecord.create({
     const employee = EmployeeRecord.create({
       id: uuidv4(),
       employee_id,
@@ -75,15 +70,12 @@ export class EmployeeController {
     });
     await EmployeeRecord.save(employee);
 
-    // Get FaceRecognitionService instance
     const faceService = await FaceRecognitionService.getInstance();
 
     // Process each image
     for (const file of files) {
       const s3Key = `employee_faces/${employee_id}/${uuidv4()}.jpg`;
       await uploadFile(file.buffer, s3Key, file.mimetype);
-
-      // Use instance method instead of static method
       const descriptor = await faceService.extractFaceDescriptor(file.buffer);
 
       const face = Face.create({ 
