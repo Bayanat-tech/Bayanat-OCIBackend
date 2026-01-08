@@ -55,6 +55,7 @@ import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/i
 import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
+  cancelConfirmedInboundJob, // Cancel confirmed inbound job
 } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 import {
   // getconfirmInboundjob, // Get confirmation details
@@ -113,6 +114,14 @@ router.put(
 router.post("/inboundjob",createOrUpdateJob);
 
 router.patch("/canceljob", cancelInboundJob)
+
+// Cancel confirmed inbound job route
+router.post(
+  "/cancel_confirmed_job",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  cancelConfirmedInboundJob
+);
 
 router.put("/inboundjob",createOrUpdateJob);
 
