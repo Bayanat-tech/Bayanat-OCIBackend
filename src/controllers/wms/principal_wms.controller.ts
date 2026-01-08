@@ -205,8 +205,9 @@ export const updatePrincipal = async (req: RequestWithUser, res: Response) => {
         prin_cont_ref1,
         files,
         ...prinicipalPayload
-      } = req.body,
-      updated_by = requestUser.loginid;
+      } = req.body;
+      
+    const updated_by = requestUser.loginid;
 
     // Check if principal exists
     const existingPrincipal = await PrincipalService.findByCode(prin_code);
@@ -235,34 +236,72 @@ export const updatePrincipal = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Update contact details
-    const isContactUpdated = await PrincipalContactDetlService.updatePrincipalContact(
-      prin_code,
-      prinicipalPayload.company_code || requestUser.company_code,
-      {
-        prin_cont1,
-        prin_cont2,
-        prin_cont3,
-        prin_cont_email1,
-        prin_cont_email2,
-        prin_cont_email3,
-        prin_cont_telno1,
-        prin_cont_telno2,
-        prin_cont_telno3,
-        prin_cont_faxno1,
-        prin_cont_faxno2,
-        prin_cont_faxno3,
-        prin_cont_ref1,
-        updated_by,
-      }
-    );
+    // FIX: Check if contact details exist first, then either update or create
+    const companyCode = prinicipalPayload.company_code || requestUser.company_code;
+    const existingContact = await PrincipalContactDetlService.findByCode(prin_code, companyCode);
 
-    if (!isContactUpdated) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Principal contact details update failed" });
-      return;
+    // Check if any contact field has data (not just empty strings)
+    const hasContactData = prin_cont1 || prin_cont2 || prin_cont3 || 
+                         prin_cont_email1 || prin_cont_email2 || prin_cont_email3 ||
+                         prin_cont_telno1 || prin_cont_telno2 || prin_cont_telno3 ||
+                         prin_cont_faxno1 || prin_cont_faxno2 || prin_cont_faxno3 ||
+                         prin_cont_ref1;
+    
+    if (existingContact && hasContactData) {
+      // Contact exists and we have contact data, update it
+      const isContactUpdated = await PrincipalContactDetlService.updatePrincipalContact(
+        prin_code,
+        companyCode,
+        {
+          prin_cont1: prin_cont1 || '',
+          prin_cont2: prin_cont2 || '',
+          prin_cont3: prin_cont3 || '',
+          prin_cont_email1: prin_cont_email1 || '',
+          prin_cont_email2: prin_cont_email2 || '',
+          prin_cont_email3: prin_cont_email3 || '',
+          prin_cont_telno1: prin_cont_telno1 || '',
+          prin_cont_telno2: prin_cont_telno2 || '',
+          prin_cont_telno3: prin_cont_telno3 || '',
+          prin_cont_faxno1: prin_cont_faxno1 || '',
+          prin_cont_faxno2: prin_cont_faxno2 || '',
+          prin_cont_faxno3: prin_cont_faxno3 || '',
+          prin_cont_ref1: prin_cont_ref1 || '',
+          updated_by,
+        }
+      );
+
+      if (!isContactUpdated) {
+        console.log(`Warning: Contact update failed for principal ${prin_code}, but continuing...`);
+        // Don't fail the whole operation - contact info is optional
+      }
+    } else if (!existingContact && hasContactData) {
+      // Contact doesn't exist but we have contact data, create it
+      const newContact = await PrincipalContactDetlService.createPrincipalContact({
+        company_code: companyCode,
+        prin_code: prin_code,
+        prin_cont1: prin_cont1 || '',
+        prin_cont2: prin_cont2 || '',
+        prin_cont3: prin_cont3 || '',
+        prin_cont_email1: prin_cont_email1 || '',
+        prin_cont_email2: prin_cont_email2 || '',
+        prin_cont_email3: prin_cont_email3 || '',
+        prin_cont_telno1: prin_cont_telno1 || '',
+        prin_cont_telno2: prin_cont_telno2 || '',
+        prin_cont_telno3: prin_cont_telno3 || '',
+        prin_cont_faxno1: prin_cont_faxno1 || '',
+        prin_cont_faxno2: prin_cont_faxno2 || '',
+        prin_cont_faxno3: prin_cont_faxno3 || '',
+        prin_cont_ref1: prin_cont_ref1 || '',
+        created_by: updated_by,  // Use updated_by since it's the same user
+        updated_by: updated_by,
+      });
+
+      if (!newContact) {
+        console.log(`Warning: Contact creation failed for principal ${prin_code}, but continuing...`);
+        // Don't fail the whole operation - contact info is optional
+      }
     }
+    // If no contact data, don't do anything (contact info is optional)
 
     // Create new files if any
     if (files && files.length) {
@@ -314,21 +353,37 @@ export const getPrincipal = async (req: RequestWithUser, res: Response) => {
     // Get contact details using the company_code from principalData or user
     const contactDetails = await PrincipalContactDetlService.findByCode(
       prin_code, 
-      principalData.company_code || company_code
+      principalData.company_code || company_code  
     );
 
-    if (!contactDetails) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "Principal contact details not found",
-      });
-      return;
-    }
+    const emptyContactDetails = {
+      prin_cont1: '',
+      prin_cont2: '',
+      prin_cont3: '',
+      prin_cont_email1: '',
+      prin_cont_email2: '',
+      prin_cont_email3: '',
+      prin_cont_telno1: '',
+      prin_cont_telno2: '',
+      prin_cont_telno3: '',
+      prin_cont_faxno1: '',
+      prin_cont_faxno2: '',
+      prin_cont_faxno3: '',
+      prin_cont_ref1: '',
+    };
+
+    // if (!contactDetails) {
+    //   res.status(constants.STATUS_CODES.NOT_FOUND).json({
+    //     success: false,
+    //     message: "Principal contact details not found",
+    //   });
+    //   return;
+    // }
 
     // Return combined data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: { ...principalData, ...contactDetails },
+      data: { ...principalData, ...(contactDetails || emptyContactDetails) },
     });
     return;
   } catch (error: unknown) {
@@ -351,16 +406,33 @@ export const getAllPrincipals = async (req: RequestWithUser, res: Response) => {
     // Get all principals
     const principals = await PrincipalService.findAll();
     
+    // Create empty contact details structure
+    const emptyContactDetails = {
+      prin_cont1: '',
+      prin_cont2: '',
+      prin_cont3: '',
+      prin_cont_email1: '',
+      prin_cont_email2: '',
+      prin_cont_email3: '',
+      prin_cont_telno1: '',
+      prin_cont_telno2: '',
+      prin_cont_telno3: '',
+      prin_cont_faxno1: '',
+      prin_cont_faxno2: '',
+      prin_cont_faxno3: '',
+      prin_cont_ref1: '',
+    };
+    
     // Filter by company code through contact details
     const companyPrincipals = [];
     for (const principal of principals) {
       const contactDetails = await PrincipalContactDetlService.findByCode(principal.prin_code, company_code);
-      if (contactDetails) {
-        companyPrincipals.push({
-          ...principal,
-          ...contactDetails
-        });
-      }
+      
+      // Include all principals, even without contact details
+      companyPrincipals.push({
+        ...principal,
+        ...(contactDetails || emptyContactDetails)  // Use empty fields if no contact details
+      });
     }
 
     res.status(constants.STATUS_CODES.OK).json({

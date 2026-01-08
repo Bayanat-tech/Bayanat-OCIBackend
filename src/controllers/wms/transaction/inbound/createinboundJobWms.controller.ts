@@ -157,6 +157,84 @@ export const GetsingleInboundjob = async (
     return;
   }
 };
+export const cancelInboundJob = async (req: RequestWithUser, res: Response) => {
+  try {
+    const requestUser: IUser = req.user;
+    const { job_no, prin_code } = req.body; // Get both from body
+
+    // Validate required fields
+    if (!prin_code) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "prin_code is required",
+      });
+      return;
+    }
+
+    if (!job_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "job_no is required",
+      });
+      return;
+    }
+
+    // Check if inbound job exists
+    const existingJob = await InboundJobWmsService.findOne({
+      company_code: requestUser.company_code,
+      prin_code: prin_code,
+      job_no: job_no,
+    });
+
+    if (!existingJob) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Inbound Job " + constants.MESSAGES.DOES_NOT_EXISTS,
+      });
+      return;
+    }
+
+    // Check if already cancelled
+    if (existingJob.canceled === 'Y') {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Inbound Job is already cancelled",
+      });
+      return;
+    }
+
+    // Cancel the job
+    const cancelledJob = await InboundJobWmsService.cancel(
+      {
+        company_code: requestUser.company_code,
+        prin_code: prin_code,
+        job_no: job_no,
+      },
+      requestUser.loginid
+    );
+
+    if (!cancelledJob) {
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to cancel inbound job",
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: `Inbound Job ${job_no} ${constants.MESSAGES.UPDATED_SUCCESSFULLY}`,
+      data: cancelledJob,
+    });
+    return;
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+    return;
+  }
+};
 
 // export const deleteShipmentItem = async (
 //   req: RequestWithUser,

@@ -99,9 +99,14 @@ export class CurrencyService {
       where: filters,
       skip: (page - 1) * limit,
       take: limit,
-      order: { curr_code: "ASC" },
+      order: { curr_code: "DESC" },
     });
 
     return { data, total };
   }
+    static async findAll(): Promise<CurrencyMaster[]> {
+      const repository = this.getCurrencyMasterRepository();
+      return await repository.find();
+    }
+  
 }
