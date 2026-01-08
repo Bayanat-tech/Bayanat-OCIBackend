@@ -1,31 +1,44 @@
-import * as express from "express";
-import {
-  createStockAdjustment,
-  updateStockAdjustment,
-  getStockAdjustments,
-  // getStockAdjustmentByJobNo,
-  deleteStockAdjustment,
-  processAdjustment,
-} from "../../controllers/StockAdjustment/createStockAdjustment.controller";
+// import express, {
+//   Request,
+//   Response,
+//   RequestHandler,
+//   NextFunction,
+// } from "express";
+
+// import {proc_build_dynamic_sql_common} from "../../controllers/common/proc_build_dynamic_sql_common"
+// import { proc_build_dynamic_del_common } from "../../controllers/common/proc_build_dynamic_del_common";
+// import { proc_build_dynamic_ins_upd_common } from "../../controllers/common/proc_build_dynamic_ins_upd_common";
+
+// const router = express.Router();
+// router.post("/proc_build_dynamic_sql_common", proc_build_dynamic_sql_common);
+// router.post("/proc_build_dynamic_del_common", proc_build_dynamic_del_common);
+// router.post("/proc_build_dynamic_ins_upd_common",proc_build_dynamic_ins_upd_common);
+// export default router;
+
+import express from "express";
+
+import { proc_build_dynamic_ins_upd_common } from "../../controllers/common/common_contoller";
+import { proc_build_dynamic_sql_common ,proc_build_dynamic_del_common} from "../../controllers/common/common_contoller";
+
 
 const router = express.Router();
 
-// POST - Create new stock adjustment
-router.post("/", createStockAdjustment);
+// FETCH (SELECT)
+router.post(
+  "/proc_build_dynamic_sql_common",
+  proc_build_dynamic_sql_common
+);
 
-// POST - Process stock adjustment
-router.post("/process-adjustment", processAdjustment);
+// INSERT / UPDATE  ✅ REQUIRED
+router.post(
+  "/proc_build_dynamic_ins_upd_common",
+  proc_build_dynamic_ins_upd_common
+);
 
-// GET - Get all stock adjustments for the company
-router.get("/", getStockAdjustments);
-
-// GET - Get stock adjustment by job number
-// router.get("/:JOB_NO", getStockAdjustmentByJobNo);
-
-// PUT - Update stock adjustment
-router.put("/:JOB_NO", updateStockAdjustment);
-
-// DELETE - Delete stock adjustment
-router.delete("/:JOB_NO", deleteStockAdjustment);
+// DELETE
+router.post(
+  "/proc_build_dynamic_del_common",
+  proc_build_dynamic_del_common
+);
 
 export default router;
