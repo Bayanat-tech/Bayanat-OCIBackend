@@ -357,14 +357,16 @@ export const deleteTallyItem = async (
           prin_code: string;
           job_no: string;
           packdet_no: number;
+          seq_number: number;
         }) => {
-          const { prin_code, job_no, packdet_no } = TallyDetail;
+          const { prin_code, job_no, packdet_no ,seq_number} = TallyDetail;
 
           return await tallyDetailsRepo.delete({
             prin_code,
             job_no,
             packdet_no,
             company_code: requestUser.company_code,
+            seq_number
           });
         }
       )

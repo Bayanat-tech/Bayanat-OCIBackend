@@ -24,7 +24,8 @@ import {
 } from "../../../controllers/wms/transaction/inbound/packingDetails_wms.controller";
 import {
   // createBulkTallyDetails, // Create multiple tally details
-  createTallyItem, // Create single tally item
+  createTallyItem,
+  deleteTallyItem, // Create single tally item
   // deleteTallyItem, // Delete tally item
   // exportTallyDetails, // Export tally details
   // getTallyDetail, // Get tally details
@@ -219,12 +220,12 @@ router.post(
   createTallyItem
 );
 // router.post("/tally_details/bulk", createBulkTallyDetails);
-// router.post(
-//   "/tally_details/delete",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   deleteTallyItem
-// );
+router.post(
+  "/tally_details/delete",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  deleteTallyItem
+);
 // router.put(
 //   "/tally_details/:packdet_no/:seq_number",
 //   passport.authenticate("jwt", { session: false }),
