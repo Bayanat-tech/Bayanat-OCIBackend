@@ -81,7 +81,7 @@ export const createTallyItem: RequestHandler = async (
 ): Promise<void> => {
   try {
     const requestUser: IUser = req.user;
-
+console.log('before calling tallyDetailsSchema');
     const { error } = tallyDetailsSchema(
       req.body,
       false,
@@ -95,7 +95,7 @@ export const createTallyItem: RequestHandler = async (
       });
       return;
     }
-
+console.log('after calling tallyDetailsSchema');
     const {
       seq_number,
       pda_qty_puom,
