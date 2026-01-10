@@ -1,18 +1,15 @@
 // Import required dependencies
 import { Response } from "express";
 import * as fastCsv from "fast-csv";
-import { Op } from "sequelize";
-import { sequelize } from "../../database/connection";
 import constants from "../../helpers/constants";
-import { IFiles, RequestWithUser } from "../../interfaces/common.interface";
+import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import Files from "../../models/files.model";
-import PrincipalContactDetl from "../../models/wms/principal_contact_details_wms.model";
-import Principal from "../../models/wms/principal_wms.model";
-import PrincipalWmsView from "../../views/wms/principal_wms.view";
 import { principalSchema } from "../../validation/wms/gm.validation";
-import { IPrincipalWms } from "../../interfaces/wms/principal_wms.interface";
+// import { IPrincipalWms } from "../../interfaces/wms/principal_wms.interface";
 import WmsCsvHeaders from "../../utils/exportCsv/WmsCsvHeaders";
+import { PrincipalService } from "../../services/WMS/principal.service";
+import { PrincipalContactDetlService } from "../../services/WMS/principalcontactdetl.service";
+import { UploadedFilesDltsService } from "../../services/WMS/principalfile.service";
 
 /**
  * Creates a new principal record with contact details and files
@@ -56,13 +53,44 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
       created_by = requestUser.loginid,
       updated_by = requestUser.loginid;
 
-    // Create principal record
-    const principalData = await Principal.create({
+    // Ensure prin_code is not null
+    // if (!prinicipalPayload.prin_code) {
+    //   res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    //     success: false,
+    //     message: "Principal code is required",
+    //   });
+    //   return;
+    // }
+
+    // Remove user_date if present in payload
+    // if ('user_dt' in prinicipalPayload) {
+    //   delete prinicipalPayload.user_date;
+    // }
+
+    // Debug log for payload
+    // console.log("Principal Payload:", prinicipalPayload);
+
+    // Check for duplicate principal
+    const existingPrincipal = await PrincipalService.findDuplicate({
+      prin_code: prinicipalPayload.prin_code,
+      prin_name: prinicipalPayload.prin_name,
+    });
+
+    if (existingPrincipal) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Principal already exists with this code and name",
+      });
+      return;
+    }
+
+    // Create principal record (don't set created_at, let DB handle it)
+    const principalData = await PrincipalService.createPrincipal({
       created_by,
       updated_by,
-      prin_code: "",
       ...prinicipalPayload,
     });
+
     if (!principalData) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
@@ -70,15 +98,20 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Get session code for the user
-    const getSessionCode: { code: string }[][] = (await sequelize.query(
-      `SELECT code from GT_SESSION_INFO WHERE USERID='${req.user.loginid}'`
-    )) as { code: string }[][];
+    // Fetch the principal to get the trigger-generated prin_code
+    const createdPrincipal = await PrincipalService.findByCode(principalData.prin_code);
+    
+    if (!createdPrincipal) {
+      res
+        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: "Failed to retrieve created principal" });
+      return;
+    }
 
-    // Create contact details
-    const contactDetails = await PrincipalContactDetl.create({
+    // Create contact details with the generated prin_code
+    const contactDetails = await PrincipalContactDetlService.createPrincipalContact({
       company_code: req.body.company_code,
-      prin_code: getSessionCode[0][0].code,
+      prin_code: createdPrincipal.prin_code,
       prin_cont1,
       prin_cont2,
       prin_cont3,
@@ -97,32 +130,31 @@ export const createPrincipal = async (req: RequestWithUser, res: Response) => {
     });
 
     if (!contactDetails) {
+      // Rollback principal creation if contact details fail
+      await PrincipalService.deletePrincipal(createdPrincipal.prin_code);
       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: `Principal data creation failed`,
+        message: `Principal contact details creation failed`,
       });
       return;
     }
 
     // Process and create files if any
-    files.forEach((item: any) => {
-      item.request_number = "PRI" + getSessionCode[0][0].code;
-    });
-    if (!!files && files.length) {
-      await Files.bulkCreate(
-        (files as IFiles[]).map((eachFile) => {
-          return {
-            ...eachFile,
-            request_number: "PRI" + getSessionCode[0][0].code,
-          };
-        })
-      );
+    if (files && files.length) {
+      for (const file of files) {
+        await UploadedFilesDltsService.createFile({
+          ...file,
+          company_code: req.body.company_code,
+          request_number: "PRI" + createdPrincipal.prin_code,
+          created_by,
+        });
+      }
     }
 
     // Return success response
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `${getSessionCode[0][0].code} Principal ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
+      message: `${createdPrincipal.prin_code} Principal ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
     });
     return;
   } catch (error: unknown) {
@@ -143,7 +175,7 @@ export const updatePrincipal = async (req: RequestWithUser, res: Response) => {
     // Get request data and validate
     const requestUser = req.user;
     const { prin_code } = req.params;
-    console.log("req.body", req.body);
+    
     const { error } = principalSchema(
       req.body,
       requestUser.company_code,
@@ -173,17 +205,14 @@ export const updatePrincipal = async (req: RequestWithUser, res: Response) => {
         prin_cont_ref1,
         files,
         ...prinicipalPayload
-      } = req.body,
-      updated_by = requestUser.loginid;
+      } = req.body;
+      
+    const updated_by = requestUser.loginid;
 
     // Check if principal exists
-    const existingPrincipalData = await Principal.findOne({
-      where: {
-        [Op.and]: [{ prin_code: prin_code }],
-      },
-    });
+    const existingPrincipal = await PrincipalService.findByCode(prin_code);
 
-    if (!existingPrincipalData) {
+    if (!existingPrincipal) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "Principal " + constants.MESSAGES.DOES_NOT_EXISTS,
@@ -191,61 +220,99 @@ export const updatePrincipal = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Process files
-    files.forEach((item: any) => {
-      item.request_number = "PRI" + prin_code;
-    });
-
-    // Update principal data
-    const principalData = await Principal.update(
+    // Update principal data (don't set updated_at, let DB handle it)
+    const isPrincipalUpdated = await PrincipalService.updatePrincipal(
+      prin_code, 
       {
-        updated_by,
-        prin_code,
         ...prinicipalPayload,
-      },
-      {
-        where: { prin_code },
+        updated_by,
       }
     );
-    if (!principalData) {
+
+    if (!isPrincipalUpdated) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Principal data updation failed" });
+        .json({ success: false, message: "Principal data update failed" });
       return;
     }
 
-    // Update contact details
-    const contactDetails = await PrincipalContactDetl.update(
-      {
-        company_code: req.body.company_code,
-        prin_code: req.body.prin_code,
-        prin_cont1,
-        prin_cont2,
-        prin_cont3,
-        prin_cont_email1,
-        prin_cont_email2,
-        prin_cont_email3,
-        prin_cont_telno1,
-        prin_cont_telno2,
-        prin_cont_telno3,
-        prin_cont_faxno1,
-        prin_cont_faxno2,
-        prin_cont_faxno3,
-        prin_cont_ref1,
-        updated_by,
-      },
-      { where: { prin_code, company_code: req.body.company_code } }
-    );
-    if (!contactDetails) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Principal data updation failed" });
-      return;
+    // FIX: Check if contact details exist first, then either update or create
+    const companyCode = prinicipalPayload.company_code || requestUser.company_code;
+    const existingContact = await PrincipalContactDetlService.findByCode(prin_code, companyCode);
+
+    // Check if any contact field has data (not just empty strings)
+    const hasContactData = prin_cont1 || prin_cont2 || prin_cont3 || 
+                         prin_cont_email1 || prin_cont_email2 || prin_cont_email3 ||
+                         prin_cont_telno1 || prin_cont_telno2 || prin_cont_telno3 ||
+                         prin_cont_faxno1 || prin_cont_faxno2 || prin_cont_faxno3 ||
+                         prin_cont_ref1;
+    
+    if (existingContact && hasContactData) {
+      // Contact exists and we have contact data, update it
+      const isContactUpdated = await PrincipalContactDetlService.updatePrincipalContact(
+        prin_code,
+        companyCode,
+        {
+          prin_cont1: prin_cont1 || '',
+          prin_cont2: prin_cont2 || '',
+          prin_cont3: prin_cont3 || '',
+          prin_cont_email1: prin_cont_email1 || '',
+          prin_cont_email2: prin_cont_email2 || '',
+          prin_cont_email3: prin_cont_email3 || '',
+          prin_cont_telno1: prin_cont_telno1 || '',
+          prin_cont_telno2: prin_cont_telno2 || '',
+          prin_cont_telno3: prin_cont_telno3 || '',
+          prin_cont_faxno1: prin_cont_faxno1 || '',
+          prin_cont_faxno2: prin_cont_faxno2 || '',
+          prin_cont_faxno3: prin_cont_faxno3 || '',
+          prin_cont_ref1: prin_cont_ref1 || '',
+          updated_by,
+        }
+      );
+
+      if (!isContactUpdated) {
+        console.log(`Warning: Contact update failed for principal ${prin_code}, but continuing...`);
+        // Don't fail the whole operation - contact info is optional
+      }
+    } else if (!existingContact && hasContactData) {
+      // Contact doesn't exist but we have contact data, create it
+      const newContact = await PrincipalContactDetlService.createPrincipalContact({
+        company_code: companyCode,
+        prin_code: prin_code,
+        prin_cont1: prin_cont1 || '',
+        prin_cont2: prin_cont2 || '',
+        prin_cont3: prin_cont3 || '',
+        prin_cont_email1: prin_cont_email1 || '',
+        prin_cont_email2: prin_cont_email2 || '',
+        prin_cont_email3: prin_cont_email3 || '',
+        prin_cont_telno1: prin_cont_telno1 || '',
+        prin_cont_telno2: prin_cont_telno2 || '',
+        prin_cont_telno3: prin_cont_telno3 || '',
+        prin_cont_faxno1: prin_cont_faxno1 || '',
+        prin_cont_faxno2: prin_cont_faxno2 || '',
+        prin_cont_faxno3: prin_cont_faxno3 || '',
+        prin_cont_ref1: prin_cont_ref1 || '',
+        created_by: updated_by,  // Use updated_by since it's the same user
+        updated_by: updated_by,
+      });
+
+      if (!newContact) {
+        console.log(`Warning: Contact creation failed for principal ${prin_code}, but continuing...`);
+        // Don't fail the whole operation - contact info is optional
+      }
     }
+    // If no contact data, don't do anything (contact info is optional)
 
     // Create new files if any
-    if (!!files && files.length) {
-      await Files.bulkCreate(files);
+    if (files && files.length) {
+      for (const file of files) {
+        await UploadedFilesDltsService.createFile({
+          ...file,
+          company_code: req.body.company_code,
+          request_number: "PRI" + prin_code,
+          created_by: updated_by,
+        });
+      }
     }
 
     // Return success response
@@ -272,15 +339,10 @@ export const getPrincipal = async (req: RequestWithUser, res: Response) => {
     const { prin_code } = req.params;
     const { company_code } = req.user;
 
-    // Get principal and contact details
-    const principalData = await Principal.findOne({
-      where: { prin_code, company_code },
-    });
-    const contactdetails = await PrincipalContactDetl.findOne({
-      where: { prin_code },
-    });
+    // Get principal data first
+    const principalData = await PrincipalService.findByCode(prin_code);
 
-    if (!principalData || !contactdetails) {
+    if (!principalData) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "Principal " + constants.MESSAGES.DOES_NOT_EXISTS,
@@ -288,10 +350,40 @@ export const getPrincipal = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    // Get contact details using the company_code from principalData or user
+    const contactDetails = await PrincipalContactDetlService.findByCode(
+      prin_code, 
+      principalData.company_code || company_code  
+    );
+
+    const emptyContactDetails = {
+      prin_cont1: '',
+      prin_cont2: '',
+      prin_cont3: '',
+      prin_cont_email1: '',
+      prin_cont_email2: '',
+      prin_cont_email3: '',
+      prin_cont_telno1: '',
+      prin_cont_telno2: '',
+      prin_cont_telno3: '',
+      prin_cont_faxno1: '',
+      prin_cont_faxno2: '',
+      prin_cont_faxno3: '',
+      prin_cont_ref1: '',
+    };
+
+    // if (!contactDetails) {
+    //   res.status(constants.STATUS_CODES.NOT_FOUND).json({
+    //     success: false,
+    //     message: "Principal contact details not found",
+    //   });
+    //   return;
+    // }
+
     // Return combined data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: { ...principalData.dataValues, ...contactdetails.dataValues },
+      data: { ...principalData, ...(contactDetails || emptyContactDetails) },
     });
     return;
   } catch (error: unknown) {
@@ -301,6 +393,61 @@ export const getPrincipal = async (req: RequestWithUser, res: Response) => {
       .json({ success: false, message: knownError.message });
   }
 };
+
+/**
+ * Gets all principals for a company
+ * @param req Request object
+ * @param res Response object
+ */
+export const getAllPrincipals = async (req: RequestWithUser, res: Response) => {
+  try {
+    const { company_code } = req.user;
+    
+    // Get all principals
+    const principals = await PrincipalService.findAll();
+    
+    // Create empty contact details structure
+    const emptyContactDetails = {
+      prin_cont1: '',
+      prin_cont2: '',
+      prin_cont3: '',
+      prin_cont_email1: '',
+      prin_cont_email2: '',
+      prin_cont_email3: '',
+      prin_cont_telno1: '',
+      prin_cont_telno2: '',
+      prin_cont_telno3: '',
+      prin_cont_faxno1: '',
+      prin_cont_faxno2: '',
+      prin_cont_faxno3: '',
+      prin_cont_ref1: '',
+    };
+    
+    // Filter by company code through contact details
+    const companyPrincipals = [];
+    for (const principal of principals) {
+      const contactDetails = await PrincipalContactDetlService.findByCode(principal.prin_code, company_code);
+      
+      // Include all principals, even without contact details
+      companyPrincipals.push({
+        ...principal,
+        ...(contactDetails || emptyContactDetails)  // Use empty fields if no contact details
+      });
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: companyPrincipals,
+    });
+    return;
+  } catch (error: unknown) {
+    const knownError = error as { message: string };
+    res
+      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: knownError.message });
+  }
+};
+
 /**
  * Creates multiple principal records in bulk
  * @param req Request object containing array of principal data
@@ -322,75 +469,99 @@ export const createBulkPrincipal = async (
       return;
     }
 
-    // Add user info to each principal record
-    req.body = req.body.map((principal: IPrincipalWms) => ({
-      ...principal,
-      updated_by: requestUser.loginid,
-      created_by: requestUser.loginid,
-    }));
+    // Process each principal
+    let createdCount = 0;
+    for (const principal of req.body) {
+      const { 
+        prin_cont1, prin_cont2, prin_cont3,
+        prin_cont_email1, prin_cont_email2, prin_cont_email3,
+        prin_cont_telno1, prin_cont_telno2, prin_cont_telno3,
+        prin_cont_faxno1, prin_cont_faxno2, prin_cont_faxno3,
+        prin_cont_ref1,
+        ...principalPayload 
+      } = principal;
 
-    // Bulk create principals
-    Principal.bulkCreate(req.body, { ignoreDuplicates: true });
+      // Validate prin_code exists
+      if (!principalPayload.prin_code) {
+        continue; // Skip this record if prin_code is missing
+      }
 
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message: "Principal " + constants.MESSAGES.IMPORTED_SUCCESSFULLY,
-    });
-    return;
-  } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
-  }
-};
+      // Check if principal already exists
+      const existingPrincipal = await PrincipalService.findDuplicate({
+        prin_code: principalPayload.prin_code,
+        prin_name: principalPayload.prin_name,
+      });
 
-/**
- * Exports principal data to CSV file
- * @param req Request object containing user info
- * @param res Response object
- */
-export const exportPrincipal = async (req: RequestWithUser, res: Response) => {
-  try {
-    let fetchedData: any[] = [],
-      csvTransform: fastCsv.CsvFormatterStream<
-        fastCsv.FormatterRow,
-        fastCsv.FormatterRow
-      >;
+            if (!existingPrincipal) {
+              // Create principal
+              const newPrincipal = await PrincipalService.createPrincipal({
+                ...principalPayload,
+                created_by: requestUser.loginid,
+                updated_by: requestUser.loginid,
+              });
+      
+              if (newPrincipal) {
+                // Fetch the created principal to get trigger-generated prin_code
+                const createdPrincipal = await PrincipalService.findByCode(newPrincipal.prin_code);
+                
+                if (!createdPrincipal) {
+                  continue;
+                }
 
-    // Fetch principal data for current user
-    fetchedData = await PrincipalWmsView.findAll({
-      where: {
-        [Op.and]: [
-          { company_code: req.user.company_code },
-          { user_id: req.user.loginid },
-        ],
-      },
-    });
-
-    // Configure CSV formatter
-    csvTransform = fastCsv.format({
-      headers: WmsCsvHeaders.MASTER.PRINCIPAL,
-    });
-
-    // Set headers for CSV response before streaming
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="principal.csv"`
-    );
-
-    // Write data to the CSV stream
-    fetchedData.forEach((eachData) => {
-      const plainData = eachData.get({ plain: true });
-      csvTransform.write(plainData); // Write each row to the CSV stream
-    });
-
-    // End the CSV stream and pipe it to the response
-    csvTransform.end(); // Complete the CSV data transformation
-    csvTransform.pipe(res); // Pipe CSV data into the HTTP response
-  } catch (error: any) {
-    console.error("Export Error:", error); // Log the error for debugging
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
+                // Create contact details for the newly created principal
+                const contactDetails = await PrincipalContactDetlService.createPrincipalContact({
+                  company_code: principalPayload.company_code || requestUser.company_code,
+                  prin_code: createdPrincipal.prin_code,
+                  prin_cont1,
+                  prin_cont2,
+                  prin_cont3,
+                  prin_cont_email1,
+                  prin_cont_email2,
+                  prin_cont_email3,
+                  prin_cont_telno1,
+                  prin_cont_telno2,
+                  prin_cont_telno3,
+                  prin_cont_faxno1,
+                  prin_cont_faxno2,
+                  prin_cont_faxno3,
+                  prin_cont_ref1,
+                  created_by: requestUser.loginid,
+                  updated_by: requestUser.loginid,
+                });
+      
+                if (!contactDetails) {
+                  // Rollback principal if contact creation failed
+                  await PrincipalService.deletePrincipal(createdPrincipal.prin_code);
+                  continue;
+                }
+      
+                // Create files if provided in the bulk payload item
+                if ((principal as any).files && (principal as any).files.length) {
+                  for (const file of (principal as any).files) {
+                    await UploadedFilesDltsService.createFile({
+                      ...file,
+                      company_code: principalPayload.company_code || requestUser.company_code,
+                      request_number: "PRI" + createdPrincipal.prin_code,
+                      created_by: requestUser.loginid,
+                    });
+                  }
+                }
+      
+                createdCount++;
+              }
+            }
+          }
+      
+          // Return bulk create result
+          res.status(constants.STATUS_CODES.OK).json({
+            success: true,
+            message: `${createdCount} Principals ${constants.MESSAGES.CREATED_SUCCESSFULLY}`,
+          });
+          return;
+        } catch (error: unknown) {
+          const knownError = error as { message: string };
+          res
+            .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+            .json({ success: false, message: knownError.message });
+        }
+      };

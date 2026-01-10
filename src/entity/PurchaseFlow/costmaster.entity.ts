@@ -11,7 +11,7 @@ export class CostMaster {
 
   @Column({ name: "COMPANY_CODE", type: "varchar2", length: 10 })
   company_code!: string;
-
+ 
   @Column({ name: "UPDATED_BY", type: "varchar2", length: 50 })
   updated_by!: string;
 
@@ -20,7 +20,7 @@ export class CostMaster {
 
   @Column({
     name: "CREATED_AT",
-    type: "timestamp",
+    type: "timestamp",   
     default: () => "CURRENT_TIMESTAMP",
   })
   created_at!: Date;

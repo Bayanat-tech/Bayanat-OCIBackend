@@ -52,6 +52,7 @@ export default {
       "phone",
       "city",
     ],
+    SUPPLIER: [],
 
     PRINCIPAL: [
       "company_code",

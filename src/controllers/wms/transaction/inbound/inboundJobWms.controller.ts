@@ -3,25 +3,17 @@
  * @imports Required dependencies and models
  */
 import { Response } from "express";
-import { Op, QueryTypes } from "sequelize";
 import constants from "../../../../helpers/constants";
-import { getSearchFilterQuery } from "../../../../helpers/functions";
 import {
   ISearch,
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
 import { IUser } from "../../../../interfaces/user.interface";
-import { IGrnReport } from "../../../../interfaces/wms/transaction/inbound/inboundJobWms.interface";
-import GrnReport from "../../../../models/wms/transaction/inbound/grnReport_wms.model";
-import JobInboundWms from "../../../../models/wms/transaction/inbound/inboundJobWms.model";
-// --------- Import Function From function.ts file ----------
-import { formatData } from "../../../../helpers/functions";
-import { groupByContainerNo } from "../../../../helpers/functions";
-import { getTiPackdetSeriesData } from "../../../../helpers/functions";
-import { sequelize } from "../../../../database/connection";
-import { getTallyProductDataQ } from "../../../../utils/query";
-import PackingDetailsInboundWmsView from "../../../../views/wms/transportation/inbound/packingDetails_wms.view";
-import Product from "../../../../models/wms/product_wms.model";
+import { InboundJobWmsService } from "../../../../services/WMS/transaction/inbound/inboundJobWms.service";
+import { AppDataSource } from "../../../../database/connection"; // Update with your TypeORM DataSource
+
+// Initialize service
+const inboundJobWmsService = new InboundJobWmsService();
 
 /**
  * @function getInboundJob
@@ -30,35 +22,58 @@ import Product from "../../../../models/wms/product_wms.model";
  * @param {Response} res - Express response object
  * @returns {Promise<void>} JSON response with job data or error
  */
-export const getInboundJob = async (req: RequestWithUser, res: Response) => {
-  try {
-    console.log(req.params);
-    const { job_no } = req.params;
+// export const getInboundJob = async (req: RequestWithUser, res: Response) => {
+//   try {
+//     console.log("Fetching inbound job with params:", req.params);
+//     const { job_no } = req.params;
 
-    // Query database for job data
-    const jobdata = await JobInboundWms.findOne({
-      where: { job_no },
-    });
+//     // Add validation
+//     if (!job_no) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "Job number is required",
+//       });
+//       return;
+//     }
 
-    if (!jobdata) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "Job Data " + constants.MESSAGES.DOES_NOT_EXISTS,
-      });
-      return;
-    }
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: jobdata,
-    });
-    return;
-  } catch (error: unknown) {
-    const knownError = error as { message: string };
-    res
-      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-      .json({ success: false, message: knownError.message });
-  }
-};
+//     console.log("Attempting to fetch job with job_no:", job_no);
+    
+//     // Query database for job data
+//     const jobdata = await inboundJobWmsService.getInboundJobByJobNo(job_no);
+
+//     if (!jobdata) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: "Job Data " + constants.MESSAGES.DOES_NOT_EXISTS,
+//       });
+//       return;
+//     }
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       data: jobdata,
+//     });
+//     return;
+//   } catch (error: unknown) {
+//     const knownError = error as { message: string };
+//     console.error("Error in getInboundJob:", knownError.message);
+//     console.error("Full error stack:", error);
+//     console.error("Job number attempted:", req.params.job_no);
+    
+//     // Check if it's a database column error
+//     if (knownError.message.includes("ORA-00904") || knownError.message.includes("invalid identifier")) {
+//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ 
+//         success: false, 
+//         message: "Database configuration error: Column name mismatch. Please check the InboundJobWms entity definition.",
+//         error: knownError.message
+//       });
+//       return;
+//     }
+    
+//     res
+//       .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+//       .json({ success: false, message: knownError.message });
+//   }
+// };
 
 /**
  * @function getReports
@@ -67,100 +82,60 @@ export const getInboundJob = async (req: RequestWithUser, res: Response) => {
  * @param {Response} res - Express response object
  * @returns {Promise<void>} JSON response with formatted report data or error
  */
-export const getReports = async (req: RequestWithUser, res: Response) => {
-  try {
-    // Extract request parameters and setup pagination
-    const requestUser: IUser = req.user;
-    const { prin_code, job_no } = req.query;
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
-    const skip = Number(page * limit - limit);
-    console.log("inside GRN report1");
-    const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
-      : {};
+// export const getReports = async (req: RequestWithUser, res: Response) => {
+//   try {
+//     // Extract request parameters and setup pagination
+//     const requestUser: IUser = req.user;
+//     const { prin_code, job_no } = req.query;
+//     const page = Number(req.query.page) || 1;
+//     const limit = Number(req.query.limit) || 10;
+    
+//     console.log("Fetching GRN reports with params:", { prin_code, job_no, page, limit });
+//     const filter: ISearch = req.query.filter
+//       ? JSON.parse(req.query.filter)
+//       : {};
 
-    // Build query conditions
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [
-          { company_code: requestUser.company_code },
-          { prin_code: prin_code },
-          { job_no: job_no },
-        ],
-      };
+//     // Fetch data using service
+//     const result = await inboundJobWmsService.getGrnReports(
+//       requestUser.company_code,
+//       prin_code as string,
+//       job_no as string,
+//       page,
+//       limit,
+//       filter
+//     );
 
-    // Apply search filter
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
-      filter: filter.search,
-      outsideQuery,
-    });
-    console.log("inside GRN report2");
-
-    // Get total count for pagination
-    const totalCount = await GrnReport.count({ where: outsideQuery });
-
-    // Fetch data with sorting and pagination
-    const grnReportData: IGrnReport[] = (await GrnReport.findAll({
-      where: outsideQuery,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [[filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"]],
-        }),
-      offset: skip,
-      limit: req.query.limit ? limit : totalCount,
-    })) as unknown as IGrnReport[];
-
-    // Process and format the report data
-    const groupedData = groupByContainerNo(grnReportData);
-    console.log("inside GRN report3");
-    console.log("GRn report 3");
-    const fetchedData = await Promise.all(
-      groupedData.map((data) => formatData(data, getTiPackdetSeriesData))
-    );
-    console.log("inside GRN report4");
-
-    // Send formatted response
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      totalCount,
-      data: fetchedData,
-    });
-  } catch (error: any) {
-    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+//     // Send formatted response
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       totalCount: result.totalCount,
+//       data: result.data,
+//     });
+//   } catch (error: any) {
+//     console.error("Error in getReports:", error.message);
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 
 export const getTallyProductData = async (
   req: RequestWithUser,
   res: Response
 ) => {
   const requestUser: IUser = req.user;
-  const uniqueCode = req.query.prin_code;
-  const uniqueCode2 = req.query.job_no;
-  const uniqueCode3 = req.query.container_no;
+  const uniqueCode = req.query.prin_code as string;
+  const uniqueCode2 = req.query.job_no as string;
+  const uniqueCode3 = req.query.container_no as string;
+  
   try {
-    const fetchedData = await PackingDetailsInboundWmsView.findAll({
-      where: {
-        prin_code: uniqueCode,
-        job_no: uniqueCode2,
-        container_no: uniqueCode3,
-      },
-      include: [
-        {
-          model: Product,
-          attributes: ["uom_count"],
-          required: true, // INNER JOIN
-          where: {
-            prin_code: uniqueCode,
-          },
-        },
-      ],
-    });
+    console.log("Fetching tally product data with params:", { uniqueCode, uniqueCode2, uniqueCode3 });
+    const fetchedData = await inboundJobWmsService.getTallyProductData(
+      uniqueCode,
+      uniqueCode2,
+      uniqueCode3
+    );
 
     res.status(200).json({
       success: true,
@@ -168,7 +143,7 @@ export const getTallyProductData = async (
     });
     return;
   } catch (error: any) {
-    console.error("Export Error:", error); // Log the error for debugging
+    console.error("Error in getTallyProductData:", error.message);
     res.status(400).json({ success: false, message: error.message });
   }
 };

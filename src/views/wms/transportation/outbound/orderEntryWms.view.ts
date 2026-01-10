@@ -268,7 +268,7 @@ OrderEntry.init(
   {
     sequelize, // Your Sequelize instance
     modelName: "OrderEntry",
-    tableName: "TO_ORDER",
+    tableName: "VW_TO_ORDER",
     timestamps: false,
     underscored: true, // Optional: automatically adds underscored field mappings
   }

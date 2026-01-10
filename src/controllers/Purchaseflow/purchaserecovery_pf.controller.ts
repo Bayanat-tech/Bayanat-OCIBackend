@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { QueryTypes, Transaction } from 'sequelize';
 import constants1 from "../../helpers/constants";
-import { sequelize } from "../../database/connection";
+import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection"; // your oracledb pool
 
 // Interface for PurchaseRequestHeader type
 interface PurchaseRequestHeader {
@@ -17,6 +18,7 @@ interface PurchaseRequestHeader {
 }
 
 // Main Express route handler
+
 export const UpdPurchaseRecoveryData = async (
   req: Request,
   res: Response
@@ -32,7 +34,7 @@ export const UpdPurchaseRecoveryData = async (
 
   const firstRecord = values[0];
   if (!firstRecord) {
-    res.status(400).json({ error: "No data found" });
+    res.status(400).json({ success: false, message: "No data found" });
     return;
   }
 
@@ -43,16 +45,21 @@ export const UpdPurchaseRecoveryData = async (
     return;
   }
 
-  const transaction: Transaction = await sequelize.transaction();
+  let connection: oracledb.Connection | undefined;
 
   try {
-    const updatedRecords = await Promise.all(
-      values.map((record: PurchaseRequestHeader) =>
-        updatePurchaseRecoveryData(record, transaction)
-      )
-    );
+    // Get Oracle connection
+    connection = await oracledb.getConnection();
 
-    await transaction.commit();
+    const updatedRecords = [];
+
+    for (const record of values) {
+      const result = await updatePurchaseRecoveryData(connection, record);
+      updatedRecords.push(result);
+    }
+
+    // Commit the transaction
+    await connection.commit();
 
     res.status(constants1.STATUS_CODES.OK).json({
       success: true,
@@ -61,20 +68,36 @@ export const UpdPurchaseRecoveryData = async (
     });
   } catch (error) {
     console.error("Update error:", error);
-    await transaction.rollback();
+
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error("Rollback error:", rollbackError);
+      }
+    }
 
     res.status(constants1.STATUS_CODES.NOT_FOUND).json({
       success: false,
       message: "Update unsuccessful.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error closing connection:", closeError);
+      }
+    }
   }
 };
 
+
 // Function to update a single PurchaseRecoveryData record
-const updatePurchaseRecoveryData = async (
-  record: PurchaseRequestHeader,
-  transaction: Transaction
-): Promise<{ company_code?: string; request_number?: string; updatedFields: string[] }> => {
+export async function updatePurchaseRecoveryData(
+  connection: oracledb.Connection,
+  record: PurchaseRequestHeader
+): Promise<{ company_code?: string; request_number?: string; updatedFields: string[] }> {
   const {
     company_code,
     request_number,
@@ -97,7 +120,8 @@ const updatePurchaseRecoveryData = async (
     throw new Error(`Missing fields in record: ${JSON.stringify(record)}`);
   }
 
-  const existingRecord = await getExistingRecord(company_code, request_number, transaction);
+  // Get existing record
+  const existingRecord = await getExistingRecord(connection, company_code, request_number);
 
   let isChanged = false;
   const updatedFields: string[] = [];
@@ -120,11 +144,17 @@ const updatePurchaseRecoveryData = async (
   if (isChanged) {
     const sql = `
       UPDATE PURCHASE_REQUEST_HEADER
-      SET recovery_date = ?, recovery_party_code = ?, recovery_remark = ?, 
-          recovery_confirm = ?, updated_by = ?, updated_at = NOW()
-      WHERE company_code = ? AND request_number = ?`;
+      SET recovery_date = :recovery_date,
+          recovery_party_code = :recovery_party_code,
+          recovery_remark = :recovery_remark,
+          recovery_confirm = :recovery_confirm,
+          updated_by = :updated_by,
+          updated_at = SYSDATE
+      WHERE company_code = :company_code
+        AND request_number = :request_number
+    `;
 
-    console.log("Replacements:", [
+    const binds = {
       recovery_date,
       recovery_party_code,
       recovery_remark,
@@ -132,57 +162,43 @@ const updatePurchaseRecoveryData = async (
       updated_by,
       company_code,
       request_number,
-    ]);
+    };
 
-    await sequelize.query(sql, {
-      replacements: [
-        recovery_date,
-        recovery_party_code,
-        recovery_remark,
-        recovery_confirm,
-        updated_by,
-        company_code,
-        request_number,
-      ],
-      transaction,
-      type: QueryTypes.UPDATE,
-    });
+    console.log("Binds:", binds);
+
+    await connection.execute(sql, binds, { autoCommit: false });
   }
 
   return { company_code, request_number, updatedFields };
-};
+}
 
 // Function to fetch existing record
-const getExistingRecord = (
+export async function getExistingRecord(
+  connection: oracledb.Connection,
   company_code: string,
-  request_number: string,
-  transaction: Transaction
-): Promise<PurchaseRequestHeader> => {
-  return new Promise((resolve, reject) => {
-    const sql = `
-      SELECT recovery_party_code, recovery_date, recovery_remark, recovery_confirm, 
-             updated_by
-      FROM PURCHASE_REQUEST_HEADER
-      WHERE company_code = ? AND request_number = ?`;
+  request_number: string
+): Promise<PurchaseRequestHeader> {
+  const sql = `
+    SELECT recovery_party_code, recovery_date, recovery_remark, recovery_confirm, 
+           updated_by
+    FROM PURCHASE_REQUEST_HEADER
+    WHERE company_code = :company_code AND request_number = :request_number
+  `;
 
-    sequelize.query(sql, {
-      replacements: [company_code, request_number],
-      transaction,
-      type: QueryTypes.SELECT,
-    })
-      .then((results) => {
-        const resultArray = results as PurchaseRequestHeader[];
+  const result = await connection.execute<PurchaseRequestHeader>(
+    sql,
+    {
+      company_code,
+      request_number,
+    },
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
 
-        if (resultArray.length === 0) {
-          reject(
-            new Error(
-              `Record with company_code: ${company_code} and request_number: ${request_number} not found.`
-            )
-          );
-        } else {
-          resolve(resultArray[0]);
-        }
-      })
-      .catch(reject);
-  });
-};
+  if (!result.rows || result.rows.length === 0) {
+    throw new Error(
+      `Record with company_code: ${company_code} and request_number: ${request_number} not found.`
+    );
+  }
+
+  return result.rows[0];
+}

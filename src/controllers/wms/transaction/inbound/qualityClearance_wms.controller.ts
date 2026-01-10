@@ -13,7 +13,8 @@ import {
 import constants from "../../../../helpers/constants";
 import Product from "../../../../models/wms/product_wms.model";
 //import { Op } from "sequelize";
-import { sequelize } from "../../../../database/connection";
+import oracledb from "oracledb";
+import { oracleDb } from "../../../../database/connection";
 import Country from "../../../../models/wms/warehouse_wms.model";
 import PackingDetailsInboundWms from "../../../../models/wms/transaction/inbound/packingDetails_wms.model";
 import { IPackingDetails } from "../../../../interfaces/wms/transaction/inbound/packingDetails_wms.interface";

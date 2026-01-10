@@ -50,6 +50,7 @@ app.use("/api/notification", logRoutes);
 app.use("/api/vendor", VendorRouter);
 
 app.use("/api/pams/", pamsRoutes);
+app.use("/api/wms", wmsRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(constants.STATUS_CODES.OK).send("Server is up and running.");

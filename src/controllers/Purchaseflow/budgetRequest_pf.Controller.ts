@@ -1,18 +1,20 @@
 import { Request, Response } from "express";
-import constants1 from "../../helpers/constants";
-import { format } from "date-fns";
+import { parse, format } from "date-fns";
+import constants from "../../helpers/constants";
+
 import { NextFunction } from "express";
 import cors from "cors";
 import mysql, { RowDataPacket } from "mysql2";
 import { Sequelize, QueryTypes } from "sequelize";
 
 import { getBudgetData } from "./getBudgetData";
-import { sequelize } from "../../database/connection";
+import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection"
 
 import { insertBudgetCost } from "./budgetRequestdbupdate_pf.Controller";
-import { upsertBudgetRequest } from "./budgetRequestdbupdate_pf.Controller";
+import { upsertBudgetRequestOracle } from "./budgetRequestdbupdate_pf.Controller";
 import { TCostbudget } from "../../interfaces/Purchaseflow/Budgetflow.interface";
-import { parse } from "date-fns";
+
 // Define interfaces for Purchase Request Header and Detail
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { TBasicBrequest } from "../../interfaces/Purchaseflow/Budgetflow.interface";
@@ -25,7 +27,7 @@ interface Row {
   TO_DATE: number | string; // Adjust based on your data type
 }
 
-import constants from "../../helpers/constants";
+
 interface RequestWithBody extends Request {
   body: {
     request_number: string;
@@ -41,10 +43,11 @@ interface RequestWithBody extends Request {
 // Define a schema for validation
 // Define a schema for validation
 // Geting excel data fro temp_data table
+
 export const getBudgetexcel = async (req: Request, res: Response) => {
-  const transaction = await sequelize.transaction(); // Start a transaction
+  let connection: oracledb.Connection | undefined;
   try {
-    console.log("inside backend getBudgetexcel");
+    console.log("Inside backend getBudgetexcel");
     const { request_number } = req.params;
 
     if (!request_number || typeof request_number !== "string") {
@@ -54,93 +57,128 @@ export const getBudgetexcel = async (req: Request, res: Response) => {
       });
       return;
     }
-    console.log("inside backend getBudgetexcel1");
+
     // Replace $$ with /
     const ls_request_number = request_number.replace(/\$\$/g, "/");
     console.log("Sanitized request_number:", ls_request_number);
 
-    // Update request_number in TEMP_DATA
+    // Connect to Oracle
+    connection = await oracledb.getConnection({
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONNECT_STRING,
+    });
+
+    // Start a transaction
+    await connection.execute(`BEGIN NULL; END;`);
+
+    // Update TEMP_LOAD
     const updateQuery = `
       UPDATE TEMP_LOAD
       SET REQUEST_NUMBER = :ls_request_number
-     ; -- Adjust condition if needed
+      -- Add WHERE clause if needed, e.g. WHERE REQUEST_NUMBER IS NULL
     `;
 
-    await sequelize.query(updateQuery, {
-      replacements: { ls_request_number },
-      type: QueryTypes.UPDATE,
-      transaction,
+    const updateResult = await connection.execute(updateQuery, {
+      ls_request_number,
     });
 
-    console.log("Updated TEMP_DATA with request_number:", ls_request_number);
+    console.log(`Updated TEMP_LOAD rows: ${updateResult.rowsAffected}`);
 
-    // Retrieve specific columns from TEMP_DATA
+    // Select data from TEMP_LOAD
     const selectQuery = `
-   SELECT 
-  PROJECT_CODE AS project_code,
-  COST_CODE AS cost_code,
-  MONTH_BUDGET AS month_budget,
-  BUDGET_YEAR AS budget_year,
-  REQUESTED_AMT AS requested_amt,
-  APPROVED_AMT AS approved_amt
-FROM TEMP_LOAD order by COST_CODE,BUDGET_YEAR,MONTH_BUDGET;
+      SELECT 
+        PROJECT_CODE AS project_code,
+        COST_CODE AS cost_code,
+        MONTH_BUDGET AS month_budget,
+        BUDGET_YEAR AS budget_year,
+        REQUESTED_AMT AS requested_amt,
+        APPROVED_AMT AS approved_amt
+      FROM TEMP_LOAD
+      ORDER BY COST_CODE, BUDGET_YEAR, MONTH_BUDGET
     `;
 
-    const excelData = await sequelize.query(selectQuery, {
-      replacements: { ls_request_number },
-      type: QueryTypes.SELECT,
-      transaction,
-    });
+    const result = await connection.execute(selectQuery, {}, { outFormat: oracledb.OUT_FORMAT_OBJECT });
 
-    if (!excelData || excelData.length === 0) {
-      await transaction.rollback(); // Rollback transaction in case of no data
+    const excelData = result.rows || [];
+
+    if (excelData.length === 0) {
+      await connection.rollback();
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
-        message: "No data found in TEMP_DATA for the given request_number.",
+        message: "No data found in TEMP_LOAD for the given request_number.",
       });
       return;
     }
 
-    await transaction.commit(); // Commit the transaction
+    // Commit the transaction
+    await connection.commit();
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: excelData, // Send the retrieved data
+      data: excelData,
     });
-  } catch (error: unknown) {
-    await transaction.rollback(); // Rollback the transaction on error
-    console.error("Error in getBudgetexcel:", error);
 
-    const knownError = error as { message: string };
+  } catch (error: any) {
+    console.error("Error in getBudgetexcel:", error);
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error("Rollback error:", rollbackError);
+      }
+    }
+
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: knownError.message || "An unexpected error occurred.",
+      message: error.message || "An unexpected error occurred.",
     });
+
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeError) {
+        console.error("Error closing Oracle connection:", closeError);
+      }
+    }
   }
 };
+
 // end Geting excel data fro temp_data table
 
-export const budgetexcelupload = async (req: Request, res: Response) => {
-  const transaction = await sequelize.transaction(); // Initialize transaction
 
-  console.log("Before assigning values");
+export const budgetexcelupload = async (req: Request, res: Response) => {
+  let connection: oracledb.Connection | undefined;
 
   try {
+    console.log("Before assigning values");
+
     const { values, request_number } = req.body;
     console.log("Inside budgetexcelupload2", { values, request_number });
 
-    const proc_query = "CALL PRO_MANAGE_BUDGET_GT_TABLES()";
-    await sequelize.query(proc_query, {
-      transaction,
+    // Connect to Oracle
+    connection = await oracledb.getConnection({
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONNECT_STRING,
     });
 
+    // Start a manual transaction
+    await connection.execute(`BEGIN NULL; END;`);
+
+    // Call procedure to initialize GT tables
+    console.log("Calling PRO_MANAGE_BUDGET_GT_TABLES...");
+    await connection.execute(`BEGIN PRO_MANAGE_BUDGET_GT_TABLES(); END;`);
+    console.log("Procedure PRO_MANAGE_BUDGET_GT_TABLES executed successfully.");
+
+    // Insert into GT_LOAD_BUDGET_DATA
     const insertQuery = `
       INSERT INTO GT_LOAD_BUDGET_DATA 
-      (PROJECT_CODE, COST_CODE, EQUAL_AMOUNT, TOTAL_AMOUNT, FROM_DATE, TO_DATE) 
-      VALUES (?, ?, ?, ?, ?, ?)
+        (PROJECT_CODE, COST_CODE, EQUAL_AMOUNT, TOTAL_AMOUNT, FROM_DATE, TO_DATE)
+      VALUES (:PROJECT_CODE, :COST_CODE, :EQUAL_AMOUNT, :TOTAL_AMOUNT, TO_DATE(:FROM_DATE, 'YYYY-MM-DD'), TO_DATE(:TO_DATE, 'YYYY-MM-DD'))
     `;
 
-    // Insert budget data function
     for (const row of values) {
       const {
         project_code: PROJECT_CODE,
@@ -151,18 +189,16 @@ export const budgetexcelupload = async (req: Request, res: Response) => {
         to_date,
       } = row;
 
-      // Parse dates from "dd/MM/yyyy" format
+      // Parse and format the dates
       const l_FROM_DATE = parse(from_date, "dd/MM/yyyy", new Date());
       const l_TO_DATE = parse(to_date, "dd/MM/yyyy", new Date());
 
-      // Validate parsed dates
       if (isNaN(l_FROM_DATE.getTime()) || isNaN(l_TO_DATE.getTime())) {
         throw new Error(
           `Invalid date format: from_date=${from_date}, to_date=${to_date}`
         );
       }
 
-      // Convert to MySQL-compatible "YYYY-MM-DD" format
       const formatted_FROM_DATE = format(l_FROM_DATE, "yyyy-MM-dd");
       const formatted_TO_DATE = format(l_TO_DATE, "yyyy-MM-dd");
 
@@ -175,55 +211,64 @@ export const budgetexcelupload = async (req: Request, res: Response) => {
         formatted_TO_DATE,
       });
 
-      // Execute the insert query within the transaction
-      await sequelize.query(insertQuery, {
-        replacements: [
-          PROJECT_CODE,
-          COST_CODE,
-          EQUAL_AMOUNT,
-          TOTAL_AMOUNT,
-          formatted_FROM_DATE,
-          formatted_TO_DATE,
-        ],
-        transaction, // Pass the transaction object
+      await connection.execute(insertQuery, {
+        PROJECT_CODE,
+        COST_CODE,
+        EQUAL_AMOUNT,
+        TOTAL_AMOUNT,
+        FROM_DATE: formatted_FROM_DATE,
+        TO_DATE: formatted_TO_DATE,
       });
     }
 
     console.log("Inside budgetexcelupload3", { values, request_number });
 
-    // Execute the stored procedure
-    const procedureQuery = `CALL PRO_load_DATA(:request_number)`;
-    await sequelize.query(procedureQuery, {
-      replacements: { request_number },
-      transaction,
+    // Execute stored procedure PRO_LOAD_DATA
+    console.log("Calling PRO_LOAD_DATA with request_number:", request_number);
+    await connection.execute(`BEGIN PRO_LOAD_DATA(:request_number); END;`, {
+      request_number,
     });
 
     console.log("Inside budgetexcelupload4", { values, request_number });
 
     // Commit the transaction
-    await transaction.commit();
+    await connection.commit();
     console.log("✅ Data uploaded successfully!");
 
-    res.status(200).json({
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `Data uploaded successfully, and procedure executed for request_number: ${request_number}!`,
+      message: `Data uploaded successfully and procedure executed for request_number: ${request_number}`,
     });
-  } catch (error) {
-    // Rollback the transaction in case of an error
-    if (transaction) await transaction.rollback();
+  } catch (error: any) {
+    // Rollback in case of error
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        console.error("Rollback failed:", rollbackErr);
+      }
+    }
 
-    console.error(
-      "❌ Error inserting data or executing procedure:",
-      error instanceof Error ? error.message : JSON.stringify(error)
-    );
+    console.error("❌ Error inserting data or executing procedure:", error.message);
 
-    res.status(500).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: "Failed to upload data or execute procedure",
-      error: error instanceof Error ? error.message : error,
+      message: "Failed to upload data or execute procedure.",
+      error: error.message,
     });
+  } finally {
+    // Close connection
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing Oracle connection:", closeErr);
+      }
+    }
   }
 };
+
+
 
 
 
@@ -232,6 +277,8 @@ export const createOrUpdateBudgetRequestSequential = async (
   res: Response,
   next?: NextFunction
 ): Promise<void> => {
+  let connection: oracledb.Connection | undefined;
+
   try {
     const {
       request_number,
@@ -245,17 +292,17 @@ export const createOrUpdateBudgetRequestSequential = async (
       created_by,
     } = req.body;
 
-    console.log("Incoming request data30012025:", req.body);
+    console.log("Incoming request data:", req.body);
 
     const parsedRequestDate =
       request_date && !isNaN(new Date(request_date).getTime())
         ? new Date(request_date)
-        : undefined;
+        : null;
 
     const budgetRequest: TBasicBrequest = {
       request_number,
       company_code,
-      request_date: parsedRequestDate,
+      request_date: parsedRequestDate || undefined,
       description,
       remarks,
       last_action,
@@ -265,34 +312,130 @@ export const createOrUpdateBudgetRequestSequential = async (
     };
 
     console.log("Constructed budgetRequest:", budgetRequest);
-    console.log("log 30012025");
 
-    const { requestNumber } = await upsertBudgetRequest(budgetRequest);
+    // Connect to Oracle
+    connection = await oracledb.getConnection({
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONNECT_STRING,
+    });
 
-    console.log("After upsertBudgetRequest");
-    console.log("Generated Request Number:", requestNumber);
+    // Start dummy transaction (ensures transactional mode)
+    await connection.execute(`BEGIN NULL; END;`);
 
-    // Respond only if headers haven't already been sent
+    // ✅ MERGE (UPSERT) statement with RETURNING clause
+    const mergeQuery = `
+      MERGE INTO BUDGET_REQUEST tgt
+      USING (
+        SELECT 
+          :request_number AS request_number,
+          :company_code AS company_code,
+          :request_date AS request_date,
+          :description AS description,
+          :remarks AS remarks,
+          :last_action AS last_action,
+          :project_code AS project_code,
+          :created_by AS created_by,
+          :updated_by AS updated_by
+        FROM dual
+      ) src
+      ON (tgt.REQUEST_NUMBER = src.request_number)
+      WHEN MATCHED THEN
+        UPDATE SET
+          tgt.COMPANY_CODE = src.company_code,
+          tgt.REQUEST_DATE = src.request_date,
+          tgt.DESCRIPTION = src.description,
+          tgt.REMARKS = src.remarks,
+          tgt.LAST_ACTION = src.last_action,
+          tgt.PROJECT_CODE = src.project_code,
+          tgt.UPDATED_BY = src.updated_by,
+          tgt.UPDATED_AT = SYSDATE
+      WHEN NOT MATCHED THEN
+        INSERT (
+          REQUEST_NUMBER,
+          COMPANY_CODE,
+          REQUEST_DATE,
+          DESCRIPTION,
+          REMARKS,
+          LAST_ACTION,
+          PROJECT_CODE,
+          CREATED_BY,
+          CREATED_AT
+        ) VALUES (
+          NVL(:request_number, 'REQ' || TO_CHAR(SYSDATE, 'YYYYMMDDHH24MISS')),
+          :company_code,
+          :request_date,
+          :description,
+          :remarks,
+          :last_action,
+          :project_code,
+          :created_by,
+          SYSDATE
+        )
+      RETURNING REQUEST_NUMBER INTO :out_request_number
+    `;
+
+    const binds = {
+      request_number: budgetRequest.request_number || null,
+      company_code: budgetRequest.company_code,
+      request_date: budgetRequest.request_date ? new Date(budgetRequest.request_date) : null,
+      description: budgetRequest.description,
+      remarks: budgetRequest.remarks,
+      last_action: budgetRequest.last_action,
+      project_code: budgetRequest.project_code,
+      created_by: budgetRequest.created_by,
+      updated_by: budgetRequest.updated_by,
+      out_request_number: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+    };
+
+    // 👇 Tell TypeScript what we expect back
+    const result = (await connection.execute(mergeQuery, binds)) as unknown as {
+      outBinds: { out_request_number: string };
+    };
+
+    // Extract returned request number
+    const requestNumber =
+      result.outBinds.out_request_number || request_number;
+
+    await connection.commit();
+    console.log("✅ Budget request upserted successfully:", requestNumber);
+
     if (!res.headersSent) {
-      res.status(200).json({
+      res.status(constants.STATUS_CODES.OK).json({
         success: true,
         message: "Budget request processed successfully.",
         requestNumber,
       });
     }
-  } catch (error) {
-    console.error("Error saving/updating budget request:", error);
+  } catch (error: any) {
+    console.error("❌ Error saving/updating budget request:", error.message);
+
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        console.error("Rollback failed:", rollbackErr);
+      }
+    }
 
     if (!res.headersSent) {
-      res.status(500).json({
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Error saving/updating budget request.",
-        error:
-          error instanceof Error ? error.message : "An unknown error occurred",
+        error: error.message || "An unknown error occurred",
       });
+    }
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing Oracle connection:", closeErr);
+      }
     }
   }
 };
+
 
 
 // Controller to handle fetching the budget request details
@@ -301,246 +444,369 @@ export const getBudgetRequest = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
+  let connection: oracledb.Connection | undefined;
+
   try {
     const { request_number, cost_code } = req.params;
+
+    if (!request_number || !cost_code) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Missing required parameters: request_number or cost_code.",
+      });
+    }
+
+    // Replace $$ with / to match your system format
     const ls_request_number = request_number.replace(/\$\$/g, "/");
 
-    // Call the service function to fetch data from the database
-    const result = await getBudgetData(ls_request_number, cost_code);
+    console.log("Fetching data for:", {
+      request_number: ls_request_number,
+      cost_code,
+    });
 
-    // If result is empty or null, return a not found response
-    if (!result) {
-      return res.status(404).json({
+    // Connect to Oracle
+    connection = await oracledb.getConnection({
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONNECT_STRING,
+    });
+
+    // Define your query — adjust table/columns as per your schema
+    const query = `
+      SELECT 
+        br.REQUEST_NUMBER,
+        br.COMPANY_CODE,
+        br.REQUEST_DATE,
+        br.DESCRIPTION,
+        br.REMARKS,
+        br.LAST_ACTION,
+        br.PROJECT_CODE,
+        br.CREATED_BY,
+        br.UPDATED_BY,
+        bd.COST_CODE,
+        bd.BUDGET_YEAR,
+        bd.MONTH_BUDGET,
+        bd.REQUESTED_AMT,
+        bd.APPROVED_AMT
+      FROM BUDGET_REQUEST br
+      LEFT JOIN BUDGET_DETAILS bd 
+        ON br.REQUEST_NUMBER = bd.REQUEST_NUMBER
+      WHERE br.REQUEST_NUMBER = :ls_request_number
+        AND bd.COST_CODE = :cost_code
+      ORDER BY bd.BUDGET_YEAR, bd.MONTH_BUDGET
+    `;
+
+    const result = await connection.execute(query, {
+      ls_request_number,
+      cost_code,
+    }, {
+      outFormat: oracledb.OUT_FORMAT_OBJECT,
+    });
+
+    const data = result.rows || [];
+
+    if (data.length === 0) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "No data found for the given request number and cost code.",
       });
     }
 
-    // Return the response with the fetched data
-    return res.status(200).json({
+    return res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: result,
+      data,
     });
-  } catch (error) {
-    console.error("Error fetching budget request:", error);
-    return res.status(500).json({
+
+  } catch (error: any) {
+    console.error("❌ Error fetching budget request:", error);
+
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "An error occurred while fetching the budget request.",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error.message || "Unknown error",
     });
+
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing Oracle connection:", closeErr);
+      }
+    }
   }
 };
 
+
+
+
+// ✅ Converted Oracle Version
 export const handleInsertBudgetCosts = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   const values: TCostbudget[] = req.body;
 
-  console.log("inside handleInsertBudgetCosts ");
-  // Validate input
+  console.log("inside handleInsertBudgetCosts");
+
   if (!Array.isArray(values) || values.length === 0) {
-    // return res.status(400).json({ error: "Invalid input data. Array expected." });
+    res.status(400).json({ error: "Invalid input data. Array expected." });
+    return;
   }
 
   const firstRecord = values[0];
-  const { cost_code } = firstRecord;
-  //dfdf
-  const { request_number } = firstRecord;
-  const { updated_by } = firstRecord;
+  const { request_number, cost_code, updated_by } = firstRecord;
   const user = req.user as { loginid: string; company_code?: string };
-  console.log('loginid:', user.loginid);
-  if (!cost_code) {
-    //  return res.status(400).json({ error: "First record is missing cost_code." });
-  }
 
-  // Start a transaction
-  const transaction = await sequelize.transaction();
+  console.log("loginid:", user?.loginid);
+
+  let connection: oracledb.Connection | undefined;
 
   try {
-    // Delete existing records for the cost_code within the transaction
-    await sequelize.query(
-      `DELETE FROM MS_PROJ_COST_MONTHWISE_BUDGET 
-       WHERE  request_number = :request_number`,
+    // Connect to Oracle
+    connection = await oracledb.getConnection({
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONNECT_STRING,
+    });
+
+    // Start manual transaction
+    await connection.execute(`BEGIN NULL; END;`);
+
+    // 1️⃣ Delete existing records
+    await connection.execute(
+      `DELETE FROM MS_PROJ_COST_MONTHWISE_BUDGET WHERE REQUEST_NUMBER = :request_number`,
+      { request_number }
+    );
+
+    console.log(`Deleted existing records for request_number: ${request_number}`);
+
+    // 2️⃣ Insert new records (using executemany for performance)
+    const insertQuery = `
+      INSERT INTO MS_PROJ_COST_MONTHWISE_BUDGET 
+        (REQUEST_NUMBER, COST_CODE, BUDGET_YEAR, MONTH_BUDGET, REQUESTED_AMT, APPROVED_AMT, CREATED_AT, UPDATED_BY)
+      VALUES 
+        (:REQUEST_NUMBER, :COST_CODE, :BUDGET_YEAR, :MONTH_BUDGET, :REQUESTED_AMT, :APPROVED_AMT, SYSDATE, :UPDATED_BY)
+    `;
+
+    const binds = values.map((v) => ({
+      REQUEST_NUMBER: v.request_number,
+      COST_CODE: v.cost_code,
+      BUDGET_YEAR: v.budget_year,
+      MONTH_BUDGET: v.month_budget,
+      REQUESTED_AMT: v.requested_amt,
+      APPROVED_AMT: v.approved_amt || 0,
+      UPDATED_BY: v.updated_by,
+    }));
+
+    await connection.executeMany(insertQuery, binds, { autoCommit: false });
+
+    console.log("Inserted new budget cost records successfully.");
+
+    // 3️⃣ Call success message procedure
+    console.log("Calling PROC_LOADMESSAGEBOX success for user:", updated_by);
+
+    await connection.execute(
+      `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, ''); END;`,
       {
-        replacements: { request_number },
-        transaction,
-        type: QueryTypes.DELETE,
+        screen: "BudetAllocation",
+        type: "success",
+        document_number: "",
+        userId: updated_by,
       }
     );
-    // console.log(`Deleted existing records for cost_code: ${cost_code}`);
 
-    // Insert new records inside the same transaction using Promise.all
-    await Promise.all(
-      values.map((costBudget) => insertBudgetCost(costBudget, transaction))
-    );
+    // 4️⃣ Commit transaction
+    await connection.commit();
 
-    // Commit the transaction
-      // Send success response
-    // res.status(200).json({ message: "Records processed successfully" });
-     // Call success message procedure
-     console.log('before PROC_LOAD',updated_by);
-     await sequelize.query(
-      `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId,'')`,
-      {
-        replacements: {
-          screen: 'BudetAllocation',
-          type: 'success',
-          document_number: '', // empty string as in your original call
-          userId: updated_by, // pass this properly as a named replacement
-        },
-      }
-    );
-    await transaction.commit();
-
-  
-    res.status(constants1.STATUS_CODES.OK).json({
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Records " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
-     // Call success message procedure
-     await sequelize.query(`CALL PROC_LOADMESSAGEBOX(:screen, :type,'',user.loginid,"")`, {
-      replacements: { screen: 'BudetAllocation', type: 'error' },
-    });
-    // If there's an error, roll back the transaction
-    await transaction.rollback();
-    res.status(constants1.STATUS_CODES.NOT_FOUND).json({
+    console.error("❌ Error in handleInsertBudgetCosts:", error.message);
+
+    if (connection) {
+      try {
+        console.log("Calling PROC_LOADMESSAGEBOX error...");
+        await connection.execute(
+          `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, '', :userId, ''); END;`,
+          {
+            screen: "BudetAllocation",
+            type: "error",
+            userId: user?.loginid || "SYSTEM",
+          }
+        );
+        await connection.rollback();
+      } catch (rollbackErr) {
+        console.error("Rollback or message box failed:", rollbackErr);
+      }
+    }
+
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "UPDATE UNSUCCESSFULLLY",
+      error: error.message,
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing Oracle connection:", closeErr);
+      }
+    }
   }
 };
 
 //Save data to MS_PROJ_COST_MONTHWISE_BUDGET after user viewing data of excel and pressing save button
+
 export const saveexcelbudgetdata = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   const { request_number, data: transformedRows } = req.body;
 
-  // Check for missing or invalid data
-  if (!request_number || !transformedRows || transformedRows.length === 0) {
+  // Input validation
+  if (!request_number || !Array.isArray(transformedRows) || transformedRows.length === 0) {
     res.status(400).json({ success: false, message: "Invalid data" });
-    return; // Exit the function without returning a response object
+    return;
   }
-  console.log("log 1");
-  let transaction;
+
+  let connection: oracledb.Connection | undefined;
 
   try {
-    transaction = await sequelize.transaction(); // Start a transaction
+    console.log("log 1 - Connecting to Oracle");
 
-    // Query to get project_code and request_date based on the request_number
-    const ls_query = `SELECT project_code, request_date FROM PURCHASE_REQUEST_HEADER WHERE request_number = :request_number`;
-    console.log("log 2");
-    // Explicitly type the result as an array of objects with project_code and request_date
-    const headerResults = (await sequelize.query(ls_query, {
-      replacements: { request_number },
-      type: QueryTypes.SELECT,
-      transaction,
-    })) as { project_code: string; request_date: Date }[]; // Type assertion here
+    // Connect to Oracle
+    connection = await oracledb.getConnection({
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONNECT_STRING,
+    });
 
-    // Log the headerResults to verify the structure
-    console.log("headerResults:", headerResults);
+    // Start transaction
+    await connection.execute(`BEGIN NULL; END;`);
+    console.log("log 2 - Connection established, transaction started");
+
+    // Step 1️⃣: Fetch project_code and request_date
+    const headerQuery = `
+      SELECT PROJECT_CODE, REQUEST_DATE 
+      FROM PURCHASE_REQUEST_HEADER 
+      WHERE REQUEST_NUMBER = :request_number
+    `;
+
+    const headerResult = await connection.execute<{
+      PROJECT_CODE: string;
+      REQUEST_DATE: Date;
+    }>(headerQuery, { request_number }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+
+    console.log("headerResults:", headerResult.rows);
     console.log("log 3");
-    // Check if results exist and the first item contains project_code and request_date
-    if (
-      !headerResults ||
-      headerResults.length === 0 ||
-      !headerResults[0].project_code ||
-      !headerResults[0].request_date
-    ) {
+
+    if (!headerResult.rows || headerResult.rows.length === 0) {
       res.status(404).json({
         success: false,
         message: "Request not found or missing required data",
       });
       return;
     }
-    console.log("log 4");
-    // Destructure project_code and request_date from the first result
-    const { project_code, request_date } = headerResults[0];
+
+    const { PROJECT_CODE: project_code, REQUEST_DATE: request_date } =
+      headerResult.rows[0];
+
     console.log("Fetched project_code and request_date:", {
       project_code,
       request_date,
     });
-    console.log("log 5");
-    // Format the request_date as dd/mm/yyyy
+    console.log("log 4");
+
+    // Format request_date to dd/mm/yyyy
     const formattedRequestedDate = new Date(request_date);
     const dd = String(formattedRequestedDate.getDate()).padStart(2, "0");
     const mm = String(formattedRequestedDate.getMonth() + 1).padStart(2, "0");
     const yyyy = formattedRequestedDate.getFullYear();
     const formattedDate = `${dd}/${mm}/${yyyy}`;
-    await sequelize.query(
-      `DELETE FROM MS_PROJ_COST_MONTHWISE_BUDGET 
-       WHERE  request_number = :request_number`,
-      {
-        replacements: { request_number },
-        transaction,
-        type: QueryTypes.DELETE,
-      }
+
+    // Step 2️⃣: Delete existing rows for request_number
+    await connection.execute(
+      `DELETE FROM MS_PROJ_COST_MONTHWISE_BUDGET WHERE REQUEST_NUMBER = :request_number`,
+      { request_number }
     );
-    console.log("log 6");
-    // Loop through transformedRows to insert data into MS_PROJ_COST_MONTHWISE_BUDGET
-    for (const row of transformedRows) {
-      const {
-        budget_year,
-        company_code,
-        cost_code,
-        month_budget,
-        requested_amt,
-      } = row;
 
-      const monthDate = `${budget_year}-${
-        month_budget < 10 ? "0" : ""
-      }${month_budget}-01`; // Format the date
+    console.log("log 5 - Deleted existing budget rows for request:", request_number);
 
-      const insertQuery = `
-        INSERT INTO MS_PROJ_COST_MONTHWISE_BUDGET (
-          PROJECT_CODE, COST_CODE, COMPANY_CODE, MONTH_DATE, 
-          MONTH_BUDGET, BUDGET_YEAR, REQUEST_NUMBER, 
-          REQUESTED_AMT, APPROVED_AMT, REQUESTED_DATE
-        ) VALUES (
-          :project_code, :cost_code, :company_code, :monthDate,
-          :month_budget, :budget_year, :request_number,
-          :requested_amt, :approved_amt, :requested_date
-        )
-      `;
+    // Step 3️⃣: Insert new rows (use executemany for efficiency)
+    const insertQuery = `
+      INSERT INTO MS_PROJ_COST_MONTHWISE_BUDGET (
+        PROJECT_CODE, COST_CODE, COMPANY_CODE, MONTH_DATE,
+        MONTH_BUDGET, BUDGET_YEAR, REQUEST_NUMBER,
+        REQUESTED_AMT, APPROVED_AMT, REQUESTED_DATE
+      ) VALUES (
+        :PROJECT_CODE, :COST_CODE, :COMPANY_CODE, TO_DATE(:MONTH_DATE, 'YYYY-MM-DD'),
+        :MONTH_BUDGET, :BUDGET_YEAR, :REQUEST_NUMBER,
+        :REQUESTED_AMT, :APPROVED_AMT, TO_DATE(:REQUESTED_DATE, 'DD/MM/YYYY')
+      )
+    `;
 
-      await sequelize.query(insertQuery, {
-        replacements: {
-          project_code,
-          cost_code,
-          company_code,
-          monthDate,
-          month_budget,
-          budget_year,
-          request_number,
-          requested_amt,
-          approved_amt: requested_amt, // approved_amt is the same as requested_amt
-          requested_date: formattedDate, // Use the formatted date
-        },
-        type: QueryTypes.INSERT,
-        transaction, // Pass the transaction to ensure consistency
-      });
-    }
-    console.log("log 7");
-    await transaction.commit(); // Commit the transaction
+    const insertBinds = transformedRows.map((row: any) => {
+      const monthDate = `${row.budget_year}-${row.month_budget.toString().padStart(2, "0")}-01`;
+      return {
+        PROJECT_CODE: project_code,
+        COST_CODE: row.cost_code,
+        COMPANY_CODE: row.company_code,
+        MONTH_DATE: monthDate,
+        MONTH_BUDGET: row.month_budget,
+        BUDGET_YEAR: row.budget_year,
+        REQUEST_NUMBER: request_number,
+        REQUESTED_AMT: row.requested_amt,
+        APPROVED_AMT: row.requested_amt, // same as requested_amt
+        REQUESTED_DATE: formattedDate,
+      };
+    });
+
+    await connection.executeMany(insertQuery, insertBinds, { autoCommit: false });
+
+    console.log("log 6 - Inserted new Excel budget data");
+
+    // Step 4️⃣: Commit transaction
+    await connection.commit();
+
+    console.log("log 7 - Transaction committed successfully");
 
     res.json({
       success: true,
       message: `Excel Data for Request Number ${request_number} saved successfully!`,
     });
-  } catch (error) {
-    console.error("Error during transaction:", error);
-    if (transaction) await transaction.rollback(); // Rollback the transaction on error
+  } catch (error: any) {
+    console.error("❌ Error during Oracle transaction:", error);
+
+    if (connection) {
+      try {
+        await connection.rollback();
+        console.log("Transaction rolled back.");
+      } catch (rollbackError) {
+        console.error("Rollback failed:", rollbackError);
+      }
+    }
 
     res.status(500).json({
       success: false,
       message: "An error occurred while saving data.",
+      error: error.message,
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+        console.log("Oracle connection closed.");
+      } catch (closeErr) {
+        console.error("Error closing Oracle connection:", closeErr);
+      }
+    }
   }
 };
+
 
 // Checking Budget Status
 
@@ -548,11 +814,13 @@ export const CheckBudgetStatus = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  let connection: oracledb.Connection | undefined;
+
   try {
-    // Extract company_code and request_number from the request body
-    const { request_number, company_code } = req.body;
     console.log("inside CheckBudgetStatus1");
-    // Validate required parameters
+
+    const { request_number, company_code } = req.body;
+
     if (!company_code || !request_number) {
       res.status(400).json({
         success: false,
@@ -561,32 +829,58 @@ export const CheckBudgetStatus = async (
       return;
     }
 
-    // Query to call the MySQL function
-    const query = `SELECT FUN_CHECK_PR_EXCEED(:company_code, :request_number1) AS result;`;
-    let request_number1 = request_number.replace(/\//g, "$");
-    // Execute the function and get the result
-    const results: any = await sequelize.query(query, {
-      replacements: { company_code, request_number1 },
-      type: QueryTypes.SELECT,
+    const request_number1 = request_number.replace(/\//g, "$");
+
+    console.log("Calling Oracle function FUN_CHECK_PR_EXCEED with:", {
+      company_code,
+      request_number1,
     });
+
+    connection = await oracledb.getConnection({
+      user: process.env.ORACLE_USER,
+      password: process.env.ORACLE_PASSWORD,
+      connectString: process.env.ORACLE_CONNECT_STRING,
+    });
+
+    const query = `BEGIN :result := FUN_CHECK_PR_EXCEED(:company_code, :request_number1); END;`;
+
+    const binds = {
+      result: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+      company_code,
+      request_number1,
+    };
+
+    // 👇 Explicitly type the result to include your outBinds
+    const result = (await connection.execute(query, binds)) as unknown as {
+      outBinds: { result: string };
+    };
+
     console.log("inside CheckBudgetStatus2");
-    // Extract the function result
-    const resultString = results[0]?.result || "No result found";
+
+    const resultString = result.outBinds.result || "No result found";
+
     console.log("inside CheckBudgetStatus3", resultString);
-    // Send the result to the frontend
+
     res.status(200).json({
       success: true,
       result: resultString,
     });
   } catch (err: any) {
-    console.error("Error calling function:", err);
+    console.error("❌ Error calling Oracle function:", err);
 
-    // Handle errors
     res.status(500).json({
       success: false,
       message: "Failed to execute function",
       error: err.message || "Internal Server Error",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing Oracle connection:", closeErr);
+      }
+    }
   }
 };
 
