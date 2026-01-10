@@ -1,15 +1,15 @@
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-
 import { Response } from "express";
 import { PurchaseFlowMasterService } from "../../services/purchaseflow/PfMaster.service";
+import { ProjectMasterService } from "../../services/purchaseflow/project_master.service";
+import { getPoModifyRatechangeData } from "./getPoModifyRatechangeData ";
 import { DdcostmasterService } from "../../services/purchaseflow/ddcostmasterservice";
 import { DropdownProjectMasterService } from "../../services/purchaseflow/dropdwonprojectmaster.service";
-import { ProjectMasterService } from "../../services/purchaseflow/project_master.service";
+import { DduommasterService } from "../../services/purchaseflow/dduommaster.service";
 import { DdcurrencyService } from "../../services/purchaseflow/ddCurrency.service";
 import { DdProdmasterService } from "../../services/purchaseflow/ddprodmaster.service";
-import { DduommasterService } from "../../services/purchaseflow/dduommaster.service";
 import { DdEmployeeMasterService } from "../../services/purchaseflow/ddemployeemaster.service";
 import { getPoModifyData } from "../../services/purchaseflow/po_modify_close.service";
 import { getPoNotGenerated } from "../../services/purchaseflow/ponotgenerated.service";
@@ -20,10 +20,6 @@ import { getMyHistory } from "../../services/purchaseflow/My_History.service";
 import { getRequestRejectedData } from "../../services/purchaseflow/my_rejected.service";
 import { getMyClosedRequests } from "../../services/purchaseflow/MyItem_CloseRequest.service";
 import { getMyTaskData } from "../../services/purchaseflow/my_task.service";
-import { getPoModifyRatechangeData } from "./getPoModifyRatechangeData ";
-
-
-
 
 export const getPurchasefMaster = async (
   req: RequestWithUser,
@@ -63,6 +59,14 @@ export const getPurchasefMaster = async (
 
       case "matcat_master":
         result = await PurchaseFlowMasterService.getMaterialCategoryMaster(
+          requestUser.company_code,
+          page,
+          limit
+        );
+        break;
+
+      case "supplier_master":
+        result = await PurchaseFlowMasterService.getSupplierMaster (
           requestUser.company_code,
           page,
           limit
@@ -109,7 +113,6 @@ export const getPurchasefMaster = async (
         );
         break;
 
-
       case "dropdwonprojectmaster":
         result = await DropdownProjectMasterService.getDropdownProjectMaster(
           requestUser.company_code,
@@ -125,14 +128,14 @@ export const getPurchasefMaster = async (
           limit
         ); break;
 
-      case "projectmaster":
-        result = await ProjectMasterService.getRepository(
-          requestUser.company_code,
-          page,
-          limit                 
-        )
+      // case "projectmaster":
+      //   result = await ProjectMasterService.getRepository(
+      //     requestUser.company_code,
+      //     page,
+      //     limit                 
+      //   )
+      //   break;
 
-        break;
       case "ddcostmaster":
         result = await DdcostmasterService.getDdCostMaster(
           requestUser.company_code,
@@ -184,8 +187,8 @@ case "po_modify_rate_change":
     res.json({
       success: result1.success,
       data: {
-        tableData: result1.data || [],   // ✅ wrapped for frontend
-        count: result1.count || 0        // ✅ inside data object
+        tableData: result1.data || [],   
+        count: result1.count || 0       
       },
       message: result1.message || ""
     });
@@ -481,8 +484,6 @@ case "Request_Rejected":
     }
 
     break;
-
-
      
  case "my_task":
   console.log("inside my_task");
@@ -560,7 +561,52 @@ case "Request_Rejected":
     });
   }
 };
-// function getRequestRejectedData(company_code: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
-//   throw new Error("Function not implemented.");
-// }
+
+//-------------------------delete pf Master ---------------------
+export const deletepfMaster = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { master } = req.params;
+    const requestUser = req.user;
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "IDs (codes) are required for deletion",
+      });
+      return;
+    }
+
+    const isDeleted = await PurchaseFlowMasterService.deleteMasterRecords(
+      master,
+      requestUser.company_code,
+      ids
+    );
+
+    if (!isDeleted) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "No records were deleted",
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: `${master} records deleted successfully`,
+    });
+  } catch (error: any) {
+    console.error("Error in deletePfMaster:", error);
+
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
 

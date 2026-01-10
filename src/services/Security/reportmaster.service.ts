@@ -1,5 +1,6 @@
 import { getRepository } from "../../database/connection";
 import { ReportMaster } from "../../entity/Security/reportmaster.entity";
+import { FindOptionsWhere } from "typeorm";
 
 export class ReportMasterService {
   private static getReportMasterRepository() {
@@ -99,5 +100,25 @@ export class ReportMasterService {
     );
 
     return result.affected ? result.affected > 0 : false;
+  }
+
+  /**
+   * Find all reports with dynamic filtering and sorting
+   * @param where - TypeORM where conditions
+   * @param order - Optional sorting configuration
+   * @returns Array of ReportMaster entities and total count
+   */
+  static async findAllWithFilters(
+    where: FindOptionsWhere<ReportMaster>,
+    order?: { [key: string]: "ASC" | "DESC" }
+  ): Promise<{ data: ReportMaster[]; totalCount: number }> {
+    const repository = this.getReportMasterRepository();
+
+    const [data, totalCount] = await repository.findAndCount({
+      where,
+      ...(order && Object.keys(order).length > 0 && { order }),
+    });
+
+    return { data, totalCount };
   }
 }

@@ -6,14 +6,16 @@ import gmWmsRouter from "./wms/gm_wms.routes";
 import dashboardRouter from "./../routes/wms/dashboard_wms.routes";
 import jobInboundRouter from "./wms/transaction/inbound_wms.routes";
 import stocktransferWmsRouter from "./wms/transaction/stocktransfer_wms.routes";
+import stockAdjustmentRouter from "./StockAdjustment/stockAdjustment.routes";
+import commonRouter from "./../routes/wms/common.routes";
 //import jobOutboundRouter from "./wms/transaction/outbound_wms.routes";
 import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; // ✅ CORRECT
 import {
   getAllReports,
-  getAllOutboundReports,
-  getAllVendorReports,
-  getAllEmployeeReports,
-  getAllDynamicReports,
+  // getAllOutboundReports,
+  // getAllVendorReports,
+  // getAllEmployeeReports,
+  // getAllDynamicReports,
 } from "../controllers/wms/transaction/inbound/allReport_wms.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
@@ -30,36 +32,36 @@ router.get(
 );
 
 // Route to get all outbound reports
-router.get(
-  "/outbound-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllOutboundReports
-);
+// router.get(
+//   "/outbound-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllOutboundReports
+// );
 
 //route for vendor reports
-router.get(
-  "/vendor-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllVendorReports
-);
+// router.get(
+//   "/vendor-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllVendorReports
+// );
 
-//route for Employee reports
-router.get(
-  "/employee-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllEmployeeReports
-);
+// //route for Employee reports
+// router.get(
+//   "/employee-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllEmployeeReports
+// );
 
-//route for Dynamic reports
-router.get(
-  "/dynamic-reports",
-  passport.authenticate("jwt", { session: false }),
-  checkUserAuthorization,
-  getAllDynamicReports
-);
+// //route for Dynamic reports
+// router.get(
+//   "/dynamic-reports",
+//   passport.authenticate("jwt", { session: false }),
+//   checkUserAuthorization,
+//   getAllDynamicReports
+// );
 
 // Route for outbound operations
 router.use(
@@ -107,6 +109,21 @@ router.use(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   dashboardRouter
+);
+
+// Route for stock adjustment operations
+router.use(
+  "/stock-adjustment",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  stockAdjustmentRouter
+);
+
+router.use(
+  "/common",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  commonRouter
 );
 
 // Route to get WMS master data by parameter

@@ -74,7 +74,8 @@
 //   }
 
 export interface IToOrderEntry {
-  id: string;
+  //id: string;
+  manu_code?: string;
   company_code: string;
   prin_code: string;
   job_no: string;

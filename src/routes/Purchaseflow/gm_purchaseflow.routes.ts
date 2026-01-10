@@ -48,6 +48,8 @@ import { Fetchmessagebox } from "../../controllers/Purchaseflow/Fetchmessagebox.
 import { handleInsertBudgetCosts } from "../../controllers/Purchaseflow/handleInsertBudgetCosts";
 import {getBudgetRequest} from "../../controllers/Purchaseflow/getBudgetRequest"
 import { createOrUpdateBudgetRequestSequential } from "../../controllers/Purchaseflow/createOrUpdateBudgetRequestSequential";
+import { SupplierMasterController } from "../../controllers/Purchaseflow/pf_suppiler.controller";
+
 //import { createOrUpdatePurchaseRequestSequential } from "../../controllers/Purchaseflow/createOrUpdatePurchaseRequestSequential";
 // import {
 //   createcostmaster,
@@ -149,14 +151,14 @@ router.post("/proc_build_dynamic_sql", proc_build_dynamic_sql);
 // router.put("/projectmaster", updateprojectmaster);
 // router.delete("/projectmaster", deletepfMaster);
 
-// //-----Item Master---------------
+////-----Item Master---------------
 // router.post("/itemmaster", createitemmaster);
 // router.put("/itemmaster", updateitemmaster);
 
-// // ------------------Supplier Master ------------------
+// ------------------Supplier Master ------------------
 
-// router.post("/suppliermaster", createSupplier);
-// router.put("/suppliermaster", updateSupplier);
+router.post("/suppliermaster",SupplierMasterController.createSuppilerMaster);
+router.put("/suppliermaster",SupplierMasterController.updateSuppilerMaster);
 
 // //-----Purchase Request-----------
 router.get("/purchaseRequest/:request_number", getPurchaserequest);
@@ -197,15 +199,13 @@ router.get(
    checkUserAuthorization,
    getBudgetRequest as unknown as RequestHandler
  );
- router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
+router.get("/fetchRequestNoFromGTSession", fetchRequestNoFromGTSession);
 router.get("/fetchUserlevel", fetchUserlevel);
- router.get("/CheckCostcontroller", CheckCostcontroller);
+router.get("/CheckCostcontroller", CheckCostcontroller);
 router.get("/Fetchmessagebox", Fetchmessagebox);
 router.get("/FetchGenPOString", FetchGenPOString);
 
 router.post("/budgetrequest/cost", handleInsertBudgetCosts);
-
-
 router.post("/purchaserequest", createOrUpdatePurchaseRequestSequential);
 // router.post("/materialrequest", createOrUpdateMaterialRequestSequential);
  router.post("/budgetrequest", createOrUpdateBudgetRequestSequential);

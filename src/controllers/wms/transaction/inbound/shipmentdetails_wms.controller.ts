@@ -4,56 +4,62 @@ import {
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
 import { IUser } from "../../../../interfaces/user.interface";
-//import { packingDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
 import { shipmentDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
 import constants from "../../../../helpers/constants";
-//import Product from "../../../../models/wms/product_wms.model";
-import { Op } from "sequelize";
-//import Country from "../../../../models/wms/warehouse_wms.model";
-//import PackingDetailsInboundWms from "../../../../models/wms/transaction/inbound/packingDetails_wms.model";
-import ShipmentDetailsInboundWms from "../../../../models/wms/transaction/inbound/shipmantDetails_wms.model";
-//import { IPackingDetails } from "../../../../interfaces/wms/transaction/inbound/packingDetails_wms.interface";
 import { IShipmentDetails } from "../../../../interfaces/wms/transaction/inbound/shipmentDetails_wms.interface";
 import * as fastCsv from "fast-csv";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
+import { ShipmentDetailsService } from "../../../../services/WMS/transaction/inbound/shipmentDetails.service";
+import { AppDataSource } from "../../../../database/connection"; 
 
-export const getShipmentDetail = async (
+const shipmentService = new ShipmentDetailsService(AppDataSource);
+
+export const getAllShipmentDetails = async (
   req: RequestWithUser,
   res: Response
 ) => {
   try {
-    const { prin_code, job_no } = req.query;
+    const { code, code2, page = 1, limit = 100 } = req.query;
+    const requestUser: IUser = req.user;
 
-    const shipmentDetails = await ShipmentDetailsInboundWms.findOne({
-      where: {
-        prin_code,
-        job_no,
-        company_code: req.user.company_code,
-      },
-    });
+    // Parse filter from query
+    const filter: ISearch = req.query.filter
+      ? JSON.parse(req.query.filter as string)
+      : {};
 
-    if (!shipmentDetails) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "shipment Item " + constants.MESSAGES.DOES_NOT_EXISTS,
-      });
-      return;
+    // Prepare filters
+    const filters: any = {
+      company_code: requestUser.company_code,
+    };
+
+    // Map code to job_no and code2 to prin_code
+    if (code && code !== "undefined" && code !== "null") {
+      filters.job_no = code;
     }
-    // const productInfo = await Product.findOne({
-    //   where: {
-    //     prod_code: shipmentDetails.dataValues.prod_code,
-    //     company_code: req.user.company_code,
-    //   },
-    // });
+    if (code2 && code2 !== "undefined" && code2 !== "null") {
+      filters.prin_code = code2;
+    }
+
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 100;
+
+    // Get sort from filter
+    const sort = filter?.sort;
+
+    const { data, total } = await shipmentService.findAllWithPagination(
+      filters,
+      pageNum,
+      limitNum,
+      sort
+    );
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: {
-        ...shipmentDetails.dataValues,
-        // prod_name: productInfo?.dataValues.prod_name,
-        // uom_count: productInfo?.dataValues.uom_count,
-        // uppp: productInfo?.dataValues.uppp,
-      },
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
     });
     return;
   } catch (error: unknown) {
@@ -63,6 +69,41 @@ export const getShipmentDetail = async (
       .json({ success: false, message: knownError.message });
   }
 };
+
+export const getShipmentDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { prin_code, job_no } = req.query;
+
+    const shipmentDetails = await shipmentService.findOne(
+      prin_code as string,
+      job_no as string,
+      req.user.company_code
+    );
+
+    if (!shipmentDetails) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "shipment Item " + constants.MESSAGES.DOES_NOT_EXISTS,
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: shipmentDetails,
+    });
+    return;
+  } catch (error: unknown) {
+    const knownError = error as { message: string };
+    res
+      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: knownError.message });
+  }
+};
+
 export const createShipmentItem = async (
   req: RequestWithUser,
   res: Response
@@ -81,53 +122,20 @@ export const createShipmentItem = async (
         .json({ success: false, message: error.message });
       return;
     }
-    // if (!!req.body.prod_code) {
-    //   const productResponse = await Product.findOne({
-    //     where: {
-    //       [Op.and]: [
-    //         { company_code: requestUser.company_code },
-    //         { prod_code: req.body.prod_code },
-    //       ],
-    //     },
-    //   });
-    //   if (!productResponse) {
-    //     res.status(constants.STATUS_CODES.NOT_FOUND).json({
-    //       success: false,
-    //       message: "Product " + constants.MESSAGES.NOT_FOUND,
-    //     });
-    //     return;
-    //   }
-    // }
-    // if (!!req.body.country_code) {
-    //   const countryResponse = await Country.findOne({
-    //     where: {
-    //       [Op.and]: [
-    //         { company_code: requestUser.company_code },
-    //         { country_code: req.body.country_code },
-    //       ],
-    //     },
-    //   });
-    //   if (!countryResponse) {
-    //     res.status(constants.STATUS_CODES.NOT_FOUND).json({
-    //       success: false,
-    //       message: "Country " + constants.MESSAGES.NOT_FOUND,
-    //     });
-    //     return;
-    //   }
-    // }
-    const response = await ShipmentDetailsInboundWms.create({
+
+    const response = await shipmentService.create({
       ...req.body,
-      //packdet_no: "",
       company_code: requestUser.company_code,
-      //created_by: requestUser.loginid,
-      //updated_by: requestUser.loginid,
+      user_id: requestUser.loginid,
     });
+
     if (!response) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: response });
+        .json({ success: false, message: "Failed to create shipment" });
       return;
     }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Shipment Details " + constants.MESSAGES.CREATED_SUCCESSFULLY,
@@ -147,9 +155,6 @@ export const updateShipmentItem = async (
 ) => {
   try {
     const requestUser: IUser = req.user;
-
-    console.log(requestUser);
-
     const { container_no, prin_code, job_no } = req.query;
 
     const { error } = shipmentDetailsSchema(
@@ -163,18 +168,12 @@ export const updateShipmentItem = async (
         .json({ success: false, message: error.message });
       return;
     }
-    //const { country_code, company_code } = req.body;
 
-    const shipmentResponse = await ShipmentDetailsInboundWms.findOne({
-      where: {
-        [Op.and]: [
-          { company_code: requestUser.company_code },
-          { container_no },
-          { prin_code },
-          { job_no },
-        ],
-      },
-    });
+    const shipmentResponse = await shipmentService.findOne(
+      prin_code as string,
+      job_no as string,
+      requestUser.company_code
+    );
 
     if (!shipmentResponse) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -183,29 +182,25 @@ export const updateShipmentItem = async (
       });
       return;
     }
-    const response = await ShipmentDetailsInboundWms.update(
+
+    const updated = await shipmentService.update(
+      prin_code as string,
+      job_no as string,
+      container_no as string,
+      requestUser.company_code,
       {
-        //company_code,
         ...req.body,
-        updated_by: requestUser.loginid,
-      },
-      {
-        where: {
-          [Op.and]: [
-            { company_code: requestUser.company_code },
-            { container_no },
-            { prin_code },
-            { job_no },
-          ],
-        },
+        user_id: requestUser.loginid,
       }
     );
-    if (!response) {
+
+    if (!updated) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: response });
+        .json({ success: false, message: "Update failed" });
       return;
     }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.UPDATED_SUCCESSFULLY,
@@ -226,6 +221,7 @@ export const deleteShipmentItem = async (
   try {
     const { shipment_details } = req.body;
     const requestUser = req.user;
+
     if (shipment_details.length === 0) {
       return res.status(400).json({
         success: false,
@@ -242,14 +238,12 @@ export const deleteShipmentItem = async (
         }) => {
           const { prin_code, job_no, container_no } = shipmentDetail;
 
-          return await ShipmentDetailsInboundWms.destroy({
-            where: {
-              prin_code,
-              job_no,
-              container_no,
-              company_code: requestUser.company_code,
-            },
-          });
+          return await shipmentService.delete(
+            prin_code,
+            job_no,
+            container_no,
+            requestUser.company_code
+          );
         }
       )
     );
@@ -265,6 +259,7 @@ export const deleteShipmentItem = async (
     return;
   }
 };
+
 export const createBulkShipmentDetails = async (
   req: RequestWithUser,
   res: Response
@@ -283,13 +278,14 @@ export const createBulkShipmentDetails = async (
         .json({ success: false, message: error.message });
       return;
     }
-    req.body = req.body.map((shipmentDetail: IShipmentDetails) => ({
+
+    const shipmentData = req.body.map((shipmentDetail: IShipmentDetails) => ({
       ...shipmentDetail,
-      updated_by: requestUser.loginid,
-      created_by: requestUser.loginid,
+      company_code: requestUser.company_code,
+      user_id: requestUser.loginid,
     }));
 
-    ShipmentDetailsInboundWms.bulkCreate(req.body, { ignoreDuplicates: true });
+    await shipmentService.bulkCreate(shipmentData);
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -303,6 +299,7 @@ export const createBulkShipmentDetails = async (
     return;
   }
 };
+
 export const exportShipmentDetails = async (
   req: RequestWithUser,
   res: Response
@@ -315,44 +312,33 @@ export const exportShipmentDetails = async (
     let fetchedData: any[] = [];
 
     const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
+      ? JSON.parse(req.query.filter as string)
       : {};
 
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [{ company_code: req.user.company_code }],
-      };
+    const searchFilter = filter.search || null;
+    fetchedData = await shipmentService.findAll(
+      req.user.company_code,
+      searchFilter
+    );
 
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
-      filter: filter.search,
-      outsideQuery,
-    });
-    fetchedData = await ShipmentDetailsInboundWms.findAll({
-      where: outsideQuery,
-    });
     csvTransform = fastCsv.format({
       headers: WmsCsvHeaders.TANSACTION.INBOUND.SHIPMENT_DETAIL,
     });
 
-    // Set headers for CSV response before streaming
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="shipment_details.csv"`
     );
 
-    // Write data to the CSV stream
     fetchedData.forEach((eachData) => {
-      const plainData = eachData.get({ plain: true });
-      csvTransform.write(plainData); // Write each row to the CSV stream
+      csvTransform.write(eachData);
     });
 
-    // End the CSV stream and pipe it to the response
-    csvTransform.end(); // Complete the CSV data transformation
-    csvTransform.pipe(res); // Pipe CSV data into the HTTP response
+    csvTransform.end();
+    csvTransform.pipe(res);
   } catch (error: any) {
-    console.error("Export Error:", error); // Log the error for debugging
+    console.error("Export Error:", error);
     res.status(400).json({ success: false, message: error.message });
   }
 };

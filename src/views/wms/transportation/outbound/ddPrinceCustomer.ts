@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { sequelize } from "../../../../database/connection";
-
-import { QueryTypes } from "sequelize";
+import { oracleDb } from "../../../../database/connection";
 import constants from "../../../../helpers/constants";
 import { IUser } from "../../../../interfaces/user.interface"
 import { ISearch, RequestWithUser } from "../../../../interfaces/common.interface";
@@ -22,19 +20,22 @@ export const getddPrinceCustomer = async (
       return;
     }
 
-    const locationData = await sequelize.query(
+    const result = await oracleDb.query(
       `
       SELECT
         *
       FROM VW_MS_CUSTOMER
-      WHERE company_code = :company_code AND prin_code = :prin_code
-      LIMIT 0, 5000
+      WHERE company_code = :company_code 
+        AND prin_code = :prin_code
+        AND ROWNUM <= 5000
       `,
       {
-        replacements: { company_code, prin_code },
-        type: QueryTypes.SELECT,
+        company_code,
+        prin_code
       }
     );
+
+    const locationData = result.rows || [];
 
     res.status(200).json({
       success: true,
@@ -45,5 +46,3 @@ export const getddPrinceCustomer = async (
     next(error);
   }
 };
-
-

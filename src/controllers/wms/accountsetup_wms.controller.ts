@@ -1,11 +1,9 @@
 import { Response } from "express";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import Accountsetup from "../../models/wms/accountsetup_wms.model";
-
 import { accountsetupSchema } from "../../validation/wms/gm.validation";
+import { AcSetupService } from "../../services/WMS/acsetup.service";
 
 export const createAccountsetup = async (
   req: RequestWithUser,
@@ -21,46 +19,58 @@ export const createAccountsetup = async (
         .json({ success: false, message: error.message });
       return;
     }
-    const { ac_code, company_code } = req.body;
+    // Map snake_case fields to camelCase for TypeORM, filter allowed fields
+    const allowedFields = [
+      "companyCode", "pdcReceiptCode", "pdcIssueCode", "docDateEditable", "acCode", "bankName", "acName", "swiftCode",
+      "baseCurrCode", "priceDecimalNos", "amountDecimalNos", "lcurDecimalNos", "qtyDecimalNos", "financialYrStart",
+      "financialYrEnd", "docEditFrom", "docEditTo", "jobClass", "exchangeDiffAc", "principalAcGroup", "expsubtypeAccident",
+      "expsubtypeFine", "expsubtypeFuel", "expsubtypeIns", "expsubtypeReg", "expsubtypeRepair", "expsubtypeService",
+      "supplierAcGroup", "expcodeVehicle", "age1", "age2", "age3", "age4", "age5", "docnoType", "intercompanyAcGroup",
+      "multyDivAccounting", "billSettleLcur", "defaultTaxBstype", "age6", "taxPerc"
+    ];
 
-    const accountsetup = await Accountsetup.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { ac_code: ac_code }],
-      },
+    const mappedBody = Object.entries(req.body).reduce((acc: any, [key, value]) => {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      if (allowedFields.includes(camelKey)) {
+        acc[camelKey] = value;
+      }
+      return acc;
+    }, {});
+
+    // Always normalize codes and set createdBy - use uppercase for Oracle
+    mappedBody.companyCode = req.body.company_code?.trim().toUpperCase();
+    mappedBody.acCode = req.body.ac_code?.trim().toUpperCase();
+    mappedBody.createdBy = requestUser.loginid;
+
+    console.log('Controller - Creating with:', { 
+      companyCode: mappedBody.companyCode, 
+      acCode: mappedBody.acCode 
     });
 
-    if (accountsetup) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: constants.MESSAGES.AC_SETUP_WMS.AC_SETUP_ALREADY_EXISTS,
-      });
-      return;
-    }
-    const createAccountsetup = await Accountsetup.create({
-      company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
+    // Try to create; service will check for existence
+    const createAccountsetup = await AcSetupService.createAcSetup(mappedBody);
 
-      ...req.body,
-    });
     if (!createAccountsetup) {
       res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
+        .status(constants.STATUS_CODES.CONFLICT)
+        .json({ success: false, message: "Account setup already exists for this company and account code." });
       return;
     }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.AC_SETUP_WMS.AC_SETUP_CREATED_SUCCESSFULLY,
     });
     return;
   } catch (error: any) {
+    console.error("Error in createAccountsetup:", error); // Add error logging
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
+      .json({ success: false, message: error.message || "Error while creating company" });
     return;
   }
 };
+
 export const updateAccountsetup = async (
   req: RequestWithUser,
   res: Response
@@ -77,38 +87,45 @@ export const updateAccountsetup = async (
     }
     const { ac_code, company_code } = req.body;
 
-    const accountsetup = await Accountsetup.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { ac_code: ac_code }],
-      },
-    });
+    // Normalize codes to avoid whitespace/case issues - use uppercase for Oracle
+    const acCodeNormalized = ac_code?.trim().toUpperCase();
+    const companyCodeNormalized = company_code?.trim().toUpperCase();
 
-    if (!accountsetup) {
+    const accountsetupExists = await AcSetupService.checkAcSetupExists(companyCodeNormalized, acCodeNormalized);
+
+    if (!accountsetupExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.AC_SETUP_WMS.AC_SETUP_DOES_NOT_EXISTS,
       });
       return;
     }
-    const createAccountsetup = await Accountsetup.update(
-      {
-        company_code,
-        updated_by: requestUser.loginid,
-
-        ...req.body,
-      },
-      {
-        where: {
-          [Op.and]: [{ company_code: company_code }, { ac_code: ac_code }],
-        },
-      }
-    );
-    if (!createAccountsetup) {
+    
+    // Map snake_case fields to camelCase for TypeORM
+    const updateData = {
+      acCode: acCodeNormalized,
+      updatedBy: requestUser.loginid,
+      updatedAt: new Date(),
+      // Map other fields as needed
+      ...Object.entries(req.body).reduce((acc: any, [key, value]) => {
+        // Convert snake_case to camelCase
+        const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+        if (key !== 'company_code' && key !== 'ac_code') {
+          acc[camelKey] = value;
+        }
+        return acc;
+      }, {})
+    };
+    
+    const updateSuccess = await AcSetupService.updateAcSetup(companyCodeNormalized, acCodeNormalized, updateData);
+    
+    if (!updateSuccess) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: "Error while updating company" });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.AC_SETUP_WMS.AC_SETUP_UPDATED_SUCCESSFULLY,
@@ -121,6 +138,7 @@ export const updateAccountsetup = async (
     return;
   }
 };
+
 export const deleteAccountsetupes = async (
   req: RequestWithUser,
   res: Response
@@ -135,18 +153,23 @@ export const deleteAccountsetupes = async (
       });
       return;
     }
-    const accountsetupesDeleteResponse = await Accountsetup.destroy({
-      where: {
-        ac_code: accountsetupesCode,
-      },
-    });
-    if (accountsetupesDeleteResponse === 0) {
+    
+    // Expecting array of { company_code, ac_code }
+    const deleteSuccess = await AcSetupService.deleteMultipleAcSetups(
+      accountsetupesCode.map((item: any) => ({
+        companyCode: item.company_code,
+        acCode: item.ac_code
+      }))
+    );
+    
+    if (!deleteSuccess) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: accountsetupesDeleteResponse,
+        message: "Failed to delete account setups",
       });
       return;
     }
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.AC_SETUP_WMS.AC_SETUP_DELETED_SUCCESSFULLY,
