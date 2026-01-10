@@ -12,6 +12,7 @@ export enum AttendanceEventType {
 export enum DataTransferFlag {
   Y = "Y",
   N = "N",
+  C = "C",
 }
 
 export enum AttendanceStatus {

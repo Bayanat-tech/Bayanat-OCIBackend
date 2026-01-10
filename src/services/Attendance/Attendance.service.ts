@@ -80,6 +80,26 @@ export class AttendanceService {
       throw new Error("Employee not found");
     }
 
+    // 🆕 CHECK FOR EXISTING PENDING RECORDS
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const existingEvent = await AppDataSource.getRepository(AttendanceEvent).findOne({
+      where: { 
+        employee_id: employeeId, 
+        event_type: action === "check-in" ? AttendanceEventType.CHECK_IN : AttendanceEventType.CHECK_OUT,
+        status: AttendanceStatus.PENDING,
+        event_time: Between(today, new Date(today.getTime() + 86400000))
+      }
+    });
+
+    if (existingEvent) {
+      logger.info(`⚠️ Pending record exists for employee ${employeeId} for ${action}, cancelling old one`);
+      // Cancel the old pending record
+      if (existingEvent.uuid) {
+        this.stopAutoConfirm(existingEvent.uuid);
+      }
+    }
+
     const firstName = this.getFirstName(employee.full_name);
     const pendingData = {
       uuid,
@@ -303,38 +323,43 @@ export class AttendanceService {
  static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Promise<any> {
   const startTime = Date.now();
   
+  logger.info(`[SERVICE-CONFIRM] Starting confirmation for UUID: ${uuid}, confirmedBy: ${confirmedBy}`);
+  
   if (!await this.acquireRequestSlot()) {
     throw new Error("System busy. Please try again.");
   }
 
   try {
     if (this.isAutoConfirmCancelled(uuid) || await this.isCancelledInDatabase(uuid)) {
+      logger.warn(`[SERVICE-CONFIRM] UUID ${uuid} has been cancelled`);
       throw new Error("Attendance has been cancelled");
     }
 
     const pendingData = this.pendingConfirmations.get(uuid);
     if (pendingData) {
       if (pendingData.is_cancelled) {
+        logger.warn(`[SERVICE-CONFIRM] UUID ${uuid} is marked as cancelled in memory`);
         throw new Error("Attendance has been cancelled");
       }
       
+      logger.info(`[SERVICE-CONFIRM] Found pending data for UUID: ${uuid}, saving confirmation`);
       this.pendingConfirmations.delete(uuid);
       const result = await this.saveConfirmedAttendance(pendingData, confirmedBy);
-      logger.info(`Attendance confirmed from memory in ${Date.now() - startTime}ms`);
+      const duration = Date.now() - startTime;
+      logger.info(`✅ [SERVICE-CONFIRM] Confirmed from memory in ${duration}ms for UUID: ${uuid}`);
+      logger.info(`[SERVICE-CONFIRM] Returning result with event status:`, { found: true, alreadyProcessed: false });
       return result;
     }
 
-    const databasePromise = this.confirmAttendanceFromDatabase(uuid, confirmedBy);
-    const timeoutPromise = new Promise<any>((_, reject) => 
-      setTimeout(() => reject(new Error('Confirmation timeout - system busy')), 5000) 
-    );
-
-    const result = await Promise.race([databasePromise, timeoutPromise]);
-    logger.info(` Attendance confirmed from DB in ${Date.now() - startTime}ms`);
+    logger.info(`[SERVICE-CONFIRM] Pending data not found, checking database for UUID: ${uuid}`);
+    const result = await this.confirmAttendanceFromDatabase(uuid, confirmedBy);
+    const duration = Date.now() - startTime;
+    logger.info(`✅ [SERVICE-CONFIRM] Confirmed from DB in ${duration}ms for UUID: ${uuid}`);
+    logger.info(`[SERVICE-CONFIRM] Returning DB result:`, { found: result.found, alreadyProcessed: result.alreadyProcessed });
     return result;
 
   } catch (error) {
-    logger.error('Confirmation failed:', error);
+    logger.error('❌ [SERVICE-CONFIRM] Confirmation failed for UUID: ' + uuid, error);
     throw error;
   } finally {
     this.releaseRequestSlot();
@@ -343,8 +368,6 @@ export class AttendanceService {
 
   private static async confirmAttendanceFromDatabase(uuid: string, confirmedBy: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
-    const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
-    const attendanceRecord = AppDataSource.getRepository(AttendanceRecord);
 
     try {
       await transaction.connect();
@@ -375,11 +398,16 @@ export class AttendanceService {
       today.setHours(0, 0, 0, 0);
       const now = new Date();
 
-      let record = await attendanceRecord.findOne({
+      // 🆕 USE TRANSACTION MANAGER FOR ALL OPERATIONS
+      const attendanceRecordRepo = transaction.manager.getRepository(AttendanceRecord);
+      const attendanceEventRepo = transaction.manager.getRepository(AttendanceEvent);
+
+      let record = await attendanceRecordRepo.findOne({
         where: { employee_id: event.employee_id, record_date: today }
       });
+      
       if (!record) {
-        record = attendanceRecord.create({
+        record = attendanceRecordRepo.create({
           id: uuidv4(),
           employee_id: event.employee_id,
           employee_code: event.employee_code,
@@ -391,7 +419,7 @@ export class AttendanceService {
           check_out: event.event_type === AttendanceEventType.CHECK_OUT ? event.event_time : null,
           total_hours: 0,
         });
-        await attendanceRecord.save(record);
+        await attendanceRecordRepo.save(record);
       }
       
       if (event.event_type === AttendanceEventType.CHECK_IN) {
@@ -402,7 +430,7 @@ export class AttendanceService {
         if (!record.first_check_in || event.event_time < record.first_check_in) {
           updates.first_check_in = event.event_time;
         }
-        await attendanceRecord.update(
+        await attendanceRecordRepo.update(
             { id: record.id },
              updates
         );
@@ -416,10 +444,10 @@ export class AttendanceService {
           const minutes = differenceInMinutes(event.event_time, record.first_check_in);
           updates.total_hours = Number((minutes / 60).toFixed(2));
         }
-        await attendanceRecord.update( { id: record.id }, updates);
+        await attendanceRecordRepo.update( { id: record.id }, updates);
       }
 
-      await attendanceEvent.update({ uuid }, {
+      await attendanceEventRepo.update({ id: event.id }, {
         status: AttendanceStatus.CONFIRMED,
         confirmed_by: confirmedBy,
         confirmed_at: now,
@@ -427,11 +455,18 @@ export class AttendanceService {
       });
 
       await transaction.commitTransaction();
+      logger.info(`✅ Attendance confirmed: ${uuid}`);
       return { found: true, alreadyProcessed: false, event, record };
     } catch (error) {
-      await transaction.rollbackTransaction();
+      try {
+        await transaction.rollbackTransaction();
+      } catch (rollbackError) {
+        logger.error('Rollback failed:', rollbackError);
+      }
       logger.error(`Failed to confirm attendance ${uuid}:`, error);
       throw error;
+    } finally {
+      await transaction.release();
     }
   }
   
@@ -500,6 +535,11 @@ export class AttendanceService {
   
   const wasPending = this.pendingConfirmations.has(uuid);
   this.cancelledConfirmations.add(uuid);
+  
+  // 🆕 Non-blocking background mark as cancelled (like old code)
+  this.markAsCancelledInDatabase(uuid).catch(err => 
+    logger.error('Failed to mark as cancelled in DB (background):', err)
+  );
   
   logger.info(`Auto-confirm stopped for UUID: ${uuid}, was pending: ${wasPending}`);
   return wasPending;
@@ -608,10 +648,10 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         employee_id: data.employee_id,
         employee_code: data.employee_code,
         record_date: today,
-        first_check_in: data.action === "check_in" ? data.timestamp : null,
-        check_in: data.action === "check_in" ? data.timestamp : null,
+        first_check_in: data.action === "check-in" ? data.timestamp : null,
+        check_in: data.action === "check-in" ? data.timestamp : null,
         status: "present",
-        last_check_out: data.action === "check_out" ? data.timestamp : null,
+        last_check_out: data.action === "check-out" ? data.timestamp : null,
         check_out: data.action === "check-out" ? data.timestamp : null,
         total_hours: 0,
       });
@@ -632,8 +672,8 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       if (!record.last_check_out || data.timestamp > record.last_check_out) {
         updates.last_check_out = data.timestamp;
       }
-      if (record.first_check_in && record.last_check_out) {
-        const minutes = differenceInMinutes(record.last_check_out, record.first_check_in);
+      if (record.first_check_in && data.timestamp) {
+        const minutes = differenceInMinutes(data.timestamp, record.first_check_in);
         updates.total_hours = Number((minutes / 60).toFixed(2));
       }
       await attendanceRecord.update({ id: record.id }, updates);
@@ -757,7 +797,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         actual_employee_name: actualEmployeeName,
         confidence: data.confidence,
         s3_image_url: data.s3_image_url,
-        location_data: data.location_data,
+        location_data: data.location_data ? JSON.stringify(data.location_data) : null,
         action: data.action === "check-in" ? "check_in" : "check_out",
         action_taken: 'cancelled_by_user',
         device_type: 'web',
@@ -864,7 +904,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         actual_employee_name: actualEmployeeName,
         confidence: event.confidence ?? 0,
         s3_image_url: event.s3_image_url ?? null,
-        location_data: event.location_data,
+        location_data: event.location_data ? JSON.stringify(event.location_data) : null,
         action: event.event_type,
         action_taken: 'attempted_cancellation_after_confirmation',
         device_type: 'web',
@@ -912,6 +952,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       event.confirmed_by = 'cancelled_by_user';
       event.confirmed_at = new Date();
       event.cancellation_reason = reason;
+      event.data_transfer = DataTransferFlag.C;
     await transaction.manager.getRepository(AttendanceEvent).save(event);
 
     let s3ImageUrl = event.s3_image_url;
@@ -935,7 +976,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       actual_employee_name: actualEmployeeName,
       confidence: event.confidence ?? 0,
       s3_image_url: s3ImageUrl, 
-      location_data: event.location_data,
+      location_data: event.location_data ? JSON.stringify(event.location_data) : null,
       action: event.event_type,
       action_taken: 'cancelled_by_user',
       device_type: 'web',
@@ -966,17 +1007,14 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     };
 
   } catch (error: any) {
-    // 🆕 SAFE TRANSACTION CLEANUP
     if (transaction?.isTransactionActive) {
       try {
-        // Attempt rollback; if the transaction is already committed/rolled back this may throw and will be caught
         await transaction.rollbackTransaction();
       } catch (rollbackErrorTransaction) {
         logger.error('Cancellation transaction rollback failed (or transaction already finalized):', rollbackErrorTransaction);
       }
     }
     
-    // 🆕 SPECIFIC ERROR HANDLING FOR LOCK ISSUES
     if (error?.name === 'SequelizeTimeoutError') {
       logger.warn(`[CANCEL] Transaction timeout for UUID: ${uuid} - auto-confirm in progress`);
       throw new Error("System is processing this attendance. Please try again in a moment.");
@@ -1272,9 +1310,13 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     try {
       const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
       const result = await attendanceEvent.update(
-        { uuid },
+        { 
+          uuid,
+          status: AttendanceStatus.PENDING  
+        },
         { 
          status: AttendanceStatus.CANCELLED,
+         data_transfer: DataTransferFlag.C,  
          confirmed_by: 'cancelled_by_user',
          confirmed_at: new Date(),
          cancellation_reason: 'cancelled_by_user'
@@ -1282,7 +1324,9 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
       );
       
       if (result.affected && result.affected > 0) {
-        logger.info(`✅ Marked as cancelled in database: ${uuid}`);
+        logger.info(`✅ Marked as cancelled in database: ${uuid}, data_transfer set to 'C'`);
+      } else {
+        logger.info(`[CANCEL-DB] Update skipped for ${uuid} - status already changed (likely confirmed)`);
       }
     } catch (error) {
       logger.error('Failed to mark as cancelled in database:', error);
@@ -1548,6 +1592,38 @@ This is an automated alert from the Smart Attendance System.
     logger.info(`Force cancelled ${cancelledCount} pending confirmations`);
     return cancelledCount;
   }
+
+  static async processStalePendingRecords(): Promise<void> {
+    try {
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      
+      const staleRecords = await AppDataSource.getRepository(AttendanceEvent).find({
+        where: {
+          status: AttendanceStatus.PENDING,
+          event_time: Between(new Date(0), twoHoursAgo)
+        }
+      });
+
+      if (staleRecords.length === 0) {
+        return;
+      }
+
+      logger.info(`🔄 Found ${staleRecords.length} stale pending records older than 2 hours`);
+
+      for (const record of staleRecords) {
+        try {
+          if (record.uuid) {
+            await this.autoConfirmFromMemory(record.uuid);
+            logger.info(`✅ Auto-confirmed stale pending record: ${record.uuid}`);
+          }
+        } catch (error) {
+          logger.error(`Failed to auto-confirm stale record ${record.uuid}:`, error);
+        }
+      }
+    } catch (error) {
+      logger.error('Error in processStalePendingRecords:', error);
+    }
+  }
 }
 
 AttendanceService.initializeFaceService().catch(err => {
@@ -1561,3 +1637,9 @@ setInterval(() => {
 setInterval(() => {
   AttendanceService.processAutoConfirm();
 }, 30000);
+
+setInterval(() => {
+  AttendanceService.processStalePendingRecords().catch(err => {
+    logger.error('Error processing stale pending records:', err);
+  });
+}, 10 * 60 * 1000); 

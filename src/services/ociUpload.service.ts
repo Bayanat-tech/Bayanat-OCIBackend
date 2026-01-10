@@ -160,15 +160,11 @@ export const uploadEmployeeFace = async (
   try {
     await s3Client.send(new PutObjectCommand(objectParams));
     const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
-    return response.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: URL,
-    });
+    logger.info(`📸 Employee face uploaded to S3: ${fileName}`);
+    return URL;
   } catch (error: any) {
-    return response.status(constants.STATUS_CODES.BAD_REQUEST).json({
-      success: false,
-      message: error.message,
-    });
+    logger.error(`❌ S3 upload failed for ${fileName}:`, error);
+    throw error;
   }
 };
 

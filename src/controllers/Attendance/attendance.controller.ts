@@ -133,28 +133,44 @@ export class AttendanceController {
     }
   }
 
-  // 🆕 CONFIRM ATTENDANCE
   static async confirmAttendance(req: Request, res: Response): Promise<void> {
     try {
       const { uuid, confirmed_by = 'user' } = req.body;
 
       if (!uuid) {
+        logger.error(`[CONFIRM-CTRL] Missing UUID in request`);
         res.status(400).json({ error: "UUID is required" });
         return;
       }
 
+      logger.info(`[CONFIRM-CTRL] Request received for UUID: ${uuid}, confirmed_by: ${confirmed_by}`);
+      const startTime = Date.now();
+      
       const result = await AttendanceService.confirmAttendance(uuid, confirmed_by);
-
-      res.status(200).json({
-        success: true,
-        message: "Attendance confirmed successfully",
-        data: result
+      const duration = Date.now() - startTime;
+      
+      logger.info(`[CONFIRM-CTRL] Service returned result in ${duration}ms:`, { 
+        found: result.found, 
+        alreadyProcessed: result.alreadyProcessed,
+        status: result.status 
       });
+
+      const responsePayload = {
+        success: true,
+        message: "✅ Attendance confirmed successfully",
+        data: result,
+        timestamp: new Date().toISOString()
+      };
+      
+      res.status(200).json(responsePayload);
+      
+      logger.info(`[CONFIRM-CTRL] ✅ Response sent to client for UUID: ${uuid}`);
 
     } catch (error: unknown) {
       logger.error("Attendance confirmation error", error);
       const message = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message });
+      logger.error(`[CONFIRM-CTRL] ❌ Error response sent for UUID`);
     }
   }
 
