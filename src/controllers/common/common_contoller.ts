@@ -33,6 +33,13 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
     connection = await oracledb.getConnection();
 
     // Call procedure to get dynamic SQL
+    console.log('parameter',parameter)
+        console.log('loginid',loginid)
+            console.log('code1',code1)
+                console.log('code2',code2)
+                    console.log('code3',code3)
+                        console.log('code4',code4)
+
     const result = await connection.execute(
       `
       DECLARE
@@ -45,6 +52,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
           :code2,
           :code3,
           :code4,
+          null,
           :number1,
           :number2,
           :number3,

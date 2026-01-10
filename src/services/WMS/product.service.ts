@@ -132,7 +132,7 @@ export class ProductService {
       console.error("Stack trace:", error.stack);
       throw error;
     }
-  }
+  } 
 
   static async getByCategoryOrGroup(
     groupCode: string | null,

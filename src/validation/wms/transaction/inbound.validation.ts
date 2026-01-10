@@ -151,6 +151,7 @@ export const tallyDetailsSchema = (
     shelf_life_days: Joi.number().allow(null),
     shelf_life_date: Joi.date().allow(null),
     gross_weight: Joi.number().allow(null),
+    prod_name: Joi.string().allow("").optional(),
   });
 
   const schema = Joi.array().items(baseSchema);
