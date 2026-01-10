@@ -29,6 +29,7 @@ import VendorRouter from "./src/routes/vendor.routes";
 import wmsRoutes from "./src/routes/wms.routes";
 import boldReportsRoutes from "./src/routes/boldreports.routes";
 import cfsRoutes from "./src/routes/SMS/sms.routes";
+import pamsRoutes from "./src/routes/pams.routes";
 
 import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
 import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
@@ -54,6 +55,7 @@ app.use("/api/notification", logRoutes);
 app.use("/api/vendor", VendorRouter);
 
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/pams/", pamsRoutes);
 app.use("/api/wms", wmsRoutes);
 
 app.get("/health", (req: Request, res: Response) => {
