@@ -1,278 +1,209 @@
-// Import required dependencies and interfaces
 import { Response } from "express";
 import * as fastCsv from "fast-csv";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import { ICountry } from "../../interfaces/wms/gm_wms.interface";
-import Country from "../../models/country_wms.model";
-import WmsCsvHeaders from "../../utils/exportCsv/WmsCsvHeaders";
 import { countrySchema } from "../../validation/wms/gm.validation";
 import { createLog, notifyUser } from "../../helpers/functions";
+import { CountryService } from "../../services/WMS/country.service";
+import WmsCsvHeaders from "../../utils/exportCsv/WmsCsvHeaders";
 
-// Controller to create a new country
+// Create a new country
 export const createCountry = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
-
-    // Validate request body against schema
     const { error } = countrySchema(req.body, requestUser.company_code, false);
     if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: error.message });
-      return;
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: error.message });
     }
 
-    const { country_code, company_code } = req.body;
+    const { country_code, country_name, company_code } = req.body;
 
-    // Check if country already exists
-    const country = await Country.findOne({
-      where: {
-        [Op.and]: [
-          { company_code: company_code },
-          { country_code: country_code },
-        ],
-      },
-    });
-
-    if (country) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    const existingCountry = await CountryService.findDuplicate({ country_code, country_name });
+    if (existingCountry) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.COUNTRY_WMS.COUNTRY_ALREADY_EXISTS,
       });
-      return;
     }
 
-    // Create new country record
-    const createCountry = await Country.create({
-      company_code,
+    const newCountry = await CountryService.createCountry({
+      ...req.body,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
-      ...req.body,
     });
 
-    if (!createCountry) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
-      return;
+    if (!newCountry) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Error while creating country",
+      });
     }
 
-    // Create audit log and notify user
-    await createLog({
-      event: constants.EVENTS.COUNTRY_CREATED,
-      request_user: requestUser,
-      module: constants.MODULE.WMS,
-      description: constants.MESSAGES.COUNTRY_WMS.COUNTRY_CREATED_SUCCESSFULLY,
-    });
-    await notifyUser({
-      event: constants.EVENTS.COUNTRY_CREATED,
-      request_user: requestUser,
-    });
+    // Wrap log/notification in try-catch so errors here don't affect main response
+    try {
+      await createLog({
+        event: constants.EVENTS.COUNTRY_CREATED,
+        request_user: requestUser,
+        module: constants.MODULE.WMS,
+        description: constants.MESSAGES.COUNTRY_WMS.COUNTRY_CREATED_SUCCESSFULLY,
+      });
 
-    res.status(constants.STATUS_CODES.OK).json({
+      await notifyUser({
+        event: constants.EVENTS.COUNTRY_CREATED,
+        request_user: requestUser,
+      });
+    } catch (logErr) {
+      console.error("Log/Notification error:", logErr);
+      // Do not throw, just log
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.COUNTRY_WMS.COUNTRY_CREATED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: "Error:" + error.message });
-    return;
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "Error: " + error.message });
   }
 };
 
-// Controller to update an existing country
+// Update an existing country
 export const updateCountry = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
-
-    // Validate request body
     const { error } = countrySchema(req.body, requestUser.company_code, false);
     if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: error.message });
-      return;
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: error.message });
     }
-    const { country_code, company_code } = req.body;
 
-    // Check if country exists
-    const country = await Country.findOne({
-      where: {
-        [Op.and]: [
-          { company_code: company_code },
-          { country_code: country_code },
-        ],
-      },
-    });
+    const { country_code, country_gcc, ...rest } = req.body;
+    const existingCountry = await CountryService.findByCode(country_code);
 
-    if (!country) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    if (!existingCountry) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.COUNTRY_WMS.COUNTRY_DOES_NOT_EXISTS,
       });
-      return;
     }
 
-    // Update country record
-    const createCountry = await Country.update(
-      {
-        company_code,
-        updated_by: requestUser.loginid,
-        ...req.body,
-      },
-      {
-        where: {
-          [Op.and]: [
-            { company_code: company_code },
-            { country_code: country_code },
-          ],
-        },
-      }
-    );
-    if (!createCountry) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating company" });
-      return;
+    const updateData = { 
+      ...rest,
+      country_GCC: country_gcc, // Normalize the field name
+      updated_by: requestUser.loginid 
+    };
+    const isUpdated = await CountryService.updateCountry(country_code, updateData);
+
+    if (!isUpdated) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Error while updating country",
+      });
     }
-    res.status(constants.STATUS_CODES.OK).json({
+
+    await createLog({
+      event: constants.EVENTS.COUNTRY_EDITED,
+      request_user: requestUser,
+      module: constants.MODULE.WMS,
+      description: constants.MESSAGES.COUNTRY_WMS.COUNTRY_UPDATED_SUCCESSFULLY,
+    });
+
+    await notifyUser({
+      event: constants.EVENTS.COUNTRY_EDITED,
+      request_user: requestUser,
+    });
+
+    return res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.COUNTRY_WMS.COUNTRY_UPDATED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "Error: " + error.message });
   }
 };
 
-// Controller to create multiple countries in bulk
-export const createBulkCountries = async (
-  req: RequestWithUser,
-  res: Response
-) => {
+// Bulk insert countries
+export const createBulkCountries = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
-
-    // Add user info to each country record
-    req.body = req.body.map((country: ICountry[]) => ({
-      ...country.reduce((acc: any, value: any, index: number) => {
-        acc[constants.CSVFIELDNAME.COUNTRY[index]] = value;
-        return acc;
-      }, {}),
-      updated_by: requestUser.loginid,
-      created_by: requestUser.loginid,
+    const countriesData = req.body.map((row: any[]) => ({
+      country_code: row[0],
+      country_name: row[1],
+      country_GCC: row[2],
+      short_desc: row[3],
+      nationality: row[4],
       company_code: requestUser.company_code,
+      created_by: requestUser.loginid,
+      updated_by: requestUser.loginid,
     }));
 
-    // Bulk create countries
-    Country.bulkCreate(req.body, { ignoreDuplicates: true });
+    for (const country of countriesData) {
+      const exists = await CountryService.findByCode(country.country_code);
+      if (!exists) {
+        await CountryService.createCountry(country);
+      }
+    }
 
-    res.status(constants.STATUS_CODES.OK).json({
+    return res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Country " + constants.MESSAGES.IMPORTED_SUCCESSFULLY,
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: error.message });
   }
 };
 
-// Controller to export countries to CSV
+// Export countries to CSV
 export const exportCountry = async (req: RequestWithUser, res: Response) => {
   try {
-    let fetchedData: any[] = [],
-      csvTransform: fastCsv.CsvFormatterStream<
-        fastCsv.FormatterRow,
-        fastCsv.FormatterRow
-      >;
+    const fetchedData = await CountryService.findAll();
+    const filteredData = fetchedData.filter(c => c.company_code === req.user.company_code);
 
-    // Fetch all countries for company
-    fetchedData = await Country.findAll({
-      where: { company_code: req.user.company_code },
-    });
-    csvTransform = fastCsv.format({
-      headers: WmsCsvHeaders.MASTER.COUNTRY,
-    });
-
-    // Set headers for CSV response before streaming
+    const csvTransform = fastCsv.format({ headers: WmsCsvHeaders.MASTER.COUNTRY });
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="country.csv"`);
+    csvTransform.pipe(res);
 
-    // Write data to the CSV stream
-    fetchedData.forEach((eachData) => {
-      const plainData = eachData.get({ plain: true });
-      csvTransform.write(plainData); // Write each row to the CSV stream
-    });
-
-    // End the CSV stream and pipe it to the response
-    csvTransform.end(); // Complete the CSV data transformation
-    csvTransform.pipe(res); // Pipe CSV data into the HTTP response
+    filteredData.forEach(country => csvTransform.write(country));
+    csvTransform.end();
   } catch (error: any) {
-    console.error("Export Error:", error); // Log the error for debugging
+    console.error("Export Error:", error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Controller to delete multiple countries
+// Delete multiple countries
 export const deleteCountries = async (req: RequestWithUser, res: Response) => {
   try {
-    const countriesCode = req.body;
-    const requestUser = req.user;
-
-    // Validate request
-    if (!req.body.length) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    const countriesCode: string[] = req.body;
+    if (!countriesCode || !countriesCode.length) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.COUNTRY_WMS.SELECT_AT_LEAST_ONE_COUNTRY,
       });
-      return;
     }
 
-    // Update last modifier before deletion
-    await Country.update(
-      {
-        updated_by: requestUser.loginid,
-      },
-      {
-        where: {
-          country_code: countriesCode,
-        },
+    let deletedCount = 0;
+    for (const code of countriesCode) {
+      const exists = await CountryService.findByCode(code);
+      if (exists) {
+        await CountryService.deleteCountry(code);
+        deletedCount++;
       }
-    );
-
-    // Delete countries
-    const countriesDeleteResponse = await Country.destroy({
-      where: {
-        country_code: countriesCode,
-      },
-    });
-    if (countriesDeleteResponse === 0) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: countriesDeleteResponse,
-      });
-      return;
     }
-    res.status(constants.STATUS_CODES.OK).json({
+
+    if (deletedCount === 0) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "No countries were deleted",
+      });
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.COUNTRY_WMS.COUNTRY_DELETED_SUCCESSFULLY,
+      deletedCount,
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: error.message });
   }
 };

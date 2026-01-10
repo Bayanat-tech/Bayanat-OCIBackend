@@ -68,7 +68,7 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
         request_users: recipients1,
         subject: `Leave Approval Required: ${requestNumber}`,
         message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} requires your action.`,
-        htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} requires your action.</p>`,
+        htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} requires your action. Please login to www.bayanattechnology.com and complete the action.</p> `,
       });
     }
     }
@@ -121,7 +121,7 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
           request_users: recipients,
           subject: `Leave Request Sent Back: ${requestNumber}`,
           message: `The leave request (${requestNumber}) for ${row.EMPLOYEE_NAME || "the employee"} has been sent back for further action.`,
-          htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} has been sent back for further action.</p>`,
+          htmlMessage: `<p>The leave request <b>${requestNumber}</b> for ${row.EMPLOYEE_NAME || "the employee"} has been sent back for further action. Please login to www.bayanattechnology.com and complete the action.</p>`,
         });
       }
     }

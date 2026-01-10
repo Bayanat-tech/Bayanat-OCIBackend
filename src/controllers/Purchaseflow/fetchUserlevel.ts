@@ -44,7 +44,7 @@ export const fetchUserlevel = async (req: Request, res: Response): Promise<void>
     );
 
     const userLevel = result.rows?.[0]?.FLOWLEVEL;
-
+console.log('userLevel',userLevel);
     if (userLevel !== null && userLevel !== undefined) {
       res.status(200).json({ success: true, data: userLevel });
     } else {

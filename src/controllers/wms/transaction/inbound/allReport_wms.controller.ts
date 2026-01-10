@@ -3,10 +3,12 @@ import { Response } from "express";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 import constants from "../../../../helpers/constants";
 import { IUser } from "../../../../interfaces/user.interface";
-import { Op } from "sequelize";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { ISearch } from "../../../../interfaces/common.interface";
-import reportmaster from "../../../../models/Security/ReportModule_security.model";
+import { ReportMasterService } from "../../../../services/Security/reportmaster.service";
+import { FindOptionsWhere } from "typeorm";
+import { ReportMaster } from "../../../../entity/Security/reportmaster.entity";
+
 /**
  * Get All Reports Controller
  * This controller handles retrieving all inbound reports for a specific company
@@ -17,45 +19,42 @@ export const getAllReports = async (req: RequestWithUser, res: Response) => {
   try {
     // Parse filter from query parameters or use empty object
     const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
+      ? JSON.parse(req.query.filter as string)
       : {};
 
     // Get authenticated user details
     const requestUser: IUser = await req.user;
 
-    // Initialize query parameters
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [
-          { company_code: requestUser.company_code }, // Filter by company code
-          { module: "inbound" }, // Filter for inbound module only
-        ],
-      };
+    // Initialize query parameters with TypeORM conditions
+    let whereConditions: FindOptionsWhere<ReportMaster> = {
+      company_code: requestUser.company_code, // Filter by company code
+      module: "INBOUND", // Filter for inbound module only
+    };
 
     // Apply search filters to query
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
+    whereConditions = getSearchFilterQuery({
+      insideQuery: [],
       filter: filter.search,
-      outsideQuery,
+      outsideQuery: whereConditions,
     });
 
-    // Get total count of matching records
-    const totalCount = await reportmaster.count({ where: outsideQuery });
+    // Build order object for sorting if specified
+    const order =
+      filter?.sort && Object.keys(filter?.sort).length > 0
+        ? { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" }
+        : undefined;
 
-    // Fetch all matching reports with sorting if specified
-    const inboundAllReports = await reportmaster.findAll({
-      where: outsideQuery,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [[filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"]],
-        }),
-    });
+    // Fetch reports with filters and get count
+    const { data, totalCount } = await ReportMasterService.findAllWithFilters(
+      whereConditions,
+      order as { [key: string]: "ASC" | "DESC" }
+    );
 
     // Return success response with data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       totalCount,
-      data: inboundAllReports,
+      data,
     });
   } catch (error: any) {
     // Handle errors and return error response
@@ -74,45 +73,42 @@ export const getAllOutboundReports = async (
   try {
     // Parse filter from query parameters or use empty object
     const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
+      ? JSON.parse(req.query.filter as string)
       : {};
 
     // Get authenticated user details
     const requestUser: IUser = await req.user;
 
-    // Initialize query parameters
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [
-          { company_code: requestUser.company_code }, // Filter by company code
-          { module: "outbound" }, // Filter for outbound module only
-        ],
-      };
+    // Initialize query parameters with TypeORM conditions
+    let whereConditions: FindOptionsWhere<ReportMaster> = {
+      company_code: requestUser.company_code, // Filter by company code
+      module: "outbound", // Filter for outbound module only
+    };
 
     // Apply search filters to query
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
+    whereConditions = getSearchFilterQuery({
+      insideQuery: [],
       filter: filter.search,
-      outsideQuery,
+      outsideQuery: whereConditions,
     });
 
-    // Get total count of matching records
-    const totalCount = await reportmaster.count({ where: outsideQuery });
+    // Build order object for sorting if specified
+    const order =
+      filter?.sort && Object.keys(filter?.sort).length > 0
+        ? { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" }
+        : undefined;
 
-    // Fetch all matching reports with sorting if specified
-    const inboundAllReports = await reportmaster.findAll({
-      where: outsideQuery,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [[filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"]],
-        }),
-    });
+    // Fetch reports with filters and get count
+    const { data, totalCount } = await ReportMasterService.findAllWithFilters(
+      whereConditions,
+      order as { [key: string]: "ASC" | "DESC" }
+    );
 
     // Return success response with data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       totalCount,
-      data: inboundAllReports,
+      data,
     });
   } catch (error: any) {
     // Handle errors and return error response
@@ -131,7 +127,7 @@ export const getAllDynamicReports = async (
   try {
     // Parse filter from query parameters or use empty object
     const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
+      ? JSON.parse(req.query.filter as string)
       : {};
     const module = req.query.module as string;
     const reportname = req.query.reportname as string;
@@ -139,40 +135,43 @@ export const getAllDynamicReports = async (
     // Get authenticated user details
     const requestUser: IUser = await req.user;
 
-    // Initialize query parameters
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [
-          { company_code: requestUser.company_code },
-          ...(module ? [{ module }] : []),
-          ...(reportname ? [{ reportname }] : []),
-        ],
-      };
+    // Initialize query parameters with TypeORM conditions
+    let whereConditions: FindOptionsWhere<ReportMaster> = {
+      company_code: requestUser.company_code,
+    };
+
+    // Add optional filters
+    if (module) {
+      whereConditions.module = module;
+    }
+    if (reportname) {
+      whereConditions.reportname = reportname;
+    }
 
     // Apply search filters to query
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
+    whereConditions = getSearchFilterQuery({
+      insideQuery: [],
       filter: filter.search,
-      outsideQuery,
+      outsideQuery: whereConditions,
     });
 
-    // Get total count of matching records
-    const totalCount = await reportmaster.count({ where: outsideQuery });
+    // Build order object for sorting if specified
+    const order =
+      filter?.sort && Object.keys(filter?.sort).length > 0
+        ? { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" }
+        : undefined;
 
-    // Fetch all matching reports with sorting if specified
-    const inboundAllReports = await reportmaster.findAll({
-      where: outsideQuery,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [[filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"]],
-        }),
-    });
+    // Fetch reports with filters and get count
+    const { data, totalCount } = await ReportMasterService.findAllWithFilters(
+      whereConditions,
+      order as { [key: string]: "ASC" | "DESC" }
+    );
 
     // Return success response with data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       totalCount,
-      data: inboundAllReports,
+      data,
     });
   } catch (error: any) {
     // Handle errors and return error response
@@ -191,45 +190,42 @@ export const getAllVendorReports = async (
   try {
     // Parse filter from query parameters or use empty object
     const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
+      ? JSON.parse(req.query.filter as string)
       : {};
 
     // Get authenticated user details
     const requestUser: IUser = await req.user;
 
-    // Initialize query parameters
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [
-          { company_code: requestUser.company_code }, // Filter by company code
-          { module: "vendor" }, // Filter for vendor module only
-        ],
-      };
+    // Initialize query parameters with TypeORM conditions
+    let whereConditions: FindOptionsWhere<ReportMaster> = {
+      company_code: requestUser.company_code, // Filter by company code
+      module: "vendor", // Filter for vendor module only
+    };
 
     // Apply search filters to query
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
+    whereConditions = getSearchFilterQuery({
+      insideQuery: [],
       filter: filter.search,
-      outsideQuery,
+      outsideQuery: whereConditions,
     });
 
-    // Get total count of matching records
-    const totalCount = await reportmaster.count({ where: outsideQuery });
+    // Build order object for sorting if specified
+    const order =
+      filter?.sort && Object.keys(filter?.sort).length > 0
+        ? { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" }
+        : undefined;
 
-    // Fetch all matching reports with sorting if specified
-    const inboundAllReports = await reportmaster.findAll({
-      where: outsideQuery,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [[filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"]],
-        }),
-    });
+    // Fetch reports with filters and get count
+    const { data, totalCount } = await ReportMasterService.findAllWithFilters(
+      whereConditions,
+      order as { [key: string]: "ASC" | "DESC" }
+    );
 
     // Return success response with data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       totalCount,
-      data: inboundAllReports,
+      data,
     });
   } catch (error: any) {
     // Handle errors and return error response
@@ -248,45 +244,42 @@ export const getAllEmployeeReports = async (
   try {
     // Parse filter from query parameters or use empty object
     const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
+      ? JSON.parse(req.query.filter as string)
       : {};
 
     // Get authenticated user details
     const requestUser: IUser = await req.user;
 
-    // Initialize query parameters
-    let insideQuery: any = [],
-      outsideQuery = {
-        [Op.and]: [
-          { company_code: requestUser.company_code }, // Filter by company code
-          { module: "Employee" }, // Filter for Employee module only
-        ],
-      };
+    // Initialize query parameters with TypeORM conditions
+    let whereConditions: FindOptionsWhere<ReportMaster> = {
+      company_code: requestUser.company_code, // Filter by company code
+      module: "Employee", // Filter for Employee module only
+    };
 
     // Apply search filters to query
-    outsideQuery = getSearchFilterQuery({
-      insideQuery,
+    whereConditions = getSearchFilterQuery({
+      insideQuery: [],
       filter: filter.search,
-      outsideQuery,
+      outsideQuery: whereConditions,
     });
 
-    // Get total count of matching records
-    const totalCount = await reportmaster.count({ where: outsideQuery });
+    // Build order object for sorting if specified
+    const order =
+      filter?.sort && Object.keys(filter?.sort).length > 0
+        ? { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" }
+        : undefined;
 
-    // Fetch all matching reports with sorting if specified
-    const inboundAllReports = await reportmaster.findAll({
-      where: outsideQuery,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [[filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"]],
-        }),
-    });
+    // Fetch reports with filters and get count
+    const { data, totalCount } = await ReportMasterService.findAllWithFilters(
+      whereConditions,
+      order as { [key: string]: "ASC" | "DESC" }
+    );
 
     // Return success response with data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       totalCount,
-      data: inboundAllReports,
+      data,
     });
   } catch (error: any) {
     // Handle errors and return error response

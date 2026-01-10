@@ -1,158 +1,196 @@
 import { Response } from "express";
-import { Op } from "sequelize";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import Department from "../../models/wms/department_wms.model";
 import { departmentSchema } from "../../validation/wms/gm.validation";
+import { DepartmentService } from "../../services/WMS/department.service";
+import { createLog, notifyUser } from "../../helpers/functions";
 
-export const createdepartment = async (req: RequestWithUser, res: Response) => {
+// ✅ Create a new Department
+export const createDepartment = async (req: RequestWithUser, res: Response) => {
   try {
-    //console.log("data aaya ki nhi in function bakend..", req.body);
     const requestUser: IUser = req.user;
+
+    // Validate request
     const { error } = departmentSchema(req.body);
     if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: error.message });
-      return;
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message,
+      });
     }
-    const { dept_code, company_code } = req.body;
-    const department = await Department.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { dept_code: dept_code }],
-      },
+
+    const { dept_code, dept_name, company_code, div_code } = req.body;
+
+    // Check if department already exists using composite key
+    const existingDepartment = await DepartmentService.findDuplicate({
+      company_code: company_code || requestUser.company_code,
+      div_code: div_code || '01',
+      dept_code,
     });
 
-    if (department) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    if (existingDepartment) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_ALREADY_EXISTS,
       });
-      return;
     }
-    const createdepartment = await Department.create({
-      company_code,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
+
+    // Create new department with required fields
+    const newDepartment = await DepartmentService.createDepartment({
       ...req.body,
+      company_code: company_code || requestUser.company_code,
+      div_code: div_code || '01',
+      enterprice_code: req.body.enterprice_code || '01',
+      status: req.body.status || 'A',
+      dept_addr1: req.body.dept_addr1 || '',
+      user_id: requestUser.loginid,
+      user_dt: new Date(),
     });
-    if (!createdepartment) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while creating company" });
-      return;
+
+    if (!newDepartment) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Error while creating department",
+      });
     }
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message:
-        constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_CREATED_SUCCESSFULLY,
+
+    // Audit log + notification
+    await createLog({
+      event: constants.EVENTS.DEPARTMENT_CREATED,
+      request_user: requestUser,
+      module: constants.MODULE.WMS,
+      description: constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_CREATED_SUCCESSFULLY,
     });
-    return;
+
+    await notifyUser({
+      event: constants.EVENTS.DEPARTMENT_CREATED,
+      request_user: requestUser,
+    });
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_CREATED_SUCCESSFULLY,
+    });
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: "Error: " + error.message,
+    });
   }
 };
-export const updatedepartment = async (req: RequestWithUser, res: Response) => {
+
+// ✅ Update existing Department
+export const updateDepartment = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
+
+    // Validate request
     const { error } = departmentSchema(req.body);
     if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: error.message });
-      return;
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message,
+      });
     }
+
     const { dept_code, company_code } = req.body;
 
-    const department = await Department.findOne({
-      where: {
-        [Op.and]: [{ company_code: company_code }, { dept_code: dept_code }],
-      },
-    });
+    // Check if department exists using composite key
+    const existingDepartment = await DepartmentService.findByCode(
+      dept_code,
+      company_code || requestUser.company_code
+    );
 
-    if (!department) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    if (!existingDepartment) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_DOES_NOT_EXISTS,
       });
-      return;
     }
-    const createdepartment = await department.update(
+
+    // Update department record
+    const isUpdated = await DepartmentService.updateDepartment(
+      dept_code,
+      company_code || requestUser.company_code,
       {
-        company_code,
-        created_by: requestUser.loginid,
-        updated_by: requestUser.loginid,
         ...req.body,
-      },
-      {
-        where: {
-          [Op.and]: [
-            { company_code: company_code },
-            { department_code: dept_code },
-          ],
-        },
+        user_id: requestUser.loginid,
+        user_dt: new Date(),
       }
     );
-    if (!createdepartment) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Error while updating company" });
-      return;
+
+    if (!isUpdated) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Error while updating department",
+      });
     }
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message:
-        constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_UPDATED_SUCCESSFULLY,
+
+    // Log + notify
+    await createLog({
+      event: constants.EVENTS.DEPARTMENT_EDITED,
+      request_user: requestUser,
+      module: constants.MODULE.WMS,
+      description: constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_UPDATED_SUCCESSFULLY,
     });
-    return;
+
+    await notifyUser({
+      event: constants.EVENTS.DEPARTMENT_EDITED,
+      request_user: requestUser,
+    });
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_UPDATED_SUCCESSFULLY,
+    });
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: "Error: " + error.message,
+    });
   }
 };
-export const deletedepartments = async (
-  req: RequestWithUser,
-  res: Response
-) => {
-  try {
-    const departmentsCode = req.body;
 
-    if (!req.body.length) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+// ✅ Delete one or multiple Departments
+export const deleteDepartments = async (req: RequestWithUser, res: Response) => {
+  try {
+    const requestUser: IUser = req.user;
+    const deptCodes: string[] = req.body;
+
+    if (!deptCodes || !deptCodes.length) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message:
-          constants.MESSAGES.DEPARTMENT_WMS.SELECT_AT_LEAST_ONE_DEPARTMENT,
+        message: constants.MESSAGES.DEPARTMENT_WMS.SELECT_AT_LEAST_ONE_DEPARTMENT,
       });
-      return;
     }
-    const departmentsDeleteResponse = await Department.destroy({
-      where: {
-        dept_code: departmentsCode,
-      },
-    });
-    if (departmentsDeleteResponse === 0) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+
+    let deletedCount = 0;
+
+    for (const code of deptCodes) {
+      const exists = await DepartmentService.findByCode(code, requestUser.company_code);
+      if (exists) {
+        await DepartmentService.deleteDepartment(code, requestUser.company_code);
+        deletedCount++;
+      }
+    }
+
+    if (deletedCount === 0) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: departmentsDeleteResponse,
+        message: "No departments were deleted",
       });
-      return;
     }
-    res.status(constants.STATUS_CODES.OK).json({
+
+    return res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message:
-        constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_DELETED_SUCCESSFULLY,
+      message: constants.MESSAGES.DEPARTMENT_WMS.DEPARTMENT_DELETED_SUCCESSFULLY,
+      deletedCount,
     });
-    return;
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: "Error: " + error.message,
+    });
   }
 };

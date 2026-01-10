@@ -1,6 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
-import { SupplierMaster } from "../../entity/Purchaseflow/suppliermaster_pf.entity";
-import constants from "../../helpers/constants";
+import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
 
 export class SupplierMasterService {
   private static getRepository() {
@@ -11,49 +10,56 @@ export class SupplierMasterService {
   static async callMessageBox(params: {
     screen: string;
     type: string;
-    document_number?: string;
-    userId: string;
+    document_number?: string | null;
+    userId: string | null;
     message: string;
   }) {
-    await oracleDb.query(
-      `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
-      [
-        params.screen,
-        params.type,
-        params.document_number ?? "",
-        params.userId,
-        params.message,
-      ]
-    );
+    try {
+      const { screen, type, document_number, userId, message } = params;
+
+      const binds = {
+        screen: { val: screen },
+        type: { val: type },
+        document_number: { val: document_number ?? "" },
+        userId: { val: userId ?? null },
+        message: { val: message },
+      };
+
+      await oracleDb.query(
+        `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message); END;`,
+        binds
+      );
+    } catch (err) {
+      console.error("callMessageBox failed:", {
+        params,
+        err,
+      });
+    }
   }
 
-  // --- CHECK DUPLICATE ---
-  static async findDuplicate(company_code: string, supp_code: string) {
-    const repo = this.getRepository();
-    return await repo.findOne({
-      where: { company_code, supp_code },
-    });
-  }
-
-  // --- CREATE ---
+  // --- CREATE SUPPLIER ---
   static async createSupplier(data: any) {
     const repo = this.getRepository();
 
-    const duplicate = await this.findDuplicate(data.company_code, data.supp_code);
+    const exists = await repo.findOne({
+      where: {
+        company_code: data.company_code,
+        supp_code: data.supp_code,
+      },
+    });
 
-    if (duplicate) {
+    if (exists) {
       await this.callMessageBox({
         screen: "TRNFAIL",
         type: "error",
-        document_number: "",
+        document_number: null,
         userId: data.created_by,
-        message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_ALREADY_EXISTS,
+        message: "Supplier Code Already Exists",
       });
 
       return {
         success: false,
-        message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_ALREADY_EXISTS,
-        status: constants.STATUS_CODES.BAD_REQUEST,
+        message: "This Supplier Already Exists",
       };
     }
 
@@ -70,21 +76,22 @@ export class SupplierMasterService {
       type: "success",
       document_number: "",
       userId: data.created_by,
-      message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_CREATED_SUCCESSFULLY,
+      message: "Supplier added successfully",
     });
 
     return {
       success: true,
-      message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_CREATED_SUCCESSFULLY,
+      message: "Supplier details added successfully",
       data: saved,
-      status: constants.STATUS_CODES.OK,
     };
   }
 
-  // --- UPDATE ---
+  // --- UPDATE SUPPLIER ---
   static async updateSupplier(
-    company_code: string, 
-    supp_code: string, updateData: any) {
+    company_code: string,
+    supp_code: string,
+    updateData: any
+  ) {
     const repo = this.getRepository();
 
     const existing = await repo.findOne({
@@ -97,17 +104,16 @@ export class SupplierMasterService {
         type: "error",
         document_number: "",
         userId: updateData.updated_by,
-        message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_DOES_NOT_EXIST,
+        message: "Supplier Code Does Not Exist",
       });
 
       return {
         success: false,
-        message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_DOES_NOT_EXIST,
-        status: constants.STATUS_CODES.BAD_REQUEST,
+        message: "Supplier detail Does Not Exist",
       };
     }
 
-    const result = await repo.update(
+    await repo.update(
       { company_code, supp_code },
       {
         ...updateData,
@@ -115,26 +121,17 @@ export class SupplierMasterService {
       }
     );
 
-    if (!result.affected || result.affected === 0) {
-      return {
-        success: false,
-        message: "Error while updating supplier",
-        status: constants.STATUS_CODES.INTERNAL_SERVER_ERROR,
-      };
-    }
-
     await this.callMessageBox({
       screen: "SUPPLIERUPDATED",
       type: "success",
       document_number: "",
       userId: updateData.updated_by,
-      message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_UPDATED_SUCCESSFULLY,
+      message: "Updated Successfully",
     });
 
     return {
       success: true,
-      message: constants.MESSAGES.SUPPLIER_PF.SUPPLIER_UPDATED_SUCCESSFULLY,
-      status: constants.STATUS_CODES.OK,
+      message: "Updated Successfully",
     };
   }
 }

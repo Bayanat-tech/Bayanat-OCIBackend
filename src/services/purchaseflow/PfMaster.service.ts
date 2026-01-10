@@ -1,10 +1,12 @@
-import { getRepository } from "../../database/connection";
+import { In } from "typeorm";
+import { AppDataSource, getRepository } from "../../database/connection";
 import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
 import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
 import { ItemmasterPf } from "../../entity/PurchaseFlow/Itemmaster_pf.entity";
 import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
 import { Divisionmaster } from "../../entity/PurchaseFlow/Pf_divisionmaster.entity";
+import { VProjectMaster } from "../../entity/PurchaseFlow/projectmaster_pf_view.entity";
 import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
  
 export interface Master<T> {
@@ -128,40 +130,61 @@ export class PurchaseFlowMasterService {
     return { fetchedData, totalCount };
   }
 
-  // //  Delete :
+  //-------------------------delete Master ---------------------
 
-  // static async deleteRecords(
-  //   entity: any,
-  //    conditions: any[]
-  //   ): Promise<number> {
-  //   const repo = getRepository(entity);
+static async deleteMasterRecords(
+  master: string,
+  company_code: string,
+  ids: (string | number)[]
+): Promise<boolean> {
+  const queryRunner = AppDataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
 
-  //   if (!conditions || conditions.length === 0) {
-  //     throw new Error("Delete conditions must be a non-empty array.");
-  //   }
+  try {
+    let result: any;
 
-  //   let totalDeleted = 0;
+    switch (master) {
+      case "cost_master":
+        result = await queryRunner.manager.delete(CostMaster, {
+          company_code,
+          cost_code: In(ids as string[]),
+        });
+        break;
 
-  //   for (const condition of conditions) {
+      case "project_master":
+        result = await queryRunner.manager.delete(VProjectMaster, {
+          company_code,
+          project_code: In(ids as string[]),
+        });
+        break;
 
-  //     const existing = await repo.findOne({ where: condition });
-  //     if (!existing) {
-  //       console.warn(`Record not found for condition:`, condition);
-  //       continue;  
-  //     }
+      case "supplier_master":
+        result = await queryRunner.manager.delete(SupplierMaster, {
+          company_code,
+          supp_code: In(ids as string[]),
+        });
+        break;
 
-  //     const result = await repo.delete(condition);
+      case "customer_master":
+        result = await queryRunner.manager.delete(CustomerMaster, {
+          company_code,
+          cust_code: In(ids as string[]),
+        });
+        break;
 
-  //     if (result.affected && result.affected > 0) {
-  //       totalDeleted += result.affected;
-  //     }
-  //   }
+      default:
+        throw new Error(`Unknown master type: ${master}`);
+    }
 
-  //   return totalDeleted;
-  // }
+    await queryRunner.commitTransaction();
+
+    return result?.affected && result.affected > 0;
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    throw error;
+  } finally {
+    await queryRunner.release();
+  }
 }
-
-
-
-
-
+}

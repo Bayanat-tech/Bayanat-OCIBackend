@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { sequelize } from "../../database/connection";
+import oracledb from "oracledb";
+import { oracleDb } from "../../database/connection"; // your oracledb pool
 import { QueryTypes } from "sequelize";
 import { upsertMaterialRequest } from "./materialRquestdbupdate_pf.Controller";
 import { createLog, notifyUser } from "../../helpers/functions";
@@ -20,8 +21,9 @@ export async function getMaterialRequestNumber(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  // Cast req to extended type only when needed
   const reqWithUser = req as RequestWithUser;
+
+  let connection: oracledb.Connection | undefined;
 
   try {
     const { request_number } = req.params;
@@ -36,21 +38,31 @@ export async function getMaterialRequestNumber(
 
     const formattedRequestNumber = request_number.replace(/\$\$/g, "/");
 
-    const [header] = await sequelize.query(
-      `SELECT * FROM VW_MATERIAL_REQUEST_HEADER WHERE request_number = :request_number LIMIT 1;`,
-      {
-        replacements: { request_number: formattedRequestNumber },
-        type: QueryTypes.SELECT,
-      }
+    connection = await oracleDb.getConnection();
+
+    // Fetch header (Oracle version of LIMIT 1)
+    const headerResult = await connection.execute(
+      `SELECT *
+       FROM VW_MATERIAL_REQUEST_HEADER
+       WHERE request_number = :request_number
+       AND ROWNUM = 1`,
+      { request_number: formattedRequestNumber },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const details = await sequelize.query(
-      `SELECT * FROM VW_MATERIAL_REQUEST_DETAILS WHERE request_number = :request_number ORDER BY ITEM_SRNO;`,
-      {
-        replacements: { request_number: formattedRequestNumber },
-        type: QueryTypes.SELECT,
-      }
+    const header = headerResult.rows?.[0];
+
+    // Fetch details
+    const detailsResult = await connection.execute(
+      `SELECT *
+       FROM VW_MATERIAL_REQUEST_DETAILS
+       WHERE request_number = :request_number
+       ORDER BY ITEM_SRNO`,
+      { request_number: formattedRequestNumber },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
+
+    const details = detailsResult.rows || [];
 
     if (!header || details.length === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -60,9 +72,6 @@ export async function getMaterialRequestNumber(
       return;
     }
 
-    // Example usage of user if needed
-    // console.log("User info:", reqWithUser.user);
-
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {
@@ -71,32 +80,65 @@ export async function getMaterialRequestNumber(
       },
     });
   } catch (error) {
-    next(error); // Forward error to Express error handler middleware
+    console.error("Error fetching material request:", error);
+    next(error);
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection:", err);
+      }
+    }
   }
 }
 
 // CREATE OR UPDATE MATERIAL REQUEST
-export const  createOrUpdateMaterialRequestSequential = async (
+export const createOrUpdateMaterialRequestSequential = async (
   req: RequestWithUser,
   res: Response
 ) => {
+  let connection: oracledb.Connection | undefined;
+
   try {
     const purchaseRequest = MatmapIncomingRequestData(req.body);
 
-    await upsertMaterialRequest(purchaseRequest);
+    connection = await oracleDb.getConnection();
 
-    res.status(200).json({
+    // Assuming you have an upsert PL/SQL procedure
+    await connection.execute(
+      `BEGIN UPSERT_MATERIAL_REQUEST(
+         :request_number,
+         :request_date,
+         :requestor_name,
+         :description,
+         :need_by_date,
+         :items
+       ); END;`,
+      {
+        request_number: purchaseRequest.request_number,
+        request_date: purchaseRequest.request_date,
+        requestor_name: purchaseRequest.requestor_name,
+        description: purchaseRequest.description,
+        need_by_date: purchaseRequest.need_by_date,
+        items: JSON.stringify(purchaseRequest.items), // pass items as JSON to PL/SQL
+      },
+      { autoCommit: true }
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Purchase request processed successfully.",
     });
   } catch (error) {
     console.error("Error saving/updating purchase request:", error);
-    res.status(500).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Error saving/updating purchase request.",
-      error:
-        error instanceof Error ? error.message : "An unknown error occurred",
+      error: error instanceof Error ? error.message : "An unknown error occurred",
     });
+  } finally {
+    if (connection) await connection.close();
   }
 };
 
@@ -113,17 +155,17 @@ export function MatmapIncomingRequestData(data: any): IMaterialRequestPf {
         to_cost_code: item.to_cost_code?.toString() || null,
         from_project_code: item.from_project_code?.toString() || null,
         to_project_code: item.to_project_code?.toString() || null,
-       l_uom: item.l_uom?.toString() || "",
-         item_l_qty: item.item_l_qty ? Number(item.item_l_qty) : null,
-          item_sequence_no: item.item_sequence_no ? Number(item.item_sequence_no) : null,
+        l_uom: item.l_uom?.toString() || "",
+        item_l_qty: item.item_l_qty ? Number(item.item_l_qty) : null,
+        item_sequence_no: item.item_sequence_no ? Number(item.item_sequence_no) : null,
       }))
     : [];
 
-  const request: IMaterialRequestPf = {
+  return {
     need_by_date: data.need_by_date ? new Date(data.need_by_date) : undefined,
-    requestor_name: data.requestor_name,
+    requestor_name: data.requestor_name || "",
     request_number: data.request_number?.toString() || "",
-request_date: data.request_date ? new Date(data.request_date) : undefined,
+    request_date: data.request_date ? new Date(data.request_date) : undefined,
     description: data.description || "",
     remarks: data.remarks || "",
     amount: Number(data.amount) || 0,
@@ -171,43 +213,52 @@ request_date: data.request_date ? new Date(data.request_date) : undefined,
     project_code_to: data.project_code_to || "",
     items: mapItems,
   };
-
-  return request;
 }
 
-export const MaterialRequestListing = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+
+interface MaterialRequestRow {
+  REQUEST_NUMBER: string;
+  REQUEST_DATE: Date;
+  DESCRIPTION: string;
+  REQUESTOR_NAME: string;
+  NEED_BY_DATE: Date;
+}
+
+// LIST MATERIAL REQUESTS
+export const MaterialRequestListing = async (req: Request, res: Response): Promise<void> => {
+  let connection: oracledb.Connection | undefined;
+
   try {
-    console.log("✅ MaterialRequestListing API called");
+    connection = await oracleDb.getConnection();
 
     const query = `
-      SELECT Request_number, Request_date, Description ,requestor_name,need_by_date
-      FROM MATERIAL_REQUEST_HEADER;
+      SELECT Request_number, Request_date, Description, requestor_name, need_by_date
+      FROM MATERIAL_REQUEST_HEADER
+      ORDER BY Request_date DESC
     `;
 
-    const results = await sequelize.query(query, {
-      type: QueryTypes.SELECT,
+    const result = await connection.execute<MaterialRequestRow>(query, [], {
+      outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
 
-    console.log("✅ Query executed. Retrieved", results.length, "records");
-    console.log("📦 Sample record:", results[0]);
+    // Explicitly type rows to object array
+    const rows = (result.rows || []) as MaterialRequestRow[];
 
-    // Add 'id' field required by frontend table renderers
-    const dataWithIds = results.map((item: any, index: number) => ({
-      id: index + 1, // or use item.Request_number if unique
+    const dataWithIds = rows.map((item, index) => ({
+      id: index + 1,
       ...item,
     }));
 
-    res.status(200).json({ success: true, data: dataWithIds });
-  } catch (error: unknown) {
-    console.error("❌ Error fetching MATERIAL_REQUEST_HEADER data:", error);
+    res.status(constants.STATUS_CODES.OK).json({ success: true, data: dataWithIds });
+  } catch (error) {
+    console.error("Error fetching MATERIAL_REQUEST_HEADER data:", error);
 
-    res.status(500).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "An error occurred while fetching material request data",
       error: error instanceof Error ? error.message : "Unknown error",
     });
+  } finally {
+    if (connection) await connection.close();
   }
 };

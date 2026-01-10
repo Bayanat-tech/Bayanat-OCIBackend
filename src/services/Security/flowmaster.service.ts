@@ -3,7 +3,7 @@ import { FlowMaster } from "../../entity/Security/flowmaster.entity";
 import { In } from "typeorm";
 
 export class FlowMasterService {
-  private static getFlowMasterRepository() {
+  public static getFlowMasterRepository() {
     return getRepository(FlowMaster);
   }
 

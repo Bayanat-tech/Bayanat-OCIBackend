@@ -1114,13 +1114,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        cc: [
-          "Sagar.b@bayanattechnology.com",
-          "gaurang.pai@bayanattechnology.com",
-          "Sandeep.dandekar@bayanattechnology.com",
-          "Srishti.nayal@bayanattechnology.com",
-          ...(cc || []),
-        ],
+        cc: cc,
         subject: "Notification From BT-PMS",
         text: message || "A new transaction has been successfully completed.",
         html: htmlMessage,
@@ -1198,13 +1192,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
-        cc: [
-          "Sagar.b@bayanattechnology.com",
-          "gaurang.pai@bayanattechnology.com",
-          "Sandeep.dandekar@bayanattechnology.com",
-          "Srishti.nayal@bayanattechnology.com",
-          ...(cc || []),
-        ],
+        cc: cc,
         subject: subject || `Purchase Request Sent Back`,
         text:
           message ||
@@ -1220,6 +1208,16 @@ export const notifyUser = async (args: SendEmailInterface) => {
         subject: subject || "Password Reset Instructions",
         text:
           message || "Please follow the instructions to reset your password.",
+        html: htmlMessage,
+      };
+      break;
+
+    case constants.EVENTS.RESET_PASSWORD:
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_users,
+        subject: subject || "Password Reset Notification",
+        text: message || "Your password has been reset successfully.",
         html: htmlMessage,
       };
       break;

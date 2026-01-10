@@ -8,7 +8,7 @@ export const CheckCostcontroller = async (req: Request, res: Response): Promise<
   try {
     // Extract and validate query parameters
     const userId = String(req.query.userId || "").trim();
-    const companyCode = String(req.query.companyCode || "").trim();
+    const companyCode = 'JASRA';
 
     if (!userId || !companyCode) {
       console.error("❌ Missing userId or companyCode:", { userId, companyCode });
