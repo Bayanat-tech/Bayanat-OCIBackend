@@ -33,6 +33,12 @@ import {
 //   // exportProducttype, // For exporting product type data
 //   // updateProducttype, // For updating product type
 // } from "../../controllers/wms/producttype_wms.controller";
+import { Request, Response } from "express";
+import { 
+  createProducttype,
+  getProducttypes,
+  updateProducttype
+ } from "../../controllers/wms/producttype_wms.controller";
 
 // Import product management controllers
 import {
@@ -245,11 +251,7 @@ router.get(
 // ..\controllers\wms\producttype_wms.controller.ts
 
 // Product Type Routes - Handle product type management
-import { Request, Response } from "express";
-import { 
-  createProducttype,
-  getProducttypes
- } from "../../controllers/wms/producttype_wms.controller";
+
 
 router.post("/producttype", async (req: Request, res: Response) => {
   await createProducttype(req, res);
@@ -258,8 +260,10 @@ router.post("/producttype", async (req: Request, res: Response) => {
 router.get("/producttype", async (req: Request, res: Response) => {
   await getProducttypes(req, res);
 }); // Export product type data
+router.put("/producttype", async (req: Request, res: Response) => {
+  await updateProducttype(req, res);
+}); // Update existing product type
  // Create new product type
-// router.put("/Producttype", updateProducttype); // Update existing product type
 // router.post("/Producttype/bulk", createBulkProducttypes); // Create multiple product types
 // router.post("/Producttype/delete", deleteProducttypes); // Delete product types
 
