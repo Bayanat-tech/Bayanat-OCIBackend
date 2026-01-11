@@ -3,28 +3,28 @@ import { Entity, Column, PrimaryColumn } from 'typeorm';
 @Entity('MS_PRODUCT')
 export class Product {
     @Column({ name: 'PRIN_CODE', type: 'varchar', length: 5, nullable: false })
-    prinCode: string;
+    prin_code: string;
 
     @PrimaryColumn({ name: 'PROD_CODE', type: 'varchar', length: 40, nullable: false })
-    prodCode: string;
+    prod_code: string;
 
     @Column({ name: 'PROD_NAME', type: 'varchar', length: 250, nullable: false })
-    prodName: string;
+    prod_name: string;
 
     @Column({ name: 'GROUP_CODE', type: 'varchar', length: 50, nullable: true })
-    groupCode: string;
+    group_code: string;
 
     @Column({ name: 'BRAND_CODE', type: 'varchar', length: 50, nullable: true })
-    brandCode: string;
+    brand_code: string;
 
     @Column({ name: 'PACKDESC', type: 'varchar', length: 50, nullable: true })
-    packDesc: string;
+    packdesc: string;
 
     @Column({ name: 'BARCODE', type: 'varchar', length: 40, nullable: true })
     barcode: string;
 
     @Column({ name: 'P_UOM', type: 'varchar', length: 5, nullable: false })
-    pUom: string;
+    p_uom: string;
 
     @Column({ name: 'SUOM', type: 'varchar', length: 5, nullable: true })
     suom: string;
@@ -42,10 +42,10 @@ export class Product {
     volume: number;
 
     @Column({ name: 'GROSS_WT', type: 'decimal', precision: 12, scale: 6, nullable: true })
-    grossWt: number;
+    gross_wt: number;
 
     @Column({ name: 'NET_WT', type: 'decimal', precision: 12, scale: 6, nullable: true })
-    netWt: number;
+    net_wt: number;
 
     @Column({ name: 'FOC', type: 'varchar', length: 20, nullable: true })
     foc: string;
@@ -54,145 +54,145 @@ export class Product {
     cpu: number;
 
     @Column({ name: 'HARM_CODE', type: 'varchar', length: 20, nullable: true })
-    harmCode: string;
+    harm_code: string;
 
     @Column({ name: 'IMCO_CODE', type: 'varchar', length: 20, nullable: true })
-    imcoCode: string;
+    imco_code: string;
 
     @Column({ name: 'KITTING', type: 'varchar', length: 1, nullable: true })
     kitting: string;
 
     @Column({ name: 'MANU_CODE', type: 'varchar', length: 10, nullable: true })
-    manuCode: string;
+    manu_code: string;
 
     @Column({ name: 'BASE_PRICE', type: 'decimal', precision: 16, scale: 6, nullable: true })
-    basePrice: number;
+    base_price: number;
 
     @Column({ name: 'FLAT_STORAGE', type: 'decimal', precision: 10, scale: 4, nullable: true })
-    flatStorage: number;
+    flat_storage: number;
 
     @Column({ name: 'SITE_TYPE', type: 'varchar', length: 5, nullable: true })
-    siteType: string;
+    site_type: string;
 
     @Column({ name: 'SITE_IND', type: 'varchar', length: 5, nullable: true })
-    siteInd: string;
+    site_ind: string;
 
     @Column({ name: 'PACK_KEY', type: 'varchar', length: 40, nullable: true })
-    packKey: string;
+    pack_key: string;
 
     @Column({ name: 'PROD_TI', type: 'int', nullable: true })
-    prodTi: number;
+    prod_ti: number;
 
     @Column({ name: 'PROD_HI', type: 'int', nullable: true })
-    prodHi: number;
+    prod_hi: number;
 
     @Column({ name: 'CHARGETIME', type: 'varchar', length: 5, nullable: true })
-    chargeTime: string;
+    chargetime: string;
 
     @Column({ name: 'PROD_STATUS', type: 'varchar', length: 2, nullable: true })
-    prodStatus: string;
+    prod_status: string;
 
     @Column({ name: 'SHELF_LIFE', type: 'int', nullable: true })
-    shelfLife: number;
+    shelf_life: number;
 
     @Column({ name: 'CATEGORY_ABC', type: 'varchar', length: 2, nullable: true })
-    categoryAbc: string;
+    category_abc: string;
 
     @Column({ name: 'REORD_LEVEL', type: 'int', nullable: true })
-    reordLevel: number;
+    reord_level: number;
 
     @Column({ name: 'REORD_QTY', type: 'decimal', precision: 12, scale: 1, nullable: true })
-    reordQty: number;
+    reord_qty: number;
 
     @Column({ name: 'ALT_PROD_CODE', type: 'varchar', length: 40, nullable: true })
-    altProdCode: string;
+    alt_prod_code: string;
 
     @Column({ name: 'PREF_SITE', type: 'varchar', length: 5, nullable: true })
-    prefSite: string;
+    pref_site: string;
 
     @Column({ name: 'PREF_LOC_FROM', type: 'varchar', length: 15, nullable: true })
-    prefLocFrom: string;
+    pref_loc_from: string;
 
     @Column({ name: 'PREF_LOC_TO', type: 'varchar', length: 15, nullable: true })
-    prefLocTo: string;
+    pref_loc_to: string;
 
     @Column({ name: 'PREF_AISLE_FROM', type: 'varchar', length: 5, nullable: true })
-    prefAisleFrom: string;
+    pref_aisle_from: string;
 
     @Column({ name: 'PREF_AISLE_TO', type: 'varchar', length: 5, nullable: true })
-    prefAisleTo: string;
+    pref_aisle_to: string;
 
     @Column({ name: 'PREF_COL_FROM', type: 'int', nullable: true })
-    prefColFrom: number;
+    pref_col_from: number;
 
     @Column({ name: 'PREF_COL_TO', type: 'int', nullable: true })
-    prefColTo: number;
+    pref_col_to: number;
 
     @Column({ name: 'PREF_HT_FROM', type: 'int', nullable: true })
-    prefHtFrom: number;
+    pref_ht_from: number;
 
     @Column({ name: 'PREF_HT_TO', type: 'int', nullable: true })
-    prefHtTo: number;
+    pref_ht_to: number;
 
     @Column({ name: 'UPPP', type: 'int', nullable: false })
     uppp: number;
 
     @Column({ name: 'CHK_MANUCODE', type: 'varchar', length: 1, nullable: true })
-    chkManucode: string;
+    chk_manucode: string;
 
     @Column({ name: 'CHK_LOTNO', type: 'varchar', length: 1, nullable: true })
-    chkLotno: string;
+    chk_lotno: string;
 
     @Column({ name: 'CHK_MFGEXPDT', type: 'varchar', length: 1, nullable: true })
-    chkMfgexpdt: string;
+    chk_mfgexpdt: string;
 
     @Column({ name: 'PUOM_VOLUME', type: 'decimal', precision: 12, scale: 6, nullable: true })
-    puomVolume: number;
+    puom_volume: number;
 
     @Column({ name: 'PUOM_NETWT', type: 'decimal', precision: 12, scale: 6, nullable: true })
-    puomNetwt: number;
+    puom_netwt: number;
 
     @Column({ name: 'PUOM_GROSSWT', type: 'decimal', precision: 12, scale: 6, nullable: true })
-    puomGrosswt: number;
+    puom_grosswt: number;
 
     @Column({ name: 'L_UOM', type: 'varchar', length: 5, nullable: false })
-    lUom: string;
+    l_uom: string;
 
     @Column({ name: 'LUPPP', type: 'int', nullable: true })
     luppp: number;
 
     @Column({ name: 'UOM_COUNT', type: 'int', nullable: false })
-    uomCount: number;
+    uom_count: number;
 
     @Column({ name: 'PROD_TYPE', type: 'int', nullable: true })
-    prodType: number;
+    prod_type: number;
 
     @Column({ name: 'COMPANY_CODE', type: 'varchar', length: 5, nullable: false })
-    companyCode: string;
+    company_code: string;
 
     @Column({ name: 'TWOPLUS_UOM', type: 'varchar', length: 1, nullable: true })
-    twoplusUom: string;
+    twoplus_uom: string;
 
     @Column({ name: 'UPP', type: 'int', nullable: true })
     upp: number;
 
     @Column({ name: 'WAVE_CODE', type: 'int', nullable: true })
-    waveCode: number;
+    wave_code: number;
 
     @Column({ name: 'PRODUCT_STAGE', type: 'varchar', length: 1, nullable: true })
-    productStage: string;
+    product_stage: string;
 
     @Column({ name: 'CO_PACK', type: 'varchar', length: 1, nullable: true })
-    coPack: string;
+    co_pack: string;
 
     @Column({ name: 'MODEL_NUMBER', type: 'varchar', length: 50, nullable: true })
-    modelNumber: string;
+    model_number: string;
 
     @Column({ name: 'VARIANT_CODE', type: 'varchar', length: 4, nullable: true })
-    variantCode: string;
+    variant_code: string;
 
     @Column({ name: 'CNT_ORIGIN', type: 'varchar', length: 20, nullable: true })
-    cntOrigin: string;
+    cnt_origin: string;
 
     @Column({ name: 'SERIALIZE', type: 'varchar', length: 1, nullable: true })
     serialize: string;
@@ -201,80 +201,80 @@ export class Product {
     packing: string;
 
     @Column({ name: 'OLD_UPP', type: 'int', nullable: true })
-    oldUpp: number;
+    old_upp: number;
 
     @Column({ name: 'AVG_CONSUMPTION', type: 'int', nullable: true })
-    avgConsumption: number;
+    avg_consumption: number;
 
     @Column({ name: 'PROD_IMAGE_PATH_WEB', type: 'varchar', length: 250, nullable: true })
-    prodImagePathWeb: string;
+    prod_image_path_web: string;
 
     @Column({ name: 'MINPERIOD_EXPPICK', type: 'int', nullable: true })
-    minperiodExppick: number;
+    minperiod_exppick: number;
 
     @Column({ name: 'RCPT_EXP_LIMIT', type: 'int', nullable: true })
-    rcptExpLimit: number;
+    rcpt_exp_limit: number;
 
     @Column({ name: 'QTY_AS_WT', type: 'varchar', length: 1, nullable: true })
-    qtyAsWt: string;
+    qty_as_wt: string;
 
     @Column({ name: 'HAZMAT_IND', type: 'varchar', length: 1, nullable: true })
-    hazmatInd: string;
+    hazmat_ind: string;
 
     @Column({ name: 'HAZMAT_CLASS', type: 'varchar', length: 10, nullable: true })
-    hazmatClass: string;
+    hazmat_class: string;
 
     @Column({ name: 'FOOD_IND', type: 'varchar', length: 1, nullable: true })
-    foodInd: string;
+    food_ind: string;
 
     @Column({ name: 'PHARMA_IND', type: 'varchar', length: 1, nullable: true })
-    pharmaInd: string;
+    pharma_ind: string;
 
     @Column({ name: 'SPECIAL_INSTRUCTIONS', type: 'varchar', length: 100, nullable: true })
-    specialInstructions: string;
+    special_instructions: string;
 
     @Column({ name: 'STRENGTH', type: 'varchar', length: 50, nullable: true })
     strength: string;
 
     @Column({ name: 'PACK_SIZE', type: 'int', nullable: true })
-    packSize: number;
+    pack_size: number;
 
     @Column({ name: 'GROUP_CODE_BK', type: 'varchar', length: 10, nullable: true })
-    groupCodeBk: string;
+    group_code_bk: string;
 
     @Column({ name: 'BATCH_TYPE', type: 'int', nullable: true })
-    batchType: number;
+    batch_type: number;
 
     @Column({ name: 'SAP_PROD_CODE', type: 'varchar', length: 20, nullable: true })
-    sapProdCode: string;
+    sap_prod_code: string;
 
     @Column({ name: 'SAP_PROD_DESC', type: 'varchar', length: 250, nullable: true })
-    sapProdDesc: string;
+    sap_prod_desc: string;
 
     @Column({ name: 'TEMP_CODE', type: 'varchar', length: 250, nullable: true })
-    tempCode: string;
+    temp_code: string;
 
     @Column({ name: 'EDIT_USER', type: 'varchar', length: 10, nullable: true })
-    editUser: string;
+    edit_user: string;
 
     @Column({ name: 'PRNT_P_CODE', type: 'varchar', length: 40, nullable: true })
-    prntPCode: string;
+    prnt_p_code: string;
 
     @Column({ name: 'PROD_SIZE', type: 'varchar', length: 50, nullable: true })
-    prodSize: string;
+    prod_size: string;
 
     @Column({ name: 'PROD_COLOR', type: 'varchar', length: 50, nullable: true })
-    prodColor: string;
+    prod_color: string;
 
     @Column({ name: 'PROD_GENDER', type: 'varchar', length: 50, nullable: true })
-    prodGender: string;
+    prod_gender: string;
 
     @Column({ name: 'GENERIC_ARTICLE', type: 'varchar', length: 50, nullable: true })
-    genericArticle: string;
+    generic_article: string;
 
     @Column({ name: 'PRODUCT_CATEGORY', type: 'varchar', length: 50, nullable: true })
-    productCategory: string;
+    product_category: string;
 
     @Column({ name: 'CURRENT_SEASON', type: 'varchar', length: 50, nullable: true })
-    currentSeason: string;
+    current_season: string;
 }

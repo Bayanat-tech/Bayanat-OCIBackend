@@ -50,8 +50,8 @@ export const getPackingDetail = async (req: RequestWithUser, res: Response) => {
       success: true,
       data: {
         ...packingDetails,
-        prod_name: productInfo?.prodName,
-        uom_count: productInfo?.uomCount,
+        prod_name: productInfo?.prod_name,
+        uom_count: productInfo?.uom_count,
         uppp: productInfo?.uppp,
       },
     });

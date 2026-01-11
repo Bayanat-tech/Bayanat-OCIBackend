@@ -49,8 +49,8 @@ export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
     const productRepo = getRepository(Product);
     const productInfo = await productRepo.findOne({
       where: {
-        prodCode: tallyDetails.prod_code,
-        companyCode: req.user.company_code,
+        prod_code: tallyDetails.prod_code,
+        company_code: req.user.company_code,
       },
     });
 
@@ -58,8 +58,8 @@ export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
       success: true,
       data: {
         ...tallyDetails,
-        prod_name: productInfo?.prodName,
-        uom_count: productInfo?.uomCount,
+        prod_name: productInfo?.prod_name,
+        uom_count: productInfo?.uom_count,
         uppp: productInfo?.uppp,
       },
     });
@@ -100,8 +100,8 @@ export const createTallyItem = async (req: RequestWithUser, res: Response) => {
       const productRepo = getRepository(Product);
       const productResponse = await productRepo.findOne({
         where: {
-          companyCode: requestUser.company_code,
-          prodCode: req.body.prod_code,
+          company_code: requestUser.company_code,
+          prod_code: req.body.prod_code,
         },
       });
       if (!productResponse) {
@@ -232,8 +232,8 @@ console.log ('seq_number',seq_number);
       const productRepo = getRepository(Product);
       const productResponse = await productRepo.findOne({
         where: {
-          companyCode: requestUser.company_code,
-          prodCode: req.body.prod_code,
+          company_code: requestUser.company_code,
+          prod_code: req.body.prod_code,
         },
       });
       if (!productResponse) {
