@@ -24,36 +24,36 @@ export class ProducttypeMaster {
   })
   company_code?: string;
 
-  @Column({
-    name: "CREATED_BY",
-    type: "varchar2",
-    length: 20,
-    nullable: true,
-  })
-  created_by?: string;
+  // @Column({
+  //   name: "CREATED_BY",
+  //   type: "varchar2",
+  //   length: 20,
+  //   nullable: true,
+  // })
+  // created_by?: string;
 
-  @Column({
-    name: "UPDATED_BY",
-    type: "varchar2",
-    length: 20,
-    nullable: true,
-  })
-  updated_by?: string;
+  // @Column({
+  //   name: "UPDATED_BY",
+  //   type: "varchar2",
+  //   length: 20,
+  //   nullable: true,
+  // })
+  // updated_by?: string;
 
-  @Column({
-    name: "CREATED_AT",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
-    nullable: true,
-  })
-  created_at?: Date;
+  // @Column({
+  //   name: "CREATED_AT",
+  //   type: "timestamp",
+  //   default: () => "CURRENT_TIMESTAMP",
+  //   nullable: true,
+  // })
+  // created_at?: Date;
 
-  @Column({
-    name: "UPDATED_AT",
-    type: "timestamp",
-    default: () => "CURRENT_TIMESTAMP",
-    onUpdate: "CURRENT_TIMESTAMP",
-    nullable: true,
-  })
-  updated_at?: Date;
+  // @Column({
+  //   name: "UPDATED_AT",
+  //   type: "timestamp",
+  //   default: () => "CURRENT_TIMESTAMP",
+  //   onUpdate: "CURRENT_TIMESTAMP",
+  //   nullable: true,
+  // })
+  // updated_at?: Date;
 }

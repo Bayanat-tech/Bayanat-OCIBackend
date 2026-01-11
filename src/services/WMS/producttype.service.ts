@@ -2,70 +2,67 @@ import { getRepository } from "../../database/connection";
 import { ProducttypeMaster } from "../../entity/WMS/producttype.entity";
 
 export class ProducttypeService {
-  private static getRepository() {
+  private static repo() {
     return getRepository(ProducttypeMaster);
   }
 
-  // Check duplicate by code (company wise)
+  // Check duplicate
   static async findDuplicate(
     prodtype_code: number,
     company_code: string
   ): Promise<ProducttypeMaster | null> {
-    return await this.getRepository().findOne({
+    return this.repo().findOne({
       where: { prodtype_code, company_code },
     });
   }
 
-  static async findAll(company_code: string): Promise<ProducttypeMaster[]> {
-    return await this.getRepository().find({
+  // Get all
+  static async findAll(
+    company_code: string
+  ): Promise<ProducttypeMaster[]> {
+    return this.repo().find({
       where: { company_code },
       order: { prodtype_code: "ASC" },
     });
   }
 
+  // Find by code
   static async findByCode(
     prodtype_code: number,
     company_code: string
   ): Promise<ProducttypeMaster | null> {
-    return await this.getRepository().findOne({
+    return this.repo().findOne({
       where: { prodtype_code, company_code },
     });
   }
 
+  // Create
   static async create(
-    data: Partial<ProducttypeMaster>
+    data: Pick<ProducttypeMaster, "prodtype_code" | "prodtype_desc" | "company_code">
   ): Promise<ProducttypeMaster> {
-    const repo = this.getRepository();
-
-    const entity = repo.create({
-      ...data,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
-    return await repo.save(entity);
+    const entity = this.repo().create(data);
+    return this.repo().save(entity);
   }
 
+  // Update
   static async update(
     prodtype_code: number,
     company_code: string,
-    data: Partial<ProducttypeMaster>
+    data: Pick<ProducttypeMaster, "prodtype_desc">
   ): Promise<boolean> {
-    const result = await this.getRepository().update(
+    const result = await this.repo().update(
       { prodtype_code, company_code },
-      {
-        ...data,
-        updated_at: new Date(),
-      }
+      data
     );
 
     return !!result.affected && result.affected > 0;
   }
 
+  // Delete
   static async delete(
     prodtype_codes: number[]
   ): Promise<number> {
-    const result = await this.getRepository().delete(prodtype_codes);
+    const result = await this.repo().delete(prodtype_codes);
     return result.affected ?? 0;
   }
 }
