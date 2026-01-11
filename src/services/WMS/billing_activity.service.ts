@@ -1,7 +1,7 @@
 import { AppDataSource } from "../../database/connection";
 import { BillingActivity } from "../../entity/WMS/billing_activity.entity";
 
-export class ActivityService {
+export class BillingActivityService {
   static async getBillingActivity(company_code: string, prin_code: string) {
     try {
       const repository = AppDataSource.getRepository(BillingActivity);
@@ -106,7 +106,7 @@ export class ActivityService {
   }
 
   // UPDATE BILLING ACTIVITY
-  
+
   static async updateBillingActivity(data: any) {
     try {
       const repository = AppDataSource.getRepository(BillingActivity);
@@ -158,7 +158,73 @@ export class ActivityService {
       throw error;
     }
   }
+
+  //delete
+
+  static async deleteBillingActivity(payload: any) {
+    const repository = AppDataSource.getRepository(BillingActivity);
+
+    const {
+      prin_code,
+      act_code,
+      uoc,
+      moc1,
+      moc2,
+      jobtype,
+      company_code,
+      updated_by,
+    } = payload;
+
+    // check if record exists
+    const existing = await repository.findOne({
+      where: {
+        prin_code,
+        act_code,
+        uoc,
+        moc1,
+        moc2,
+        jobtype,
+        company_code,
+      },
+    });
+
+    if (!existing) {
+      return {
+        notFound: true,
+        message: "Billing activity not found",
+      };
+    }
+
+    // update audit field
+    await repository.update(
+      {
+        prin_code,
+        act_code,
+        uoc,
+        moc1,
+        moc2,
+        jobtype,
+        company_code,
+      },
+      {
+        updated_by,
+      }
+    );
+
+    // delete record
+    await repository.delete({
+      prin_code,
+      act_code,
+      uoc,
+      moc1,
+      moc2,
+      jobtype,
+      company_code,
+    });
+
+    return {
+      success: true,
+      message: "Billing activity deleted successfully",
+    };
+  }
 }
-
-
-

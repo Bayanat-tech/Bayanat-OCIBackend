@@ -208,7 +208,8 @@ import {
   getAllLocationTypes, // <-- Add this import
 } from "../../controllers/wms/locationtype_wms.controller";
 import { CustomerMasterController } from "../../controllers/wms/customer_wms.controller";
-import { BillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
+import { BillingActivity, deleteBillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
+import { checkPassword } from "../../middleware/checkPassword";
 
 // Country Routes - Handle country management
 router.post("/country", createCountry as unknown as express.RequestHandler); // Create new country
@@ -450,9 +451,21 @@ router.get("/locationtype", getAllLocationTypes); // Get all location types as J
 router.post("/customer", CustomerMasterController.createCustomerMaster); 
 router.put("/customer", CustomerMasterController.updateCustomerMaster); 
 
-router.post("/billing activity", BillingActivity);
-router.put("/billing activity", BillingActivity); 
+// router.post("/billing_activity", BillingActivity/:prin_code);
+// router.put("/billing_activity", BillingActivity); 
 
+// Billing Activity Routes 
+router.post(
+  "/activity_billing/:principalCode",
+  checkPassword,
+  BillingActivity
+); // Create billing activity for principal
+router.put(
+  "/activity_billing/:principalCode/:activityCode",
+  checkPassword,
+  BillingActivity
+); // Update billing activity
+router.post("/billing_activity", deleteBillingActivity); // Delete billing activities
 export default router;
 router.post("/locationtype/bulk", createBulkLocationType); // Create multiple location types
 router.get("/locationtype", getAllLocationTypes); // Get all location types as JSON
