@@ -37,7 +37,7 @@ export class CustomerMaster {
   @Column({ name: "CUST_CITY", type: "varchar2", length: 100, nullable: true })
   cust_city?: string;
 
-  @Column({ name: "CUST_CONTACT1", type: "varchar2", length: 50, nullable: true })
+  @Column({ name: "CUST_CONTACT1", type: "varchar2", length: 30, nullable: true })
   cust_contact1?: string;
 
   @Column({ name: "CUST_TELNO1", type: "varchar2", length: 50, nullable: true })
@@ -124,7 +124,7 @@ export class CustomerMaster {
   @Column({ name: "MIN_EXP_DAYS", type: "number", nullable: true })
   min_exp_days?: number;
 
-  @Column({ name: "CUST_MOBILE_NO", type: "varchar2", length: 10, nullable: true })
+  @Column({ name: "CUST_MOBILE_NO", type: "varchar2", length: 20, nullable: true })
   cust_mobile_no?: string;
 
   @Column({ name: "VAT_NO", type: "varchar2", length: 20, nullable: true })
