@@ -354,15 +354,43 @@ export const portSchema = (data: IPort) => {
   });
   return schema.validate(data);
 };
+// export const manufactureSchema = (data: IManufacture) => {
+//   const schema = Joi.object().keys({
+//     company_code: Joi.string().required(),
+//     manu_code: Joi.string().required(),
+//     manu_name: Joi.string().required(),
+//     prin_code: Joi.string().allow("", null),
+//   });
+//   return schema.validate(data);
+// };
 export const manufactureSchema = (data: IManufacture) => {
-  const schema = Joi.object().keys({
+  const schema = Joi.object({
     company_code: Joi.string().required(),
+
     manu_code: Joi.string().required(),
     manu_name: Joi.string().required(),
     prin_code: Joi.string().allow("", null),
+
+    // original keys for edit
+    original_prin_code: Joi.string().allow("", null),
+    original_manu_code: Joi.string().allow("", null),
+
+    // optional update fields
+    country_code: Joi.string().allow("", null),
+    manu_addr1: Joi.string().allow("", null),
+    manu_addr2: Joi.string().allow("", null),
+    manu_addr3: Joi.string().allow("", null),
+    manu_addr4: Joi.string().allow("", null),
+    manu_city: Joi.string().allow("", null),
+    manu_contact: Joi.string().allow("", null),
+    manu_telno1: Joi.string().allow("", null),
+    manu_faxno1: Joi.string().allow("", null),
+    manu_email1: Joi.string().email().allow("", null),
   });
+
   return schema.validate(data);
 };
+
 
 export const groupSchema = (data: IGroup) => {
   const schema = Joi.object().keys({
