@@ -542,8 +542,8 @@ export const vesselSchema = (data: IVessel) => {
     line_code: Joi.string().allow("", null),
     email: Joi.string().allow("", null),
     address: Joi.string().allow("", null),
-    // tel_no: Joi.string().allow("",null),
-    // fax_no: Joi.string().allow("",null),
+    tel_no: Joi.string().allow("",null),
+    fax_no: Joi.string().allow("",null),
   });
   return schema.validate(data);
 };

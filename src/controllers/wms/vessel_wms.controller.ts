@@ -46,7 +46,6 @@ export const createVessel = async (req: RequestWithUser, res: Response) => {
       lineCode: req.body.line_code,
       contactPerson: req.body.contact_person,
       address: req.body.address,
-      telNo: req.body.tel_no,
       faxNo: req.body.fax_no,
       email: req.body.email,
       createdBy: requestUser.username,
