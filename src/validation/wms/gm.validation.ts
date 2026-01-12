@@ -663,16 +663,26 @@ export const uomSchema = (data: IUom) => {
   return schema.validate(data);
 };
 
-export const mocSchema = (data: IMoc) => {
-  const schema = Joi.object().keys({
-    company_code: Joi.string().required(),
-    charge_code: Joi.string().required(),
-    description: Joi.string().required(),
-    charge_type: Joi.string().required(),
-    activity_group_code: Joi.string().required(),
-  });
-  return schema.validate(data);
-};
+// export const mocSchema = (data: IMoc) => {
+//   const schema = Joi.object().keys({
+//     company_code: Joi.string().required(),
+//     charge_code: Joi.string().required(),
+//     description: Joi.string().required(),
+//     charge_type: Joi.string().required(),
+//     activity_group_code: Joi.string().required(),
+//   });
+//   return schema.validate(data);
+// };
+
+export const mocSchema = (data: any) =>
+  Joi.object({
+    moc_code: Joi.string().max(20).required(),
+    moc_name: Joi.string().max(255).required(),
+    company_code: Joi.string().max(20).required(),
+    activity_group_code: Joi.string().max(20).allow(null, ''),
+    description: Joi.string().max(20).allow(null, '')
+  }).validate(data);
+
 
 export const moc2Schema = (data: IMoc2) => {
   const schema = Joi.object().keys({
