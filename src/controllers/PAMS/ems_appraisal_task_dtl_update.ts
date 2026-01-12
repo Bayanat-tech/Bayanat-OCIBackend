@@ -27,6 +27,9 @@ export async function updateAppraisalRatings(
   const connection = await oracledb.getConnection();
 
   try {
+    console.log("UPDATE API HIT");
+    console.log("Incoming body:", req.body);
+    
     const rows = req.body.rows.map((r: TAppraisalTaskDtl) => ({
       COMPANY_CODE: r.COMPANY_CODE,
       APPRAISAL_DOC_NO: r.APPRAISAL_DOC_NO,
@@ -35,7 +38,8 @@ export async function updateAppraisalRatings(
       KPI_CODE: r.KPI_CODE ?? null,
       RATING: r.RATING
     }));
-
+     
+    console.log("Mapped rows:", rows);
     await connection.execute(
       `
       BEGIN
