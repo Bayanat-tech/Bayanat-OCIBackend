@@ -58,11 +58,12 @@ export class CustomerMasterController {
         return;
       }
 
-      const { company_code, cust_code } = req.body;
+      const { company_code, cust_code, prin_code } = req.body;
 
       const updated = await CustomerService.updateCustomer(
         company_code,
         cust_code,
+        prin_code,
         {
           ...req.body,
         }

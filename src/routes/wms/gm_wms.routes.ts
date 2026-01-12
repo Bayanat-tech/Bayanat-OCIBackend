@@ -39,6 +39,7 @@ import {
   createProduct, // For creating new products
   updateProduct, // For updating product details
   importExcelProducts,
+  deleteProducts,
 } from "../../controllers/wms/product_wms.controller";
 
 // Import account setup controllers
@@ -317,6 +318,7 @@ router.put("/location", async (req, res, next) => {
 // Product Routes - Handle product management
 router.post("/product", createProduct); // Create new product
 router.put("/product", updateProduct); // Update existing product
+router.delete("/product", deleteProducts); // Update existing product
 router.post(
   "/product/import-excel",
   upload.single("file"),
