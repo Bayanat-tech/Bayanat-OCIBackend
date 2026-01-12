@@ -24,7 +24,8 @@ import {
 } from "../../../controllers/wms/transaction/inbound/packingDetails_wms.controller";
 import {
   // createBulkTallyDetails, // Create multiple tally details
-  createTallyItem, // Create single tally item
+  createTallyItem,
+  deleteTallyItem, // Create single tally item
   // deleteTallyItem, // Delete tally item
   // exportTallyDetails, // Export tally details
   // getTallyDetail, // Get tally details
@@ -55,6 +56,7 @@ import  {getddPrinceProduct }   from "../../../../src/views/wms/transportation/i
 import {
   getInboundJob, // Get single inbound job
   GetsingleInboundjob, // Update inbound job
+  cancelConfirmedInboundJob, // Cancel confirmed inbound job
 } from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller";
 import {
   // getconfirmInboundjob, // Get confirmation details
@@ -113,6 +115,14 @@ router.put(
 router.post("/inboundjob",createOrUpdateJob);
 
 router.patch("/canceljob", cancelInboundJob)
+
+// Cancel confirmed inbound job route
+router.post(
+  "/cancel_confirmed_job",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  cancelConfirmedInboundJob
+);
 
 router.put("/inboundjob",createOrUpdateJob);
 
@@ -210,12 +220,12 @@ router.post(
   createTallyItem
 );
 // router.post("/tally_details/bulk", createBulkTallyDetails);
-// router.post(
-//   "/tally_details/delete",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   deleteTallyItem
-// );
+router.post(
+  "/tally_details/delete",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  deleteTallyItem
+);
 // router.put(
 //   "/tally_details/:packdet_no/:seq_number",
 //   passport.authenticate("jwt", { session: false }),

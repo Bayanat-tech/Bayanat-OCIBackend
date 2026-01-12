@@ -75,21 +75,41 @@ export class GroupService {
     return result.affected ? result.affected > 0 : false;
   }
 
-  static async deleteGroups(
-    groupCodes: string[],
-    prinCode: string,
-    companyCode: string
-  ): Promise<boolean> {
-    const repository = this.getProductGroupRepository();
-
-    const result = await repository.delete({
-      groupCode: In(groupCodes),
-      prinCode,
-      companyCode,
-    });
-
-    return result.affected ? result.affected > 0 : false;
+ static async deleteGroups(
+  groupCodes: string[],
+  prinCode: string,
+  companyCode: string
+): Promise<boolean> {
+  console.log('Starting delete process for', groupCodes.length, 'groups');
+  
+  const repository = this.getProductGroupRepository();
+  let successCount = 0;
+  
+  for (const groupCode of groupCodes) {
+    try {
+      console.log(`Deleting group ${groupCode}...`);
+      
+      const result = await repository.delete({
+        groupCode,
+        prinCode,
+        companyCode,
+      });
+      
+      if (result.affected && result.affected > 0) {
+        successCount++;
+        console.log(`Successfully deleted group ${groupCode}`);
+      } else {
+        console.log(`Group ${groupCode} not found or already deleted`);
+      }
+    } catch (error: any) {
+      console.error(`Failed to delete group ${groupCode}:`, error.message);
+      // Continue with other groups
+    }
   }
+  
+  console.log(`Deleted ${successCount} out of ${groupCodes.length} groups`);
+  return successCount > 0;
+}
 
   static async checkGroupExists(
     groupCode: string,

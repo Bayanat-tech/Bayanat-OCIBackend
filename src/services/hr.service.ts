@@ -52,6 +52,64 @@ function formatDateTime(date: string | Date | null | undefined): string | null {
   return null;
 }
 
+// Format datetime with time for attendance events (MySQL to Oracle conversion)
+function formatDateTimeWithTime(
+  date: string | Date | null | undefined
+): string | null {
+  if (!date) return null;
+
+  let dateObj: Date;
+  if (typeof date === "string") {
+    if (date.includes(" ")) {
+      const [datePart, timePart] = date.split(" ");
+      dateObj = new Date(`${datePart}T${timePart}`);
+    } else {
+      dateObj = new Date(date);
+    }
+  } else {
+    dateObj = date;
+  }
+
+  if (isNaN(dateObj.getTime())) {
+    console.warn("Invalid date provided:", date);
+    return null;
+  }
+
+  return dateObj.toISOString();
+}
+
+export interface AttendanceEvent {
+  id?: string;
+  employeeId: string;
+  attendanceRecordId?: string;
+  eventTime: Date | string;
+  eventType: "check_in" | "check_out";
+  createdAt?: Date | string;
+}
+
+// Interface for Attendance Event Request (matching .NET model)
+export interface AttendanceEventRequest {
+  Id?: string;
+  EmployeeId: string;
+  AttendanceRecordId?: string;
+  EventTime: string; // ISO string
+  EventType: string;
+  CreatedAt?: string;
+}
+
+// Interface for bulk insert response
+export interface BulkInsertResponse {
+  message: string;
+  totalRequests: number;
+  successfulInserts: number;
+  failedInserts: number;
+  insertedEvents: Array<{
+    eventId: string;
+    employeeId: string;
+    eventType: string;
+  }>;
+}
+
 export interface LeaveResumeDatesUpdate {
   requestNumber: string;
   dutyResumeDate?: Date | null;
@@ -107,11 +165,7 @@ export const HrService = {
     );
     return response.data;
   },
-
-
-
-
-
+  
 
 newValidaterequest: async(params: {
   leaveStartDate: string;
@@ -231,9 +285,6 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
   }
 },
 
-
-
-
   validateLeave: async (params: {
     companyCode: string;
     employeeId: string;
@@ -252,12 +303,6 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
     );
     return response.data;
   },
-
-
-
-
-
-
 
   insertLeaveRequest: async (request: LeaveRequestFlow) => {
     try {
@@ -469,6 +514,53 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
       });
 
       throw new Error(`Failed to insert uploaded file data: ${error.message}`);
+    }
+  },
+
+  // Bulk insert multiple attendance events
+  bulkInsertAttendanceEvents: async (
+    requests: AttendanceEvent[]
+  ): Promise<BulkInsertResponse> => {
+    try {
+      // Transform each request to match .NET API expectations
+      const payload = requests.map((request) => ({
+        Id: request.id,
+        EmployeeId: request.employeeId,
+        AttendanceRecordId: request.attendanceRecordId,
+        EventTime:
+          formatDateTimeWithTime(request.eventTime) || new Date().toISOString(),
+        EventType: request.eventType,
+        CreatedAt: request.createdAt
+          ? formatDateTimeWithTime(request.createdAt)
+          : undefined,
+      }));
+
+      console.log(`Bulk inserting ${payload.length} attendance events`);
+
+      const response = await axiosInstance.post(
+        "/api/EmployeeLeave/bulkInsertAttendanceEvents",
+        payload
+      );
+
+      console.log("Bulk attendance events API Response:", {
+        status: response.status,
+        data: response.data,
+      });
+
+      if (response.status >= 400) {
+        throw new Error(
+          `API Error: ${response.status} - ${JSON.stringify(response.data)}`
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error("Error in bulkInsertAttendanceEvents:", {
+        message: error.message,
+        response: error.response?.data,
+        config: error.config,
+      });
+      throw error;
     }
   },
 
