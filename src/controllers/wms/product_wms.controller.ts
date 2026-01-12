@@ -106,37 +106,145 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const deleteproducts = async (req: RequestWithUser, res: Response) => {
+ export const deleteProducts = async (req: RequestWithUser, res: Response) => {
   try {
-    const prodCodes = req.body;
+    const productsToDelete = req.body;
 
-    if (!req.body.length) {
+    console.log('=== DELETE PRODUCTS REQUEST ===');
+    console.log('Full request body:', JSON.stringify(productsToDelete, null, 2));
+
+    if (!Array.isArray(productsToDelete) || !productsToDelete.length) {
+      console.log('Error: No products to delete or invalid format');
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.PRODUCT_WMS.SELECT_AT_LEAST_ONE_PRODUCT,
       });
       return;
     }
+
+    // Validate each item - require prod_code and prin_code
+    const invalidItems = productsToDelete.filter(item => 
+      !item.prod_code || !item.prin_code
+    );
     
-    const deleteResult = await ProductService.deleteProducts(prodCodes);
-    
-    if (!deleteResult) {
+    if (invalidItems.length > 0) {
+      console.log('Error: Invalid items found', invalidItems);
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "No products were deleted",
+        message: "Invalid data: missing prod_code or prin_code",
       });
       return;
     }
+
+    const requestUser: IUser = req.user;
+    const companyCode = requestUser.company_code;
+
+    // Group items by (prin_code, company_code) pair
+    const groupedByPrinAndCompany: { [key: string]: any[] } = {};
     
+    productsToDelete.forEach(item => {
+      const key = `${item.prin_code}_${companyCode}`;
+      if (!groupedByPrinAndCompany[key]) {
+        groupedByPrinAndCompany[key] = [];
+      }
+      groupedByPrinAndCompany[key].push(item);
+    });
+
+    console.log('Grouped by prin_code and company_code:', groupedByPrinAndCompany);
+
+    let totalDeleted = 0;
+    let totalFailed = 0;
+    const deleteResults = [];
+
+    // Delete products for each (prin_code, company_code) combination
+    for (const [key, items] of Object.entries(groupedByPrinAndCompany)) {
+      const [prinCode, compCode] = key.split('_');
+      const prodCodes = items.map(item => item.prod_code);
+
+      console.log(`Deleting products for prin_code=${prinCode}, company_code=${compCode}:`, prodCodes);
+
+      try {
+        // Update service method to accept all three parameters
+        const deleteSuccess = await ProductService.deleteProducts(
+          prodCodes,prinCode,compCode);
+
+        if (deleteSuccess) {
+          const deletedCount = prodCodes.length;
+          totalDeleted += deletedCount;
+          deleteResults.push({
+            prin_code: prinCode,
+            company_code: compCode,
+            success: true,
+            deleted: deletedCount,
+            products: prodCodes
+          });
+          console.log(`Successfully deleted ${deletedCount} products for ${prinCode}/${compCode}`);
+        } else {
+          totalFailed += prodCodes.length;
+          deleteResults.push({
+            prin_code: prinCode,
+            company_code: compCode,
+            success: false,
+            message: "No products were deleted",
+            products: prodCodes
+          });
+          console.log(`Failed to delete products for ${prinCode}/${compCode}`);
+        }
+      } catch (error: any) {
+        totalFailed += prodCodes.length;
+        deleteResults.push({
+          prin_code: prinCode,
+          company_code: compCode,
+          success: false,
+          message: error.message,
+          products: prodCodes
+        });
+        console.error(`Error deleting products for ${prinCode}/${compCode}:`, error.message);
+      }
+    }
+
+    console.log('Delete summary:', {
+      totalAttempted: productsToDelete.length,
+      totalDeleted,
+      totalFailed,
+      results: deleteResults
+    });
+
+    if (totalDeleted === 0) {
+      console.log('Error: No products were deleted');
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Failed to delete any products. No records were deleted.",
+        results: deleteResults
+      });
+      return;
+    }
+
+    let message = constants.MESSAGES.PRODUCT_WMS.PRODUCT_DELETED_SUCCESSFULLY;
+    if (totalFailed > 0) {
+      message = `Successfully deleted ${totalDeleted} product(s). ${totalFailed} product(s) could not be deleted.`;
+    }
+
+    console.log('Delete successful!');
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_DELETED_SUCCESSFULLY,
+      message: message,
+      data: {
+        totalDeleted,
+        totalFailed,
+        results: deleteResults
+      }
     });
     return;
   } catch (error: any) {
+    console.error('=== DELETE PRODUCTS ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error:', error);
+    
     res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
+      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: `Error occurred while deleting products: ${error.message}` });
     return;
   }
 };

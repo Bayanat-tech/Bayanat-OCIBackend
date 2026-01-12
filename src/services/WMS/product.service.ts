@@ -49,14 +49,47 @@
       return result.affected ? result.affected > 0 : false;
     }
 
-    static async deleteProducts(prod_codes: string[]): Promise<boolean> {
+        static async deleteProducts(
+        prod_codes: string[],
+        prin_code: string,
+        company_code: string
+      ): Promise<boolean> {
+        const repository = this.getProductRepository();
+
+        console.log(`Deleting products: ${JSON.stringify(prod_codes)} for prin_code: ${prin_code}, company_code: ${company_code}`);
+
+        // Delete using composite key: PROD_CODE + PRIN_CODE + COMPANY_CODE
+        const result = await repository.delete({
+          prod_code: In(prod_codes),
+          prin_code: prin_code,
+          company_code: company_code
+        });
+
+        console.log(`Deleted ${result.affected || 0} products`);
+        return result.affected ? result.affected > 0 : false;
+      }
+
+      static async getProductsByCodes(
+      prod_codes: string[], 
+      company_code: string
+    ): Promise<Product[]> {
       const repository = this.getProductRepository();
-
-      const result = await repository.delete({
-        prod_code: In(prod_codes),
-      });
-
-      return result.affected ? result.affected > 0 : false;
+      
+      try {
+        const products = await repository.find({
+          where: {
+            prod_code: In(prod_codes),
+            company_code: company_code
+          },
+          select: ['prod_code', 'prin_code', 'company_code'] 
+        });
+        
+        console.log(`Found ${products.length} products for codes: ${JSON.stringify(prod_codes)}`);
+        return products;
+      } catch (error) {
+        console.error('Error in ProductService.getProductsByCodes:', error);
+        throw error;
+      }
     }
 
     static async checkProductExists(
@@ -78,57 +111,42 @@
       const repository = this.getProductRepository();
 
       console.log("🔍 ProductService.getProducts called with filters:", filters);
+      console.log("📊 Pagination params - page:", page, "limit:", limit);
 
       try {
-        const queryBuilder = repository.createQueryBuilder("product");
-
-        // Always filter by company code - FIXED
-        if (filters.company_code) {
-          console.log("✅ Filtering by company_code:", filters.company_code);
-          queryBuilder.where("product.company_code = :company_code", { 
+        // First, get the total count
+        const totalQueryBuilder = repository.createQueryBuilder("product")
+          .where("product.company_code = :company_code", { 
             company_code: filters.company_code 
           });
-        }
-        // Add product name filter if present - FIXED
-        if (filters.prod_name) {
-          console.log("✅ Filtering by prod_name:", filters.prod_name);
-          queryBuilder.andWhere("product.prod_name LIKE :prod_name", { 
-            prod_name: `%${filters.prod_name}%` 
-          });
-        }
 
-        // Add product code filter if present - FIXED
-        if (filters.prod_code) {
-          console.log("✅ Filtering by prod_code:", filters.prod_code);
-          queryBuilder.andWhere("product.prod_code LIKE :prod_code", { 
-            prod_code: `%${filters.prod_code}%` 
-          });
-        }
+        const total = await totalQueryBuilder.getCount();
+        console.log("📊 Total products in database:", total);
 
-        // Get total count
-        const total = await queryBuilder.getCount();
-        console.log("📊 Total products found:", total);
+        // Now build the main query for data
+        const queryBuilder = repository.createQueryBuilder("product");
 
-        // Apply pagination and get results - FIXED field name
+        // Calculate skip for pagination
+        const skip = (page - 1) * limit;
+        console.log("📊 Pagination - skip:", skip, "limit:", limit);
+
+        // Get the data with pagination
         const data = await queryBuilder
-          .skip((page - 1) * limit)
+          .orderBy("product.prod_code", "ASC")
+          .skip(skip)
           .take(limit)
-          .orderBy("product.prod_code", "ASC") // ✅ Fixed: prod_code not prodCode
           .getMany();
 
         console.log("📦 Products fetched:", data.length);
-        
-        if (data.length > 0) {
-          console.log("🔎 First product sample keys:", Object.keys(data[0]));
-        }
+        console.log("🔍 Sample product codes:", data.map(p => p.prod_code));
 
         return { data, total };
       } catch (error: any) {
         console.error("❌ Error in ProductService.getProducts:", error.message);
+        console.error("Stack trace:", error.stack);
         throw error;
       }
-    }
-
+      }
     static async getByCategoryOrGroup(
       group_code: string | null,
       category_abc: string | null,

@@ -23,7 +23,7 @@ export class Product {
     @Column({ name: 'BARCODE', type: 'varchar', length: 40, nullable: true })
     barcode: string;
 
-    @Column({ name: 'P_UOM', type: 'varchar', length: 5, nullable: false })
+    @Column({ name: 'P_UOM', type: 'varchar', length: 10, nullable: false })
     p_uom: string;
 
     @Column({ name: 'SUOM', type: 'varchar', length: 5, nullable: true })
