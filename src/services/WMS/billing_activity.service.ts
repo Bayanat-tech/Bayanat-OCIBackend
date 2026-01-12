@@ -39,8 +39,9 @@ export class BillingActivityService {
       console.log("req param", {company_code,prin_code});
       console.log("Executing query:", query);
 
-      // return await repository.query(query);
-      return await (repository.query as any)(query, [ company_code, prin_code ]);
+ // return await (repository.query as any)(query, [ company_code, prin_code ]);
+  return await repository.query(query, [company_code, prin_code]);
+
     } catch (error) {
       console.error("Error fetching billing activity:", error);
       throw error;

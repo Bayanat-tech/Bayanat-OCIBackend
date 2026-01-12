@@ -2175,18 +2175,20 @@ case "activitysubgroup":
 
       case "billing_activity": 
       {
-       if (!uniqueCode || !requestUser.company_code) {
-         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-         success: false,
-         //message: "company_code and prin_code are required",
-        });
-       return;
-       }
+        console.log("Fetching billing activity data...");
+      
+      console.log("Params:", {
+         company_code: requestUser.company_code,
+         prin_code: uniqueCode
+         });
 
-        fetchedData = await BillingActivityService.getBillingActivity(
-       requestUser.company_code,
-       String(uniqueCode)
-       );
+     const data = await BillingActivityService.getBillingActivity(
+    requestUser.company_code,
+    String(uniqueCode)
+  );
+
+  fetchedData = data || [];
+  totalCount = data?.length || 0;
       }
    break;
      
@@ -2592,6 +2594,7 @@ break;
     // Fetching MOC (Mode of Charge) data using MocService
     case "moc": {
       try {
+        console.log('Fetching MOC data...');
         // Get pagination parameters
         const page = Number(req.query.page) || 1;
         const pageLimit = Number(req.query.limit) || 100;
