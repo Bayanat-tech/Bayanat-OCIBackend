@@ -16,4 +16,5 @@ export interface IUser {
   SEC_PASSWD: string;
   APPLICATION?: string;
   user_id?: any;
+  country_code?: string;
 }

@@ -33,18 +33,11 @@ export class TaAdjHeaderService {
     ADJ_DATE?: Date;
     CONFIRMED_DATE?: Date;
     COMPANY_CODE: string;
-    CREATED_BY?: string;
-    UPDATED_BY?: string;
   }): Promise<TaAdjHeader> {
     const repository = this.getRepository();
 
-    // Generate ADJ_NO manually since trigger isn't working
-    const ADJ_NO = await this.getNextAdjNo();
-
-    const header = repository.create({
-      ...headerData,
-      ADJ_NO,
-    });
+    // Don't manually generate ADJ_NO - let database trigger handle it
+    const header = repository.create(headerData);
 
     return await repository.save(header);
   }
