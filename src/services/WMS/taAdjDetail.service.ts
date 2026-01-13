@@ -57,6 +57,42 @@ export class TaAdjDetailService {
     return await repository.save(adjustment);
   }
 
+  static async createAdjustmentDetail(detailData: {
+    ADJ_NO: number;
+    ADJ_SERIALNO: number;
+    PRIN_CODE: string;
+    COMPANY_CODE: string;
+    PROD_CODE?: string;
+    SITE_CODE?: string;
+    LOCATION_CODE?: string;
+    P_UOM?: string;
+    L_UOM?: string;
+    JOB_NO?: string;
+    LOT_NO?: string;
+    MANU_CODE?: string;
+    DOC_REF?: string;
+    KEY_NUMBER?: string;
+    PALLET_ID?: string;
+    QTY_PUOM?: number;
+    QTY_LUOM?: number;
+    USER_ID?: string;
+  }): Promise<TaAdjDetail> {
+    const repository = this.getRepository();
+
+    // Generate unique IDENTITY_NUMBER
+    const IDENTITY_NUMBER = await this.getNextIdentityNumber();
+
+    const adjustment = repository.create({
+      ...detailData,
+      IDENTITY_NUMBER,
+      POSTED_IND: 'N',
+      SELECTED: 'N',
+      CONFIRMED: 'N',
+    });
+
+    return await repository.save(adjustment);
+  }
+
   static async updateAdjustment(
     JOB_NO: string,
     COMPANY_CODE: string,
@@ -105,7 +141,7 @@ export class TaAdjDetailService {
   static async processAdjustment(data: {
     COMPANY_CODE: string;
     PRIN_CODE: string;
-    // ADJ_NO: number;
+    ADJ_NO: number;
     USERID: string;
   }): Promise<void> {
     try {
@@ -116,7 +152,7 @@ export class TaAdjDetailService {
         {
           P_COMPANY_CODE: data.COMPANY_CODE,
           P_PRIN_CODE: data.PRIN_CODE,
-          // P_ADJ_NO: data.ADJ_NO,
+          P_ADJ_NO: data.ADJ_NO,
           P_USERID: data.USERID,
         }
       );
