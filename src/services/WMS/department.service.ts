@@ -40,29 +40,79 @@ export class DepartmentService {
   }
 
   // Create new department
-  static async createDepartment(deptData: {
-    company_code: string;
-    div_code: string;
-    dept_code: string;
-    dept_name: string;
-    dept_short_name?: string;
-    dept_addr1: string;
-    dept_addr2?: string;
-    dept_addr3?: string;
-    phone?: string;
-    fax?: string;
-    email?: string;
-    dept_head_id?: string;
-    remarks?: string;
-    status: string;
-    user_id?: string;
-    user_dt?: Date;
-    enterprice_code: string;
-  }): Promise<DepartmentMaster> {
-    const repository = this.getDepartmentRepository();
-    const department = repository.create(deptData);
-    return await repository.save(department);
-  }
+    static async createDepartment(deptData: {
+      company_code: string;
+      div_code: string;
+      dept_code: string;  
+      dept_name: string;
+      dept_short_name?: string;
+      dept_addr1?: string;
+      dept_addr2?: string;
+      dept_addr3?: string;
+      phone?: string;
+      fax?: string;
+      email?: string;
+      dept_head_id?: string;
+      remarks?: string;
+      status: string;
+      user_id?: string;
+      user_dt?: Date;
+      enterprice_code: string;
+    }): Promise<DepartmentMaster> {
+      const repository = this.getDepartmentRepository();
+      
+      // Create the department object with proper TypeScript types
+      const departmentData: Partial<DepartmentMaster> = {
+        company_code: deptData.company_code,
+        div_code: deptData.div_code,
+        dept_code: deptData.dept_code,
+        dept_name: deptData.dept_name,
+        status: deptData.status,
+        enterprice_code: deptData.enterprice_code,
+        user_id: deptData.user_id,
+        user_dt: deptData.user_dt,
+      };
+      
+      // Add optional fields only if they have values (not empty strings)
+      if (deptData.dept_short_name && deptData.dept_short_name.trim() !== '') {
+        departmentData.dept_short_name = deptData.dept_short_name;
+      }
+      
+      if (deptData.dept_addr1 && deptData.dept_addr1.trim() !== '') {
+        departmentData.dept_addr1 = deptData.dept_addr1;
+      }
+      
+      if (deptData.dept_addr2 && deptData.dept_addr2.trim() !== '') {
+        departmentData.dept_addr2 = deptData.dept_addr2;
+      }
+      
+      if (deptData.dept_addr3 && deptData.dept_addr3.trim() !== '') {
+        departmentData.dept_addr3 = deptData.dept_addr3;
+      }
+      
+      if (deptData.phone && deptData.phone.trim() !== '') {
+        departmentData.phone = deptData.phone;
+      }
+      
+      if (deptData.fax && deptData.fax.trim() !== '') {
+        departmentData.fax = deptData.fax;
+      }
+      
+      if (deptData.email && deptData.email.trim() !== '') {
+        departmentData.email = deptData.email;
+      }
+      
+      if (deptData.dept_head_id && deptData.dept_head_id.trim() !== '') {
+        departmentData.dept_head_id = deptData.dept_head_id;
+      }
+      
+      if (deptData.remarks && deptData.remarks.trim() !== '') {
+        departmentData.remarks = deptData.remarks;
+      }
+      
+      const department = repository.create(departmentData as DepartmentMaster);
+      return await repository.save(department);
+    }
 
   // Update existing department
   static async updateDepartment(

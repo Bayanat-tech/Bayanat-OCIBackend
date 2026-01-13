@@ -18,7 +18,7 @@ export const createDepartment = async (req: RequestWithUser, res: Response) => {
         success: false,
         message: error.message,
       });
-    }
+    } 
 
     const { dept_code, dept_name, company_code, div_code } = req.body;
 
@@ -40,10 +40,10 @@ export const createDepartment = async (req: RequestWithUser, res: Response) => {
     const newDepartment = await DepartmentService.createDepartment({
       ...req.body,
       company_code: company_code || requestUser.company_code,
-      div_code: div_code || '01',
-      enterprice_code: req.body.enterprice_code || '01',
-      status: req.body.status || 'A',
-      dept_addr1: req.body.dept_addr1 || '',
+      div_code: div_code ,
+      enterprice_code: req.body.enterprice_code || 'BSG' ,
+      status: req.body.status || 'A' ,
+      // dept_addr1: req.body.dept_addr1 || '',
       user_id: requestUser.loginid,
       user_dt: new Date(),
     });
