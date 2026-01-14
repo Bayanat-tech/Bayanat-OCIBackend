@@ -473,7 +473,7 @@ export const createStockAdjustmentHeader = async (
 
 export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
   try {
-    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, CONFIRMED } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; };
+    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, CONFIRMED, USER_ID } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; USER_ID?: string; };
 
     // Validate required fields
     if (!ADJ_CODE) {
@@ -490,6 +490,13 @@ export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
       });
     }
 
+    if (!USER_ID) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "USER_ID is required",
+      });
+    }
+
     const requestUser = req.user;
     const COMPANY_CODE = requestUser.company_code;
 
@@ -501,6 +508,7 @@ export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
       // CONFIRMED: CONFIRMED || "Y",  // Don't set CONFIRMED to avoid trigger
       ADJ_DATE,
       COMPANY_CODE,
+      USER_ID,
     });
 
     res.status(constants.STATUS_CODES.OK).json({
