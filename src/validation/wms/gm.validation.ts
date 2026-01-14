@@ -747,6 +747,7 @@ export const principalSchema = (
       Joi.string(),
       Joi.number().allow(null, "")
     ),
+    div_code : Joi.string().required(),
     prin_addr1: Joi.string().allow(null, ""),
     prin_addr2: Joi.string().allow(null, ""),
     prin_addr3: Joi.string().allow(null, ""),
