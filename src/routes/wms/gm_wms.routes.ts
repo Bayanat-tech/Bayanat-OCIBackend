@@ -37,7 +37,8 @@ import { Request, Response } from "express";
 import { 
   createProducttype,
   getProducttypes,
-  updateProducttype
+  updateProducttype,
+  deleteProducttypes
  } from "../../controllers/wms/producttype_wms.controller";
 
 // Import product management controllers
@@ -265,7 +266,9 @@ router.put("/producttype", async (req: Request, res: Response) => {
 }); // Update existing product type
  // Create new product type
 // router.post("/Producttype/bulk", createBulkProducttypes); // Create multiple product types
-// router.post("/Producttype/delete", deleteProducttypes); // Delete product types
+router.post("/producttype/delete", async (req: Request, res: Response) => {
+  await deleteProducttypes(req, res);
+}); // Delete product types
 
 // Alert Routes - Handle alert management
 router.post("/alert", createAlert); // Create new alert

@@ -183,6 +183,7 @@ export const deleteProducttypes = async (
         constants.MESSAGES.PRODUCTTYPE_WMS.PRODUCTTYPE_DELETED_SUCCESSFULLY,
     });
   } catch (error: unknown) {
+
     const message =
       error instanceof Error ? error.message : "Internal server error";
 

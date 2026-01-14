@@ -443,24 +443,75 @@ export const industrysectorSchema = (data: IIndustrysector) => {
   return schema.validate(data);
 };
 
-export const departmentSchema = (data: IDepartment) => {
-  const schema = Joi.object().keys({
-    dept_code: Joi.string().required(),
-    dept_name: Joi.string().required(),
-    inv_flag: Joi.string().allow("", null),
-    jobno_seq: Joi.number().allow("", null),
-    invno_seq: Joi.number().allow("", null),
-    company_code: Joi.string().required(),
-    operation_type: Joi.string().allow("", null),
+// export const departmentSchema = (data: IDepartment) => {
+//   const schema = Joi.object().keys({
+//     dept_code: Joi.string().required(),
+//     dept_name: Joi.string().required(),
+//     inv_flag: Joi.string().allow("", null),
+//     jobno_seq: Joi.number().allow("", null),
+//     invno_seq: Joi.number().allow("", null),
+//     company_code: Joi.string().required(),
+//     operation_type: Joi.string().allow("", null),
+//     dept_short_name: Joi.string().allow(null, ''),
+//     dept_addr1: Joi.string().allow("",null),
+//     dept_addr2: Joi.string().allow("",null),
+//     dept_addr3: Joi.string().allow("",null),
+//     div_code: Joi.string().allow("", null),
+//     ac_div_code: Joi.string().allow("", null),
+//     dept_email: Joi.string().allow("", null),
+//     dn_email: Joi.string().allow("", null),
+//     grn_email: Joi.string().allow("", null),
+//     inv_gen: Joi.string().allow("", null),
+//     inb_oub_related: Joi.string().allow("", null),
+//     inv_prefix: Joi.string().allow("", null),
+//     phone: Joi.string().allow("",null),
+//     fax: Joi.string().allow("",null),
+//     email: Joi.string().allow("",null),
+//     remark: Joi.string().allow("",null),
+//     status:Joi.string().allow("",null),
+//     user_dt:Joi.string().allow("",null),
+//     user_id:Joi.string().allow("",null),
+//     enterprice_code: Joi.string().allow("",null),
+//     dept_head_id: Joi.string().allow("",null),
+//   });
 
-    div_code: Joi.string().allow("", null),
-    ac_div_code: Joi.string().allow("", null),
-    dept_email: Joi.string().allow("", null),
-    dn_email: Joi.string().allow("", null),
-    grn_email: Joi.string().allow("", null),
-    inv_gen: Joi.string().allow("", null),
-    inb_oub_related: Joi.string().allow("", null),
-    inv_prefix: Joi.string().allow("", null),
+//   return schema.validate(data);
+// };
+export const departmentSchema = (data: any) => {
+  const schema = Joi.object({
+    company_code: Joi.string().required(),
+
+    enterprice_code: Joi.string().allow(null, ''),
+
+    div_code: Joi.string().required(),
+
+    dept_code: Joi.string().required(),
+
+    dept_name: Joi.string().required(),
+
+    dept_short_name: Joi.string().allow(null, ''),
+
+    dept_addr1: Joi.string().allow(null, ''),
+
+    dept_addr2: Joi.string().allow(null, ''),
+
+    dept_addr3: Joi.string().allow(null, ''),
+
+    dept_head_id: Joi.string().allow(null, ''),
+
+    phone: Joi.string().allow(null, ''),
+
+    fax: Joi.string().allow(null, ''),
+
+    email: Joi.string().email().allow(null, ''),
+
+    remarks: Joi.string().allow(null, ''),
+
+    status: Joi.string().required(),
+
+    user_id: Joi.string().allow(null, ''),
+
+    user_dt: Joi.date().allow(null)
   });
 
   return schema.validate(data);
