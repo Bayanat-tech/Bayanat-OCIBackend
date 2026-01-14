@@ -94,7 +94,7 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
       });
     }
 
-    const { dept_code, company_code } = req.body;
+    const { dept_code, company_code, div_code, ...updateData } = req.body;
 
     // Check if department exists using composite key
     const existingDepartment = await DepartmentService.findByCode(
@@ -114,7 +114,7 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
       dept_code,
       company_code || requestUser.company_code,
       {
-        ...req.body,
+        ...updateData,
         user_id: requestUser.loginid,
         user_dt: new Date(),
       }
