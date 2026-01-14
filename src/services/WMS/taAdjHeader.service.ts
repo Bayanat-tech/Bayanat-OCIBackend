@@ -33,6 +33,7 @@ export class TaAdjHeaderService {
     ADJ_DATE?: Date;
     CONFIRMED_DATE?: Date;
     COMPANY_CODE: string;
+    USER_ID?: string;
   }): Promise<TaAdjHeader> {
     const repository = this.getRepository();
 

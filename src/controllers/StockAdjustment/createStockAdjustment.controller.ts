@@ -342,7 +342,7 @@ export const processAdjustment = async (
   res: Response
 ) => {
   try {
-    const { COMPANY_CODE, PRIN_CODE, USERID }: IProcessAdjustmentRequest = req.body;
+    const { COMPANY_CODE, PRIN_CODE, ADJ_NO, USERID }: IProcessAdjustmentRequest = req.body;
 
     // Validate required fields
     if (!COMPANY_CODE) {
@@ -361,13 +361,13 @@ export const processAdjustment = async (
       return;
     }
 
-    // if (!ADJ_NO) {
-    //   res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-    //     success: false,
-    //     message: "ADJ_NO is required",
-    //   });
-    //   return;
-    // }
+    if (!ADJ_NO) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "ADJ_NO is required",
+      });
+      return;
+    }
 
     if (!USERID) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -380,7 +380,7 @@ export const processAdjustment = async (
     console.log('Processing adjustment with data:', {
       COMPANY_CODE,
       PRIN_CODE,
-      // ADJ_NO,
+      ADJ_NO,
       USERID,
     });
 
@@ -388,7 +388,7 @@ export const processAdjustment = async (
     await TaAdjDetailService.processAdjustment({
       COMPANY_CODE,
       PRIN_CODE,
-      // ADJ_NO,
+      ADJ_NO,
       USERID,
     });
 
@@ -473,7 +473,7 @@ export const createStockAdjustmentHeader = async (
 
 export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
   try {
-    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, CONFIRMED } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; };
+    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, CONFIRMED, USER_ID } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; USER_ID?: string; };
 
     // Validate required fields
     if (!ADJ_CODE) {
@@ -490,6 +490,13 @@ export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
       });
     }
 
+    if (!USER_ID) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "USER_ID is required",
+      });
+    }
+
     const requestUser = req.user;
     const COMPANY_CODE = requestUser.company_code;
 
@@ -501,6 +508,7 @@ export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
       // CONFIRMED: CONFIRMED || "Y",  // Don't set CONFIRMED to avoid trigger
       ADJ_DATE,
       COMPANY_CODE,
+      USER_ID,
     });
 
     res.status(constants.STATUS_CODES.OK).json({
@@ -515,6 +523,103 @@ export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "An error occurred while creating adjustment header",
+      error: error.message,
+      details: error.stack,
+    });
+  }
+};
+
+export const createAdjustmentDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const {
+      ADJ_NO,
+      ADJ_SERIALNO,
+      PRIN_CODE,
+      PROD_CODE,
+      SITE_CODE,
+      LOCATION_CODE,
+      P_UOM,
+      L_UOM,
+      JOB_NO,
+      LOT_NO,
+      MANU_CODE,
+      DOC_REF,
+      KEY_NUMBER,
+      PALLET_ID,
+      QTY_PUOM,
+      QTY_LUOM,
+    } = req.body;
+
+    // Validate required fields
+    if (!ADJ_NO) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "ADJ_NO is required",
+      });
+    }
+
+    if (!ADJ_SERIALNO) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "ADJ_SERIALNO is required",
+      });
+    }
+
+    if (!PRIN_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "PRIN_CODE is required",
+      });
+    }
+
+    if (!KEY_NUMBER) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "KEY_NUMBER is required",
+      });
+    }
+
+    // Get user info from request
+    const requestUser = req.user;
+    const COMPANY_CODE = requestUser.company_code;
+    const username = requestUser.loginid;
+
+    // Create adjustment detail
+    const newDetail = await TaAdjDetailService.createAdjustmentDetail({
+      ADJ_NO,
+      ADJ_SERIALNO,
+      PRIN_CODE,
+      COMPANY_CODE,
+      PROD_CODE,
+      SITE_CODE,
+      LOCATION_CODE,
+      P_UOM,
+      L_UOM,
+      JOB_NO,
+      LOT_NO,
+      MANU_CODE,
+      DOC_REF,
+      KEY_NUMBER,
+      PALLET_ID,
+      QTY_PUOM,
+      QTY_LUOM,
+      USER_ID: username,
+    });
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail created successfully",
+      data: newDetail,
+    });
+  } catch (error: any) {
+    console.error("Error creating adjustment detail:", error);
+    console.error("Error stack:", error.stack);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to create adjustment detail",
       error: error.message,
       details: error.stack,
     });

@@ -8,7 +8,8 @@ import {
   deleteStockAdjustment,
   processAdjustment,
   // createStockAdjustmentHeader,
-  createAdjHeader
+  createAdjHeader,
+  createAdjustmentDetail
 } from "../../controllers/StockAdjustment/createStockAdjustment.controller";
 
 const router = express.Router();
@@ -19,6 +20,11 @@ router.post("/", createStockAdjustment as express.RequestHandler);
 // POST - Create stock adjustment header only
 router.post("/createAdjHeader", async (req: Request, res: Response) => {
   await createAdjHeader(req, res);
+});
+
+// POST - Create stock adjustment detail only
+router.post("/createAdjDetail", async (req: Request, res: Response) => {
+  await createAdjustmentDetail(req, res);
 });
 
 // POST - Process stock adjustment

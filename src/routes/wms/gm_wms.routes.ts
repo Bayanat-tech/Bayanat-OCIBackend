@@ -27,12 +27,19 @@ import {
 
 // Import product type related controllers
 // import {
-//   createBulkProducttypes, // For creating multiple product types
+//   // createBulkProducttypes, // For creating multiple product types
 //   createProducttype, // For creating single product type
-//   deleteProducttypes, // For deleting product types
-//   exportProducttype, // For exporting product type data
-//   updateProducttype, // For updating product type
+//   // deleteProducttypes, // For deleting product types
+//   // exportProducttype, // For exporting product type data
+//   // updateProducttype, // For updating product type
 // } from "../../controllers/wms/producttype_wms.controller";
+import { Request, Response } from "express";
+import { 
+  createProducttype,
+  getProducttypes,
+  updateProducttype,
+  deleteProducttypes
+ } from "../../controllers/wms/producttype_wms.controller";
 
 // Import product management controllers
 import {
@@ -244,13 +251,26 @@ router.get(
   "/activity-kpi/export",
   exportActivityKPI as unknown as express.RequestHandler
 ); // Export KPI data
+// ..\controllers\wms\producttype_wms.controller.ts
 
 // Product Type Routes - Handle product type management
-// router.post("/Producttype", createProducttype); // Create new product type
-// router.put("/Producttype", updateProducttype); // Update existing product type
+
+
+router.post("/producttype", async (req: Request, res: Response) => {
+  await createProducttype(req, res);
+});
+
+router.get("/producttype", async (req: Request, res: Response) => {
+  await getProducttypes(req, res);
+}); // Export product type data
+router.put("/producttype", async (req: Request, res: Response) => {
+  await updateProducttype(req, res);
+}); // Update existing product type
+ // Create new product type
 // router.post("/Producttype/bulk", createBulkProducttypes); // Create multiple product types
-// router.get("/Producttype/export", exportProducttype); // Export product type data
-// router.post("/Producttype/delete", deleteProducttypes); // Delete product types
+router.post("/producttype/delete", async (req: Request, res: Response) => {
+  await deleteProducttypes(req, res);
+}); // Delete product types
 
 // Alert Routes - Handle alert management
 router.post("/alert", createAlert); // Create new alert
