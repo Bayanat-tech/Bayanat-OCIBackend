@@ -3076,11 +3076,13 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
       
                       // If array, delete each; otherwise delete single code
                       if (Array.isArray(ids)) {
-                        for (const mocCode of ids) {
-                          await MocService.deleteMoc(mocCode);
+                        for (const {mocCode, company_code} of ids) {
+                          await MocService.deleteMoc(mocCode, company_code);
                         }
                       } else {
-                        await MocService.deleteMoc(ids);
+                        for (const item of ids) {
+                          await MocService.deleteMoc(item.moc_code, item.company_code);
+                        }
                       }
                     }
                     break;
