@@ -809,6 +809,7 @@ case "product":
     }
   }
   break;
+  
 
 // Fetching account setup data from the AcSetupService
 case "accountsetup":
@@ -2976,15 +2977,42 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
 
       // Delete product data
       case "product":
-        {
-          // Use ProductService to delete products by prod_code(s)
-          if (ids && ids.length > 0) {
-            await ProductService.deleteProducts(ids);
-          } else {
-            throw new Error("Product code(s) required");
+      {
+        // Use ProductService to delete products by prod_code(s)
+        if (ids && ids.length > 0) {
+          // Get company code from user
+          const companyCode = requestUser.company_code;
+
+          const products = await ProductService.getProductsByCodes(ids, companyCode);
+          
+          if (products.length > 0) {
+            // Group by prin_code and delete each group
+            const groupedByPrin: { [key: string]: string[] } = {};
+            
+            products.forEach(product => {
+              if (!groupedByPrin[product.prin_code]) {
+                groupedByPrin[product.prin_code] = [];
+              }
+              groupedByPrin[product.prin_code].push(product.prod_code);
+            });
+            
+            let totalDeleted = 0;
+            for (const [prinCode, prodCodes] of Object.entries(groupedByPrin)) {
+              const deleted = await ProductService.deleteProducts(
+                prodCodes,
+                prinCode,
+                companyCode
+              );
+              if (deleted) totalDeleted += prodCodes.length;
+            }
+            
+            console.log(`Deleted ${totalDeleted} products via master delete`);
           }
+        } else {
+          throw new Error("Product code(s) required");
         }
-        break;
+      }
+      break;
 
       // Delete activity group data
       case "activitygroup":

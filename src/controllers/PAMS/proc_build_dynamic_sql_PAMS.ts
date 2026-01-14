@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
 
-export const proc_build_dynamic_sql_EAMS = async (req: Request, res: Response): Promise<void> => {
+export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): Promise<void> => {
   let connection;
 
   try {
@@ -35,7 +35,7 @@ console.log('check dynamic sql',req.body);
       DECLARE
         v_sql VARCHAR2(32767);
       BEGIN
-        PROC_BUILD_DYNAMIC_SQL_EAMS(
+        PROC_BUILD_DYNAMIC_SQL_PAMS(
           :parameter,
           :loginid,
           :code1,

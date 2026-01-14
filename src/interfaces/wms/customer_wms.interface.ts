@@ -1,7 +1,7 @@
 export interface ICustomer{
   company_code: string;
   prin_code: string;
-  cust_code: string;
+  cust_code?: string;
   curr_code?: string | null;
   country_code?: string | null;
   cust_name: string;

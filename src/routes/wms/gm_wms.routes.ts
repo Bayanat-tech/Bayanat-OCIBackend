@@ -46,6 +46,7 @@ import {
   createProduct, // For creating new products
   updateProduct, // For updating product details
   importExcelProducts,
+  deleteProducts,
 } from "../../controllers/wms/product_wms.controller";
 
 // Import account setup controllers
@@ -64,6 +65,7 @@ import {
 import {
   createGroup, // For creating product groups
   updateGroup, // For updating product groups
+  deleteGroups,
 } from "../../controllers/wms/productgroup_wms.controller";
 
 // Import activity group controllers
@@ -288,7 +290,7 @@ router.put("/manufacture", updateManufacture); // Update existing manufacturer
 // Group Routes - Handle product group management
 router.post("/group", createGroup); // Create new product group
 router.put("/group", updateGroup); // Update existing product group
-
+router.delete("/group",deleteGroups);
 // Brand Routes - Handle brand management
 router.post("/brand", createBrand); // Create new brand
 router.put("/brand", updateBrand); // Update existing brand
@@ -336,6 +338,7 @@ router.put("/location", async (req, res, next) => {
 // Product Routes - Handle product management
 router.post("/product", createProduct); // Create new product
 router.put("/product", updateProduct); // Update existing product
+router.delete("/product", deleteProducts); // Update existing product
 router.post(
   "/product/import-excel",
   upload.single("file"),

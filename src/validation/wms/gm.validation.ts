@@ -1124,12 +1124,12 @@ export const LocationtypeSchema = (data: ILocationType) => {
 
 export const customerSchemaWms = (data: ICustomer) => {
   const schema = Joi.object().keys({
+  cust_code: Joi.string().allow(""),
   company_code: Joi.string().required(),
+  cust_name: Joi.string().required(),
   prin_code: Joi.string().required(),
-  cust_code: Joi.string().required(),
   curr_code: Joi.string().allow("", null),
   country_code: Joi.string().allow("", null),
-  cust_name: Joi.string().required(),
   cust_addr1: Joi.string().allow("", null),
   cust_addr2: Joi.string().allow("", null),
   cust_addr3: Joi.string().allow("", null),
@@ -1138,7 +1138,7 @@ export const customerSchemaWms = (data: ICustomer) => {
   cust_contact1: Joi.string().allow("", null),
   cust_telno1: Joi.string().allow("", null),
   cust_faxno1: Joi.string().allow("", null),
-  cust_email1: Joi.string().email().allow("", null),
+  cust_email1: Joi.string().allow("", null),
   cust_contact2: Joi.string().allow("", null),
   cust_telno2: Joi.string().allow("", null),
   cust_faxno2: Joi.string().allow("", null),
@@ -1160,7 +1160,7 @@ export const customerSchemaWms = (data: ICustomer) => {
   date_time: Joi.date().allow(null),
   price_check: Joi.string().allow("", null),
   cust_email3: Joi.string().email().allow("", null),
-  payment_terms: Joi.number().allow(null),
+  payment_terms: Joi.number().allow("",null),
   importer_code: Joi.string().allow("", null),
   reff_cust_code: Joi.string().allow("", null),
   min_exp_days: Joi.number().allow(null),

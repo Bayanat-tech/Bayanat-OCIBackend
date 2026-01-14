@@ -23,7 +23,7 @@ export class CountryService {
 
   static async findAll(): Promise<CountryMaster[]> {
     const repository = this.getCountryRepository();
-    return await repository.find();
+     return await repository.find();
   }
 
   static async findByCode(country_code: string): Promise<CountryMaster | null> {
