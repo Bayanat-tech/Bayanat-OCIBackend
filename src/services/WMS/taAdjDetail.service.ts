@@ -75,6 +75,7 @@ export class TaAdjDetailService {
     PALLET_ID?: string;
     QTY_PUOM?: number;
     QTY_LUOM?: number;
+    ADJ_TYPE?: string;
     USER_ID?: string;
   }): Promise<TaAdjDetail> {
     const repository = this.getRepository();
@@ -166,6 +167,35 @@ export class TaAdjDetailService {
         offset: error.offset
       });
       throw new Error(`Failed to process adjustment: ${error.message}`);
+    }
+  }
+
+  static async confirmAdjDetail(data: {
+    P_COMPANY_CODE: string;
+    P_PRIN_CODE: string;
+    P_ADJ_NO: number;
+  }): Promise<void> {
+    try {
+      console.log('Confirming adjustment detail with params:', data);
+      
+      const result = await oracleDb.query(
+        `BEGIN FUNC_UPDATE_STOCK_ADJ(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO); END;`,
+        {
+          P_COMPANY_CODE: data.P_COMPANY_CODE,
+          P_PRIN_CODE: data.P_PRIN_CODE,
+          P_ADJ_NO: data.P_ADJ_NO,
+        }
+      );
+      
+      console.log('FUNC_UPDATE_STOCK_ADJ executed successfully:', result);
+    } catch (error: any) {
+      console.error('Error in confirmAdjDetail service:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.errorNum,
+        offset: error.offset
+      });
+      throw new Error(`Failed to confirm adjustment detail: ${error.message}`);
     }
   }
 }

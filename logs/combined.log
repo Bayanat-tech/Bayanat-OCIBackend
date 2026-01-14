@@ -66224,3 +66224,14 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
 2026-01-14 11:17:45 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
 2026-01-14 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-14 12:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-14 16:17:35 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 16:21:52 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 17:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-14 17:00:06 [[32minfo[39m]: No unsent attendance events found 
+2026-01-14 17:19:54 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 17:25:17 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 17:56:45 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:00:51 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:06:18 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:12:32 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:15:48 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
