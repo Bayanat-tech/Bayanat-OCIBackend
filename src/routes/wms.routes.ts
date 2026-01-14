@@ -4,7 +4,7 @@ import passport from "passport";
 import { getWmsMaster, deleteWmsMaster } from "../controllers/wms.controller";
 import gmWmsRouter from "./wms/gm_wms.routes";
 import dashboardRouter from "./../routes/wms/dashboard_wms.routes";
-import jobInboundRouter from "./wms/transaction/billing_routes";
+import jobInboundRouter from "./wms/transaction/inbound_wms.routes";
 import jobBillingRouter from "./wms/transaction/billing_routes";
 import stocktransferWmsRouter from "./wms/transaction/stocktransfer_wms.routes";
 import stockAdjustmentRouter from "./StockAdjustment/stockAdjustment.routes";
