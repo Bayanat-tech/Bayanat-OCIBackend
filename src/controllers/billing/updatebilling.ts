@@ -1,22 +1,25 @@
-import { RequestHandler } from "express";
 import oracledb from "oracledb";
+import { Request, Response } from "express";
 
-// Define types for invoices
+/* =======================
+   Interfaces
+======================= */
+
 export interface TInvoice {
-  COMPANY_CODE: string;
-  INVOICE_NO: string;
-  INVOICE_DATE: string; // or Date if you convert
-  JOB_NO: string;
-  PRIN_CODE: string;
-  CUST_CODE: string;
-  INV_AMOUNT: number;
-  CURR_CODE: string;
-  INV_STATUS: string;
-  USER_ID: string;
+  company_code: string;
+  invoice_no: string;
+  invoice_date: string | Date;
+  job_no: string;
+  prin_code: string;
+  cust_code: string;
+  inv_amount: number;
+  curr_code: string;
+  inv_status: string;
+  user_id: string;
 }
 
 export interface TInvoiceDetail {
-  COMPANY_CODE: string;
+  company_code: string;
   invoice_no: string;
   srno: number;
   act_code: string;
@@ -26,47 +29,48 @@ export interface TInvoiceDetail {
   bill_rate: number;
   cost_rate: number;
   inv_desc: string;
-  USER_ID: string;
+  user_id: string;
 }
 
-// Typed request body
-interface UpdateBillingReqBody {
-  invoiceHeader: TInvoice[];
-  invoiceDetails: TInvoiceDetail[];
-}
+/* =======================
+   API
+======================= */
 
-export const updatebilling: RequestHandler<any, any, UpdateBillingReqBody> = async (req, res) => {
-  let connection: oracledb.Connection | undefined;
+export async function updateBilling(
+  req: Request,
+  res: Response
+) {
+  const connection = await oracledb.getConnection();
 
   try {
+    console.log("UPDATE BILLING API HIT");
+    console.log("Incoming body:", req.body);
+
     const { invoiceHeader, invoiceDetails } = req.body;
 
-    // Validate input
-    if (!Array.isArray(invoiceHeader) || !Array.isArray(invoiceDetails)) {
-      res.status(400).json({ error: "Invoice header or details missing" });
-      return;
-    }
+    /* =======================
+       Map Header Rows
+    ======================= */
 
-    // Get Oracle connection
-    connection = await oracledb.getConnection();
-
-    // Map header rows
-    const headerRows = invoiceHeader.map((h) => ({
-      COMPANY_CODE: h.COMPANY_CODE,
-      INVOICE_NO: h.INVOICE_NO,
-      INVOICE_DATE: h.INVOICE_DATE,
-      JOB_NO: h.JOB_NO,
-      PRIN_CODE: h.PRIN_CODE,
-      CUST_CODE: h.CUST_CODE,
-      INV_AMOUNT: h.INV_AMOUNT,
-      CURR_CODE: h.CURR_CODE,
-      INV_STATUS: h.INV_STATUS,
-      USER_ID: h.USER_ID
+    const headerRows = invoiceHeader.map((h: TInvoice) => ({
+      COMPANY_CODE: h.company_code,
+      INVOICE_NO: h.invoice_no,
+      INVOICE_DATE: h.invoice_date,
+      JOB_NO: h.job_no,
+      PRIN_CODE: h.prin_code,
+      CUST_CODE: h.cust_code,
+      INV_AMOUNT: h.inv_amount,
+      CURR_CODE: h.curr_code,
+      INV_STATUS: h.inv_status,
+      USER_ID: h.user_id
     }));
 
-    // Map detail rows
-    const detailRows = invoiceDetails.map((d) => ({
-      COMPANY_CODE: d.COMPANY_CODE,
+    /* =======================
+       Map Detail Rows
+    ======================= */
+
+    const detailRows = invoiceDetails.map((d: TInvoiceDetail) => ({
+      COMPANY_CODE: d.company_code,
       INVOICE_NO: d.invoice_no,
       SRNO: d.srno,
       ACT_CODE: d.act_code,
@@ -76,24 +80,44 @@ export const updatebilling: RequestHandler<any, any, UpdateBillingReqBody> = asy
       BILL_RATE: d.bill_rate,
       COST_RATE: d.cost_rate,
       INV_DESC: d.inv_desc,
-      USER_ID: d.USER_ID
+      USER_ID: d.user_id
     }));
 
-    // Execute stored procedure
+    console.log("Mapped Header Rows:", headerRows);
+    console.log("Mapped Detail Rows:", detailRows);
+
+    /* =======================
+       Execute Procedure
+    ======================= */
+
     await connection.execute(
-      `BEGIN PROC_UPDATE_INVOICE_DTLS(:p_invoice_hdr, :p_invoice_dtl); END;`,
+      `
+      BEGIN
+        PROC_UPDATE_INVOICE_DTLS(
+          :p_invoice_hdr,
+          :p_invoice_dtl
+        );
+      END;
+      `,
       {
-        p_invoice_hdr: { type: "T_INVOICE_TAB", val: headerRows },
-        p_invoice_dtl: { type: "T_INVOICE_DTL_TAB", val: detailRows }
-      },
-      { autoCommit: true }
+        p_invoice_hdr: {
+          type: "T_INVOICE_TAB",
+          val: headerRows
+        },
+        p_invoice_dtl: {
+          type: "T_INVOICE_DTL_TAB",
+          val: detailRows
+        }
+      }
     );
 
-    res.status(200).json({ message: "Invoice updated successfully" });
+    res.json({ message: "Invoice updated successfully" });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Invoice update failed" });
+
   } finally {
-    if (connection) await connection.close();
+    await connection.close();
   }
-};
+}
