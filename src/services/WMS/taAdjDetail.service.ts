@@ -1,5 +1,6 @@
 import { getRepository, oracleDb } from "../../database/connection";
 import { TaAdjDetail } from "../../entity/WMS/taAdjDetail.entity";
+import oracledb from "oracledb";
 
 export class TaAdjDetailService {
   private static getRepository() {
@@ -179,15 +180,17 @@ export class TaAdjDetailService {
       console.log('Confirming adjustment detail with params:', data);
       
       const result = await oracleDb.query(
-        `BEGIN FUNC_UPDATE_STOCK_ADJ(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO); END;`,
+        `BEGIN PROC_UPDATE_STOCK_ADJ(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_SUCCESS); END;`,
         {
           P_COMPANY_CODE: data.P_COMPANY_CODE,
           P_PRIN_CODE: data.P_PRIN_CODE,
           P_ADJ_NO: data.P_ADJ_NO,
+          P_SUCCESS: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
         }
       );
       
-      console.log('FUNC_UPDATE_STOCK_ADJ executed successfully:', result);
+      console.log('PROC_UPDATE_STOCK_ADJ executed successfully:', result);
+      console.log('P_SUCCESS value:', result.outBinds?.P_SUCCESS);
     } catch (error: any) {
       console.error('Error in confirmAdjDetail service:', error);
       console.error('Error details:', {

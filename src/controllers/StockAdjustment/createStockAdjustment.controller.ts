@@ -473,7 +473,7 @@ export const createStockAdjustmentHeader = async (
 
 export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
   try {
-    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, CONFIRMED, USER_ID } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; USER_ID?: string; };
+    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, USER_ID } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; USER_ID?: string; };
 
     // Validate required fields
     if (!ADJ_CODE) {
