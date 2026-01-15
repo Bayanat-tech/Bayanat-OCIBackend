@@ -1,74 +1,63 @@
+import { RequestHandler } from "express";
 import oracledb from "oracledb";
-import { Request, Response } from "express";
 
-export async function updatebilling(req: Request, res: Response) {
-  let connection;
+export const updatebilling: RequestHandler = async (req, res) => {
+  let connection: oracledb.Connection | undefined;
 
   try {
+    const invoiceHeader = req.body.invoiceHeader; // ✅ already JS object
+    const invoiceDetails = req.body.invoiceDetails; // ✅ already JS object
+
+    if (!Array.isArray(invoiceHeader) || !Array.isArray(invoiceDetails)) {
+      res.status(400).json({ error: "Invoice header or details missing" });
+      return;
+    }
+
     connection = await oracledb.getConnection();
 
-    /* Header (single record → array) */
-    const headerRows = [
-      {
-        COMPANY_CODE: req.body.invoice.COMPANY_CODE,
-        INVOICE_NO: req.body.invoice.INVOICE_NO,
-        INVOICE_DATE: req.body.invoice.INVOICE_DATE,
-        JOB_NO: req.body.invoice.JOB_NO,
-        PRIN_CODE: req.body.invoice.PRIN_CODE,
-        CUST_CODE: req.body.invoice.CUST_CODE,
-        INV_AMOUNT: req.body.invoice.INV_AMOUNT,
-        CURR_CODE: req.body.invoice.CURR_CODE,
-        INV_STATUS: req.body.invoice.INV_STATUS,
-        USER_ID: req.body.invoice.USER_ID
-      }
-    ];
+    const headerRows = invoiceHeader.map((h: any) => ({
+      COMPANY_CODE: h.COMPANY_CODE,
+      INVOICE_NO: h.INVOICE_NO,
+      INVOICE_DATE: h.INVOICE_DATE,
+      JOB_NO: h.JOB_NO,
+      PRIN_CODE: h.PRIN_CODE,
+      CUST_CODE: h.CUST_CODE,
+      INV_AMOUNT: h.INV_AMOUNT,
+      CURR_CODE: h.CURR_CODE,
+      INV_STATUS: h.INV_STATUS,
+      USER_ID: h.USER_ID
+    }));
 
-    /* Detail (multiple records) */
-    const detailRows = req.body.invoiceDetails.map((d: any) => ({
+    const detailRows = invoiceDetails.map((d: any) => ({
       COMPANY_CODE: d.COMPANY_CODE,
-      INVOICE_NO: d.INVOICE_NO,
-      SRNO: d.SRNO,
-      ACT_CODE: d.ACT_CODE,
-      BILL: d.BILL,
-      COST: d.COST,
-      QUANTITY: d.QUANTITY,
-      BILL_RATE: d.BILL_RATE,
-      COST_RATE: d.COST_RATE,
-      INV_DESC: d.INV_DESC,
+      INVOICE_NO: d.invoice_no,
+      SRNO: d.srno,
+      ACT_CODE: d.act_code,
+      BILL: d.bill_amount,
+      COST: d.cost_amount,
+      QUANTITY: d.quantity,
+      BILL_RATE: d.bill_rate,
+      COST_RATE: d.cost_rate,
+      INV_DESC: d.inv_desc,
       USER_ID: d.USER_ID
     }));
 
     await connection.execute(
-      `
-      BEGIN
-        PROC_UPDATE_INVOICE_DTLS(
-          :p_invoice_hdr,
-          :p_invoice_dtl
-        );
-      END;
-      `,
+      `BEGIN PROC_UPDATE_INVOICE_DTLS(:p_invoice_hdr, :p_invoice_dtl); END;`,
       {
-        p_invoice_hdr: {
-          type: "T_INVOICE_TAB",
-          val: headerRows
-        },
-        p_invoice_dtl: {
-          type: "T_INVOICE_DTL_TAB",
-          val: detailRows
-        }
+        p_invoice_hdr: { type: "T_INVOICE_TAB", val: headerRows },
+        p_invoice_dtl: { type: "T_INVOICE_DTL_TAB", val: detailRows }
       },
       { autoCommit: true }
     );
 
-    res.json({ message: "Invoice updated successfully" });
-
-  } catch (error) {
-    console.error(error);
+    res.status(200).json({ message: "Invoice updated successfully" });
+    return;
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Invoice update failed" });
-
+    return;
   } finally {
-    if (connection) {
-      await connection.close();
-    }
+    if (connection) await connection.close();
   }
-}
+};
