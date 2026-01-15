@@ -66211,14 +66211,27 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
     at async Timeout._onTimeout (D:\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
 2026-01-08 12:19:31 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
 2026-01-08 15:25:28 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 12:54:13 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 12:58:46 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
-2026-01-15 13:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-13 10:41:47 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-13 10:57:54 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-13 11:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-13 11:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-13 11:18:36 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-13 11:37:54 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-13 11:54:10 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-13 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-13 12:00:05 [[32minfo[39m]: No unsent attendance events found 
+2026-01-14 11:08:57 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 11:17:45 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-14 12:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-15 11:05:16 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 11:08:43 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 11:10:51 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 13:57:26 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
 2026-01-15 14:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
-2026-01-15 14:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-15 14:00:00 [[32minfo[39m]: No unsent attendance events found 
 2026-01-15 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
-2026-01-15 15:00:05 [[32minfo[39m]: No unsent attendance events found 
-2026-01-15 15:15:18 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 15:18:38 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 15:26:07 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 15:00:06 [[32minfo[39m]: No unsent attendance events found 
+2026-01-15 15:09:43 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 15:14:05 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 15:15:54 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 

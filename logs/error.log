@@ -64195,3 +64195,83 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
     at async Function.processUnsentEvents (D:\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:65:9)
     at async D:\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
     at async Timeout._onTimeout (D:\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-13 11:07:42 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/department.service.ts[0m:[93m78[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 3, '(entityLikeArray: DeepPartial<DepartmentMaster>[]): DepartmentMaster[]', gave the following error.
+    Argument of type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to parameter of type 'DeepPartial<DepartmentMaster>[]'.
+      Type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is missing the following properties from type 'DeepPartial<DepartmentMaster>[]': length, pop, push, concat, and 29 more.
+  Overload 2 of 3, '(entityLike: DeepPartial<DepartmentMaster>): DepartmentMaster', gave the following error.
+    Argument of type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to parameter of type 'DeepPartial<DepartmentMaster>'.
+      Type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to type '{ company_code?: string | undefined; div_code?: string | undefined; dept_code?: string | undefined; dept_name?: string | undefined; dept_short_name?: DeepPartial<string | undefined>; ... 11 more ...; enterprice_code?: string | undefined; }'.
+        Types of property 'dept_short_name' are incompatible.
+          Type 'string | null' is not assignable to type 'DeepPartial<string | undefined>'.
+            Type 'null' is not assignable to type 'DeepPartial<string | undefined>'.
+
+[7m78[0m   const department = repository.create(processedData);
+[7m  [0m [91m                                       ~~~~~~~~~~~~~[0m
+
+[96msrc/services/WMS/department.service.ts[0m:[93m79[0m:[93m3[0m - [91merror[0m[90m TS2740: [0mType 'DepartmentMaster[]' is missing the following properties from type 'DepartmentMaster': company_code, div_code, dept_code, dept_name, and 3 more.
+
+[7m79[0m   return await repository.save(department);
+[7m  [0m [91m  ~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/department.service.ts[0m:[93m78[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 3, '(entityLikeArray: DeepPartial<DepartmentMaster>[]): DepartmentMaster[]', gave the following error.
+    Argument of type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to parameter of type 'DeepPartial<DepartmentMaster>[]'.
+      Type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is missing the following properties from type 'DeepPartial<DepartmentMaster>[]': length, pop, push, concat, and 29 more.
+  Overload 2 of 3, '(entityLike: DeepPartial<DepartmentMaster>): DepartmentMaster', gave the following error.
+    Argument of type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to parameter of type 'DeepPartial<DepartmentMaster>'.
+      Type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to type '{ company_code?: string | undefined; div_code?: string | undefined; dept_code?: string | undefined; dept_name?: string | undefined; dept_short_name?: DeepPartial<string | undefined>; ... 11 more ...; enterprice_code?: string | undefined; }'.
+        Types of property 'dept_short_name' are incompatible.
+          Type 'string | null' is not assignable to type 'DeepPartial<string | undefined>'.
+            Type 'null' is not assignable to type 'DeepPartial<string | undefined>'.
+
+[7m78[0m   const department = repository.create(processedData);
+[7m  [0m [91m                                       ~~~~~~~~~~~~~[0m
+
+[96msrc/services/WMS/department.service.ts[0m:[93m79[0m:[93m3[0m - [91merror[0m[90m TS2740: [0mType 'DepartmentMaster[]' is missing the following properties from type 'DepartmentMaster': company_code, div_code, dept_code, dept_name, and 3 more.
+
+[7m79[0m   return await repository.save(department);
+[7m  [0m [91m  ~~~~~~[0m
+
+    at createTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/department.service.ts[0m:[93m78[0m:[93m40[0m - [91merror[0m[90m TS2769: [0mNo overload matches this call.
+  Overload 1 of 3, '(entityLikeArray: DeepPartial<DepartmentMaster>[]): DepartmentMaster[]', gave the following error.
+    Argument of type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to parameter of type 'DeepPartial<DepartmentMaster>[]'.
+      Type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is missing the following properties from type 'DeepPartial<DepartmentMaster>[]': length, pop, push, concat, and 29 more.
+  Overload 2 of 3, '(entityLike: DeepPartial<DepartmentMaster>): DepartmentMaster', gave the following error.
+    Argument of type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to parameter of type 'DeepPartial<DepartmentMaster>'.
+      Type '{ dept_addr1: string | null; dept_addr2: string | null; dept_addr3: string | null; dept_short_name: string | null; phone: string | null; fax: string | null; email: string | null; ... 9 more ...; enterprice_code: string; }' is not assignable to type '{ company_code?: string | undefined; div_code?: string | undefined; dept_code?: string | undefined; dept_name?: string | undefined; dept_short_name?: DeepPartial<string | undefined>; ... 11 more ...; enterprice_code?: string | undefined; }'.
+        Types of property 'dept_short_name' are incompatible.
+          Type 'string | null' is not assignable to type 'DeepPartial<string | undefined>'.
+            Type 'null' is not assignable to type 'DeepPartial<string | undefined>'.
+
+[7m78[0m   const department = repository.create(processedData);
+[7m  [0m [91m                                       ~~~~~~~~~~~~~[0m
+
+[96msrc/services/WMS/department.service.ts[0m:[93m79[0m:[93m3[0m - [91merror[0m[90m TS2740: [0mType 'DepartmentMaster[]' is missing the following properties from type 'DepartmentMaster': company_code, div_code, dept_code, dept_name, and 3 more.
+
+[7m79[0m   return await repository.save(department);
+[7m  [0m [91m  ~~~~~~[0m
+
+    at createTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)

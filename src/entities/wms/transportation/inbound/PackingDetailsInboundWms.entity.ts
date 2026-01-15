@@ -44,10 +44,10 @@ export class PackingDetailsInboundWms {
   bl_no: string;
 
   @Column({ name: "MFG_DATE", type: "date", nullable: true })
-  mfg_date: Date;
+  mfg_date?: Date;
 
   @Column({ name: "EXP_DATE", type: "date", nullable: true })
-  exp_date: Date;
+  exp_date?: Date;
 
   @Column({ name: "VESSEL_NAME", type: "varchar2", length: 20, nullable: true })
   vessel_name: string;

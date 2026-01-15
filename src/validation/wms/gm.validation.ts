@@ -511,6 +511,8 @@ export const departmentSchema = (data: any) => {
 
     user_id: Joi.string().allow(null, ''),
 
+    jobno_seq: Joi.number().allow("", null),
+
     user_dt: Joi.date().allow(null)
   });
 
@@ -836,6 +838,7 @@ export const principalSchema = (
       Joi.string(),
       Joi.number().allow(null, "")
     ),
+    div_code : Joi.string().required(),
     prin_addr1: Joi.string().allow(null, ""),
     prin_addr2: Joi.string().allow(null, ""),
     prin_addr3: Joi.string().allow(null, ""),

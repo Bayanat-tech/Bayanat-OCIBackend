@@ -1,4 +1,5 @@
 import * as express from "express";
+import { Request, Response } from "express";
 import {
   createStockAdjustment,
   updateStockAdjustment,
@@ -6,12 +7,25 @@ import {
   // getStockAdjustmentByJobNo,
   deleteStockAdjustment,
   processAdjustment,
+  // createStockAdjustmentHeader,
+  createAdjHeader,
+  createAdjustmentDetail
 } from "../../controllers/StockAdjustment/createStockAdjustment.controller";
 
 const router = express.Router();
 
 // POST - Create new stock adjustment
-router.post("/", createStockAdjustment);
+router.post("/", createStockAdjustment as express.RequestHandler);
+
+// POST - Create stock adjustment header only
+router.post("/createAdjHeader", async (req: Request, res: Response) => {
+  await createAdjHeader(req, res);
+});
+
+// POST - Create stock adjustment detail only
+router.post("/createAdjDetail", async (req: Request, res: Response) => {
+  await createAdjustmentDetail(req, res);
+});
 
 // POST - Process stock adjustment
 router.post("/process-adjustment", processAdjustment);
