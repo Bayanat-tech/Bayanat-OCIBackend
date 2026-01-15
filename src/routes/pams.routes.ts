@@ -12,7 +12,8 @@ router.use(
   "/:transaction",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
-  gmPamsRouter
+  gmPamsRouter    
 );
 
 export default router;
+  
