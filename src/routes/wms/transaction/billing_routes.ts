@@ -1,10 +1,18 @@
-import express, { Request, Response, NextFunction } from "express";
-import passport from "passport";
+
+
+
+import express from "express";
 import { updatebilling } from "../../../controllers/billing/updatebilling";
 
-const router = express.Router();
+const app = express();
 
-//router.use(express.json()); // parses JSON for this router only
-router.post("/updatebilling", updatebilling);
+// Middleware to parse JSON
+app.use(express.json());
 
-export default router;
+// Route
+app.post("/api/wms/billing/updatebilling", updatebilling);
+
+// Start server
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
