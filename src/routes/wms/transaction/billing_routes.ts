@@ -1,18 +1,16 @@
 
 
+/**
+ * @fileoverview Inbound WMS Routes - Handles all inbound warehouse management system routes
+ * @requires express
+ * @requires passport
+ */
 
-import express from "express";
-import { updatebilling } from "../../../controllers/billing/updatebilling";
+import * as express from "express";
+import passport from "passport";
 
-const app = express();
+const router = express.Router();
 
-// Middleware to parse JSON
-app.use(express.json());
 
-// Route
-app.post("/api/wms/billing/updatebilling", updatebilling);
 
-// Start server
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
-});
+export default router;

@@ -64427,3 +64427,41 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-15 12:27:32 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms.routes.ts[0m:[93m8[0m:[93m8[0m - [91merror[0m[90m TS1192: [0mModule '"C:/Users/sandeep.dandekar/Documents/GitHub/Bayanat-OCIBackend/src/routes/wms/transaction/billing_routes"' has no default export.
+
+[7m8[0m import jobBillingRouter from "./wms/transaction/billing_routes";
+[7m [0m [91m       ~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms.routes.ts[0m:[93m8[0m:[93m8[0m - [91merror[0m[90m TS1192: [0mModule '"C:/Users/sandeep.dandekar/Documents/GitHub/Bayanat-OCIBackend/src/routes/wms/transaction/billing_routes"' has no default export.
+
+[7m8[0m import jobBillingRouter from "./wms/transaction/billing_routes";
+[7m [0m [91m       ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms.routes.ts[0m:[93m8[0m:[93m8[0m - [91merror[0m[90m TS1192: [0mModule '"C:/Users/sandeep.dandekar/Documents/GitHub/Bayanat-OCIBackend/src/routes/wms/transaction/billing_routes"' has no default export.
+
+[7m8[0m import jobBillingRouter from "./wms/transaction/billing_routes";
+[7m [0m [91m       ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
