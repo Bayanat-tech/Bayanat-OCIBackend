@@ -507,9 +507,11 @@ export const departmentSchema = (data: any) => {
 
     remarks: Joi.string().allow(null, ''),
 
-    status: Joi.string().required(),
+    status:Joi.string().allow('',null),
 
     user_id: Joi.string().allow(null, ''),
+
+    jobno_seq: Joi.number().allow("", null),
 
     user_dt: Joi.date().allow(null)
   });
