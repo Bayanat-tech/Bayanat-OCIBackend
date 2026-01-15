@@ -66211,3 +66211,7 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
     at async Timeout._onTimeout (D:\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
 2026-01-08 12:19:31 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
 2026-01-08 15:25:28 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 12:54:13 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 12:58:46 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-15 13:00:00 [[32minfo[39m]: No unsent attendance events found 
