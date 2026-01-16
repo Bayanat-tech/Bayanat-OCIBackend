@@ -6,6 +6,8 @@ import { Request, Response } from "express";
 ======================= */
 
 export interface TInvoice {
+  from_date?: string | Date;
+  to_date?: string | Date;
   company_code: string;
   invoice_no?: string;
   invoice_date?: string | Date;
@@ -35,6 +37,9 @@ export interface TInvoiceDetail {
 /* =======================
    API (NO typing changes)
 ======================= */
+const getValue = (obj: any, key: string) =>
+  obj[key] ?? obj[key.toLowerCase()] ?? obj[key.toUpperCase()] ?? null;
+
 
 export async function updateBilling(
   req: Request,
@@ -54,17 +59,30 @@ export async function updateBilling(
     ======================= */
 
 const headerRows = invoiceHeader.map((h: any) => ({
-  COMPANY_CODE: h.COMPANY_CODE,
-  INVOICE_NO: h.INVOICE_NO ?? null,
-  INVOICE_DATE: h.INVOICE_DATE ? new Date(h.INVOICE_DATE) : null,
-  JOB_NO: h.JOB_NO ?? null,
-  PRIN_CODE: h.PRIN_CODE ?? null,
-  CUST_CODE: h.CUST_CODE ?? null,
-  INV_AMOUNT: h.INV_AMOUNT ?? null,
-  CURR_CODE: h.CURR_CODE ?? null,
-  INV_STATUS: h.INV_STATUS ?? null,
-  USER_ID: h.USER_ID ?? null
+  COMPANY_CODE: getValue(h, 'COMPANY_CODE'),
+  INVOICE_NO: getValue(h, 'INVOICE_NO'),
+
+  INVOICE_DATE: getValue(h, 'INVOICE_DATE')
+    ? new Date(getValue(h, 'INVOICE_DATE'))
+    : null,
+
+  FROM_DATE: getValue(h, 'FROM_DATE')
+    ? new Date(getValue(h, 'FROM_DATE'))
+    : null,
+
+  TO_DATE: getValue(h, 'TO_DATE')
+    ? new Date(getValue(h, 'TO_DATE'))
+    : null,
+
+  JOB_NO: getValue(h, 'JOB_NO'),
+  PRIN_CODE: getValue(h, 'PRIN_CODE'),
+  CUST_CODE: getValue(h, 'CUST_CODE'),
+  INV_AMOUNT: getValue(h, 'INV_AMOUNT'),
+  CURR_CODE: getValue(h, 'CURR_CODE'),
+  INV_STATUS: getValue(h, 'INV_STATUS'),
+  USER_ID: getValue(h, 'USER_ID')
 }));
+
 
     /* =======================
        Map Detail Rows
