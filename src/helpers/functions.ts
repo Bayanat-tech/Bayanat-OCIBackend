@@ -13,6 +13,7 @@ import constants from "./constants";
 import { StructuredResult } from "../interfaces/auth.interface";
 import { TiPackdetSeriesService } from "../services/tiPackdetSeries.service";
 import { LogService } from "../services/log.service";
+import logger from "../utils/logger";
 const nodemailer = require("nodemailer");
 import {
   FindOptionsWhere,
@@ -1418,9 +1419,9 @@ export const notifyUser = async (args: SendEmailInterface) => {
               <p><strong>Department:</strong> ${proxyData?.proxy_department || 'N/A'}</p>
             </div>
           </div>
+
           ${proxyData?.s3_image_url ? `
           <div class="section">
-            <h3>👥 Actual Employee (Who Cancelled)</h3>
             <h3>🖼️ Captured Image</h3>
             <p><strong>S3 URL:</strong> <a href="${proxyData.s3_image_url}" target="_blank">View Image</a></p>
           </div>
@@ -1448,14 +1449,15 @@ export const notifyUser = async (args: SendEmailInterface) => {
   break;
 
     default:
-      console.warn(`Unhandled event type: ${event}`);
+      logger.warn(`Unhandled event type: ${event}`);
       return;
   }
 
   try {
+    logger.info(`[NOTIFY] Sending email for event: ${event}, to: ${request_users || request_user?.contact_email}`);
     await transporter.sendMail(mailOptions);
-    console.log(`Email sent successfully for event: ${event}`);
+    logger.info(`[NOTIFY] ✅ Email sent successfully for event: ${event}`);
   } catch (error) {
-    console.error(`Failed to send email for event: ${event}`, error);
+    logger.error(`[NOTIFY] ❌ Failed to send email for event: ${event}`, error);
   }
 };
