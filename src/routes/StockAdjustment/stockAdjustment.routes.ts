@@ -9,7 +9,8 @@ import {
   processAdjustment,
   // createStockAdjustmentHeader,
   createAdjHeader,
-  createAdjustmentDetail
+  createAdjustmentDetail,
+  confirmAdjDetail
 } from "../../controllers/StockAdjustment/createStockAdjustment.controller";
 
 const router = express.Router();
@@ -29,6 +30,9 @@ router.post("/createAdjDetail", async (req: Request, res: Response) => {
 
 // POST - Process stock adjustment
 router.post("/process-adjustment", processAdjustment);
+
+// POST - Confirm adjustment detail
+router.post("/confirm-adj-detail", confirmAdjDetail as express.RequestHandler);
 
 // GET - Get all stock adjustments for the company
 router.get("/", getStockAdjustments);
