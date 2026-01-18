@@ -156,9 +156,13 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
 export const deleteDepartments = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
-    const deptCodes: string[] = req.body;
 
-    if (!deptCodes || !deptCodes.length) {
+    // ✅ Extract ids correctly
+    const deptCodes: string[] = req.body?.ids;
+
+    console.log('deptCodes:', deptCodes);
+
+    if (!Array.isArray(deptCodes) || deptCodes.length === 0) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.DEPARTMENT_WMS.SELECT_AT_LEAST_ONE_DEPARTMENT,
@@ -178,7 +182,7 @@ export const deleteDepartments = async (req: RequestWithUser, res: Response) => 
     if (deletedCount === 0) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "No departments were deleted",
+        message: 'No departments were deleted',
       });
     }
 
@@ -190,7 +194,8 @@ export const deleteDepartments = async (req: RequestWithUser, res: Response) => 
   } catch (error: any) {
     return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
       success: false,
-      message: "Error: " + error.message,
+      message: 'Error: ' + error.message,
     });
   }
 };
+

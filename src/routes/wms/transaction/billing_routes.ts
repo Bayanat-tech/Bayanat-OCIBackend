@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview Inbound WMS Routes - Handles all inbound warehouse management system routes
  * @requires express
@@ -7,7 +8,10 @@
 
 import * as express from "express";
 import passport from "passport";
-import { updatebilling } from "../../../controllers/billing/updatebilling";
+import { updateBilling } from "../../../controllers/billing/updatebilling";
+
 const router = express.Router();
-router.post("/updatebilling", updatebilling);
+
+router.post("/updateBilling", updateBilling);
+
 export default router;

@@ -507,7 +507,7 @@ export const departmentSchema = (data: any) => {
 
     remarks: Joi.string().allow(null, ''),
 
-    status:Joi.string().allow('',null),
+    status: Joi.string().allow(null,''),
 
     user_id: Joi.string().allow(null, ''),
 
