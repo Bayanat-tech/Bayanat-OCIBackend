@@ -61,50 +61,6 @@ import oracledb from "oracledb";
 // };
 
 
-
-
-
-// export const getAcTree = async (req: RequestWithUser, res: Response) => {
-//   let connection;
-//   try {
-//     console.log("")
-//     const { company_code } = req.params;
-//     connection = await oracledb.getConnection();
-
-//     const result = await connection.execute(
-//       `
-//       SELECT *
-//   FROM VW_AC_MASTER
-//   WHERE COMPANY_CODE = :company_code
-//   ORDER BY
-//      L2_CODE ASC,
-//      L3_CODE ASC,
-//      L4_CODE ASC,
-//      AC_CODE ASC
-//       `,
-//       { company_code },
-//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//     );
-
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: result.rows,
-//     });
-//     return
-
-//   } catch (error: any) {
-//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//       success: false,
-//       message: error.message,
-//     });
-//     return
-//   } finally {
-//     if (connection) await connection.close();
-//   }
-// };
-
-
-
 export const getAcTree = async (req: RequestWithUser, res: Response) => {
   let connection;
   try {
@@ -119,7 +75,7 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
        WHERE COMPANY_CODE = :company_code
        ORDER BY l2_code, l3_code, l4_code, ac_code`,
       {
-        COMPANY_CODE: requestUser.company_code
+        company_code: requestUser.company_code
       },
       {
         outFormat: oracledb.OUT_FORMAT_OBJECT
@@ -136,13 +92,13 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
 
     const normalizedData = result.rows.map((row: any) => ({
       l2_code: row.L2_CODE,
-      // l2_description: row.L2_DESCRIPTION,
+      l2_description: row.L2_DESCRIPTION,
       l3_code: row.L3_CODE,
-      // l3_description: row.L3_DESCRIPTION,
+      l3_description: row.L3_DESCRIPTION,
       l4_code: row.L4_CODE,
-      // l4_description: row.L4_DESCRIPTION,
+      l4_description: row.L4_DESCRIPTION,
       ac_code: row.AC_CODE,
-      // ac_name: row.AC_NAME,
+      ac_name: row.AC_NAME,
     }));
     
     // Build hierarchy
@@ -231,7 +187,7 @@ export const getLevel3AcTreeNode = async (
           l3_code,
           l3_description,
           company_code
-      FROM account_level_three
+      FROM MS_AC_L3
       WHERE company_code = :company_code
         AND l3_code = :l3_code
       `,
@@ -353,7 +309,7 @@ export const createLevel3AcTreeNode = async (
   try {
     const requestUser: IUser = req.user;
     const { company_code, loginid } = requestUser;
-    const { l2_code } = req.body;
+    const { l2_code, l3_description } = req.body;
 
     // Validate request body
     const { error } = accountLevelThreeFinanceSchema(req.body);
@@ -394,6 +350,7 @@ export const createLevel3AcTreeNode = async (
       INSERT INTO MS_AC_L3 (
         L3_CODE,
         L2_CODE,
+        L3_DESCRIPTION,
         COMPANY_CODE,
         CREATED_BY,
         UPDATED_BY
@@ -401,6 +358,7 @@ export const createLevel3AcTreeNode = async (
       VALUES (
         '',
         :l2_code,
+        :l3_description,
         :company_code,
         :loginid,
         :loginid
@@ -408,6 +366,7 @@ export const createLevel3AcTreeNode = async (
       `,
       {
         l2_code,
+        l3_description,
         company_code,
         loginid
       },
