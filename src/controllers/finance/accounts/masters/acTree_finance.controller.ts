@@ -213,61 +213,61 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
 
 
 
-// export const getLevel3AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   let connection;
+export const getLevel3AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
 
-//   try {
-//     const { company_code } = req.user;
-//     const { ac_code } = req.params;
+  try {
+    const { company_code } = req.user;
+    const { ac_code } = req.params;
 
-//     connection = await oracledb.getConnection();
+    connection = await oracledb.getConnection();
 
-//     const result = await connection.execute(
-//       `
-//       SELECT
-//           l3_code,
-//           l3_description,
-//           company_code
-//       FROM account_level_three
-//       WHERE company_code = :company_code
-//         AND l3_code = :l3_code
-//       `,
-//       {
-//         company_code,
-//         l3_code: ac_code,
-//       },
-//       {
-//         outFormat: oracledb.OUT_FORMAT_OBJECT,
-//       }
-//     );
+    const result = await connection.execute(
+      `
+      SELECT
+          l3_code,
+          l3_description,
+          company_code
+      FROM account_level_three
+      WHERE company_code = :company_code
+        AND l3_code = :l3_code
+      `,
+      {
+        company_code,
+        l3_code: ac_code,
+      },
+      {
+        outFormat: oracledb.OUT_FORMAT_OBJECT,
+      }
+    );
 
-//     if (!result.rows || result.rows.length === 0) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: constants.MESSAGES.NOT_FOUND,
-//       });
-//       return;
-//     }
+    if (!result.rows || result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND,
+      });
+      return;
+    }
 
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: result.rows[0],
-//     });
-//     return;
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: result.rows[0],
+    });
+    return;
 
-//   } catch (error: any) {
-//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//       success: false,
-//       message: error.message,
-//     });
-//     return;
-//   } finally {
-//     if (connection) await connection.close();
-//   }
-// };
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+    return;
+  } finally {
+    if (connection) await connection.close();
+  }
+};
 
 
 // Create new Level 3 account node
@@ -344,116 +344,116 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
 
 // create L3
 
-// export const createLevel3AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   let connection;
+export const createLevel3AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
 
-//   try {
-//     const requestUser: IUser = req.user;
-//     const { company_code, loginid } = requestUser;
-//     const { l2_code } = req.body;
+  try {
+    const requestUser: IUser = req.user;
+    const { company_code, loginid } = requestUser;
+    const { l2_code } = req.body;
 
-//     // Validate request body
-//     const { error } = accountLevelThreeFinanceSchema(req.body);
-//     if (error) {
-//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//         success: false,
-//         message: error.message
-//       });
-//       return;
-//     }
+    // Validate request body
+    const { error } = accountLevelThreeFinanceSchema(req.body);
+    if (error) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
 
-//     // Get DB connection
-//     connection = await oracledb.getConnection();
+    // Get DB connection
+    connection = await oracledb.getConnection();
 
-//     // Check if Level 2 exists
-//     const level2Result = await connection.execute(
-//       `
-//       SELECT 1
-//       FROM ACCOUNT_LEVEL_TWO
-//       WHERE L2_CODE = :l2_code
-//         AND COMPANY_CODE = :company_code
-//       `,
-//       { l2_code, company_code },
-//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//     );
+    // Check if Level 2 exists
+    const level2Result = await connection.execute(
+      `
+      SELECT 1
+      FROM ACCOUNT_LEVEL_TWO
+      WHERE L2_CODE = :l2_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l2_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-//     if (!level2Result.rows || level2Result.rows.length === 0) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: `Level2 ${constants.MESSAGES.NOT_FOUND}`
-//       });
-//       return;
-//     }
+    if (!level2Result.rows || level2Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: `Level2 ${constants.MESSAGES.NOT_FOUND}`
+      });
+      return;
+    }
 
-//     // Insert Level 3 record
-//     await connection.execute(
-//       `
-//       INSERT INTO ACCOUNT_LEVEL_THREE (
-//         L3_CODE,
-//         L2_CODE,
-//         COMPANY_CODE,
-//         CREATED_BY,
-//         UPDATED_BY
-//       )
-//       VALUES (
-//         '',
-//         :l2_code,
-//         :company_code,
-//         :loginid,
-//         :loginid
-//       )
-//       `,
-//       {
-//         l2_code,
-//         company_code,
-//         loginid
-//       },
-//       { autoCommit: true }
-//     );
+    // Insert Level 3 record
+    await connection.execute(
+      `
+      INSERT INTO ACCOUNT_LEVEL_THREE (
+        L3_CODE,
+        L2_CODE,
+        COMPANY_CODE,
+        CREATED_BY,
+        UPDATED_BY
+      )
+      VALUES (
+        '',
+        :l2_code,
+        :company_code,
+        :loginid,
+        :loginid
+      )
+      `,
+      {
+        l2_code,
+        company_code,
+        loginid
+      },
+      { autoCommit: true }
+    );
 
-//     // Get session code
-//     const sessionResult = await connection.execute(
-//       `
-//       SELECT CODE
-//       FROM GT_SESSION_INFO
-//       WHERE USERID = :loginid
-//       `,
-//       { loginid },
-//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//     );
+    // Get session code
+    const sessionResult = await connection.execute(
+      `
+      SELECT CODE
+      FROM GT_SESSION_INFO
+      WHERE USERID = :loginid
+      `,
+      { loginid },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-//     const sessionCode =
-//       sessionResult.rows && sessionResult.rows.length > 0
-//         ? (sessionResult.rows[0] as any).CODE
-//         : '';
+    const sessionCode =
+      sessionResult.rows && sessionResult.rows.length > 0
+        ? (sessionResult.rows[0] as any).CODE
+        : '';
 
-//     // Success response
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       message: `${sessionCode} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`
-//     });
-//     return;
+    // Success response
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: `${sessionCode} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`
+    });
+    return;
 
-//   } catch (error: any) {
-//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//       success: false,
-//       message: error.message
-//     });
-//     return;
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
 
-//   } finally {
-//     if (connection) {
-//       try {
-//         await connection.close();
-//       } catch (err) {
-//         console.error('Error closing Oracle connection', err);
-//       }
-//     }
-//   }
-// };
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error closing Oracle connection', err);
+      }
+    }
+  }
+};
 
 
 // // Update Level 3 account node
