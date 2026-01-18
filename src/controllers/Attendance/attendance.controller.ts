@@ -13,7 +13,7 @@ try {
 
 export class AttendanceController {
   
-  static async markAttendance(req: Request, res: Response): Promise<void> {
+static async markAttendance(req: Request, res: Response): Promise<void> {
      try {
       const { 
         action, 
@@ -50,7 +50,6 @@ export class AttendanceController {
         } else if (typeof (faceService as any).loadModels === 'function') {
           await (faceService as any).loadModels();
         } else if ((faceService as any).modelsLoaded === false) {
-          // small retry/wait loop if implementation sets a flag
           for (let i = 0; i < 5 && (faceService as any).modelsLoaded === false; i++) {
             await new Promise(r => setTimeout(r, 200));
           }
@@ -133,7 +132,7 @@ export class AttendanceController {
     }
   }
 
-  static async confirmAttendance(req: Request, res: Response): Promise<void> {
+static async confirmAttendance(req: Request, res: Response): Promise<void> {
     try {
       const { uuid, confirmed_by = 'user' } = req.body;
 
@@ -174,7 +173,7 @@ export class AttendanceController {
     }
   }
 
-  static async cancelAttendance(req: Request, res: Response): Promise<void> {
+static async cancelAttendance(req: Request, res: Response): Promise<void> {
   try {
     const { 
       uuid, 
@@ -183,7 +182,10 @@ export class AttendanceController {
       reason = 'proxy_detected_by_user'
     } = req.body;
 
+    logger.info(`[CANCEL-CTRL] Cancel request received - UUID: ${uuid}, Reason: ${reason}`);
+
     if (!uuid || !actual_employee_name) {
+      logger.warn(`[CANCEL-CTRL] Missing required fields - UUID: ${uuid}, Name: ${actual_employee_name}`);
       res.status(400).json({ 
         error: "UUID and actual_employee_name are required" 
       });
@@ -193,12 +195,16 @@ export class AttendanceController {
     const validatedEmployeeCode = actual_employee_code || 'UNREGISTERED_' + Date.now();
     const validatedEmployeeName = actual_employee_name || 'Unknown Employee';
 
+    logger.info(`[CANCEL-CTRL] Calling service with - UUID: ${uuid}, Code: ${validatedEmployeeCode}, Reason: ${reason}`);
+
     const result = await AttendanceService.cancelAttendance(
       uuid, 
       validatedEmployeeCode, 
       validatedEmployeeName,
       reason 
     );
+
+    logger.info(`[CANCEL-CTRL] Service returned - Success: ${result.success}, HasProxyLog: ${!!result.proxyLog}, EmailSent: ${result.emailSent}`);
 
     res.status(200).json({
       success: true,
@@ -212,7 +218,7 @@ export class AttendanceController {
     res.status(500).json({ success: false, message });
   }
  }
-  static async getProxyLogs(req: Request, res: Response): Promise<void> {
+static async getProxyLogs(req: Request, res: Response): Promise<void> {
     try {
       const { page, limit, start_date, end_date, employee_code } = req.query;
 
