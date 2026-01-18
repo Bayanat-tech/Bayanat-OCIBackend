@@ -19,7 +19,7 @@ const router = express.Router();
 
 // Define routes for finance master data
 router.use(
-  "/masters",
+  "/master",
   // authenticate the user using the jwt token
   passport.authenticate("jwt", { session: false }),
   // check if the user has the necessary permissions

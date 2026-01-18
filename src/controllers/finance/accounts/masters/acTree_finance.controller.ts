@@ -64,47 +64,114 @@ import oracledb from "oracledb";
 
 
 
+// export const getAcTree = async (req: RequestWithUser, res: Response) => {
+//   let connection;
+//   try {
+//     console.log("")
+//     const { company_code } = req.params;
+//     connection = await oracledb.getConnection();
+
+//     const result = await connection.execute(
+//       `
+//       SELECT *
+//   FROM VW_AC_MASTER
+//   WHERE COMPANY_CODE = :company_code
+//   ORDER BY
+//      L2_CODE ASC,
+//      L3_CODE ASC,
+//      L4_CODE ASC,
+//      AC_CODE ASC
+//       `,
+//       { company_code },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       data: result.rows,
+//     });
+//     return
+
+//   } catch (error: any) {
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message,
+//     });
+//     return
+//   } finally {
+//     if (connection) await connection.close();
+//   }
+// };
+
+
+
 export const getAcTree = async (req: RequestWithUser, res: Response) => {
   let connection;
   try {
-    const { company_code } = req.params;
+    const requestUser: IUser = req.user;
+    
     connection = await oracledb.getConnection();
 
     const result = await connection.execute(
-      `
-      SELECT *
-FROM VW_AC_MASTER
-WHERE COMPANY_CODE = :company_code
-START WITH PARENT_AC_CODE IS NULL
-CONNECT BY PRIOR AC_CODE = PARENT_AC_CODE
-ORDER SIBLINGS BY
-    L2_CODE,
-    L3_CODE,
-    L4_CODE,
-    AC_CODE
-      `,
-      { company_code },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      `SELECT 
+          *
+       FROM VW_AC_MASTER
+       WHERE COMPANY_CODE = :company_code
+       ORDER BY l2_code, l3_code, l4_code, ac_code`,
+      {
+        COMPANY_CODE: requestUser.company_code
+      },
+      {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      }
     );
 
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: result.rows,
-    });
-    return
+    console.log('Raw result:', result.rows); // Debug: Check what Oracle returns
+    console.log('First row:', result.rows?.[0]); // Debug: Check structure
 
-  } catch (error: any) {
-    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-      success: false,
-      message: error.message,
+    if (!result.rows || result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({ success: false });
+      return;
+    }
+
+    const normalizedData = result.rows.map((row: any) => ({
+      l2_code: row.L2_CODE,
+      // l2_description: row.L2_DESCRIPTION,
+      l3_code: row.L3_CODE,
+      // l3_description: row.L3_DESCRIPTION,
+      l4_code: row.L4_CODE,
+      // l4_description: row.L4_DESCRIPTION,
+      ac_code: row.AC_CODE,
+      // ac_name: row.AC_NAME,
+    }));
+    
+    // Build hierarchy
+    const response = buildHierarchy(normalizedData);
+
+    console.log('Hierarchy response:', response);
+    
+    res.status(constants.STATUS_CODES.OK).json({ 
+      success: true, 
+      data: response 
     });
-    return
+    return;
+  } catch (error: any) {
+    console.error('Error in getAcTree:', error);
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
+      success: false, 
+      message: error.message 
+    });
+    return;
   } finally {
-    if (connection) await connection.close();
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error closing connection:', err);
+      }
+    }
   }
 };
-
-
 
 
 
@@ -178,22 +245,25 @@ export const getLevel3AcTreeNode = async (
     );
 
     if (!result.rows || result.rows.length === 0) {
-      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: constants.MESSAGES.NOT_FOUND,
       });
+      return;
     }
 
-    return res.status(constants.STATUS_CODES.OK).json({
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: result.rows[0],
     });
+    return;
 
   } catch (error: any) {
-    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
       success: false,
       message: error.message,
     });
+    return;
   } finally {
     if (connection) await connection.close();
   }
@@ -270,6 +340,121 @@ export const getLevel3AcTreeNode = async (
 //     return;
 //   }
 // };
+
+
+// create L3
+
+// export const createLevel3AcTreeNode = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   let connection;
+
+//   try {
+//     const requestUser: IUser = req.user;
+//     const { company_code, loginid } = requestUser;
+//     const { l2_code } = req.body;
+
+//     // Validate request body
+//     const { error } = accountLevelThreeFinanceSchema(req.body);
+//     if (error) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: error.message
+//       });
+//       return;
+//     }
+
+//     // Get DB connection
+//     connection = await oracledb.getConnection();
+
+//     // Check if Level 2 exists
+//     const level2Result = await connection.execute(
+//       `
+//       SELECT 1
+//       FROM ACCOUNT_LEVEL_TWO
+//       WHERE L2_CODE = :l2_code
+//         AND COMPANY_CODE = :company_code
+//       `,
+//       { l2_code, company_code },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+
+//     if (!level2Result.rows || level2Result.rows.length === 0) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: `Level2 ${constants.MESSAGES.NOT_FOUND}`
+//       });
+//       return;
+//     }
+
+//     // Insert Level 3 record
+//     await connection.execute(
+//       `
+//       INSERT INTO ACCOUNT_LEVEL_THREE (
+//         L3_CODE,
+//         L2_CODE,
+//         COMPANY_CODE,
+//         CREATED_BY,
+//         UPDATED_BY
+//       )
+//       VALUES (
+//         '',
+//         :l2_code,
+//         :company_code,
+//         :loginid,
+//         :loginid
+//       )
+//       `,
+//       {
+//         l2_code,
+//         company_code,
+//         loginid
+//       },
+//       { autoCommit: true }
+//     );
+
+//     // Get session code
+//     const sessionResult = await connection.execute(
+//       `
+//       SELECT CODE
+//       FROM GT_SESSION_INFO
+//       WHERE USERID = :loginid
+//       `,
+//       { loginid },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+
+//     const sessionCode =
+//       sessionResult.rows && sessionResult.rows.length > 0
+//         ? (sessionResult.rows[0] as any).CODE
+//         : '';
+
+//     // Success response
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       message: `${sessionCode} ${constants.MESSAGES.CREATED_SUCCESSFULLY}`
+//     });
+//     return;
+
+//   } catch (error: any) {
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message
+//     });
+//     return;
+
+//   } finally {
+//     if (connection) {
+//       try {
+//         await connection.close();
+//       } catch (err) {
+//         console.error('Error closing Oracle connection', err);
+//       }
+//     }
+//   }
+// };
+
 
 // // Update Level 3 account node
 // export const updateLevel3AcTreeNode = async (

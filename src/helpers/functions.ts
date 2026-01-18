@@ -378,7 +378,7 @@ export function buildHierarchy(data: any[]): ITreeItem[] {
     if (level2Index === -1) {
       hierarchy.push({
         id: l2_code,
-        label: l2_description,
+        label: l2_description || '',
         level: 2,
         parent_code: null,
         children: [],
@@ -396,7 +396,7 @@ export function buildHierarchy(data: any[]): ITreeItem[] {
     if (level3Index === -1) {
       level2?.children.push({
         id: l3_code,
-        label: l3_description,
+        label: l3_description || '',
         level: 3,
         parent_code: l2_code,
         children: [],
@@ -414,7 +414,7 @@ export function buildHierarchy(data: any[]): ITreeItem[] {
     if (level4Index === -1) {
       level3?.children.push({
         id: l4_code,
-        label: l4_description,
+        label: l4_description ,
         level: 4,
         parent_code: l3_code,
         children: [],
