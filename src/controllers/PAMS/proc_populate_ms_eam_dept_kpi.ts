@@ -8,30 +8,34 @@ export const proc_populate_ms_eam_dept_kpi = async (
   let connection;
 
   try {
-    const { company_code, employee_code } = req.body;
+    const { company_code, employee_code, item_type } = req.body;
 
-    if (!company_code || !employee_code) {
+    /* ================= VALIDATION ================= */
+    if (!company_code || !employee_code || !item_type) {
       res.status(400).json({
         success: false,
-        message: 'company_code and employee_code are required'
+        message: 'company_code, employee_code and item_type are required'
       });
       return;
     }
 
     connection = await oracledb.getConnection();
 
+    /* ================= ORACLE CALL ================= */
     await connection.execute(
       `
       BEGIN
-        PROC_POPULATE_MS_EAM_DEPT_KPI(
+        WMSTST.PROC_POPULATE_MS_EAM_DEPT_KPI(
           :company_code,
-          :employee_code
+          :employee_code,
+          :item_type
         );
       END;
       `,
       {
         company_code,
-        employee_code
+        employee_code,
+        item_type
       }
     );
 
