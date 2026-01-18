@@ -117,6 +117,12 @@ export class AttendanceService {
       autoConfirmTimer: null as NodeJS.Timeout | null
     };
 
+    logger.info(`[MARK] Stored image buffer in memory for UUID: ${uuid}`, {
+      hasImageBuffer: !!imageBuffer,
+      imageBufferSize: imageBuffer?.length || 0,
+      imageBufferType: typeof imageBuffer
+    });
+
     this.pendingConfirmations.set(uuid, pendingData);
     const autoConfirmTimer = setTimeout(async () => {
       try {
@@ -528,8 +534,7 @@ export class AttendanceService {
 
   private static async autoConfirmFromMemory(uuid: string): Promise<void> {
   if (this.isAutoConfirmCancelled(uuid)) {
-    this.pendingConfirmations.delete(uuid);
-    logger.info(`Auto-confirm skipped - cancelled in memory: ${uuid}`);
+    logger.info(`Auto-confirm skipped - cancelled in memory: ${uuid}, NOT deleting pendingData yet (needed for cancellation)`);
     return;
   }
 
@@ -540,7 +545,7 @@ export class AttendanceService {
   }
 
   if (pendingData.is_cancelled) {
-    this.pendingConfirmations.delete(uuid);
+    logger.info(`Auto-confirm skipped - already marked cancelled: ${uuid}, keeping pendingData for cancellation handler`);
     return;
   }
 
@@ -581,8 +586,11 @@ export class AttendanceService {
       return;
     }
 
-    this.pendingConfirmations.delete(uuid);
+    // ✅ DO NOT DELETE HERE - Delete ONLY AFTER saveConfirmedAttendance completes
     await this.saveConfirmedAttendance(pendingData, 'auto_system', entity);
+    
+    // ✅ NOW safe to delete - attendance is confirmed, image_buffer preserved for cancellation if needed
+    this.pendingConfirmations.delete(uuid);
     
     logger.info(`Auto-confirmed: ${uuid} (No S3 upload for successful attendance)`);
 
@@ -884,6 +892,23 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         where: { employee_code: event.employee_code },
       });
 
+      let s3ImageUrl = null;
+      const pendingData = this.pendingConfirmations.get(uuid);
+      
+      if (reason === 'proxy_detected_by_user' && pendingData?.image_buffer) {
+        logger.info(`[CANCEL] 📸 Uploading image for late cancellation - UUID: ${uuid}`);
+        try {
+          const key = `attendance/proxy/${uuid}_${Date.now()}.jpg`;
+          s3ImageUrl = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
+          logger.info(`[CANCEL] ✅ Image uploaded for late cancel: ${s3ImageUrl}`);
+        } catch (uploadError: any) {
+          logger.error(`[CANCEL] ❌ Failed to upload image for late cancel - UUID: ${uuid}`, {
+            errorMessage: uploadError?.message,
+            errorName: uploadError?.name,
+          });
+        }
+      }
+
       const proxyLog = transaction.manager.getRepository(ProxyLog).create({
         id: uuidv4(),
         uuid: event.uuid,
@@ -893,7 +918,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         actual_employee_code: actualEmployeeCode,
         actual_employee_name: actualEmployeeName,
         confidence: event.confidence ?? 0,
-        s3_image_url: event.s3_image_url ?? null,
+        s3_image_url: s3ImageUrl ?? event.s3_image_url ?? null,
         location_data: event.location_data ? JSON.stringify(event.location_data) : null,
         action: event.event_type,
         action_taken: 'cancel_confirmed',
@@ -901,16 +926,17 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         status: 'reported',
         reason: reason + '_after_confirmation',
       });
-      await transaction.manager.getRepository(ProxyLog).save(proxyLog);
+      // ✅ Capture the saved result with full data
+      const savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
       await transaction.commitTransaction();
       let emailSent = false;
       if (reason === 'proxy_detected_by_user') {
-        emailSent = await this.sendLateCancellationEmail(proxyLog, actualEmployeeCode, actualEmployeeName);
+        emailSent = await this.sendLateCancellationEmail(savedProxyLog, actualEmployeeCode, actualEmployeeName);
       }
       return { 
         success: false,
         alreadyConfirmed: true,
-        proxyLog, 
+        proxyLog: savedProxyLog,
         emailSent,
         message: 'Attendance was already confirmed and cannot be cancelled'
       };
@@ -922,6 +948,24 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         where: { employee_code: event.employee_code },
       });
 
+      // 🆕 CHECK FOR IMAGE UPLOAD IN DUPLICATE CANCELLATION CASE TOO
+      let s3ImageUrl = null;
+      const pendingData = this.pendingConfirmations.get(uuid);
+      
+      if (reason === 'proxy_detected_by_user' && pendingData?.image_buffer) {
+        logger.info(`[CANCEL] 📸 Uploading image for duplicate cancellation - UUID: ${uuid}`);
+        try {
+          const key = `attendance/proxy/${uuid}_${Date.now()}.jpg`;
+          s3ImageUrl = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
+          logger.info(`[CANCEL] ✅ Image uploaded for duplicate cancel: ${s3ImageUrl}`);
+        } catch (uploadError: any) {
+          logger.error(`[CANCEL] ❌ Failed to upload image for duplicate cancel - UUID: ${uuid}`, {
+            errorMessage: uploadError?.message,
+            errorName: uploadError?.name,
+          });
+        }
+      }
+
       const proxyLogData = {
         id: uuidv4(),
         uuid: event.uuid,
@@ -931,7 +975,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         actual_employee_code: actualEmployeeCode,
         actual_employee_name: actualEmployeeName,
         confidence: event.confidence ?? 0,
-        s3_image_url: event.s3_image_url ?? null,
+        s3_image_url: s3ImageUrl ?? event.s3_image_url ?? null,
         location_data: event.location_data ? JSON.stringify(event.location_data) : null,
         action: event.event_type,
         action_taken: 'duplicate_cancel',
@@ -942,8 +986,9 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
       const proxyLog = transaction.manager.getRepository(ProxyLog).create(proxyLogData);
       
+      let savedProxyLog: any;
       try {
-        await transaction.manager.getRepository(ProxyLog).save(proxyLog);
+        savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
         logger.info(`[CANCEL] Duplicate cancellation proxy log saved for UUID: ${uuid}`);
       } catch (saveError: any) {
         logger.error(`[CANCEL] Failed to save duplicate cancellation proxy log for UUID: ${uuid}`, saveError);
@@ -954,14 +999,15 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       let emailSent = false;
       if (reason === 'proxy_detected_by_user') {
         logger.info(`[CANCEL] Sending alert email for duplicate cancellation attempt - UUID: ${uuid}`);
-        emailSent = await this.sendProxyAlertEmailBackgroundFromDB(proxyLog, actualEmployeeCode, actualEmployeeName);
+        // ✅ Pass savedProxyLog which contains all the data
+        emailSent = await this.sendProxyAlertEmailBackgroundFromDB(savedProxyLog, actualEmployeeCode, actualEmployeeName);
         logger.info(`[CANCEL] Email sent result: ${emailSent} for UUID: ${uuid}`);
       }
 
       return { 
         success: true, 
         alreadyCancelled: true,
-        proxyLog,
+        proxyLog: savedProxyLog,
         emailSent,
         message: "Attendance already cancelled - Duplicate cancellation attempt logged as proxy" 
       };
@@ -990,15 +1036,20 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     
     logger.info(`[CANCEL] Checking for image upload - UUID: ${uuid}`, {
       hasPendingData: !!pendingData,
+      pendingDataKeys: pendingData ? Object.keys(pendingData) : [],
       hasImageBuffer: !!pendingData?.image_buffer,
+      imageBufferType: pendingData?.image_buffer ? typeof pendingData.image_buffer : 'undefined',
+      imageBufferSize: pendingData?.image_buffer?.length || 0,
       reason: reason,
+      reasonMatches: reason === 'proxy_detected_by_user',
       shouldUpload: !!(pendingData && pendingData.image_buffer && reason === 'proxy_detected_by_user')
     });
     
     if (pendingData && pendingData.image_buffer && reason === 'proxy_detected_by_user') {
       logger.info(`[CANCEL] 📸 Starting image upload to S3 for proxy - UUID: ${uuid}`, {
         bufferSize: pendingData.image_buffer.length,
-        bufferType: typeof pendingData.image_buffer
+        bufferType: typeof pendingData.image_buffer,
+        bufferIsBuffer: Buffer.isBuffer(pendingData.image_buffer)
       });
       try {
         const key = `attendance/proxy/${uuid}_${Date.now()}.jpg`;
@@ -1006,17 +1057,24 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         
         logger.info(`[CANCEL] Calling uploadEmployeeFace function...`);
         s3ImageUrl = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
-        logger.info(`[CANCEL] uploadEmployeeFace returned: ${s3ImageUrl}`);
+        logger.info(`[CANCEL] uploadEmployeeFace returned:`, {
+          result: s3ImageUrl,
+          isNull: s3ImageUrl === null,
+          isEmpty: s3ImageUrl === '',
+          resultLength: typeof s3ImageUrl === 'string' ? s3ImageUrl.length : 'not-a-string'
+        });
         
         if (s3ImageUrl) {
-          logger.info(`[CANCEL] ✅ Image uploaded to S3 successfully - UUID: ${uuid}, URL: ${s3ImageUrl.substring(0, 80)}...`);
+          logger.info(`[CANCEL] ✅ Image uploaded to S3 successfully - UUID: ${uuid}, URL: ${s3ImageUrl.substring(0, 100)}...`);
         } else {
           logger.warn(`[CANCEL] ⚠️ Image upload returned null/empty URL - UUID: ${uuid}, uploadResult: ${s3ImageUrl}`);
         }
       } catch (uploadError) {
         logger.error(`[CANCEL] ❌ Failed to upload image to S3 - UUID: ${uuid}`, {
           errorMessage: uploadError instanceof Error ? uploadError.message : String(uploadError),
-          errorStack: uploadError instanceof Error ? uploadError.stack : undefined
+          errorName: uploadError instanceof Error ? uploadError.name : 'unknown',
+          errorStack: uploadError instanceof Error ? uploadError.stack : undefined,
+          bufferSize: pendingData?.image_buffer?.length || 0
         });
         
       }
@@ -1026,8 +1084,12 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         reasonMatches: reason === 'proxy_detected_by_user',
         hasPendingData: !!pendingData,
         hasImageBuffer: !!pendingData?.image_buffer,
-        bufferSize: pendingData?.image_buffer?.length || 0,
-        allConditionsMet: !!(pendingData && pendingData.image_buffer && reason === 'proxy_detected_by_user')
+        imageBufferSize: pendingData?.image_buffer?.length || 0,
+        imageBufferType: pendingData?.image_buffer ? typeof pendingData.image_buffer : 'undefined',
+        allConditionsMet: !!(pendingData && pendingData.image_buffer && reason === 'proxy_detected_by_user'),
+        condition1_hasPendingData: !!pendingData,
+        condition2_hasImageBuffer: !!pendingData?.image_buffer,
+        condition3_reasonMatches: reason === 'proxy_detected_by_user'
       });
     }
 
@@ -1065,9 +1127,10 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     
     const proxyLog = transaction.manager.getRepository(ProxyLog).create(proxyLogData);
 
+    let savedProxyLog: any;
     try {
       logger.info(`[CANCEL] About to save proxy log to database for UUID: ${uuid}`);
-      const savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
+      savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
       logger.info(`✅ [CANCEL] Proxy log saved successfully to database for UUID: ${uuid}`, {
         savedId: savedProxyLog.id,
         savedUuid: savedProxyLog.uuid,
@@ -1093,7 +1156,8 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     
     if (reason === 'proxy_detected_by_user') {
       logger.info(`[CANCEL] ✅ Reason matches - Triggering email for proxy detection - UUID: ${uuid}`);
-      emailSent = await this.sendProxyAlertEmailBackgroundFromDB(proxyLog, actualEmployeeCode, actualEmployeeName);
+      // ✅ Pass savedProxyLog which contains the s3_image_url
+      emailSent = await this.sendProxyAlertEmailBackgroundFromDB(savedProxyLog, actualEmployeeCode, actualEmployeeName);
       logger.info(`[CANCEL] Email sent result: ${emailSent} for UUID: ${uuid}`);
     } else {
       logger.info(`[CANCEL] ⚠️ Reason does NOT match 'proxy_detected_by_user' - No email sent. Actual reason: '${reason}'`);
@@ -1101,7 +1165,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
     return { 
       success: true,
-      proxyLog, 
+      proxyLog: savedProxyLog,
       cancelledEvent: event,
       emailSent,
       message: 'Attendance cancelled successfully'
