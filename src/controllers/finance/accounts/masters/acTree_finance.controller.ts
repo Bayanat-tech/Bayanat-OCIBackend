@@ -126,8 +126,8 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
       }
     );
 
-    console.log('Raw result:', result.rows); // Debug: Check what Oracle returns
-    console.log('First row:', result.rows?.[0]); // Debug: Check structure
+    console.log('Raw result:', result.rows); 
+    console.log('First row:', result.rows?.[0]); 
 
     if (!result.rows || result.rows.length === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({ success: false });
@@ -213,61 +213,61 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
 
 
 
-export const getLevel3AcTreeNode = async (
-  req: RequestWithUser,
-  res: Response
-) => {
-  let connection;
+// export const getLevel3AcTreeNode = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   let connection;
 
-  try {
-    const { company_code } = req.user;
-    const { ac_code } = req.params;
+//   try {
+//     const { company_code } = req.user;
+//     const { ac_code } = req.params;
 
-    connection = await oracledb.getConnection();
+//     connection = await oracledb.getConnection();
 
-    const result = await connection.execute(
-      `
-      SELECT
-          l3_code,
-          l3_description,
-          company_code
-      FROM account_level_three
-      WHERE company_code = :company_code
-        AND l3_code = :l3_code
-      `,
-      {
-        company_code,
-        l3_code: ac_code,
-      },
-      {
-        outFormat: oracledb.OUT_FORMAT_OBJECT,
-      }
-    );
+//     const result = await connection.execute(
+//       `
+//       SELECT
+//           l3_code,
+//           l3_description,
+//           company_code
+//       FROM account_level_three
+//       WHERE company_code = :company_code
+//         AND l3_code = :l3_code
+//       `,
+//       {
+//         company_code,
+//         l3_code: ac_code,
+//       },
+//       {
+//         outFormat: oracledb.OUT_FORMAT_OBJECT,
+//       }
+//     );
 
-    if (!result.rows || result.rows.length === 0) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: constants.MESSAGES.NOT_FOUND,
-      });
-      return;
-    }
+//     if (!result.rows || result.rows.length === 0) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: constants.MESSAGES.NOT_FOUND,
+//       });
+//       return;
+//     }
 
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: result.rows[0],
-    });
-    return;
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       data: result.rows[0],
+//     });
+//     return;
 
-  } catch (error: any) {
-    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-      success: false,
-      message: error.message,
-    });
-    return;
-  } finally {
-    if (connection) await connection.close();
-  }
-};
+//   } catch (error: any) {
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message,
+//     });
+//     return;
+//   } finally {
+//     if (connection) await connection.close();
+//   }
+// };
 
 
 // Create new Level 3 account node

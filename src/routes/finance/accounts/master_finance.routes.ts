@@ -1,5 +1,5 @@
 import * as express from "express";
-import {  getAcTree, getLevel3AcTreeNode } from "../../../controllers/finance/accounts/masters/acTree_finance.controller";
+import {  getAcTree } from "../../../controllers/finance/accounts/masters/acTree_finance.controller";
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ router.get("/a-c_tree", getAcTree);
 
 // ------l3------
 // // Get, create, and update Level 3 account tree nodes
-router.get("/ac_tree/level3/:ac_code", getLevel3AcTreeNode);
+//router.get("/ac_tree/level3/:ac_code", getLevel3AcTreeNode);
 //router.post("/ac_tree/level3", createLevel3AcTreeNode);
 // router.put("/ac_tree/level3/:ac_code", updateLevel3AcTreeNode);
 
