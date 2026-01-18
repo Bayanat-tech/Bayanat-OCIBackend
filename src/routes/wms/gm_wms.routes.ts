@@ -179,6 +179,7 @@ import {
 import {
   CreateDivision,
   updateDivision,
+  deleteDivisions,
 } from "../../controllers/wms/division_wms.controller";
 
 // Import asset group controllers
@@ -219,6 +220,8 @@ import {
   getAllLocationTypes, // <-- Add this import
 } from "../../controllers/wms/locationtype_wms.controller";
 import { CustomerMasterController } from "../../controllers/wms/customer_wms.controller";
+import { BillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
+import { checkPassword } from "../../middleware/checkPassword";
 
 // Country Routes - Handle country management
 router.post("/country", createCountry as unknown as express.RequestHandler); // Create new country
@@ -431,6 +434,21 @@ router.post(
   deletePartners as unknown as express.RequestHandler
 ); // Delete partner
 
+// Billing Activity Routes
+router.post(
+  "/activity_billing/:principalCode",
+  checkPassword,
+  BillingActivity
+); // Create billing activity for principal
+router.put(
+  "/activity_billing/:principalCode/:activityCode",
+  checkPassword,
+  BillingActivity
+); // Update billing activity
+
+
+
+
 // Activity Billing Routes - Handle billing activities
 // router.post(
 //   "/activity_billing/:principalCode",
@@ -452,7 +470,7 @@ router.put("/activitysubgroup", updateActivitysubgroup); // Update existing acti
 // Division Routes - Handle division management
 router.post("/division", CreateDivision); // Create new division
 router.put("/division", updateDivision); // Update existing division
-
+router.delete("/division",deleteDivisions);
 // Port Routes - Handle port management
 // Add this line for GET
 // router.get("/port", getPort); // Uncomment and use your actual GET handler

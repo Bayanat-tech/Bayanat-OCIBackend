@@ -133,6 +133,7 @@ import { getConnection } from "typeorm";
 import { FlowMasterService } from "../services/Security/flowmaster.service"; // Add FlowMasterService import
 import { AppDataSource, TypeORMService } from "../database/connection";
 import { CustomerService } from "../services/WMS/customer.service";
+import { ActivityService } from "../services/WMS/activity.service";
 
 export type TGroup = {
   group_code: string;
@@ -2177,19 +2178,28 @@ case "activitysubgroup":
 //   }
 //   break;
 // Fetching activity data from the Activity model
-// case "activity": {
-//   // Fetching data using the Activity model
-//   fetchedData = (await Activity.findAll({
-//     attributes: ["activity_code", "activity", "activity_group_code"],
-//     where: {
-//       company_code: requestUser.company_code,
-//     },
-//     ...paginationOptions,
-//   })) as unknown[] as IActivity[];
-
-//   break;
-// }
-
+case "activity": {
+  console.log("Fetching activity data...");
+ 
+  const page = Number(req.query.page) || 1;
+  const pageLimit = Number(req.query.limit) || 1000;
+  const skip = (page - 1) * pageLimit;
+ 
+  const filters = {
+    companyCode: requestUser.company_code,
+  };
+ 
+  const { data, total } = await ActivityService.getActivities(
+    filters,
+    pageLimit,
+    skip
+  );
+ 
+  fetchedData = data;
+  totalCount = total;
+ 
+  break;
+}
 // Fetching activity KPI data from the ActivityKPI model
 case "activitykpi": {
   try {
