@@ -66224,14 +66224,34 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
 2026-01-14 11:17:45 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
 2026-01-14 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-14 12:00:00 [[32minfo[39m]: No unsent attendance events found 
-2026-01-15 11:05:16 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 11:08:43 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 11:10:51 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 13:57:26 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 14:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
-2026-01-15 14:00:00 [[32minfo[39m]: No unsent attendance events found 
-2026-01-15 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
-2026-01-15 15:00:06 [[32minfo[39m]: No unsent attendance events found 
-2026-01-15 15:09:43 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 15:14:05 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
-2026-01-15 15:15:54 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 16:17:35 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 16:21:52 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 17:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-14 17:00:06 [[32minfo[39m]: No unsent attendance events found 
+2026-01-14 17:19:54 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 17:25:17 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 17:56:45 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:00:51 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:06:18 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:12:32 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-14 18:15:48 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 07:28:45 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 07:35:10 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 07:37:25 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 07:44:05 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-15 08:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-15 08:00:03 [[32minfo[39m]: No unsent attendance events found 
+2026-01-16 14:43:14 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-16 15:02:46 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-16 15:07:43 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-16 15:28:46 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-16 15:35:49 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-16 17:51:07 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-16 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-16 18:00:03 [[32minfo[39m]: No unsent attendance events found 
+2026-01-16 18:58:19 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-16 19:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-16 19:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-16 20:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred

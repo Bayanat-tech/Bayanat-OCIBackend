@@ -1,42 +1,115 @@
 import oracledb from "oracledb";
 import { Request, Response } from "express";
 
-export async function updatebilling(req: Request, res: Response) {
-  let connection;
+/* =======================
+   Interfaces (unchanged)
+======================= */
+
+export interface TInvoice {
+  from_date?: string | Date;
+  to_date?: string | Date;
+  company_code: string;
+  invoice_no?: string;
+  invoice_date?: string | Date;
+  job_no?: string;
+  prin_code?: string;
+  cust_code?: string;
+  inv_amount?: number;
+  curr_code?: string;
+  inv_status?: string;
+  user_id?: string;
+}
+
+export interface TInvoiceDetail {
+  company_code: string;
+  invoice_no?: string;
+  srno: number;
+  act_code?: string;
+  bill_amount?: number;
+  cost_amount?: number;
+  quantity?: number;
+  bill_rate?: number;
+  cost_rate?: number;
+  inv_desc?: string;
+  user_id?: string;
+}
+
+/* =======================
+   API (NO typing changes)
+======================= */
+const getValue = (obj: any, key: string) =>
+  obj[key] ?? obj[key.toLowerCase()] ?? obj[key.toUpperCase()] ?? null;
+
+
+export async function updateBilling(
+  req: Request,
+  res: Response
+) {
+  const connection = await oracledb.getConnection();
 
   try {
-    connection = await oracledb.getConnection();
+    console.log("UPDATE BILLING API HIT");
+    console.log("Incoming body:", req.body);
 
-    /* Header (single record → array) */
-    const headerRows = [
-      {
-        COMPANY_CODE: req.body.invoice.COMPANY_CODE,
-        INVOICE_NO: req.body.invoice.INVOICE_NO,
-        INVOICE_DATE: req.body.invoice.INVOICE_DATE,
-        JOB_NO: req.body.invoice.JOB_NO,
-        PRIN_CODE: req.body.invoice.PRIN_CODE,
-        CUST_CODE: req.body.invoice.CUST_CODE,
-        INV_AMOUNT: req.body.invoice.INV_AMOUNT,
-        CURR_CODE: req.body.invoice.CURR_CODE,
-        INV_STATUS: req.body.invoice.INV_STATUS,
-        USER_ID: req.body.invoice.USER_ID
-      }
-    ];
+    const { invoiceHeader, invoiceDetails } = req.body;
 
-    /* Detail (multiple records) */
-    const detailRows = req.body.invoiceDetails.map((d: any) => ({
-      COMPANY_CODE: d.COMPANY_CODE,
-      INVOICE_NO: d.INVOICE_NO,
-      SRNO: d.SRNO,
-      ACT_CODE: d.ACT_CODE,
-      BILL: d.BILL,
-      COST: d.COST,
-      QUANTITY: d.QUANTITY,
-      BILL_RATE: d.BILL_RATE,
-      COST_RATE: d.COST_RATE,
-      INV_DESC: d.INV_DESC,
-      USER_ID: d.USER_ID
-    }));
+    /* =======================
+       Map Header Rows
+       (FIXED: read UPPER-CASE keys)
+    ======================= */
+
+const headerRows = invoiceHeader.map((h: any) => ({
+  COMPANY_CODE: getValue(h, 'COMPANY_CODE'),
+  INVOICE_NO: getValue(h, 'INVOICE_NO'),
+
+  INVOICE_DATE: getValue(h, 'INVOICE_DATE')
+    ? new Date(getValue(h, 'INVOICE_DATE'))
+    : null,
+
+  FROM_DATE: getValue(h, 'FROM_DATE')
+    ? new Date(getValue(h, 'FROM_DATE'))
+    : null,
+
+  TO_DATE: getValue(h, 'TO_DATE')
+    ? new Date(getValue(h, 'TO_DATE'))
+    : null,
+
+  JOB_NO: getValue(h, 'JOB_NO'),
+  PRIN_CODE: getValue(h, 'PRIN_CODE'),
+  CUST_CODE: getValue(h, 'CUST_CODE'),
+  INV_AMOUNT: getValue(h, 'INV_AMOUNT'),
+  CURR_CODE: getValue(h, 'CURR_CODE'),
+  INV_STATUS: getValue(h, 'INV_STATUS'),
+  USER_ID: getValue(h, 'USER_ID')
+}));
+
+
+    /* =======================
+       Map Detail Rows
+       (FIXED: read actual payload keys)
+    ======================= */
+
+ const detailRows = invoiceDetails.map((d: any) => ({
+  COMPANY_CODE: d.COMPANY_CODE ?? invoiceHeader[0].COMPANY_CODE, // fallback to header
+  INVOICE_NO: d.INVOICE_NO ?? null,
+  SRNO: d.srno,
+  ACT_CODE: d.act_code ?? null,
+  BILL: d.bill ?? null,
+  COST: d.cost ?? null,
+  QUANTITY: d.quantity ?? null,
+  BILL_RATE: d.bill_rate ?? null,
+  COST_RATE: d.cost_rate ?? null,
+  INV_DESC: d.inv_desc ?? null,
+  USER_ID: d.USER_ID ?? null
+}));
+
+    console.log("Mapped Header Rows:", headerRows);
+    console.log("Mapped Detail Rows:", detailRows);
+
+    /* =======================
+       Execute Procedure
+       (UNCHANGED)
+    ======================= */
 
     await connection.execute(
       `
@@ -56,19 +129,15 @@ export async function updatebilling(req: Request, res: Response) {
           type: "T_INVOICE_DTL_TAB",
           val: detailRows
         }
-      },
-      { autoCommit: true }
+      }
     );
 
     res.json({ message: "Invoice updated successfully" });
 
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Invoice update failed" });
-
   } finally {
-    if (connection) {
-      await connection.close();
-    }
+    await connection.close();
   }
 }

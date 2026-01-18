@@ -1,5 +1,6 @@
 import { getRepository, oracleDb } from "../../database/connection";
 import { TaAdjDetail } from "../../entity/WMS/taAdjDetail.entity";
+import oracledb from "oracledb";
 
 export class TaAdjDetailService {
   private static getRepository() {
@@ -75,6 +76,7 @@ export class TaAdjDetailService {
     PALLET_ID?: string;
     QTY_PUOM?: number;
     QTY_LUOM?: number;
+    ADJ_TYPE?: string;
     USER_ID?: string;
   }): Promise<TaAdjDetail> {
     const repository = this.getRepository();
@@ -166,6 +168,37 @@ export class TaAdjDetailService {
         offset: error.offset
       });
       throw new Error(`Failed to process adjustment: ${error.message}`);
+    }
+  }
+
+  static async confirmAdjDetail(data: {
+    P_COMPANY_CODE: string;
+    P_PRIN_CODE: string;
+    P_ADJ_NO: number;
+  }): Promise<void> {
+    try {
+      console.log('Confirming adjustment detail with params:', data);
+      
+      const result = await oracleDb.query(
+        `BEGIN PROC_UPDATE_STOCK_ADJ(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_SUCCESS); END;`,
+        {
+          P_COMPANY_CODE: data.P_COMPANY_CODE,
+          P_PRIN_CODE: data.P_PRIN_CODE,
+          P_ADJ_NO: data.P_ADJ_NO,
+          P_SUCCESS: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+        }
+      );
+      
+      console.log('PROC_UPDATE_STOCK_ADJ executed successfully:', result);
+      console.log('P_SUCCESS value:', result.outBinds?.P_SUCCESS);
+    } catch (error: any) {
+      console.error('Error in confirmAdjDetail service:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.errorNum,
+        offset: error.offset
+      });
+      throw new Error(`Failed to confirm adjustment detail: ${error.message}`);
     }
   }
 }

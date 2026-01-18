@@ -473,7 +473,7 @@ export const createStockAdjustmentHeader = async (
 
 export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
   try {
-    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, CONFIRMED, USER_ID } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; USER_ID?: string; };
+    const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, USER_ID } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; USER_ID?: string; };
 
     // Validate required fields
     if (!ADJ_CODE) {
@@ -551,6 +551,7 @@ export const createAdjustmentDetail = async (
       PALLET_ID,
       QTY_PUOM,
       QTY_LUOM,
+      ADJ_TYPE,
     } = req.body;
 
     // Validate required fields
@@ -606,6 +607,7 @@ export const createAdjustmentDetail = async (
       PALLET_ID,
       QTY_PUOM,
       QTY_LUOM,
+      ADJ_TYPE,
       USER_ID: username,
     });
 
@@ -620,6 +622,64 @@ export const createAdjustmentDetail = async (
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Failed to create adjustment detail",
+      error: error.message,
+      details: error.stack,
+    });
+  }
+};
+
+export const confirmAdjDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { P_COMPANY_CODE, P_PRIN_CODE, P_ADJ_NO } = req.body;
+
+    // Validate required fields
+    if (!P_COMPANY_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "P_COMPANY_CODE is required",
+      });
+    }
+
+    if (!P_PRIN_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "P_PRIN_CODE is required",
+      });
+    }
+
+    if (!P_ADJ_NO) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "P_ADJ_NO is required",
+      });
+    }
+
+    console.log('Confirming adjustment detail with data:', {
+      P_COMPANY_CODE,
+      P_PRIN_CODE,
+      P_ADJ_NO,
+    });
+
+    // Call the function to confirm adjustment detail
+    await TaAdjDetailService.confirmAdjDetail({
+      P_COMPANY_CODE,
+      P_PRIN_CODE,
+      P_ADJ_NO,
+    });
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail confirmed successfully",
+    });
+  } catch (error: any) {
+    console.error("Error confirming adjustment detail:", error);
+    console.error("Error stack:", error.stack);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to confirm adjustment detail",
       error: error.message,
       details: error.stack,
     });
