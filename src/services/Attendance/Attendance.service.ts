@@ -926,7 +926,6 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         status: 'reported',
         reason: reason + '_after_confirmation',
       });
-      // ✅ Capture the saved result with full data
       const savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
       await transaction.commitTransaction();
       let emailSent = false;
