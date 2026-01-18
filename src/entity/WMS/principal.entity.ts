@@ -142,7 +142,7 @@ export class PrincipalMaster {
   @Column({ name: "PRIN_INFZE", type: "char", length: 1, nullable: true })
   prin_infze?: string;
 
-  @Column({ name: "CREDIT_LIMIT", type: "number", precision: 16, scale: 6, nullable: true })
+  @Column({ name: "CREDIT_LIMIT", type: "number", nullable: true })
   credit_limit?: number;
 
   @Column({ name: "CREDITDAYS", type: "number", nullable: true })

@@ -27,18 +27,26 @@ import {
 
 // Import product type related controllers
 // import {
-//   createBulkProducttypes, // For creating multiple product types
+//   // createBulkProducttypes, // For creating multiple product types
 //   createProducttype, // For creating single product type
-//   deleteProducttypes, // For deleting product types
-//   exportProducttype, // For exporting product type data
-//   updateProducttype, // For updating product type
+//   // deleteProducttypes, // For deleting product types
+//   // exportProducttype, // For exporting product type data
+//   // updateProducttype, // For updating product type
 // } from "../../controllers/wms/producttype_wms.controller";
+import { Request, Response } from "express";
+import { 
+  createProducttype,
+  getProducttypes,
+  updateProducttype,
+  deleteProducttypes
+ } from "../../controllers/wms/producttype_wms.controller";
 
 // Import product management controllers
 import {
   createProduct, // For creating new products
   updateProduct, // For updating product details
   importExcelProducts,
+  deleteProducts,
 } from "../../controllers/wms/product_wms.controller";
 
 // Import account setup controllers
@@ -57,6 +65,7 @@ import {
 import {
   createGroup, // For creating product groups
   updateGroup, // For updating product groups
+  deleteGroups,
 } from "../../controllers/wms/productgroup_wms.controller";
 
 // Import activity group controllers
@@ -115,7 +124,9 @@ import {
 // Import department management controllers
 import {
   createDepartment, // For creating departments
-  updateDepartment, // For updating departments
+  updateDepartment,
+  deleteDepartments,
+   // For updating departments
 } from "../../controllers/wms/department_wms.controller";
 
 // Import salesman management controllers
@@ -244,13 +255,26 @@ router.get(
   "/activity-kpi/export",
   exportActivityKPI as unknown as express.RequestHandler
 ); // Export KPI data
+// ..\controllers\wms\producttype_wms.controller.ts
 
 // Product Type Routes - Handle product type management
-// router.post("/Producttype", createProducttype); // Create new product type
-// router.put("/Producttype", updateProducttype); // Update existing product type
+
+
+router.post("/producttype", async (req: Request, res: Response) => {
+  await createProducttype(req, res);
+});
+
+router.get("/producttype", async (req: Request, res: Response) => {
+  await getProducttypes(req, res);
+}); // Export product type data
+router.put("/producttype", async (req: Request, res: Response) => {
+  await updateProducttype(req, res);
+}); // Update existing product type
+ // Create new product type
 // router.post("/Producttype/bulk", createBulkProducttypes); // Create multiple product types
-// router.get("/Producttype/export", exportProducttype); // Export product type data
-// router.post("/Producttype/delete", deleteProducttypes); // Delete product types
+router.post("/producttype/delete", async (req: Request, res: Response) => {
+  await deleteProducttypes(req, res);
+}); // Delete product types
 
 // Alert Routes - Handle alert management
 router.post("/alert", createAlert); // Create new alert
@@ -270,7 +294,7 @@ router.put("/manufacture", updateManufacture); // Update existing manufacturer
 // Group Routes - Handle product group management
 router.post("/group", createGroup); // Create new product group
 router.put("/group", updateGroup); // Update existing product group
-
+router.delete("/group",deleteGroups);
 // Brand Routes - Handle brand management
 router.post("/brand", createBrand); // Create new brand
 router.put("/brand", updateBrand); // Update existing brand
@@ -292,6 +316,13 @@ router.put("/department", async (req, res, next) => {
     next(err);
   }
 }); // Update existing department
+router.delete("/department", async (req, res, next)=>{
+  try{
+    await deleteDepartments(req as any, res as any)
+  } catch(err){
+    next(err);
+  }
+}) // Delete existing department
 // Principal Routes - Handle principal management
 // router.get("/principal/export", exportPrincipal); // Export principal data
 router.get("/principal/:prin_code", getPrincipal); // Get specific principal details
@@ -318,6 +349,7 @@ router.put("/location", async (req, res, next) => {
 // Product Routes - Handle product management
 router.post("/product", createProduct); // Create new product
 router.put("/product", updateProduct); // Update existing product
+router.delete("/product", deleteProducts); // Update existing product
 router.post(
   "/product/import-excel",
   upload.single("file"),

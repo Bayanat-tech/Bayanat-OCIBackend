@@ -1,5 +1,6 @@
 import { getRepository } from "../../../../database/connection";
-import { InboundJobWms } from "../../../../entity/WMS/transaction/inbound/InboundJobWms.entity";
+// import { InboundJobWms } from "../../../../models/wms/transaction/inbound/InboundJobWms.entity";
+import {InboundJobWms} from "../../../../entities/wms/transaction/inbound/InboundJobWms.entity"
 import { PackingDetailsInboundWms } from "../../../../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity";
 import { IJobInboundWms } from "../../../../interfaces/wms/transaction/inbound/inboundJobWms.interface";
 import { FindManyOptions } from "typeorm";
@@ -147,4 +148,31 @@ export class InboundJobWmsService {
       where: whereConditions,
     });
   }
+  // Cancel an inbound job
+static async cancel(
+  params: {
+    company_code: string;
+    prin_code: string;
+    job_no: string;
+  },
+  updated_by: string
+): Promise<InboundJobWms | null> {
+  const repository = this.getInboundJobRepository();
+
+  await repository.update(
+    {
+      company_code: params.company_code,
+      prin_code: params.prin_code,
+      job_no: params.job_no,
+    },
+    {
+      canceled: 'Y',
+      updated_by: updated_by,
+      updated_at: new Date(),
+    }
+  );
+
+  // Return the updated record
+  return await this.findOne(params);
+}
 }

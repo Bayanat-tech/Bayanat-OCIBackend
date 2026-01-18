@@ -242,23 +242,22 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
       if (toggledPackets > 0) {
         // ---- FIXED procedure call ----
-        await oracleDb.query(
-          `BEGIN
-             SP_PICK_CONFIRM(
-               :vs_company_code,
-               :vs_principal_code,
-               :vs_job_no,
-               TO_DATE(:vdt_confirm, 'YYYY-MM-DD HH24:MI:SS')
-             );
-           END;`,
-          {
-            vs_company_code: company_code,
-            vs_principal_code: prin_code,
-            vs_job_no: job_no,
-            vdt_confirm: formattedConfirmDate,
-          },
-          connection
-        );
+       await oracleDb.query(
+  `BEGIN
+     SP_PICK_CONFIRM(
+       :vs_company_code,
+       :vs_principal_code,
+       :vs_job_no,
+       SYSDATE
+     );
+   END;`,
+  {
+    vs_company_code: company_code,
+    vs_principal_code: prin_code,
+    vs_job_no: job_no
+  },
+  connection
+);
 
         // Unselect after procedure call
         const unselectSql = `
@@ -689,7 +688,7 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
       if (toggledPackets > 0) {
         // Call Oracle stored procedure
         await oracleDb.query(
-          `BEGIN sp_pick_cancel_confirmed(:vs_company_code, :vs_prin_code, :vs_job_no, :vs_freeze); END;`,
+          `BEGIN sp_pick_cancel(:vs_company_code, :vs_prin_code, :vs_job_no, :vs_freeze); END;`,
           {
             vs_company_code: company_code,
             vs_prin_code: prin_code,

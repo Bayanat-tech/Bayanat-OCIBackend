@@ -43,6 +43,7 @@ export interface IPrincipalWms {
   prin_ref1?: string;
   prin_status?: string;
   acc_email?: string;
+  div_code?:string;
   prin_dept_code?: string;
 
   prin_acref?: string;

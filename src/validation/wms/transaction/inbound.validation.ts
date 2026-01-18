@@ -77,8 +77,8 @@ export const packingDetailsSchema = (
       upp: Joi.number().allow(null),
     mfg_date: Joi.date().allow(null),
     prod_mfg_date: Joi.date().allow(null),
-    exp_date: Joi.date().allow(""),
-    po_no: Joi.string().allow(""),
+    exp_date: Joi.date().allow(null),
+    po_no: Joi.string().allow(null),
     origin_country: Joi.string().allow(""),
     manu_code: Joi.string().allow(""),
     gross_weight: Joi.number().allow(null),
@@ -151,6 +151,7 @@ export const tallyDetailsSchema = (
     shelf_life_days: Joi.number().allow(null),
     shelf_life_date: Joi.date().allow(null),
     gross_weight: Joi.number().allow(null),
+    prod_name: Joi.string().allow("").optional(),
   });
 
   const schema = Joi.array().items(baseSchema);

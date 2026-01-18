@@ -80,22 +80,21 @@ export const updateGroup = async (req: RequestWithUser, res: Response) => {
         .status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
-    }
-    const {
+    } const {
       group_code,
       company_code,
       prin_code,
       group_name,
-      pref_site,
-      pref_loc_from,
-      pref_loc_to,
-      pref_aisle_from,
-      pref_aisle_to,
-      pref_col_from,
-      pref_col_to,
-      pref_ht_from,
-      pref_ht_to,
-      expiry_cons_days,
+      pref_site,           // This was missing
+      pref_loc_from,       // This was missing
+      pref_loc_to,         // This was missing
+      pref_aisle_from,     // This was missing
+      pref_aisle_to,       // This was missing
+      pref_col_from,       // This was missing
+      pref_col_to,         // This was missing
+      pref_ht_from,        // This was missing
+      pref_ht_to,          // This was missing
+      expiry_cons_days,    // This was missing
     } = req.body;
 
     // Check if group exists
@@ -153,47 +152,145 @@ export const updateGroup = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const deleteCountries = async (req: RequestWithUser, res: Response) => {
-  try {
-    const groupsToDelete = req.body;
+  export const deleteGroups = async (req: RequestWithUser, res: Response) => {
+    try {
+      const groupsToDelete = req.body;
 
-    if (!Array.isArray(groupsToDelete) || !groupsToDelete.length) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: constants.MESSAGES.GROUP_WMS.SELECT_AT_LEAST_ONE_GROUP,
+      console.log('=== DELETE GROUPS REQUEST ===');
+      console.log('Full request body:', JSON.stringify(groupsToDelete, null, 2));
+
+      if (!Array.isArray(groupsToDelete) || !groupsToDelete.length) {
+        console.log('Error: No groups to delete or invalid format');
+        res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+          success: false,
+          message: constants.MESSAGES.GROUP_WMS.SELECT_AT_LEAST_ONE_GROUP,
+        });
+        return;
+      }
+
+      // Validate each item
+      const invalidItems = groupsToDelete.filter(item => 
+        !item.group_code || !item.prin_code || !item.company_code
+      );
+      
+      if (invalidItems.length > 0) {
+        console.log('Error: Invalid items found', invalidItems);
+        res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+          success: false,
+          message: "Invalid data: missing group_code, prin_code, or company_code",
+        });
+        return;
+      }
+
+      // Group items by (prin_code, company_code) pair
+      const groupedByPrinAndCompany: { [key: string]: any[] } = {};
+      
+      groupsToDelete.forEach(item => {
+        const key = `${item.prin_code}_${item.company_code}`;
+        if (!groupedByPrinAndCompany[key]) {
+          groupedByPrinAndCompany[key] = [];
+        }
+        groupedByPrinAndCompany[key].push(item);
+      });
+
+      console.log('Grouped by prin_code and company_code:', groupedByPrinAndCompany);
+
+      let totalDeleted = 0;
+      let totalFailed = 0;
+      const deleteResults = [];
+
+      // Delete groups for each (prin_code, company_code) combination
+      for (const [key, items] of Object.entries(groupedByPrinAndCompany)) {
+        const [prinCode, companyCode] = key.split('_');
+        const groupCodes = items.map(item => item.group_code);
+
+        console.log(`Deleting groups for prin_code=${prinCode}, company_code=${companyCode}:`, groupCodes);
+
+        try {
+          const deleteSuccess = await GroupService.deleteGroups(
+            groupCodes,
+            prinCode,
+            companyCode
+          );
+
+          if (deleteSuccess) {
+            const deletedCount = groupCodes.length;
+            totalDeleted += deletedCount;
+            deleteResults.push({
+              prin_code: prinCode,
+              company_code: companyCode,
+              success: true,
+              deleted: deletedCount,
+              groups: groupCodes
+            });
+            console.log(`Successfully deleted ${deletedCount} groups for ${prinCode}/${companyCode}`);
+          } else {
+            totalFailed += groupCodes.length;
+            deleteResults.push({
+              prin_code: prinCode,
+              company_code: companyCode,
+              success: false,
+              message: "No groups were deleted",
+              groups: groupCodes
+            });
+            console.log(`Failed to delete groups for ${prinCode}/${companyCode}`);
+          }
+        } catch (error: any) {
+          totalFailed += groupCodes.length;
+          deleteResults.push({
+            prin_code: prinCode,
+            company_code: companyCode,
+            success: false,
+            message: error.message,
+            groups: groupCodes
+          });
+          console.error(`Error deleting groups for ${prinCode}/${companyCode}:`, error.message);
+        }
+      }
+
+      console.log('Delete summary:', {
+        totalAttempted: groupsToDelete.length,
+        totalDeleted,
+        totalFailed,
+        results: deleteResults
+      });
+
+      if (totalDeleted === 0) {
+        console.log('Error: No groups were deleted');
+        res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+          success: false,
+          message: "Failed to delete any groups. No records were deleted.",
+          results: deleteResults
+        });
+        return;
+      }
+
+      let message = constants.MESSAGES.GROUP_WMS.GROUP_DELETED_SUCCESSFULLY;
+      if (totalFailed > 0) {
+        message = `Successfully deleted ${totalDeleted} group(s). ${totalFailed} group(s) could not be deleted.`;
+      }
+
+      console.log('Delete successful!');
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: message,
+        data: {
+          totalDeleted,
+          totalFailed,
+          results: deleteResults
+        }
       });
       return;
-    }
-
-    // Expecting array of objects with group_code, prin_code, company_code
-    // For simplicity, assume all have same prin_code and company_code
-    const groupCodes = groupsToDelete.map((g: any) => g.group_code);
-    const prinCode = groupsToDelete[0]?.prin_code;
-    const companyCode = groupsToDelete[0]?.company_code;
-
-    const deleteSuccess = await GroupService.deleteGroups(
-      groupCodes,
-      prinCode,
-      companyCode
-    );
-
-    if (!deleteSuccess) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "Failed to delete groups",
-      });
+    } catch (error: any) {
+      console.error('=== DELETE ERROR ===');
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Full error:', error);
+      
+      res
+        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: `Error occurred while deleting data: ${error.message}` });
       return;
     }
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message: constants.MESSAGES.GROUP_WMS.GROUP_DELETED_SUCCESSFULLY,
-    });
-    return;
-  } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
-  }
-};
+  };
    

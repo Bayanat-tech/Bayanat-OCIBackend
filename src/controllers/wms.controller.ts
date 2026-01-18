@@ -811,6 +811,7 @@ case "product":
     }
   }
   break;
+  
 
 // Fetching account setup data from the AcSetupService
 case "accountsetup":
@@ -1587,11 +1588,15 @@ case "currency":
 
     try {
       // Use CurrencyService to fetch currencies with pagination
-      const { data: currencyData, total } = await CurrencyService.getCurrencies(
-        filters,
-        page,
-        pageLimit
-      );
+      const currencyData = await CurrencyService.findAll();
+
+      
+      //       const { data: currencyData, total } = await CurrencyService.getCurrencies(
+      //   filters,
+      //   page,
+      //   pageLimit
+      // );
+
 
       // Map entity fields to expected frontend shape if needed
       fetchedData = currencyData.map((item: any) => ({
@@ -1606,7 +1611,7 @@ case "currency":
         updated_at: item.updatedAt ?? item.updated_at,
       }));
 
-      totalCount = total;
+      totalCount = currencyData.length;
     } catch (error) {
       console.error("Error fetching currencies:", error);
       fetchedData = [];
@@ -3018,15 +3023,42 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
 
       // Delete product data
       case "product":
-        {
-          // Use ProductService to delete products by prod_code(s)
-          if (ids && ids.length > 0) {
-            await ProductService.deleteProducts(ids);
-          } else {
-            throw new Error("Product code(s) required");
+      {
+        // Use ProductService to delete products by prod_code(s)
+        if (ids && ids.length > 0) {
+          // Get company code from user
+          const companyCode = requestUser.company_code;
+
+          const products = await ProductService.getProductsByCodes(ids, companyCode);
+          
+          if (products.length > 0) {
+            // Group by prin_code and delete each group
+            const groupedByPrin: { [key: string]: string[] } = {};
+            
+            products.forEach(product => {
+              if (!groupedByPrin[product.prin_code]) {
+                groupedByPrin[product.prin_code] = [];
+              }
+              groupedByPrin[product.prin_code].push(product.prod_code);
+            });
+            
+            let totalDeleted = 0;
+            for (const [prinCode, prodCodes] of Object.entries(groupedByPrin)) {
+              const deleted = await ProductService.deleteProducts(
+                prodCodes,
+                prinCode,
+                companyCode
+              );
+              if (deleted) totalDeleted += prodCodes.length;
+            }
+            
+            console.log(`Deleted ${totalDeleted} products via master delete`);
           }
+        } else {
+          throw new Error("Product code(s) required");
         }
-        break;
+      }
+      break;
 
       // Delete activity group data
       case "activitygroup":
@@ -3090,11 +3122,13 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
       
                       // If array, delete each; otherwise delete single code
                       if (Array.isArray(ids)) {
-                        for (const mocCode of ids) {
-                          await MocService.deleteMoc(mocCode);
+                        for (const {mocCode, company_code} of ids) {
+                          await MocService.deleteMoc(mocCode, company_code);
                         }
                       } else {
-                        await MocService.deleteMoc(ids);
+                        for (const item of ids) {
+                          await MocService.deleteMoc(item.moc_code, item.company_code);
+                        }
                       }
                     }
                     break;

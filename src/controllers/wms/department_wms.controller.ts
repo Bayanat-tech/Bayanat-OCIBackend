@@ -18,7 +18,7 @@ export const createDepartment = async (req: RequestWithUser, res: Response) => {
         success: false,
         message: error.message,
       });
-    }
+    } 
 
     const { dept_code, dept_name, company_code, div_code } = req.body;
 
@@ -40,10 +40,10 @@ export const createDepartment = async (req: RequestWithUser, res: Response) => {
     const newDepartment = await DepartmentService.createDepartment({
       ...req.body,
       company_code: company_code || requestUser.company_code,
-      div_code: div_code || '01',
-      enterprice_code: req.body.enterprice_code || '01',
-      status: req.body.status || 'A',
-      dept_addr1: req.body.dept_addr1 || '',
+      div_code: div_code ,
+      enterprice_code: req.body.enterprice_code || 'BSG' ,
+      status: req.body.status || 'A' ,
+      // dept_addr1: req.body.dept_addr1 || '',
       user_id: requestUser.loginid,
       user_dt: new Date(),
     });
@@ -94,7 +94,7 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
       });
     }
 
-    const { dept_code, company_code } = req.body;
+    const { dept_code, company_code, div_code, ...updateData } = req.body;
 
     // Check if department exists using composite key
     const existingDepartment = await DepartmentService.findByCode(
@@ -114,7 +114,7 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
       dept_code,
       company_code || requestUser.company_code,
       {
-        ...req.body,
+        ...updateData,
         user_id: requestUser.loginid,
         user_dt: new Date(),
       }
@@ -156,9 +156,13 @@ export const updateDepartment = async (req: RequestWithUser, res: Response) => {
 export const deleteDepartments = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
-    const deptCodes: string[] = req.body;
 
-    if (!deptCodes || !deptCodes.length) {
+    // ✅ Extract ids correctly
+    const deptCodes: string[] = req.body?.ids;
+
+    console.log('deptCodes:', deptCodes);
+
+    if (!Array.isArray(deptCodes) || deptCodes.length === 0) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.DEPARTMENT_WMS.SELECT_AT_LEAST_ONE_DEPARTMENT,
@@ -178,7 +182,7 @@ export const deleteDepartments = async (req: RequestWithUser, res: Response) => 
     if (deletedCount === 0) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "No departments were deleted",
+        message: 'No departments were deleted',
       });
     }
 
@@ -190,7 +194,8 @@ export const deleteDepartments = async (req: RequestWithUser, res: Response) => 
   } catch (error: any) {
     return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
       success: false,
-      message: "Error: " + error.message,
+      message: 'Error: ' + error.message,
     });
   }
 };
+

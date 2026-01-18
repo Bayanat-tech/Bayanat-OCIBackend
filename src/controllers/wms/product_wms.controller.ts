@@ -41,7 +41,7 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_CREATED_SUCCESSFULLY,
-      data: { prodCode: createdProduct.prodCode }
+      data: { prod_code: createdProduct.prod_code }
     });
     return;
   } catch (error: any) {
@@ -106,37 +106,145 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const deleteproducts = async (req: RequestWithUser, res: Response) => {
+ export const deleteProducts = async (req: RequestWithUser, res: Response) => {
   try {
-    const prodCodes = req.body;
+    const productsToDelete = req.body;
 
-    if (!req.body.length) {
+    console.log('=== DELETE PRODUCTS REQUEST ===');
+    console.log('Full request body:', JSON.stringify(productsToDelete, null, 2));
+
+    if (!Array.isArray(productsToDelete) || !productsToDelete.length) {
+      console.log('Error: No products to delete or invalid format');
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.PRODUCT_WMS.SELECT_AT_LEAST_ONE_PRODUCT,
       });
       return;
     }
+
+    // Validate each item - require prod_code and prin_code
+    const invalidItems = productsToDelete.filter(item => 
+      !item.prod_code || !item.prin_code
+    );
     
-    const deleteResult = await ProductService.deleteProducts(prodCodes);
-    
-    if (!deleteResult) {
+    if (invalidItems.length > 0) {
+      console.log('Error: Invalid items found', invalidItems);
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "No products were deleted",
+        message: "Invalid data: missing prod_code or prin_code",
       });
       return;
     }
+
+    const requestUser: IUser = req.user;
+    const companyCode = requestUser.company_code;
+
+    // Group items by (prin_code, company_code) pair
+    const groupedByPrinAndCompany: { [key: string]: any[] } = {};
     
+    productsToDelete.forEach(item => {
+      const key = `${item.prin_code}_${companyCode}`;
+      if (!groupedByPrinAndCompany[key]) {
+        groupedByPrinAndCompany[key] = [];
+      }
+      groupedByPrinAndCompany[key].push(item);
+    });
+
+    console.log('Grouped by prin_code and company_code:', groupedByPrinAndCompany);
+
+    let totalDeleted = 0;
+    let totalFailed = 0;
+    const deleteResults = [];
+
+    // Delete products for each (prin_code, company_code) combination
+    for (const [key, items] of Object.entries(groupedByPrinAndCompany)) {
+      const [prinCode, compCode] = key.split('_');
+      const prodCodes = items.map(item => item.prod_code);
+
+      console.log(`Deleting products for prin_code=${prinCode}, company_code=${compCode}:`, prodCodes);
+
+      try {
+        // Update service method to accept all three parameters
+        const deleteSuccess = await ProductService.deleteProducts(
+          prodCodes,prinCode,compCode);
+
+        if (deleteSuccess) {
+          const deletedCount = prodCodes.length;
+          totalDeleted += deletedCount;
+          deleteResults.push({
+            prin_code: prinCode,
+            company_code: compCode,
+            success: true,
+            deleted: deletedCount,
+            products: prodCodes
+          });
+          console.log(`Successfully deleted ${deletedCount} products for ${prinCode}/${compCode}`);
+        } else {
+          totalFailed += prodCodes.length;
+          deleteResults.push({
+            prin_code: prinCode,
+            company_code: compCode,
+            success: false,
+            message: "No products were deleted",
+            products: prodCodes
+          });
+          console.log(`Failed to delete products for ${prinCode}/${compCode}`);
+        }
+      } catch (error: any) {
+        totalFailed += prodCodes.length;
+        deleteResults.push({
+          prin_code: prinCode,
+          company_code: compCode,
+          success: false,
+          message: error.message,
+          products: prodCodes
+        });
+        console.error(`Error deleting products for ${prinCode}/${compCode}:`, error.message);
+      }
+    }
+
+    console.log('Delete summary:', {
+      totalAttempted: productsToDelete.length,
+      totalDeleted,
+      totalFailed,
+      results: deleteResults
+    });
+
+    if (totalDeleted === 0) {
+      console.log('Error: No products were deleted');
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Failed to delete any products. No records were deleted.",
+        results: deleteResults
+      });
+      return;
+    }
+
+    let message = constants.MESSAGES.PRODUCT_WMS.PRODUCT_DELETED_SUCCESSFULLY;
+    if (totalFailed > 0) {
+      message = `Successfully deleted ${totalDeleted} product(s). ${totalFailed} product(s) could not be deleted.`;
+    }
+
+    console.log('Delete successful!');
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_DELETED_SUCCESSFULLY,
+      message: message,
+      data: {
+        totalDeleted,
+        totalFailed,
+        results: deleteResults
+      }
     });
     return;
   } catch (error: any) {
+    console.error('=== DELETE PRODUCTS ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error:', error);
+    
     res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
+      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      .json({ success: false, message: `Error occurred while deleting products: ${error.message}` });
     return;
   }
 };
@@ -220,100 +328,100 @@ export const importExcelProducts = async (
 // Helper function to convert snake_case fields to camelCase for TypeORM entity
 function formatProductData(data: any, userId?: string): any {
   return {
-    companyCode: data.company_code,
-    prinCode: data.prin_code,
-    prodName: data.prod_name,
-    brandCode: data.brand_code || null,
-    groupCode: data.group_code || null,
+    company_code: data.company_code,
+    prin_code: data.prin_code,
+    prod_name: data.prod_name,
+    brand_code: data.brand_code || null,
+    group_code: data.group_code || null,
     packdesc: data.packdesc || null,
     barcode: data.barcode || null,
-    pUom: data.p_uom,
+    p_uom: data.p_uom,
     suom: data.suom || null,
     length: data.length || 0,
     breadth: data.breadth || 0,
     height: data.height || 0,
     volume: data.volume || 0,
-    grossWt: data.gross_wt || 0,
-    netWt: data.net_wt || 0,
+    gross_wt: data.gross_wt || 0,
+    net_wt: data.net_wt || 0,
     foc: data.foc || null,
     cpu: data.cpu || 0,
-    harmCode: data.harm_code || null,
-    imcoCode: data.imco_code || null,
+    harm_code: data.harm_code || null,
+    imco_code: data.imco_code || null,
     kitting: data.kitting || null,
-    manuCode: data.manu_code || null,
-    basePrice: data.base_price || 0,
-    flatStorage: data.flat_storage || 0,
-    siteType: data.site_type || null,
-    siteInd: data.site_ind || null,
-    packKey: data.pack_key || null,
-    prodTi: data.prod_ti || 0,
-    prodHi: data.prod_hi || 0,
+    manu_code: data.manu_code || null,
+    base_price: data.base_price || 0,
+    flat_storage: data.flat_storage || 0,
+    site_type: data.site_type || null,
+    site_ind: data.site_ind || null,
+    pack_key: data.pack_key || null,
+    prod_ti: data.prod_ti || 0,
+    prod_hi: data.prod_hi || 0,
     chargetime: data.chargetime || null,
-    prodStatus: data.prod_status,
-    shelfLife: data.shelf_life || 0,
-    categoryAbc: data.category_abc || null,
-    reordLevel: data.reord_level || 0,
-    reordQty: data.reord_qty || 0,
-    altProdCode: data.alt_prod_code || null,
-    prefSite: data.pref_site || null,
-    prefLocFrom: data.pref_loc_from || null,
-    prefLocTo: data.pref_loc_to || null,
-    prefAisleFrom: data.pref_aisle_from || null,
-    prefAisleTo: data.pref_aisle_to || null,
-    prefColFrom: data.pref_col_from || 0,
-    prefColTo: data.pref_col_to || 0,
-    prefHtFrom: data.pref_ht_from || 0,
-    prefHtTo: data.pref_ht_to || 0,
+    prod_status: data.prod_status,
+    shelf_life: data.shelf_life || 0,
+    category_abc: data.category_abc || null,
+    reord_level: data.reord_level || 0,
+    reord_qty: data.reord_qty || 0,
+    alt_prod_code: data.alt_prod_code || null,
+    pref_site: data.pref_site || null,
+    pref_loc_from: data.pref_loc_from || null,
+    pref_loc_to: data.pref_loc_to || null,
+    pref_aisle_from: data.pref_aisle_from || null,
+    pref_aisle_to: data.pref_aisle_to || null,
+    pref_col_from: data.pref_col_from || 0,
+    pref_col_to: data.pref_col_to || 0,
+    pref_ht_from: data.pref_ht_from || 0,
+    pref_ht_to: data.pref_ht_to || 0,
     uppp: data.uppp || 0,
-    chkManucode: data.chk_manucode || null,
-    chkLotno: data.chk_lotno || null,
-    chkMfgexpdt: data.chk_mfgexpdt || null,
-    puomVolume: data.puom_volume || 0,
-    puomNetwt: data.puom_netwt || 0,
-    puomGrosswt: data.puom_grosswt || 0,
-    lUom: data.l_uom,
+    chk_manucode: data.chk_manucode || null,
+    chk_lotno: data.chk_lotno || null,
+    chk_mfgexpdt: data.chk_mfgexpdt || null,
+    puom_volume: data.puom_volume || 0,
+    puom_netwt: data.puom_netwt || 0,
+    puom_grosswt: data.puom_grosswt || 0,
+    l_uom: data.l_uom,
     luppp: data.luppp || 0,
-    uomCount: data.uom_count || 0,
-    prodType: data.prod_type || 0,
-    twoplusUom: data.twoplus_uom || null,
+    uom_count: data.uom_count || 0,
+    prod_type: data.prod_type || 0,
+    twoplus_uom: data.twoplus_uom || null,
     upp: data.upp || 0,
-    waveCode: data.wave_code || 0,
-    productStage: data.product_stage || null,
-    coPack: data.co_pack || null,
-    modelNumber: data.model_number || null,
-    variantCode: data.variant_code || null,
-    cntOrigin: data.cnt_origin || null,
+    wave_code: data.wave_code || 0,
+    product_stage: data.product_stage || null,
+    co_pack: data.co_pack || null,
+    model_number: data.model_number || null,
+    variant_code: data.variant_code || null,
+    cnt_origin: data.cnt_origin || null,
     serialize: data.serialize || null,
     packing: data.packing || null,
-    oldUpp: data.old_upp || 0,
-    avgConsumption: data.avg_consumption || 0,
-    prodImagePathWeb: data.prod_image_path_web || null,
-    minperiodExppick: data.minperiod_exppick || 0,
-    rcptExpLimit: data.rcpt_exp_limit || 0,
-    qtyAsWt: data.qty_as_wt || null,
-    hazmatInd: data.hazmat_ind || null,
-    hazmatClass: data.hazmat_class || null,
-    foodInd: data.food_ind || null,
-    pharmaInd: data.pharma_ind || null,
-    specialInstructions: data.special_instructions || null,
+    old_upp: data.old_upp || 0,
+    avg_consumption: data.avg_consumption || 0,
+    prod_image_path_web: data.prod_image_path_web || null,
+    minperiod_exppick: data.minperiod_exppick || 0,
+    rcpt_exp_limit: data.rcpt_exp_limit || 0,
+    qty_as_wt: data.qty_as_wt || null,
+    hazmat_ind: data.hazmat_ind || null,
+    hazmatClahazmat_classss: data.hazmat_class || null,
+    food_ind: data.food_ind || null,
+    pharma_ind: data.pharma_ind || null,
+    special_instructions: data.special_instructions || null,
     strength: data.strength || null,
-    packSize: data.pack_size || 0,
-    groupCodeBk: data.group_code_bk || null,
-    batchType: data.batch_type || 0,
-    sapProdCode: data.sap_prod_code || null,
-    sapProdDesc: data.sap_prod_desc || null,
-    tempCode: data.temp_code || null,
-    editUser: data.edit_user || null,
+    pack_size: data.pack_size || 0,
+    group_code_bk: data.group_code_bk || null,
+    batch_type: data.batch_type || 0,
+    sap_prod_code: data.sap_prod_code || null,
+    sap_prod_desc: data.sap_prod_desc || null,
+    temp_code: data.temp_code || null,
+    edit_user: data.edit_user || null,
     class: data.class || null,
     wob: data.wob || 0,
-    unifiedCode: data.unified_code || null,
-    currentSeason: data.current_season || null,
-    productCategory: data.product_category || null,
-    genericArticle: data.generic_article || null,
-    prodGender: data.prod_gender || null,
-    prodColor: data.prod_color || null,
-    prodSize: data.prod_size || null,
-    prntPCode: data.prnt_p_code || null,
+    unified_code: data.unified_code || null,
+    current_season: data.current_season || null,
+    product_category: data.product_category || null,
+    generic_article: data.generic_article || null,
+    prod_gender: data.prod_gender || null,
+    prod_color: data.prod_color || null,
+    prod_size: data.prod_size || null,
+    prnt_p_code: data.prnt_p_code || null,
     userId: userId || data.user_id,
   };
 }
