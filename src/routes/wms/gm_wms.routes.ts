@@ -124,7 +124,9 @@ import {
 // Import department management controllers
 import {
   createDepartment, // For creating departments
-  updateDepartment, // For updating departments
+  updateDepartment,
+  deleteDepartments,
+   // For updating departments
 } from "../../controllers/wms/department_wms.controller";
 
 // Import salesman management controllers
@@ -312,6 +314,13 @@ router.put("/department", async (req, res, next) => {
     next(err);
   }
 }); // Update existing department
+router.delete("/department", async (req, res, next)=>{
+  try{
+    await deleteDepartments(req as any, res as any)
+  } catch(err){
+    next(err);
+  }
+}) // Delete existing department
 // Principal Routes - Handle principal management
 // router.get("/principal/export", exportPrincipal); // Export principal data
 router.get("/principal/:prin_code", getPrincipal); // Get specific principal details
