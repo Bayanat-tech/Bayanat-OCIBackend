@@ -36,12 +36,11 @@ export class ActivityService {
 
 
 //   create Activity
-
    static async createActivity(data: any) {
     try {
       const repository = AppDataSource.getRepository(Activity);
 
-      // 🔎 Check if activity already exists
+      // Check if activity already exists
       const existing = await repository.findOne({
         where: {
           activityCode: data.activityCode,
@@ -57,7 +56,7 @@ export class ActivityService {
         };
       }
 
-      // ✅ Create new activity
+      // Create new activity
       const entity = repository.create(data);
       const saved = await repository.save(entity);
 
@@ -72,35 +71,3 @@ export class ActivityService {
     }
   }
 }
-
-//   // UPDATE Activity
-
-
-
-
-
-
-
-// static async getCustomers(
-//     filters: any,
-//     page: number,
-//     limit: number
-//   ) {
-//     const repository: Repository<CustomerMaster> =
-//       AppDataSource.getRepository(CustomerMaster);
-
-//     const where: any = {
-//       company_code: filters.company_code,
-//     };
-
-//     const [data, total] = await repository.findAndCount({
-//       where,
-//       order: {
-//         cust_name: "ASC",
-//       },
-//       skip: (page - 1) * limit,
-//       take: limit,
-//     });
-
-//     return { data, total };
-//   }

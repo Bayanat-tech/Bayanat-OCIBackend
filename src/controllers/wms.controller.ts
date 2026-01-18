@@ -2134,50 +2134,7 @@ case "activitysubgroup":
   }
   break;
 
-// Fetching billing activity data from the ActivityBillingTable model
-// case "billing_activity":
-  // {
-  //   // Initialize inside and outside query variables
-  //   let insideQuery: any = [],
-  //     outsideQuery = {
-  //       [Op.and]: [
-  //         { company_code: requestUser.company_code },
-  //         {
-  //           ...(!!uniqueCode && {
-  //             prin_code: uniqueCode,
-  //           }),
-  //         },
-  //         {
-  //           user_id: requestUser.loginid,
-  //         },
-  //       ],
-  //     };
-
-  //   // Apply search filter to the outside query
-  //   outsideQuery = getSearchFilterQuery({
-  //     insideQuery,
-  //     filter: filter.search,
-  //     outsideQuery,
-  //   });
-
-  //   // Count the total number of records
-  //   totalCount = await ActivityBillingTable.count({
-  //     where: outsideQuery,
-  //   });
-
-  //   // Fetch billing activity data with optional pagination and sorting
-  //   fetchedData = await ActivityBillingTable.find({
-  //     where: outsideQuery,
-  //     ...(!!filter?.sort &&
-  //       Object.keys(filter?.sort).length > 0 && {
-  //         order: [
-  //           [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-  //         ],
-  //       }),
-  //     ...paginationOptions,
-  //   });
-  // }
-
+  // Fetch billing activity data
       case "billing_activity": 
       {
         console.log("Fetching billing activity data...");
@@ -2198,18 +2155,6 @@ case "activitysubgroup":
    break;
      
 //Fetching activity data from the Activity model
-// case "activity": {
-//   // Fetching data using the Activity model
-//   fetchedData = (await Activity.findAll({
-//     attributes: ["activity_code", "activity", "activity_group_code"],
-//     where: {
-//       company_code: requestUser.company_code,
-//     },
-//     ...paginationOptions,
-//   })) as unknown[] as IActivity[];
-
-//   break;
-// }
 
 case "activity": {
   console.log("Fetching activity data...");
