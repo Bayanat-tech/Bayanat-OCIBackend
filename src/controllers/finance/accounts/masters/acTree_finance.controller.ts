@@ -372,7 +372,7 @@ export const createLevel3AcTreeNode = async (
     const level2Result = await connection.execute(
       `
       SELECT 1
-      FROM ACCOUNT_LEVEL_TWO
+      FROM MS_AC_L2
       WHERE L2_CODE = :l2_code
         AND COMPANY_CODE = :company_code
       `,
@@ -391,7 +391,7 @@ export const createLevel3AcTreeNode = async (
     // Insert Level 3 record
     await connection.execute(
       `
-      INSERT INTO ACCOUNT_LEVEL_THREE (
+      INSERT INTO MS_AC_L3 (
         L3_CODE,
         L2_CODE,
         COMPANY_CODE,
