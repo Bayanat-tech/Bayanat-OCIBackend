@@ -66255,3 +66255,8 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
 2026-01-16 20:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+2026-01-19 04:48:09 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-19 04:53:29 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-19 05:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-19 05:00:01 [[32minfo[39m]: No unsent attendance events found 
+2026-01-19 07:13:12 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 

@@ -219,7 +219,7 @@ import {
   getAllLocationTypes, // <-- Add this import
 } from "../../controllers/wms/locationtype_wms.controller";
 import { CustomerMasterController } from "../../controllers/wms/customer_wms.controller";
-import { BillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
+import { BillingActivity, deleteBillingActivity, updateBillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
 import { checkPassword } from "../../middleware/checkPassword";
 
 // Country Routes - Handle country management
@@ -433,8 +433,8 @@ router.post(
   deletePartners as unknown as express.RequestHandler
 ); // Delete partner
 
-// Billing Activity Routes
-router.post(
+//Billing Activity Routes
+/*router.put(
   "/activity_billing/:principalCode",
   checkPassword,
   BillingActivity
@@ -443,7 +443,25 @@ router.put(
   "/activity_billing/:principalCode/:activityCode",
   checkPassword,
   BillingActivity
-); // Update billing activity
+); // Update billing activity*/
+
+router.post(
+  "/activity_billing/:principalCode",
+  checkPassword,
+  BillingActivity            // CREATE
+);
+
+router.put(
+  "/activity_billing/:principalCode/:activityCode",
+  checkPassword,
+  updateBillingActivity     // UPDATE
+);
+
+router.delete(
+  "/activity_billing/:principalCode/:activityCode",
+  checkPassword,
+  deleteBillingActivity     // DELETE
+);
 
 
 

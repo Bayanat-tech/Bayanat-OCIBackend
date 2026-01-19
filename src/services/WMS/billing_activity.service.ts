@@ -53,15 +53,18 @@ export class BillingActivityService {
   static async createBillingActivity(data: any) {
     try {
       const repository = AppDataSource.getRepository(BillingActivity);
+      console.log('inside createbillingactivity1');
  
       // Check if record already exists
       const existingRecord = await repository.findOne({
         where: {
           company_code: data.company_code,
           prin_code: data.prin_code,
+          act_code: data.act_code,
+          job_type: data.job_type
         },
       });
- 
+  console.log('inside createbillingactivity2');
       if (existingRecord) {
         return {
           alreadyExists: true,
@@ -69,7 +72,7 @@ export class BillingActivityService {
           data: existingRecord,
         };
       }
- 
+  console.log('inside createbillingactivity3');
       // Create new record
       const billingactivity = repository.create({
         company_code: data.company_code,
@@ -91,8 +94,9 @@ export class BillingActivityService {
         user_dt: data.user_dt,
         user_id: data.user_id,
       });
- 
+  console.log('inside createbillingactivity4');
       const savedRecord = await repository.save(billingactivity);
+       console.log('inside createbillingactivity5');
  
       return {
         alreadyExists: false,
@@ -101,6 +105,7 @@ export class BillingActivityService {
       };
  
     } catch (error) {
+       console.log('inside createbillingactivity6');
       console.error("Error creating billing activity:", error);
       throw error;
     }

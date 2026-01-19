@@ -64529,3 +64529,480 @@ TSError: ⨯ Unable to compile TypeScript:
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+2026-01-19 04:42:26 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 04:43:43 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 04:45:48 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 04:49:34 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 04:50:47 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 04:52:04 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 07:17:13 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 07:18:12 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-19 07:23:49 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/services/WMS/billing_activity.service.ts[0m:[93m64[0m:[93m11[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'job_type' does not exist in type 'FindOptionsWhere<BillingActivity> | FindOptionsWhere<BillingActivity>[]'.
+
+[7m64[0m           job_type: data.job_type
+[7m  [0m [91m          ~~~~~~~~[0m
+
+  [96mnode_modules/typeorm/find-options/FindOneOptions.d.ts[0m:[93m23[0m:[93m5[0m
+    [7m23[0m     where?: FindOptionsWhere<Entity>[] | FindOptionsWhere<Entity>;
+    [7m  [0m [96m    ~~~~~[0m
+    The expected type comes from property 'where' which is declared here on type 'FindOneOptions<BillingActivity>'
+
+    at createTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\sandeep.dandekar\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
