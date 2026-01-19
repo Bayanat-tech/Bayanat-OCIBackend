@@ -26,41 +26,6 @@ import Files from "../../../../models/files.model";
 import oracledb from "oracledb";
 
 // Get account tree structure
-// export const getAcTree = async (req: RequestWithUser, res: Response) => {
-//   try {
-//     const requestUser: IUser = req.user;
-//     // Get account tree data ordered by level codes
-//     const acTreeData = await VwAcMaster.findAll({
-
-//       where: { company_code: requestUser.company_code },
-//       order: [
-//         ["l2_code", "ASC"],
-//         ["l3_code", "ASC"],
-//         ["l4_code", "ASC"],
-//         ["ac_code", "ASC"],
-//       ],
-//     });
-//     if (!acTreeData) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({ success: false });
-//       return;
-//     }
-//     const temp = acTreeData.map((eachData) => eachData.dataValues);
-
-//     // Build hierarchical structure from flat data
-//     const response = buildHierarchy(temp);
-//     res
-//       .status(constants.STATUS_CODES.OK)
-//       .json({ success: true, data: response });
-//     return;
-//   } catch (error: any) {
-//     res
-//       .status(constants.STATUS_CODES.BAD_REQUEST)
-//       .json({ success: false, message: error.message });
-//     return;
-//   }
-// };
-
-
 export const getAcTree = async (req: RequestWithUser, res: Response) => {
   let connection;
   try {
@@ -130,45 +95,8 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
 };
 
 
-
-
-
 // Level 3 Account Operations
 //---------level3-----------
-
-// Get Level 3 account node details
-// export const getLevel3AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-    
-//     const requestUser: IUser = req.user;
-//     const { ac_code } = req.params;
-//     // Find Level 3 account by code
-//     const level3Data = await AccountLevelThree.findOne({
-//       where: { company_code: requestUser.company_code, l3_code: ac_code },
-//     });
-//     if (!level3Data) {
-//       res
-//         .status(constants.STATUS_CODES.NOT_FOUND)
-//         .json({ success: false, message: constants.MESSAGES.NOT_FOUND });
-//       return;
-//     }
-//     res
-//       .status(constants.STATUS_CODES.OK)
-//       .json({ success: true, data: level3Data });
-//     return;
-//   } catch (error: any) {
-//     res
-//       .status(constants.STATUS_CODES.BAD_REQUEST)
-//       .json({ success: false, message: error.message });
-//     return;
-//   }
-// };
-
-
-
 export const getLevel3AcTreeNode = async (
   req: RequestWithUser,
   res: Response
@@ -185,6 +113,7 @@ export const getLevel3AcTreeNode = async (
       `
       SELECT
           l3_code,
+          l2_code,
           l3_description,
           company_code
       FROM MS_AC_L3
@@ -208,9 +137,21 @@ export const getLevel3AcTreeNode = async (
       return;
     }
 
+    // Normalize uppercase Oracle keys to lowercase
+    const row: any = result.rows[0];
+    const normalizedData = {
+      l3_code: row.L3_CODE,
+      l2_code: row.L2_CODE,
+      l3_description: row.L3_DESCRIPTION,
+      company_code: row.COMPANY_CODE
+    };
+
+    console.log('Original row: ', row);
+    console.log('Normalized data: ', normalizedData);
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: result.rows[0],
+      data: normalizedData
     });
     return;
 
@@ -227,79 +168,6 @@ export const getLevel3AcTreeNode = async (
 
 
 // Create new Level 3 account node
-// export const createLevel3AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     const requestUser: IUser = req.user;
-//     const { company_code, loginid } = requestUser;
-//     const { l2_code } = req.body;
-
-//     // Validate request body
-//     const { error } = accountLevelThreeFinanceSchema(req.body);
-
-//     if (error) {
-//       res
-//         .status(constants.STATUS_CODES.BAD_REQUEST)
-//         .json({ success: false, message: error.message });
-//       return;
-//     }
-
-//     // Check if parent Level 2 exists
-//     const isLevelTwoExists = await AccountLevelTwo.findOne({
-//       where: {
-//         l2_code,
-//         company_code,
-//       },
-//     });
-//     if (!isLevelTwoExists) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: "Level2 " + constants.MESSAGES.NOT_FOUND,
-//       });
-//       return;
-//     }
-
-//     // Create Level 3 account
-//     const response = await AccountLevelThree.create({
-//       l3_code: "",
-//       company_code,
-//       updated_by: loginid,
-//       created_by: loginid,
-//       ...req.body,
-//     });
-
-//     // Get session code for response message
-//     const getSessionCode: { code: string }[][] = (await sequelize.query(
-//       `SELECT code from GT_SESSION_INFO WHERE USERID='${req.user.loginid}'`
-//     )) as { code: string }[][];
-
-//     if (!response) {
-//       res
-//         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-//         .json({ success: false, message: response });
-//       return;
-//     }
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       message:
-//         getSessionCode[0][0].code +
-//         " " +
-//         constants.MESSAGES.CREATED_SUCCESSFULLY,
-//     });
-//     return;
-//   } catch (error: any) {
-//     res
-//       .status(constants.STATUS_CODES.BAD_REQUEST)
-//       .json({ success: false, message: error.message });
-//     return;
-//   }
-// };
-
-
-// create L3
-
 export const createLevel3AcTreeNode = async (
   req: RequestWithUser,
   res: Response
@@ -320,8 +188,6 @@ export const createLevel3AcTreeNode = async (
       });
       return;
     }
-
-    // Get DB connection
     connection = await oracledb.getConnection();
 
     // Check if Level 2 exists
@@ -416,240 +282,389 @@ export const createLevel3AcTreeNode = async (
 
 
 // // Update Level 3 account node
-// export const updateLevel3AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     const requestUser: IUser = req.user;
-//     const { ac_code } = req.params;
+export const updateLevel3AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
 
-//     // Validate request body
-//     const { error } = accountLevelThreeFinanceSchema(req.body);
-//     if (error) {
-//       res
-//         .status(constants.STATUS_CODES.BAD_REQUEST)
-//         .json({ success: false, message: error.message });
-//       return;
-//     }
+  try {
+    const { company_code, loginid } = req.user;
+    const { ac_code } = req.params; // l3_code
+    const { l2_code, l3_description } = req.body;
 
-//     // Check if account exists
-//     const accountData = await AccountLevelThree.findOne({
-//       where: { l3_code: ac_code, company_code: requestUser.company_code },
-//     });
-//     if (!accountData) {
-//       res
-//         .status(constants.STATUS_CODES.NOT_FOUND)
-//         .json({ success: false, message: constants.MESSAGES.NOT_FOUND });
-//       return;
-//     }
+    //  Validate request body
+    const { error } = accountLevelThreeFinanceSchema(req.body);
+    if (error) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
 
-//     // Check if parent Level 2 exists
-//     const isLevelTwoExists = await AccountLevelTwo.findOne({
-//       where: { l2_code: req.body.l2_code },
-//     });
-//     if (!isLevelTwoExists) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: "Level2 " + constants.MESSAGES.NOT_FOUND,
-//       });
-//       return;
-//     }
+    connection = await oracledb.getConnection();
 
-//     // Update Level 3 account
-//     const response = await AccountLevelThree.update(
-//       {
-//         l3_code: ac_code,
-//         ...req.body,
-//         updated_by: requestUser.loginid,
-//       },
-//       { where: { l3_code: ac_code, company_code: requestUser.company_code } }
-//     );
-//     if (!response) {
-//       res
-//         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-//         .json({ success: false, message: response });
-//       return;
-//     }
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       message: constants.MESSAGES.UPDATED_SUCCESSFULLY,
-//     });
-//     return;
-//   } catch (error: any) {
-//     res
-//       .status(constants.STATUS_CODES.BAD_REQUEST)
-//       .json({ success: false, message: error.message });
-//     return;
-//   }
-// };
+    // Check Level-3 exists
+    const level3Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L3
+      WHERE L3_CODE = :l3_code
+        AND COMPANY_CODE = :company_code
+      `,
+      {
+        l3_code: ac_code,
+        company_code
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-// // Level 4 Account Operations
-// //---------level4-----------
+    if (!level3Result.rows || level3Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
 
-// // Get Level 4 account node details
-// export const getLevel4AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     const requestUser: IUser = req.user;
-//     const { ac_code } = req.params;
-//     const level4Data = await AccountLevelFour.findOne({
-//       where: { company_code: requestUser.company_code, l4_code: ac_code },
-//     });
-//     if (!level4Data) {
-//       res
-//         .status(constants.STATUS_CODES.NOT_FOUND)
-//         .json({ success: false, message: constants.MESSAGES.NOT_FOUND });
-//       return;
-//     }
-//     res
-//       .status(constants.STATUS_CODES.OK)
-//       .json({ success: true, data: level4Data });
-//     return;
-//   } catch (error: any) {
-//     res
-//       .status(constants.STATUS_CODES.BAD_REQUEST)
-//       .json({ success: false, message: error.message });
-//     return;
-//   }
-// };
+    // Check parent Level-2 exists
+    const level2Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L2
+      WHERE L2_CODE = :l2_code
+        AND COMPANY_CODE = :company_code
+      `,
+      {
+        l2_code,
+        company_code
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-// // Create new Level 4 account node
-// export const createLevel4AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     const requestUser: IUser = req.user;
-//     const { company_code } = requestUser;
+    if (!level2Result.rows || level2Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Level2 " + constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
 
-//     // Validate request body
-//     const { error } = accountLevelFourFinanceSchema(req.body);
-//     if (error) {
-//       res
-//         .status(constants.STATUS_CODES.BAD_REQUEST)
-//         .json({ success: false, message: error.message });
-//       return;
-//     }
+    // Update Level-3
+    await connection.execute(
+      `
+      UPDATE MS_AC_L3
+      SET
+        L2_CODE = :l2_code,
+        L3_DESCRIPTION = :l3_description,
+        UPDATED_BY = :loginid
+      WHERE L3_CODE = :l3_code
+        AND COMPANY_CODE = :company_code
+      `,
+      {
+        l2_code,
+        l3_description,
+        loginid,
+        l3_code: ac_code,
+        company_code
+      },
+      { autoCommit: true }
+    );
 
-//     // Check if parent Level 3 exists
-//     const isLevelThreeExists = await AccountLevelThree.findOne({
-//       where: { l3_code: req.body.l3_code },
-//     });
-//     if (!isLevelThreeExists) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: "Level3 " + constants.MESSAGES.NOT_FOUND,
-//       });
-//       return;
-//     }
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.UPDATED_SUCCESSFULLY
+    });
+    return;
 
-//     // Create Level 4 account
-//     const response = await AccountLevelFour.create({
-//       l4_code: "",
-//       company_code,
-//       updated_by: requestUser.loginid,
-//       created_by: requestUser.loginid,
-//       ...req.body,
-//     });
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
 
-//     // Get session code for response message
-//     // const getSessionCode: { code: string }[][] = (await sequelize.query(
-//     //   `SELECT code from GT_SESSION_INFO WHERE USERID='${req.user.loginid}'`
-//     // )) as { code: string }[][];
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection", err);
+      }
+    }
+  }
+};
 
-//     if (!response) {
-//       res
-//         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-//         .json({ success: false, message: response });
-//       return;
-//     }
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       message:
-//         // getSessionCode[0][0].code +
-//         // " " +
-//         constants.MESSAGES.CREATED_SUCCESSFULLY,
-//     });
-//     return;
-//   } catch (error: any) {
-//     res
-//       .status(constants.STATUS_CODES.BAD_REQUEST)
-//       .json({ success: false, message: error.message });
-//     return;
-//   }
-// };
+// Level 4 Account Operations
+// ---------level4-----------
 
-// // Update Level 4 account node
-// export const updateLevel4AcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     const requestUser: IUser = req.user;
-//     const { ac_code } = req.params;
+// Get Level 4 account node details
+export const getLevel4AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
 
-//     // Validate request body
-//     const { error } = accountLevelFourFinanceSchema(req.body);
-//     if (error) {
-//       res
-//         .status(constants.STATUS_CODES.BAD_REQUEST)
-//         .json({ success: false, message: error.message });
-//       return;
-//     }
+  try {
+    const { company_code } = req.user;
+    const { ac_code } = req.params;
 
-//     // Check if account exists
-//     const accountData = await AccountLevelFour.findOne({
-//       where: { l4_code: ac_code, company_code: requestUser.company_code },
-//     });
-//     if (!accountData) {
-//       res
-//         .status(constants.STATUS_CODES.NOT_FOUND)
-//         .json({ success: false, message: constants.MESSAGES.NOT_FOUND });
-//       return;
-//     }
+    connection = await oracledb.getConnection();
 
-//     // Check if parent Level 3 exists
-//     const isLevelThreeExists = await AccountLevelThree.findOne({
-//       where: { l3_code: req.body.l3_code },
-//     });
-//     if (!isLevelThreeExists) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: "Level3 " + constants.MESSAGES.NOT_FOUND,
-//       });
-//       return;
-//     }
+    const result = await connection.execute(
+      `
+      SELECT
+        L4_CODE,
+        L4_DESCRIPTION,
+        L3_CODE,
+        COMPANY_CODE
+      FROM MS_AC_L4
+      WHERE COMPANY_CODE = :company_code
+        AND L4_CODE = :l4_code
+      `,
+      {
+        company_code,
+        l4_code: ac_code
+      },
+      {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      }
+    );
 
-//     // Update Level 4 account
-//     const response = await AccountLevelFour.update(
-//       {
-//         l4_code: ac_code,
-//         ...req.body,
-//         updated_by: requestUser.loginid,
-//       },
-//       { where: { l4_code: ac_code, company_code: requestUser.company_code } }
-//     );
-//     if (!response) {
-//       res
-//         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-//         .json({ success: false, message: response });
-//       return;
-//     }
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       message: constants.MESSAGES.UPDATED_SUCCESSFULLY,
-//     });
-//     return;
-//   } catch (error: any) {
-//     res
-//       .status(constants.STATUS_CODES.BAD_REQUEST)
-//       .json({ success: false, message: error.message });
-//     return;
-//   }
-// };
+    if (!result.rows || result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    const row: any = result.rows[0];
+    const normalizedData = {
+    l4_code: row.L4_CODE,
+    l3_code:row.L3_CODE,
+    l4_description:row.L4_DESCRIPTION,
+    company_code:row.COMPANY_CODE
+    };
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: normalizedData
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection", err);
+      }
+    }
+  }
+};
+
+// Create new Level 4 account node
+export const createLevel4AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code, loginid } = req.user;
+    const { l3_code, l4_description } = req.body;
+
+    // Validate request body
+    const { error } = accountLevelFourFinanceSchema(req.body);
+    if (error) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
+
+    connection = await oracledb.getConnection();
+
+    // Check if parent Level 3 exists
+    const level3Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L3
+      WHERE L3_CODE = :l3_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l3_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level3Result.rows || level3Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Level3 " + constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    // Insert Level 4
+    await connection.execute(
+      `
+      INSERT INTO MS_AC_L4 (
+        L4_CODE,
+        L3_CODE,
+        L4_DESCRIPTION,
+        COMPANY_CODE,
+        CREATED_BY,
+        UPDATED_BY
+      )
+      VALUES (
+        '',
+        :l3_code,
+        :l4_description,
+        :company_code,
+        :loginid,
+        :loginid
+      )
+      `,
+      {
+        l3_code,
+        l4_description,
+        company_code,
+        loginid
+      },
+      { autoCommit: true }
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.CREATED_SUCCESSFULLY
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) await connection.close();
+  }
+};
+
+// Update Level 4 account node
+export const updateLevel4AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code, loginid } = req.user;
+    const { ac_code } = req.params;
+    const { l3_code, l4_description } = req.body;
+
+    // Validate request body
+    const { error } = accountLevelFourFinanceSchema(req.body);
+    if (error) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
+
+    connection = await oracledb.getConnection();
+
+    // Check Level 4 exists
+    const level4Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L4
+      WHERE L4_CODE = :l4_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l4_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level4Result.rows || level4Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    // Check parent Level 3 exists
+    const level3Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L3
+      WHERE L3_CODE = :l3_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l3_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level3Result.rows || level3Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Level3 " + constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    // Update Level 4
+    await connection.execute(
+      `
+      UPDATE MS_AC_L4
+      SET
+        L3_CODE = :l3_code,
+        L4_DESCRIPTION = :l4_description,
+        UPDATED_BY = :loginid
+      WHERE L4_CODE = :l4_code
+        AND COMPANY_CODE = :company_code
+      `,
+      {
+        l3_code,
+        l4_description,
+        loginid,
+        l4_code: ac_code,
+        company_code
+      },
+      { autoCommit: true }
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.UPDATED_SUCCESSFULLY
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) await connection.close();
+  }
+};
+
 
 // // Level 5 Account Operations (Account Children)
 // //---------level5-----------
@@ -682,6 +697,55 @@ export const createLevel3AcTreeNode = async (
 //     return;
 //   }
 // };
+
+export const getAccountChildrenAcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code } = req.user;
+    const { ac_code } = req.params;
+
+    connection = await oracledb.getConnection();
+
+    const result = await connection.execute(
+      `
+      SELECT *
+      FROM MS_AC
+      WHERE AC_CODE = :ac_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!result.rows || result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: result.rows[0]
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) await connection.close();
+  }
+};
 
 // // Create new account children node
 // export const createAccountChildrenAcTreeNode = async (
@@ -763,6 +827,118 @@ export const createLevel3AcTreeNode = async (
 //     return;
 //   }
 // };
+
+
+export const createAccountChildrenAcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code, loginid } = req.user;
+    const { l4_code, files, ...data } = req.body;
+
+    // Validate request
+    const { error } = accountFinanceSchema(req.body);
+    if (error) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
+
+    connection = await oracledb.getConnection();
+
+    // Check Level 4 exists
+    const level4Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L4
+      WHERE L4_CODE = :l4_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l4_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level4Result.rows || level4Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Level4 " + constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    // Insert Account
+    await connection.execute(
+      `
+      INSERT INTO MS_AC (
+        AC_CODE,
+        L4_CODE,
+        COMPANY_CODE,
+        CREATED_BY,
+        UPDATED_BY
+      )
+      VALUES (
+        '',
+        :l4_code,
+        :company_code,
+        :loginid,
+        :loginid
+      )
+      `,
+      {
+        l4_code,
+        company_code,
+        loginid
+      },
+      { autoCommit: true }
+    );
+
+    //  Get session code
+    const sessionResult = await connection.execute(
+      `
+      SELECT CODE
+      FROM GT_SESSION_INFO
+      WHERE USERID = :loginid
+      `,
+      { loginid },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const sessionCode =
+      (sessionResult.rows?.[0] as any)?.CODE ?? "";
+
+    //  Save files
+    // if (files && files.length) {
+    //   await Files.bulkCreate(
+    //     (files as IFiles[]).map((file) => ({
+    //       ...file,
+    //       request_number: "ACCT" + sessionCode
+    //     }))
+    //   );
+    // }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: sessionCode + " " + constants.MESSAGES.CREATED_SUCCESSFULLY
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) await connection.close();
+  }
+};
+
 // export const updateAccountChildrenAcTreeNode = async (
 //   // Update account children node
 //   req: RequestWithUser,
@@ -844,6 +1020,119 @@ export const createLevel3AcTreeNode = async (
 //     return;
 //   }
 // };
+
+
+// export const updateAccountChildrenAcTreeNode = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   let connection;
+
+//   try {
+//     const { company_code, loginid } = req.user;
+//     const { ac_code } = req.params;
+//     const { l4_code, files, ...data } = req.body;
+
+//     const { error } = accountFinanceSchema(req.body);
+//     if (error) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: error.message
+//       });
+//       return;
+//     }
+
+//     connection = await oracledb.getConnection();
+
+//     //  Check Account exists
+//     const accountResult = await connection.execute(
+//       `
+//       SELECT 1
+//       FROM MS_AC
+//       WHERE AC_CODE = :ac_code
+//         AND COMPANY_CODE = :company_code
+//       `,
+//       { ac_code, company_code },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+
+//     if (!accountResult.rows || accountResult.rows.length === 0) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: constants.MESSAGES.NOT_FOUND
+//       });
+//       return;
+//     }
+
+//     //  Check Level 4 exists
+//     const level4Result = await connection.execute(
+//       `
+//       SELECT 1
+//       FROM MS_AC_L4
+//       WHERE L4_CODE = :l4_code
+//         AND COMPANY_CODE = :company_code
+//       `,
+//       { l4_code, company_code },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+
+//     if (!level4Result.rows || level4Result.rows.length === 0) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: "Level4 " + constants.MESSAGES.NOT_FOUND
+//       });
+//       return;
+//     }
+
+//     // Update Account
+//     await connection.execute(
+//       `
+//       UPDATE MS_AC
+//       SET
+//         L4_CODE = :l4_code,
+//         UPDATED_BY = :loginid
+//       WHERE AC_CODE = :ac_code
+//         AND COMPANY_CODE = :company_code
+//       `,
+//       {
+//         l4_code,
+//         loginid,
+//         ac_code,
+//         company_code
+//       },
+//       { autoCommit: true }
+//     );
+
+//     // 📎 Save files
+//     if (files && files.length) {
+//       await Files.bulkCreate(
+//         (files as IFiles[]).map((file) => ({
+//           ...file,
+//           request_number: "ACCT" + ac_code
+//         }))
+//       );
+//     }
+
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       message: constants.MESSAGES.UPDATED_SUCCESSFULLY
+//     });
+//     return;
+
+//   } catch (error: any) {
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message
+//     });
+//     return;
+
+//   } finally {
+//     if (connection) await connection.close();
+//   }
+// };
+
+
+
 // //----------------delete----------
 
 // // Delete Operations
