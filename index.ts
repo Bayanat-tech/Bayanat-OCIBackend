@@ -42,7 +42,6 @@ app.use("/api/reports", boldReportsRoutes);
 app.use("/api/security", secRoutes);
 
 app.use("/api/hr", hrRoutes);
-
 app.use("/api/pf",pfRoutes);
 
 app.use("/api/notification", logRoutes);
