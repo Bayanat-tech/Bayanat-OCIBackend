@@ -62,7 +62,7 @@ import {
   // getconfirmInboundjob, // Get confirmation details
   confirmInboundjob, // Confirm inbound job
 } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
-import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
+import { createOrUpdateJob ,editJob} from "../../../controllers/wms/transaction/outbound/createTojob";
 //import { upsertTIJobHandler } from "../../../controllers/Purchaseflow/updateinsertti_job";
 //import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
 // import {
@@ -112,8 +112,8 @@ router.put(
 );
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
-router.post("/inboundjob",createOrUpdateJob);
-
+router.post("/inboundjob", createOrUpdateJob);
+router.put("/editInboundJob/:job_no", editJob); 
 router.patch("/canceljob", cancelInboundJob)
 
 // Cancel confirmed inbound job route

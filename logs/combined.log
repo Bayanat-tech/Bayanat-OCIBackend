@@ -66255,3 +66255,31 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
 2026-01-16 20:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+2026-01-20 17:29:28 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-20 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 18:00:00 [[32minfo[39m]: Found 1 unsent attendance events 
+2026-01-20 18:00:02 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-20 18:11:14 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-20 18:13:39 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-21 11:53:15 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-21 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 12:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 13:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 14:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 14:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 15:00:05 [[32minfo[39m]: No unsent attendance events found 
