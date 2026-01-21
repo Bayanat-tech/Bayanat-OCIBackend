@@ -229,4 +229,18 @@ router.get(
   }
 );
 
+router.get(
+  "/employeeinfo/bayanatdb",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { EmployeeController } = await getControllers();
+    return EmployeeController.getEmployeeInfoBayanatDb(req, res);
+  }
+);
+
+
 export default router;

@@ -16,7 +16,6 @@ let canvas: any = null;
 let isSetup = false;
 let faceMatcher: faceapi.FaceMatcher | null = null;
 let faceMatcherLastUpdate: number = 0;
-const FACE_MATCHER_CACHE_TTL = 10 * 60 * 1000;
 
 let performanceStats = {
   totalProcesses: 0,
@@ -110,8 +109,12 @@ export class FaceRecognitionService {
       scoreThreshold: 0.3, 
     });
 
-  private static readonly MATCH_THRESHOLD = 0.55;
-  private static readonly OPTIMIZED_IMAGE_SIZE = 224; 
+  // Configurable thresholds and preprocessing sizes
+  private static readonly MATCH_THRESHOLD = parseFloat(process.env.FACE_MATCH_THRESHOLD || "0.55");
+  private static readonly MIN_CONFIDENCE = parseFloat(process.env.MIN_CONFIDENCE || "70");
+  private static readonly OPTIMIZED_IMAGE_SIZE = parseInt(process.env.OPTIMIZED_IMAGE_SIZE || "320"); 
+  private static readonly JPEG_QUALITY = parseInt(process.env.OPTIMIZED_JPEG_QUALITY || "90");
+  private static readonly FACE_MATCHER_CACHE_TTL = parseInt(process.env.FACE_MATCHER_CACHE_TTL_MS || "600000");
 
   private constructor() {
     logger.info(
@@ -301,14 +304,13 @@ export class FaceRecognitionService {
     try {
       return await sharp(imageBuffer)
         .rotate() // Auto-rotate based on EXIF
-        .resize(224, 224, {
-          // Smaller size for speed
+        .resize(FaceRecognitionService.OPTIMIZED_IMAGE_SIZE, FaceRecognitionService.OPTIMIZED_IMAGE_SIZE, {
           fit: "cover",
           withoutEnlargement: true,
           fastShrinkOnLoad: true,
         })
         .jpeg({
-          quality: 70, // Lower quality for speed
+          quality: FaceRecognitionService.JPEG_QUALITY,
           mozjpeg: true,
         })
         .toBuffer();
@@ -322,7 +324,7 @@ export class FaceRecognitionService {
   private async getCachedFaceMatcher(): Promise<faceapi.FaceMatcher> {
     const now = Date.now();
 
-    if (faceMatcher && now - faceMatcherLastUpdate < FACE_MATCHER_CACHE_TTL) {
+    if (faceMatcher && now - faceMatcherLastUpdate < FaceRecognitionService.FACE_MATCHER_CACHE_TTL) {
       return faceMatcher;
     }
 
@@ -353,10 +355,7 @@ export class FaceRecognitionService {
       ]);
     });
 
-    faceMatcher = new faceapi.FaceMatcher(
-      labeledDescriptors,
-      FaceRecognitionService.MATCH_THRESHOLD
-    );
+    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, FaceRecognitionService.MATCH_THRESHOLD);
     faceMatcherLastUpdate = now;
 
     logger.info(
@@ -377,10 +376,10 @@ export class FaceRecognitionService {
 
       const confidence = (1 - bestMatch.distance) * 100;
       const matchingTime = Date.now() - startTime;
-
       if (
         bestMatch.distance <= FaceRecognitionService.MATCH_THRESHOLD &&
-        bestMatch.label !== "unknown"
+        bestMatch.label !== "unknown" &&
+        confidence >= FaceRecognitionService.MIN_CONFIDENCE
       ) {
         logger.info(
           `Match found: ${
