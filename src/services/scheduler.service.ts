@@ -12,7 +12,6 @@ export class SchedulerService {
         WHERE LAST_ACTION = 'SUBMITTED' 
         AND DATA_TRANSFER = 'N'
       `
-        // Remove: { type: QueryTypes.SELECT } - Not needed for raw Oracle
       );
 
       type Header = {
@@ -45,11 +44,9 @@ export class SchedulerService {
           );
 
           for (const detail of details[0]) {
-            // [0] for rows
             await VendorService.insertAcDetail(detail);
           }
 
-          // Update transfer flag
           await VendorService.updateDataTransferFlag(
             header.COMPANY_CODE,
             header.DOC_NO
