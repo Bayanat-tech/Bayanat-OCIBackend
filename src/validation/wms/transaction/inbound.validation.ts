@@ -50,7 +50,7 @@ export const shipmentDetailsSchema = (
     asn_no: Joi.string().allow(""),
     doc_ref_no: Joi.string().allow(""),
     cust_decl_no: Joi.string().allow(""),
-    truck_no: Joi.string().allow(""),
+    vehicle_no: Joi.string().allow(""),
   });
 
   const schema = Joi.array().items(baseSchema);
