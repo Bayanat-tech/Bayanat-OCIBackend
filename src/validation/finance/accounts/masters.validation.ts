@@ -4,9 +4,21 @@ import {
   IAccountFinanceAttributes,
   IAccountLevelFourAttributes,
   IAccountLevelThreeAttributes,
+  IAccountLevelTwoAttributes
 } from "../../../interfaces/finance/accounts/masters/actree_finance.interface";
 
 // Validation schema for level three finance accounts
+export const accountLevelTwoFinanceSchema = (
+  data: IAccountLevelTwoAttributes
+) => {
+  const schema = Joi.object().keys({
+    l2_description: Joi.string().required(),
+    l1_code: Joi.string().required(),
+  });
+  return schema.validate(data);
+};
+
+
 // Validates description and parent level 2 code
 export const accountLevelThreeFinanceSchema = (
   data: IAccountLevelThreeAttributes
