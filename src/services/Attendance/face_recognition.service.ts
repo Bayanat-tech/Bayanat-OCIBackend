@@ -460,7 +460,6 @@ export class FaceRecognitionService {
         .jpeg({ quality: 60 })
         .toBuffer();
  
-      // Run a quick non-throwing check to warm image pipeline and face-api internals
       try {
         await instance.quickFaceCheck(testBuffer);
         logger.info("✅ Face recognition quickWarmUp completed (no-face expected)");
