@@ -3,5 +3,10 @@
         "comments": "off",
         "strings": "off",
         "other": "off"
-    }
+    },
+    "cSpell.words": [
+        "Athorization",
+        "employe",
+        "leavetype"
+    ]
 }

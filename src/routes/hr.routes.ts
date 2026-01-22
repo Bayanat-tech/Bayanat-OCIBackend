@@ -7,7 +7,7 @@ import employeeHrRoutes from "./HR/employeHr.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 
 // Initialize the Express router
-const router = express.Router();
+const router = express.Router();  
 
 console.log("HR Routes Loaded");
 
@@ -32,6 +32,8 @@ router.use(
   // Mount the hrGmRoutes router
   hrGmRoutes
 );
+
+
 
 // Define a route for employee HR-related endpoints
 router.use(
