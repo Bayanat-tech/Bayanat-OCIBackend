@@ -299,32 +299,64 @@ export const getFinanceListData = async (
     //     }
     //     break;
 
+         case "account": {
+        let whereClause = `WHERE a.company_code = :company_code`;
+        let bindParams: any = {
+          company_code: requestUser.company_code,
+        };
 
-    //   case "fy_period":
-    //     {
-    //       let insideQuery: any = [],
-    //         outsideQuery = {
-    //           [Op.and]: [{ company_code: requestUser.company_code }],
-    //         };
-    //       outsideQuery = getSearchFilterQuery({
-    //         insideQuery,
-    //         filter: filter.search,
-    //         outsideQuery,
-    //       });
-    //       totalCount = await MS_FY_PERIOD.count({
-    //         where: outsideQuery,
-    //       });
+        if (filter?.search) {
+          whereClause += `
+            AND (
+              a.ac_code LIKE :search
+              OR a.ac_name LIKE :search
+            )
+          `;
+          bindParams.search = `%${filter.search}%`;
+        }
 
-    //       fetchedData = await MS_FY_PERIOD.findAll({
-    //         attributes: ["fy_period"],
-    //         where: outsideQuery,
-    //         // ...paginationOptions,
-    //       });
-    //     }
-    //     break;
+        let orderByClause = ``;
+        if (filter?.sort && Object.keys(filter.sort).length > 0) {
+          orderByClause = `
+            ORDER BY ${filter.sort.field_name} ${
+            filter.sort.desc ? "DESC" : "ASC"
+          }
+          `;
+        }
 
+        const countResult = await connection.execute(
+          `
+          SELECT COUNT(*) AS TOTAL_COUNT
+          FROM MS_ACCODES a
+          ${whereClause}
+          `,
+          bindParams,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
+        const dataResult = await connection.execute(
+          `
+          SELECT *
+          FROM MS_ACCODES a
+          ${whereClause}
+          ${orderByClause}
+          OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+          `,
+          {
+            ...bindParams,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        fetchedData = dataResult.rows || [];
+      }
+        break;
+      
     //   case "bank":
     //     {
     //       let insideQuery: any = [],
@@ -362,6 +394,60 @@ export const getFinanceListData = async (
     //       });
     //     }
     //     break;
+
+    case "bank": {
+       let whereClause = `
+         WHERE a.company_code = :company_code
+         AND (a.ac_status <> 'C' OR a.ac_status IS NULL)
+         AND a.ac_code IN (SELECT ac_code FROM MS_AC_BANKCODE)
+        `;
+
+  let binds: any = {
+    company_code: requestUser.company_code,
+  };
+
+  // SEARCH FILTER
+  if (filter?.search) {
+    whereClause += `
+      AND (
+        UPPER(a.ac_code) LIKE UPPER(:search)
+        OR UPPER(a.ac_name) LIKE UPPER(:search)
+      )
+    `;
+    binds.search = `%${filter.search}%`;
+  }
+
+  // COUNT
+  const countResult = await connection.execute(
+    `
+    SELECT COUNT(*) AS TOTAL_COUNT
+    FROM MS_ACCODES a
+    ${whereClause}
+    `,
+    binds,
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+
+  totalCount =
+    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+
+  const dataResult = await connection.execute(
+    `
+    SELECT a.ac_code, a.ac_name
+    FROM MS_ACCODES a
+    ${whereClause}
+    `,
+    binds,
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+
+  fetchedData = dataResult.rows || [];
+  break;
+}
+
+    
+
+
     //   case "ac_payee":
     //     {
     //       let insideQuery: any = [],
