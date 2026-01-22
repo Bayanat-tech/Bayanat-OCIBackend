@@ -19,7 +19,7 @@ const FACE_RECOGNITION_TIMEOUT = 2500;
 const DATABASE_QUERY_TIMEOUT = 3000;
 const MAX_CONCURRENT_REQUESTS = 15;
 const CACHE_TTL = 300;
-const MIN_CONFIDENCE_THRESHOLD = parseFloat(process.env.MIN_CONFIDENCE || "70");
+const MIN_CONFIDENCE_THRESHOLD = 65;
 
 export class AttendanceService {
   private static cache = CacheService.getInstance();
