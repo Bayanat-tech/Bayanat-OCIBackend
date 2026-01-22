@@ -66255,3 +66255,124 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
 2026-01-16 20:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+2026-01-19 12:23:15 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-19 12:49:32 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-19 12:54:08 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-19 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-19 13:00:06 [[32minfo[39m]: No unsent attendance events found 
+2026-01-19 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-19 15:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-19 15:30:45 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-19 16:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-19 16:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-19 16:13:42 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-19 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-19 18:00:06 [[32minfo[39m]: No unsent attendance events found 
+2026-01-20 11:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 11:00:01 [[32minfo[39m]: No unsent attendance events found 
+2026-01-20 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 12:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-20 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 13:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-20 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 15:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-20 16:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 16:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-20 17:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 17:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-20 17:54:54 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-20 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 18:00:00 [[32minfo[39m]: Found 1 unsent attendance events 
+2026-01-20 18:00:01 [[32minfo[39m]: Updating 1 records with DATA_TRANSFER = 'Y' 
+2026-01-20 18:00:02 [[32minfo[39m]: Successfully processed 1 attendance events. DATA_TRANSFER updated to 'Y'. 
+2026-01-20 18:11:39 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 11:10:28 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 11:21:47 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 12:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-22 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 13:00:05 [[32minfo[39m]: Found 5 unsent attendance events 
+2026-01-22 13:00:06 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 13:36:15 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 13:39:02 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 13:40:02 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 14:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 14:00:04 [[32minfo[39m]: Found 7 unsent attendance events 
+2026-01-22 14:00:06 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 15:00:00 [[32minfo[39m]: Found 10 unsent attendance events 
+2026-01-22 15:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 15:07:58 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 16:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 16:00:00 [[32minfo[39m]: Found 12 unsent attendance events 
+2026-01-22 16:00:02 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 16:59:43 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 17:00:41 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 18:00:05 [[32minfo[39m]: Found 12 unsent attendance events 
+2026-01-22 18:00:07 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
