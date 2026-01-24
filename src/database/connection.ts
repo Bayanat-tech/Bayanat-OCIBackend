@@ -1,7 +1,8 @@
 import "reflect-metadata";
 import * as oracledb from "oracledb";
 import { DataSource, Repository, EntityTarget, ObjectLiteral } from "typeorm";
-import constants from "../helpers/constants"; 
+import constants from "../helpers/constants";
+import { TenantManager } from "../database/TenantManager";
 
 // ==================== ORACLE CLIENT INIT ====================
 try {
@@ -284,93 +285,45 @@ export const oracleDb = {
   processBindParameters,
 };
 
-// ==================== CONNECTION INITIALIZATION ====================
+// ==================== UPDATED INITIALIZATION ====================
 export const initializeAllConnections = async (): Promise<void> => {
-  // Validate config early so we can show a helpful message
-  const cfgUser =
-    constants.DATABASE.ORACLE_USER || process.env.ORACLE_USER || "";
-  const cfgPass =
-    constants.DATABASE.ORACLE_PASSWORD || process.env.ORACLE_PASSWORD || "";
-  const cfgConn =
-    constants.DATABASE.ORACLE_CONNECTION_STRING ||
-    process.env.ORACLE_CONNECTION_STRING ||
-    "";
-
-  if (!cfgUser || !cfgPass || !cfgConn) {
-    console.warn(
-      "Oracle DB credentials appear to be missing. Skipping DB initialization.\n" +
-        "Set ORACLE_USER, ORACLE_PASSWORD and ORACLE_CONNECTION_STRING (or update constants) to enable DB connections."
-    );
-    return;
-  }
+  console.log("Starting database connections...");
 
   try {
-    console.log("Starting Oracle connection...");
-    
-    const authPromise = oracleDb.authenticate();
-    const timeoutPromise = new Promise<void>((_, reject) =>
-      setTimeout(() => reject(new Error("Oracle connection timeout (15s)")), 15000)
-    );
+    // 1. Initialize Tenant Manager FIRST
+    console.log("Initializing Tenant Manager...");
+    await TenantManager.initialize();
+    console.log("✅ Tenant Manager initialized");
 
+    // 2. Initialize legacy connection (non-blocking)
+    console.log("Initializing legacy Oracle connection...");
     try {
-      await Promise.race([authPromise, timeoutPromise]);
-    } catch (authError) {
-      console.warn("Raw Oracle connection failed:", authError instanceof Error ? authError.message : String(authError));
-      console.warn("Continuing without raw Oracle connection - TypeORM may still work");
+      await oracleDb.authenticate();
+      console.log("✅ Legacy database connection ready");
+    } catch (legacyError) {
+      console.warn("⚠️ Legacy Oracle connection failed (app will continue):", legacyError instanceof Error ? legacyError.message : String(legacyError));
+      // Continue without legacy connection
     }
 
-    if (oraclePool) {
-      try {
-        const testResult = await oracleDb.query("SELECT 1 FROM DUAL");
-        await oracleDb.query(
-          "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
-        );
-        console.log("Raw Oracle connection established and session configured");
-      } catch (testError) {
-        console.warn("Oracle test query failed:", testError instanceof Error ? testError.message : String(testError));
-      }
-    }
-
+    // 3. Initialize TypeORM (optional - don't block if it fails)
+    console.log("Initializing TypeORM...");
     try {
-      const typeormPromise = TypeORMService.initialize();
-      const typeormTimeoutPromise = new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error("TypeORM connection timeout (15s)")), 15000)
-      );
-      
-      await Promise.race([typeormPromise, typeormTimeoutPromise]);
-      console.log("TypeORM connection established");
-    } catch (typeormError) {
-      console.warn("TypeORM connection failed:", typeormError instanceof Error ? typeormError.message : String(typeormError));
-      console.warn("Continuing with raw Oracle only");
+      await TypeORMService.initialize();
+      console.log("✅ TypeORM connection ready");
+    } catch (typeOrmError) {
+      console.warn("⚠️ TypeORM initialization failed (continuing without it):", typeOrmError instanceof Error ? typeOrmError.message : String(typeOrmError));
+      // Continue without TypeORM - application can still work with raw Oracle
     }
 
-    console.log("Database connections ready");
+    console.log("✅ Database initialization completed (some services may be unavailable)");
   } catch (error) {
-    console.error(
-      "Raw Oracle initialization failed. Application will continue but DB features may be unavailable.",
-      error
-    );
-    console.warn(
-      "If this is unexpected, verify ORACLE_USER/ORACLE_PASSWORD/ORACLE_CONNECTION_STRING are correct."
-    );
+    console.error("❌ Critical database initialization failed:", error);
+    throw error;
   }
-
-  try {
-    await TypeORMService.initialize();
-    console.log(" TypeORM connection established");
-  } catch (typeormError) {
-    console.warn(
-      "TypeORM connection failed, but raw Oracle (if initialized) may still be working:",
-      typeormError
-    );
-  }
-
-  console.log(
-    " Database connections initialization complete (some connections may be unavailable)"
-  );
 };
 
 export const closeAllConnections = async (): Promise<void> => {
+  await TenantManager.closeAll();
   await oracleDb.close();
   await TypeORMService.close();
   console.log("All database connections closed");

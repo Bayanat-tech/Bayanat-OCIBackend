@@ -1,9 +1,8 @@
-import { Request, Response } from "express";
+import { Request, Response, RequestHandler } from "express";
 import constants from "../helpers/constants";
 import {
   buildTree,
   formatRolePermissions,
-  generateToken,
   notifyUser,
 } from "../helpers/functions";
 import { loginSchema } from "../validation/auth.validation";
@@ -11,9 +10,27 @@ import { StructuredResult } from "../interfaces/auth.interface";
 import { RequestWithUser } from "../interfaces/common.interface";
 import { AuthService } from "../services/auth.service";
 import { VendorService } from "../services/vendor.service";
+import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
 
-export const login = async (req: Request, res: Response) => {
+// Update generateToken to include tenant
+export async function generateToken(userData: any): Promise<string> {
+  const jwt = require('jsonwebtoken');
+  
+  const payload = {
+    username: userData.username,
+    email_id: userData.email_id,
+    loginid: userData.loginid,
+    tenantId: userData.tenantId,
+    company_code: userData.company_code,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) 
+  };
+  
+  return jwt.sign(payload, process.env.APP_SECRET || 'BAYANAT');
+}
+
+export const login: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { error } = loginSchema(req.body);
     if (error) {
@@ -26,16 +43,16 @@ export const login = async (req: Request, res: Response) => {
 
     const { email, password } = req.body;
 
-    let user = await AuthService.findUserByEmailOrLoginId(email);
+    // Get user with tenant info
+    let userTenant = await AuthService.getUserWithTenant(email);
 
-    if (!user) {
+    if (!userTenant) {
+      // Try external user creation
       try {
         const apiResponse = await VendorService.checkAccountEmployee(email);
 
         if (Array.isArray(apiResponse) && apiResponse.length > 0) {
           const apiUser = apiResponse[0];
-          console.log("API User Data:", apiUser);
-
           const isExternalPassValid = password === apiUser.PASSWORD;
 
           if (!isExternalPassValid) {
@@ -47,37 +64,35 @@ export const login = async (req: Request, res: Response) => {
           }
 
           const hashedPassword = await AuthService.hashPassword(password);
-          user = await AuthService.createUserFromExternal(
+          const newUser = await AuthService.createUserFromExternal(
             apiUser,
             password,
             hashedPassword
           );
+          
+          // For external users, use default tenant
+          userTenant = {
+            user: newUser,
+            tenantId: 'WMSTST_TENANT'
+          };
         } else {
           res.status(constants.STATUS_CODES.NOT_FOUND).json({
             success: false,
-            message: "User not found in external system",
+            message: "User not found",
           });
           return;
         }
       } catch (apiError: any) {
-        if (apiError.response?.status === 401) {
-          res.status(constants.STATUS_CODES.UNAUTHORIZED).json({
-            success: false,
-            message:
-              "Unauthorized access to external system. Please check API credentials.",
-          });
-        } else {
-          res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-            success: false,
-            message: "Error validating user with external system",
-            error: apiError.message,
-          });
-        }
+        // ... handle API error
+        res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+          success: false,
+          message: "Error validating user",
+        });
         return;
       }
     }
 
-    if (!user) {
+    if (!userTenant) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found",
@@ -85,10 +100,14 @@ export const login = async (req: Request, res: Response) => {
       return;
     }
 
+    const { user, tenantId } = userTenant;
+
+    // Verify password
     const isUserPassMatched = await AuthService.comparePassword(
       password,
-      user.userpass
+      user.USERPASS
     );
+    
     const isSecPassMatched = user.SEC_PASSWD
       ? await AuthService.comparePassword(password, user.SEC_PASSWD)
       : false;
@@ -101,31 +120,42 @@ export const login = async (req: Request, res: Response) => {
       return;
     }
 
+    // Get tenant config for additional info
+    const tenantConfig = await TenantManager.getTenantConfig(tenantId);
+
+    // Generate token with tenant info
     const token = await generateToken({
-      username: user.username,
-      email_id: user.email_id,
-      loginid: user.loginid,
+      username: user.USERNAME,
+      email_id: user.EMAIL_ID,
+      loginid: user.LOGINID,
+      tenantId: tenantId,
+      company_code: user.COMPANY_CODE,
+      schemaName: tenantConfig.SCHEMA_NAME
     });
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: { token },
+      data: { 
+        token,
+        tenantId,
+        user: {
+          username: user.USERNAME,
+          email_id: user.EMAIL_ID,
+          loginid: user.LOGINID,
+          company_code: user.COMPANY_CODE
+        }
+      },
     });
-    return;
   } catch (err: any) {
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "An error occurred",
       error: err.message || err,
     });
-    return;
   }
 };
 
-export const me = async (
-  req: RequestWithUser,
-  res: Response
-): Promise<void> => {
+export const me = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const requestUser = req.user;
 
@@ -137,7 +167,10 @@ export const me = async (
       return;
     }
 
-    const user = await AuthService.findUserByEmail(requestUser.email_id);
+    const tenantId = requestUser.tenantId || 'WMSTST_TENANT';
+
+    // Get user from central SEC_LOGIN
+    const user = await AuthService.findUserByEmailOrLoginId(requestUser.email_id);
     if (!user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
@@ -147,141 +180,86 @@ export const me = async (
     }
 
     // Remove sensitive data
-    const { userpass, SEC_PASSWD, ...userWithoutPassword } = user;
+    const { USERPASS, SEC_PASSWD, ...userWithoutPassword } = user;
 
-    // Get all permissions
-    let allPermissions: any[] = [];
-    try {
-      const permissionsResult = await AuthService.executeRawQuery(
-        permissionsListQuery
-      );
-      allPermissions = permissionsResult[0] || [];
-      console.log(`Retrieved ${allPermissions.length} permissions`);
-    } catch (error) {
-      console.error("Error fetching permissions:", error);
-      allPermissions = [];
-    }
-
-    const permissions: StructuredResult = (allPermissions || []).reduce(
-      (acc: any, curr: any) => {
-        const menu = curr.menu || curr.MENU;
-        const serial_no =
-          curr.serial_no || curr.SERIAL_NO || curr.serial_no_or_role_id;
-        const app_code = curr.app_code || curr.APP_CODE;
-
-        console.log("Processing permission:", { menu, serial_no, app_code });
-
-        const serialNumber: number = Number(serial_no);
-
-        if (serialNumber > 0 && app_code) {
-          if (!acc[app_code]) {
-            acc[app_code] = {
-              serial_number: serialNumber,
-              app_code: app_code,
-              children: {},
-            };
-          }
-
-          if (menu && menu !== app_code) {
-            acc[app_code].children[menu] = {
-              serial_number: serialNumber,
-              app_code,
-            };
-          }
-        }
-        return acc;
-      },
-      {}
-    );
-
-    // Get user permissions
+    // Get permissions from user's tenant
     let userPermissions: any[] = [];
+    let allPermissions: any[] = [];
     let formattedPermissions = {};
+    let permissionBasedMenuTree = {};
 
     try {
-      console.log(`Fetching permissions for user: ${user.loginid}`);
-
-      const userPermissionsResult = await AuthService.executeRawQuery(
+      // Get user permissions from tenant
+      userPermissions = await AuthService.executeInUserTenant(
+        user.LOGINID,
         userPermissionQuery,
-        { loginid: user.loginid }
+        { loginid: user.LOGINID }
       );
-      userPermissions = userPermissionsResult[0] || [];
-      console.log(`Retrieved ${userPermissions.length} user permissions`);
 
-      // Debug the structure
-      if (userPermissions.length > 0) {
-        console.log("First permission structure:", userPermissions[0]);
-        console.log("Available keys:", Object.keys(userPermissions[0]));
-        console.log("SERIAL NO value:", userPermissions[0].SERIAL_NO);
+      // Get all permissions from tenant
+      const permissionsArray = await AuthService.executeInUserTenant(
+        user.LOGINID,
+        permissionsListQuery,
+        {}
+      );
+      
+      // Convert permissions array to object for buildTree
+      allPermissions = permissionsArray;
+      const allPermissionsObj: StructuredResult = {};
+      if (Array.isArray(permissionsArray)) {
+        permissionsArray.forEach((perm: any, idx: number) => {
+          allPermissionsObj[idx.toString()] = perm;
+        });
       }
 
+      // Build menu tree
       if (userPermissions.length > 0) {
         formattedPermissions = formatRolePermissions(userPermissions);
-        console.log(
-          `Formatted permissions keys:`,
-          Object.keys(formattedPermissions)
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching user permissions:", error);
-    }
+        
+        const validKeys = Object.keys(formattedPermissions).filter((key) => {
+          const num = Number(key);
+          return !isNaN(num) && num > 0;
+        });
 
-    // Build menu tree
-    let permissionBasedMenuTree = {};
-    if (formattedPermissions && Object.keys(formattedPermissions).length > 0) {
-      const validKeys = Object.keys(formattedPermissions).filter((key) => {
-        const num = Number(key);
-        return !isNaN(num) && num > 0;
-      });
-
-      console.log(`Valid serial numbers for menu tree:`, validKeys);
-
-      if (validKeys.length > 0) {
-        try {
+        if (validKeys.length > 0) {
           const serialNumbersNumeric = validKeys.map((sn) => Number(sn));
-
           const placeholders = serialNumbersNumeric
             .map((_, idx) => `:param${idx}`)
-            .join(",");
-          const bindParams: any = {};
-          serialNumbersNumeric.forEach((sn, idx) => {
-            bindParams[`param${idx}`] = sn;
-          });
-
+            .join(',');
+          
           const menuTreeQuery = `
             SELECT * FROM SEC_MODULE_DATA 
             WHERE SERIAL_NO IN (${placeholders})
             ORDER BY SERIAL_NO
           `;
 
-          console.log(
-            "Executing menu tree query with serial numbers:",
-            serialNumbersNumeric
-          );
+          const bindParams: any = {};
+          serialNumbersNumeric.forEach((sn, idx) => {
+            bindParams[`param${idx}`] = sn;
+          });
 
-          const [menuTreeData] = await AuthService.executeRawQuery(
+          const menuTreeData = await AuthService.executeInUserTenant(
+            user.LOGINID,
             menuTreeQuery,
             bindParams
           );
 
           if (menuTreeData && menuTreeData.length > 0) {
-            permissionBasedMenuTree = buildTree(menuTreeData, permissions);
-            console.log(
-              `Successfully built menu tree with ${menuTreeData.length} items`
-            );
+            permissionBasedMenuTree = buildTree(menuTreeData, allPermissionsObj);
           }
-        } catch (error) {
-          console.error("Error fetching menu tree:", error);
         }
       }
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
     }
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {
         user: userWithoutPassword,
+        tenantId,
         permissionBasedMenuTree,
-        permissions,
+        permissions: allPermissions,
         user_permission: formattedPermissions,
       },
     });
@@ -289,13 +267,12 @@ export const me = async (
     console.error("Error in /api/auth/me:", error);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message:
-        error.message || "An error occurred while processing your request",
+      message: error.message || "An error occurred",
     });
   }
 };
 
-export const forgotPassword = async (req: Request, res: Response) => {
+export const forgotPassword: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 
@@ -347,7 +324,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
 };
 
-export const resetPassword = async (req: Request, res: Response) => {
+export const resetPassword: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -404,7 +381,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     return;
   }
 };
-export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
+export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { loginId, newPassword } = req.body;
 
