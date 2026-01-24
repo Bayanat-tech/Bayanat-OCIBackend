@@ -3,7 +3,7 @@ import { oracleDb, databaseConnection } from "./src/database/connection";
 async function main() {
   try {
     await databaseConnection();
-    const [rows] = await oracleDb.query("SELECT * FROM SEC_LOGIN");
+    const [rows] = await oracleDb.query("SELECT * FROM SEC_LOGINTEST");
     console.log("SEC_LOGIN rows:", rows);
     await oracleDb.close();
     process.exit(0);

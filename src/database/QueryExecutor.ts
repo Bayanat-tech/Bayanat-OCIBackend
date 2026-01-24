@@ -30,7 +30,7 @@ export class QueryExecutor {
     const { oracleDb } = require("./connection");
     
     const userResult = await oracleDb.query(
-      `SELECT * FROM SEC_LOGIN 
+      `SELECT * FROM SEC_LOGINTEST
        WHERE (EMAIL_ID = :email OR LOGINID = :email) 
          AND ACTIVE_FLAG = 'Y'`,
       { email }

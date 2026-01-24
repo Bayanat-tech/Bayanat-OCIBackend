@@ -13,12 +13,12 @@ export class AuthService {
   static async findUserByEmailOrLoginId(email: string): Promise<any> {
     try {
       const result = await oracleDb.query(
-        `SELECT * FROM SEC_LOGIN 
+        `SELECT * FROM SEC_LOGINTEST
          WHERE (EMAIL_ID = :email OR LOGINID = :email) 
            AND ACTIVE_FLAG = 'Y'`,
         { email }
       );
-      
+      console.log("User found:", result.rows?.[0]);
       return result.rows?.[0] || null;
     } catch (error) {
       console.error("Error finding user:", error);
@@ -69,7 +69,7 @@ export class AuthService {
   ): Promise<boolean> {
     try {
       await oracleDb.query(
-        `UPDATE SEC_LOGIN 
+        `UPDATE SEC_LOGINTEST
          SET USERPASS = :hashedPassword,
              SEC_PASSWD = :hashedPassword,
              UPDATED_BY = 'system'

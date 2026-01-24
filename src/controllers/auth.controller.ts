@@ -188,15 +188,20 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     let formattedPermissions = {};
     let permissionBasedMenuTree = {};
 
+    // Get user permissions from tenant (with error handling)
     try {
-      // Get user permissions from tenant
       userPermissions = await AuthService.executeInUserTenant(
         user.LOGINID,
         userPermissionQuery,
         { loginid: user.LOGINID }
       );
+    } catch (userPermError) {
+      console.warn(`⚠️ Failed to get user permissions for ${user.LOGINID}:`, userPermError instanceof Error ? userPermError.message : String(userPermError));
+      userPermissions = [];
+    }
 
-      // Get all permissions from tenant
+    // Get all permissions from tenant (with error handling)
+    try {
       const permissionsArray = await AuthService.executeInUserTenant(
         user.LOGINID,
         permissionsListQuery,
@@ -238,19 +243,26 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
             bindParams[`param${idx}`] = sn;
           });
 
-          const menuTreeData = await AuthService.executeInUserTenant(
-            user.LOGINID,
-            menuTreeQuery,
-            bindParams
-          );
+          try {
+            const menuTreeData = await AuthService.executeInUserTenant(
+              user.LOGINID,
+              menuTreeQuery,
+              bindParams
+            );
 
-          if (menuTreeData && menuTreeData.length > 0) {
-            permissionBasedMenuTree = buildTree(menuTreeData, allPermissionsObj);
+            if (menuTreeData && menuTreeData.length > 0) {
+              permissionBasedMenuTree = buildTree(menuTreeData, allPermissionsObj);
+            }
+          } catch (menuError) {
+            console.warn(`⚠️ Failed to get menu tree for ${user.LOGINID}:`, menuError instanceof Error ? menuError.message : String(menuError));
+            permissionBasedMenuTree = {};
           }
         }
       }
-    } catch (error) {
-      console.error("Error fetching permissions:", error);
+    } catch (permError) {
+      console.warn(`⚠️ Failed to get all permissions for ${user.LOGINID}:`, permError instanceof Error ? permError.message : String(permError));
+      allPermissions = [];
+      permissionBasedMenuTree = {};
     }
 
     res.status(constants.STATUS_CODES.OK).json({

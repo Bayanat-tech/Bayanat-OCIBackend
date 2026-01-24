@@ -9,7 +9,7 @@ import {
 import constants from "../helpers/constants";
 import { Company } from "./Company";
 
-@Entity(constants.TABLE.SEC_LOGIN)
+@Entity(constants.TABLE.SEC_LOGINTEST)
 export class User {
   @PrimaryColumn({ name: "LOGINID", type: "varchar2", length: 50 })
   loginid!: string;
