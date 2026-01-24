@@ -6,6 +6,7 @@ export const createPrincipalActivity = async (req: any, res: Response) => {
 
   try {
     const {
+      
       prin_code,
       act_code,
       company_code,
