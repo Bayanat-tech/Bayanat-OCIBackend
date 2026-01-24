@@ -179,6 +179,7 @@ import {
 import {
   CreateDivision,
   updateDivision,
+  deleteDivisions,
 } from "../../controllers/wms/division_wms.controller";
 
 // Import asset group controllers
@@ -487,7 +488,7 @@ router.put("/activitysubgroup", updateActivitysubgroup); // Update existing acti
 // Division Routes - Handle division management
 router.post("/division", CreateDivision); // Create new division
 router.put("/division", updateDivision); // Update existing division
-
+router.delete("/division",deleteDivisions);
 // Port Routes - Handle port management
 // Add this line for GET
 // router.get("/port", getPort); // Uncomment and use your actual GET handler

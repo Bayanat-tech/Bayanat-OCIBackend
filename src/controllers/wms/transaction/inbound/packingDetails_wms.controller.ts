@@ -30,7 +30,7 @@ export const getPackingDetail = async (req: RequestWithUser, res: Response) => {
       packdet_no: Number(packdet_no),
     });
 
-    // Return error if packing details not found
+    // Return error if packing details not found  
     if (!packingDetails) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,

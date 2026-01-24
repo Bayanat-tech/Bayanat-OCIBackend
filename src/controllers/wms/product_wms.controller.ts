@@ -64,7 +64,7 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
     
-    const { prod_code, company_code } = req.body;
+    const { prod_code, company_code, prin_code, ...remainData } = req.body;
 
     // Check if product exists
     const productExists = await ProductService.checkProductExists(prod_code, company_code);
@@ -78,8 +78,7 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
     }
 
     // Pass the entire request body to formatProductData
-    const productData = formatProductData(req.body, requestUser.loginid);
-
+    const productData = formatProductData(remainData, requestUser.loginid);
     const updateResult = await ProductService.updateProduct(
       prod_code,
       company_code,
@@ -400,7 +399,7 @@ function formatProductData(data: any, userId?: string): any {
     rcpt_exp_limit: data.rcpt_exp_limit || 0,
     qty_as_wt: data.qty_as_wt || null,
     hazmat_ind: data.hazmat_ind || null,
-    hazmatClahazmat_classss: data.hazmat_class || null,
+    hazmat_class: data.hazmat_class || null,
     food_ind: data.food_ind || null,
     pharma_ind: data.pharma_ind || null,
     special_instructions: data.special_instructions || null,
@@ -411,10 +410,10 @@ function formatProductData(data: any, userId?: string): any {
     sap_prod_code: data.sap_prod_code || null,
     sap_prod_desc: data.sap_prod_desc || null,
     temp_code: data.temp_code || null,
-    edit_user: data.edit_user || null,
-    class: data.class || null,
-    wob: data.wob || 0,
-    unified_code: data.unified_code || null,
+    edit_user: data.edit_user ?? null,
+    // class: data.class || null,
+    // wob: data.wob || 0,
+    // unified_code: data.unified_code || null,
     current_season: data.current_season || null,
     product_category: data.product_category || null,
     generic_article: data.generic_article || null,
@@ -422,6 +421,6 @@ function formatProductData(data: any, userId?: string): any {
     prod_color: data.prod_color || null,
     prod_size: data.prod_size || null,
     prnt_p_code: data.prnt_p_code || null,
-    userId: userId || data.user_id,
+    // userId: userId ?? data.user_id ?? null,
   };
 }
