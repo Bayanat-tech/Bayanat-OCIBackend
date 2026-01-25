@@ -6,11 +6,10 @@ import {
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
 import { IUser } from "../../../../interfaces/user.interface";
-
+import { EntityManager } from "typeorm";
 // Import database models
-import Account from "../../../../models/finance/accounts/masters/account_finance.model";
-import AccountLevelFour from "../../../../models/finance/accounts/masters/account_level_four.model";
-import AccountLevelThree from "../../../../models/finance/accounts/masters/account_level_three.model";
+// import Account from "../../../../models/finance/accounts/masters/account_finance.model";
+// import AccountLevelFour from "../../../../models/finance/accounts/masters/account_level_four.model";
 
 // Import validation schemas
 import {
@@ -19,12 +18,18 @@ import {
   accountLevelThreeFinanceSchema,
   accountLevelTwoFinanceSchema
 } from "../../../../validation/finance/accounts/masters.validation";
-import AccountLevelTwo from "../../../../models/finance/accounts/masters/account_level_two.model";
 import VwAcMaster from "../../../../views/finance/accounts/masters/acTree.view";
 import { buildHierarchy } from "../../../../helpers/functions";
 // import { sequelize } from "../../../../database/connection";
 import Files from "../../../../models/files.model";
 import oracledb from "oracledb";
+import { AppDataSource, TypeORMService } from "../../../../database/connection";
+import { AccountLevelThree } from "../../../../models/finance/accounts/masters/account_level_three.entity";
+import { Account } from "../../../../models/finance/accounts/masters/account_finance.entity";
+import { AccountLevelFour } from "../../../../models/finance/accounts/masters/account_level_four.entity";
+import { AccountLevelTwo } from "../../../../models/finance/accounts/masters/account_level_two.entity";
+// import { AccountLevelFour } from "../../../../models/finance/accounts/masters/account_level_four.entity";
+
 
 // Get account tree structure
 export const getAcTree = async (req: RequestWithUser, res: Response) => {
@@ -394,6 +399,338 @@ export const updateLevel2AcTreeNode = async (
     }
   }
 };
+
+export const deleteLevel2AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code } = req.user;
+    const { ac_code } = req.params; // L2_CODE
+
+    connection = await oracledb.getConnection();
+
+    /* ---------- Check Level-2 exists ---------- */
+    const level2Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L2
+      WHERE L2_CODE = :l2_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l2_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level2Result.rows || level2Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    /* ---------- Check child Level-3 exists ---------- */
+    const childResult = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L3
+      WHERE L2_CODE = :l2_code
+        AND COMPANY_CODE = :company_code
+      FETCH FIRST 1 ROWS ONLY
+      `,
+      { l2_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (childResult.rows && childResult.rows.length > 0) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Cannot delete. Level-2 has child Level-3 accounts."
+      });
+      return;
+    }
+
+    /* ---------- Delete Level-2 ---------- */
+    await connection.execute(
+      `
+      DELETE FROM MS_AC_L2
+      WHERE L2_CODE = :l2_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l2_code: ac_code, company_code },
+      { autoCommit: true }
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.DELETED_SUCCESSFULLY
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection", err);
+      }
+    }
+  }
+};
+
+export const deleteLevel3AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code } = req.user;
+    const { ac_code } = req.params; // L2_CODE
+
+    connection = await oracledb.getConnection();
+
+    /* ---------- Check Level-3 exists ---------- */
+    const level3Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L3
+      WHERE L3_CODE = :l3_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l3_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level3Result.rows || level3Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    /* ---------- Check child Level-4 exists ---------- */
+    const childResult = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L4
+      WHERE L4_CODE = :l4_code
+        AND COMPANY_CODE = :company_code
+      FETCH FIRST 1 ROWS ONLY
+      `,
+      { l4_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (childResult.rows && childResult.rows.length > 0) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Cannot delete. Level-2 has child Level-3 accounts."
+      });
+      return;
+    }
+
+    /* ---------- Delete Level-3 ---------- */
+    await connection.execute(
+      `
+      DELETE FROM MS_AC_L3
+      WHERE L3_CODE = :l3_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l3_code: ac_code, company_code },
+      { autoCommit: true }
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.DELETED_SUCCESSFULLY
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection", err);
+      }
+    }
+  }
+};
+
+export const deleteLevel4AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code } = req.user;
+    const { ac_code } = req.params; // L2_CODE
+
+    connection = await oracledb.getConnection();
+
+    /* ---------- Check Level-4 exists ---------- */
+    const level4Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L4
+      WHERE L4_CODE = :l4_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l4_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level4Result.rows || level4Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    // /* ---------- Check child Level-5 exists ---------- */
+    const childResult = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_ACCODES
+      WHERE AC_CODE = :ac_code
+        AND COMPANY_CODE = :company_code
+      FETCH FIRST 1 ROWS ONLY
+      `,
+      { ac_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (childResult.rows && childResult.rows.length > 0) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Cannot delete. Level-2 has child Level-3 accounts."
+      });
+      return;
+    }
+
+    /* ---------- Delete Level-2 ---------- */
+    await connection.execute(
+      `
+      DELETE FROM MS_AC_L4
+      WHERE L4_CODE = :l4_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l4_code: ac_code, company_code },
+      { autoCommit: true }
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.DELETED_SUCCESSFULLY
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection", err);
+      }
+    }
+  }
+};
+
+export const deleteLevel5AcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+
+  try {
+    const { company_code } = req.user;
+    const { ac_code } = req.params; // L2_CODE
+
+    connection = await oracledb.getConnection();
+
+    /* ---------- Check Level-5 exists ---------- */
+    const level5Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_ACCODES
+      WHERE AC_CODE = :ac_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { ac_code: ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!level5Result.rows || level5Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+    /* ---------- Delete Level-5 ---------- */
+    await connection.execute(
+      `
+      DELETE FROM MS_ACCODES
+      WHERE AC_CODE = :ac_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { ac_code: ac_code, company_code },
+      { autoCommit: true }
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.DELETED_SUCCESSFULLY
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
+
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error("Error closing Oracle connection", err);
+      }
+    }
+  }
+};
+
 
 
 // Level 3 Account Operations
@@ -1014,7 +1351,7 @@ export const getAccountChildrenAcTreeNode = async (
     const result = await connection.execute(
       `
       SELECT *
-      FROM MS_AC
+      FROM MS_ACCODES
       WHERE AC_CODE = :ac_code
         AND COMPANY_CODE = :company_code
       `,
@@ -1174,29 +1511,129 @@ export const createAccountChildrenAcTreeNode = async (
 
     // Insert Account
     await connection.execute(
-      `
-      INSERT INTO MS_AC (
-        AC_CODE,
-        L4_CODE,
-        COMPANY_CODE,
-        CREATED_BY,
-        UPDATED_BY
-      )
-      VALUES (
-        '',
-        :l4_code,
-        :company_code,
-        :loginid,
-        :loginid
-      )
-      `,
-      {
-        l4_code,
-        company_code,
-        loginid
-      },
-      { autoCommit: true }
-    );
+  `
+  INSERT INTO MS_ACCODES (
+    AC_CODE,
+    L4_CODE,
+    AC_NAME,
+    ADDRESS_1,
+    ADDRESS_2,
+    ADDRESS_3,
+    TERRITORY_CODE,
+    CITY_NAME,
+    COUNTRY_CODE,
+    PHONE,
+    MOBILE_NO,
+    FAX,
+    E_MAIL,
+    CONTACT_PERSON,
+    DEPT_CODE,
+    CREDIT_PERIOD,
+    CREDIT_AMOUNT,
+    CURR_CODE,
+    BANK_AC_CODE,
+    BANK_NAME,
+    BANK_SWIFT,
+    CONTRACT_EXPRY_DATE,
+    AC_INFZE,
+    SALESMAN_CODE,
+    SECTOR_CODE,
+    TRN_NO,
+    TAX_REGISTRD,
+    TAX_COUNTRY_CODE,
+    RCM_APPLY,
+    BI_MAIN_GROUP,
+    BI_SUB_GROUP,
+    PL_BL_CODE,
+    BI_EXP_TYPE,
+    BI_PL_BS_IND,
+    BI_DEPT,
+    COMPANY_CODE,
+    CREATED_BY,
+    UPDATED_BY
+  )
+  VALUES (
+    '',
+    :l4_code,
+    :ac_name,
+    :address_1,
+    :address_2,
+    :address_3,
+    :territory_code,
+    :city_name,
+    :country_code,
+    :phone,
+    :mobile_no,
+    :fax,
+    :e_mail,
+    :contact_person,
+    :dept_code,
+    :credit_period,
+    :credit_amount,
+    :curr_code,
+    :bank_ac_code,
+    :bank_name,
+    :bank_swift,
+    :contract_expry_date,
+    :ac_infze,
+    :salesman_code,
+    :sector_code,
+    :trn_no,
+    :tax_registrd,
+    :tax_country_code,
+    :rcm_apply,
+    :bi_main_group,
+    :bi_sub_group,
+    :pl_bl_code,
+    :bi_exp_type,
+    :bi_pl_bs_ind,
+    :bi_dept,
+    :company_code,
+    :loginid,
+    :loginid
+  )
+  `,
+  {
+    l4_code,
+    ac_name: data.ac_name,
+    address_1: data.address_1,
+    address_2: data.address_2,
+    address_3: data.address_3,
+    territory_code: data.territory_code,
+    city_name: data.city_name,
+    country_code: data.country_code,
+    phone: data.phone,
+    mobile_no: data.mobile_no,
+    fax: data.fax,
+    e_mail: data.e_mail,
+    contact_person: data.contact_person,
+    dept_code: data.dept_code,
+    credit_period: data.credit_period,
+    credit_amount: data.credit_amount,
+    curr_code: data.curr_code,
+    bank_ac_code: data.bank_ac_code,
+    bank_name: data.bank_name,
+    bank_swift: data.bank_swift,
+    contract_expry_date: data.contract_expry_date,
+    ac_infze: data.ac_infze,
+    salesman_code: data.salesman_code,
+    sector_code: data.sector_code,
+    trn_no: data.trn_no,
+    tax_registrd: data.tax_registrd,
+    tax_country_code: data.tax_country_code,
+    rcm_apply: data.rcm_apply,
+    bi_main_group: data.bi_main_group,
+    bi_sub_group: data.bi_sub_group,
+    pl_bl_code: data.pl_bl_code,
+    bi_exp_type: data.bi_exp_type,
+    bi_pl_bs_ind: data.bi_pl_bs_ind,
+    bi_dept: data.bi_dept,
+    company_code,
+    loginid
+  },
+  { autoCommit: true }
+);
+
 
     //  Get session code
     const sessionResult = await connection.execute(
@@ -1323,120 +1760,186 @@ export const createAccountChildrenAcTreeNode = async (
 // };
 
 
-// export const updateAccountChildrenAcTreeNode = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   let connection;
+export const updateAccountChildrenAcTreeNode = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
 
-//   try {
-//     const { company_code, loginid } = req.user;
-//     const { ac_code } = req.params;
-//     const { l4_code, files, ...data } = req.body;
+  try {
+    const { company_code, loginid } = req.user;
+    const { ac_code } = req.params;
+    const { l4_code, files, ...data } = req.body;
 
-//     const { error } = accountFinanceSchema(req.body);
-//     if (error) {
-//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//         success: false,
-//         message: error.message
-//       });
-//       return;
-//     }
+    const { error } = accountFinanceSchema(req.body);
+    if (error) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
 
-//     connection = await oracledb.getConnection();
+    connection = await oracledb.getConnection();
 
-//     //  Check Account exists
-//     const accountResult = await connection.execute(
-//       `
-//       SELECT 1
-//       FROM MS_AC
-//       WHERE AC_CODE = :ac_code
-//         AND COMPANY_CODE = :company_code
-//       `,
-//       { ac_code, company_code },
-//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//     );
+    //  Check Account exists
+    const accountResult = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_ACCODES
+      WHERE AC_CODE = :ac_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { ac_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-//     if (!accountResult.rows || accountResult.rows.length === 0) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: constants.MESSAGES.NOT_FOUND
-//       });
-//       return;
-//     }
+    if (!accountResult.rows || accountResult.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
 
-//     //  Check Level 4 exists
-//     const level4Result = await connection.execute(
-//       `
-//       SELECT 1
-//       FROM MS_AC_L4
-//       WHERE L4_CODE = :l4_code
-//         AND COMPANY_CODE = :company_code
-//       `,
-//       { l4_code, company_code },
-//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//     );
+    //  Check Level 4 exists
+    const level4Result = await connection.execute(
+      `
+      SELECT 1
+      FROM MS_AC_L4
+      WHERE L4_CODE = :l4_code
+        AND COMPANY_CODE = :company_code
+      `,
+      { l4_code, company_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-//     if (!level4Result.rows || level4Result.rows.length === 0) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: "Level4 " + constants.MESSAGES.NOT_FOUND
-//       });
-//       return;
-//     }
+    if (!level4Result.rows || level4Result.rows.length === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Level4 " + constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
 
-//     // Update Account
-//     await connection.execute(
-//       `
-//       UPDATE MS_AC
-//       SET
-//         L4_CODE = :l4_code,
-//         UPDATED_BY = :loginid
-//       WHERE AC_CODE = :ac_code
-//         AND COMPANY_CODE = :company_code
-//       `,
-//       {
-//         l4_code,
-//         loginid,
-//         ac_code,
-//         company_code
-//       },
-//       { autoCommit: true }
-//     );
+    // Update Account
+    await connection.execute(
+      `
+      UPDATE MS_ACCODES
+      SET
+        L4_CODE = :l4_code,
+        AC_NAME = :ac_name,
+        ADDRESS_1 = :address_1,
+        ADDRESS_2 = :address_2,
+        ADDRESS_3 = :address_3,
+        TERRITORY_CODE = :territory_code,
+        CITY_NAME = :city_name,
+        COUNTRY_CODE = :country_code,
+        PHONE = :phone,
+        MOBILE_NO = :mobile_no,
+        FAX = :fax,
+        E_MAIL = :e_mail,
+        CONTACT_PERSON = :contact_person,
+        DEPT_CODE = :dept_code,
+        CREDIT_PERIOD = :credit_period,
+        CREDIT_AMOUNT = :credit_amount,
+        CURR_CODE = :curr_code,
+        BANK_AC_CODE = :bank_ac_code,
+        BANK_NAME = :bank_name,
+        BANK_SWIFT = :bank_swift,
+        CONTRACT_EXPRY_DATE = :contract_expry_date,
+        AC_INFZE = :ac_infze,
+        SALESMAN_CODE = :salesman_code,
+        SECTOR_CODE = :sector_code,
+        TRN_NO = :trn_no,
+        TAX_REGISTRD = :tax_registrd,
+        TAX_COUNTRY_CODE = :tax_country_code,
+        RCM_APPLY = :rcm_apply,
+        BI_MAIN_GROUP = :bi_main_group,
+        BI_SUB_GROUP = :bi_sub_group,
+        PL_BL_CODE = :pl_bl_code,
+        BI_EXP_TYPE = :bi_exp_type,
+        BI_PL_BS_IND = :bi_pl_bs_ind,
+        BI_DEPT = :bi_dept,
+        UPDATED_BY = :loginid
+      WHERE AC_CODE = :ac_code
+        AND COMPANY_CODE = :company_code
+      `,
+      {
+        l4_code: l4_code,
+        ac_name: data.ac_name,
+        address_1: data.address_1 || null,
+        address_2: data.address_2 || null,
+        address_3: data.address_3 || null,
+        territory_code: data.territory_code || null,
+        city_name: data.city_name || null,
+        country_code: data.country_code || null,
+        phone: data.phone || null,
+        mobile_no: data.mobile_no || null,
+        fax: data.fax || null,
+        e_mail: data.e_mail || null,
+        contact_person: data.contact_person || null,
+        dept_code: data.dept_code || null,
+        credit_period: data.credit_period || null,
+        credit_amount: data.credit_amount || null,
+        curr_code: data.curr_code || null,
+        bank_ac_code: data.bank_ac_code || null,
+        bank_name: data.bank_name || null,
+        bank_swift: data.bank_swift || null,
+        contract_expry_date: data.contract_expry_date || null,
+        ac_infze: data.ac_infze || 'N',
+        salesman_code: data.salesman_code || null,
+        sector_code: data.sector_code || null,
+        trn_no: data.trn_no || null,
+        tax_registrd: data.tax_registrd || 'N',
+        tax_country_code: data.tax_country_code || null,
+        rcm_apply: data.rcm_apply || 'N',
+        bi_main_group: data.bi_main_group || null,
+        bi_sub_group: data.bi_sub_group || null,
+        pl_bl_code: data.pl_bl_code || null,
+        bi_exp_type: data.bi_exp_type || null,
+        bi_pl_bs_ind: data.bi_pl_bs_ind || null,
+        bi_dept: data.bi_dept || null,
+        loginid,
+        ac_code,
+        company_code
+      },
+      { autoCommit: true }
+    );
 
-//     // 📎 Save files
-//     if (files && files.length) {
-//       await Files.bulkCreate(
-//         (files as IFiles[]).map((file) => ({
-//           ...file,
-//           request_number: "ACCT" + ac_code
-//         }))
-//       );
-//     }
+    // 📎 Save files
+    // if (files && files.length) {
+    //   await Files.bulkCreate(
+    //     (files as IFiles[]).map((file) => ({
+    //       ...file,
+    //       request_number: "ACCT" + ac_code
+    //     }))
+    //   );
+    // }
 
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       message: constants.MESSAGES.UPDATED_SUCCESSFULLY
-//     });
-//     return;
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.UPDATED_SUCCESSFULLY
+    });
+    return;
 
-//   } catch (error: any) {
-//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//       success: false,
-//       message: error.message
-//     });
-//     return;
+  } catch (error: any) {
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message
+    });
+    return;
 
-//   } finally {
-//     if (connection) await connection.close();
-//   }
-// };
+  } finally {
+    if (connection) await connection.close();
+  }
+};
 
 
 
 // //----------------delete----------
 
-// // Delete Operations
+// Delete Operations
 // export const deleteAccountItem = async (
 //   // Delete account item based on level
 //   req: RequestWithUser,
@@ -1511,5 +2014,215 @@ export const createAccountChildrenAcTreeNode = async (
 //       .status(constants.STATUS_CODES.BAD_REQUEST)
 //       .json({ success: false, message: error.message });
 //     return;
+//   }
+// };
+
+// export const deleteAccountItem = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   try {
+//     const level = Number(req.params.level);
+//     const ac_code = req.query.ac_code as string;
+//     const requestUser = req.user;
+
+//     if (!ac_code) {
+//       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "Account code is required",
+//       });
+//     }
+
+//     // Ensure TypeORM connection is ready
+//     await TypeORMService.ensureConnection();
+
+//     // Run transactional delete
+//     const result = await TypeORMService.AppDataSource.manager.transaction(
+//       async (manager: { getRepository: (arg0: typeof AccountLevelThree) => any; }) => {
+//         switch (level) {
+//           case 3: {
+//             const repo = manager.getRepository(AccountLevelThree);
+
+//             // Update "updated_by" before deleting
+//             await repo.update(
+//               { l3_code: ac_code, company_code: requestUser.company_code },
+//               { updated_by: requestUser.loginid }
+//             );
+
+//             const deleteResult = await repo.delete({
+//               l3_code: ac_code,
+//               company_code: requestUser.company_code,
+//             });
+//             return deleteResult;
+//           }
+
+//           case 4: {
+//             const repo = manager.getRepository(AccountLevelFour);
+
+//             const deleteResult = await repo.delete({
+//               l4_code: ac_code,
+//               company_code: requestUser.company_code,
+//             });
+//             return deleteResult;
+//           }
+
+//           case 5: {
+//             const repo = manager.getRepository(Account);
+
+//             // Update "updated_by" before deleting
+//             await repo.update(
+//               { ac_code, company_code: requestUser.company_code },
+//               { updated_by: requestUser.loginid }
+//             );
+
+//             const deleteResult = await repo.delete({
+//               ac_code,
+//               company_code: requestUser.company_code,
+//             });
+//             return deleteResult;
+//           }
+
+//           default:
+//             throw new Error("Invalid account level");
+//         }
+//       }
+//     );
+
+//     if (!result.affected || result.affected === 0) {
+//       return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: "No record found to delete",
+//       });
+//     }
+
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       message: constants.MESSAGES.DELETED_SUCCESSFULLY,
+//     });
+//   } catch (error: any) {
+//     console.error("Delete account error:", error);
+//     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//       success: false,
+//       message: error.message || "Failed to delete account",
+//     });
+//   }
+// };
+
+// export const deleteAccountItem = async (req: RequestWithUser, res: Response) => {
+//   const level = Number(req.params.level);
+//   const ac_code = req.query.ac_code as string;
+//   const requestUser = req.user;
+// console.log("-----------CALLING DELETE1-----------------------")
+//   const queryRunner = AppDataSource.createQueryRunner();
+
+//   try {
+//     // Start transaction
+//     await queryRunner.connect();
+//     await queryRunner.startTransaction();
+
+//     let result;
+//     console.log("-----------error1-----------------------") 
+//     switch (level) {
+      
+//       case 2:
+//         // Check Level-2 exists
+//         console.log("-----------error2-----------------------") 
+//         const level2 = await queryRunner.manager.findOne(AccountLevelTwo, {
+//           where: { l2_code: ac_code, company_code: requestUser.company_code },
+//         });
+
+//         if (!level2) {
+//           res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//             success: false,
+//             message: constants.MESSAGES.NOT_FOUND,
+//           });
+//           throw new Error("Level-2 not found"); // stop transaction
+//         }
+
+//         // Check child Level-3 exists
+//         const childL3 = await queryRunner.manager.findOne(AccountLevelThree, {
+//           where: { l2_code: ac_code, company_code: requestUser.company_code },
+//         });
+
+//         if (childL3) {
+//           res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//             success: false,
+//             message: "Cannot delete. Level-2 has child Level-3 accounts.",
+//           });
+//           throw new Error("Level-2 has children"); // stop transaction
+//         }
+
+//         // Delete Level-2
+//         result = await queryRunner.manager.delete(AccountLevelTwo, {
+//           l2_code: ac_code,
+//           company_code: requestUser.company_code,
+//         });
+//         break;
+        
+
+//       case 3:
+//         console.log("-----------error3-----------------------") 
+//         // Update updated_by first
+//         await queryRunner.manager.update(
+//           AccountLevelThree,
+//           { l3_code: ac_code, company_code: requestUser.company_code },
+//           { updated_by: requestUser.loginid }
+//         );
+
+//         result = await queryRunner.manager.delete(AccountLevelThree, {
+//           l3_code: ac_code,
+//           company_code: requestUser.company_code,
+//         });
+//         break;
+
+//       case 4:
+//         console.log("-----------error4-----------------------") 
+//         result = await queryRunner.manager.delete(AccountLevelFour, {
+//           l4_code: ac_code,
+//           company_code: requestUser.company_code,
+//         });
+//         break;
+
+//       case 5:
+//         console.log("-----------error5-----------------------") 
+//         await queryRunner.manager.update(
+//           Account,
+//           { ac_code, company_code: requestUser.company_code },
+//           { updated_by: requestUser.loginid }
+//         );
+
+//         result = await queryRunner.manager.delete(Account, {
+//           ac_code,
+//           company_code: requestUser.company_code,
+//         });
+//         break;
+        
+
+//       default:
+//         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//           success: false,
+//           message: "Invalid level",
+//         });
+//         throw new Error("Invalid level");
+//     }
+//     console.log("-----------error6-----------------------") 
+
+//     await queryRunner.commitTransaction();
+
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       message: constants.MESSAGES.DELETED_SUCCESSFULLY,
+//     });
+//   } catch (error: any) {
+//     await queryRunner.rollbackTransaction();
+
+//     if (!res.headersSent) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: error.message,
+//       });
+//     }
+//   } finally {
+//     await queryRunner.release();
 //   }
 // };
