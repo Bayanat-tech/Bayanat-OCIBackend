@@ -64529,3 +64529,338 @@ TSError: ⨯ Unable to compile TypeScript:
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+2026-01-25 12:18:40 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:18:41 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:18:43 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:18:48 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:17 [[31merror[39m]: Error in processStalePendingRecords: ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.processStalePendingRecords (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1790:28)
+2026-01-25 12:19:36 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:37 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:39 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:43 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:37:10 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1626:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:39:17 [[31merror[39m]: Error in processStalePendingRecords: ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.processStalePendingRecords (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1790:28)
+2026-01-25 12:48:34 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:43 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:48 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:50 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:52 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 14:30:04 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-25 14:39:48 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+TSError: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-25 14:40:46 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+TSError: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-25 14:56:22 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-25 15:05:34 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+[7m29[0m   deleteSecMaster
+[7m  [0m [91m  ~~~~~~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-25 15:09:55 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+TSError: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)

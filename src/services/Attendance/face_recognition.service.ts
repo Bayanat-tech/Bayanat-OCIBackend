@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import fetch from "node-fetch";
 import { AppDataSource } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
  
 let tfjsNodeAttempted = false;
 let tfjsNodeLoaded = false;
@@ -321,11 +322,14 @@ export class FaceRecognitionService {
   // **OPTIMIZED cached face matcher**
   private async getCachedFaceMatcher(): Promise<faceapi.FaceMatcher> {
     const now = Date.now();
- 
+
     if (faceMatcher && now - faceMatcherLastUpdate < FACE_MATCHER_CACHE_TTL) {
       return faceMatcher;
     }
- 
+
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const Employeeface = AppDataSource.getRepository(EmployeeFace);
     const activeFaces = await Employeeface.find({
       where: { is_active: "1" },

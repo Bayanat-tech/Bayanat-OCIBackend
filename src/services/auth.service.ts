@@ -3,25 +3,36 @@ import { getRepository } from "../database/connection";
 import { User } from "../entity/User";
 import { QueryExecutor } from "../database/QueryExecutor";
 import { oracleDb } from "../database/connection";
+import { TenantManager } from "../database/TenantManager";
 
 export class AuthService {
   private static getUserRepository() {
     return getRepository(User);
   }
 
-  // Find user by email or loginid (from central SEC_LOGIN)
-  static async findUserByEmailOrLoginId(email: string): Promise<any> {
+  static async findUserByEmailOrLoginId(
+    email: string
+  ): Promise<{
+    user: any;
+    tenantId: string;
+  } | null> {
     try {
-      const result = await oracleDb.query(
-        `SELECT * FROM SEC_LOGINTEST
-         WHERE (EMAIL_ID = :email OR LOGINID = :email) 
-           AND ACTIVE_FLAG = 'Y'`,
-        { email }
-      );
-      console.log("User found:", result.rows?.[0]);
-      return result.rows?.[0] || null;
+      console.log(`[AuthService.findUserByEmailOrLoginId] STEP 1: Finding user...`);
+      const result = await QueryExecutor.getUserWithTenant(email);
+      
+      if (!result) {
+        console.log(`[AuthService.findUserByEmailOrLoginId] ❌ User not found`);
+        return null;
+      }
+
+      console.log(`[AuthService.findUserByEmailOrLoginId] ✅ User found: ${result.user.LOGINID}, Tenant: ${result.tenantId}`);
+      
+      return {
+        user: result.user,
+        tenantId: result.tenantId
+      };
     } catch (error) {
-      console.error("Error finding user:", error);
+      console.error(`[AuthService.findUserByEmailOrLoginId] Error:`, error);
       return null;
     }
   }
@@ -31,16 +42,10 @@ export class AuthService {
     user: any;
     tenantId: string;
   } | null> {
-    const result = await QueryExecutor.getUserWithTenant(email);
-    if (!result) return null;
-    
-    return {
-      user: result.user,
-      tenantId: result.tenantId
-    };
+    return this.findUserByEmailOrLoginId(email);
   }
 
-  // Execute query in user's tenant
+  // Execute query in user's tenant (uses centralized QueryExecutor)
   static async executeInUserTenant(
     loginid: string,
     query: string,
@@ -90,10 +95,12 @@ export class AuthService {
     hashedPassword: string
   ): Promise<any> {
     try {
+      console.log(`[AuthService.createUserFromExternal] Creating user: ${apiUser.USER_ID}...`);
+      
       // Insert into central SEC_LOGIN table
       await oracleDb.query(
-        `INSERT INTO SEC_LOGIN 
-         (LOGINID, USERNAME, EMAIL_ID, USERPASS, SEC_PASSWD, COMPANY_CODE, ACTIVE_FLAG, CREATED_BY, CREATED_DATE)
+        `INSERT INTO SEC_LOGINTEST 
+         (LOGINID, USERNAME, EMAIL_ID, USERPASS, SEC_PASSWD, COMPANY_CODE, ACTIVE_FLAG, CREATED_AT, CREATED_DATE)
          VALUES (:loginid, :username, :email, :hashedPassword, :hashedPassword, :companyCode, 'Y', 'system', SYSDATE)`,
         {
           loginid: apiUser.USER_ID,

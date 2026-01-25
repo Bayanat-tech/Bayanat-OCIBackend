@@ -1,4 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { AccessUserSecRoleAccess } from "../../entity/Security/accessusersecroleaccess.entity";
 import { AccessSecModuleData } from "../../entity/Security/accesssecmoduledata.entity";
 import { AccessSecOperation } from "../../entity/Security/accesssecoperation.entity";
@@ -12,6 +13,9 @@ export class AccessMasterService {
     serial_no_or_role_id: number,
     company_code: string
   ): Promise<AccessUserSecRoleAccess | null> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(AccessUserSecRoleAccess);
     return await repository.findOne({
       where: { loginid, serial_no_or_role_id, company_code },
@@ -34,6 +38,9 @@ export class AccessMasterService {
     shelp: string;
     company_code: string;
   }): Promise<AccessUserSecRoleAccess> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(AccessUserSecRoleAccess);
     const access = repository.create(accessData);
     return await repository.save(access);
@@ -68,6 +75,9 @@ export class AccessMasterService {
   static async getModuleWithOperations(
     serial_no: number
   ): Promise<AccessSecModuleData | null> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(AccessSecModuleData);
     return await repository.findOne({
       where: { serial_no },
@@ -90,6 +100,9 @@ export class AccessMasterService {
     shelp: string;
     company_code: string;
   }): Promise<AccessSecOperation> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(AccessSecOperation);
 
     // Check if module exists first

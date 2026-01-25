@@ -1,6 +1,7 @@
 import { Repository } from "typeorm";
 
-import { AppDataSource } from "../../database/connection"; 
+import { AppDataSource } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { PRRejected } from "../../models/Purchaseflow/purchaserequest_pf.model";
 
 export interface FetchResult<T> {
@@ -32,6 +33,9 @@ export class PRRejectedService {
     filter: FilterOptions = {},
     paginationOptions: PaginationOptions = { skip: 0, take: 20 }
   ): Promise<FetchResult<PRRejected>> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = this.getRepository();
 
     // Build base query

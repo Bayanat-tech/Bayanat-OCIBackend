@@ -1,6 +1,7 @@
 // Import required modules and controllers
 import * as express from "express";
 import passport from "passport";
+import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 import { deleteHrMaster, getHrMaster } from "../controllers/hr.controller";
 import hrGmRoutes from "./HR/gmHr.routes";
 import employeeHrRoutes from "./HR/employeHr.routes";
@@ -16,6 +17,8 @@ router.get(
   "/:masters",
   // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
+  // Apply tenant context
+  tenantContextMiddleware,
   // Check user authorization
   checkUserAuthorization,
   // Call the getHrMaster controller function to handle the request
@@ -27,6 +30,8 @@ router.use(
   "/gm",
   // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
+  // Apply tenant context
+  tenantContextMiddleware,
   // Check user authorization
   checkUserAuthorization,
   // Mount the hrGmRoutes router
@@ -38,6 +43,8 @@ router.use(
   "/employee",
   // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
+  // Apply tenant context
+  tenantContextMiddleware,
   // Check user authorization
   checkUserAuthorization,
   // Mount the employeeHrRoutes router

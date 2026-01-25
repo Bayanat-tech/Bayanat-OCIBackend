@@ -1,4 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { SecLogin } from "../../entity/Security/seclogin.entity";
 import { MSPSProjectMaster } from "../../entity/Security/mspsprojectmaster.entity";
 import { MSProjectUserAssign } from "../../entity/Security/msprojectuserassign.entity";
@@ -10,6 +11,9 @@ export class ScreenAccessService {
     user_id: string,
     project_code: string
   ): Promise<MSProjectUserAssign> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(MSProjectUserAssign);
 
     const existingAssignment = await repository.findOne({
@@ -65,6 +69,9 @@ export class ScreenAccessService {
   static async getUserWithAssignedProjects(
     user_id: string
   ): Promise<SecLogin | null> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(SecLogin);
     return await repository.findOne({
       where: { user_id },
@@ -93,6 +100,9 @@ export class ScreenAccessService {
   static async getProjectWithAssignedUsers(
     project_code: string
   ): Promise<MSPSProjectMaster | null> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(MSPSProjectMaster);
     return await repository.findOne({
       where: { project_code },
@@ -148,12 +158,18 @@ export class ScreenAccessService {
   // ==================== VALIDATION METHODS ====================
 
   static async validateUserExists(user_id: string): Promise<boolean> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(SecLogin);
     const count = await repository.count({ where: { user_id } });
     return count > 0;
   }
 
   static async validateProjectExists(project_code: string): Promise<boolean> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(MSPSProjectMaster);
     const count = await repository.count({ where: { project_code } });
     return count > 0;

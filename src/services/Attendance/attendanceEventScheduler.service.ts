@@ -2,6 +2,7 @@ import cron from "node-cron";
 import logger from "../../utils/logger";
 import { HrService } from "../../services/hr.service";
 import { AppDataSource } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { AttendanceEvent, DataTransferFlag, AttendanceStatus } from "../../entity/Attendance/attendance_events.entity";
 
 export class AttendanceEventScheduler {
@@ -25,6 +26,9 @@ export class AttendanceEventScheduler {
       return;
     }
     this.isRunning = true;
+
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
 
     const attendanceRepository = AppDataSource.getRepository(AttendanceEvent);
     try {
@@ -100,6 +104,9 @@ export class AttendanceEventScheduler {
     totalSent: number;
     lastTransfer: Date | null;
   }> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const attendanceRepository = AppDataSource.getRepository(AttendanceEvent);
 
     const totalUnsent = await attendanceRepository.count({

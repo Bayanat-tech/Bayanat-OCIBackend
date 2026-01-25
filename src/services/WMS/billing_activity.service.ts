@@ -1,9 +1,12 @@
 import { AppDataSource } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { BillingActivity } from "../../entity/WMS/billing_activity.entity";
  
 export class BillingActivityService {
   static async getBillingActivity(company_code: string, prin_code: string) {
     try {
+      await ensureCorrectSchema();
+
       const repository = AppDataSource.getRepository(BillingActivity);
       let query = `
         SELECT
@@ -39,7 +42,6 @@ export class BillingActivityService {
       console.log("req param", {company_code,prin_code});
       console.log("Executing query:", query);
  
- // return await (repository.query as any)(query, [ company_code, prin_code ]);
   return await repository.query(query, [company_code, prin_code]);
  
     } catch (error) {
@@ -52,6 +54,9 @@ export class BillingActivityService {
  
   static async createBillingActivity(data: any) {
     try {
+      // Ensure correct tenant schema before executing TypeORM queries
+      await ensureCorrectSchema();
+
       const repository = AppDataSource.getRepository(BillingActivity);
  
       // Check if record already exists
@@ -110,6 +115,9 @@ export class BillingActivityService {
  
   static async updateBillingActivity(data: any) {
     try {
+      // Ensure correct tenant schema before executing TypeORM queries
+      await ensureCorrectSchema();
+
       const repository = AppDataSource.getRepository(BillingActivity);
  
       //  Check if record exists
@@ -163,6 +171,9 @@ export class BillingActivityService {
   //delete
  
   static async deleteBillingActivity(payload: any) {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = AppDataSource.getRepository(BillingActivity);
  
     const {

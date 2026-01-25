@@ -1,0 +1,178 @@
+/**
+ * CENTRALIZED TENANT CONTEXT MIDDLEWARE
+ * 
+ * This middleware handles all tenant routing automatically.
+ * INCLUDES automatic TypeORM schema switching!
+ * No need to change individual routes/services!
+ * 
+ * How it works:
+ * 1. Extracts user from JWT token
+ * 2. Looks up tenant from USER_TENANT_MAPPING
+ * 3. Switches TypeORM schema to tenant schema
+ * 4. All TypeORM queries automatically use correct schema
+ */
+
+import { Request, Response, NextFunction } from "express";
+import { TenantManager } from "../database/TenantManager";
+import { AppDataSource } from "../database/connection";
+import { RequestWithUser } from "../interfaces/common.interface";
+
+// Store tenant context in AsyncLocalStorage for thread-safe access
+import { AsyncLocalStorage } from "async_hooks";
+
+export interface TenantContext {
+  loginid: string;
+  tenantId: string;
+  userId?: string;
+  email?: string;
+}
+
+// Global tenant context storage
+export const tenantContextStorage = new AsyncLocalStorage<TenantContext>();
+
+export function tenantContextMiddleware(
+  req: RequestWithUser,
+  res: Response,
+  next: NextFunction
+): void {
+  try {
+    // Skip for public routes (user will be undefined)
+    if (!req.user || !req.user.loginid) {
+      console.log(`[tenantContextMiddleware] ℹ️  No user context yet (public route or unauthenticated)`);
+      return next();
+    }
+
+    console.log(`[tenantContextMiddleware] ✅ MIDDLEWARE CALLED for user: ${req.user.loginid}`);
+    console.log(`[tenantContextMiddleware] STEP 1: User from req: ${req.user.loginid}`);
+
+    // Get tenantId from request user (should be set by passport)
+    let tenantId = req.user.tenantId;
+    
+    if (!tenantId) {
+      console.log(`[tenantContextMiddleware] STEP 2: Tenant not set, looking up from database...`);
+      // For sync path without tenant, just continue
+      return next();
+    } else {
+      console.log(`[tenantContextMiddleware] STEP 2: Tenant already set: ${tenantId}`);
+    }
+
+    if (!tenantId) {
+      console.error(`[tenantContextMiddleware] No tenant found for user: ${req.user.loginid}`);
+      res.status(403).json({
+        success: false,
+        message: "No tenant mapped for this user",
+      });
+      return;
+    }
+
+    console.log(`[tenantContextMiddleware] ✅ Tenant detected: ${tenantId} for user: ${req.user.loginid}`);
+
+    // Create tenant context
+    const tenantContext: TenantContext = {
+      loginid: req.user.loginid,
+      tenantId: tenantId,
+      userId: req.user.id,
+      email: req.user.email_id,
+    };
+
+    // Attach to request for direct access
+    req.user!.tenantId = tenantId;
+    (req as any).tenantContext = tenantContext;
+    
+    console.log(`[tenantContextMiddleware] ✅ CONTEXT SET: loginid=${req.user!.loginid}, tenant=${tenantId}, schema=${tenantId.split('_')[0]}`);
+    
+    // ✨ CRITICAL: Store in global as fallback for when AsyncLocalStorage context is lost
+    // This happens because Express may switch async contexts when calling next()
+    (global as any).__currentRequestContext = tenantContext;
+
+    tenantContextStorage.enterWith(tenantContext);
+    
+    // ✨ CRITICAL: Switch TypeORM schema to tenant schema
+    console.log(`[tenantContextMiddleware] STEP 3: Switching TypeORM schema to tenant...`);
+    (async () => {
+      try {
+        if (AppDataSource.isInitialized) {
+          const tenantConfig = await TenantManager.getTenantConfig(tenantId);
+          const schemaName = tenantConfig.SCHEMA_NAME;
+          
+          // Get the underlying QueryRunner's connection and switch schema
+          const queryRunner = AppDataSource.createQueryRunner();
+          try {
+            console.log(`[tenantContextMiddleware] Executing ALTER SESSION for schema: ${schemaName}`);
+            await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
+            console.log(`[tenantContextMiddleware] ✅ TypeORM schema switched to ${schemaName}`);
+          } finally {
+            await queryRunner.release();
+          }
+        } else {
+          console.log(`[tenantContextMiddleware] ℹ️  TypeORM not initialized, skipping schema switch`);
+        }
+      } catch (schemaError) {
+        console.warn(`[tenantContextMiddleware] ⚠️  Schema switch failed (continuing anyway):`, schemaError);
+      }
+    })();
+    
+    // ✨ Clear global context when response finishes to prevent memory leaks
+    res.on('finish', () => {
+      if ((global as any).__currentRequestContext?.tenantId === tenantId) {
+        (global as any).__currentRequestContext = undefined;
+      }
+    });
+    
+    // Call next() outside the async schema switching to not block
+    next();
+  } catch (error: any) {
+    console.error(`[tenantContextMiddleware] ❌ ERROR:`, error.message);
+    res.status(500).json({
+      success: false,
+      message: "Error setting up tenant context",
+      error: error.message,
+    });
+  }
+}
+
+
+export function getCurrentTenantContext(): TenantContext | undefined {
+  // ✨ CRITICAL FIX: Check AsyncLocalStorage first (for direct calls)
+  const asyncContext = tenantContextStorage.getStore();
+  if (asyncContext) {
+    return asyncContext;
+  }
+  
+  // ✨ FALLBACK: If AsyncLocalStorage fails, try to get from global request context
+  // This handles the case where Express switches async contexts on next()
+  if ((global as any).__currentRequestContext) {
+    return (global as any).__currentRequestContext;
+  }
+  
+  return undefined;
+}
+
+export function getCurrentLoginid(): string | undefined {
+  const context = getCurrentTenantContext();
+  return context?.loginid;
+}
+
+export function getCurrentTenantId(): string | undefined {
+  const context = getCurrentTenantContext();
+  return context?.tenantId;
+}
+
+
+export async function runInTenantContext<T>(
+  loginid: string,
+  tenantId: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  const context: TenantContext = { loginid, tenantId };
+  return new Promise((resolve, reject) => {
+    tenantContextStorage.run(context, async () => {
+      try {
+        const result = await fn();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}

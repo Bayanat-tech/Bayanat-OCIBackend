@@ -2,6 +2,7 @@
 import express from "express";
 import multer from "multer";
 import passport from "passport";
+import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
 import { AttendanceController } from "../../controllers/Attendance/attendance.controller";
 
 const router = express.Router();

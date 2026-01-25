@@ -1,4 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import {
   FlowMaster,
   RoleMaster,
@@ -37,6 +38,8 @@ export class SecurityMasterService {
     limit: number = 20,
     sort?: { field_name: string; desc: boolean }
   ): Promise<{ tableData: T[]; count: number }> {
+    await ensureCorrectSchema();
+
     const repository = getRepository(entity);
 
     const skip = (page - 1) * limit;

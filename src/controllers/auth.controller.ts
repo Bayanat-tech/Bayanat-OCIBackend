@@ -43,10 +43,13 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
 
     const { email, password } = req.body;
 
+    console.log(`[login] STEP 1: Authenticating user '${email}'...`);
+
     // Get user with tenant info
     let userTenant = await AuthService.getUserWithTenant(email);
 
     if (!userTenant) {
+      console.log(`[login] User not found in SEC_LOGINTEST, checking external API...`);
       // Try external user creation
       try {
         const apiResponse = await VendorService.checkAccountEmployee(email);
@@ -70,6 +73,8 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
             hashedPassword
           );
           
+          console.log(`[login] ✅ External user created: ${newUser.LOGINID}`);
+          
           // For external users, use default tenant
           userTenant = {
             user: newUser,
@@ -83,7 +88,7 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
           return;
         }
       } catch (apiError: any) {
-        // ... handle API error
+        console.error(`[login] External API error:`, apiError.message);
         res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
           success: false,
           message: "Error validating user",
@@ -101,18 +106,24 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     }
 
     const { user, tenantId } = userTenant;
-
-    // Verify password
-    const isUserPassMatched = await AuthService.comparePassword(
-      password,
-      user.USERPASS
-    );
     
-    const isSecPassMatched = user.SEC_PASSWD
-      ? await AuthService.comparePassword(password, user.SEC_PASSWD)
-      : false;
+    console.log(`[login] ✅ User found: ${user?.LOGINID}, Tenant: ${tenantId}`);
 
-    if (!isUserPassMatched && !isSecPassMatched) {
+    // Verify password - handle both USERPASS and SEC_PASSWD fields
+    let isPasswordValid = false;
+    
+    if (user.USERPASS) {
+      console.log(`[login] STEP 2: Verifying password (USERPASS)...`);
+      isPasswordValid = await AuthService.comparePassword(password, user.USERPASS);
+    }
+    
+    if (!isPasswordValid && user.SEC_PASSWD) {
+      console.log(`[login] STEP 2: Verifying password (SEC_PASSWD)...`);
+      isPasswordValid = await AuthService.comparePassword(password, user.SEC_PASSWD);
+    }
+
+    if (!isPasswordValid) {
+      console.log(`[login] ❌ Invalid password`);
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.USER.INVALID_PASSWORD,
@@ -120,10 +131,16 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       return;
     }
 
+    console.log(`[login] ✅ STEP 2 SUCCESS: Password verified`);
+
     // Get tenant config for additional info
+    console.log(`[login] STEP 3: Getting tenant config...`);
     const tenantConfig = await TenantManager.getTenantConfig(tenantId);
+    
+    console.log(`[login] ✅ STEP 3 SUCCESS: Tenant config loaded`);
 
     // Generate token with tenant info
+    console.log(`[login] STEP 4: Generating JWT token...`);
     const token = await generateToken({
       username: user.USERNAME,
       email_id: user.EMAIL_ID,
@@ -132,6 +149,9 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       company_code: user.COMPANY_CODE,
       schemaName: tenantConfig.SCHEMA_NAME
     });
+    
+    console.log(`[login] ✅ STEP 4 SUCCESS: Token generated`);
+    console.log(`[login] ✅ LOGIN SUCCESSFUL for ${user.LOGINID}`);
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -147,6 +167,7 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       },
     });
   } catch (err: any) {
+    console.error(`[login] ❌ ERROR:`, err.message);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "An error occurred",
@@ -167,11 +188,15 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       return;
     }
 
-    const tenantId = requestUser.tenantId || 'WMSTST_TENANT';
+    const tenantId = requestUser.tenantId || 'WMSDEV_TENANT';
+    const loginid = requestUser.loginid;
+
+    console.log(`[me] Getting user info for ${loginid}...`);
 
     // Get user from central SEC_LOGIN
-    const user = await AuthService.findUserByEmailOrLoginId(requestUser.email_id);
-    if (!user) {
+    const userResult = await AuthService.getUserWithTenant(requestUser.email_id);
+    
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: constants.MESSAGES.USER.USER_NOT_FOUND,
@@ -179,8 +204,12 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       return;
     }
 
+    const user = userResult.user;
+
     // Remove sensitive data
-    const { USERPASS, SEC_PASSWD, ...userWithoutPassword } = user;
+    const userWithoutPassword: any = { ...user };
+    delete userWithoutPassword.USERPASS;
+    delete userWithoutPassword.SEC_PASSWD;
 
     // Get permissions from user's tenant
     let userPermissions: any[] = [];
@@ -191,19 +220,19 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     // Get user permissions from tenant (with error handling)
     try {
       userPermissions = await AuthService.executeInUserTenant(
-        user.LOGINID,
+        loginid,
         userPermissionQuery,
-        { loginid: user.LOGINID }
+        { loginid }
       );
     } catch (userPermError) {
-      console.warn(`⚠️ Failed to get user permissions for ${user.LOGINID}:`, userPermError instanceof Error ? userPermError.message : String(userPermError));
+      console.warn(`⚠️ Failed to get user permissions for ${loginid}:`, userPermError instanceof Error ? userPermError.message : String(userPermError));
       userPermissions = [];
     }
 
     // Get all permissions from tenant (with error handling)
     try {
       const permissionsArray = await AuthService.executeInUserTenant(
-        user.LOGINID,
+        loginid,
         permissionsListQuery,
         {}
       );
@@ -245,7 +274,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
 
           try {
             const menuTreeData = await AuthService.executeInUserTenant(
-              user.LOGINID,
+              loginid,
               menuTreeQuery,
               bindParams
             );
@@ -254,13 +283,13 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
               permissionBasedMenuTree = buildTree(menuTreeData, allPermissionsObj);
             }
           } catch (menuError) {
-            console.warn(`⚠️ Failed to get menu tree for ${user.LOGINID}:`, menuError instanceof Error ? menuError.message : String(menuError));
+            console.warn(`⚠️ Failed to get menu tree for ${loginid}:`, menuError instanceof Error ? menuError.message : String(menuError));
             permissionBasedMenuTree = {};
           }
         }
       }
     } catch (permError) {
-      console.warn(`⚠️ Failed to get all permissions for ${user.LOGINID}:`, permError instanceof Error ? permError.message : String(permError));
+      console.warn(`⚠️ Failed to get all permissions for ${loginid}:`, permError instanceof Error ? permError.message : String(permError));
       allPermissions = [];
       permissionBasedMenuTree = {};
     }
@@ -297,9 +326,9 @@ export const forgotPassword: RequestHandler = async (req: Request, res: Response
     }
 
     // Check if user exists
-    const user = await AuthService.findUserByEmailOrLoginId(email);
+    const userResult = await AuthService.getUserWithTenant(email);
 
-    if (!user) {
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found",
@@ -307,15 +336,17 @@ export const forgotPassword: RequestHandler = async (req: Request, res: Response
       return;
     }
 
+    const user = userResult.user;
+
     // Send password reset email
     await notifyUser({
       event: constants.EVENTS.FORGOT_PASSWORD,
-      request_users: user.email_id,
+      request_users: user.EMAIL_ID,
       subject: "Password Reset Instructions",
       htmlMessage: `
         <p>Dear User,</p>
         <p>Please click on the following link to reset your password:</p>
-        <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.email_id}">Reset Password</a></p>
+        <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.EMAIL_ID}">Reset Password</a></p>
         <p>If you did not request this, please ignore this email.</p>
         <p>Best regards,</p>
         <p>Bayanat Technology</p>
@@ -349,15 +380,17 @@ export const resetPassword: RequestHandler = async (req: Request, res: Response)
     }
 
     // Find user by email
-    const user = await AuthService.findUserByEmailOrLoginId(email);
+    const userResult = await AuthService.getUserWithTenant(email);
 
-    if (!user) {
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found",
       });
       return;
     }
+
+    const user = userResult.user;
 
     // Hash the new password
     const hashedPassword = await AuthService.hashPassword(password);
@@ -368,7 +401,7 @@ export const resetPassword: RequestHandler = async (req: Request, res: Response)
     // Send confirmation email
     await notifyUser({
       event: constants.EVENTS.RESET_PASSWORD,
-      request_users: user.email_id,
+      request_users: user.EMAIL_ID,
       subject: "Password Reset Successful",
       htmlMessage: `
         <p>Dear User,</p>
@@ -406,9 +439,9 @@ export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res
     }
 
     // Find user by login ID
-    const user = await AuthService.findUserByEmailOrLoginId(loginId);
+    const userResult = await AuthService.getUserWithTenant(loginId);
 
-    if (!user) {
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found with the provided login ID",
@@ -416,26 +449,28 @@ export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res
       return;
     }
 
+    const user = userResult.user;
+
     // Hash the new password
     const hashedPassword = await AuthService.hashPassword(newPassword);
 
     // Update user's password using email
-    await AuthService.updateUserPassword(user.email_id, hashedPassword);
+    await AuthService.updateUserPassword(user.EMAIL_ID, hashedPassword);
 
     // Check if company_code contains JASRA (case-insensitive)
-    const isJasraCompany = user.company_code && 
-                           user.company_code.toUpperCase().includes("JASRA");
+    const isJasraCompany = user.COMPANY_CODE && 
+                           user.COMPANY_CODE.toUpperCase().includes("JASRA");
     
     if (isJasraCompany) {
       // For JASRA users: Send password reset link via email
       await notifyUser({
         event: constants.EVENTS.RESET_PASSWORD,
-        request_users: user.email_id,
+        request_users: user.EMAIL_ID,
         subject: "Password Reset Link",
         htmlMessage: `
-          <p>Dear ${user.username || 'User'},</p>
+          <p>Dear ${user.USERNAME || 'User'},</p>
           <p>Please click on the following link to reset your password:</p>
-          <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.email_id}">Reset Password</a></p>
+          <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.EMAIL_ID}">Reset Password</a></p>
           <p>If you did not request this, please ignore this email.</p>
           <p>Best regards,</p>
           <p>Bayanat Technology</p>
@@ -453,10 +488,10 @@ export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res
       // Send confirmation email
       await notifyUser({
         event: constants.EVENTS.RESET_PASSWORD,
-        request_users: user.email_id,
+        request_users: user.EMAIL_ID,
         subject: "Password Reset Successful",
         htmlMessage: `
-          <p>Dear ${user.username || 'User'},</p>
+          <p>Dear ${user.USERNAME || 'User'},</p>
           <p>Your password has been successfully reset for login ID: ${loginId}</p>
           <p>If you did not make this change, please contact support immediately.</p>
           <p>Best regards,</p>

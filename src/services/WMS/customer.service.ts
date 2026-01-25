@@ -1,6 +1,7 @@
 import { Like, Repository } from "typeorm";
 import { CustomerMaster } from "../../entity/WMS/Customer.entity";
 import { AppDataSource } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 
 // export class CustomerService {
 
@@ -15,6 +16,9 @@ import { AppDataSource } from "../../database/connection";
     page: number,
     limit: number
   ) {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository: Repository<CustomerMaster> =
       AppDataSource.getRepository(CustomerMaster);
 
@@ -37,6 +41,9 @@ import { AppDataSource } from "../../database/connection";
  // CREATE CUSTOMER 
 
   static async createCustomer(data: any) {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repo = this.getRepository();
 
     const exists = await repo.findOne({
@@ -74,6 +81,9 @@ import { AppDataSource } from "../../database/connection";
     prin_code: string,
     updateData: any
   ) {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repo = this.getRepository();
 
     const existing = await repo.findOne({

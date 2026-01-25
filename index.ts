@@ -2,6 +2,8 @@ import cors from "cors";
 import express, { Request, Response } from "express";
 import { initializeAllConnections } from "./src/database/connection";
 import "./src/utils/passport";
+import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
+import passport from "passport";
 
 const app = express();
 
@@ -11,7 +13,13 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-//routes
+app.use(passport.initialize());
+
+export const withTenantContext = [
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware
+];
+
 
 import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
@@ -30,6 +38,7 @@ import wmsRoutes from "./src/routes/wms.routes";
 import boldReportsRoutes from "./src/routes/boldreports.routes";
 import cfsRoutes from "./src/routes/SMS/sms.routes";
 import pamsRoutes from "./src/routes/pams.routes";
+
 
 import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
 import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
@@ -103,7 +112,7 @@ const PORT = process.env.PORT || 3500;
 
 async function startServer() {
   try {
-    console.log("🚀 Starting server...");
+    console.log("Starting server...");
     
     // Initialize all connections
     console.log("Initializing database connections...");

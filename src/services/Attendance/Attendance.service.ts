@@ -13,6 +13,7 @@ import {AttendanceRecord} from "../../entity/Attendance/attendance_record.entity
 import { AttendanceEvent, AttendanceEventType, AttendanceStatus, DataTransferFlag } from "../../entity/Attendance/attendance_events.entity";
 import { ProxyLog } from "../../entity/Attendance/ProxyLog.entity";
 import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
   
 const AUTO_CONFIRM_DELAY_MS = 10000; 
 const FACE_RECOGNITION_TIMEOUT = 2500;
@@ -62,6 +63,9 @@ export class AttendanceService {
   recognizedEmployee: any; 
   autoConfirmDelay: number;
 }> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   const uuid = uuidv4();
   const now = new Date();
@@ -242,6 +246,9 @@ export class AttendanceService {
 
 
   private static async getEmployeeWithCache(employeeId: string): Promise<any> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const cacheKey = `employee:${employeeId}`;
     let employee = await this.cache.get(cacheKey);
     if (employee) {
@@ -272,6 +279,9 @@ export class AttendanceService {
   }
 
   private static async saveAttendanceToDatabase(data: any): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
       const eventData: any = {
         id: uuidv4(),
@@ -308,6 +318,9 @@ export class AttendanceService {
     }
   }
  static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Promise<any> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   
   logger.info(`[SERVICE-CONFIRM] Starting confirmation for UUID: ${uuid}, confirmedBy: ${confirmedBy}`);
@@ -463,6 +476,9 @@ export class AttendanceService {
   actualEmployeeName: string = 'User Cancelled',
   reason: string = 'user_cancelled'
 ): Promise<any> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   
   if (!await this.acquireRequestSlot()) {
@@ -1482,6 +1498,9 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
   // 🎯 FIXED CHECK IF UUID IS CANCELLED IN DATABASE
   private static async isCancelledInDatabase(uuid: string): Promise<boolean> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
       const attendanceEvents = AppDataSource.getRepository(AttendanceEvent);
       const event = await attendanceEvents.findOne({
@@ -1497,6 +1516,9 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
 
   private static async markAsCancelledInDatabase(uuid: string): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
       const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
       const result = await attendanceEvent.update(
@@ -1527,6 +1549,8 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     return this.cancelledConfirmations.has(uuid);
   }
   static async processAutoConfirm(): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
     const now = new Date();
     let memoryConfirmed = 0;
     let memoryCancelled = 0;
@@ -1606,6 +1630,9 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     page: number = 1,
     limit: number = 20
   ): Promise<any> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const skip = (page - 1) * limit;
 
     const adjustedStartDate = new Date(startDate);

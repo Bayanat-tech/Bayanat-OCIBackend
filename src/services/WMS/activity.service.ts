@@ -1,4 +1,5 @@
 import { AppDataSource } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { Activity } from "../../entity/WMS/activity.entity";
  
 export class ActivityService {
@@ -8,6 +9,9 @@ export class ActivityService {
     skip = 0,
   ) {
     try {
+      // Ensure correct tenant schema before executing TypeORM queries
+      await ensureCorrectSchema();
+
       const repository = AppDataSource.getRepository(Activity);
  
       const where: any = {
@@ -38,6 +42,9 @@ export class ActivityService {
 //   create Activity
    static async createActivity(data: any) {
     try {
+      // Ensure correct tenant schema before executing TypeORM queries
+      await ensureCorrectSchema();
+
       const repository = AppDataSource.getRepository(Activity);
  
       // Check if activity already exists
