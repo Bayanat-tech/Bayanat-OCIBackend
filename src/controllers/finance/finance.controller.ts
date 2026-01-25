@@ -2,52 +2,28 @@ import { Response } from "express";
 // import { Op, QueryTypes } from "sequelize";
 // import { sequelize } from "../../database/connection";
 import constants from "../../helpers/constants";
-import { getSearchFilterQuery } from "../../helpers/functions";
+//import { getSearchFilterQuery } from "../../helpers/functions";
 import { ISearch, RequestWithUser } from "../../interfaces/common.interface";
 import { ITrAcInvdetail } from "../../interfaces/finance/accounts/transactions/chequePaymentTransaction.interface";
 import { IUser } from "../../interfaces/user.interface";
-import Account from "../../models/finance/accounts/masters/account_finance.model";
-import AccountBlSetup from "../../models/finance/accounts/masters/account_finance_bl.model";
-import AccountPlSetup from "../../models/finance/accounts/masters/account_finance_pl.model";
-import ExpenseSubType from "../../models/finance/accounts/transactions/expenseSubType.model";
-import ExpenseType from "../../models/finance/accounts/transactions/expenseType.model";
-import MS_FY_PERIOD from "../../models/finance/accounts/transactions/ms_fy_period.model";
-import TaxCompntancy from "../../models/finance/accounts/transactions/msTaxComPntcategory.model";
-import TransactionHeader from "../../models/finance/accounts/transactions/tranasctionHeader_account.model";
-import TransactionExpenseDetail from "../../models/finance/accounts/transactions/transactionExpenseDetail.model";
-import TransactionInvoiceDetail from "../../models/finance/accounts/transactions/transactionInvoiceDetail.model";
-import TransactionJobDetail from "../../models/finance/accounts/transactions/transactionJobDetail.model";
-import JobInboundWms from "../../models/wms/transaction/inbound/inboundJobWms.model";
+// import Account from "../../models/finance/accounts/masters/account_finance.model";
+// import AccountBlSetup from "../../models/finance/accounts/masters/account_finance_bl.model";
+// import AccountPlSetup from "../../models/finance/accounts/masters/account_finance_pl.model";
+// import ExpenseSubType from "../../models/finance/accounts/transactions/expenseSubType.model";
+// import ExpenseType from "../../models/finance/accounts/transactions/expenseType.model";
+//import MS_FY_PERIOD from "../../models/finance/accounts/transactions/ms_fy_period.model";
+// import TaxCompntancy from "../../models/finance/accounts/transactions/msTaxComPntcategory.model";
+// import TransactionHeader from "../../models/finance/accounts/transactions/tranasctionHeader_account.model";
+// import TransactionExpenseDetail from "../../models/finance/accounts/transactions/transactionExpenseDetail.model";
+// import TransactionInvoiceDetail from "../../models/finance/accounts/transactions/transactionInvoiceDetail.model";
+// import TransactionJobDetail from "../../models/finance/accounts/transactions/transactionJobDetail.model";
+// import JobInboundWms from "../../models/wms/transaction/inbound/inboundJobWms.model";
 import { getChequePaymentInvoiceDetail } from "../../utils/query";
 import VW_AC_HEADER_SEARCH from "../../views/finance/accounts/transactions/ac_header_search.view";
 import AcCodesSearchView from "../../views/finance/accounts/transactions/acCodesSearch.view";
-import Currency from "../../models/wms/currency_wms.model";
+//import Currency from "../../models/wms/currency_wms.model";
 import oracledb from "oracledb"
-
-// export const getFinanceListData = async (
-//   req: RequestWithUser,
-//   res: Response
-//  ) => {
-//   try {
-//     // Extract master parameter from request
-//     const { master } = req.params;
-//     // Get the user details from the request
-//     const requestUser: IUser = req.user;
-//     // Retrieve unique code from query parameters
-//     const uniqueCode = req.query.code;
-//     // Determine pagination options
-//     const page = Number(req.query.page) || 1;
-//     const limit = Number(req.query.limit) || 10;
-//     const skip = Number(page * limit - limit);
-//     // Initialize variables for fetched data and total count
-//     let fetchedData: unknown[] = [],
-//       totalCount = 0;
-//     // Set pagination options if limit is provided
-//     const paginationOptions = limit ? { offset: skip, limit: limit } : {};
-//     // Parse and set filter from query parameters
-//     const filter: ISearch = req.query.filter
-//       ? JSON.parse(req.query.filter)
-//       : {};
+import { getSearchFilterQuery } from "../../helpers/functions";
 
 export const getFinanceListData = async (
   req: RequestWithUser,
@@ -56,6 +32,7 @@ export const getFinanceListData = async (
   let connection;
 
   try {
+    // Extract master parameter from request
     const { master } = req.params;
     const requestUser: IUser = req.user;
 
@@ -171,6 +148,7 @@ export const getFinanceListData = async (
         );
 
         fetchedData = dataResult.rows || [];
+        console.log('Get data from fy_period :',fetchedData)
     }
         break;
 
@@ -271,35 +249,36 @@ export const getFinanceListData = async (
 
 
 
-    //   case "account":
-    //     {
-    //       let insideQuery: any = [],
-    //         outsideQuery = {
-    //           [Op.and]: [{ company_code: requestUser.company_code }],
-    //         };
-    //       outsideQuery = getSearchFilterQuery({
-    //         insideQuery,
-    //         filter: filter.search,
-    //         outsideQuery,
-    //       });
-    //       totalCount = await Account.count({
-    //         where: outsideQuery,
-    //       });
+      // case "account":
+      //   {
+      //     let insideQuery: any = [],
+      //       outsideQuery = {
+      //         [Op.and]: [{ company_code: requestUser.company_code }],
+      //       };
+      //     outsideQuery = getSearchFilterQuery({
+      //       insideQuery,
+      //       filter: filter.search,
+      //       outsideQuery,
+      //     });
+      //     totalCount = await Account.count({
+      //       where: outsideQuery,
+      //     });
 
-    //       fetchedData = await Account.findAll({
-    //         where: outsideQuery,
-    //         ...(!!filter?.sort &&
-    //           Object.keys(filter?.sort).length > 0 && {
-    //             order: [
-    //               [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-    //             ],
-    //           }),
-    //         ...paginationOptions,
-    //       });
-    //     }
-    //     break;
+      //     fetchedData = await Account.findAll({
+      //       where: outsideQuery,
+      //       ...(!!filter?.sort &&
+      //         Object.keys(filter?.sort).length > 0 && {
+      //           order: [
+      //             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
+      //           ],
+      //         }),
+      //       ...paginationOptions,
+      //     });
+      //   }
+      //   break;
 
          case "account": {
+          console.log('account master')
         let whereClause = `WHERE a.company_code = :company_code`;
         let bindParams: any = {
           company_code: requestUser.company_code,
@@ -314,15 +293,30 @@ export const getFinanceListData = async (
           `;
           bindParams.search = `%${filter.search}%`;
         }
+   
+  // Sorting 
+  const sortColumnMap: Record<string, string> = {
+    ac_code: "AC_CODE",
+    ac_name: "AC_NAME",
+    created_at: "CREATE_DATE",
+    updated_at: "EDIT_DATE",
+  };
 
-        let orderByClause = ``;
-        if (filter?.sort && Object.keys(filter.sort).length > 0) {
-          orderByClause = `
-            ORDER BY ${filter.sort.field_name} ${
-            filter.sort.desc ? "DESC" : "ASC"
-          }
-          `;
-        }
+  let orderByClause = "";
+  if (filter?.sort?.field_name) {
+    const column = sortColumnMap[filter.sort.field_name];
+    if (column) {
+      orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"}`;
+    }
+  }
+        // let orderByClause = ``;
+        // if (filter?.sort && Object.keys(filter.sort).length > 0) {
+        //   orderByClause = `
+        //     ORDER BY ${filter.sort.field_name} ${
+        //     filter.sort.desc ? "DESC" : "ASC"
+        //   }
+        //   `;
+        // }
 
         const countResult = await connection.execute(
           `
@@ -357,6 +351,7 @@ export const getFinanceListData = async (
       }
         break;
       
+
     //   case "bank":
     //     {
     //       let insideQuery: any = [],
@@ -396,18 +391,19 @@ export const getFinanceListData = async (
     //     break;
 
     case "bank": {
+      console.log('feteching.... ')
        let whereClause = `
          WHERE a.company_code = :company_code
          AND (a.ac_status <> 'C' OR a.ac_status IS NULL)
          AND a.ac_code IN (SELECT ac_code FROM MS_AC_BANKCODE)
         `;
 
-  let binds: any = {
-    company_code: requestUser.company_code,
-  };
+     let binds: any = {
+     company_code: requestUser.company_code,
+    };
 
-  // SEARCH FILTER
-  if (filter?.search) {
+    // SEARCH FILTER
+   if (filter?.search) {
     whereClause += `
       AND (
         UPPER(a.ac_code) LIKE UPPER(:search)
@@ -415,10 +411,10 @@ export const getFinanceListData = async (
       )
     `;
     binds.search = `%${filter.search}%`;
-  }
+   }
 
-  // COUNT
-  const countResult = await connection.execute(
+   // COUNT
+   const countResult = await connection.execute(
     `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM MS_ACCODES a
@@ -426,12 +422,12 @@ export const getFinanceListData = async (
     `,
     binds,
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+   );
 
-  totalCount =
+   totalCount =
     (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  const dataResult = await connection.execute(
+   const dataResult = await connection.execute(
     `
     SELECT a.ac_code, a.ac_name
     FROM MS_ACCODES a
@@ -439,11 +435,12 @@ export const getFinanceListData = async (
     `,
     binds,
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+   );
 
-  fetchedData = dataResult.rows || [];
-  break;
-}
+   fetchedData = dataResult.rows || [];
+  };
+ break;
+ 
 
     
 

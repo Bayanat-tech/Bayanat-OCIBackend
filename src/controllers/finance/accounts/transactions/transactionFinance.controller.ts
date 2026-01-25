@@ -30,21 +30,21 @@ import {
 import { IUser } from "../../../../interfaces/user.interface"; // User interface
 
 // File Management Model
-import Files from "../../../../models/files.model"; // File storage model
+//import Files from "../../../../models/files.model"; // File storage model
 
-// Account and Finance Models
-import Account from "../../../../models/finance/accounts/masters/account_finance.model"; // Main account model
-import AccountLevelFour from "../../../../models/finance/accounts/masters/account_level_four.model"; // Level 4 account
+// // Account and Finance Models
+// import Account from "../../../../models/finance/accounts/masters/account_finance.model"; // Main account model
+// import AccountLevelFour from "../../../../models/finance/accounts/masters/account_level_four.model"; // Level 4 account
 
 // Transaction-related Models
-import ChequePaymentReport from "../../../../models/finance/accounts/transactions/cheque_payment_report.model"; // Payment reports
-import MS_AC_BANKCODE from "../../../../models/finance/accounts/transactions/ms_ac_bankcode.model"; // Bank codes
-import AccountSetupDoc from "../../../../models/finance/accounts/transactions/ms_ac_setup_doc.model"; // Account setup
-import TransactionHeader from "../../../../models/finance/accounts/transactions/tranasctionHeader_account.model"; // Transaction headers
-import TransactionDetail from "../../../../models/finance/accounts/transactions/transactionDetailAccounts.model"; // Transaction details
-import TransactionExpenseDetail from "../../../../models/finance/accounts/transactions/transactionExpenseDetail.model"; // Expense details
-import TransactionInvoiceDetail from "../../../../models/finance/accounts/transactions/transactionInvoiceDetail.model"; // Invoice details
-import TransactionJobDetail from "../../../../models/finance/accounts/transactions/transactionJobDetail.model"; // Job details
+// import ChequePaymentReport from "../../../../models/finance/accounts/transactions/cheque_payment_report.model"; // Payment reports
+// import MS_AC_BANKCODE from "../../../../models/finance/accounts/transactions/ms_ac_bankcode.model"; // Bank codes
+// import AccountSetupDoc from "../../../../models/finance/accounts/transactions/ms_ac_setup_doc.model"; // Account setup
+// import TransactionHeader from "../../../../models/finance/accounts/transactions/tranasctionHeader_account.model"; // Transaction headers
+// import TransactionDetail from "../../../../models/finance/accounts/transactions/transactionDetailAccounts.model"; // Transaction details
+// import TransactionExpenseDetail from "../../../../models/finance/accounts/transactions/transactionExpenseDetail.model"; // Expense details
+// import TransactionInvoiceDetail from "../../../../models/finance/accounts/transactions/transactionInvoiceDetail.model"; // Invoice details
+// import TransactionJobDetail from "../../../../models/finance/accounts/transactions/transactionJobDetail.model"; // Job details
 
 // WMS (Warehouse Management System) Models
 import Accountsetup from "../../../../models/wms/accountsetup_wms.model"; // WMS account configuration
@@ -64,74 +64,74 @@ import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions
  * @param req Request containing document ID and edit mode flag
  * @param res HTTP Response object
  */
-export const getDefaultTransactionDetails = async (
-  req: RequestWithUser,
-  res: Response
-) => {
-  try {
-    // Extract query parameters for document identification and mode
-    const { doc_id, isEditMode } = req.query;
-    console.log(typeof isEditMode);
+// export const getDefaultTransactionDetails = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   try {
+//     // Extract query parameters for document identification and mode
+//     const { doc_id, isEditMode } = req.query;
+//     console.log(typeof isEditMode);
 
-    /* Query account setup document with following structure:
-     * - Company code as main attribute
-     * - Company and document filters
-     * - Conditional inclusion of related data based on edit mode
-     * - Always includes account setup configuration
-     */
-    const response = await AccountSetupDoc.findOne({
-      attributes: ["company_code"],
-      where: {
-        [Op.and]: [{ company_code: req.user.company_code }, { doc_id }],
-      },
+//     /* Query account setup document with following structure:
+//      * - Company code as main attribute
+//      * - Company and document filters
+//      * - Conditional inclusion of related data based on edit mode
+//      * - Always includes account setup configuration
+//      */
+//     const response = await AccountSetupDoc.findOne({
+//       attributes: ["company_code"],
+//       where: {
+//         [Op.and]: [{ company_code: req.user.company_code }, { doc_id }],
+//       },
 
-      include: [
-        // Conditionally include reference data in view mode only
-        ...(isEditMode === "false"
-          ? [
-              {
-                model: Currency,
-                attributes: ["curr_code", "curr_name"], // Currency reference
-              },
-              {
-                model: Division,
-                attributes: ["div_code", "div_name"], // Division reference
-              },
-              {
-                model: Account,
-                attributes: ["ac_code", "ac_name"], // Account reference
-              },
-            ]
-          : []),
-        // Core account setup details always included
-        { model: Accountsetup, attributes: ["tax_perc", "lcur_decimal_nos"] },
-      ],
-    });
+//       include: [
+//         // Conditionally include reference data in view mode only
+//         ...(isEditMode === "false"
+//           ? [
+//               {
+//                 model: Currency,
+//                 attributes: ["curr_code", "curr_name"], // Currency reference
+//               },
+//               {
+//                 model: Division,
+//                 attributes: ["div_code", "div_name"], // Division reference
+//               },
+//               {
+//                 model: Account,
+//                 attributes: ["ac_code", "ac_name"], // Account reference
+//               },
+//             ]
+//           : []),
+//         // Core account setup details always included
+//         { model: Accountsetup, attributes: ["tax_perc", "lcur_decimal_nos"] },
+//       ],
+//     });
 
-    // Return error response if no data found
-    if (!response) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false });
-      return;
-    }
+//     // Return error response if no data found
+//     if (!response) {
+//       res
+//         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+//         .json({ success: false });
+//       return;
+//     }
 
-    // Return successful response with fetched data
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      data: response,
-    });
-    return;
-  } catch (err) {
-    // Log error and return error response
-    console.error(err);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Error occurred while fetching data",
-    });
-    return;
-  }
-};
+//     // Return successful response with fetched data
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       data: response,
+//     });
+//     return;
+//   } catch (err) {
+//     // Log error and return error response
+//     console.error(err);
+//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//       success: false,
+//       message: "Error occurred while fetching data",
+//     });
+//     return;
+//   }
+// };
 
 
 
