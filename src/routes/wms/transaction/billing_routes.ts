@@ -18,6 +18,7 @@ import { updatejobbillingdata } from "../../../controllers/billing/updatejobbill
 const router = express.Router();
 
 router.post("/updateBilling", updateBilling);
+router.post("/updateBilling", updateBilling);
 
 // This is for updating Job related billing for inbound and outbound
 // Parse JSON **per route** instead of globally
