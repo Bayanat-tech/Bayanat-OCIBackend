@@ -30,11 +30,11 @@ export interface TenantContext {
 // Global tenant context storage
 export const tenantContextStorage = new AsyncLocalStorage<TenantContext>();
 
-export function tenantContextMiddleware(
+export async function tenantContextMiddleware(
   req: RequestWithUser,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   try {
     // Skip for public routes (user will be undefined)
     if (!req.user || !req.user.loginid) {
@@ -87,30 +87,27 @@ export function tenantContextMiddleware(
 
     tenantContextStorage.enterWith(tenantContext);
     
-    // ✨ CRITICAL: Switch TypeORM schema to tenant schema
-    console.log(`[tenantContextMiddleware] STEP 3: Switching TypeORM schema to tenant...`);
-    (async () => {
-      try {
-        if (AppDataSource.isInitialized) {
-          const tenantConfig = await TenantManager.getTenantConfig(tenantId);
-          const schemaName = tenantConfig.SCHEMA_NAME;
-          
-          // Get the underlying QueryRunner's connection and switch schema
-          const queryRunner = AppDataSource.createQueryRunner();
-          try {
-            console.log(`[tenantContextMiddleware] Executing ALTER SESSION for schema: ${schemaName}`);
-            await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
-            console.log(`[tenantContextMiddleware] ✅ TypeORM schema switched to ${schemaName}`);
-          } finally {
-            await queryRunner.release();
-          }
-        } else {
-          console.log(`[tenantContextMiddleware] ℹ️  TypeORM not initialized, skipping schema switch`);
+    // ✨ CRITICAL: Switch TypeORM schema to tenant schema and WAIT before proceeding
+    console.log(`[tenantContextMiddleware] STEP 3: Switching TypeORM schema to tenant (awaiting)...`);
+    try {
+      if (AppDataSource.isInitialized) {
+        const tenantConfig = await TenantManager.getTenantConfig(tenantId);
+        const schemaName = tenantConfig.SCHEMA_NAME;
+
+        const queryRunner = AppDataSource.createQueryRunner();
+        try {
+          console.log(`[tenantContextMiddleware] Executing ALTER SESSION for schema: ${schemaName}`);
+          await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
+          console.log(`[tenantContextMiddleware] ✅ TypeORM schema switched to ${schemaName}`);
+        } finally {
+          await queryRunner.release();
         }
-      } catch (schemaError) {
-        console.warn(`[tenantContextMiddleware] ⚠️  Schema switch failed (continuing anyway):`, schemaError);
+      } else {
+        console.log(`[tenantContextMiddleware] ℹ️  TypeORM not initialized, skipping schema switch`);
       }
-    })();
+    } catch (schemaError) {
+      console.warn(`[tenantContextMiddleware] ⚠️  Schema switch failed (continuing anyway):`, schemaError);
+    }
     
     // ✨ Clear global context when response finishes to prevent memory leaks
     res.on('finish', () => {
@@ -119,7 +116,7 @@ export function tenantContextMiddleware(
       }
     });
     
-    // Call next() outside the async schema switching to not block
+    // Now safe to call next() since schema switch awaited
     next();
   } catch (error: any) {
     console.error(`[tenantContextMiddleware] ❌ ERROR:`, error.message);

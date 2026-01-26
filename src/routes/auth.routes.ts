@@ -7,6 +7,7 @@ import {
   resetPassword,
   forgotPassword,
     resetPasswordWithLoginId,
+    diagnosticPermissions,
 } from "../controllers/auth.controller";
 
 // Create a new Express router
@@ -22,6 +23,12 @@ router.get("/me",
   passport.authenticate("jwt", { session: false }), 
   tenantContextMiddleware,
   me
+);
+
+router.get("/diagnostic-permissions",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  diagnosticPermissions
 );
 
 // Export the router

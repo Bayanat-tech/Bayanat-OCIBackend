@@ -26,14 +26,13 @@ WHERE LOGINID = :loginid
   AND SERIAL_NO_OR_ROLE_ID < 90001
 `;
 export const permissionsListQuery = `
-SELECT DISTINCT 
+SELECT 
   app_code AS menu, 
   '0' AS "level", 
   0 AS serial_no, 
   app_code 
 FROM SEC_MODULE_DATA 
-WHERE (LTRIM(RTRIM(level2)) IS NULL OR LTRIM(RTRIM(level2)) = ' ' OR LENGTH(LTRIM(RTRIM(level2))) = 0)
-   OR (LTRIM(RTRIM(level1)) IS NULL OR LTRIM(RTRIM(level1)) = ' ' OR LENGTH(LTRIM(RTRIM(level1))) = 0)
+WHERE (LTRIM(RTRIM(level1)) IS NULL OR LTRIM(RTRIM(level1)) = ' ' OR LENGTH(LTRIM(RTRIM(level1))) = 0)
 
 UNION ALL
 
@@ -41,10 +40,10 @@ SELECT
   level1 AS menu, 
   app_code AS "level", 
   serial_no, 
-  app_code AS app_code 
+  app_code 
 FROM SEC_MODULE_DATA 
-WHERE (LTRIM(RTRIM(level2)) IS NULL OR LTRIM(RTRIM(level2)) = ' ' OR LENGTH(LTRIM(RTRIM(level2))) = 0)
-   OR (LTRIM(RTRIM(level1)) IS NULL OR LTRIM(RTRIM(level1)) = ' ' OR LENGTH(LTRIM(RTRIM(level1))) = 0)
+WHERE (LTRIM(RTRIM(level1)) IS NOT NULL AND LTRIM(RTRIM(level1)) != ' ')
+  AND (LTRIM(RTRIM(level2)) IS NULL OR LTRIM(RTRIM(level2)) = ' ' OR LENGTH(LTRIM(RTRIM(level2))) = 0)
 
 UNION ALL
 
@@ -52,25 +51,20 @@ SELECT
   level2 AS menu, 
   level1 AS "level", 
   serial_no, 
-  (SELECT app_code FROM SEC_MODULE_DATA WHERE (LTRIM(RTRIM(level1)) IS NOT NULL AND LTRIM(RTRIM(level1)) != ' ') AND ROWNUM = 1) AS app_code 
+  app_code 
 FROM SEC_MODULE_DATA 
-WHERE (LTRIM(RTRIM(level3)) IS NULL OR LTRIM(RTRIM(level3)) = ' ' OR LENGTH(LTRIM(RTRIM(level3))) = 0) 
-  AND (LTRIM(RTRIM(level2)) IS NOT NULL AND LTRIM(RTRIM(level2)) != ' ' AND LENGTH(LTRIM(RTRIM(level2))) > 0)
+WHERE (LTRIM(RTRIM(level2)) IS NOT NULL AND LTRIM(RTRIM(level2)) != ' ')
+  AND (LTRIM(RTRIM(level3)) IS NULL OR LTRIM(RTRIM(level3)) = ' ' OR LENGTH(LTRIM(RTRIM(level3))) = 0)
 
 UNION ALL
 
 SELECT 
-  a.level3 AS menu, 
-  a.level2 AS "level", 
-  a.serial_no,
-  (SELECT app_code FROM SEC_MODULE_DATA b 
-   WHERE LTRIM(RTRIM(a.level1)) = LTRIM(RTRIM(b.level1)) 
-     AND LTRIM(RTRIM(a.level3)) = LTRIM(RTRIM(b.level3))  
-     AND LTRIM(RTRIM(a.level2)) = LTRIM(RTRIM(b.level2)) 
-     AND ROWNUM = 1) AS app_code 
-FROM SEC_MODULE_DATA a
-WHERE (LTRIM(RTRIM(a.level3)) IS NOT NULL AND LTRIM(RTRIM(a.level3)) != ' ' AND LENGTH(LTRIM(RTRIM(a.level3))) > 0) 
-  AND (LTRIM(RTRIM(a.level2)) IS NOT NULL AND LTRIM(RTRIM(a.level2)) != ' ' AND LENGTH(LTRIM(RTRIM(a.level2))) > 0)
+  level3 AS menu, 
+  level2 AS "level", 
+  serial_no, 
+  app_code 
+FROM SEC_MODULE_DATA 
+WHERE (LTRIM(RTRIM(level3)) IS NOT NULL AND LTRIM(RTRIM(level3)) != ' ')
 `;
 
 export const getChequePaymentInvoiceDetail = `
