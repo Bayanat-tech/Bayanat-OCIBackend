@@ -3,7 +3,7 @@ import { Response } from "express"; // Express response handling
 import * as fastCsv from "fast-csv"; // CSV processing library
 //import { Op } from "sequelize"; // Sequelize operators
 //import { sequelize } from "../../../../database/connection"; // Database connection
-import oracledb from "oracledb";
+import oracledb, { getConnection } from "oracledb";
 
 // Helper Functions and Constants
 import constants from "../../../../helpers/constants"; // Application constants
@@ -135,101 +135,232 @@ import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions
 
 
 
+// export const getDefaultTransactionDetails = async (
+//   req: RequestWithUser,
+//   res: Response
+// ): Promise<void> => {
+//   let connection;
+
+//   try {
+//     const { doc_id, isEditMode } = req.query;
+//     const companyCode = req.user.company_code;
+
+//     connection = await oracledb.getConnection();
+
+//   // (AccountSetupDoc)
+//     let selectFields = `
+//       asd.company_code,
+//       acs.tax_perc,
+//       acs.lcur_decimal_nos
+//     `;
+
+//     // let joinClause = `
+//     //   FROM MS_AC_SETUP_DOC asd
+//     //   JOIN MS_AC_SETUP acs
+//     //     ON asd.doc_id = acs.doc_id
+//     // `;
+
+//     let joinClause = `
+//       FROM MS_AC_SETUP_DOC asd
+//       LEFT JOIN MS_AC_SETUP acs
+//         ON acs.company_code = asd.company_code
+//        AND acs.ac_code = asd.ac_code
+//     `;
+
+
+//     // CONDITIONAL JOINS
+//     if (isEditMode === "false") {
+//       selectFields += `,
+//         c.curr_code,
+//         c.curr_name,
+//         d.div_code,
+//         d.div_name,
+//         a.ac_code,
+//         a.ac_name
+//       `;
+
+//       joinClause += `
+//         LEFT JOIN MS_CURRENCY c
+//           ON asd.curr_code = c.curr_code
+//         LEFT JOIN MS_HR_DIVISION d
+//           ON asd.div_code = d.div_code
+//         LEFT JOIN MS_ACCODES a
+//           ON asd.ac_code = a.ac_code
+//       `;
+//     }
+
+//     const query = `
+//       SELECT ${selectFields}
+//       ${joinClause}
+//       WHERE asd.company_code = :company_code
+//         AND asd.doc_id = :doc_id
+//     `;
+
+//     const result = await connection.execute(
+//       query,
+//       {
+//         company_code: companyCode,
+//         doc_id,
+//       },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+
+   
+//     if (!result.rows || result.rows.length === 0) {
+//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//         success: false,
+//       });
+//       return;
+//     }
+
+//     res.status(constants.STATUS_CODES.OK).json({
+//       success: true,
+//       data: result.rows[0],
+//     });
+//     return;
+
+//   } catch (err) {
+//     console.error(err);
+//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//       success: false,
+//       message: "Error occurred while fetching data",
+//     });
+//     return;
+
+//   } finally {
+//     if (connection) {
+//       await connection.close();
+//     }
+//   }
+// };
+
 export const getDefaultTransactionDetails = async (
   req: RequestWithUser,
   res: Response
-): Promise<void> => {
+) => {
   let connection;
-
+  
   try {
+    // Extract query parameters for document identification and mode
     const { doc_id, isEditMode } = req.query;
-    const companyCode = req.user.company_code;
+    console.log(typeof isEditMode);
 
-    connection = await oracledb.getConnection();
+    // Get Oracle connection
+    connection = await getConnection();
 
-  // (AccountSetupDoc)
-    let selectFields = `
-      asd.company_code,
-      acs.tax_perc,
-      acs.lcur_decimal_nos
-    `;
-
-    // let joinClause = `
-    //   FROM MS_AC_SETUP_DOC asd
-    //   JOIN MS_AC_SETUP acs
-    //     ON asd.doc_id = acs.doc_id
-    // `;
-
-    let joinClause = `
-      FROM MS_AC_SETUP_DOC asd
-      LEFT JOIN MS_AC_SETUP acs
-        ON acs.company_code = asd.company_code
-       AND acs.ac_code = asd.ac_code
-    `;
-
-
-    // CONDITIONAL JOINS
-    if (isEditMode === "false") {
-      selectFields += `,
-        c.curr_code,
-        c.curr_name,
-        d.div_code,
-        d.div_name,
-        a.ac_code,
-        a.ac_name
+    /* Build SQL query based on edit mode
+     * - In view mode (isEditMode === 'false'): Include all related tables with LEFT JOINs
+     * - In edit mode: Only include account setup data
+     * - Always includes company_code filter and document ID filter
+     */
+    let sql: string;
+    
+    if (isEditMode === 'false') {
+      // View mode: Include all related data
+      sql = `
+        SELECT 
+          asd.company_code,
+          c.curr_code,
+          c.curr_name,
+          d.div_code,
+          d.div_name,
+          a.ac_code,
+          a.ac_name,
+          acs.tax_perc,
+          acs.lcur_decimal_nos
+        FROM account_setup_doc asd
+        LEFT JOIN currency c ON asd.curr_code = c.curr_code
+        LEFT JOIN division d ON asd.div_code = d.div_code
+        LEFT JOIN account a ON asd.ac_code = a.ac_code
+        INNER JOIN accountsetup acs ON asd.company_code = acs.company_code
+        WHERE asd.company_code = :company_code
+          AND asd.doc_id = :doc_id
       `;
-
-      joinClause += `
-        LEFT JOIN MS_CURRENCY c
-          ON asd.curr_code = c.curr_code
-        LEFT JOIN MS_HR_DIVISION d
-          ON asd.div_code = d.div_code
-        LEFT JOIN MS_ACCODES a
-          ON asd.ac_code = a.ac_code
+    } else {
+      // Edit mode: Only account setup data
+      sql = `
+        SELECT 
+          asd.company_code,
+          acs.tax_perc,
+          acs.lcur_decimal_nos
+        FROM account_setup_doc asd
+        INNER JOIN accountsetup acs ON asd.company_code = acs.company_code
+        WHERE asd.company_code = :company_code
+          AND asd.doc_id = :doc_id
       `;
     }
 
-    const query = `
-      SELECT ${selectFields}
-      ${joinClause}
-      WHERE asd.company_code = :company_code
-        AND asd.doc_id = :doc_id
-    `;
-
+    // Execute query with bind parameters
     const result = await connection.execute(
-      query,
+      sql,
       {
-        company_code: companyCode,
-        doc_id,
+        company_code: req.user.company_code,
+        doc_id: doc_id as string
       },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      {
+        outFormat: oracledb.OUT_FORMAT_OBJECT 
+      }
     );
 
-   
+    // Check if any rows were returned
     if (!result.rows || result.rows.length === 0) {
-      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-        success: false,
-      });
+      res.status(500).json({ success: false });
       return;
     }
 
-    res.status(constants.STATUS_CODES.OK).json({
+    // Transform the result to match Sequelize structure
+    const row = result.rows?.[0] as any;
+    const response = isEditMode === 'false' 
+      ? {
+          company_code: row.COMPANY_CODE,
+          Currency: {
+            curr_code: row.CURR_CODE,
+            curr_name: row.CURR_NAME
+          },
+          Division: {
+            div_code: row.DIV_CODE,
+            div_name: row.DIV_NAME
+          },
+          Account: {
+            ac_code: row.AC_CODE,
+            ac_name: row.AC_NAME
+          },
+          Accountsetup: {
+            tax_perc: row.TAX_PERC,
+            lcur_decimal_nos: row.LCUR_DECIMAL_NOS
+          }
+        }
+      : {
+          company_code: row.COMPANY_CODE,
+          Accountsetup: {
+            tax_perc: row.TAX_PERC,
+            lcur_decimal_nos: row.LCUR_DECIMAL_NOS
+          }
+        };
+
+    // Return successful response with fetched data
+    res.status(200).json({
       success: true,
-      data: result.rows[0],
+      data: response
     });
     return;
 
   } catch (err) {
-    console.error(err);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    // Log error and return error response
+    console.error('Database error:', err);
+    res.status(500).json({
       success: false,
-      message: "Error occurred while fetching data",
+      message: 'Error occurred while fetching data'
     });
     return;
-
   } finally {
+    // Always close the connection
     if (connection) {
-      await connection.close();
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error closing connection:', err);
+      }
     }
   }
 };
