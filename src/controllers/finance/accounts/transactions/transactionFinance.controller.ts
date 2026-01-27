@@ -64,76 +64,6 @@ import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions
  * @param req Request containing document ID and edit mode flag
  * @param res HTTP Response object
  */
-// export const getDefaultTransactionDetails = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     // Extract query parameters for document identification and mode
-//     const { doc_id, isEditMode } = req.query;
-//     console.log(typeof isEditMode);
-
-//     /* Query account setup document with following structure:
-//      * - Company code as main attribute
-//      * - Company and document filters
-//      * - Conditional inclusion of related data based on edit mode
-//      * - Always includes account setup configuration
-//      */
-//     const response = await AccountSetupDoc.findOne({
-//       attributes: ["company_code"],
-//       where: {
-//         [Op.and]: [{ company_code: req.user.company_code }, { doc_id }],
-//       },
-
-//       include: [
-//         // Conditionally include reference data in view mode only
-//         ...(isEditMode === "false"
-//           ? [
-//               {
-//                 model: Currency,
-//                 attributes: ["curr_code", "curr_name"], // Currency reference
-//               },
-//               {
-//                 model: Division,
-//                 attributes: ["div_code", "div_name"], // Division reference
-//               },
-//               {
-//                 model: Account,
-//                 attributes: ["ac_code", "ac_name"], // Account reference
-//               },
-//             ]
-//           : []),
-//         // Core account setup details always included
-//         { model: Accountsetup, attributes: ["tax_perc", "lcur_decimal_nos"] },
-//       ],
-//     });
-
-//     // Return error response if no data found
-//     if (!response) {
-//       res
-//         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-//         .json({ success: false });
-//       return;
-//     }
-
-//     // Return successful response with fetched data
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: response,
-//     });
-//     return;
-//   } catch (err) {
-//     // Log error and return error response
-//     console.error(err);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Error occurred while fetching data",
-//     });
-//     return;
-//   }
-// };
-
-
 
 // export const getDefaultTransactionDetails = async (
 //   req: RequestWithUser,
@@ -302,7 +232,6 @@ export const getDefaultTransactionDetails = async (
       }
     );
 
-    // Check if any rows were returned
     if (!result.rows || result.rows.length === 0) {
       res.status(500).json({ success: false });
       return;
@@ -338,7 +267,6 @@ export const getDefaultTransactionDetails = async (
           }
         };
 
-    // Return successful response with fetched data
     res.status(200).json({
       success: true,
       data: response
@@ -346,7 +274,6 @@ export const getDefaultTransactionDetails = async (
     return;
 
   } catch (err) {
-    // Log error and return error response
     console.error('Database error:', err);
     res.status(500).json({
       success: false,
@@ -354,7 +281,6 @@ export const getDefaultTransactionDetails = async (
     });
     return;
   } finally {
-    // Always close the connection
     if (connection) {
       try {
         await connection.close();
