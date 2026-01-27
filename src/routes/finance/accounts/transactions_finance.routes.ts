@@ -35,9 +35,9 @@ import {
  // Initialize Express router
  const router = express.Router();
 
-// //-------------Transaction Routes--------------
+//-------------Transaction Routes--------------
 
-// // GET Routes - Information Retrieval
+// GET Routes - Information Retrieval
 router.get("/company_info", getCompanyInfo);                    // Get company details
 router.get("/default_details", getDefaultTransactionDetails);   // Get default values
 // router.get("/cheque_detail", getChequeDetail);                  // Get cheque information

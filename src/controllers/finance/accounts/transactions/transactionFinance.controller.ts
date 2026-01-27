@@ -168,7 +168,7 @@ export const getDefaultTransactionDetails = async (
     `;
 
 
-    // CONDITIONAL JOINS (View Mode Only)
+    // CONDITIONAL JOINS
     if (isEditMode === "false") {
       selectFields += `,
         c.curr_code,
@@ -286,7 +286,7 @@ export const getCompanyInfo = async (
 
     const result = await connection.execute(
       `
-      SELECT ac_fy_period
+      SELECT ac_fy_period AS "ac_fy_period"
       FROM MS_COMPANYINFO
       WHERE company_code = :company_code
       `,
