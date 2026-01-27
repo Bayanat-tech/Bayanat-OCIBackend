@@ -134,6 +134,7 @@ import { FlowMasterService } from "../services/Security/flowmaster.service"; // 
 import { AppDataSource, TypeORMService } from "../database/connection";
 import { CustomerService } from "../services/WMS/customer.service";
 import { ActivityService } from "../services/WMS/activity.service";
+import { BillingActivityService } from "../services/WMS/billing_activity.service";
 
 export type TGroup = {
   group_code: string;
@@ -2134,50 +2135,24 @@ case "activitysubgroup":
   break;
 
 // Fetching billing activity data from the ActivityBillingTable model
-// case "billing_activity":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [
-//           { company_code: requestUser.company_code },
-//           {
-//             ...(!!uniqueCode && {
-//               prin_code: uniqueCode,
-//             }),
-//           },
-//           {
-//             user_id: requestUser.loginid,
-//           },
-//         ],
-//       };
-
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-
-//     // Count the total number of records
-//     totalCount = await ActivityBillingTable.count({
-//       where: outsideQuery,
-//     });
-
-//     // Fetch billing activity data with optional pagination and sorting
-//     fetchedData = await ActivityBillingTable.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort &&
-//         Object.keys(filter?.sort).length > 0 && {
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-//           ],
-//         }),
-//       ...paginationOptions,
-//     });
-//   }
-//   break;
-// Fetching activity data from the Activity model
+case "billing_activity":
+      {
+        console.log("Fetching billing activity data...");
+     
+      console.log("Params:", {
+         company_code: requestUser.company_code,
+         prin_code: uniqueCode
+         });
+ 
+     const data = await BillingActivityService.getBillingActivity(
+    requestUser.company_code,
+    String(uniqueCode)
+  );
+ 
+  fetchedData = data || [];
+  totalCount = data?.length || 0;
+      }
+   break;
 case "activity": {
   console.log("Fetching activity data...");
  

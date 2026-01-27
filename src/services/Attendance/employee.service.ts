@@ -58,4 +58,37 @@ export const EmployeeService = {
       throw error;
     }
   },
+  
+  getEmployeeInfoBayanatDb: async (params: {
+    employee_code?: string;
+    name?: string;
+  }): Promise<EmployeeInfo[]> => {
+    try {
+      if (!params.employee_code && !params.name) {
+        throw new Error("Either employee_code or name is required");
+      }
+
+      const url =
+        "https://apps.almadinalogistics.com:4432/PICK_BY_VISION_REST_API/api/BayanDb/employeeinfo_bayanatdb";
+
+      const response = await axiosInstance.get(url, {
+        params,
+      });
+
+      if (response.status >= 400) {
+        throw new Error(
+          `API Error: ${response.status} ${JSON.stringify(response.data)}`
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error("Error in getEmployeeInfoBayanatDb:", {
+        message: error.message,
+        response: error.response?.data,
+        config: error.config,
+      });
+      throw error;
+    }
+  },
 };
