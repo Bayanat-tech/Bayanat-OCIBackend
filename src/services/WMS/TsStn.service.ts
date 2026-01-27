@@ -1,4 +1,4 @@
-import { getRepository } from "../../database/connection";
+import { getRepository, AppDataSource } from "../../database/connection";
 import { TsStn } from "../../entity/WMS/TsStn.entity";
 
 export class TsStnService {
@@ -179,5 +179,18 @@ export class TsStnService {
       }
     );
     return result.affected ? result.affected > 0 : false;
+  }
+
+  // Process stock transfer by calling SP_WM_TRANSFER_PROCESS
+  static async processStockTransfer(params: {
+    company_code: string;
+    prin_code: string;
+    stn_no: number;
+    user_id: string;
+  }): Promise<void> {
+    await AppDataSource.query(
+      `BEGIN SP_WM_TRANSFER_PROCESS(:1, :2, :3, :4); END;`,
+      [params.company_code, params.prin_code, params.stn_no, params.user_id]
+    );
   }
 }
