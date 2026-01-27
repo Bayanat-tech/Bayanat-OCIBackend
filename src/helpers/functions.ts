@@ -360,76 +360,106 @@ export function buildHierarchy(data: any[]): ITreeItem[] {
 
   data.forEach((eachData) => {
     const {
-      ac_code,
-      ac_name,
-      l4_code,
-      l4_description,
-      l3_code,
-      l3_description,
+      l1_code,
+      l1_description,
       l2_code,
       l2_description,
+      l3_code,
+      l3_description,
+      l4_code,
+      l4_description,
+      ac_code,
+      ac_name,
     } = eachData;
 
-    if (!l2_code) {
-      return;
-    }
+    /* ---------- LEVEL 1 ---------- */
+    if (!l1_code) return;
 
-    let level2Index = hierarchy.findIndex((item) => item.id === l2_code);
-    if (level2Index === -1) {
+    let level1Index = hierarchy.findIndex(
+      (item) => item.id === l1_code
+    );
+
+    if (level1Index === -1) {
       hierarchy.push({
-        id: l2_code,
-        label: l2_description || '',
-        level: 2,
+        id: l1_code,
+        label: l1_description,
+        level: 1,
         parent_code: null,
         children: [],
       });
-      level2Index = hierarchy.length - 1;
+      level1Index = hierarchy.length - 1;
     }
 
-    const level2 = hierarchy[level2Index];
+    const level1 = hierarchy[level1Index];
 
-    if (!l3_code) {
-      return;
+    /* ---------- LEVEL 2 ---------- */
+    if (!l2_code) return;
+
+    let level2Index = level1.children.findIndex(
+      (item) => item.id === l2_code
+    );
+
+    if (level2Index === -1) {
+      level1.children.push({
+        id: l2_code,
+        label: l2_description,
+        level: 2,
+        parent_code: l1_code,
+        children: [],
+      });
+      level2Index = level1.children.length - 1;
     }
 
-    let level3Index = level2?.children.findIndex((item) => item.id === l3_code);
+    const level2 = level1.children[level2Index];
+
+    /* ---------- LEVEL 3 ---------- */
+    if (!l3_code) return;
+
+    let level3Index = level2.children.findIndex(
+      (item) => item.id === l3_code
+    );
+
     if (level3Index === -1) {
-      level2?.children.push({
+      level2.children.push({
         id: l3_code,
-        label: l3_description || '',
+        label: l3_description,
         level: 3,
         parent_code: l2_code,
         children: [],
       });
-      level3Index = level2?.children.length - 1;
+      level3Index = level2.children.length - 1;
     }
 
-    const level3 = level2?.children[level3Index];
+    const level3 = level2.children[level3Index];
 
-    if (!l4_code) {
-      return;
-    }
+    /* ---------- LEVEL 4 ---------- */
+    if (!l4_code) return;
 
-    let level4Index = level3?.children.findIndex((item) => item.id === l4_code);
+    let level4Index = level3.children.findIndex(
+      (item) => item.id === l4_code
+    );
+
     if (level4Index === -1) {
-      level3?.children.push({
+      level3.children.push({
         id: l4_code,
-        label: l4_description ,
+        label: l4_description,
         level: 4,
         parent_code: l3_code,
         children: [],
       });
-      level4Index = level3?.children.length - 1;
+      level4Index = level3.children.length - 1;
     }
 
-    const level4 = level3?.children[level4Index];
+    const level4 = level3.children[level4Index];
 
-    if (!!ac_code) {
-      let level5Index = level4?.children.findIndex(
+    /* ---------- LEVEL 5 ---------- */
+    if (ac_code) {
+      let level5Index = level4.children.findIndex(
         (item) => item.id === ac_code
       );
+
       if (level5Index === -1) {
-        level4?.children.push({
+        level4.children.push({
           id: ac_code,
           label: ac_name,
           level: 5,
@@ -442,6 +472,7 @@ export function buildHierarchy(data: any[]): ITreeItem[] {
 
   return hierarchy;
 }
+
 
 // -----------GRN Report Format Functions ----------
 export async function formatData(data: any, getTiPackdetSeriesData: any) {

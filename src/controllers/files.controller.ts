@@ -110,8 +110,8 @@ export const editFiles = async (
     const { user_file_name } = req.query;
 
     const result = await filesVHService.update(
-      { aws_file_locn },
-      { user_file_name }
+      { awsFileLocn: aws_file_locn, },
+      { userFileName:user_file_name }
     );
 
     if (result.affected === 0) {
