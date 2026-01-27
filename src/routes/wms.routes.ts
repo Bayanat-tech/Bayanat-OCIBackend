@@ -140,6 +140,7 @@ router.use(
 router.use(
   "/common",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   commonRouter
 );
@@ -148,6 +149,7 @@ router.use(
 router.get(
   "/:master",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getWmsMaster
 );
@@ -156,6 +158,7 @@ router.get(
 router.post(
   "/:master",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   deleteWmsMaster
 );
 

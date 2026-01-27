@@ -17,46 +17,34 @@ router.get(
   "/:masters",
   // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
-  // Apply tenant context
   tenantContextMiddleware,
-  // Check user authorization
   checkUserAuthorization,
-  // Call the getHrMaster controller function to handle the request
   getHrMaster
 );
 
 // Define a route for GM HR-related endpoints
 router.use(
   "/gm",
-  // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
-  // Apply tenant context
   tenantContextMiddleware,
-  // Check user authorization
   checkUserAuthorization,
-  // Mount the hrGmRoutes router
   hrGmRoutes
 );
 
 // Define a route for employee HR-related endpoints
 router.use(
   "/employee",
-  // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
-  // Apply tenant context
   tenantContextMiddleware,
-  // Check user authorization
   checkUserAuthorization,
-  // Mount the employeeHrRoutes router
   employeeHrRoutes
 );
 
 // Define a DELETE API endpoint to delete HR master data
 router.delete(
   "/leavetype/delete",
-  // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
-  // Check user authorization
+  tenantContextMiddleware,
   checkUserAuthorization,
   // Call the deleteHrMaster controller function to handle the request
   deleteHrMaster
@@ -65,9 +53,9 @@ router.delete(
 // Define a POST API endpoint to create HR master data
 router.post(
   "/:master",
-  // Authenticate the request using JWT and disable session
   passport.authenticate("jwt", { session: false }),
-  // Call the deleteHrMaster controller function to handle the request (Note: This might be a typo and should be a createHrMaster function)
+  tenantContextMiddleware,
+  checkUserAuthorization,
   deleteHrMaster
 );
 

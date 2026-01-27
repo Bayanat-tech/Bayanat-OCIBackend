@@ -18,6 +18,7 @@ import {
   getAllVendorFiles,
 } from "../controllers/files.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
+import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 import {
   uploadToS3,
   uploadPFToS3,
@@ -38,6 +39,7 @@ const upload = multer({
 router.get(
   "/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getFiles
 );
@@ -46,6 +48,7 @@ router.get(
 router.get(
   "/purchaseRequest/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getpfFiles
 );
@@ -54,6 +57,7 @@ router.get(
 router.get(
   "/vendor/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getHrVendorFiles
 );
@@ -62,6 +66,7 @@ router.get(
 router.get(
   "/employees/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getEmployeeFiles 
 );
@@ -69,6 +74,7 @@ router.get(
 router.put(
   "/editFiles",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editFiles
 );
@@ -76,6 +82,7 @@ router.put(
 router.put(
   "/editPFFile",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editPFFiles
 );
@@ -83,6 +90,7 @@ router.put(
 router.put(
   "/editVendorFile",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editHrVendorFiles
 );
@@ -90,6 +98,7 @@ router.put(
 router.get(
   "/getFilesBySrNo/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getFilesBySrNo
 );
@@ -97,6 +106,7 @@ router.get(
 router.get(
   "/getAllVendorFiles/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getAllVendorFiles
 );
@@ -104,6 +114,7 @@ router.get(
 router.put(
   "/editEmployeeFile",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editEmployeeFiles
 );
@@ -111,6 +122,7 @@ router.put(
 router.post(
   "/upload",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   upload.single("file"),
   uploadToS3
@@ -119,6 +131,7 @@ router.post(
 router.post(
   "/uploadFilePf",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   upload.single("file"),
   uploadPFToS3
@@ -127,6 +140,7 @@ router.post(
 router.post(
   "/uploadVendorAttachment",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   upload.single("file"),
   uploadVendorAttachmentToS3
@@ -135,6 +149,7 @@ router.post(
 router.post(
   "/uploadEmployeeAttachment",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   upload.single("file"),
   uploadEmployeeAttachmentToS3
@@ -143,6 +158,7 @@ router.post(
 router.delete(
   "/delete",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteFiles
 );
@@ -150,6 +166,7 @@ router.delete(
 router.delete(
   "/deletePF/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteFilesPF
 );
@@ -157,6 +174,7 @@ router.delete(
 router.delete(
   "/deleteVendorAttachment/:request_number/:sr_no/:attachment_sr_no?",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteHrVendorFiles
 );
@@ -164,6 +182,7 @@ router.delete(
 router.delete(
   "/deleteEmployeeFiles/:request_number(.+)/:sr_no",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteEmployeeFiles
 );

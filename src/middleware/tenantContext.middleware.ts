@@ -1,23 +1,7 @@
-/**
- * CENTRALIZED TENANT CONTEXT MIDDLEWARE
- * 
- * This middleware handles all tenant routing automatically.
- * INCLUDES automatic TypeORM schema switching!
- * No need to change individual routes/services!
- * 
- * How it works:
- * 1. Extracts user from JWT token
- * 2. Looks up tenant from USER_TENANT_MAPPING
- * 3. Switches TypeORM schema to tenant schema
- * 4. All TypeORM queries automatically use correct schema
- */
-
-import { Request, Response, NextFunction } from "express";
+import {  Response, NextFunction } from "express";
 import { TenantManager } from "../database/TenantManager";
 import { AppDataSource } from "../database/connection";
 import { RequestWithUser } from "../interfaces/common.interface";
-
-// Store tenant context in AsyncLocalStorage for thread-safe access
 import { AsyncLocalStorage } from "async_hooks";
 
 export interface TenantContext {
@@ -27,7 +11,6 @@ export interface TenantContext {
   email?: string;
 }
 
-// Global tenant context storage
 export const tenantContextStorage = new AsyncLocalStorage<TenantContext>();
 
 export async function tenantContextMiddleware(
@@ -81,8 +64,6 @@ export async function tenantContextMiddleware(
     
     console.log(`[tenantContextMiddleware] ✅ CONTEXT SET: loginid=${req.user!.loginid}, tenant=${tenantId}, schema=${tenantId.split('_')[0]}`);
     
-    // ✨ CRITICAL: Store in global as fallback for when AsyncLocalStorage context is lost
-    // This happens because Express may switch async contexts when calling next()
     (global as any).__currentRequestContext = tenantContext;
 
     tenantContextStorage.enterWith(tenantContext);

@@ -349,6 +349,16 @@ export const databaseConnection = (): Promise<boolean> => {
   });
 };
 
+// ==================== TENANT-AWARE QUERY HELPER ====================
+export async function executeInTenantSchema<T>(
+  tenantId: string,
+  query: string,
+  params: Record<string, any> = {}
+): Promise<T[]> {
+  const { TenantManager } = require("./TenantManager");
+  return await TenantManager.executeInTenant(tenantId, query, params);
+}
+
 // ==================== EXPORTS ====================
 export { TypeORMService };
 export const getRepository = TypeORMService.getRepository.bind(TypeORMService);
