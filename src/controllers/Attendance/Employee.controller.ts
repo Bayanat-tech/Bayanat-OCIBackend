@@ -4,7 +4,7 @@ import { FaceRecognitionService } from "../../services/Attendance/face_recogniti
 import logger from "../../utils/logger";
 import { validateImage } from "../../middleware/security.middleware";
 import { EmployeeService } from "../../services/Attendance/employee.service";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { Employee } from "../../entity/Attendance/employee.entity";
 import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
 import { uploadFile } from "../../services/ociUpload.service";
@@ -24,8 +24,8 @@ export class EmployeeController {
     } = req.body;
     const files = req.files as Express.Multer.File[];
 
-    const EmployeeRecord = AppDataSource.getRepository(Employee);
-    const Face = AppDataSource.getRepository(EmployeeFace);
+    const EmployeeRecord = getRepository(Employee);
+    const Face = getRepository(EmployeeFace);
 
     const existingEmployee = await EmployeeRecord.findOne({
       where: { employee_id },
@@ -155,7 +155,7 @@ export class EmployeeController {
 
   static async getEmployees(req: Request, res: Response): Promise<void> {
     try {
-      const employeeRepository = AppDataSource.getRepository(Employee);
+      const employeeRepository = getRepository(Employee);
 
       const employees = await employeeRepository.find({
         order: {
@@ -183,8 +183,8 @@ export class EmployeeController {
       } = req.body;
       const files = req.files as Express.Multer.File[];
 
-      const EmployeesFace = AppDataSource.getRepository(EmployeeFace);
-      const repo = AppDataSource.getRepository(Employee);
+      const EmployeesFace = getRepository(EmployeeFace);
+      const repo = getRepository(Employee);
 
       // Find employee
       const employee = await repo.findOne({

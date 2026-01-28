@@ -1,5 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
-import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
+import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import {
   FlowMaster,
   RoleMaster,
@@ -353,6 +353,7 @@ export class SecurityMasterService {
     ids: (string | number)[]
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 

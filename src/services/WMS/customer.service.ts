@@ -1,13 +1,13 @@
 import { Like, Repository } from "typeorm";
 import { CustomerMaster } from "../../entity/WMS/Customer.entity";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 
 // export class CustomerService {
 
  export class CustomerService {
   private static getRepository(): Repository<CustomerMaster> {
-    return AppDataSource.getRepository(CustomerMaster);
+    return getRepository(CustomerMaster);
   }
 
  //Get Customers Master
@@ -20,7 +20,7 @@ import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
     await ensureCorrectSchema();
 
     const repository: Repository<CustomerMaster> =
-      AppDataSource.getRepository(CustomerMaster);
+      getRepository(CustomerMaster);
 
     const where: any = {
       company_code: filters.company_code,

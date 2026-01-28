@@ -3,7 +3,7 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import constants from "../../helpers/constants";
 import { IUser } from "../../interfaces/user.interface";
 import { hrKpiNameSchema } from "../../validation/HR/hrKpiNameSchema.validation";
-import { AppDataSource } from "../../database/connection"; // Your TypeORM datasource
+import { getRepository } from "../../database/connection"; // Your TypeORM datasource
 import { KpiNamemaster } from "../../models/Hr/hr_kpiname";
 
 
@@ -22,7 +22,7 @@ export const createKpiName = async (req: RequestWithUser, res: Response) => {
 
     const { company_code, serial_no } = req.body;
 
-    const kpiNameRepository = AppDataSource.getRepository(KpiNamemaster);
+    const kpiNameRepository = getRepository(KpiNamemaster);
 
     // Check if KPI Name already exists
     const existingKpiName = await kpiNameRepository.findOne({
@@ -82,7 +82,7 @@ export const updateKpiName = async (req: RequestWithUser, res: Response) => {
 
     const { serial_no, company_code } = req.body;
 
-    const kpiNameRepository = AppDataSource.getRepository(KpiNamemaster);
+    const kpiNameRepository = getRepository(KpiNamemaster);
 
     // Find existing KPI Name
     const existingKpiName = await kpiNameRepository.findOne({
@@ -144,7 +144,7 @@ export const deleteKpiNames = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const kpiNameRepository = AppDataSource.getRepository(KpiNamemaster);
+    const kpiNameRepository = getRepository(KpiNamemaster);
 
     // Delete KPI Names
     const deleteResult = await kpiNameRepository.delete({

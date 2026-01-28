@@ -122,7 +122,42 @@ class TypeORMService {
       this.initialized = true;
     }
 
-    return AppDataSource.getRepository(entity);
+    const repo = AppDataSource.getRepository(entity);
+
+    const dataMethods = new Set([
+      "find",
+      "findOne",
+      "findOneBy",
+      "findBy",
+      "findAndCount",
+      "count",
+      "save",
+      "update",
+      "delete",
+      "remove",
+      "createQueryBuilder",
+      "query"
+    ]);
+
+    return new Proxy(repo, {
+      get(target, prop: string | symbol) {
+        const value: any = Reflect.get(target, prop as any);
+        if (typeof prop === "string" && typeof value === "function" && dataMethods.has(prop)) {
+          return async function (...args: any[]) {
+            try {
+              // Dynamic require to avoid circular import at module load
+              const { ensureCorrectSchema } = require("./TypeORMTenantInterceptor");
+              if (ensureCorrectSchema) await ensureCorrectSchema();
+            } catch (err) {
+              // If schema enforcement fails, log and continue to surface original error later
+              console.warn("ensureCorrectSchema failed:", err);
+            }
+            return await value.apply(target, args);
+          };
+        }
+        return value;
+      },
+    }) as unknown as Repository<T>;
   }
 
   static async ensureConnection(): Promise<void> {
@@ -363,6 +398,48 @@ export async function executeInTenantSchema<T>(
 export { TypeORMService };
 export const getRepository = TypeORMService.getRepository.bind(TypeORMService);
 export const isTypeOrmConnected = TypeORMService.isConnected;
+
+// Monkey-patch AppDataSource.createQueryRunner to ensure tenant schema
+// is applied on the QueryRunner's underlying connection before any queries run.
+// We wrap the returned QueryRunner so its methods await the schema switch.
+(() => {
+  try {
+    const originalCreateQueryRunner = (AppDataSource as any).createQueryRunner.bind(AppDataSource);
+    (AppDataSource as any).createQueryRunner = function (...args: any[]) {
+      const queryRunner = originalCreateQueryRunner(...args);
+
+      // Lazily start schema enforcement immediately
+      let schemaPromise: Promise<void> | null = null;
+      try {
+        const { ensureCorrectSchemaOnQueryRunner } = require("./TypeORMTenantInterceptor");
+        schemaPromise = ensureCorrectSchemaOnQueryRunner(queryRunner).catch((err: any) => {
+          console.warn("[createQueryRunner wrapper] ensureCorrectSchemaOnQueryRunner failed:", err);
+        });
+      } catch (err) {
+        // If interceptor cannot be required, continue without schema enforcement
+        console.warn("[createQueryRunner wrapper] Could not require TypeORMTenantInterceptor:", err);
+      }
+
+      // Return a proxy that ensures the schemaPromise is awaited before executing functions
+      return new Proxy(queryRunner, {
+        get(target, prop: string | symbol) {
+          const value: any = Reflect.get(target, prop as any);
+          if (typeof value === "function") {
+            return async function (...fnArgs: any[]) {
+              if (schemaPromise) {
+                await schemaPromise;
+              }
+              return await value.apply(target, fnArgs);
+            };
+          }
+          return value;
+        },
+      });
+    };
+  } catch (err) {
+    console.warn("Failed to wrap AppDataSource.createQueryRunner:", err);
+  }
+})();
 export const closeTypeOrmConnection = TypeORMService.close;
 
 // ==================== BIND PARAMETER UTILITY (for external use) ====================

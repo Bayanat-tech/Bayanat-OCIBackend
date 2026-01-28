@@ -1,13 +1,14 @@
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { BillingActivity } from "../../entity/WMS/billing_activity.entity";
+import { executeRaw } from "./tenant-service.helper";
  
 export class BillingActivityService {
   static async getBillingActivity(company_code: string, prin_code: string) {
     try {
       await ensureCorrectSchema();
 
-      const repository = AppDataSource.getRepository(BillingActivity);
+      const repository = getRepository(BillingActivity);
       let query = `
         SELECT
           "BillingActivity"."PRIN_CODE"       AS "PRIN_CODE",
@@ -42,7 +43,7 @@ export class BillingActivityService {
       console.log("req param", {company_code,prin_code});
       console.log("Executing query:", query);
  
-  return await repository.query(query, [company_code, prin_code]);
+  return await executeRaw(query, [company_code, prin_code]);
  
     } catch (error) {
       console.error("Error fetching billing activity:", error);
@@ -57,7 +58,7 @@ export class BillingActivityService {
       // Ensure correct tenant schema before executing TypeORM queries
       await ensureCorrectSchema();
 
-      const repository = AppDataSource.getRepository(BillingActivity);
+      const repository = getRepository(BillingActivity);
  
       // Check if record already exists
       const existingRecord = await repository.findOne({
@@ -118,7 +119,7 @@ export class BillingActivityService {
       // Ensure correct tenant schema before executing TypeORM queries
       await ensureCorrectSchema();
 
-      const repository = AppDataSource.getRepository(BillingActivity);
+      const repository = getRepository(BillingActivity);
  
       //  Check if record exists
       const existingRecord = await repository.findOne({
@@ -174,7 +175,7 @@ export class BillingActivityService {
     // Ensure correct tenant schema before executing TypeORM queries
     await ensureCorrectSchema();
 
-    const repository = AppDataSource.getRepository(BillingActivity);
+    const repository = getRepository(BillingActivity);
  
     const {
       prin_code,

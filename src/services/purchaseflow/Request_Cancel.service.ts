@@ -1,6 +1,6 @@
 import { Repository } from "typeorm";
 
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { PRRejected } from "../../models/Purchaseflow/purchaserequest_pf.model";
 
@@ -24,7 +24,7 @@ export class PRRejectedService {
     throw new Error("Method not implemented.");
   }
   private static getRepository(): Repository<PRRejected> {
-    return AppDataSource.getRepository(PRRejected);
+    return getRepository(PRRejected);
   }
 
   static async getCancelledRequests(

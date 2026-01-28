@@ -2,7 +2,7 @@ import { Response } from "express";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { hrPaycomponentsSchema } from "../../validation/HR/hrPaycomponentsSchema.validation";
 import { In } from "typeorm";
 import { HrPaycomponent } from "../../models/Hr/hr_paycomponents";
@@ -19,7 +19,7 @@ export const createhrpaycomponent = async (req: RequestWithUser, res: Response) 
 
     const { company_code, pay_comp_id } = req.body;
 
-    const paycomponentRepository = AppDataSource.getRepository(HrPaycomponent);
+    const paycomponentRepository = getRepository(HrPaycomponent);
 
     // Check if Pay Component already exists
     const existingPaycomponents = await paycomponentRepository.findOne({
@@ -75,7 +75,7 @@ export const updatehrpaycomponent = async (req: RequestWithUser, res: Response) 
 
     const { pay_comp_id, company_code } = req.body;
 
-    const paycomponentRepository = AppDataSource.getRepository(HrPaycomponent);
+    const paycomponentRepository = getRepository(HrPaycomponent);
 
     // Check if Pay Component exists
     const existingPaycomponents = await paycomponentRepository.findOne({
@@ -134,7 +134,7 @@ export const deleteHRPaycomponents = async (req: RequestWithUser, res: Response)
       return;
     }
 
-    const paycomponentRepository = AppDataSource.getRepository(HrPaycomponent);
+    const paycomponentRepository = getRepository(HrPaycomponent);
 
     // Delete Pay Components
     const deleteResult = await paycomponentRepository.delete({

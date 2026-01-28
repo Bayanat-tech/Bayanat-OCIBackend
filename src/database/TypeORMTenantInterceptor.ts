@@ -59,6 +59,43 @@ export async function ensureCorrectSchema(): Promise<void> {
 }
 
 /**
+ * Ensure the tenant schema is set on a specific QueryRunner connection.
+ * This is used for transactional flows where QueryRunner uses its own physical connection.
+ */
+export async function ensureCorrectSchemaOnQueryRunner(queryRunner: any): Promise<void> {
+  if (!queryRunner) return;
+
+  const tenantId = getCurrentTenantId();
+
+  if (!tenantId) {
+    const globalContext = (global as any).__currentRequestContext;
+    if (globalContext?.tenantId) {
+      const tenantConfig = await TenantManager.getTenantConfig(globalContext.tenantId);
+      const schemaName = tenantConfig.SCHEMA_NAME;
+      try {
+        await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
+        console.log(`[ensureCorrectSchemaOnQueryRunner] ✅ Schema switched to ${schemaName} (from global fallback)`);
+      } catch (err) {
+        console.warn(`[ensureCorrectSchemaOnQueryRunner] Failed to switch schema on QueryRunner (global fallback):`, err);
+      }
+      return;
+    }
+    // No tenant context - nothing to set
+    return;
+  }
+
+  try {
+    const tenantConfig = await TenantManager.getTenantConfig(tenantId!);
+    const schemaName = tenantConfig.SCHEMA_NAME;
+    await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
+    console.log(`[ensureCorrectSchemaOnQueryRunner] ✅ Schema switched to ${schemaName} for tenant ${tenantId}`);
+  } catch (error) {
+    console.error("[ensureCorrectSchemaOnQueryRunner] Error switching schema on QueryRunner:", error);
+    throw error;
+  }
+}
+
+/**
  * Create a tenant-aware query builder
  * Use this instead of repository.createQueryBuilder() for complex queries
  */

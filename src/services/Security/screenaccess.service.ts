@@ -1,5 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
-import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
+import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { SecLogin } from "../../entity/Security/seclogin.entity";
 import { MSPSProjectMaster } from "../../entity/Security/mspsprojectmaster.entity";
 import { MSProjectUserAssign } from "../../entity/Security/msprojectuserassign.entity";
@@ -35,6 +35,7 @@ export class ScreenAccessService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -119,6 +120,7 @@ export class ScreenAccessService {
     }>
   ): Promise<MSProjectUserAssign[]> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 

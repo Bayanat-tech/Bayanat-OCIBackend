@@ -1,5 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
-import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
+import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { AccessRoleAppAccess } from "../../entity/Security/accessroleappaccess.entity";
 import { AccessSecModuleData } from "../../entity/Security/accesssecmoduledata.entity";
 import { AccessSecOperation } from "../../entity/Security/accesssecoperation.entity";
@@ -53,6 +53,7 @@ export class AccessRoleService {
     updateData: any
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -90,6 +91,7 @@ export class AccessRoleService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -178,6 +180,7 @@ export class AccessRoleService {
     }>
   ): Promise<AccessRoleAppAccess[]> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 

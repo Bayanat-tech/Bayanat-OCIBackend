@@ -1,5 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
-import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
+import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { AccessUserSecRoleAccess } from "../../entity/Security/accessusersecroleaccess.entity";
 import { AccessSecModuleData } from "../../entity/Security/accesssecmoduledata.entity";
 import { AccessSecOperation } from "../../entity/Security/accesssecoperation.entity";
@@ -168,6 +168,7 @@ export class AccessMasterService {
     operations: AccessSecOperation[];
   }> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -223,6 +224,7 @@ export class AccessMasterService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -276,6 +278,7 @@ export class AccessMasterService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -323,7 +326,7 @@ export class AccessMasterService {
     updateData: any
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
-
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -365,6 +368,7 @@ export class AccessMasterService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -401,6 +405,7 @@ export class AccessMasterService {
     serial_no: number
   ): Promise<AccessSecModuleData | null> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 

@@ -7,7 +7,7 @@ import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
 import path from "path";
 import fs from "fs";
 import fetch from "node-fetch";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
  
 let tfjsNodeAttempted = false;
@@ -330,7 +330,7 @@ export class FaceRecognitionService {
     // Ensure correct tenant schema before executing TypeORM queries
     await ensureCorrectSchema();
 
-    const Employeeface = AppDataSource.getRepository(EmployeeFace);
+    const Employeeface = getRepository(EmployeeFace);
     const activeFaces = await Employeeface.find({
       where: { is_active: "1" },
       select: ["employee_id", "descriptor"],
