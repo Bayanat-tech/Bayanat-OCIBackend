@@ -207,10 +207,10 @@ export const getDefaultTransactionDetails = async (
         FROM MS_AC_SETUP_DOC asd
         INNER JOIN MS_AC_SETUP acs ON asd.company_code = acs.company_code
         WHERE asd.company_code = :company_code
-          AND asd.doc_id = :doc_id
+          AND asd.doc_id = :doc_id   
       `;
     }
-
+     // test 
     const result = await connection.execute(
       sql,
       {
