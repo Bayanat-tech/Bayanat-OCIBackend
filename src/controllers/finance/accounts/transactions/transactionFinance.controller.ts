@@ -64,106 +64,6 @@ import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions
  * @param req Request containing document ID and edit mode flag
  * @param res HTTP Response object
  */
-
-// export const getDefaultTransactionDetails = async (
-//   req: RequestWithUser,
-//   res: Response
-// ): Promise<void> => {
-//   let connection;
-
-//   try {
-//     const { doc_id, isEditMode } = req.query;
-//     const companyCode = req.user.company_code;
-
-//     connection = await oracledb.getConnection();
-
-//   // (AccountSetupDoc)
-//     let selectFields = `
-//       asd.company_code,
-//       acs.tax_perc,
-//       acs.lcur_decimal_nos
-//     `;
-
-//     // let joinClause = `
-//     //   FROM MS_AC_SETUP_DOC asd
-//     //   JOIN MS_AC_SETUP acs
-//     //     ON asd.doc_id = acs.doc_id
-//     // `;
-
-//     let joinClause = `
-//       FROM MS_AC_SETUP_DOC asd
-//       LEFT JOIN MS_AC_SETUP acs
-//         ON acs.company_code = asd.company_code
-//        AND acs.ac_code = asd.ac_code
-//     `;
-
-
-//     // CONDITIONAL JOINS
-//     if (isEditMode === "false") {
-//       selectFields += `,
-//         c.curr_code,
-//         c.curr_name,
-//         d.div_code,
-//         d.div_name,
-//         a.ac_code,
-//         a.ac_name
-//       `;
-
-//       joinClause += `
-//         LEFT JOIN MS_CURRENCY c
-//           ON asd.curr_code = c.curr_code
-//         LEFT JOIN MS_HR_DIVISION d
-//           ON asd.div_code = d.div_code
-//         LEFT JOIN MS_ACCODES a
-//           ON asd.ac_code = a.ac_code
-//       `;
-//     }
-
-//     const query = `
-//       SELECT ${selectFields}
-//       ${joinClause}
-//       WHERE asd.company_code = :company_code
-//         AND asd.doc_id = :doc_id
-//     `;
-
-//     const result = await connection.execute(
-//       query,
-//       {
-//         company_code: companyCode,
-//         doc_id,
-//       },
-//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//     );
-
-   
-//     if (!result.rows || result.rows.length === 0) {
-//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//         success: false,
-//       });
-//       return;
-//     }
-
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: result.rows[0],
-//     });
-//     return;
-
-//   } catch (err) {
-//     console.error(err);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Error occurred while fetching data",
-//     });
-//     return;
-
-//   } finally {
-//     if (connection) {
-//       await connection.close();
-//     }
-//   }
-// };
-
 export const getDefaultTransactionDetails = async (
   req: RequestWithUser,
   res: Response
@@ -171,14 +71,22 @@ export const getDefaultTransactionDetails = async (
   let connection;
   
   try {
+    // Extract query parameters for document identification and mode
     const { doc_id, isEditMode } = req.query;
     console.log(typeof isEditMode);
 
     // Get Oracle connection
     connection = await oracledb.getConnection();
+
+    /* Build SQL query based on edit mode
+     * - In view mode (isEditMode === 'false'): Include all related tables with LEFT JOINs
+     * - In edit mode: Only include account setup data
+     * - Always includes company_code filter and document ID filter
+     */
     let sql: string;
     
     if (isEditMode === 'false') {
+      // View mode: Include all related data
       sql = `
         SELECT 
           asd.company_code,
@@ -199,6 +107,7 @@ export const getDefaultTransactionDetails = async (
           AND asd.doc_id = :doc_id
       `;
     } else {
+      // Edit mode: Only account setup data
       sql = `
         SELECT 
           asd.company_code,
@@ -207,10 +116,11 @@ export const getDefaultTransactionDetails = async (
         FROM MS_AC_SETUP_DOC asd
         INNER JOIN MS_AC_SETUP acs ON asd.company_code = acs.company_code
         WHERE asd.company_code = :company_code
-          AND asd.doc_id = :doc_id   
+          AND asd.doc_id = :doc_id
       `;
     }
-     // test 
+
+    // Execute query with bind parameters
     const result = await connection.execute(
       sql,
       {
@@ -286,42 +196,6 @@ export const getDefaultTransactionDetails = async (
  * @param req Request with user context
  * @param res HTTP Response object
  */
-// export const getCompanyInfo = async (req: RequestWithUser, res: Response) => {
-//   try {
-//     // Query company information for fiscal year period with company-specific filter
-//     const response = await MsCompanyInfo.findOne({
-//       attributes: ["ac_fy_period"], // Select fiscal year period
-//       where: {
-//         [Op.and]: [{ company_code: req.user.company_code }], // Company filter
-//       },
-//     });
-
-//     // Handle case where no data is found
-//     if (!response) {
-//       res
-//         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-//         .json({ success: false });
-//       return;
-//     }
-
-//     // Return successful response with fiscal year data
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: response,
-//     });
-//     return;
-//   } catch (err) {
-//     // Log and handle unexpected errors
-//     console.error(err);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Error occurred while fetching data",
-//     });
-//     return;
-//   }
-// };
-
-
 export const getCompanyInfo = async (
   req: RequestWithUser,
   res: Response
@@ -374,65 +248,6 @@ export const getCompanyInfo = async (
  * @param req Request containing document number and type
  * @param res HTTP Response object
  */
-// export const getChequePaymentHeader = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     // Extract route parameters and query filters
-//     const { doc_no } = req.params; // Document number from route
-//     const { doc_type } = req.query; // Document type from query
-
-//     // Query transaction header with comprehensive details
-//     const response = await TransactionHeader.findOne({
-//       // Select all relevant header fields
-//       attributes: [
-//         "doc_no", // Document identification
-//         "doc_date", // Document date
-//         "ac_code", // Account code
-//         "bank_ac_code", // Bank account code
-//         "cheque_no", // Cheque number
-//         "cheque_date", // Cheque date
-//         "remarks", // Transaction remarks
-//         "ac_payee", // Payee information
-//         "curr_code", // Currency code
-//         "ex_rate", // Exchange rate
-//         "div_code", // Division code
-//         "doc_type", // Document type
-//         "cheque_bank", // Bank information
-//       ],
-//       // Apply security and document filters
-//       where: { company_code: req.user.company_code, doc_no, doc_type },
-//       // Include related reference data
-//       include: [
-//         { model: Accountsetup, attributes: ["tax_perc"] }, // Tax settings
-//         { model: Account, attributes: ["ac_name"] }, // Account details
-//         {
-//           model: MS_AC_BANKCODE, // Bank information
-//           include: [{ model: Account, attributes: ["ac_name"] }], // Bank account name
-//         },
-//         { model: Currency, attributes: ["curr_name"] }, // Currency details
-//         { model: Division, attributes: ["div_name"] }, // Division details
-//       ],
-//     });
-
-//     // Return successful response with header data
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: response,
-//     });
-//     return;
-//   } catch (err) {
-//     // Log and handle unexpected errors
-//     console.error(err);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Error occurred while fetching data",
-//     });
-//     return;
-//   }
-// };
-
 
 export const getChequePaymentHeader = async (
   req: RequestWithUser,
@@ -447,9 +262,8 @@ export const getChequePaymentHeader = async (
 
     connection = await oracledb.getConnection();
 
-    // Joins
     const query = `
-      SELECT
+     SELECT 
         th.doc_no,
         th.doc_date,
         th.ac_code,
@@ -463,42 +277,29 @@ export const getChequePaymentHeader = async (
         th.div_code,
         th.doc_type,
         th.cheque_bank,
-
         acs.tax_perc,
-
-        acc.ac_name AS account_name,
-
-        bank.ac_code AS bank_ac_code_ref,
-        bankacc.ac_name AS bank_ac_name,
-
-        cur.curr_name,
+        acc.ac_name,
+        bank.ac_code as bank_account_code,
+        bank_acc.ac_name as bank_ac_name,
+        curr.curr_name,
         div.div_name
-
       FROM TR_AC_HEADER th
-
-      // Account setup 
-      LEFT JOIN MS_AC_SETUP acs
-        ON th.ac_code = acs.ac_code
-       AND th.company_code = acs.company_code
-
-      /* Account */
-      LEFT JOIN MS_ACCODES acc
-        ON th.ac_code = acc.ac_code
-
-      /* Bank code */
-      LEFT JOIN MS_AC_BANKCODE bank
-        ON th.bank_ac_code = bank.bank_ac_code
-
-      /* Bank account name */
-      LEFT JOIN MS_ACCODES bankacc
-        ON bank.ac_code = bankacc.ac_code
-
-      LEFT JOIN MS_CURRENCY cur
-        ON th.curr_code = cur.curr_code
-
-      LEFT JOIN MS_HR_DIVISION div
-        ON th.div_code = div.div_code
-
+      INNER JOIN MS_AC_SETUP acs 
+        ON th.company_code = acs.company_code
+      LEFT JOIN MS_ACCODES acc 
+        ON th.ac_code = acc.ac_code 
+        AND th.company_code = acc.company_code
+      LEFT JOIN MS_AC_BANKCODE bank 
+        ON th.bank_ac_code = bank.ac_code 
+        AND th.company_code = bank.company_code
+      LEFT JOIN MS_ACCODES bank_acc 
+        ON bank.ac_code = bank_acc.ac_code 
+        AND bank.company_code = bank_acc.company_code
+      LEFT JOIN MS_CURRENCY curr 
+        ON th.curr_code = curr.curr_code
+      LEFT JOIN MS_HR_DIVISION div 
+        ON th.div_code = div.div_code 
+        AND th.company_code = div.company_code
       WHERE th.company_code = :company_code
         AND th.doc_no = :doc_no
         AND th.doc_type = :doc_type
@@ -513,6 +314,59 @@ export const getChequePaymentHeader = async (
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
+
+    // Check if any rows were returned
+    // if (!result.rows || result.rows.length === 0) {
+    //   res.status(constants.STATUS_CODES.OK).json({
+    //     success: true,
+    //     data: null
+    //   });
+    //   return;
+    // }
+
+    // // Transform the result to match Sequelize nested structure
+    // const rowData: any = result.rows[0];
+    
+    // const response = {
+    //   // Transaction Header fields
+    //   doc_no: rowData.DOC_NO,
+    //   doc_date: rowData.DOC_DATE,
+    //   ac_code: rowData.AC_CODE,
+    //   bank_ac_code: rowData.BANK_AC_CODE,
+    //   cheque_no: rowData.CHEQUE_NO,
+    //   cheque_date: rowData.CHEQUE_DATE,
+    //   remarks: rowData.REMARKS,
+    //   ac_payee: rowData.AC_PAYEE,
+    //   curr_code: rowData.CURR_CODE,
+    //   ex_rate: rowData.EX_RATE,
+    //   div_code: rowData.DIV_CODE,
+    //   doc_type: rowData.DOC_TYPE,
+    //   cheque_bank: rowData.CHEQUE_BANK,
+      
+    //   // Nested objects to match Sequelize include structure
+    //   Accountsetup: {
+    //     tax_perc: rowData.TAX_PERC
+    //   },
+      
+    //   Account: {
+    //     ac_name: rowData.AC_NAME
+    //   },
+      
+    //   MS_AC_BANKCODE: {
+    //     ac_code: rowData.BANK_ACCOUNT_CODE,
+    //     Account: {
+    //       ac_name: rowData.BANK_AC_NAME
+    //     }
+    //   },
+      
+    //   Currency: {
+    //     curr_name: rowData.CURR_NAME
+    //   },
+      
+    //   Division: {
+    //     div_name: rowData.DIV_NAME
+    //   }
+    // };
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -540,49 +394,6 @@ export const getChequePaymentHeader = async (
  * @param req Request containing document number, division code, and document type
  * @param res HTTP Response object
  */
-// export const getChequePaymentDetail = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     // Extract route parameters and query filters
-//     const { doc_no } = req.params; // Document identifier
-//     const { div_code, doc_type } = req.query; // Additional filters
-
-//     // Query transaction details with security and business filters
-//     const response = await TransactionDetail.findAll({
-//       where: {
-//         company_code: req.user.company_code, // Security: Company-specific access
-//         doc_no, // Filter by document number
-//         div_code, // Filter by division
-//         doc_type, // Filter by document type
-//       },
-//       // Include related reference data
-//       include: [
-//         { model: Account, attributes: ["ac_name"] }, // Account information
-//         { model: Department, attributes: ["dept_name"] }, // Department details
-//         { model: Currency, attributes: ["curr_name"] }, // Currency information
-//       ],
-//     });
-
-//     // Return successful response with transaction details
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: response,
-//     });
-//     return;
-//   } catch (err) {
-//     // Log and handle unexpected errors
-//     console.error(err);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Error occurred while fetching data",
-//     });
-//     return;
-//   }
-// };
-
-
 export const getChequePaymentDetail = async (
   req: RequestWithUser,
   res: Response
@@ -597,7 +408,6 @@ export const getChequePaymentDetail = async (
     connection = await oracledb.getConnection();
 
     // TransactionDetail 
-  
     const query = `
       SELECT
         td.company_code,
@@ -611,30 +421,20 @@ export const getChequePaymentDetail = async (
         td.curr_code,
         td.dept_code,
         td.sign_ind,
-
         acc.ac_name,
         dept.dept_name,
         cur.curr_name
-
       FROM TR_AC_DETAIL td
-
-      /* Account reference */
       LEFT JOIN MS_ACCODES acc
         ON td.ac_code = acc.ac_code
-
-      /* Department reference */
       LEFT JOIN MS_DEPARTMENT dept
         ON td.dept_code = dept.dept_code
-
-      /* Currency reference */
       LEFT JOIN MS_CURRENCY cur
         ON td.curr_code = cur.curr_code
-
       WHERE td.company_code = :company_code
         AND td.doc_no = :doc_no
         AND td.div_code = :div_code
         AND td.doc_type = :doc_type
-
       ORDER BY td.serial_no
     `;
 
@@ -677,100 +477,183 @@ export const getChequePaymentDetail = async (
 //  * @param req Request containing account code
 //  * @param res HTTP Response object
 //  */
-// export const getChildTableName = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     // Extract and validate account code parameter
-//     const { ac_code } = req.params;
-//     if (!ac_code) {
-//       res
-//         .status(constants.STATUS_CODES.BAD_REQUEST)
-//         .json({ success: false, message: constants.MESSAGES.BAD_REQUEST });
-//       return;
-//     }
+export const getChildTableName = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  let connection;
+  
+  try {
+    // Extract and validate account code parameter
+    const { ac_code } = req.params;
+    if (!ac_code) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
+        success: false, 
+        message: constants.MESSAGES.BAD_REQUEST 
+      });
+      return;
+    }
 
-//     // Query account data with level four configuration
-//     const accountData: any = await Account.findOne({
-//       where: { company_code: req.user.company_code, ac_code }, // Security filter
-//       include: [{ model: AccountLevelFour, attributes: ["l4_job", "l4_bill"] }],
-//     });
+    // Get Oracle connection
+    connection = await getConnection();
 
-//     if (!!accountData) {
-//       // Extract level four settings from response
-//       const response = accountData.dataValues.AccountLevelFour.dataValues;
+    // Query account data with level four configuration
+    const sql = `
+      SELECT 
+        a.ac_code,
+        a.exp_type_code,
+        a.exp_subtype_code,
+        l4.l4_job,
+        l4.l4_bill
+      FROM MS_ACCODES a
+      LEFT JOIN MS_AC_L4 l4
+        ON a.l4_code = l4.l4_code
+        AND a.company_code = l4.company_code
+      WHERE a.company_code = :company_code
+        AND a.ac_code = :ac_code
+    `;
 
-//       // Determine child table based on account configuration
-//       const data =
-//         response.l4_bill === "Y"
-//           ? { table: "invoice", code: "" } // Invoice table
-//           : response.l4_job === "Y"
-//           ? { table: "job", code: "" } // Job table
-//           : accountData.dataValues.exp_type_code !== null &&
-//             accountData.dataValues.exp_subtype_code !== null && {
-//               table: "expense", // Expense table
-//               code: accountData.dataValues.exp_type_code,
-//             };
+    // Execute query with bind parameters
+    const result = await connection.execute(
+      sql,
+      {
+        company_code: req.user.company_code,
+        ac_code: ac_code
+      },
+      {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      }
+    );
 
-//       // Validate child table assignment
-//       if (!data) {
-//         throw new Error("Does not have a child table");
-//       }
+    // Check if account data was found
+    if (result.rows && result.rows.length > 0) {
+      const accountData: any = result.rows[0];
 
-//       // Return successful response with table information
-//       res.status(constants.STATUS_CODES.OK).json({
-//         success: true,
-//         data,
-//       });
-//       return;
-//     }
-//   } catch (error: any) {
-//     // Handle and return any errors
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: error.message,
-//     });
-//     return;
-//   }
-// };
+      // Extract level four settings from response
+      const l4_bill = accountData.L4_BILL;
+      const l4_job = accountData.L4_JOB;
+      const exp_type_code = accountData.EXP_TYPE_CODE;
+      const exp_subtype_code = accountData.EXP_SUBTYPE_CODE;
+
+      // Determine child table based on account configuration
+      let data;
+      
+      if (l4_bill === 'Y') {
+        // Invoice table
+        data = { table: 'invoice', code: '' };
+      } else if (l4_job === 'Y') {
+        // Job table
+        data = { table: 'job', code: '' };
+      } else if (exp_type_code !== null && exp_subtype_code !== null) {
+        // Expense table
+        data = { 
+          table: 'expense', 
+          code: exp_type_code 
+        };
+      } else {
+        // No child table assigned
+        data = null;
+      }
+
+      // Validate child table assignment
+      if (!data) {
+        throw new Error('Does not have a child table');
+      }
+
+      // Return successful response with table information
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        data
+      });
+      return;
+    } else {
+      // Account not found
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.NOT_FOUND
+      });
+      return;
+    }
+
+  } catch (error: any) {
+    // Handle and return any errors
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+    return;
+  } finally {
+    // Always close the connection
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error closing connection:', err);
+      }
+    }
+  }
+};
 
 // /**
 //  * Retrieves the last cheque number for a specific account
 //  * @param req Request containing account code
 //  * @param res HTTP Response object
 //  */
-// export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
-//   try {
-//     // Extract account code from query parameters
-//     const { ac_code } = req.query;
+export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
+  let connection;
+  
+  try {
+    const { ac_code } = req.query;
+    connection = await getConnection();
 
-//     // Query bank code information with security filter
-//     const response = await MS_AC_BANKCODE.findOne({
-//       attributes: ["last_cheque_no"], // Select last cheque number
-//       where: {
-//         [Op.and]: [
-//           { company_code: req.user.company_code }, // Security: Company filter
-//           { ac_code }, // Account filter
-//         ],
-//       },
-//     });
+    const sql = `
+      SELECT 
+        last_cheque_no
+      FROM MS_AC_BANKCODE
+      WHERE company_code = :company_code
+        AND ac_code = :ac_code
+    `;
 
-//     // Return successful response with cheque details
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: response,
-//     });
-//     return;
-//   } catch (err) {
-//     // Log and handle unexpected errors
-//     console.error(err);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Error occurred while fetching data",
-//     });
-//   }
-// };
+    // Execute query with bind parameters
+    const result = await connection.execute(
+      sql,
+      {
+        company_code: req.user.company_code,
+        ac_code: ac_code as string
+      },
+      {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      }
+    );
+    const response = result.rows && result.rows.length > 0 
+      ? {
+          last_cheque_no: (result.rows[0] as any).LAST_CHEQUE_NO
+        }
+      : null;
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: response
+    });
+    return;
+
+  } catch (err) {
+    console.error(err);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Error occurred while fetching data'
+    });
+    return;
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error closing connection:', err);
+      }
+    }
+  }
+};
 // /**
 //  * Generates formatted cheque payment report with filtering and sorting
 //  * @param req Request containing filter and sort parameters

@@ -224,7 +224,6 @@ export const getFinanceListData = async (
         );
 
         fetchedData = dataResult.rows || [];
-        console.log('Get data from account :',fetchedData)
       }
         break;
       
