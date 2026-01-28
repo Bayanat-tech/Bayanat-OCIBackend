@@ -171,22 +171,14 @@ export const getDefaultTransactionDetails = async (
   let connection;
   
   try {
-    // Extract query parameters for document identification and mode
     const { doc_id, isEditMode } = req.query;
     console.log(typeof isEditMode);
 
     // Get Oracle connection
-    connection = await getConnection();
-
-    /* Build SQL query based on edit mode
-     * - In view mode (isEditMode === 'false'): Include all related tables with LEFT JOINs
-     * - In edit mode: Only include account setup data
-     * - Always includes company_code filter and document ID filter
-     */
+    connection = await oracledb.getConnection();
     let sql: string;
     
     if (isEditMode === 'false') {
-      // View mode: Include all related data
       sql = `
         SELECT 
           asd.company_code,
@@ -200,14 +192,13 @@ export const getDefaultTransactionDetails = async (
           acs.lcur_decimal_nos
         FROM MS_AC_SETUP_DOC asd
         LEFT JOIN MS_CURRENCY c ON asd.curr_code = c.curr_code
-        LEFT JOIN MS_HR_DIVISION d ON asd.div_code = d.div_code
-        LEFT JOIN MS_ACCODES a ON asd.ac_code = a.ac_code
+        LEFT JOIN MS_HR_DIVISION d ON asd.default_div_code = d.div_code
+        LEFT JOIN MS_ACCODES a ON asd.default_h_ac = a.ac_code
         INNER JOIN MS_AC_SETUP acs ON asd.company_code = acs.company_code
         WHERE asd.company_code = :company_code
           AND asd.doc_id = :doc_id
       `;
     } else {
-      // Edit mode: Only account setup data
       sql = `
         SELECT 
           asd.company_code,
@@ -220,7 +211,6 @@ export const getDefaultTransactionDetails = async (
       `;
     }
 
-    // Execute query with bind parameters
     const result = await connection.execute(
       sql,
       {
@@ -233,7 +223,7 @@ export const getDefaultTransactionDetails = async (
     );
 
     if (!result.rows || result.rows.length === 0) {
-      res.status(500).json({ success: false });
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false });
       return;
     }
 
@@ -267,7 +257,7 @@ export const getDefaultTransactionDetails = async (
           }
         };
 
-    res.status(200).json({
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: response
     });
@@ -275,7 +265,7 @@ export const getDefaultTransactionDetails = async (
 
   } catch (err) {
     console.error('Database error:', err);
-    res.status(500).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: 'Error occurred while fetching data'
     });
