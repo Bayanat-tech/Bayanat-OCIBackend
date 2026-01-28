@@ -345,7 +345,7 @@ break;
     whereClause += `
       AND (
         UPPER(tx_compntcat_code) LIKE UPPER(:search)
-        OR UPPER(tx_compntcat_desc) LIKE UPPER(:search)
+        OR UPPER(tx_compntcat_name) LIKE UPPER(:search)
       )
     `;
     binds.search = `%${filter.search}%`;
@@ -354,7 +354,7 @@ break;
   // SORTING
   const sortColumnMap: Record<string, string> = {
     tx_compntcat_code: "TX_COMPNTCAT_CODE",
-    tx_compntcat_desc: "TX_COMPNTCAT_DESC",
+    tx_compntcat_name: "TX_COMPNTCAT_NAME",
     created_at: "CREATE_DATE",
     updated_at: "EDIT_DATE",
   };
@@ -386,8 +386,8 @@ break;
   const dataResult = await connection.execute(
     `
     SELECT
-      tx_compntcat_code,
-      tx_compntcat_desc
+      tx_compntcat_code AS "tx_compntcat_code",
+      tx_compntcat_name AS "tx_compntcat_name"
     FROM MS_TAX_COMPNTCATEGORY
     ${whereClause}
     ${orderByClause}
@@ -404,96 +404,6 @@ break;
   fetchedData = dataResult.rows || [];
  }
 break;
-
-
-    //   case "invoice":
-    //     {
-    //       const {
-    //         code,
-    //         extra_param1,
-    //         extra_param2,
-    //         extra_param3,
-    //         extra_param4,
-    //       } = req.query;
-    //       let defaultData: { [key: string]: ITrAcInvdetail } = {};
-
-    //       fetchedData = await sequelize.query(getChequePaymentInvoiceDetail, {
-    //         replacements: {
-    //           company_code: req.user.company_code,
-    //           ac_code: code,
-    //           div_code: extra_param1,
-    //           invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
-    //         },
-    //         type: QueryTypes.SELECT,
-    //       });
-    //       const fetchedInvoiceNumbers = (fetchedData as ITrAcInvdetail[]).map(
-    //         (value: ITrAcInvdetail) => {
-    //           defaultData[`${value.inv_no}`] = value;
-    //           return value.inv_no;
-    //         }
-    //       );
-
-    //       const existingInvoiceDetails: any =
-    //         await TransactionInvoiceDetail.findAll({
-    //           where: {
-    //             company_code: req.user.company_code,
-    //             doc_no: extra_param3,
-    //             doc_type: extra_param2,
-    //             serial_no: extra_param4,
-    //           },
-    //           include: [{ model: Currency, attributes: ["curr_name"] }],
-    //         });
-
-    //       let maxDtlSrNo = 0;
-    //       const existingInvoiceDetailsInvNos = (
-    //         existingInvoiceDetails as ITrAcInvdetail[]
-    //       ).map((value) => {
-    //         maxDtlSrNo = Math.max(maxDtlSrNo, value.dtl_sr_no);
-    //         return value.inv_no;
-    //       });
-
-    //       const matchedData = [];
-    //       const remainingExistingInvoices = [];
-
-    //       for (const eachExistingData of existingInvoiceDetails) {
-    //         if (fetchedInvoiceNumbers.includes(eachExistingData.inv_no)) {
-    //           matchedData.push({
-    //             ...eachExistingData.dataValues,
-    //             inv_amt: defaultData[eachExistingData.inv_no].inv_amt ?? 0,
-    //             c_bal_amt_org:
-    //               defaultData[eachExistingData.inv_no].c_bal_amt_org ?? 0,
-    //           });
-    //         } else {
-    //           remainingExistingInvoices.push({
-    //             ...eachExistingData.toJSON(),
-    //             IsDeletable: true,
-    //           });
-    //         }
-    //       }
-
-    //       const newFetchedDataWithDtlSrNo = (
-    //         fetchedData as ITrAcInvdetail[]
-    //       ).filter((item) => {
-    //         if (!existingInvoiceDetailsInvNos.includes(item.inv_no)) {
-    //           item.dtl_sr_no = maxDtlSrNo + 1;
-    //           item.IsDeletable = false;
-    //           maxDtlSrNo++;
-    //           return true;
-    //         }
-    //         return false;
-    //       });
-
-    //       const finalFetchedData = [
-    //         ...matchedData,
-    //         ...newFetchedDataWithDtlSrNo,
-    //       ];
-
-    //       fetchedData = [...finalFetchedData, ...remainingExistingInvoices];
-
-    //       totalCount = fetchedData.length;
-    //     }
-    //     break;
-
 
   case "invoice": {
    const {
@@ -656,7 +566,9 @@ break;
   // DATA
   const dataResult = await connection.execute(
     `
-    SELECT *
+    SELECT 
+    ac_code AS "ac_code",
+    ac_name AS "ac_name"
     FROM VW_AC_CODES_SEARCH
     ${whereClause}
     ${orderByClause}
