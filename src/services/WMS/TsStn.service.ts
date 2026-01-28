@@ -193,4 +193,16 @@ export class TsStnService {
       [params.company_code, params.prin_code, params.stn_no, params.user_id]
     );
   }
+
+  // Confirm stock transfer by calling SP_STOCK_TRANSFER_CONFIRM stored procedure
+  static async confirmStockTransfer(params: {
+    company_code: string;
+    principal_code: string;
+    stn_no: number;
+  }): Promise<void> {
+    await AppDataSource.query(
+      `BEGIN SP_STOCK_TRANSFER_CONFIRM(:1, :2, :3); END;`,
+      [params.company_code, params.principal_code, params.stn_no]
+    );
+  }
 }

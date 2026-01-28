@@ -11,6 +11,7 @@ import { checkUserAuthorization } from "../../../middleware/checkUserAthorizatio
 // import { createOrUpdateTSSTNSequential } from "../../../controllers/StockTransfer/strocktransferdbupdate.controller";
 import { getAllStockTransfers, createSTN, getTSSTNWithDetails, createSTNDetail } from "../../../controllers/StockTransfer/stocktransferget.controller";
 import { processStockTransfer } from "../../../controllers/StockTransfer/processStockTransfer.controller";
+import { confirmStockTransfer } from "../../../controllers/StockTransfer/confirmStockTransfer.controller";
 // import { getProductAvailability } from "../../../controllers/StockTransfer/getProductAvailability";
  // ✅ new import
 
@@ -39,6 +40,10 @@ router.post("/createSTNDetail", async (req, res) => {
 // Process Stock Transfer - Calls SP_WM_TRANSFER_PROCESS
 router.post("/processStockTransfer", async (req, res) => {
   await processStockTransfer(req, res);
+});
+
+router.post("/confirmStockTransfer", async (req, res) => {
+  await confirmStockTransfer(req, res);
 });
 
 // ✅ New GET API for product availability
