@@ -66,6 +66,7 @@ passport.use(
             active_flag: user.active_flag,
             SEC_PASSWD: user.SEC_PASSWD,
             APPLICATION: user.APPLICATION,
+            country_code: user.company?.country,
           };
           cb(null, userData);
         } else {

@@ -20,7 +20,7 @@ export class DepartmentMaster {
   dept_short_name?: string;
 
   @Column({ name: "DEPT_ADDR1", type: "varchar2", length: 50 })
-  dept_addr1!: string;
+  dept_addr1?: string;
 
   @Column({ name: "DEPT_ADDR2", type: "varchar2", length: 50, nullable: true })
   dept_addr2?: string;

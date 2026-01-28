@@ -133,6 +133,8 @@ import { getConnection } from "typeorm";
 import { FlowMasterService } from "../services/Security/flowmaster.service"; // Add FlowMasterService import
 import { AppDataSource, TypeORMService } from "../database/connection";
 import { CustomerService } from "../services/WMS/customer.service";
+import { ActivityService } from "../services/WMS/activity.service";
+import { BillingActivityService } from "../services/WMS/billing_activity.service";
 
 export type TGroup = {
   group_code: string;
@@ -809,6 +811,7 @@ case "product":
     }
   }
   break;
+  
 
 // Fetching account setup data from the AcSetupService
 case "accountsetup":
@@ -2132,63 +2135,46 @@ case "activitysubgroup":
   break;
 
 // Fetching billing activity data from the ActivityBillingTable model
-// case "billing_activity":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [
-//           { company_code: requestUser.company_code },
-//           {
-//             ...(!!uniqueCode && {
-//               prin_code: uniqueCode,
-//             }),
-//           },
-//           {
-//             user_id: requestUser.loginid,
-//           },
-//         ],
-//       };
-
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-
-//     // Count the total number of records
-//     totalCount = await ActivityBillingTable.count({
-//       where: outsideQuery,
-//     });
-
-//     // Fetch billing activity data with optional pagination and sorting
-//     fetchedData = await ActivityBillingTable.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort &&
-//         Object.keys(filter?.sort).length > 0 && {
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-//           ],
-//         }),
-//       ...paginationOptions,
-//     });
-//   }
-//   break;
-// Fetching activity data from the Activity model
-// case "activity": {
-//   // Fetching data using the Activity model
-//   fetchedData = (await Activity.findAll({
-//     attributes: ["activity_code", "activity", "activity_group_code"],
-//     where: {
-//       company_code: requestUser.company_code,
-//     },
-//     ...paginationOptions,
-//   })) as unknown[] as IActivity[];
-
-//   break;
-// }
-
+case "billing_activity":
+      {
+        console.log("Fetching billing activity data...");
+     
+      console.log("Params:", {
+         company_code: requestUser.company_code,
+         prin_code: uniqueCode
+         });
+ 
+     const data = await BillingActivityService.getBillingActivity(
+    requestUser.company_code,
+    String(uniqueCode)
+  );
+ 
+  fetchedData = data || [];
+  totalCount = data?.length || 0;
+      }
+   break;
+case "activity": {
+  console.log("Fetching activity data...");
+ 
+  const page = Number(req.query.page) || 1;
+  const pageLimit = Number(req.query.limit) || 1000;
+  const skip = (page - 1) * pageLimit;
+ 
+  const filters = {
+    companyCode: requestUser.company_code,
+  };
+ 
+  const { data, total } = await ActivityService.getActivities(
+    filters,
+    pageLimit,
+    skip
+  );
+ 
+  fetchedData = data;
+  totalCount = total;
+ 
+  break;
+}
 // Fetching activity KPI data from the ActivityKPI model
 case "activitykpi": {
   try {
@@ -2976,15 +2962,42 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
 
       // Delete product data
       case "product":
-        {
-          // Use ProductService to delete products by prod_code(s)
-          if (ids && ids.length > 0) {
-            await ProductService.deleteProducts(ids);
-          } else {
-            throw new Error("Product code(s) required");
+      {
+        // Use ProductService to delete products by prod_code(s)
+        if (ids && ids.length > 0) {
+          // Get company code from user
+          const companyCode = requestUser.company_code;
+
+          const products = await ProductService.getProductsByCodes(ids, companyCode);
+          
+          if (products.length > 0) {
+            // Group by prin_code and delete each group
+            const groupedByPrin: { [key: string]: string[] } = {};
+            
+            products.forEach(product => {
+              if (!groupedByPrin[product.prin_code]) {
+                groupedByPrin[product.prin_code] = [];
+              }
+              groupedByPrin[product.prin_code].push(product.prod_code);
+            });
+            
+            let totalDeleted = 0;
+            for (const [prinCode, prodCodes] of Object.entries(groupedByPrin)) {
+              const deleted = await ProductService.deleteProducts(
+                prodCodes,
+                prinCode,
+                companyCode
+              );
+              if (deleted) totalDeleted += prodCodes.length;
+            }
+            
+            console.log(`Deleted ${totalDeleted} products via master delete`);
           }
+        } else {
+          throw new Error("Product code(s) required");
         }
-        break;
+      }
+      break;
 
       // Delete activity group data
       case "activitygroup":
@@ -3048,11 +3061,13 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
       
                       // If array, delete each; otherwise delete single code
                       if (Array.isArray(ids)) {
-                        for (const mocCode of ids) {
-                          await MocService.deleteMoc(mocCode);
+                        for (const {mocCode, company_code} of ids) {
+                          await MocService.deleteMoc(mocCode, company_code);
                         }
                       } else {
-                        await MocService.deleteMoc(ids);
+                        for (const item of ids) {
+                          await MocService.deleteMoc(item.moc_code, item.company_code);
+                        }
                       }
                     }
                     break;

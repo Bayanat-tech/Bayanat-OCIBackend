@@ -31,6 +31,11 @@ import boldReportsRoutes from "./src/routes/boldreports.routes";
 import cfsRoutes from "./src/routes/SMS/sms.routes";
 import pamsRoutes from "./src/routes/pams.routes";
 
+import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
+import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
+import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
+import { AttendanceService } from "./src/services/Attendance/Attendance.service"; 
+
 //----------------routes-------------
 
 app.use("/api/files", fileRoutes);
@@ -48,6 +53,7 @@ app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
 
+app.use("/api/attendance", attendanceRoutes);
 app.use("/api/pams/", pamsRoutes);
 app.use("/api/wms", wmsRoutes);
 
@@ -62,17 +68,31 @@ async function startServerWithTypeORM() {
   try {
     console.log("Initializing TypeORM and Oracle connections...");
 
-    await initializeAllConnections();
+    const connectionPromise = initializeAllConnections();
+    
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Database connection timeout (30s)")), 30000)
+    );
 
-    console.log("All database connections established");
+    await Promise.race([connectionPromise, timeoutPromise]);
+    await initializeAllConnections();
+    await AttendanceEventScheduler.initializeScheduler();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
       console.log(`TypeORM is ready for model conversion`);
     });
+  
   } catch (err) {
-    console.log("Error in database connection:", err);
+    console.error("Error in database connection:", err);
+    console.error("Full error:", err instanceof Error ? err.stack : String(err));
     process.exit(1);
   }
 }
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 startServerWithTypeORM();

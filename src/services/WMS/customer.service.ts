@@ -42,14 +42,15 @@ import { AppDataSource } from "../../database/connection";
     const exists = await repo.findOne({
       where: {
         company_code: data.company_code,
-        cust_code: data.cust_code
+        cust_name: data.cust_name,
+        prin_code: data.prin_code
       }
     });
 
     if (exists) {
       return {
         success: false,
-        message: 'Customer Code Already Exists'
+        message: 'Customer Name Already Exists'
       };
     }
 
@@ -70,12 +71,13 @@ import { AppDataSource } from "../../database/connection";
   static async updateCustomer(
     company_code: string,
     cust_code: string,
+    prin_code: string,
     updateData: any
   ) {
     const repo = this.getRepository();
 
     const existing = await repo.findOne({
-      where: { company_code, cust_code }
+      where: { company_code, cust_code,prin_code }
     });
 
     if (!existing) {
@@ -86,7 +88,7 @@ import { AppDataSource } from "../../database/connection";
     }
 
     await repo.update(
-      { company_code, cust_code },
+      { company_code, cust_code,prin_code },
       {
         ...updateData,
       }

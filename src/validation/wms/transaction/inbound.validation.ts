@@ -50,7 +50,7 @@ export const shipmentDetailsSchema = (
     asn_no: Joi.string().allow(""),
     doc_ref_no: Joi.string().allow(""),
     cust_decl_no: Joi.string().allow(""),
-    truck_no: Joi.string().allow(""),
+    vehicle_no: Joi.string().allow(""),
   });
 
   const schema = Joi.array().items(baseSchema);
@@ -72,24 +72,24 @@ export const packingDetailsSchema = (
     l_uom: Joi.string().allow(""),
     qty_luom: Joi.number().required(),
     quantity: Joi.number().required(),
-    batch_no: Joi.string().allow(""),
-    lot_no: Joi.string().allow(""),
-      upp: Joi.number().allow(null),
-    mfg_date: Joi.date().allow(null),
+    batch_no: Joi.string().allow(null, ""),
+    lot_no: Joi.string().allow(null, ""),
+    upp: Joi.number().allow(null, ""),
+    mfg_date: Joi.date().allow(null, ""),
     prod_mfg_date: Joi.date().allow(null),
-    exp_date: Joi.date().allow(""),
-    po_no: Joi.string().allow(""),
-    origin_country: Joi.string().allow(""),
-    manu_code: Joi.string().allow(""),
+    exp_date: Joi.date().allow(null),
+    po_no: Joi.string().allow(null),
+    origin_country: Joi.string().allow(null, ""),
+    manu_code: Joi.string().allow(null, ""),
     gross_weight: Joi.number().allow(null),
     volume: Joi.number().allow(null),
     shelf_life_days: Joi.number().allow(null),
     shelf_life_date: Joi.date().allow(null),
     container_no: Joi.allow(""),
     bl_no: Joi.allow(""),
-    doc_ref: Joi.string().allow(""),
+    doc_ref: Joi.string().allow(null, ""),
     clearance: Joi.string().allow(""),
-      uppp: Joi.number().allow(null)
+    uppp: Joi.number().allow(null, "")
   });
 
   const schema = Joi.array().items(baseSchema);
@@ -151,6 +151,7 @@ export const tallyDetailsSchema = (
     shelf_life_days: Joi.number().allow(null),
     shelf_life_date: Joi.date().allow(null),
     gross_weight: Joi.number().allow(null),
+    prod_name: Joi.string().allow("").optional(),
   });
 
   const schema = Joi.array().items(baseSchema);

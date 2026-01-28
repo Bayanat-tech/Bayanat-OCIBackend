@@ -289,3 +289,122 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
     }
   }
 };
+
+/* =========================
+   EDIT JOB ENDPOINT
+========================= */
+    export const editJob = async (req: Request, res: Response): Promise<void> => {
+      let connection: oracledb.Connection | undefined;
+
+      try {
+        console.log('=== EDIT JOB API ===');
+        
+        // 1. Get job_no from URL parameter
+        const { job_no } = req.params;
+        
+        console.log('Editing job:', job_no);
+        
+        if (!job_no) {
+          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+            success: false,
+            message: "job_no is required in URL path"
+          });
+          return; // Use return without value for void
+        }
+
+        // 2. Get user info
+        const requestUser = req.body.user || {
+          loginid: "SYSTEM",
+          company_code: req.body.company_code || "BSG"
+        };
+
+        // 3. Build SIMPLE UPDATE SQL - Only update fields that your form allows
+        // Based on your form, these are the modifiable fields:
+        const SIMPLE_UPDATE_SQL = `
+          UPDATE TI_JOB SET
+            country_origin = :country_origin,
+            country_destination = :country_destination,
+            description1 = :description1,
+            remarks = :remarks,
+            prin_ref2 = :prin_ref2,
+            port_code = :port_code,
+            destination_port = :destination_port,
+            transport_mode = :transport_mode,
+            schedule_date = :schedule_date,
+            job_class = :job_class,
+            updated_at = :updated_at,
+            updated_by = :updated_by
+          WHERE company_code = :company_code
+            AND job_no = :job_no
+        `;
+
+        // 4. Build bind data - Only modifiable fields
+        const toDate = (val: any) => val ? new Date(val) : null;
+        
+        const bindData = {
+          // WHERE clause values
+          company_code: requestUser.company_code,
+          job_no: job_no,
+          
+          // Modifiable fields from your form
+          country_origin: req.body.country_origin || null,
+          country_destination: req.body.country_destination || null,
+          description1: req.body.description1 || null,
+          remarks: req.body.remarks || null,
+          prin_ref2: req.body.prin_ref2 || null,
+          port_code: req.body.port_code || null,
+          destination_port: req.body.destination_port || null,
+          transport_mode: req.body.transport_mode || null,
+          schedule_date: toDate(req.body.schedule_date),
+          job_class: req.body.job_class || null,
+          
+          // Audit fields
+          updated_at: new Date(),
+          updated_by: requestUser.loginid
+        };
+
+        console.log('Bind data for update:', bindData);
+
+        // 5. Execute update
+        connection = await oracledb.getConnection();
+        const result = await connection.execute(
+          SIMPLE_UPDATE_SQL,
+          bindData,
+          { autoCommit: true }
+        );
+
+        console.log('Update result - rows affected:', result.rowsAffected);
+
+        if (result.rowsAffected === 0) {
+          res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "No rows were updated"
+          });
+          return;
+        }
+
+        res.status(constants.STATUS_CODES.OK).json({
+          success: true,
+          message: "Job updated successfully",
+          data: {
+            job_no: job_no,
+            updated_fields: Object.keys(bindData).filter(k => !['company_code', 'job_no', 'updated_at', 'updated_by'].includes(k))
+          }
+        });
+
+      } catch (error: any) {
+        console.error("Error editing job:", error);
+        res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+          success: false,
+          message: error.message
+        });
+      } finally {
+        if (connection) {
+          try {
+            await connection.close();
+          } catch (err) {
+            console.error("Error closing Oracle connection:", err);
+          }
+        }
+      }
+    };

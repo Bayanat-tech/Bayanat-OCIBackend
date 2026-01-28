@@ -13,6 +13,7 @@ import constants from "./constants";
 import { StructuredResult } from "../interfaces/auth.interface";
 import { TiPackdetSeriesService } from "../services/tiPackdetSeries.service";
 import { LogService } from "../services/log.service";
+import logger from "../utils/logger";
 const nodemailer = require("nodemailer");
 import {
   FindOptionsWhere,
@@ -1076,7 +1077,7 @@ export function formatRolePermissions(rows: any[]) {
 
   return formattedData;
 }
-// Email function remains the same (no database dependencies)
+// Email function 
 export const notifyUser = async (args: SendEmailInterface) => {
   const {
     event,
@@ -1120,8 +1121,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
         html: htmlMessage,
       };
       break;
-
-    // New cases for PO operations
     case constants.EVENTS.PO_MODIFIED:
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
@@ -1135,7 +1134,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
         attachments: attachments || [],
       };
       break;
-
     case constants.EVENTS.PO_CONFIRMED:
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
@@ -1344,7 +1342,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
       html: htmlMessage,
       attachments: attachments || [],
       };
-  break;
+    break;
 
     case constants.EVENTS.LEAVE_INFO:
     mailOptions = {
@@ -1361,7 +1359,7 @@ export const notifyUser = async (args: SendEmailInterface) => {
         text: message || `Notification regarding leave request (${request_user?.request_number || ""}).`,
         html: htmlMessage,
       };
-  break;
+    break;
 
     case constants.EVENTS.LEAVE_REJECTED:
       mailOptions = {
@@ -1380,15 +1378,86 @@ export const notifyUser = async (args: SendEmailInterface) => {
       };
       break;
 
+    case constants.EVENTS.PROXY_ATTENDANCE_DETECTED:
+    const proxyData = request_user; 
+    const defaultProxyHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .header { background: #ff6b35; color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 20px; background: #f9f9f9; }
+        .section { margin-bottom: 20px; padding: 15px; background: white; border-radius: 5px; border-left: 4px solid #ff6b35; }
+        .employee-card { background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin: 10px 0; }
+        .proxy { border-left: 4px solid #ff4444; }
+        .actual { border-left: 4px solid #4CAF50; }
+        .footer { text-align: center; padding: 15px; background: #f1f1f1; border-radius: 0 0 8px 8px; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>🚨 PROXY ATTENDANCE DETECTED</h2>
+          <p>Employee cancelled proxy attempt</p>
+        </div>
+        
+        <div class="content">
+          <div class="section">
+            <p><strong>UUID:</strong> ${proxyData?.uuid || 'N/A'}</p>
+            <p><strong>Timestamp:</strong> ${proxyData?.timestamp ? new Date(proxyData.timestamp).toLocaleString() : new Date().toLocaleString()}</p>
+            <p><strong>Action:</strong> ${proxyData?.action_taken || 'cancelled_by_user'}</p>
+            <p><strong>Confidence Level:</strong> ${proxyData?.confidence || 0}%</p>
+          </div>
+
+          <div class="section">
+            <h3>👤 Proxy Employee (System Recognized)</h3>
+            <div class="employee-card proxy">
+              <p><strong>Employee Code:</strong> ${proxyData?.proxy_employee_code || 'N/A'}</p>
+              <p><strong>Name:</strong> ${proxyData?.proxy_employee_name || 'N/A'}</p>
+              <p><strong>Department:</strong> ${proxyData?.proxy_department || 'N/A'}</p>
+            </div>
+          </div>
+
+          ${proxyData?.s3_image_url ? `
+          <div class="section">
+            <h3>🖼️ Captured Image</h3>
+            <p><strong>S3 URL:</strong> <a href="${proxyData.s3_image_url}" target="_blank">View Image</a></p>
+          </div>
+          ` : ''}
+        </div>
+
+        <div class="footer">
+          <p>This is an automated alert from the Face Recognition Attendance System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  mailOptions = {
+    from: constants.ENV.EMAIL_USER,
+    to: request_users, 
+    cc: [
+      //'prem@bayanattechnology.com'
+    ],
+    subject: subject || `🚨 PROXY ATTENDANCE DETECTED - ${proxyData?.timestamp ? new Date(proxyData.timestamp).toLocaleDateString() : new Date().toLocaleDateString()}`,
+    html: htmlMessage || defaultProxyHtml,
+    attachments: attachments || [],
+  };
+  break;
+
     default:
-      console.warn(`Unhandled event type: ${event}`);
+      logger.warn(`Unhandled event type: ${event}`);
       return;
   }
 
   try {
+    logger.info(`[NOTIFY] Sending email for event: ${event}, to: ${request_users || request_user?.contact_email}`);
     await transporter.sendMail(mailOptions);
-    console.log(`Email sent successfully for event: ${event}`);
+    logger.info(`[NOTIFY] ✅ Email sent successfully for event: ${event}`);
   } catch (error) {
-    console.error(`Failed to send email for event: ${event}`, error);
+    logger.error(`[NOTIFY] ❌ Failed to send email for event: ${event}`, error);
   }
 };

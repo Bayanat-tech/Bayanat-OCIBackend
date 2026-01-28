@@ -1,15 +1,15 @@
-import { Entity, PrimaryColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity({ name: "TA_ADJHEADER" })
 export class TaAdjHeader {
   
-  @PrimaryColumn({ name: "ADJ_NO", type: "number" })
+  @PrimaryGeneratedColumn({ name: "ADJ_NO", type: "number" })
   ADJ_NO!: number;
 
   @Column({ name: "PRIN_CODE", type: "varchar2", length: 5 })
   PRIN_CODE!: string;
 
-  @Column({ name: "ADJ_CODE", type: "varchar2", length: 3, nullable: true })
+  @Column({ name: "ADJ_CODE", type: "varchar2", length: 6, nullable: true })
   ADJ_CODE?: string;
 
   @Column({ name: "POSTED_IND", type: "varchar2", length: 1, nullable: true, default: () => "'N'" })

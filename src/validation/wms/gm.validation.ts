@@ -354,15 +354,43 @@ export const portSchema = (data: IPort) => {
   });
   return schema.validate(data);
 };
+// export const manufactureSchema = (data: IManufacture) => {
+//   const schema = Joi.object().keys({
+//     company_code: Joi.string().required(),
+//     manu_code: Joi.string().required(),
+//     manu_name: Joi.string().required(),
+//     prin_code: Joi.string().allow("", null),
+//   });
+//   return schema.validate(data);
+// };
 export const manufactureSchema = (data: IManufacture) => {
-  const schema = Joi.object().keys({
+  const schema = Joi.object({
     company_code: Joi.string().required(),
+
     manu_code: Joi.string().required(),
     manu_name: Joi.string().required(),
     prin_code: Joi.string().allow("", null),
+
+    // original keys for edit
+    original_prin_code: Joi.string().allow("", null),
+    original_manu_code: Joi.string().allow("", null),
+
+    // optional update fields
+    country_code: Joi.string().allow("", null),
+    manu_addr1: Joi.string().allow("", null),
+    manu_addr2: Joi.string().allow("", null),
+    manu_addr3: Joi.string().allow("", null),
+    manu_addr4: Joi.string().allow("", null),
+    manu_city: Joi.string().allow("", null),
+    manu_contact: Joi.string().allow("", null),
+    manu_telno1: Joi.string().allow("", null),
+    manu_faxno1: Joi.string().allow("", null),
+    manu_email1: Joi.string().email().allow("", null),
   });
+
   return schema.validate(data);
 };
+
 
 export const groupSchema = (data: IGroup) => {
   const schema = Joi.object().keys({
@@ -415,24 +443,77 @@ export const industrysectorSchema = (data: IIndustrysector) => {
   return schema.validate(data);
 };
 
-export const departmentSchema = (data: IDepartment) => {
-  const schema = Joi.object().keys({
-    dept_code: Joi.string().required(),
-    dept_name: Joi.string().required(),
-    inv_flag: Joi.string().allow("", null),
-    jobno_seq: Joi.number().allow("", null),
-    invno_seq: Joi.number().allow("", null),
-    company_code: Joi.string().required(),
-    operation_type: Joi.string().allow("", null),
+// export const departmentSchema = (data: IDepartment) => {
+//   const schema = Joi.object().keys({
+//     dept_code: Joi.string().required(),
+//     dept_name: Joi.string().required(),
+//     inv_flag: Joi.string().allow("", null),
+//     jobno_seq: Joi.number().allow("", null),
+//     invno_seq: Joi.number().allow("", null),
+//     company_code: Joi.string().required(),
+//     operation_type: Joi.string().allow("", null),
+//     dept_short_name: Joi.string().allow(null, ''),
+//     dept_addr1: Joi.string().allow("",null),
+//     dept_addr2: Joi.string().allow("",null),
+//     dept_addr3: Joi.string().allow("",null),
+//     div_code: Joi.string().allow("", null),
+//     ac_div_code: Joi.string().allow("", null),
+//     dept_email: Joi.string().allow("", null),
+//     dn_email: Joi.string().allow("", null),
+//     grn_email: Joi.string().allow("", null),
+//     inv_gen: Joi.string().allow("", null),
+//     inb_oub_related: Joi.string().allow("", null),
+//     inv_prefix: Joi.string().allow("", null),
+//     phone: Joi.string().allow("",null),
+//     fax: Joi.string().allow("",null),
+//     email: Joi.string().allow("",null),
+//     remark: Joi.string().allow("",null),
+//     status:Joi.string().allow("",null),
+//     user_dt:Joi.string().allow("",null),
+//     user_id:Joi.string().allow("",null),
+//     enterprice_code: Joi.string().allow("",null),
+//     dept_head_id: Joi.string().allow("",null),
+//   });
 
-    div_code: Joi.string().allow("", null),
-    ac_div_code: Joi.string().allow("", null),
-    dept_email: Joi.string().allow("", null),
-    dn_email: Joi.string().allow("", null),
-    grn_email: Joi.string().allow("", null),
-    inv_gen: Joi.string().allow("", null),
-    inb_oub_related: Joi.string().allow("", null),
-    inv_prefix: Joi.string().allow("", null),
+//   return schema.validate(data);
+// };
+export const departmentSchema = (data: any) => {
+  const schema = Joi.object({
+    company_code: Joi.string().required(),
+
+    enterprice_code: Joi.string().allow(null, ''),
+
+    div_code: Joi.string().required(),
+
+    dept_code: Joi.string().required(),
+
+    dept_name: Joi.string().required(),
+
+    dept_short_name: Joi.string().allow(null, ''),
+
+    dept_addr1: Joi.string().allow(null, ''),
+
+    dept_addr2: Joi.string().allow(null, ''),
+
+    dept_addr3: Joi.string().allow(null, ''),
+
+    dept_head_id: Joi.string().allow(null, ''),
+
+    phone: Joi.string().allow(null, ''),
+
+    fax: Joi.string().allow(null, ''),
+
+    email: Joi.string().email().allow(null, ''),
+
+    remarks: Joi.string().allow(null, ''),
+
+    status: Joi.string().allow(null,''),
+
+    user_id: Joi.string().allow(null, ''),
+
+    jobno_seq: Joi.number().allow("", null),
+
+    user_dt: Joi.date().allow(null)
   });
 
   return schema.validate(data);
@@ -542,8 +623,8 @@ export const vesselSchema = (data: IVessel) => {
     line_code: Joi.string().allow("", null),
     email: Joi.string().allow("", null),
     address: Joi.string().allow("", null),
-    // tel_no: Joi.string().allow("",null),
-    // fax_no: Joi.string().allow("",null),
+    tel_no: Joi.string().allow("",null),
+    fax_no: Joi.string().allow("",null),
   });
   return schema.validate(data);
 };
@@ -663,16 +744,26 @@ export const uomSchema = (data: IUom) => {
   return schema.validate(data);
 };
 
-export const mocSchema = (data: IMoc) => {
-  const schema = Joi.object().keys({
-    company_code: Joi.string().required(),
-    charge_code: Joi.string().required(),
-    description: Joi.string().required(),
-    charge_type: Joi.string().required(),
-    activity_group_code: Joi.string().required(),
-  });
-  return schema.validate(data);
-};
+// export const mocSchema = (data: IMoc) => {
+//   const schema = Joi.object().keys({
+//     company_code: Joi.string().required(),
+//     charge_code: Joi.string().required(),
+//     description: Joi.string().required(),
+//     charge_type: Joi.string().required(),
+//     activity_group_code: Joi.string().required(),
+//   });
+//   return schema.validate(data);
+// };
+
+export const mocSchema = (data: any) =>
+  Joi.object({
+    moc_code: Joi.string().max(20).required(),
+    moc_name: Joi.string().max(255).required(),
+    company_code: Joi.string().max(20).required(),
+    activity_group_code: Joi.string().max(20).allow(null, ''),
+    description: Joi.string().max(20).allow(null, '')
+  }).validate(data);
+
 
 export const moc2Schema = (data: IMoc2) => {
   const schema = Joi.object().keys({
@@ -747,6 +838,7 @@ export const principalSchema = (
       Joi.string(),
       Joi.number().allow(null, "")
     ),
+    div_code : Joi.string().required(),
     prin_addr1: Joi.string().allow(null, ""),
     prin_addr2: Joi.string().allow(null, ""),
     prin_addr3: Joi.string().allow(null, ""),
@@ -882,11 +974,70 @@ export const callProcedureSchema = (data: string) => {
   return schema.validate(data);
 };
 // Division Schema
+// export const divisionSchema = (data: string) => {
+//   const schema = Joi.object().keys({
+//     div_code: Joi.string(),
+//     div_name: Joi.string(),
+//     div_short_name: Joi.string(),
+//     div_address1: Joi.string().allow(null, ""),
+//     div_address2: Joi.string().allow(null, ""),
+//     div_address3: Joi.string().allow(null, ""),
+//     country_code: Joi.string().allow(null, ""),
+//     phone: Joi.string().allow(null, ""),
+//     fax: Joi.string().allow(null, ""),
+//     company_code: Joi.string(),
+//     email: Joi.string(),
+//     div_head_id: Joi.string(),
+//     remarks: Joi.string(),
+//     status: Joi.string(),
+//     user_id: Joi.string(),
+//     user_dt: Joi.date().allow("", null),
+//     enterprice_code: Joi.string(),
+//     payroll_date: Joi.date().allow("", null),
+//     payroll_status: Joi.string(),
+//     normal_working_hrs: Joi.number().allow("", null),
+//     day_off1: Joi.string(),
+//     day_off2: Joi.string(),
+//     hr_representative: Joi.string(),
+//     pay_month: Joi.number().allow("", null),
+//     pay_year: Joi.number().allow("", null),
+//     payroll_calc_type: Joi.string(),
+//     day_off1_half_day: Joi.string(),
+//     day_off2_half_day: Joi.string(),
+//     fin_year_start: Joi.date().allow("", null),
+//     fin_year_end: Joi.date().allow("", null),
+//     back_name_inv: Joi.string(),
+//     ac_code_inv: Joi.string(),
+//     reference_no_inv: Joi.string(),
+//     bank_address_inv: Joi.string(),
+//     swift_code_inv: Joi.string(),
+//     emp_document_path: Joi.string(),
+//     payroll_cutoff_date: Joi.date().allow("", null),
+//     payroll_day: Joi.number().allow("", null),
+//     emp_acgroup: Joi.string(),
+//     emp_cnt: Joi.string(),
+//     trn_no: Joi.string(),
+//     comp_logo: Joi.string(),
+//     logo_title: Joi.string(),
+//     default_grade: Joi.string(),
+//     employer_eid: Joi.string(),
+//     payer_eid: Joi.string(),
+//     payer_qid: Joi.string(),
+//     payer_bank: Joi.string(),
+//     payer_iban: Joi.string(),
+//     created_at: Joi.date().allow("", null),
+//     created_by: Joi.string(),
+//     update_at: Joi.date().allow("", null),
+//     updated_by: Joi.string(),
+//   });
+
+//   return schema.validate(data);
+// };
 export const divisionSchema = (data: string) => {
   const schema = Joi.object().keys({
     div_code: Joi.string(),
     div_name: Joi.string(),
-    div_short_name: Joi.string(),
+    div_short_name: Joi.string().allow(null, ""),  // ← FIX
     div_address1: Joi.string().allow(null, ""),
     div_address2: Joi.string().allow(null, ""),
     div_address3: Joi.string().allow(null, ""),
@@ -894,49 +1045,54 @@ export const divisionSchema = (data: string) => {
     phone: Joi.string().allow(null, ""),
     fax: Joi.string().allow(null, ""),
     company_code: Joi.string(),
-    email: Joi.string(),
-    div_head_id: Joi.string(),
-    reamrks: Joi.string(),
+    email: Joi.string().allow(null, ""),
+    div_head_id: Joi.string().allow(null, ""),
+    remarks: Joi.string().allow(null, ""),  // ← FIX TYPO
     status: Joi.string(),
     user_id: Joi.string(),
     user_dt: Joi.date().allow("", null),
-    enterprice_code: Joi.string(),
+    
+    // Add these for primary key updates
+    old_div_code: Joi.string().optional(),      // ← ADD
+    old_company_code: Joi.string().optional(),  // ← ADD
+    
+    enterprice_code: Joi.string().allow(null, ""),
     payroll_date: Joi.date().allow("", null),
-    payroll_status: Joi.string(),
+    payroll_status: Joi.string().allow(null, ""),
     normal_working_hrs: Joi.number().allow("", null),
-    day_off1: Joi.string(),
-    day_off2: Joi.string(),
-    hr_representative: Joi.string(),
+    day_off1: Joi.string().allow(null, ""),
+    day_off2: Joi.string().allow(null, ""),
+    hr_representative: Joi.string().allow(null, ""),
     pay_month: Joi.number().allow("", null),
     pay_year: Joi.number().allow("", null),
-    payroll_calc_type: Joi.string(),
-    day_off1_half_day: Joi.string(),
-    day_off2_half_day: Joi.string(),
+    payroll_calc_type: Joi.string().allow(null, ""),
+    day_off1_half_day: Joi.string().allow(null, ""),
+    day_off2_half_day: Joi.string().allow(null, ""),
     fin_year_start: Joi.date().allow("", null),
     fin_year_end: Joi.date().allow("", null),
-    back_name_inv: Joi.string(),
-    ac_code_inv: Joi.string(),
-    reference_no_inv: Joi.string(),
-    bank_address_inv: Joi.string(),
-    swift_code_inv: Joi.string(),
-    emp_document_path: Joi.string(),
+    bank_name_inv: Joi.string().allow(null, ""),  // ← FIX TYPO (was "back_name_inv")
+    ac_code_inv: Joi.string().allow(null, ""),
+    reference_no_inv: Joi.string().allow(null, ""),
+    bank_address_inv: Joi.string().allow(null, ""),
+    swift_code_inv: Joi.string().allow(null, ""),
+    emp_document_path: Joi.string().allow(null, ""),
     payroll_cutoff_date: Joi.date().allow("", null),
     payroll_day: Joi.number().allow("", null),
-    emp_acgroup: Joi.string(),
-    emp_cnt: Joi.string(),
-    trn_no: Joi.string(),
-    comp_logo: Joi.string(),
-    logo_title: Joi.string(),
-    default_grade: Joi.string(),
-    employer_eid: Joi.string(),
-    payer_eid: Joi.string(),
-    payer_qid: Joi.string(),
-    payer_bank: Joi.string(),
-    payer_iban: Joi.string(),
+    emp_acgroup: Joi.string().allow(null, ""),
+    emp_cnt: Joi.string().allow(null, ""),
+    trn_no: Joi.string().allow(null, ""),
+    comp_logo: Joi.string().allow(null, ""),
+    logo_title: Joi.string().allow(null, ""),
+    default_grade: Joi.string().allow(null, ""),
+    employer_eid: Joi.string().allow(null, ""),
+    payer_eid: Joi.string().allow(null, ""),
+    payer_qid: Joi.string().allow(null, ""),
+    payer_bank: Joi.string().allow(null, ""),
+    payer_iban: Joi.string().allow(null, ""),
     created_at: Joi.date().allow("", null),
-    created_by: Joi.string(),
+    created_by: Joi.string().allow(null, ""),
     update_at: Joi.date().allow("", null),
-    updated_by: Joi.string(),
+    updated_by: Joi.string().allow(null, ""),
   });
 
   return schema.validate(data);

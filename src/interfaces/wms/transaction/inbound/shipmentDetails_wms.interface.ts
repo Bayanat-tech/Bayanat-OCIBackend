@@ -39,5 +39,5 @@ export interface IShipmentDetails {
   asn_no: string;
   doc_ref_no: string;
   cust_decl_no: string;
-  truck_no: string;
+  vehicle_no: string;
 }
