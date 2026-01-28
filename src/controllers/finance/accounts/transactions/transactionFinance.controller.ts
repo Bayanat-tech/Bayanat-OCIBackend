@@ -198,11 +198,11 @@ export const getDefaultTransactionDetails = async (
           a.ac_name,
           acs.tax_perc,
           acs.lcur_decimal_nos
-        FROM account_setup_doc asd
-        LEFT JOIN currency c ON asd.curr_code = c.curr_code
-        LEFT JOIN division d ON asd.div_code = d.div_code
-        LEFT JOIN account a ON asd.ac_code = a.ac_code
-        INNER JOIN accountsetup acs ON asd.company_code = acs.company_code
+        FROM MS_AC_SETUP_DOC asd
+        LEFT JOIN MS_CURRENCY c ON asd.curr_code = c.curr_code
+        LEFT JOIN MS_HR_DIVISION d ON asd.div_code = d.div_code
+        LEFT JOIN MS_ACCODES a ON asd.ac_code = a.ac_code
+        INNER JOIN MS_AC_SETUP acs ON asd.company_code = acs.company_code
         WHERE asd.company_code = :company_code
           AND asd.doc_id = :doc_id
       `;
@@ -213,8 +213,8 @@ export const getDefaultTransactionDetails = async (
           asd.company_code,
           acs.tax_perc,
           acs.lcur_decimal_nos
-        FROM account_setup_doc asd
-        INNER JOIN accountsetup acs ON asd.company_code = acs.company_code
+        FROM MS_AC_SETUP_DOC asd
+        INNER JOIN MS_AC_SETUP acs ON asd.company_code = acs.company_code
         WHERE asd.company_code = :company_code
           AND asd.doc_id = :doc_id
       `;
