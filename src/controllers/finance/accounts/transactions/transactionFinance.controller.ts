@@ -991,7 +991,7 @@ export const createChequePaymentDocument= async (
         :company_code,
         :div_code,
         :doc_type,
-        TO_DATE(:doc_date, 'YYYY-MM-DD')
+        TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
       ) AS DOC_NO
       FROM dual
       `,
@@ -1034,12 +1034,13 @@ export const createChequePaymentDocument= async (
         :updated_by,
         :doc_type,
         :div_code,
-        TO_DATE(:doc_date, 'YYYY-MM-DD')
+        TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
       )
       `,
       {
         ...header,
         doc_no,
+        doc_date: req.body.doc_date,
         company_code: req.user.company_code,
         create_user: req.user.loginid,
         created_by: req.user.loginid,
