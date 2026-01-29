@@ -95,7 +95,7 @@ export class PutwayPackingItemService {
     jobNo: string
   ): Promise<void> {
 
-    await AppDataSource.query(
+   await AppDataSource.query(
       `BEGIN SP_PUTAWAY_NORMAL(:1, :2, :3); END;`,
       [companyCode, prinCode, jobNo]
     );
