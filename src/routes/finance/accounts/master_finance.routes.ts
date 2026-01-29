@@ -1,5 +1,5 @@
 import * as express from "express";
-import {  getAcTree, getLevel3AcTreeNode, createLevel3AcTreeNode, getLevel4AcTreeNode, createLevel4AcTreeNode, updateLevel4AcTreeNode, getAccountChildrenAcTreeNode, createAccountChildrenAcTreeNode, updateLevel3AcTreeNode ,getLevel2AcTreeNode,createLevel2AcTreeNode,updateLevel2AcTreeNode,deleteLevel2AcTreeNode, deleteLevel3AcTreeNode, deleteLevel4AcTreeNode, deleteLevel5AcTreeNode, updateAccountChildrenAcTreeNode} from "../../../controllers/finance/accounts/masters/acTree_finance.controller";
+import {  getAcTree, getLevel3AcTreeNode, createLevel3AcTreeNode, getLevel4AcTreeNode, createLevel4AcTreeNode, updateLevel4AcTreeNode, getAccountChildrenAcTreeNode, createAccountChildrenAcTreeNode, updateLevel3AcTreeNode ,getLevel2AcTreeNode,createLevel2AcTreeNode,updateLevel2AcTreeNode,deleteLevel2AcTreeNode, deleteLevel3AcTreeNode, deleteLevel4AcTreeNode, deleteLevel5AcTreeNode, updateAccountChildrenAcTreeNode, saveFile} from "../../../controllers/finance/accounts/masters/acTree_finance.controller";
 
 const router = express.Router();
 
@@ -35,6 +35,8 @@ router.get("/ac_tree/account/:ac_code", getAccountChildrenAcTreeNode);
 router.post("/ac_tree/account", createAccountChildrenAcTreeNode);
 router.put("/ac_tree/account/:ac_code", updateAccountChildrenAcTreeNode);
 router.delete("/ac_tree/level5/:ac_code",deleteLevel5AcTreeNode)
+ router.post("/saveFile", saveFile as unknown as express.RequestHandler);
+
 
 // //----------------delete----------
 // // Delete an account item based on level

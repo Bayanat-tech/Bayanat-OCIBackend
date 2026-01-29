@@ -86,6 +86,40 @@ export const uploadPFToS3 = async (req: any, res: any) => {
   }
 };
 
+export const uploadAFToS3 = async (req: any, res: any) => {
+  const file = req.file;
+  const requestNumber = req.body.request_number;
+  const requestType = req.body.type;
+
+  const fileName: string = `AFSFiles/${requestType}/${new Date().getFullYear()}/${
+    new Date().getMonth() + 1
+  }/${requestNumber}/${file.originalname}`;
+  
+
+  const objectParams: UploadToS3ObjectInterface = {
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+    Key: fileName,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  };
+
+  try {
+    await s3Client.send(new PutObjectCommand(objectParams));
+
+    const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: URL,
+    });
+  } catch (error: any) {
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export const deleteFileFromS3 = async (awsFileLocation: string) => {
   const params = {
     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,

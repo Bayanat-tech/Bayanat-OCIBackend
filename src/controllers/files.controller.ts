@@ -5,10 +5,12 @@ import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
 import { oracleDb } from "../database/connection";
 import { FilesPFService } from "../services/filesPF.service";
+import { FilesAFService } from "../services/accountfiles.service";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
 let filesVendorService: FilesVendorService;
+let filesAFService: FilesAFService;
 
 // Initialize service
 (async () => {
@@ -23,6 +25,11 @@ let filesVendorService: FilesVendorService;
 // Initialize service for Vendor files
 (async () => {
   filesVendorService = await FilesVendorService.getInstance();
+})().catch(console.error);
+
+// Initialize service for AF files
+(async () => {
+  filesAFService = await FilesAFService.getInstance();
 })().catch(console.error);
 
 export const getFiles = async (
@@ -99,6 +106,44 @@ export const getpfFiles = async (
   }
 };
 
+export const getAfFiles = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { request_number } = req.params;
+
+    const { modules } = req.query;
+     console.log("--------------------get api hit-----------------")
+
+    if (request_number === undefined) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: true,
+        message: constants.MESSAGES.BAD_REQUEST,
+      });
+      return;
+    }
+
+    const conditions =
+      modules === "IMPORT"
+        ? { modules, request_number }
+        : { company_code: req.user.company_code, request_number };
+
+    const files = await filesAFService.findAll(conditions);
+
+    // send response
+    res.status(constants.STATUS_CODES.OK).json({ success: true, data: files });
+
+    return;
+  } catch (error: any) {
+    // handle error
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};
+
 export const editFiles = async (
   req: RequestWithUser,
   res: Response
@@ -158,6 +203,51 @@ export const editPFFiles = async (
       request_number,
     };
 
+    const result: any = await oracleDb.query(sql, binds);
+    const affected = result.rowsAffected ?? 0;
+
+    if (Number(affected) === 0) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.FILE_NOT_FOUND,
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "File name updated successfully",
+    });
+
+    return;
+  } catch (error: any) {
+    console.error("editPFFiles error:", error);
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};
+
+export const editAFFiles = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { aws_file_locn, request_number, user_file_name } = req.body;
+    console.log(user_file_name, aws_file_locn, request_number);
+
+    const sql = `
+      UPDATE ACCOUNTS_FILES
+      SET user_file_name = :user_file_name
+      WHERE aws_file_locn = :aws_file_locn
+        AND request_number = :request_number
+    `;
+    const binds = {
+      user_file_name,
+      aws_file_locn,
+      request_number,
+    };
     const result: any = await oracleDb.query(sql, binds);
     const affected = result.rowsAffected ?? 0;
 
@@ -277,6 +367,54 @@ export const deleteFilesPF = async (
   }
 };
 
+export const deleteFilesAF = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { request_number, sr_no } = req.params;
+
+    if (request_number === undefined) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: true,
+        message: constants.MESSAGES.BAD_REQUEST,
+      });
+      return;
+    }
+
+    // query to find the file details
+    const file = await filesAFService.findOne({ request_number, sr_no });
+
+    if (!file) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: constants.MESSAGES.FILE_NOT_FOUND,
+      });
+      return;
+    }
+
+    const result = await filesAFService.delete({ request_number, sr_no });
+
+    if (result.affected === 0) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Delete operation failed",
+      });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: constants.MESSAGES.DELETED_SUCCESSFULLY,
+    });
+    return;
+  } catch (error: any) {
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};
 //vendor and HR file attachment
 export const getHrVendorFiles = async (
   req: RequestWithUser,
