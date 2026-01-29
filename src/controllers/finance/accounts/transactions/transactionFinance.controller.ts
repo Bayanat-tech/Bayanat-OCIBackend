@@ -484,7 +484,6 @@ export const getChildTableName = async (
   let connection;
   
   try {
-    // Extract and validate account code parameter
     const { ac_code } = req.params;
     if (!ac_code) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
@@ -494,10 +493,8 @@ export const getChildTableName = async (
       return;
     }
 
-    // Get Oracle connection
     connection = await getConnection();
 
-    // Query account data with level four configuration
     const sql = `
       SELECT 
         a.ac_code,
@@ -560,14 +557,12 @@ export const getChildTableName = async (
         throw new Error('Does not have a child table');
       }
 
-      // Return successful response with table information
       res.status(constants.STATUS_CODES.OK).json({
         success: true,
         data
       });
       return;
     } else {
-      // Account not found
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: constants.MESSAGES.NOT_FOUND
@@ -576,14 +571,12 @@ export const getChildTableName = async (
     }
 
   } catch (error: any) {
-    // Handle and return any errors
-    res.status(500).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message: error.message
+      message: error.message || 'Error occurred while fetching data'
     });
     return;
   } finally {
-    // Always close the connection
     if (connection) {
       try {
         await connection.close();
@@ -1016,7 +1009,7 @@ export const createChequePaymentDocument= async (
     if (!doc_no) {
       throw new Error("Failed to generate document number");
     }
-
+   console.log("Get doc_date", req.body.doc_date);
     const { detail, children, files, ...header } = req.body;
 
     // ---------- INSERT HEADER ---------- 
