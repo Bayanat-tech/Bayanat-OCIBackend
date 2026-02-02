@@ -1,8 +1,6 @@
-// Core Dependencies
+
+
 import { Response } from "express"; // Express response handling
-import * as fastCsv from "fast-csv"; // CSV processing library
-//import { Op } from "sequelize"; // Sequelize operators
-//import { sequelize } from "../../../../database/connection"; // Database connection
 import oracledb, { getConnection } from "oracledb";
 
 // Helper Functions and Constants
@@ -69,7 +67,7 @@ export const getDefaultTransactionDetails = async (
   res: Response
 ) => {
   let connection;
-  
+ 
   try {
     // Extract query parameters for document identification and mode
     const { doc_id, isEditMode } = req.query;
@@ -84,11 +82,11 @@ export const getDefaultTransactionDetails = async (
      * - Always includes company_code filter and document ID filter
      */
     let sql: string;
-    
+   
     if (isEditMode === 'false') {
       // View mode: Include all related data
       sql = `
-        SELECT 
+        SELECT
           asd.company_code,
           c.curr_code,
           c.curr_name,
@@ -109,7 +107,7 @@ export const getDefaultTransactionDetails = async (
     } else {
       // Edit mode: Only account setup data
       sql = `
-        SELECT 
+        SELECT
           asd.company_code,
           acs.tax_perc,
           acs.lcur_decimal_nos
@@ -128,7 +126,7 @@ export const getDefaultTransactionDetails = async (
         doc_id: doc_id as string
       },
       {
-        outFormat: oracledb.OUT_FORMAT_OBJECT 
+        outFormat: oracledb.OUT_FORMAT_OBJECT
       }
     );
 
@@ -137,9 +135,8 @@ export const getDefaultTransactionDetails = async (
       return;
     }
 
-    // Transform the result to match Sequelize structure
     const row = result.rows?.[0] as any;
-    const response = isEditMode === 'false' 
+    const response = isEditMode === 'false'
       ? {
           company_code: row.COMPANY_CODE,
           Currency: {
@@ -263,7 +260,7 @@ export const getChequePaymentHeader = async (
     connection = await oracledb.getConnection();
 
     const query = `
-     SELECT 
+     SELECT
         th.doc_no,
         th.doc_date,
         th.ac_code,
@@ -284,21 +281,21 @@ export const getChequePaymentHeader = async (
         curr.curr_name,
         div.div_name
       FROM TR_AC_HEADER th
-      INNER JOIN MS_AC_SETUP acs 
+      INNER JOIN MS_AC_SETUP acs
         ON th.company_code = acs.company_code
-      LEFT JOIN MS_ACCODES acc 
-        ON th.ac_code = acc.ac_code 
+      LEFT JOIN MS_ACCODES acc
+        ON th.ac_code = acc.ac_code
         AND th.company_code = acc.company_code
-      LEFT JOIN MS_AC_BANKCODE bank 
-        ON th.bank_ac_code = bank.ac_code 
+      LEFT JOIN MS_AC_BANKCODE bank
+        ON th.bank_ac_code = bank.ac_code
         AND th.company_code = bank.company_code
-      LEFT JOIN MS_ACCODES bank_acc 
-        ON bank.ac_code = bank_acc.ac_code 
+      LEFT JOIN MS_ACCODES bank_acc
+        ON bank.ac_code = bank_acc.ac_code
         AND bank.company_code = bank_acc.company_code
-      LEFT JOIN MS_CURRENCY curr 
+      LEFT JOIN MS_CURRENCY curr
         ON th.curr_code = curr.curr_code
-      LEFT JOIN MS_HR_DIVISION div 
-        ON th.div_code = div.div_code 
+      LEFT JOIN MS_HR_DIVISION div
+        ON th.div_code = div.div_code
         AND th.company_code = div.company_code
       WHERE th.company_code = :company_code
         AND th.doc_no = :doc_no
@@ -326,7 +323,7 @@ export const getChequePaymentHeader = async (
 
     // // Transform the result to match Sequelize nested structure
     // const rowData: any = result.rows[0];
-    
+   
     // const response = {
     //   // Transaction Header fields
     //   doc_no: rowData.DOC_NO,
@@ -342,27 +339,27 @@ export const getChequePaymentHeader = async (
     //   div_code: rowData.DIV_CODE,
     //   doc_type: rowData.DOC_TYPE,
     //   cheque_bank: rowData.CHEQUE_BANK,
-      
+     
     //   // Nested objects to match Sequelize include structure
     //   Accountsetup: {
     //     tax_perc: rowData.TAX_PERC
     //   },
-      
+     
     //   Account: {
     //     ac_name: rowData.AC_NAME
     //   },
-      
+     
     //   MS_AC_BANKCODE: {
     //     ac_code: rowData.BANK_ACCOUNT_CODE,
     //     Account: {
     //       ac_name: rowData.BANK_AC_NAME
     //     }
     //   },
-      
+     
     //   Currency: {
     //     curr_name: rowData.CURR_NAME
     //   },
-      
+     
     //   Division: {
     //     div_name: rowData.DIV_NAME
     //   }
@@ -407,7 +404,7 @@ export const getChequePaymentDetail = async (
 
     connection = await oracledb.getConnection();
 
-    // TransactionDetail 
+    // TransactionDetail
     const query = `
       SELECT
         td.company_code,
@@ -482,13 +479,13 @@ export const getChildTableName = async (
   res: Response
 ) => {
   let connection;
-  
+ 
   try {
     const { ac_code } = req.params;
     if (!ac_code) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
-        success: false, 
-        message: constants.MESSAGES.BAD_REQUEST 
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: constants.MESSAGES.BAD_REQUEST
       });
       return;
     }
@@ -496,7 +493,7 @@ export const getChildTableName = async (
     connection = await getConnection();
 
     const sql = `
-      SELECT 
+      SELECT
         a.ac_code,
         a.exp_type_code,
         a.exp_subtype_code,
@@ -534,7 +531,7 @@ export const getChildTableName = async (
 
       // Determine child table based on account configuration
       let data;
-      
+     
       if (l4_bill === 'Y') {
         // Invoice table
         data = { table: 'invoice', code: '' };
@@ -543,9 +540,9 @@ export const getChildTableName = async (
         data = { table: 'job', code: '' };
       } else if (exp_type_code !== null && exp_subtype_code !== null) {
         // Expense table
-        data = { 
-          table: 'expense', 
-          code: exp_type_code 
+        data = {
+          table: 'expense',
+          code: exp_type_code
         };
       } else {
         // No child table assigned
@@ -594,13 +591,13 @@ export const getChildTableName = async (
 //  */
 export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
   let connection;
-  
+ 
   try {
     const { ac_code } = req.query;
     connection = await getConnection();
 
     const sql = `
-      SELECT 
+      SELECT
         last_cheque_no
       FROM MS_AC_BANKCODE
       WHERE company_code = :company_code
@@ -618,7 +615,7 @@ export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
         outFormat: oracledb.OUT_FORMAT_OBJECT
       }
     );
-    const response = result.rows && result.rows.length > 0 
+    const response = result.rows && result.rows.length > 0
       ? {
           last_cheque_no: (result.rows[0] as any).LAST_CHEQUE_NO
         }
@@ -984,7 +981,7 @@ export const createChequePaymentDocument= async (
 
     let doc_no: number;
 
-    // ---------- GET DOCUMENT NUMBER ---------- 
+    // ---------- GET DOCUMENT NUMBER ----------
     const docResult = await connection.execute(
       `
       SELECT FN_AC_GET_DOC_NO(
@@ -1012,7 +1009,28 @@ export const createChequePaymentDocument= async (
    console.log("Get doc_date", req.body.doc_date);
     const { detail, children, files, ...header } = req.body;
 
-    // ---------- INSERT HEADER ---------- 
+    // ---------- INSERT HEADER ----------
+    const headerBinds = {
+      ...header,
+      doc_no,
+      doc_date: req.body.doc_date,
+      company_code: req.user.company_code,
+      create_user: req.user.loginid,
+      created_by: req.user.loginid,
+      updated_by: req.user.loginid,
+    };
+    const headerBindsFiltered = {
+      doc_no: headerBinds.doc_no,
+      company_code: headerBinds.company_code,
+      create_user: headerBinds.create_user,
+      doc_type: headerBinds.doc_type,
+      div_code: headerBinds.div_code,
+      doc_date: headerBinds.doc_date,
+    };
+
+    console.log('DB: INSERT HEADER', { doc_no, doc_type: req.body.doc_type, company_code: req.user.company_code });
+    console.log('DB: HEADER BINDS', headerBinds);
+    console.log('DB: HEADER BINDS FILTERED', headerBindsFiltered);
     await connection.execute(
       `
       INSERT INTO TR_AC_HEADER (
@@ -1020,8 +1038,6 @@ export const createChequePaymentDocument= async (
         company_code,
         create_user,
         create_date,
-        created_by,
-        updated_by,
         doc_type,
         div_code,
         doc_date
@@ -1030,47 +1046,107 @@ export const createChequePaymentDocument= async (
         :company_code,
         :create_user,
         SYSDATE,
-        :created_by,
-        :updated_by,
         :doc_type,
         :div_code,
         TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
       )
       `,
-      {
-        ...header,
-        doc_no,
-        doc_date: req.body.doc_date,
-        company_code: req.user.company_code,
-        create_user: req.user.loginid,
-        created_by: req.user.loginid,
-        updated_by: req.user.loginid,
-      }
+      headerBindsFiltered
     );
 
-    // ---------- INSERT DETAILS ----------
     if (detail?.length) {
+      const detailBinds = detail.map((d: any, idx: number) => ({
+        company_code: req.user.company_code,
+        doc_type: req.body.doc_type,
+        doc_no,
+        serial_no: d.serial_no ?? idx + 1,
+        doc_date: d.doc_date ?? req.body.doc_date,
+        ac_code: d.ac_code,
+        header_ac_code: d.header_ac_code ?? header.ac_code ?? null,
+        bank_ac_code: header.bank_ac_code ?? null,
+        remarks: d.remarks ?? header.remarks ?? null,
+        amount: d.amount ?? 0,
+        sign_ind: d.sign_ind ?? 1,
+        curr_code: d.curr_code ?? header.curr_code ?? "USD",
+        ex_rate: (d.ex_rate ?? header.ex_rate ?? 1),
+        lcur_amount: d.lcur_amount ?? d.amount ?? 0,
+        pdc_ind: d.pdc_ind ?? null,
+        cheque_no: d.cheque_no ?? header.cheque_no ?? null,
+        cheque_date: d.cheque_date ?? header.cheque_date ?? null,
+        cheque_desc: d.cheque_desc ?? null,
+        pdc_cleared_date: d.pdc_cleared_date ?? null,
+        cancelled: d.cancelled ?? 'N',
+        job_no: d.job_no ?? null,
+        recon_ind: d.recon_ind ?? null,
+        recon_date: d.recon_date ?? null,
+        dept_code: d.dept_code ?? null,
+        qty: d.qty ?? null,
+        price: d.price ?? null,
+        uom: d.uom ?? null,
+        pdc_clear_jvno: d.pdc_clear_jvno ?? null,
+        ref_doc_type: d.ref_doc_type ?? null,
+        ref_doc_no: d.ref_doc_no ?? null,
+        ref_doc_serial_no: d.ref_doc_serial_no ?? null,
+        div_code: d.div_code ?? req.body.div_code,
+        tx_cat_code: d.tx_cat_code ?? null,
+        tx_compntcat_code_1: d.tx_compntcat_code_1 ?? null,
+        tx_compntcat_code_2: d.tx_compntcat_code_2 ?? null,
+        tx_compntcat_code_3: d.tx_compntcat_code_3 ?? null,
+        tx_compntcat_code_4: d.tx_compntcat_code_4 ?? null,
+        tx_compnt_perc_1: d.tx_compnt_perc_1 ?? null,
+        tx_compnt_perc_2: d.tx_compnt_perc_2 ?? null,
+        tx_compnt_perc_3: d.tx_compnt_perc_3 ?? null,
+        tx_compnt_perc_4: d.tx_compnt_perc_4 ?? null,
+        tx_compnt_amt_1: d.tx_compnt_amt_1 ?? null,
+        tx_compnt_amt_2: d.tx_compnt_amt_2 ?? null,
+        tx_compnt_amt_3: d.tx_compnt_amt_3 ?? null,
+        tx_compnt_amt_4: d.tx_compnt_amt_4 ?? null,
+        tx_compnt_lcuramt_1: d.tx_compnt_lcuramt_1 ?? null,
+        tx_compnt_lcuramt_2: d.tx_compnt_lcuramt_2 ?? null,
+        tx_compnt_lcuramt_3: d.tx_compnt_lcuramt_3 ?? null,
+        tx_compnt_lcuramt_4: d.tx_compnt_lcuramt_4 ?? null,
+        tx_compnt_1_expmt: d.tx_compnt_1_expmt ?? null,
+        tx_compnt_2_expmt: d.tx_compnt_2_expmt ?? null,
+        tx_compnt_3_expmt: d.tx_compnt_3_expmt ?? null,
+        tx_compnt_4_expmt: d.tx_compnt_4_expmt ?? null,
+        tx_tax_filed: d.tx_tax_filed ?? null,
+        tx_tax_filed_dt: d.tx_tax_filed_dt ?? null,
+        tx_tax_filed_refno: d.tx_tax_filed_refno ?? null,
+        tx_compnt_hdisc_amt_1: d.tx_compnt_hdisc_amt_1 ?? null,
+      }));
+
+      console.log('DB: INSERT DETAILS (first row)', detailBinds[0]);
       await connection.executeMany(
         `
-        INSERT INTO TR_AC_DETAIL (
-          doc_no,
-          amount,
-          account_code
+        INSERT INTO ${constants.TABLE.TR_AC_DETAIL} (
+          company_code, doc_type, doc_no, serial_no, doc_date, ac_code, header_ac_code, bank_ac_code, remarks, amount,
+          sign_ind, curr_code, ex_rate, lcur_amount, pdc_ind, cheque_no, cheque_date, cheque_desc, pdc_cleared_date, cancelled,
+          job_no, recon_ind, recon_date, dept_code, qty, price, uom, pdc_clear_jvno, ref_doc_type, ref_doc_no, ref_doc_serial_no,
+          div_code, tx_cat_code, tx_compntcat_code_1, tx_compntcat_code_2, tx_compntcat_code_3, tx_compntcat_code_4,
+          tx_compnt_perc_1, tx_compnt_perc_2, tx_compnt_perc_3, tx_compnt_perc_4,
+          tx_compnt_amt_1, tx_compnt_amt_2, tx_compnt_amt_3, tx_compnt_amt_4,
+          tx_compnt_lcuramt_1, tx_compnt_lcuramt_2, tx_compnt_lcuramt_3, tx_compnt_lcuramt_4,
+          tx_compnt_1_expmt, tx_compnt_2_expmt, tx_compnt_3_expmt, tx_compnt_4_expmt,
+          tx_tax_filed, tx_tax_filed_dt, tx_tax_filed_refno, tx_compnt_hdisc_amt_1
         ) VALUES (
-          :doc_no,
-          :amount,
-          :account_code
+          :company_code, :doc_type, :doc_no, :serial_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), :ac_code, :header_ac_code, :bank_ac_code, :remarks, :amount,
+          :sign_ind, :curr_code, :ex_rate, :lcur_amount, :pdc_ind, :cheque_no, TO_DATE(SUBSTR(:cheque_date,1,10),'YYYY-MM-DD'), :cheque_desc, TO_DATE(SUBSTR(:pdc_cleared_date,1,10),'YYYY-MM-DD'), :cancelled,
+          :job_no, :recon_ind, TO_DATE(SUBSTR(:recon_date,1,10),'YYYY-MM-DD'), :dept_code, :qty, :price, :uom, :pdc_clear_jvno, :ref_doc_type, :ref_doc_no, :ref_doc_serial_no,
+          :div_code, :tx_cat_code, :tx_compntcat_code_1, :tx_compntcat_code_2, :tx_compntcat_code_3, :tx_compntcat_code_4,
+          :tx_compnt_perc_1, :tx_compnt_perc_2, :tx_compnt_perc_3, :tx_compnt_perc_4,
+          :tx_compnt_amt_1, :tx_compnt_amt_2, :tx_compnt_amt_3, :tx_compnt_amt_4,
+          :tx_compnt_lcuramt_1, :tx_compnt_lcuramt_2, :tx_compnt_lcuramt_3, :tx_compnt_lcuramt_4,
+          :tx_compnt_1_expmt, :tx_compnt_2_expmt, :tx_compnt_3_expmt, :tx_compnt_4_expmt,
+          :tx_tax_filed, TO_DATE(SUBSTR(:tx_tax_filed_dt,1,10),'YYYY-MM-DD'), :tx_tax_filed_refno, :tx_compnt_hdisc_amt_1
         )
         `,
-        detail.map((d: any) => ({
-          ...d,
-          doc_no,
-        }))
+        detailBinds
       );
     }
 
-    //  ---------- INVOICE  ---------- 
+    //  ---------- INVOICE  ----------
     if (children?.invoice?.length) {
+      console.log('DB: CREATE-FLOW INSERT INVOICE (first)', { ...children.invoice[0], doc_no });
       await connection.executeMany(
         `
         INSERT INTO TR_AC_INVDETAIL (
@@ -1092,8 +1168,9 @@ export const createChequePaymentDocument= async (
       );
     }
 
-    //---------- JOB  ---------- 
+    //---------- JOB  ----------
     if (children?.job?.length) {
+      console.log('DB: CREATE-FLOW INSERT JOB (first)', { ...children.job[0], doc_no });
       await connection.executeMany(
         `
         INSERT INTO TR_AC_JOBDETAIL (
@@ -1116,6 +1193,7 @@ export const createChequePaymentDocument= async (
     }
 
     if (children?.expense?.length) {
+      console.log('DB: CREATE-FLOW INSERT EXPENSE (first)', { ...children.expense[0], doc_no });
       await connection.executeMany(
         `
         INSERT INTO TR_AC_EXPENSE_DETAIL (
@@ -1138,6 +1216,7 @@ export const createChequePaymentDocument= async (
     }
 
     if (files?.length) {
+      console.log('DB: INSERT FILES (first)', { ...files[0], request_number: req.body.doc_type + doc_no });
       await connection.executeMany(
         `
         INSERT INTO UPLOADED_FILES_DLTS (
@@ -1183,44 +1262,68 @@ export const createChequePaymentDocument= async (
   }
 };
 
+// Helper: Invoke the SP_AC_TXN_CONTROL stored procedure safely via Oracle connection
+export const callSpAcTxnControl = async (
+  company_code: string,
+  doc_type: string | number,
+  doc_no: string | number,
+  user: string
+) => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await oracledb.getConnection();
+    await conn.execute(
+      `BEGIN SP_AC_TXN_CONTROL(
+        :vs_company_code,
+        :vs_doc_type,
+        :vs_doc_no,
+        :vs_user
+      ); END;`,
+      {
+        vs_company_code: company_code,
+        vs_doc_type: doc_type,
+        vs_doc_no: doc_no,
+        vs_user: user,
+      }
+    );
+    await conn.commit();
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch (er) {
+        console.warn("Error closing connection after SP call:", er);
+      }
+    }
+  }
+};
 
-// export const createChequePaymentStoreProcess = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     console.log(
-//       "this is req body data -------=========>>>>>>",
-//       req.body.doc_type,
-//       req.body.doc_no
-//     );
-//     await sequelize.query(
-//       `CALL SP_AC_TXN_CONTROL(:vs_company_code, :vs_doc_type, :vs_doc_no, :vs_user)`,
-//       {
-//         replacements: {
-//           vs_company_code: req.user.company_code,
-//           vs_doc_type: req.body.doc_type,
-//           vs_doc_no: req.body.doc_no,
-//           vs_user: req.user.loginid,
-//         },
-//         logging: console.log, // This logs the actual SQL queries
-//       }
-//     );
-//     // Return success response after transaction completion
-//     res.status(constants.STATUS_CODES.OK).json({
-//       success: true,
-//       data: constants.MESSAGES.STORE_PROCESS,
-//     });
-//     return;
-//   } catch (err) {
-//     // Log and handle any errors during the process
-//     console.error(err);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Error occurred while fetching data :" + err,
-//     });
-//   }
-// };
+export const createChequePaymentStoreProcess = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    await callSpAcTxnControl(
+      req.user.company_code,
+      req.body.doc_type,
+      req.body.doc_no,
+      req.user.loginid
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: constants.MESSAGES.STORE_PROCESS,
+    });
+    return;
+  } catch (err: any) {
+    console.error("Store process error:", err);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Error occurred while processing store process: " + (err?.message ?? err),
+    });
+    return;
+  }
+};
 
 //-------------------update---------------
 // /**
@@ -1469,17 +1572,12 @@ export const createChequePaymentDocument= async (
 //       }
 //     });
 
-//     await sequelize.query(
-//       `CALL SP_AC_TXN_CONTROL(:vs_company_code, :vs_doc_type, :vs_doc_no, :vs_user)`,
-//       {
-//         replacements: {
-//           vs_company_code: req.user.company_code,
-//           vs_doc_type: req.body.doc_type,
-//           vs_doc_no: doc_no_store,
-//           vs_user: req.user.loginid,
-//         },
-//         logging: console.log, // This logs the actual SQL queries
-//       }
+//     // Using Oracle helper to run stored procedure (updated for Oracle driver)
+//     await callSpAcTxnControl(
+//       req.user.company_code,
+//       req.body.doc_type,
+//       doc_no_store,
+//       req.user.loginid
 //     );
 
 //     // Return success response after transaction completion
@@ -1497,6 +1595,386 @@ export const createChequePaymentDocument= async (
 //     });
 //   }
 // };
+export const updateChequePaymentDocument = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { error } = chequePaymentSchema(req.body);
+    if (error) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+
+    const { detail = [], children = {}, files = [], ...header } = req.body as any;
+    const { doc_no, doc_type } = header;
+
+    if (!doc_no) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Missing doc_no in request",
+      });
+      return;
+    }
+
+    conn = await oracledb.getConnection();
+
+    try {
+      // ---------- Handle invoices with zero amount (mark for deletion) ----------
+      if (Array.isArray(children.invoice)) {
+        const invoicesWithZeroAmount: Array<any> = [];
+
+        children.invoice = children.invoice
+          .map((eachInvoice: any) => {
+            if (Number(eachInvoice.amount ?? 0) === 0) {
+              if (eachInvoice.IsDeletable === true)
+                invoicesWithZeroAmount.push({
+                  ac_code: eachInvoice.ac_code,
+                  serial_no: eachInvoice.serial_no,
+                  dtl_sr_no: eachInvoice.dtl_sr_no,
+                });
+              return null;
+            }
+            const { IsDeletable, ...rest } = eachInvoice;
+            return rest;
+          })
+          .filter(Boolean);
+
+        if (invoicesWithZeroAmount.length > 0) {
+          // Build OR conditions for deletion
+          const orClauses = invoicesWithZeroAmount
+            .map((_, idx) => `(ac_code = :ac${idx} AND serial_no = :sr${idx} AND dtl_sr_no = :dtl${idx})`)
+            .join(" OR ");
+
+          const binds: any = {
+            company_code: req.user.company_code,
+            doc_no,
+            div_code: header.div_code,
+            doc_type,
+          };
+
+          invoicesWithZeroAmount.forEach((inv, idx) => {
+            binds[`ac${idx}`] = inv.ac_code;
+            binds[`sr${idx}`] = inv.serial_no;
+            binds[`dtl${idx}`] = inv.dtl_sr_no;
+          });
+
+          await conn.execute(
+            `DELETE FROM ${constants.TABLE.TR_AC_INVDETAIL}
+             WHERE company_code = :company_code
+               AND doc_no = :doc_no
+               AND div_code = :div_code
+               AND doc_type = :doc_type
+               AND (${orClauses})`,
+            binds
+          );
+        }
+      }
+
+      // ---------- Delete existing child records (invoice/job/expense) for this document ---
+      await conn.execute(
+        `DELETE FROM ${constants.TABLE.TR_AC_INVDETAIL}
+         WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type`,
+        { company_code: req.user.company_code, doc_no, doc_type }
+      );
+
+      await conn.execute(
+        `DELETE FROM ${constants.TABLE.TR_AC_JOBDETAIL}
+         WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type`,
+        { company_code: req.user.company_code, doc_no, doc_type }
+      );
+
+      await conn.execute(
+        `DELETE FROM ${constants.TABLE.TR_AC_EXPDETAIL}
+         WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type`,
+        { company_code: req.user.company_code, doc_no, doc_type }
+      );
+
+      // ---------- Update Header ----------
+      await conn.execute(
+        `UPDATE ${constants.TABLE.TR_AC_HEADER} SET
+           ac_code = :ac_code,
+           bank_ac_code = :bank_ac_code,
+           ref_no = :ref_no,
+           ref_date = TO_DATE(SUBSTR(:ref_date,1,10),'YYYY-MM-DD'),
+           remarks = :remarks,
+           curr_code = :curr_code,
+           ex_rate = :ex_rate,
+           cheque_no = :cheque_no,
+           cheque_date = TO_DATE(SUBSTR(:cheque_date,1,10),'YYYY-MM-DD'),
+           canceled = :canceled,
+           updated_by = :updated_by,
+           payment_terms = :payment_terms,
+           lpo_no = :lpo_no,
+           lpo_date = TO_DATE(SUBSTR(:lpo_date,1,10),'YYYY-MM-DD')
+         WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type
+        `,
+        {
+          ac_code: header.ac_code,
+          bank_ac_code: header.bank_ac_code,
+          ref_no: header.ref_no,
+          ref_date: header.ref_date,
+          remarks: header.remarks,
+          curr_code: header.curr_code,
+          ex_rate: header.ex_rate,
+          cheque_no: header.cheque_no,
+          cheque_date: header.cheque_date,
+          canceled: header.canceled,
+          updated_by: req.user.loginid,
+          payment_terms: header.payment_terms,
+          lpo_no: header.lpo_no,
+          lpo_date: header.lpo_date,
+          company_code: req.user.company_code,
+          doc_no,
+          doc_type,
+        }
+      );
+
+      // ---------- Replace details: delete existing and insert provided ones ----------
+      await conn.execute(
+        `DELETE FROM ${constants.TABLE.TR_AC_DETAIL}
+         WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type`,
+        { company_code: req.user.company_code, doc_no, doc_type }
+      );
+
+      if (Array.isArray(detail) && detail.length > 0) {
+        const binds = detail.map((d: any) => ({
+          company_code: req.user.company_code,
+          doc_type: d.doc_type ?? doc_type,
+          doc_no,
+          serial_no: d.serial_no,
+          doc_date: d.doc_date,
+          ac_code: d.ac_code,
+          header_ac_code: d.header_ac_code,
+          bank_ac_code: d.bank_ac_code,
+          remarks: d.remarks,
+          amount: d.amount,
+          sign_ind: d.sign_ind,
+          curr_code: d.curr_code,
+          ex_rate: d.ex_rate,
+          lcur_amount: d.lcur_amount,
+          pdc_ind: d.pdc_ind,
+          cheque_no: d.cheque_no,
+          cheque_date: d.cheque_date,
+          cheque_desc: d.cheque_desc,
+          pdc_cleared_date: d.pdc_cleared_date,
+          cancelled: d.cancelled,
+          job_no: d.job_no,
+          recon_ind: d.recon_ind,
+          recon_date: d.recon_date,
+          dept_code: d.dept_code,
+          qty: d.qty,
+          price: d.price,
+          uom: d.uom,
+          pdc_clear_jvno: d.pdc_clear_jvno,
+          ref_doc_type: d.ref_doc_type,
+          ref_doc_no: d.ref_doc_no,
+          ref_doc_serial_no: d.ref_doc_serial_no,
+          div_code: d.div_code,
+          tx_cat_code: d.tx_cat_code,
+          tx_compntcat_code_1: d.tx_compntcat_code_1,
+          tx_compntcat_code_2: d.tx_compntcat_code_2,
+          tx_compntcat_code_3: d.tx_compntcat_code_3,
+          tx_compntcat_code_4: d.tx_compntcat_code_4,
+          tx_compnt_perc_1: d.tx_compnt_perc_1,
+          tx_compnt_perc_2: d.tx_compnt_perc_2,
+          tx_compnt_perc_3: d.tx_compnt_perc_3,
+          tx_compnt_perc_4: d.tx_compnt_perc_4,
+          tx_compnt_amt_1: d.tx_compnt_amt_1,
+          tx_compnt_amt_2: d.tx_compnt_amt_2,
+          tx_compnt_amt_3: d.tx_compnt_amt_3,
+          tx_compnt_amt_4: d.tx_compnt_amt_4,
+          tx_compnt_lcuramt_1: d.tx_compnt_lcuramt_1,
+          tx_compnt_lcuramt_2: d.tx_compnt_lcuramt_2,
+          tx_compnt_lcuramt_3: d.tx_compnt_lcuramt_3,
+          tx_compnt_lcuramt_4: d.tx_compnt_lcuramt_4,
+          tx_compnt_1_expmt: d.tx_compnt_1_expmt,
+          tx_compnt_2_expmt: d.tx_compnt_2_expmt,
+          tx_compnt_3_expmt: d.tx_compnt_3_expmt,
+          tx_compnt_4_expmt: d.tx_compnt_4_expmt,
+          tx_tax_filed: d.tx_tax_filed,
+          tx_tax_filed_dt: d.tx_tax_filed_dt,
+          tx_tax_filed_refno: d.tx_tax_filed_refno,
+          tx_compnt_hdisc_amt_1: d.tx_compnt_hdisc_amt_1,
+        }));
+
+        await conn.executeMany(
+          `INSERT INTO ${constants.TABLE.TR_AC_DETAIL} (
+             company_code, doc_type, doc_no, serial_no, doc_date, ac_code, header_ac_code, bank_ac_code, remarks, amount,
+             sign_ind, curr_code, ex_rate, lcur_amount, pdc_ind, cheque_no, cheque_date, cheque_desc, pdc_cleared_date, cancelled,
+             job_no, recon_ind, recon_date, dept_code, qty, price, uom, pdc_clear_jvno, ref_doc_type, ref_doc_no, ref_doc_serial_no,
+             div_code, tx_cat_code, tx_compntcat_code_1, tx_compntcat_code_2, tx_compntcat_code_3, tx_compntcat_code_4,
+             tx_compnt_perc_1, tx_compnt_perc_2, tx_compnt_perc_3, tx_compnt_perc_4,
+             tx_compnt_amt_1, tx_compnt_amt_2, tx_compnt_amt_3, tx_compnt_amt_4,
+             tx_compnt_lcuramt_1, tx_compnt_lcuramt_2, tx_compnt_lcuramt_3, tx_compnt_lcuramt_4,
+             tx_compnt_1_expmt, tx_compnt_2_expmt, tx_compnt_3_expmt, tx_compnt_4_expmt,
+             tx_tax_filed, tx_tax_filed_dt, tx_tax_filed_refno, tx_compnt_hdisc_amt_1
+           ) VALUES (
+             :company_code, :doc_type, :doc_no, :serial_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), :ac_code, :header_ac_code, :bank_ac_code, :remarks, :amount,
+             :sign_ind, :curr_code, :ex_rate, :lcur_amount, :pdc_ind, :cheque_no, TO_DATE(SUBSTR(:cheque_date,1,10),'YYYY-MM-DD'), :cheque_desc, TO_DATE(SUBSTR(:pdc_cleared_date,1,10),'YYYY-MM-DD'), :cancelled,
+             :job_no, :recon_ind, TO_DATE(SUBSTR(:recon_date,1,10),'YYYY-MM-DD'), :dept_code, :qty, :price, :uom, :pdc_clear_jvno, :ref_doc_type, :ref_doc_no, :ref_doc_serial_no,
+             :div_code, :tx_cat_code, :tx_compntcat_code_1, :tx_compntcat_code_2, :tx_compntcat_code_3, :tx_compntcat_code_4,
+             :tx_compnt_perc_1, :tx_compnt_perc_2, :tx_compnt_perc_3, :tx_compnt_perc_4,
+             :tx_compnt_amt_1, :tx_compnt_amt_2, :tx_compnt_amt_3, :tx_compnt_amt_4,
+             :tx_compnt_lcuramt_1, :tx_compnt_lcuramt_2, :tx_compnt_lcuramt_3, :tx_compnt_lcuramt_4,
+             :tx_compnt_1_expmt, :tx_compnt_2_expmt, :tx_compnt_3_expmt, :tx_compnt_4_expmt,
+             :tx_tax_filed, TO_DATE(SUBSTR(:tx_tax_filed_dt,1,10),'YYYY-MM-DD'), :tx_tax_filed_refno, :tx_compnt_hdisc_amt_1
+           )`,
+          binds
+        );
+      }
+
+      // ---------- Insert children invoice/job/expense ----------
+      if (Array.isArray(children.invoice) && children.invoice.length > 0) {
+        console.log('DB: INSERT INVOICE (first)', { ...children.invoice[0], doc_no });
+        await conn.executeMany(
+          `INSERT INTO ${constants.TABLE.TR_AC_INVDETAIL} (
+             company_code, doc_type, doc_no, serial_no, dtl_sr_no, doc_date, ac_code, inv_no, inv_date, due_date,
+             chq_no, chq_date, chq_bank, amount, lcur_amount, sign_ind, curr_code, ex_rate, div_code, oracle_upload, oracle_dt, created_by, updated_by
+           ) VALUES (
+             :company_code, :doc_type, :doc_no, :serial_no, :dtl_sr_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), :ac_code, :inv_no, TO_DATE(SUBSTR(:inv_date,1,10),'YYYY-MM-DD'), TO_DATE(SUBSTR(:due_date,1,10),'YYYY-MM-DD'),
+             :chq_no, TO_DATE(SUBSTR(:chq_date,1,10),'YYYY-MM-DD'), :chq_bank, :amount, :lcur_amount, :sign_ind, :curr_code, :ex_rate, :div_code, :oracle_upload, TO_DATE(SUBSTR(:oracle_dt,1,10),'YYYY-MM-DD'), :created_by, :updated_by
+           )`,
+          children.invoice.map((inv: any) => ({
+            company_code: req.user.company_code,
+            doc_type: inv.doc_type ?? doc_type,
+            doc_no,
+            serial_no: inv.serial_no,
+            dtl_sr_no: inv.dtl_sr_no,
+            doc_date: inv.doc_date,
+            ac_code: inv.ac_code,
+            inv_no: inv.inv_no,
+            inv_date: inv.inv_date,
+            due_date: inv.due_date,
+            chq_no: inv.chq_no,
+            chq_date: inv.chq_date,
+            chq_bank: inv.chq_bank,
+            amount: inv.amount,
+            lcur_amount: inv.lcur_amount,
+            sign_ind: inv.sign_ind,
+            curr_code: inv.curr_code,
+            ex_rate: inv.ex_rate,
+            div_code: inv.div_code,
+            oracle_upload: inv.oracle_upload,
+            oracle_dt: inv.oracle_dt,
+            created_by: req.user.loginid,
+            updated_by: req.user.loginid,
+          }))
+        );
+      }
+
+      if (Array.isArray(children.job) && children.job.length > 0) {
+        await conn.executeMany(
+          `INSERT INTO ${constants.TABLE.TR_AC_JOBDETAIL} (
+             company_code, doc_type, doc_no, serial_no, dtl_sr_no, doc_date, ac_code, job_no, doc_refno, doc_refno_2, amount, sign_ind, lcur_amount, curr_code, ex_rate, div_code, created_by, updated_by
+           ) VALUES (
+             :company_code, :doc_type, :doc_no, :serial_no, :dtl_sr_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), :ac_code, :job_no, :doc_refno, :doc_refno_2, :amount, :sign_ind, :lcur_amount, :curr_code, :ex_rate, :div_code, :created_by, :updated_by
+           )`,
+          children.job.map((j: any) => ({
+            company_code: req.user.company_code,
+            doc_type: j.doc_type ?? doc_type,
+            doc_no,
+            serial_no: j.serial_no,
+            dtl_sr_no: j.dtl_sr_no,
+            doc_date: j.doc_date,
+            ac_code: j.ac_code,
+            job_no: j.job_no,
+            doc_refno: j.doc_refno,
+            doc_refno_2: j.doc_refno_2,
+            amount: j.amount,
+            sign_ind: j.sign_ind,
+            lcur_amount: j.lcur_amount,
+            curr_code: j.curr_code,
+            ex_rate: j.ex_rate,
+            div_code: j.div_code,
+            created_by: req.user.loginid,
+            updated_by: req.user.loginid,
+          }))
+        );
+      }
+
+      if (Array.isArray(children.expense) && children.expense.length > 0) {
+        await conn.executeMany(
+          `INSERT INTO ${constants.TABLE.TR_AC_EXPDETAIL} (
+             company_code, doc_type, doc_no, serial_no, dtl_sr_no, doc_date, ac_code, exp_type_code, exp_subtype_code, exp_code, amount, sign_ind, lcur_amount, curr_code, ex_rate, div_code, job_no, created_by, updated_by
+           ) VALUES (
+             :company_code, :doc_type, :doc_no, :serial_no, :dtl_sr_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), :ac_code, :exp_type_code, :exp_subtype_code, :exp_code, :amount, :sign_ind, :lcur_amount, :curr_code, :ex_rate, :div_code, :job_no, :created_by, :updated_by
+           )`,
+          children.expense.map((e: any) => ({
+            company_code: req.user.company_code,
+            doc_type: e.doc_type ?? doc_type,
+            doc_no,
+            serial_no: e.serial_no,
+            dtl_sr_no: e.dtl_sr_no,
+            doc_date: e.doc_date,
+            ac_code: e.ac_code,
+            exp_type_code: e.exp_type_code,
+            exp_subtype_code: e.exp_subtype_code,
+            exp_code: e.exp_code,
+            amount: e.amount,
+            sign_ind: e.sign_ind,
+            lcur_amount: e.lcur_amount,
+            curr_code: e.curr_code,
+            ex_rate: e.ex_rate,
+            div_code: e.div_code,
+            job_no: e.job_no,
+            created_by: req.user.loginid,
+            updated_by: req.user.loginid,
+          }))
+        );
+      }
+
+      // ---------- Files ----------
+      if (Array.isArray(files) && files.length > 0) {
+        await conn.executeMany(
+          `INSERT INTO UPLOADED_FILES_DLTS (request_number, file_name) VALUES (:request_number, :file_name)`,
+          files.map((f: any) => ({
+            request_number: req.body.doc_type + doc_no,
+            file_name: f.file_name,
+          }))
+        );
+      }
+
+      // ---------- Call store process SP ----------
+      await callSpAcTxnControl(req.user.company_code, doc_type, doc_no, req.user.loginid);
+
+      await conn.commit();
+
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        data: constants.MESSAGES.CREATED_SUCCESSFULLY,
+      });
+      return;
+    } catch (err: any) {
+      try {
+        await conn.rollback();
+      } catch (er) {
+        console.warn("Rollback failed:", er);
+      }
+      throw err;
+    }
+  } catch (err: any) {
+    console.error(err);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Error occurred while updating data: " + (err?.message ?? err),
+    });
+    return;
+  } finally {
+    if (conn) {
+      try {
+        await conn.close();
+      } catch (e) {
+        console.warn("Error closing connection:", e);
+      }
+    }
+  }
+};
+
 //-------------------delete---------------
 // /**
 //  * Deletes a detail item from a transaction document
@@ -1770,5 +2248,4 @@ export const createChequePaymentDocument= async (
 //     });
 //   }
 // };
-
 
