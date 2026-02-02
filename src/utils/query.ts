@@ -75,8 +75,8 @@ WHERE (LTRIM(RTRIM(a.level3)) IS NOT NULL AND LTRIM(RTRIM(a.level3)) != ' ' AND 
 
 export const getChequePaymentInvoiceDetail = `
 SELECT TR_AC_INVDETAIL.inv_no, 
-dtl_sr_no, 
-doc_no,
+TR_AC_INVDETAIL.dtl_sr_no, 
+TR_AC_INVDETAIL.doc_no,
 max(inv_date) inv_date,  
 00000000.00 amount,  
 1 sign_ind,  
@@ -88,18 +88,20 @@ sum(lcur_amount * sign_ind) inv_amt,
 'N' c_indicator_origin,  
 max( case when indicator_origin='Y' then curr_code end) c_curr_code_origin,  
 max( case when indicator_origin='Y' then ex_rate end) c_ex_rate_origin,  
-(sum(amount_origin * sign_ind)/max(ex_rate_origin)) c_bal_amt_org,
-div_code
+(sum(amount_origin * sign_ind)/max(case when indicator_origin='Y' then ex_rate end)) c_bal_amt_org,
+TR_AC_INVDETAIL.div_code
 FROM TR_AC_INVDETAIL  
-WHERE ( TR_AC_INVDETAIL.company_code = :company_code ) AND  
-( TR_AC_INVDETAIL.ac_code = :ac_code ) AND  
-( TR_AC_INVDETAIL.div_code = :div_code ) AND  
-( trim(TR_AC_INVDETAIL.doc_type) || trim(doc_no) || trim(serial_no) <> :invrsno )  
+WHERE TR_AC_INVDETAIL.company_code = :company_code
+  AND TR_AC_INVDETAIL.ac_code = :ac_code
+  AND TR_AC_INVDETAIL.div_code = :div_code
+  AND (TRIM(TR_AC_INVDETAIL.doc_type) || TRIM(TO_CHAR(TR_AC_INVDETAIL.doc_no)) || TRIM(TO_CHAR(TR_AC_INVDETAIL.serial_no)) <> :invrsno)
 GROUP BY TR_AC_INVDETAIL.company_code,  
 TR_AC_INVDETAIL.ac_code,  
 TR_AC_INVDETAIL.inv_no  ,
-TR_AC_INVDETAIL.div_code
-  HAVING ( round(sum(lcur_amount * sign_ind),3)  <> 0 );`;
+TR_AC_INVDETAIL.div_code,
+TR_AC_INVDETAIL.doc_no,
+TR_AC_INVDETAIL.dtl_sr_no
+  HAVING ( round(sum(lcur_amount * sign_ind),3)  <> 0 )`;
 
 export const getWareHouseUtilization = `SELECT 
     C.TXN_DATE, 

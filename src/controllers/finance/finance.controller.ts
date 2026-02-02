@@ -42,9 +42,6 @@ export const getFinanceListData = async (
 
     let fetchedData: unknown[] = [];
     let totalCount = 0;
-    // Set pagination options if limit is provided
-    //const paginationOptions = limit ? { offset: skip, limit: limit } : {};
-   // Parse and set filter from query parameters
     const filter: ISearch = req.query.filter
       ? JSON.parse(req.query.filter as string)
       : {};
@@ -59,15 +56,53 @@ export const getFinanceListData = async (
           company_code: requestUser.company_code,
         };
 
+        // Support structured search filters (array of groups) and plain-string search
         if (filter?.search) {
-          whereClause += `
-            AND (
-              UPPER(doc_no) LIKE UPPER(:search)
-              OR UPPER(doc_type) LIKE UPPER(:search)
-              OR UPPER(div_code) LIKE UPPER(:search)
-            )
-          `;
-          binds.search = `%${filter.search}%`;
+          // If search is an array of filter groups like [[{field_name, field_value, operator}, ...], [...]]
+          if (Array.isArray(filter.search)) {
+            (filter.search as any[]).forEach((group, gi) => {
+              if (!Array.isArray(group)) return;
+              const groupClauses: string[] = [];
+              group.forEach((cond: any, ci: number) => {
+                const { field_name, field_value, operator } = cond;
+                if (field_value === undefined || field_value === null || field_value === "") return;
+
+                // Only allow known searchable columns for safety
+                const allowedFields = ["doc_no", "doc_type", "div_code", "fy_period", "ac_code", "ref_no"];
+                if (!allowedFields.includes(field_name)) return;
+
+                const safeParam = `${field_name.replace(/\W/g, "")}_${gi}_${ci}`;
+                switch ((operator || "").toLowerCase()) {
+                  case "exactmatch":
+                  case "=":
+                    groupClauses.push(`UPPER(${field_name}) = UPPER(:${safeParam})`);
+                    binds[safeParam] = field_value;
+                    break;
+                  case "like":
+                  case "contains":
+                    groupClauses.push(`UPPER(${field_name}) LIKE UPPER(:${safeParam})`);
+                    binds[safeParam] = `%${field_value}%`;
+                    break;
+                  default:
+                    // fallback to like
+                    groupClauses.push(`UPPER(${field_name}) LIKE UPPER(:${safeParam})`);
+                    binds[safeParam] = `%${field_value}%`;
+                }
+              });
+              if (groupClauses.length) {
+                whereClause += ` AND (${groupClauses.join(" OR ")})`;
+              }
+            });
+          } else {
+            whereClause += `
+              AND (
+                UPPER(doc_no) LIKE UPPER(:search)
+                OR UPPER(doc_type) LIKE UPPER(:search)
+                OR UPPER(div_code) LIKE UPPER(:search)
+              )
+            `;
+            binds.search = `%${filter.search}%`;
+          }
         }
 
         const countResult = await connection.execute(
@@ -100,8 +135,14 @@ export const getFinanceListData = async (
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
-        fetchedData = dataResult.rows || [];
-        console.log('Get data from doc :',fetchedData)
+        fetchedData = (dataResult.rows || []).map((row: any) => {
+          const mapped: any = {};
+          Object.keys(row).forEach((k) => {
+            mapped[k.toLowerCase()] = (row as any)[k];
+          });
+          return mapped;
+        });
+        console.log('Get data from doc :',fetchedData);
     };
     break;
     
@@ -415,8 +456,6 @@ break;
 
   let defaultData: { [key: string]: any } = {};
 
-  // FETCH INVOICE DATA 
-
   const invoiceResult = await connection.execute(
     `
     ${getChequePaymentInvoiceDetail}
@@ -430,14 +469,15 @@ break;
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
   );
 
-  let fetchedData: any[] = invoiceResult.rows || [];
+  // Use the outer `fetchedData` (do not shadow it) so the response includes data and count consistently
+  fetchedData = invoiceResult.rows || [];
 
-  const fetchedInvoiceNumbers = fetchedData.map((row) => {
+  const fetchedInvoiceNumbers = (fetchedData as any[]).map((row: any) => {
     defaultData[row.inv_no] = row;
     return row.inv_no;
   });
 
-  // FETCH EXISTING INVOICE DETAILS
+  
     
   const existingResult = await connection.execute(
     `
@@ -489,7 +529,7 @@ break;
     }
   }
 
-  const newFetchedDataWithDtlSrNo = fetchedData.filter((item) => {
+  const newFetchedDataWithDtlSrNo = fetchedData.filter((item: any) => {
     if (!existingInvoiceInvNos.includes(item.inv_no)) {
       maxDtlSrNo += 1;
       item.dtl_sr_no = maxDtlSrNo;
@@ -503,7 +543,13 @@ break;
     ...matchedData,
     ...newFetchedDataWithDtlSrNo,
     ...remainingExistingInvoices,
-  ];
+  ].map((row: any) => {
+    const mapped: any = {};
+    Object.keys(row).forEach((k) => {
+      mapped[k.toLowerCase()] = (row as any)[k];
+    });
+    return mapped;
+  });
 
   totalCount = fetchedData.length;
 }
@@ -678,7 +724,6 @@ break;
     company_code: requestUser.company_code,
   };
 
-  // SEARCH FILTER (equivalent to getSearchFilterQuery)
   if (filter?.search) {
     whereClause += `
       AND (

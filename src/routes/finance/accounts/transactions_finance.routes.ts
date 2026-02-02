@@ -1,40 +1,37 @@
 // Import required Express framework
 import * as express from "express";
 
-// // Import transaction-related controller functions
+// Import transaction-related controller functions
 import {
-//   // Document Creation Controllers
-   //createChequePaymentDocument, // Creates single cheque payment
-//   createBulkTransactionDocument, // Creates multiple transactions
+  // Document Creation Controllers
+  createChequePaymentDocument, // Creates single cheque payment
+  createBulkTransactionDocument, // Creates multiple transactions
 
-//   // Information Retrieval Controllers
-//   getChequeDetail, // Gets cheque-specific information
-//   getChequePaymentDetail, // Gets payment transaction details
- //getChequePaymentHeader, // Gets payment header information
-//   getChequePaymentReport, // Generates payment reports
-//   getChildTableName, // Gets related table names
-//getCompanyInfo, // Retrieves company information
- //getDefaultTransactionDetails, // Gets default transaction values
+  // Information Retrieval Controllers
+  getChequeDetail, // Gets cheque-specific information
+  getChequePaymentDetail, // Gets payment transaction details
+  getChequePaymentHeader, // Gets payment header information
+  //getChequePaymentReport, // Generates payment reports
+  getChildTableName, // Gets related table names
+  getCompanyInfo, // Retrieves company information
+  getDefaultTransactionDetails, // Gets default transaction values
 
-//   // Document Modification Controllers
-//   updateChequePaymentDocument, // Updates payment documents
-//   cancelDocument, // Cancels existing documents
+  // Document Modification Controllers
+  updateChequePaymentDocument, // Updates payment documents
+  cancelDocument, // Cancels existing documents
 
-//   // Document Deletion Controllers
-//   deleteChildrenItem, // Removes child records
-//   deleteDetailItem, // Removes detail records
-//   deleteDocument, // Deletes entire documents
+  // Document Deletion Controllers
+  deleteChildrenItem, // Removes child records
+  deleteDetailItem, // Removes detail records
+  deleteDocument, // Deletes entire documents
 
-//   // Export Controller
-//   exportTransactionDocument,
-//   createChequePaymentStoreProcess, // Exports transaction data
- } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
+  // Export Controller
+  //exportTransactionDocument,
+  createChequePaymentStoreProcess, // Exports transaction data
+} from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 
- import { createChequePaymentDocument, getCompanyInfo, getDefaultTransactionDetails, getChequePaymentHeader, getChequeDetail, getChequePaymentDetail, 
-   getChildTableName} from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
-
- // Initialize Express router
- const router = express.Router();
+// Initialize Express router
+const router = express.Router();
 
 //-------------Transaction Routes--------------
 
@@ -48,22 +45,22 @@ router.get("/table_name/:ac_code", getChildTableName);          // Get related t
 // router.get("/document_report", getChequePaymentReport);         // Generate payment report
 // router.get("/export", exportTransactionDocument);               // Export transaction data
 
-// // POST Routes - Document Creation
-// router.post("/document/bulk", createBulkTransactionDocument);   // Create multiple transactions
+// POST Routes - Document Creation
+router.post("/document/bulk", createBulkTransactionDocument);   // Create multiple transactions
 router.post("/document", createChequePaymentDocument);          // Create single cheque payment
-// router.post("/document/storeProcess", createChequePaymentStoreProcess); 
+router.post("/document/storeProcess", createChequePaymentStoreProcess);
 
-// // PUT Routes - Document Updates
-// router.put("/document", updateChequePaymentDocument);           // Update payment document
-// router.put("/cancel_cheque", cancelDocument);                   // Cancel existing document
+// PUT Routes - Document Updates
+router.put("/document", updateChequePaymentDocument);           // Update payment document
+router.put("/cancel_cheque", cancelDocument);                   // Cancel existing document
 
-// // DELETE Routes - Record Removal
-// router.delete("/document/:doc_type", deleteDocument);           // Delete document by type
-// router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail record
-// router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
+// DELETE Routes - Record Removal
+router.delete("/document/:doc_type", deleteDocument);           // Delete document by type
+router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail record
+router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
 
-// // Export the configured router
- export default router;
+// Export the configured router
+export default router;
 
 // /* Router Purpose:
 // This router manages financial transaction endpoints with:
