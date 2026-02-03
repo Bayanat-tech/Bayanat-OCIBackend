@@ -1,11 +1,16 @@
 /**
  * @fileoverview Oracle-based upsert logic for TT_BATCH table (Putaway Manual)
+ * Updated to handle ORA-00980 synonym translation errors
  */
 import oracledb from "oracledb";
 import { oracleDb } from "../../../../database/connection";
 
 import { Request, Response } from "express";
 import constants from "../../../../helpers/constants";
+
+// Configuration: Set the actual schema owner if TT_BATCH is in a different schema
+const SCHEMA_OWNER = process.env.ORACLE_SCHEMA_OWNER || ""; // e.g., "WMSOWNER"
+const TT_BATCH_TABLE = SCHEMA_OWNER ? `${SCHEMA_OWNER}.TT_BATCH` : "TT_BATCH";
 
 import { TPutawaymanual } from "../../../../../src/interfaces/wms/transaction/inbound/manualputaway.interface";
 import { TtBatchService } from "../../../../services/WMS/transaction/inbound/ttBatch.service";
@@ -49,12 +54,23 @@ async function retryOnError<T>(
     return await operation();
   } catch (error: any) {
     const message = error.message || "";
+    
+    // ORA-00980: synonym translation is no longer valid
+    if (/ORA-00980/.test(message)) {
+      throw new Error(
+        `Synonym translation error: The TT_BATCH synonym is invalid. ` +
+        `Please run: npx ts-node diagnose-synonym.ts to diagnose the issue. ` +
+        `Original error: ${message}`
+      );
+    }
+    
+    // ORA-00060: deadlock detected - retry
     if (retries > 0 && /ORA-00060/.test(message)) {
-      // ORA-00060: deadlock detected
       console.warn("Deadlock detected. Retrying...");
       await sleep(RETRY_DELAY);
       return retryOnError(operation, retries - 1);
     }
+    
     throw error;
   }
 }
@@ -92,7 +108,7 @@ export async function upsertPutawaymanualOracle(
 
       // Update all records with the same JOB_NO
       await connection.execute(
-        `UPDATE TT_BATCH 
+        `UPDATE ${TT_BATCH_TABLE} 
          SET CONFIRMED = 'N', 
              SELECTED = 'Y', 
              ALLOCATED = 'Y' 
@@ -133,7 +149,7 @@ async function recordExists(
 ): Promise<boolean> {
   const result = await connection.execute(
     `SELECT 1 
-       FROM TT_BATCH 
+       FROM ${TT_BATCH_TABLE} 
       WHERE COMPANY_CODE = :companyCode 
         AND PRIN_CODE = :prinCode 
         AND JOB_NO = :jobNo 
@@ -162,7 +178,7 @@ async function updatePutawaymanual(
   connection: oracledb.Connection
 ) {
   const sql = `
-    UPDATE TT_BATCH SET
+    UPDATE ${TT_BATCH_TABLE} SET
       TXN_DATE = :TXN_DATE, PACKDET_NO = :PACKDET_NO, KEY_NUMBER = :KEY_NUMBER, PROD_CODE = :PROD_CODE, SITE_CODE = :SITE_CODE,
       LOCATION_CODE = :LOCATION_CODE, QUANTITY = :QUANTITY, QTY_PUOM = :QTY_PUOM, QTY_LUOM = :QTY_LUOM,
       P_UOM = :P_UOM, L_UOM = :L_UOM, QTY_CONFIRMED = :QTY_CONFIRMED, PQTY_CONFIRMED = :PQTY_CONFIRMED,
@@ -271,7 +287,7 @@ async function insertPutawaymanual(
   connection: oracledb.Connection
 ) {
   const sql = `
-    INSERT INTO TT_BATCH (
+    INSERT INTO ${TT_BATCH_TABLE} (
       COMPANY_CODE, PRIN_CODE, JOB_NO, TXN_TYPE, TXN_DATE, PACKDET_NO, KEY_NUMBER, PROD_CODE, SITE_CODE, LOCATION_CODE,
       QUANTITY, QTY_PUOM, QTY_LUOM, P_UOM, L_UOM, QTY_CONFIRMED, PQTY_CONFIRMED, LQTY_CONFIRMED,
       PUOM_CONFIRMED, LUOM_CONFIRMED, UPPP, PACK_KEY, UPP, CONFIRM_DATE, CUST_CODE, ORDER_NO,

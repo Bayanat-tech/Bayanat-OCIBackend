@@ -101,15 +101,18 @@ export class PackingDetailsService {
     // NOTE: Remove this auto-generation logic when database trigger is enabled
     let packdetNo = packingDetailsData.packdet_no;
     if (!packdetNo) {
-      const maxResult = await repository
-        .createQueryBuilder("packdet")
-        .select("MAX(packdet.packdet_no)", "max")
-        .where("packdet.company_code = :company_code", { company_code: packingDetailsData.company_code })
-        .andWhere("packdet.prin_code = :prin_code", { prin_code: packingDetailsData.prin_code })
-        .andWhere("packdet.job_no = :job_no", { job_no: packingDetailsData.job_no })
-        .getRawOne();
+      // Get the highest packdet_no for this job and generate next one
+      const existingRecords = await repository.find({
+        where: {
+          company_code: packingDetailsData.company_code,
+          prin_code: packingDetailsData.prin_code,
+          job_no: packingDetailsData.job_no,
+        },
+        order: { packdet_no: "DESC" },
+        take: 1,
+      });
       
-      packdetNo = (maxResult?.max || 0) + 1;
+      packdetNo = (existingRecords?.[0]?.packdet_no || 0) + 1;
     }
 
     // Format dates for Oracle
@@ -149,16 +152,18 @@ export class PackingDetailsService {
       const group = groupedData[key];
       const firstItem = group[0];
       
-      // Get max packdet_no for this group
-      const maxResult = await repository
-        .createQueryBuilder("packdet")
-        .select("MAX(packdet.packdet_no)", "max")
-        .where("packdet.company_code = :company_code", { company_code: firstItem.company_code })
-        .andWhere("packdet.prin_code = :prin_code", { prin_code: firstItem.prin_code })
-        .andWhere("packdet.job_no = :job_no", { job_no: firstItem.job_no })
-        .getRawOne();
+      // Get the highest packdet_no for this group
+      const existingRecords = await repository.find({
+        where: {
+          company_code: firstItem.company_code,
+          prin_code: firstItem.prin_code,
+          job_no: firstItem.job_no,
+        },
+        order: { packdet_no: "DESC" },
+        take: 1,
+      });
       
-      let nextPackdetNo = (maxResult?.max || 0) + 1;
+      let nextPackdetNo = (existingRecords?.[0]?.packdet_no || 0) + 1;
       
       // Assign packdet_no to each item in the group
       for (const item of group) {
@@ -365,15 +370,15 @@ export class PackingDetailsService {
   ): Promise<void> {
     const repository = this.getPackingDetailsRepository();
     
-    await repository
-      .createQueryBuilder()
-      .update()
-      .set({
+    await repository.update(
+      {
+        company_code: companyCode,
+        job_no: jobNo,
+      },
+      {
         selected: "Y",
         allocated: "N",
-      })
-      .where("JOB_NO = :jobNo", { jobNo })
-      .andWhere("COMPANY_CODE = :companyCode", { companyCode })
-      .execute();
+      }
+    );
   }
 }

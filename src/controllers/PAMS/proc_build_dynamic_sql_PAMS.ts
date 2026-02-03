@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection";
 
 export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): Promise<void> => {
   let connection;
@@ -22,7 +21,9 @@ export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): 
       date3,
       date4
     } = req.body;
-console.log('check dynamic sql',req.body);
+
+    console.log('check dynamic sql', req.body);
+
     if (!parameter) {
       res.status(400).json({ error: "Missing required parameter 'parameter'" });
       return;
@@ -30,10 +31,9 @@ console.log('check dynamic sql',req.body);
 
     connection = await oracledb.getConnection();
 
+    // Call the procedure correctly with OUT bind
     const result = await connection.execute(
       `
-      DECLARE
-        v_sql VARCHAR2(32767);
       BEGIN
         PROC_BUILD_DYNAMIC_SQL_PAMS(
           :parameter,
@@ -50,9 +50,8 @@ console.log('check dynamic sql',req.body);
           :date2,
           :date3,
           :date4,
-          v_sql
+          :out_sql
         );
-        :out_sql := v_sql;
       END;
       `,
       {
@@ -66,10 +65,10 @@ console.log('check dynamic sql',req.body);
         number2,
         number3,
         number4,
-        date1,
-        date2,
-        date3,
-        date4,
+        date1: date1 || null,
+        date2: date2 || null,
+        date3: date3 || null,
+        date4: date4 || null,
         out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
       }
     );
@@ -88,25 +87,32 @@ console.log('check dynamic sql',req.body);
 
     console.log("Generated SQL:", rawSql);
 
-    // Execute dynamic SQL with OUT_FORMAT_ARRAY
-    const dataResult = await connection.execute<any[]>(rawSql, [], {
-      outFormat: oracledb.OUT_FORMAT_ARRAY
-    });
+    let tableData: any[] = [];
+    let message: string | undefined;
 
-    // Safely map rows to lowercase keys
-    const tableData =
-      dataResult.rows?.map((row) => {
+    // Execute SELECT statements dynamically
+    if (/^\s*(SELECT|WITH)/i.test(rawSql)) {
+      const dataResult = await connection.execute<any[]>(rawSql, [], {
+        outFormat: oracledb.OUT_FORMAT_ARRAY
+      });
+
+      tableData = dataResult.rows?.map((row) => {
         const obj: Record<string, any> = {};
         dataResult.metaData?.forEach((col, i) => {
           obj[col.name.toLowerCase()] = row[i];
         });
         return obj;
       }) || [];
+    } else {
+      // For UPDATE/INSERT/DELETE statements or messages
+      message = rawSql;
+    }
 
     res.json({
       success: true,
+      message,
       data: tableData,
-      totalCount: tableData.length,
+      totalCount: tableData.length
     });
 
   } catch (error: any) {

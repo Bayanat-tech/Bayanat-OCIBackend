@@ -111,7 +111,7 @@ export class FaceRecognitionService {
       scoreThreshold: 0.3,
     });
  
-  private static readonly MATCH_THRESHOLD = 0.55;
+  private static readonly MATCH_THRESHOLD = 0.45;
   private static readonly OPTIMIZED_IMAGE_SIZE = 224;
  
   private constructor() {
@@ -341,22 +341,34 @@ export class FaceRecognitionService {
       throw new Error("No registered faces found in database");
     }
  
-    const labeledDescriptors = activeFaces.map((face:any) => {
-      let descriptorArray: number[];
- 
-      if (Array.isArray(face.descriptor)) {
-        descriptorArray = face.descriptor;
-      } else if (typeof face.descriptor === "string") {
-        descriptorArray = JSON.parse(face.descriptor);
-      } else {
-        descriptorArray = Object.values(face.descriptor as object);
-      }
- 
-      return new faceapi.LabeledFaceDescriptors(face.employee_id, [
-        new Float32Array(descriptorArray),
-      ]);
-    });
- 
+  // Group descriptors by employee_id
+  const grouped = new Map<string, Float32Array[]>();
+
+ for (const face of activeFaces) {
+  let descriptorArray: number[];
+
+  if (Array.isArray(face.descriptor)) {
+    descriptorArray = face.descriptor;
+  } else if (typeof face.descriptor === "string") {
+    descriptorArray = JSON.parse(face.descriptor);
+  } else {
+    descriptorArray = Object.values(face.descriptor as object);
+  }
+
+  if (!grouped.has(face.employee_id)) {
+    grouped.set(face.employee_id, []);
+  }
+
+  grouped
+    .get(face.employee_id)!
+    .push(new Float32Array(descriptorArray));
+ }
+
+const labeledDescriptors = Array.from(grouped.entries()).map(
+  ([employeeId, descriptors]) =>
+    new faceapi.LabeledFaceDescriptors(employeeId, descriptors)
+);
+
     faceMatcher = new faceapi.FaceMatcher(
       labeledDescriptors,
       FaceRecognitionService.MATCH_THRESHOLD

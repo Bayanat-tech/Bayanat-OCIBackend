@@ -14,7 +14,8 @@ router.use(
   passport.authenticate("jwt", { session: false }),
   tenantContextMiddleware,
   checkUserAuthorization,
-  gmPamsRouter
+  gmPamsRouter    
 );
 
 export default router;
+  

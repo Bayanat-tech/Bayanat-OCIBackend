@@ -9,7 +9,9 @@ import { checkUserAuthorization } from "../../../middleware/checkUserAthorizatio
 
 // Controller imports
 // import { createOrUpdateTSSTNSequential } from "../../../controllers/StockTransfer/strocktransferdbupdate.controller";
-// import { getTSSTNWithDetails } from "../../../controllers/StockTransfer/stocktransferget.controller";
+import { getAllStockTransfers, createSTN, getTSSTNWithDetails, createSTNDetail } from "../../../controllers/StockTransfer/stocktransferget.controller";
+import { processStockTransfer } from "../../../controllers/StockTransfer/processStockTransfer.controller";
+import { confirmStockTransfer } from "../../../controllers/StockTransfer/confirmStockTransfer.controller";
 // import { getProductAvailability } from "../../../controllers/StockTransfer/getProductAvailability";
  // ✅ new import
 
@@ -18,9 +20,31 @@ const router = express.Router();
 // Routes
 // router.put("/createOrUpdateTSSTNSequential", createOrUpdateTSSTNSequential);
 
-// router.get("/getTSSTNWithDetails", async (req, res) => {
-//   await getTSSTNWithDetails(req, res);
-// });
+router.get("/getAllStockTransfers", async (req, res) => {
+  await getAllStockTransfers(req, res);
+});
+
+// Query params: stn_no, company_code (required), prin_code (optional)
+router.get("/getTSSTNWithDetails", async (req, res) => {
+  await getTSSTNWithDetails(req, res);
+});
+
+router.post("/createSTN", async (req, res) => {
+  await createSTN(req, res);
+});
+
+router.post("/createSTNDetail", async (req, res) => {
+  await createSTNDetail(req, res);
+});
+
+// Process Stock Transfer - Calls SP_WM_TRANSFER_PROCESS
+router.post("/processStockTransfer", async (req, res) => {
+  await processStockTransfer(req, res);
+});
+
+router.post("/confirmStockTransfer", async (req, res) => {
+  await confirmStockTransfer(req, res);
+});
 
 // ✅ New GET API for product availability
 // router.get("/getProductAvailability", async (req, res) => {

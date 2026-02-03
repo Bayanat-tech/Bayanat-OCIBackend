@@ -66255,6 +66255,405 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
 2026-01-16 20:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+<<<<<<< HEAD
+2026-01-20 17:29:28 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-20 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-20 18:00:00 [[32minfo[39m]: Found 1 unsent attendance events 
+2026-01-20 18:00:02 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-20 18:11:14 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-20 18:13:39 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-21 11:53:15 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-21 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 12:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 13:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 14:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 14:00:04 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 15:00:05 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 16:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 16:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 17:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 17:00:05 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-21 18:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-21 18:24:26 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-21 18:47:06 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 11:10:19 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 12:00:00 [[32minfo[39m]: No unsent attendance events found 
+2026-01-22 12:42:04 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 13:00:00 [[32minfo[39m]: Found 5 unsent attendance events 
+2026-01-22 13:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 13:40:36 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 13:50:50 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 15:00:00 [[32minfo[39m]: Found 10 unsent attendance events 
+2026-01-22 15:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 16:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 16:00:06 [[32minfo[39m]: Found 12 unsent attendance events 
+2026-01-22 16:00:07 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 16:32:55 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 17:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 17:00:05 [[32minfo[39m]: Found 12 unsent attendance events 
+2026-01-22 17:00:06 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 17:15:32 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 17:20:21 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-22 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-22 18:00:00 [[32minfo[39m]: Found 12 unsent attendance events 
+2026-01-22 18:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 11:27:59 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 12:00:00 [[32minfo[39m]: Found 24 unsent attendance events 
+2026-01-25 12:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 13:00:03 [[32minfo[39m]: Found 24 unsent attendance events 
+2026-01-25 13:00:03 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 14:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 14:00:03 [[32minfo[39m]: Found 24 unsent attendance events 
+2026-01-25 14:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 15:00:03 [[32minfo[39m]: Found 25 unsent attendance events 
+2026-01-25 15:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 16:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 16:00:04 [[32minfo[39m]: Found 25 unsent attendance events 
+2026-01-25 16:00:05 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 17:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 17:00:00 [[32minfo[39m]: Found 25 unsent attendance events 
+2026-01-25 17:00:00 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 17:31:49 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 17:36:53 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 17:38:46 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 17:44:32 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 17:46:23 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 18:00:00 [[32minfo[39m]: Found 25 unsent attendance events 
+2026-01-25 18:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 19:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 19:00:00 [[32minfo[39m]: Found 25 unsent attendance events 
+2026-01-25 19:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 19:19:56 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 19:26:50 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 19:50:52 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 19:52:28 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-25 20:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-25 20:00:03 [[32minfo[39m]: Found 28 unsent attendance events 
+2026-01-25 20:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 20:01:34 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-27 10:59:34 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-27 11:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-27 11:00:00 [[32minfo[39m]: Found 39 unsent attendance events 
+2026-01-27 11:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 11:56:09 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-27 12:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-27 12:00:00 [[32minfo[39m]: Found 39 unsent attendance events 
+2026-01-27 12:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 12:47:06 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-27 13:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-27 13:00:00 [[32minfo[39m]: Found 39 unsent attendance events 
+2026-01-27 13:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 14:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-27 14:00:03 [[32minfo[39m]: Found 39 unsent attendance events 
+2026-01-27 14:00:03 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 15:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-27 15:00:00 [[32minfo[39m]: Found 39 unsent attendance events 
+2026-01-27 15:00:00 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 16:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-27 16:00:03 [[32minfo[39m]: Found 39 unsent attendance events 
+2026-01-27 16:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-28 10:56:53 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+2026-01-28 11:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
+2026-01-28 11:00:00 [[32minfo[39m]: Found 54 unsent attendance events 
+2026-01-28 11:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:793:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-28 11:52:42 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+=======
 2026-01-25 12:09:13 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
 2026-01-25 12:09:16 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
 2026-01-25 12:09:16 [[34mdebug[39m]: Error: The Node.js native addon module (tfjs_binding.node) can not be found at path: D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node. 
@@ -66469,3 +66868,4 @@ QueryFailedError: ORA-00942: table or view does not exist
     at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
     at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
     at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+>>>>>>> mutitenetentbackup

@@ -222,6 +222,7 @@ import {
 import { CustomerMasterController } from "../../controllers/wms/customer_wms.controller";
 import { BillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
 import { checkPassword } from "../../middleware/checkPassword";
+import { createPrincipalActivity } from "../../controllers/wms/createPrincipalActivity";
 
 // Country Routes - Handle country management
 router.post("/country", createCountry as unknown as express.RequestHandler); // Create new country
@@ -448,7 +449,7 @@ router.put(
 
 
 
-
+router.post("/createPrincipalActivity", createPrincipalActivity); // Create new activity subgroup
 // Activity Billing Routes - Handle billing activities
 // router.post(
 //   "/activity_billing/:principalCode",

@@ -893,8 +893,8 @@ export const principalSchema = (
     //---------------pick wave--------------
 
     pick_wave: Joi.string().allow(null, ""),
-    pick_wave_qty_sort: Joi.number().allow("", null),
-    pick_wave_ign_min_exp: Joi.number().allow("", null),
+    pick_wave_qty_sort: Joi.string().allow("", null),
+    pick_wave_ign_min_exp: Joi.string().allow("", null),
 
     //---------------settings--------------
     under_value: Joi.string().allow(null, ""),

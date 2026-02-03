@@ -64529,6 +64529,89 @@ TSError: ⨯ Unable to compile TypeScript:
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+<<<<<<< HEAD
+2026-01-20 18:00:02 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-21 10:42:11 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m340[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m340[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m341[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m341[0m       dept_code: bindData.dept_code
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m364[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m364[0m       dept_code: bindData.dept_code,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m365[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'div_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m365[0m       div_code: bindData.div_code,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m366[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'job_class' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m366[0m       job_class: bindData.job_class,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m367[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m367[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m400[0m:[93m53[0m - [91merror[0m[90m TS2304: [0mCannot find name 'bindData'.
+
+[7m400[0m     console.error("Bind data sent:", JSON.stringify(bindData, null, 2));
+[7m   [0m [91m                                                    ~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m340[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m340[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m341[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m341[0m       dept_code: bindData.dept_code
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m364[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m364[0m       dept_code: bindData.dept_code,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m365[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'div_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m365[0m       div_code: bindData.div_code,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m366[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'job_class' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m366[0m       job_class: bindData.job_class,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m367[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m367[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m400[0m:[93m53[0m - [91merror[0m[90m TS2304: [0mCannot find name 'bindData'.
+
+[7m400[0m     console.error("Bind data sent:", JSON.stringify(bindData, null, 2));
+[7m   [0m [91m                                                    ~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+=======
 2026-01-25 12:18:40 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
 QueryFailedError: ORA-00942: table or view does not exist
     at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
@@ -64682,10 +64765,119 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
     at node:internal/modules/cjs/loader:1839:10
     at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+>>>>>>> mutitenetentbackup
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
 TSError: ⨯ Unable to compile TypeScript:
+<<<<<<< HEAD
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m340[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m340[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m341[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m341[0m       dept_code: bindData.dept_code
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m364[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m364[0m       dept_code: bindData.dept_code,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m365[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'div_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m365[0m       div_code: bindData.div_code,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m366[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'job_class' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m366[0m       job_class: bindData.job_class,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m367[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m367[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m400[0m:[93m53[0m - [91merror[0m[90m TS2304: [0mCannot find name 'bindData'.
+
+[7m400[0m     console.error("Bind data sent:", JSON.stringify(bindData, null, 2));
+[7m   [0m [91m                                                    ~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-21 10:52:12 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m340[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m340[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m341[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m341[0m       dept_code: bindData.dept_code
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m364[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m364[0m       dept_code: bindData.dept_code,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m365[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'div_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m365[0m       div_code: bindData.div_code,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m366[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'job_class' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m366[0m       job_class: bindData.job_class,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m367[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m367[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m400[0m:[93m53[0m - [91merror[0m[90m TS2304: [0mCannot find name 'bindData'.
+
+[7m400[0m     console.error("Bind data sent:", JSON.stringify(bindData, null, 2));
+[7m   [0m [91m                                                    ~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m340[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m340[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m341[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m341[0m       dept_code: bindData.dept_code
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m364[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m364[0m       dept_code: bindData.dept_code,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m365[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'div_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m365[0m       div_code: bindData.div_code,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m366[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'job_class' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m366[0m       job_class: bindData.job_class,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m367[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m367[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m400[0m:[93m53[0m - [91merror[0m[90m TS2304: [0mCannot find name 'bindData'.
+
+[7m400[0m     console.error("Bind data sent:", JSON.stringify(bindData, null, 2));
+[7m   [0m [91m                                                    ~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+=======
 [96msrc/routes/secuity.routes.ts[0m:[93m29[0m:[93m3[0m - [91merror[0m[90m TS2552: [0mCannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
 
 [7m29[0m   deleteSecMaster
@@ -64714,10 +64906,346 @@ src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMas
     at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
     at node:internal/modules/cjs/loader:1839:10
     at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+>>>>>>> mutitenetentbackup
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
 TSError: ⨯ Unable to compile TypeScript:
+<<<<<<< HEAD
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m340[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m340[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m341[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m341[0m       dept_code: bindData.dept_code
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m364[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'dept_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m364[0m       dept_code: bindData.dept_code,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m365[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'div_code' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m365[0m       div_code: bindData.div_code,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m366[0m:[93m27[0m - [91merror[0m[90m TS2339: [0mProperty 'job_class' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m366[0m       job_class: bindData.job_class,
+[7m   [0m [91m                          ~~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m367[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'job_type' does not exist on type '{ company_code: any; job_no: string; prin_code: any; }'.
+
+[7m367[0m       job_type: bindData.job_type,
+[7m   [0m [91m                         ~~~~~~~~[0m
+[96msrc/controllers/wms/transaction/outbound/createTojob.ts[0m:[93m400[0m:[93m53[0m - [91merror[0m[90m TS2304: [0mCannot find name 'bindData'.
+
+[7m400[0m     console.error("Bind data sent:", JSON.stringify(bindData, null, 2));
+[7m   [0m [91m                                                    ~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-01-22 13:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 15:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 16:00:07 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 17:00:06 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-22 18:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 12:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 13:00:03 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 14:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 15:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 16:00:05 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 17:00:00 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 18:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 19:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-25 20:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 11:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 12:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 13:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 14:00:03 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 15:00:00 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-27 16:00:04 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Rohan.Yadav\Bayanat\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-01-28 11:00:01 [[31merror[39m]: Error processing unsent attendance events: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:793:11)
+    at IncomingMessage.emit (node:events:531:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:540:24)
+    at async Function.processUnsentEvents (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:61:22)
+    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
+    at async Timeout._onTimeout (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+=======
 src/routes/secuity.routes.ts(29,3): error TS2552: Cannot find name 'deleteSecMaster'. Did you mean 'getSecMaster'?
 
     at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
@@ -64901,4 +65429,429 @@ TSError: ⨯ Unable to compile TypeScript:
     at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+>>>>>>> mutitenetentbackup
+2026-02-03 16:43:20 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:44:14 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:45:05 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:45:59 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:46:38 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:47:44 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:48:37 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:49:57 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)

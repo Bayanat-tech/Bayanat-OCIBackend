@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import crypto from 'crypto';
+
 import oracledb, { BindParameters, ExecuteOptions, Connection } from "oracledb";
 import { oracleDb } from "../../../../database/connection"; // make sure this exports oracledb.getConnection()
 
@@ -33,6 +35,8 @@ export async function upsertOrderDetail(
     safeNumber(data.serial_no),
     connection
   );
+
+  const id = crypto.randomUUID();
 
   const binds: BindParameters = {
     company_code: safeString(data.company_code),

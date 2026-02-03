@@ -62,7 +62,7 @@ import {
   // getconfirmInboundjob, // Get confirmation details
   confirmInboundjob, // Confirm inbound job
 } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
-import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
+import { createOrUpdateJob ,editJob} from "../../../controllers/wms/transaction/outbound/createTojob";
 //import { upsertTIJobHandler } from "../../../controllers/Purchaseflow/updateinsertti_job";
 //import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
 // import {
@@ -112,8 +112,8 @@ router.put(
 );
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
-router.post("/inboundjob",createOrUpdateJob);
-
+router.post("/inboundjob", createOrUpdateJob);
+router.put("/editInboundJob/:job_no", editJob); 
 router.patch("/canceljob", cancelInboundJob)
 
 // Cancel confirmed inbound job route
@@ -164,30 +164,17 @@ router.post(
   deleteShipmentItem
 );
 
-// // Packing Details routes - Handle all packing related operations
-// router.get("/packing_details/export", exportPackingDetails);
-// router.get("/packing_details", getPackingDetail);
+// --------- Packing Details ---------
+router.get("/packing_details", getPackingDetail);
+
 router.post(
   "/packing_details",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   createPackingItem
 );
-// router.post("/packing_details/bulk", createBulkPAckingDetails);
-// router.post(
-//   "/packing_details/delete",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   deletePackingItem
-// );
-// router.put(
-//   "/packing_details/:packdet_no",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   updatePackingItem
-// );
 
-// Add receiving details route - Update qty1_arrived and qty2_arrived
+// ADD RECEIVING DETAILS - SPECIFIC ROUTE FIRST
 router.put(
   "/packing_details/receiving",
   passport.authenticate("jwt", { session: false }),
@@ -195,12 +182,30 @@ router.put(
   addReceivingDetails
 );
 
-// Update clearance status route - Update clearance to 'Y'
+// UPDATE CLEARANCE - SPECIFIC ROUTE
 router.put(
   "/packing_details/clearance",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   updateClearanceStatus
+);
+
+// UPDATE PACKING ITEM - GENERIC ROUTE SECOND
+router.put(
+  "/packing_details/:packdet_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  updatePackingItem
+);
+
+
+// Bulk operations and delete
+router.post("/packing_details/bulk", createBulkPAckingDetails);
+router.post(
+  "/packing_details/delete",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  deletePackingItem
 );
 
 // Tally Details routes - Handle all tally related operations

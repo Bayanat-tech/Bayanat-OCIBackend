@@ -12,6 +12,7 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
       code2,
       code3,
       code4,
+      code5,
       number1,
       number2,
       number3,
@@ -29,6 +30,12 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
       return;
     }
 
+    // console.log(`value of Goal_delete-----${code1},
+    //   ${code2},
+    //   ${code3},
+    //   ${code4},
+    //   ${code5}`);
+    
     connection = await oracledb.getConnection();
 
     // Call procedure to get dynamic SQL
@@ -44,6 +51,7 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
           :code2,
           :code3,
           :code4,
+          :code5,
           :number1,
           :number2,
           :number3,
@@ -64,6 +72,7 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
         code2,
         code3,
         code4,
+        code5,
         number1,
         number2,
         number3,
