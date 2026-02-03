@@ -1119,7 +1119,7 @@ export const createLevel4AcTreeNode = async (
 
   try {
     const { company_code, loginid } = req.user;
-    const { l3_code, l4_description } = req.body;
+    const { l3_code, l4_description, l4_type, l4_job, l4_bill, l4_dept } = req.body;
 
     // Validate request body
     const { error } = accountLevelFourFinanceSchema(req.body);
@@ -1160,6 +1160,10 @@ export const createLevel4AcTreeNode = async (
         L4_CODE,
         L3_CODE,
         L4_DESCRIPTION,
+        L4_TYPE,
+        L4_JOB,
+        L4_BILL,
+        L4_DEPT,
         COMPANY_CODE,
         CREATED_BY,
         UPDATED_BY
@@ -1168,6 +1172,10 @@ export const createLevel4AcTreeNode = async (
         '',
         :l3_code,
         :l4_description,
+        :l4_type,
+        :l4_job,
+        :l4_bill,
+        :l4_dept,
         :company_code,
         :loginid,
         :loginid
@@ -1176,6 +1184,10 @@ export const createLevel4AcTreeNode = async (
       {
         l3_code,
         l4_description,
+        l4_type,
+        l4_job,
+        l4_bill,
+        l4_dept,
         company_code,
         loginid
       },
@@ -1210,7 +1222,7 @@ export const updateLevel4AcTreeNode = async (
   try {
     const { company_code, loginid } = req.user;
     const { ac_code } = req.params;
-    const { l3_code, l4_description } = req.body;
+    const { l3_code, l4_description, l4_type, l4_job, l4_bill, l4_dept } = req.body;
 
     // Validate request body
     const { error } = accountLevelFourFinanceSchema(req.body);
@@ -1271,6 +1283,10 @@ export const updateLevel4AcTreeNode = async (
       SET
         L3_CODE = :l3_code,
         L4_DESCRIPTION = :l4_description,
+        L4_TYPE = :l4_type,
+        L4_JOB = :l4_job,
+        L4_BILL = :l4_bill,
+        L4_DEPT = :l4_dept,
         UPDATED_BY = :loginid
       WHERE L4_CODE = :l4_code
         AND COMPANY_CODE = :company_code
@@ -1278,8 +1294,12 @@ export const updateLevel4AcTreeNode = async (
       {
         l3_code,
         l4_description,
-        loginid,
+        l4_type,
+        l4_job,
+        l4_bill,
+        l4_dept,
         l4_code: ac_code,
+        loginid,
         company_code
       },
       { autoCommit: true }
