@@ -65431,3 +65431,427 @@ TSError: ⨯ Unable to compile TypeScript:
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
 >>>>>>> mutitenetentbackup
+2026-02-03 16:43:20 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:44:14 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:45:05 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:45:59 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:46:38 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:47:44 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:48:37 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-03 16:49:57 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/wms/transaction/inbound_wms.routes.ts[0m:[93m82[0m:[93m26[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m82[0m     const result = await upsertPutawaymanualOracle(req.body);
+[7m  [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/transaction/inbound/manualputaway.controller.ts[0m:[93m67[0m:[93m3[0m
+    [7m67[0m   tenantId: string
+    [7m  [0m [96m  ~~~~~~~~~~~~~~~~[0m
+    An argument for 'tenantId' was not provided.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)

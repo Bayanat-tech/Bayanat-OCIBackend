@@ -48,17 +48,17 @@ export class PutwayPackingItemService {
     jobNo: string
   ): Promise<void> {
 
-    await getRepository(TiPackdet)
-      .createQueryBuilder()
-      .update(TiPackdet)
-      .set({
+    await getRepository(TiPackdet).update(
+      {
+        company_code: companyCode,
+        prin_code: prinCode,
+        job_no: jobNo,
+      },
+      {
         selected: "Y",
         allocated: "N",
-      })
-      .where("COMPANY_CODE = :companyCode", { companyCode })
-      .andWhere("PRIN_CODE = :prinCode", { prinCode })
-      .andWhere("JOB_NO = :jobNo", { jobNo })
-      .execute();
+      }
+    );
 
     console.log("✅ TI_PACKDET updated");
   }
