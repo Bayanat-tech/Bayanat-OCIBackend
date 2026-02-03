@@ -28,12 +28,10 @@ export async function tenantContextMiddleware(
     console.log(`[tenantContextMiddleware] ✅ MIDDLEWARE CALLED for user: ${req.user.loginid}`);
     console.log(`[tenantContextMiddleware] STEP 1: User from req: ${req.user.loginid}`);
 
-    // Get tenantId from request user (should be set by passport)
     let tenantId = req.user.tenantId;
     
     if (!tenantId) {
       console.log(`[tenantContextMiddleware] STEP 2: Tenant not set, looking up from database...`);
-      // For sync path without tenant, just continue
       return next();
     } else {
       console.log(`[tenantContextMiddleware] STEP 2: Tenant already set: ${tenantId}`);

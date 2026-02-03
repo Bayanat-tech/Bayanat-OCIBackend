@@ -9,7 +9,8 @@
     "start": "ts-node index.ts",
     "start:dev": "nodemon build/index.js",
     "start:prod": "node build/index.js",
-    "dev": "nodemon --watch './**/*.ts' --exec ts-node index.ts"
+    "dev": "nodemon --watch './**/*.ts' --exec ts-node index.ts",
+    "check:tenant": "node scripts/check-no-oracle-query.js"
   },
   "keywords": [],
   "author": "",
