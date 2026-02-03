@@ -25,7 +25,7 @@ import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
 import authRoutes from "./src/routes/auth.routes";
 import fileRoutes from "./src/routes/files.routes";
-import financeRoutes from "./src/routes/finance/finance.routes";
+// import financeRoutes from "./src/routes/finance/finance.routes";
 import hrRoutes from "./src/routes/hr.routes";
 import logRoutes from "./src/routes/notification.routes";
 import pfRoutes from "./src/routes/pf.routes";
