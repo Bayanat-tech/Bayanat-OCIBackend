@@ -9,7 +9,7 @@ import {
   endOfDay,
   subDays,
 } from "date-fns";
-import { AppDataSource, oracleDb } from "../../database/connection";
+import { AppDataSource, getRepository, oracleDb } from "../../database/connection";
 import { Between, MoreThanOrEqual } from "typeorm";
 import employee from "../../models/Attendance/employee";
 
@@ -70,7 +70,7 @@ export class DashboardController {
     try {
       const today = new Date();
 
-      const Attendance = AppDataSource.getRepository(AttendanceRecord);
+      const Attendance = getRepository(AttendanceRecord);
       const summary = await Attendance.find({
         where: {
           record_date: Between(
@@ -232,7 +232,7 @@ export class DashboardController {
       const { days = 30 } = req.query;
       const startDate = subDays(new Date(), Number(days));
 
-      const attendanceRecord = AppDataSource.getRepository(AttendanceRecord);
+      const attendanceRecord = getRepository(AttendanceRecord);
 
       const history = await attendanceRecord.find({
         where: {
@@ -319,3 +319,4 @@ export class DashboardController {
     }
   }
 }
+

@@ -3,6 +3,7 @@ import express from "express";
 import multer from "multer";
 import passport from "passport";
 import { AttendanceController } from "../../controllers/Attendance/attendance.controller";
+import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -36,6 +37,7 @@ console;
 router.get(
   "/dashboard/daily",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -49,6 +51,7 @@ router.get(
 router.get(
   "/dashboard/departments",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -104,6 +107,7 @@ router.post(
   "/mark",
   upload.single("file"),
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -116,6 +120,7 @@ router.post(
 
 router.post('/confirm', 
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -128,6 +133,7 @@ router.post('/confirm',
 
 router.post('/cancel',
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -140,6 +146,7 @@ router.post('/cancel',
 
 router.get('/proxy-logs', 
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -154,6 +161,7 @@ router.get('/proxy-logs',
 router.get(
   "/report",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -177,6 +185,7 @@ router.post('/stop-auto-confirm',
 router.post(
   "/employees",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -191,6 +200,7 @@ router.post(
 router.get(
   "/employees",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -204,6 +214,7 @@ router.get(
 router.put(
   "/employees/:employee_id",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -219,6 +230,7 @@ router.put(
 router.get(
   "/employeeinfo",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -228,19 +240,5 @@ router.get(
     return EmployeeController.getEmployeeInfo(req, res);
   }
 );
-
-router.get(
-  "/employeeinfo/bayanatdb",
-  passport.authenticate("jwt", { session: false }),
-  async (req, res, next) => {
-    const { checkUserAuthorization } = await getControllers();
-    return checkUserAuthorization(req, res, next);
-  },
-  async (req, res) => {
-    const { EmployeeController } = await getControllers();
-    return EmployeeController.getEmployeeInfoBayanatDb(req, res);
-  }
-);
-
 
 export default router;

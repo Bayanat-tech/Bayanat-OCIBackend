@@ -1,6 +1,7 @@
-import { getRepository, oracleDb } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { TaAdjDetail } from "../../entity/WMS/taAdjDetail.entity";
 import oracledb from "oracledb";
+import { executeRaw } from "./tenant-service.helper";
 
 export class TaAdjDetailService {
   private static getRepository() {
@@ -149,7 +150,7 @@ export class TaAdjDetailService {
     try {
       console.log('Processing adjustment with params:', data);
       
-      const result = await oracleDb.query(
+      const result = await executeRaw(
         `BEGIN SP_WM_ADJUSTMNT_PROCESS(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID); END;`,
         {
           P_COMPANY_CODE: data.COMPANY_CODE,
@@ -179,7 +180,7 @@ export class TaAdjDetailService {
     try {
       console.log('Confirming adjustment detail with params:', data);
       
-      const result = await oracleDb.query(
+      const result = await executeRaw(
         `BEGIN PROC_UPDATE_STOCK_ADJ(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_SUCCESS); END;`,
         {
           P_COMPANY_CODE: data.P_COMPANY_CODE,

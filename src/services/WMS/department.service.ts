@@ -24,8 +24,18 @@ export class DepartmentService {
 
   // Get all departments
   static async findAll(): Promise<DepartmentMaster[]> {
-    const repository = this.getDepartmentRepository();
-    return await repository.find();
+    try {
+      const repository = this.getDepartmentRepository();
+      return await repository.find();
+    } catch (error: any) {
+      // Handle case where MS_HR_DEPARTMENT table doesn't exist in tenant schema
+      if (error.code === 'ORA-00942' || error.driverError?.code === 'ORA-00942') {
+        console.warn('[DepartmentService.findAll] ⚠️  MS_HR_DEPARTMENT table not available in this tenant schema');
+        return []; // Return empty array gracefully
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   // Find department by code

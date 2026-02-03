@@ -1,4 +1,5 @@
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
 import { Activity } from "../../entity/WMS/activity.entity";
  
 export class ActivityService {
@@ -8,7 +9,10 @@ export class ActivityService {
     skip = 0,
   ) {
     try {
-      const repository = AppDataSource.getRepository(Activity);
+      // Ensure correct tenant schema before executing TypeORM queries
+      await ensureCorrectSchema();
+
+      const repository = getRepository(Activity);
  
       const where: any = {
       company_code: filters.company_code,
@@ -38,7 +42,10 @@ export class ActivityService {
 //   create Activity
    static async createActivity(data: any) {
     try {
-      const repository = AppDataSource.getRepository(Activity);
+      // Ensure correct tenant schema before executing TypeORM queries
+      await ensureCorrectSchema();
+
+      const repository = getRepository(Activity);
  
       // Check if activity already exists
       const existing = await repository.findOne({

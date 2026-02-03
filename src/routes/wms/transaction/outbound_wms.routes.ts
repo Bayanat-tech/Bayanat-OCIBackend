@@ -106,7 +106,6 @@ router.get("/picking_details/picking_option", getPickingOption);
  * @route PUT /picking_details/pick_order/:job_no
  * @desc Update picking order by job number
  */
-console.log(typeof upsertOutboundOrderDetailManualHandler); // should be 'function'
 router.put("/picking_details/pick_order/:job_no", pickOrder);
 router.put("/picking_details/confirm_order/:job_no", confirmorder);
 router.put("/picking_details/oubcancelPick/:job_no", oubcancelPick);

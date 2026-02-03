@@ -29,7 +29,6 @@ import {
   Raw,
 } from "typeorm";
 
-// Function to compare a plain password with a hashed password
 export const comparePassword = async (args: ComparePasswordInterface) => {
   const { password, hashedPassword } = args;
   const result = await bcrypt.compare(password, hashedPassword);
@@ -60,30 +59,51 @@ export const buildTree = (
 ): TreeNode[] => {
   const tree: Record<string, TreeNode> = {};
 
+  console.log(
+    `[buildTree] Starting with ${data.length} rows and permission structure: ${
+      Object.keys(permission).length > 0 ? permission : "EMPTY"
+    }`
+  );
+
+  const safeId = (parts: (string | number | undefined)[]) =>
+    parts
+      .filter((p) => p !== undefined && p !== null && String(p).trim() !== "")
+      .map((p) => String(p).replace(/\s+/g, "_"))
+      .join("_");
+
+  const getPermSerial = (
+    app: string,
+    menu?: string | undefined
+  ): string | null => {
+    try {
+      if (!app) return null;
+      if (!menu) {
+        const s = permission[app]?.serial_number;
+        return s ? String(s) : null;
+      }
+      const s = permission[app]?.children?.[menu]?.serial_number;
+      return s ? String(s) : null;
+    } catch {
+      return null;
+    }
+  };
+
   data.forEach((row) => {
     const APP_CODE = row.APP_CODE || row.app_code;
     const LEVEL1 = row.LEVEL1 || row.level1;
     const LEVEL2 = row.LEVEL2 || row.level2;
     const LEVEL3 = row.LEVEL3 || row.level3;
     const URL_PATH = row.URL_PATH || row.url_path;
+    const ROW_SERIAL = row.SERIAL_NO ?? row.serial_no;
 
-    console.log("Processing row:", {
-      APP_CODE,
-      LEVEL1,
-      LEVEL2,
-      LEVEL3,
-      URL_PATH,
-    });
+    if (!APP_CODE) return;
+    const appId =
+      getPermSerial(APP_CODE) ||
+      (ROW_SERIAL ? String(ROW_SERIAL) : safeId([APP_CODE]));
 
-    if (!APP_CODE) {
-      console.log("Skipping row - no APP_CODE found");
-      return;
-    }
-
-    // If the APP_CODE node doesn't exist, create it
     if (!tree[APP_CODE]) {
       tree[APP_CODE] = {
-        id: (permission[APP_CODE]?.serial_number ?? 0).toString(),
+        id: String(appId),
         title: APP_CODE,
         type: "collapse",
         icon: "AbcIcon",
@@ -92,149 +112,93 @@ export const buildTree = (
       };
     }
 
-    // Ensure children is always an array
-    if (!Array.isArray(tree[APP_CODE].children)) {
-      tree[APP_CODE].children = [];
-    }
+    if (!Array.isArray(tree[APP_CODE].children)) tree[APP_CODE].children = [];
 
-    // Find or create LEVEL1 node
-    let level1Node = tree[APP_CODE].children.find(
-      (node) => node.title === LEVEL1
-    );
+    // LEVEL1 handling
+    if (LEVEL1 && String(LEVEL1).trim() !== "") {
+      let level1Node = tree[APP_CODE].children.find((n) => n.title === LEVEL1);
 
-    if (
-      !level1Node &&
-      LEVEL1 &&
-      LEVEL2 !== "" &&
-      LEVEL2 !== null &&
-      LEVEL2 !== undefined
-    ) {
-      level1Node = {
-        id: !!permission[APP_CODE]?.children[LEVEL1]?.serial_number.toString()
-          ? permission[APP_CODE]?.children[LEVEL1]?.serial_number.toString()
-          : Math.floor(Number(Math.random() * 100000)).toString(),
-        url_path: APP_CODE.toLowerCase(),
-        title: LEVEL1,
-        type: "group",
-        icon: "AbcIcon",
-        children: [],
-      };
-      tree[APP_CODE]?.children!.push(level1Node);
-      tree[APP_CODE].id =
-        permission[APP_CODE]?.children[LEVEL1]?.serial_number.toString();
-    }
+      const hasLevel2 = LEVEL2 && String(LEVEL2).trim() !== "";
+      const hasLevel3 = LEVEL3 && String(LEVEL3).trim() !== "";
+      const level1Id =
+        getPermSerial(APP_CODE, LEVEL1) || safeId([appId, LEVEL1]);
 
-    if (
-      !level1Node &&
-      LEVEL1 &&
-      (LEVEL2 === "" || LEVEL2 === null || LEVEL2 === undefined)
-    ) {
-      level1Node = {
-        id: !!permission[APP_CODE]?.children[LEVEL1]?.serial_number.toString()
-          ? permission[APP_CODE]?.children[LEVEL1]?.serial_number.toString()
-          : Math.floor(Number(Math.random() * 100000)).toString(),
-        title: LEVEL1,
-        type: "item",
-        icon: "AbcIcon",
-        url_path: URL_PATH || APP_CODE.toLowerCase(),
-      };
-      tree[APP_CODE]?.children!.push(level1Node);
-      tree[APP_CODE].id =
-        permission[APP_CODE]?.children[LEVEL1]?.serial_number.toString();
-    }
-
-    // If LEVEL2 exists and LEVEL1 node is found, find or create LEVEL2 node
-    if (
-      LEVEL2 &&
-      level1Node &&
-      LEVEL3 !== "" &&
-      LEVEL3 !== null &&
-      LEVEL3 !== undefined
-    ) {
-      let level2Node = level1Node?.children!.find(
-        (node) => node.title === LEVEL2
-      );
-      if (!level2Node) {
-        level2Node = {
-          id:
-            permission[APP_CODE]?.children[LEVEL2]?.serial_number?.toString() ||
-            Math.floor(Number(Math.random() * 100000)).toString(),
-          title: LEVEL2,
-          type: "collapse",
-          icon: "AbcIcon",
-          children: [],
-        };
-        level1Node?.children!.push(level2Node);
+      if (!level1Node) {
+        level1Node = hasLevel2
+          ? {
+              id: String(level1Id),
+              title: LEVEL1,
+              type: "group",
+              icon: "AbcIcon",
+              children: [],
+            }
+          : {
+              id: String(level1Id),
+              title: LEVEL1,
+              type: "item",
+              icon: "AbcIcon",
+              url_path: URL_PATH || "",
+            };
+        tree[APP_CODE].children.push(level1Node);
       }
 
-      // If LEVEL3 exists, find or create LEVEL3 node
-      if (LEVEL3) {
-        let level3Node = level2Node?.children!.find(
-          (node) => node.title === LEVEL3
-        );
-        if (!level3Node) {
-          level3Node = {
-            id:
-              permission[APP_CODE]?.children[
-                LEVEL3
-              ]?.serial_number?.toString() ||
-              Math.floor(Number(Math.random() * 100000)).toString(),
-            title: LEVEL3,
-            url_path: URL_PATH || APP_CODE.toLowerCase(),
-            type: "item",
-            icon: "AbcIcon",
-          };
-          level2Node?.children!.push(level3Node);
+      if (hasLevel2 && level1Node.type === "group") {
+        if (!Array.isArray(level1Node.children)) level1Node.children = [];
+
+        const level2Id =
+          getPermSerial(APP_CODE, LEVEL2) || safeId([appId, LEVEL1, LEVEL2]);
+
+        let level2Node = level1Node.children.find((n) => n.title === LEVEL2);
+        if (!level2Node) {
+          level2Node = hasLevel3
+            ? {
+                id: String(level2Id),
+                title: LEVEL2,
+                type: "collapse",
+                icon: "AbcIcon",
+                children: [],
+              }
+            : {
+                id: String(level2Id),
+                title: LEVEL2,
+                type: "item",
+                icon: "AbcIcon",
+                url_path: URL_PATH || "",
+              };
+          level1Node.children.push(level2Node);
         }
-      }
-    }
 
-    if (LEVEL2 && level1Node && (LEVEL3 === "" || LEVEL3 === null)) {
-      let level2Node = level1Node?.children!.find(
-        (node) => node.title === LEVEL2
-      );
-      if (!level2Node) {
-        level2Node = {
-          id:
-            permission[APP_CODE]?.children[LEVEL2]?.serial_number?.toString() ||
-            Math.floor(Number(Math.random() * 100000)).toString(),
-          title: LEVEL2,
-          type: "item",
-          icon: "AbcIcon",
-          url_path: URL_PATH || APP_CODE.toLowerCase(),
-        };
-        level1Node?.children!.push(level2Node);
-      }
+        // LEVEL3 handling
+        if (hasLevel3 && level2Node.type === "collapse") {
+          if (!Array.isArray(level2Node.children)) level2Node.children = [];
 
-      // If LEVEL3 exists, find or create LEVEL3 node
-      if (LEVEL3) {
-        let level3Node = level2Node?.children!.find(
-          (node) => node.title === LEVEL3
-        );
-        if (!level3Node) {
-          level3Node = {
-            id:
-              permission[APP_CODE]?.children[
-                LEVEL3
-              ]?.serial_number?.toString() ||
-              Math.floor(Number(Math.random() * 100000)).toString(),
-            title: LEVEL3,
-            url_path: URL_PATH || APP_CODE.toLowerCase(),
-            type: "item",
-            icon: "AbcIcon",
-          };
-          level2Node?.children!.push(level3Node);
+          const level3Id =
+            getPermSerial(APP_CODE, LEVEL3) || safeId([appId, LEVEL1, LEVEL2, LEVEL3]);
+
+          let level3Node = level2Node.children.find((n) => n.title === LEVEL3);
+          if (!level3Node) {
+            level3Node = {
+              id: String(level3Id),
+              title: LEVEL3,
+              type: "item",
+              icon: "AbcIcon",
+              url_path: URL_PATH || "",
+            };
+            level2Node.children.push(level3Node);
+          }
         }
       }
     }
   });
 
-  console.log("Final tree structure:", Object.values(tree));
+  console.log(`[buildTree] Built tree with ${Object.values(tree).length} apps`);
   return Object.values(tree);
 };
 
 export const getSearchFilterQuery = (
-args: GetFilterQueryInterface, p0?: string[]): FindOptionsWhere<any> => {
+  args: GetFilterQueryInterface,
+  p0?: string[]
+): FindOptionsWhere<any> => {
   try {
     const { filter, outsideQuery } = args;
 
@@ -1460,4 +1424,24 @@ export const notifyUser = async (args: SendEmailInterface) => {
   } catch (error) {
     logger.error(`[NOTIFY] ❌ Failed to send email for event: ${event}`, error);
   }
+};
+
+export const buildModuleAccessFromStructure = (
+  allPermissions: any[],
+  formattedPermissions: StructuredResult
+): Record<string, Record<string, boolean>> => {
+  const access: Record<string, Record<string, boolean>> = {};
+
+  if (!Array.isArray(allPermissions)) return access;
+
+  allPermissions.forEach((perm: any) => {
+    const appCode = (perm.APP_CODE || perm.app_code || 'UNKNOWN').toString();
+    const serialNo = (perm.SERIAL_NO || perm.serial_no || perm.serial_number);
+    if (!serialNo) return;
+    const sn = serialNo.toString();
+    if (!access[appCode]) access[appCode] = {};
+    access[appCode][sn] = !!(formattedPermissions && formattedPermissions[sn]);
+  });
+
+  return access;
 };

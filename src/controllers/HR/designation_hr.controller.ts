@@ -4,7 +4,7 @@ import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { IHrDesignation } from "../../interfaces/Hr/hr_designation";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { designationSchema } from "../../validation/HR/hrdesignation.validation";
 import HrCsvHeaders from "../../utils/exportCsv/HrCsvHeaders";
 import { In } from "typeorm";
@@ -30,7 +30,7 @@ export const createDesignation = async (
     }
 
     const { desg_code, company_code } = req.body;
-    const designationRepository = AppDataSource.getRepository(HrDesignation);
+    const designationRepository = getRepository(HrDesignation);
 
     const designation = await designationRepository.findOne({
       where: {
@@ -94,7 +94,7 @@ export const updateDesignation = async (
     }
 
     const { desg_code, company_code } = req.body;
-    const designationRepository = AppDataSource.getRepository(HrDesignation);
+    const designationRepository = getRepository(HrDesignation);
 
     const designation = await designationRepository.findOne({
       where: {
@@ -160,7 +160,7 @@ export const createBulkDesignations = async (
       return;
     }
 
-    const designationRepository = AppDataSource.getRepository(HrDesignation);
+    const designationRepository = getRepository(HrDesignation);
     
     const designationsWithUser = req.body.map((designation: IHrDesignation) => ({
       ...designation,
@@ -193,7 +193,7 @@ export const exportDesignation = async (
   res: Response
 ) => {
   try {
-    const designationRepository = AppDataSource.getRepository(HrDesignation);
+    const designationRepository = getRepository(HrDesignation);
     
     let fetchedData: any[] = [];
     let csvTransform: fastCsv.CsvFormatterStream<
@@ -237,7 +237,7 @@ export const deleteDesignation = async (
 ) => {
   try {
     const designationsCode = req.body;
-    const designationRepository = AppDataSource.getRepository(HrDesignation);
+    const designationRepository = getRepository(HrDesignation);
 
     if (!req.body.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({

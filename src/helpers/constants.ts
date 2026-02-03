@@ -5,6 +5,7 @@ dotenv.config();
 export default {
   TABLE: {
     SEC_LOGIN: "SEC_LOGIN",
+    SEC_LOGINTEST: "SEC_LOGINTEST",
     MS_COUNTRY: "MS_COUNTRY",
     MS_DEPARTMENT: "MS_DEPARTMENT",
     MS_TERRITORY: "MS_TERRITORY",

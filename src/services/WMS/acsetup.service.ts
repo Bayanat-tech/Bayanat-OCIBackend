@@ -1,6 +1,7 @@
 import { getRepository } from "../../database/connection";
 import { AcSetup } from "../../entity/WMS/acsetup.entity";
 import { In } from "typeorm";
+import { executeRaw } from "./tenant-service.helper";
 
 export class AcSetupService {
   private static getAcSetupRepository() {
@@ -143,7 +144,7 @@ export class AcSetupService {
     try {
       // Use raw query to check directly against database columns
       const manager = repository.manager;
-      const result = await manager.query(
+      const result = await executeRaw(
         `SELECT COUNT(*) as cnt FROM MS_AC_SETUP 
          WHERE COMPANY_CODE = :companyCode 
          AND AC_CODE = :acCode`,

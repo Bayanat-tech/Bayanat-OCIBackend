@@ -4,7 +4,7 @@ import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { IHrLabourDesignation } from "../../interfaces/Hr/hr_labour_designation";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { formaldesignationSchema } from "../../validation/HR/hrformaldesignation.validation";
 import HrCsvHeaders from "../../utils/exportCsv/HrCsvHeaders";
 import { In } from "typeorm";
@@ -30,7 +30,7 @@ export const createFormaldesignation = async (
     }
 
     const { labour_desg_code, company_code } = req.body;
-    const labourDesignationRepository = AppDataSource.getRepository(HrLabourDesignation);
+    const labourDesignationRepository = getRepository(HrLabourDesignation);
 
     const formaldesignation = await labourDesignationRepository.findOne({
       where: {
@@ -97,7 +97,7 @@ export const updateFormaldesignation = async (
     }
 
     const { labour_desg_code, company_code } = req.body;
-    const labourDesignationRepository = AppDataSource.getRepository(HrLabourDesignation);
+    const labourDesignationRepository = getRepository(HrLabourDesignation);
 
     const formaldesignation = await labourDesignationRepository.findOne({
       where: {
@@ -166,7 +166,7 @@ export const createBulkFormaldesignations = async (
       return;
     }
 
-    const labourDesignationRepository = AppDataSource.getRepository(HrLabourDesignation);
+    const labourDesignationRepository = getRepository(HrLabourDesignation);
     
     const formaldesignationsWithUser = req.body.map((formaldesignation: IHrLabourDesignation) => ({
       ...formaldesignation,
@@ -199,7 +199,7 @@ export const exportFormaldesignation = async (
   res: Response
 ) => {
   try {
-    const labourDesignationRepository = AppDataSource.getRepository(HrLabourDesignation);
+    const labourDesignationRepository = getRepository(HrLabourDesignation);
     
     let fetchedData: any[] = [];
     let csvTransform: fastCsv.CsvFormatterStream<
@@ -243,7 +243,7 @@ export const deleteFormaldesignation = async (
 ) => {
   try {
     const formaldesignationsCode = req.body;
-    const labourDesignationRepository = AppDataSource.getRepository(HrLabourDesignation);
+    const labourDesignationRepository = getRepository(HrLabourDesignation);
 
     console.log(formaldesignationsCode);
 

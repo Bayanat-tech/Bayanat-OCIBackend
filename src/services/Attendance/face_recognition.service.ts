@@ -7,7 +7,8 @@ import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
 import path from "path";
 import fs from "fs";
 import fetch from "node-fetch";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
+import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
  
 let tfjsNodeAttempted = false;
 let tfjsNodeLoaded = false;
@@ -321,12 +322,15 @@ export class FaceRecognitionService {
   // **OPTIMIZED cached face matcher**
   private async getCachedFaceMatcher(): Promise<faceapi.FaceMatcher> {
     const now = Date.now();
- 
+
     if (faceMatcher && now - faceMatcherLastUpdate < FACE_MATCHER_CACHE_TTL) {
       return faceMatcher;
     }
- 
-    const Employeeface = AppDataSource.getRepository(EmployeeFace);
+
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
+    const Employeeface = getRepository(EmployeeFace);
     const activeFaces = await Employeeface.find({
       where: { is_active: "1" },
       select: ["employee_id", "descriptor"],

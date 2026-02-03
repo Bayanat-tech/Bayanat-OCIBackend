@@ -66255,6 +66255,7 @@ QueryFailedError: ORA-01484: arrays can only be bound to PL/SQL statements
 2026-01-16 20:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-16 20:00:21 [[31merror[39m]: Error processing unsent attendance events: ORA-12170: TNS:Connect timeout occurred 
 Error: ORA-12170: TNS:Connect timeout occurred
+<<<<<<< HEAD
 2026-01-20 17:29:28 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
 2026-01-20 18:00:00 [[32minfo[39m]: Starting to process unsent attendance events... 
 2026-01-20 18:00:00 [[32minfo[39m]: Found 1 unsent attendance events 
@@ -66652,3 +66653,219 @@ AxiosError: Request failed with status code 500
     at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:14:7
     at async Timeout._onTimeout (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
 2026-01-28 11:52:42 [[32minfo[39m]: Attendance event scheduler initialized (runs every 60 minutes) 
+=======
+2026-01-25 12:09:13 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2026-01-25 12:09:16 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2026-01-25 12:09:16 [[34mdebug[39m]: Error: The Node.js native addon module (tfjs_binding.node) can not be found at path: D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node. 
+Please run command 'npm rebuild @tensorflow/tfjs-node build-addon-from-source' to rebuild the native addon module. 
+If you have problem with building the addon module, please check https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md or file an issue.
+    at Object.<anonymous> (D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:49:11)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .js] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1608:43)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16) 
+2026-01-25 12:09:16 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The Node.js native addon module (tfjs_binding.node) can not be found at path: D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node. 
+Please run command 'npm rebuild @tensorflow/tfjs-node build-addon-from-source' to rebuild the native addon module. 
+If you have problem with building the addon module, please check https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md or file an issue. 
+Error: The Node.js native addon module (tfjs_binding.node) can not be found at path: D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node. 
+Please run command 'npm rebuild @tensorflow/tfjs-node build-addon-from-source' to rebuild the native addon module. 
+If you have problem with building the addon module, please check https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md or file an issue.
+    at Object.<anonymous> (D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:49:11)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .js] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1608:43)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+2026-01-25 12:09:16 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2026-01-25 12:09:17 [[32minfo[39m]: Loading optimized face recognition models... 
+2026-01-25 12:09:17 [[32minfo[39m]: Received query parameters: 
+2026-01-25 12:09:18 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2026-01-25 12:09:18 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2026-01-25 12:09:18 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2026-01-25 12:18:40 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:18:41 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:18:43 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:18:48 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:17 [[31merror[39m]: Error in processStalePendingRecords: ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.processStalePendingRecords (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1790:28)
+2026-01-25 12:19:36 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:37 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:39 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:19:43 [[31merror[39m]: Failed to fetch employees ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.getEmployees (D:\Bayanat-OCIBackend\src\controllers\Attendance\Employee.controller.ts:160:25)
+2026-01-25 12:37:08 [[32minfo[39m]: Received query parameters: 
+2026-01-25 12:37:10 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1626:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:39:16 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2026-01-25 12:39:17 [[31merror[39m]: Error in processStalePendingRecords: ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3614:26)
+    at async SelectQueryBuilder.getRawAndEntities (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1671:29)
+    at async SelectQueryBuilder.getMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1761:25)
+    at async Function.processStalePendingRecords (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1790:28)
+2026-01-25 12:48:30 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2026-01-25 12:48:33 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2026-01-25 12:48:33 [[34mdebug[39m]: Error: The Node.js native addon module (tfjs_binding.node) can not be found at path: D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node. 
+Please run command 'npm rebuild @tensorflow/tfjs-node build-addon-from-source' to rebuild the native addon module. 
+If you have problem with building the addon module, please check https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md or file an issue.
+    at Object.<anonymous> (D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:49:11)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .js] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1608:43)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16) 
+2026-01-25 12:48:33 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The Node.js native addon module (tfjs_binding.node) can not be found at path: D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node. 
+Please run command 'npm rebuild @tensorflow/tfjs-node build-addon-from-source' to rebuild the native addon module. 
+If you have problem with building the addon module, please check https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md or file an issue. 
+Error: The Node.js native addon module (tfjs_binding.node) can not be found at path: D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node. 
+Please run command 'npm rebuild @tensorflow/tfjs-node build-addon-from-source' to rebuild the native addon module. 
+If you have problem with building the addon module, please check https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md or file an issue.
+    at Object.<anonymous> (D:\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:49:11)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .js] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1608:43)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+2026-01-25 12:48:33 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2026-01-25 12:48:33 [[32minfo[39m]: Loading optimized face recognition models... 
+2026-01-25 12:48:33 [[32minfo[39m]: Received query parameters: 
+2026-01-25 12:48:34 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:34 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2026-01-25 12:48:34 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2026-01-25 12:48:34 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2026-01-25 12:48:42 [[32minfo[39m]: Received query parameters: 
+2026-01-25 12:48:43 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:48 [[32minfo[39m]: Received query parameters: 
+2026-01-25 12:48:48 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:50 [[32minfo[39m]: Received query parameters: 
+2026-01-25 12:48:50 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+2026-01-25 12:48:52 [[32minfo[39m]: Received query parameters: 
+2026-01-25 12:48:52 [[31merror[39m]: Attendance report error ORA-00942: table or view does not exist 
+QueryFailedError: ORA-00942: table or view does not exist
+    at OracleQueryRunner.query (D:\Bayanat-OCIBackend\node_modules\typeorm\src\driver\oracle\OracleQueryRunner.ts:299:19)
+    at async SelectQueryBuilder.loadRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3868:25)
+    at async SelectQueryBuilder.getRawMany (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1627:29)
+    at async SelectQueryBuilder.executeEntitiesAndRawResults (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:3530:26)
+    at async SelectQueryBuilder.getManyAndCount (D:\Bayanat-OCIBackend\node_modules\src\query-builder\SelectQueryBuilder.ts:1874:36)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1653:30)
+    at async Function.getAttendanceReport (D:\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:257:22)
+>>>>>>> mutitenetentbackup

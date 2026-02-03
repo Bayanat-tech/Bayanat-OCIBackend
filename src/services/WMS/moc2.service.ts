@@ -1,20 +1,20 @@
-import { getRepository } from "../../database/connection";
 import { ActivityUOC } from "../../entity/WMS/moc2.entity";
-import { In } from "typeorm";
+import { 
+  getCurrentTenantId, 
+  normalizeOracleResult, 
+  executeQuery, 
+  executeSingleQuery,
+  executeMutation,
+  executeCount
+} from "./tenant-service.helper";
 
 export class ActivityUOCService {
-  public static getActivityUOCRepository() {
-    return getRepository(ActivityUOC);
-  }
-
   static async findByDescriptionAndCompany(
     description: string,
     company_code: string
   ): Promise<ActivityUOC | null> {
-    const repository = this.getActivityUOCRepository();
-    return await repository.findOne({
-      where: { description, company_code },
-    });
+    const sql = `SELECT * FROM MS_ACTIVITY_UOC WHERE description = :description AND company_code = :company_code`;
+    return await executeSingleQuery<ActivityUOC>(sql, { description, company_code });
   }
 
   static async findByCompositeKey(
@@ -23,15 +23,8 @@ export class ActivityUOCService {
     charge_type: string,
     activity_group_code: string
   ): Promise<ActivityUOC | null> {
-    const repository = this.getActivityUOCRepository();
-    return await repository.findOne({
-      where: {
-        company_code,
-        charge_code,
-        charge_type,
-        activity_group_code,
-      },
-    });
+    const sql = `SELECT * FROM MS_ACTIVITY_UOC WHERE company_code = :company_code AND charge_code = :charge_code AND charge_type = :charge_type AND activity_group_code = :activity_group_code`;
+    return await executeSingleQuery<ActivityUOC>(sql, { company_code, charge_code, charge_type, activity_group_code });
   }
 
   static async createActivityUOC(activityData: {
@@ -43,34 +36,29 @@ export class ActivityUOCService {
     created_by?: string;
     updated_by?: string;
   }): Promise<ActivityUOC> {
-    const repository = this.getActivityUOCRepository();
+    const cols = Object.keys(activityData);
+    cols.push('created_at', 'updated_at');
     
-    const activity = repository.create({
-      ...activityData,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
-    const saved = await repository.save(activity);
-    console.log('Saved activity result:', saved);
-
-    // Fetch the complete saved record to ensure all fields are populated
-    const savedActivity = await repository.findOne({
-      where: {
-        company_code: activityData.company_code,
-        charge_code: activityData.charge_code,
-        charge_type: activityData.charge_type,
-        activity_group_code: activityData.activity_group_code,
-      },
-    });
-
-    console.log('Fetched saved activity:', savedActivity);
-
-    if (!savedActivity) {
-      throw new Error('Failed to retrieve created record');
+    const values = cols.map((_, i) => `:val${i}`).join(", ");
+    const sql = `INSERT INTO MS_ACTIVITY_UOC (${cols.join(", ")}) VALUES (${values})`;
+    
+    const bindObj: Record<string, any> = {};
+    let idx = 0;
+    for (const col of Object.keys(activityData)) {
+      bindObj[`val${idx++}`] = (activityData as any)[col];
     }
-
-    return savedActivity;
+    bindObj[`val${idx++}`] = new Date();
+    bindObj[`val${idx++}`] = new Date();
+    
+    await executeMutation(sql, bindObj);
+    
+    // Fetch the created record
+    return await this.findByCompositeKey(
+      activityData.company_code,
+      activityData.charge_code,
+      activityData.charge_type,
+      activityData.activity_group_code
+    ) as ActivityUOC;
   }
 
   static async updateActivityUOC(
@@ -86,19 +74,9 @@ export class ActivityUOCService {
     updated_description: string | null;
     updated_activity_group_code: string | null;
   }> {
-    const repository = this.getActivityUOCRepository();
-
     // Fetch existing record
-    const existing = await repository.findOne({
-      where: {
-        company_code,
-        charge_code,
-        charge_type,
-        activity_group_code,
-      },
-    });
+    const existing = await this.findByCompositeKey(company_code, charge_code, charge_type, activity_group_code);
 
-    // Prepare default nulls
     const result = {
       success: false,
       old_description: null,
@@ -108,19 +86,14 @@ export class ActivityUOCService {
     };
 
     if (!existing) {
-      // If not found, return update payload as updated_* (if provided) to help comparison
-      if (updateData) {
-        if ((updateData as any).description !== undefined) result.updated_description = (updateData as any).description;
-        if ((updateData as any).activity_group_code !== undefined) result.updated_activity_group_code = (updateData as any).activity_group_code;
-      }
+      if ((updateData as any).description !== undefined) result.updated_description = (updateData as any).description;
+      if ((updateData as any).activity_group_code !== undefined) result.updated_activity_group_code = (updateData as any).activity_group_code;
       return result;
     }
 
-    // Populate old_* from existing record
     result.old_description = (existing as any).description ?? null;
     result.old_activity_group_code = (existing as any).activity_group_code ?? null;
 
-    // Populate updated_* only if provided in updateData (and set to null if explicitly provided as null)
     if ((updateData as any).description !== undefined) {
       result.updated_description = (updateData as any).description ?? null;
     }
@@ -129,20 +102,23 @@ export class ActivityUOCService {
     }
 
     // Apply update
-    const dbResult = await repository.update(
-      {
-        company_code,
-        charge_code,
-        charge_type,
-        activity_group_code,
-      },
-      {
-        ...updateData,
-        updated_at: new Date(),
-      }
-    );
+    const cols = Object.keys(updateData);
+    const setClause = cols.map((col, i) => `${col} = :val${i}`).join(", ");
+    const sql = `UPDATE MS_ACTIVITY_UOC SET ${setClause}, updated_at = :updated_at WHERE company_code = :company_code AND charge_code = :charge_code AND charge_type = :charge_type AND activity_group_code = :activity_group_code`;
+    
+    const bindObj: Record<string, any> = { company_code, charge_code, charge_type, activity_group_code, updated_at: new Date() };
+    cols.forEach((col, i) => {
+      bindObj[`val${i}`] = (updateData as any)[col];
+    });
 
-    result.success = dbResult.affected ? dbResult.affected > 0 : false;
+    try {
+      await executeMutation(sql, bindObj);
+      result.success = true;
+    } catch (error) {
+      console.error("Error updating ActivityUOC:", error);
+      result.success = false;
+    }
+    
     return result;
   }
 
@@ -154,23 +130,23 @@ export class ActivityUOCService {
       activity_group_code: string;
     }>
   ): Promise<boolean> {
-    const repository = this.getActivityUOCRepository();
-    
     if (conditions.length === 0) {
       return false;
     }
 
-    let deleteResult = { affected: 0 };
+    let totalDeleted = 0;
     
-    // Delete each record individually since we have a composite primary key
     for (const condition of conditions) {
-      const result = await repository.delete(condition);
-      if (result.affected) {
-        deleteResult.affected += result.affected;
+      const sql = `DELETE FROM MS_ACTIVITY_UOC WHERE company_code = :company_code AND charge_code = :charge_code AND charge_type = :charge_type AND activity_group_code = :activity_group_code`;
+      try {
+        await executeMutation(sql, condition);
+        totalDeleted++;
+      } catch (error) {
+        console.error("Error deleting ActivityUOC:", error);
       }
     }
 
-    return deleteResult.affected > 0;
+    return totalDeleted > 0;
   }
 
   static async checkActivityUOCExists(
@@ -179,16 +155,8 @@ export class ActivityUOCService {
     charge_type: string,
     activity_group_code: string
   ): Promise<boolean> {
-    const repository = this.getActivityUOCRepository();
-    // Only check for composite key existence
-    const count = await repository.count({
-      where: {
-        company_code,
-        charge_code,
-        charge_type,
-        activity_group_code,
-      },
-    });
+    const sql = `SELECT COUNT(*) as cnt FROM MS_ACTIVITY_UOC WHERE company_code = :company_code AND charge_code = :charge_code AND charge_type = :charge_type AND activity_group_code = :activity_group_code`;
+    const count = await executeCount(sql, { company_code, charge_code, charge_type, activity_group_code });
     return count > 0;
   }
 
@@ -197,20 +165,38 @@ export class ActivityUOCService {
     page: number,
     limit: number
   ): Promise<{ data: ActivityUOC[]; total: number }> {
-    const repository = this.getActivityUOCRepository();
+    const bindParams: Record<string, any> = {};
+    let sql = `SELECT * FROM MS_ACTIVITY_UOC WHERE 1=1`;
 
-    const [data, total] = await repository.findAndCount({
-      where: filters,
-      skip: (page - 1) * limit,
-      take: limit,
-      order: {
-        company_code: "ASC",
-        charge_code: "ASC",
-        charge_type: "ASC",
-        activity_group_code: "ASC",
-      },
-    });
+    // Build filter conditions
+    if (filters.company_code) {
+      sql += ` AND company_code = :company_code`;
+      bindParams.company_code = filters.company_code;
+    }
+    if (filters.charge_code) {
+      sql += ` AND charge_code = :charge_code`;
+      bindParams.charge_code = filters.charge_code;
+    }
+    if (filters.charge_type) {
+      sql += ` AND charge_type = :charge_type`;
+      bindParams.charge_type = filters.charge_type;
+    }
+    if (filters.activity_group_code) {
+      sql += ` AND activity_group_code = :activity_group_code`;
+      bindParams.activity_group_code = filters.activity_group_code;
+    }
 
+    // Get total count
+    const countSql = sql.replace(/SELECT \*/, `SELECT COUNT(*) as cnt`);
+    const total = await executeCount(countSql, bindParams);
+
+    // Apply sorting and pagination
+    sql += ` ORDER BY company_code ASC, charge_code ASC, charge_type ASC, activity_group_code ASC`;
+    sql += ` OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
+    bindParams.offset = (page - 1) * limit;
+    bindParams.limit = limit;
+
+    const data = await executeQuery<ActivityUOC>(sql, bindParams);
     return { data, total };
   }
 }

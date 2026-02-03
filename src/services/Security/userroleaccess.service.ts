@@ -1,4 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { SecLoginRoleAccess } from "../../entity/Security/seclogin-roleaccess.entity";
 import { MsRole } from "../../entity/Security/msrole.entity";
 import { MsPsUserRoleMapping } from "../../entity/Security/mspsuserrolemapping.entity";
@@ -42,6 +43,7 @@ export class UserRoleAccessService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -121,6 +123,7 @@ export class UserRoleAccessService {
     }>
   ): Promise<MsPsUserRoleMapping[]> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 

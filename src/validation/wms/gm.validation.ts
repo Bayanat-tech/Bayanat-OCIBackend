@@ -654,6 +654,7 @@ export const partnerSchema = (data: IPartner) => {
     broker_contact1: Joi.string().allow("", null),
     broker_telno1: Joi.string().allow("", null),
     broker_email1: Joi.string().allow("", null),
+    curr_code : Joi.string().allow("", null),
     //broker_stat: Joi.string().allow("",null),
   });
   return schema.validate(data);

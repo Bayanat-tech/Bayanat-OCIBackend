@@ -132,6 +132,7 @@ import { SupplierService } from "../services/WMS/suppliermaster.service"; // Add
 import { getConnection } from "typeorm";
 import { FlowMasterService } from "../services/Security/flowmaster.service"; // Add FlowMasterService import
 import { AppDataSource, TypeORMService } from "../database/connection";
+import { ensureCorrectSchemaOnQueryRunner } from "../database/TypeORMTenantInterceptor";
 import { CustomerService } from "../services/WMS/customer.service";
 import { ActivityService } from "../services/WMS/activity.service";
 import { BillingActivityService } from "../services/WMS/billing_activity.service";
@@ -169,6 +170,7 @@ export const executeRawSql = async (req: Request, res: Response): Promise<void> 
 
       const connection = AppDataSource;
       queryRunner = connection.createQueryRunner();
+      await ensureCorrectSchemaOnQueryRunner(queryRunner);
       await queryRunner.connect();
 
       // Start transaction to ensure consistent behavior for DML/DDL if needed

@@ -1,30 +1,28 @@
-import { getRepository } from "../../database/connection";
 import { PortMaster } from "../../entity/WMS/port.entity";
-import { In } from "typeorm";
+import {  
+  executeQuery, 
+  executeSingleQuery,
+  executeMutation,
+  executeCount
+} from "./tenant-service.helper";
+import { TenantManager } from "../../database/TenantManager";
 
 export class PortService {
-  private static getPortMasterRepository() {
-    return getRepository(PortMaster);
-  }
 
   static async findByDescriptionAndCompany(
     port_name: string,
     company_code: string
   ): Promise<PortMaster | null> {
-    const repository = this.getPortMasterRepository();
-    return await repository.findOne({
-      where: { port_name, company_code },
-    });
+    const sql = `SELECT * FROM MS_PORT WHERE port_name = :port_name AND company_code = :company_code`;
+    return await executeSingleQuery<PortMaster>(sql, { port_name, company_code });
   }
 
   static async findByPortCodeAndCompany(
     port_code: string,
     company_code: string
   ): Promise<PortMaster | null> {
-    const repository = this.getPortMasterRepository();
-    return await repository.findOne({
-      where: { port_code, company_code },
-    });
+    const sql = `SELECT * FROM MS_PORT WHERE port_code = :port_code AND company_code = :company_code`;
+    return await executeSingleQuery<PortMaster>(sql, { port_code, company_code });
   }
 
   static async createPort(portData: {
@@ -34,35 +32,39 @@ export class PortService {
     updated_by: string;
     trp_mode?: string;
     country_code: string;
-    port_code?: string; // <-- Allow custom port_code
+    port_code?: string;
   }): Promise<PortMaster> {
-    const repository = this.getPortMasterRepository();
-
-    // Use provided port_code or generate a new one
     let portCode = portData.port_code;
     
     if (!portCode) {
-      // Generate port_code (customize logic if needed)
-      const maxPortCode = await repository
-        .createQueryBuilder("portMaster")
-        .select("MAX(portMaster.port_code)", "max")
-        .getRawOne();
-
+      // Generate port_code
+      const maxSql = `SELECT MAX(port_code) as max_code FROM MS_PORT WHERE company_code = :company_code`;
+      const maxResult = await executeQuery<any>(maxSql, { company_code: portData.company_code });
+      
       portCode = "P0001";
-      if (maxPortCode?.max) {
-        const currentMax = parseInt(maxPortCode.max.replace("P", ""));
+      if (maxResult && maxResult.length > 0 && maxResult[0].max_code) {
+        const currentMax = parseInt(maxResult[0].max_code.replace("P", ""));
         portCode = `P${(currentMax + 1).toString().padStart(4, "0")}`;
       }
     }
 
-    const port = repository.create({
-      ...portData,
-      port_code: portCode,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
-    return await repository.save(port);
+    const cols = Object.keys(portData);
+    cols.push('port_code', 'created_at', 'updated_at');
+    
+    const values = cols.map((_, i) => `:val${i}`).join(", ");
+    const sql = `INSERT INTO MS_PORT (${cols.join(", ")}) VALUES (${values})`;
+    
+    const bindObj: Record<string, any> = {};
+    let idx = 0;
+    for (const col of Object.keys(portData)) {
+      bindObj[`val${idx++}`] = (portData as any)[col];
+    }
+    bindObj[`val${idx++}`] = portCode;
+    bindObj[`val${idx++}`] = new Date();
+    bindObj[`val${idx++}`] = new Date();
+    
+    await executeMutation(sql, bindObj);
+    return { ...portData, port_code: portCode, created_at: new Date(), updated_at: new Date() } as PortMaster;
   }
 
   static async updatePort(
@@ -70,40 +72,42 @@ export class PortService {
     company_code: string,
     updateData: any
   ): Promise<boolean> {
-    const repository = this.getPortMasterRepository();
-
     console.log("updatePort - Updating port:", { port_code, company_code, updateData });
 
-    const result = await repository.update(
-      { port_code, company_code },
-      {
-        ...updateData,
-        updated_at: new Date(),
-      }
-    );
-
-    console.log("updatePort - Update result:", result);
-    return result.affected ? result.affected > 0 : false;
+    const cols = Object.keys(updateData);
+    const setClause = cols.map((col, i) => `${col} = :val${i}`).join(", ");
+    
+    const sql = `UPDATE MS_PORT SET ${setClause}, updated_at = :updated_at WHERE port_code = :port_code AND company_code = :company_code`;
+    
+    const bindObj: Record<string, any> = { port_code, company_code, updated_at: new Date() };
+    cols.forEach((col, i) => {
+      bindObj[`val${i}`] = updateData[col];
+    });
+    
+    await executeMutation(sql, bindObj);
+    console.log("updatePort - Update completed");
+    return true;
   }
 
   static async deletePorts(port_codes: string[]): Promise<boolean> {
-    const repository = this.getPortMasterRepository();
-
-    const result = await repository.delete({
-      port_code: In(port_codes),
+    const placeholders = port_codes.map((_, i) => `:code${i}`).join(", ");
+    const sql = `DELETE FROM MS_PORT WHERE port_code IN (${placeholders})`;
+    
+    const bindObj: Record<string, any> = {};
+    port_codes.forEach((code, i) => {
+      bindObj[`code${i}`] = code;
     });
-
-    return result.affected ? result.affected > 0 : false;
+    
+    await executeMutation(sql, bindObj);
+    return true;
   }
 
   static async checkPortExists(
     port_code: string,
     company_code: string
   ): Promise<boolean> {
-    const repository = this.getPortMasterRepository();
-    const count = await repository.count({
-      where: { port_code, company_code },
-    });
+    const sql = `SELECT COUNT(*) as cnt FROM MS_PORT WHERE port_code = :port_code AND company_code = :company_code`;
+    const count = await executeCount(sql, { port_code, company_code });
     return count > 0;
   }
 
@@ -112,55 +116,54 @@ export class PortService {
     page: number,
     limit: number
   ): Promise<{ data: PortMaster[]; total: number }> {
-    const repository = this.getPortMasterRepository();
+    console.log("PortService.getPorts filters:", filters);
 
-    console.log("PortService.getPorts filters:", filters); // Debug log
-
-    // Build query with proper filtering
-    const queryBuilder = repository.createQueryBuilder("port");
-
-    // Apply company_code filter (required)
-    if (filters.company_code) {
-      queryBuilder.andWhere("port.company_code = :company_code", {
-        company_code: filters.company_code,
-      });
-    } else {
-      // If no company_code is provided, return empty result
+    if (!filters.company_code) {
       return { data: [], total: 0 };
     }
 
-    // Apply optional filters only if they have valid, non-empty values
+    let sql = `SELECT * FROM MS_PORT WHERE company_code = :company_code`;
+    const bindParams: Record<string, any> = { company_code: filters.company_code };
+
     if (filters.port_code && typeof filters.port_code === 'string' && filters.port_code.trim() !== '') {
-      queryBuilder.andWhere("port.port_code LIKE :port_code", {
-        port_code: `%${filters.port_code}%`,
-      });
+      sql += ` AND port_code LIKE :port_code`;
+      bindParams.port_code = `%${filters.port_code}%`;
     }
 
     if (filters.port_name && typeof filters.port_name === 'string' && filters.port_name.trim() !== '') {
-      queryBuilder.andWhere("port.port_name LIKE :port_name", {
-        port_name: `%${filters.port_name}%`,
-      });
+      sql += ` AND port_name LIKE :port_name`;
+      bindParams.port_name = `%${filters.port_name}%`;
     }
 
     if (filters.country_code && typeof filters.country_code === 'string' && filters.country_code.trim() !== '') {
-      queryBuilder.andWhere("port.country_code = :country_code", {
-        country_code: filters.country_code,
-      });
+      sql += ` AND country_code = :country_code`;
+      bindParams.country_code = filters.country_code;
     }
 
-    // Get total count before pagination
-    const total = await queryBuilder.getCount();
-    console.log("PortService total count:", total); // Debug log
+    // Get total count
+    const countSql = `SELECT COUNT(*) as cnt FROM MS_PORT WHERE company_code = :company_code`;
+    let countParams = { company_code: filters.company_code };
+    
+    // if (filters.port_code && typeof filters.port_code === 'string' && filters.port_code.trim() !== '') {
+    //   countParams = { ...countParams, port_code: `%${filters.port_code}%` };
+    // }
+    // if (filters.port_name && typeof filters.port_name === 'string' && filters.port_name.trim() !== '') {
+    //   countParams = { ...countParams, port_name: `%${filters.port_name}%` };
+    // }
+    // if (filters.country_code && typeof filters.country_code === 'string' && filters.country_code.trim() !== '') {
+    //   countParams = { ...countParams, country_code: filters.country_code };
+    // }
 
-    // Apply ordering
-    queryBuilder.orderBy("port.port_code", "ASC");
+    const total = await executeCount(countSql, countParams);
+    console.log("PortService total count:", total);
 
-    // Apply pagination
-    queryBuilder.skip((page - 1) * limit).take(limit);
+    // Apply ordering and pagination
+    sql += ` ORDER BY port_code ASC OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`;
+    bindParams.offset = (page - 1) * limit;
+    bindParams.limit = limit;
 
-    // Execute query
-    const data = await queryBuilder.getMany();
-    console.log("PortService data count:", data.length); // Debug log
+    const data = await executeQuery<PortMaster>(sql, bindParams);
+    console.log("PortService data count:", data.length);
 
     return { data, total };
   }
@@ -170,20 +173,13 @@ export class PortService {
     company_code: string,
     updateData: any
   ): Promise<boolean> {
-    const repository = this.getPortMasterRepository();
-
     console.log("updatePortSmart - Attempting update:", { port_code, company_code, updateData });
 
-    // Try to find port by the provided port_code first
-    let existingPort = await repository.findOne({
-      where: { port_code, company_code },
-    });
+    let existingPort = await this.findByPortCodeAndCompany(port_code, company_code);
 
-    // If not found, try to find by port_name (in case user changed port_code)
     if (!existingPort && updateData.port_name) {
-      existingPort = await repository.findOne({
-        where: { port_name: updateData.port_name, company_code },
-      });
+      const sql = `SELECT * FROM MS_PORT WHERE port_name = :port_name AND company_code = :company_code`;
+      existingPort = await executeSingleQuery<PortMaster>(sql, { port_name: updateData.port_name, company_code });
       console.log("updatePortSmart - Found by port_name:", existingPort);
     }
 
@@ -192,16 +188,6 @@ export class PortService {
       return false;
     }
 
-    // Update using the actual port_code from database
-    const result = await repository.update(
-      { port_code: existingPort.port_code, company_code },
-      {
-        ...updateData,
-        updated_at: new Date(),
-      }
-    );
-
-    console.log("updatePortSmart - Update result:", result);
-    return result.affected ? result.affected > 0 : false;
+    return await this.updatePort(existingPort.port_code!, company_code, updateData);
   }
 }

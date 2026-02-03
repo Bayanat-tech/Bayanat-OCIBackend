@@ -4,7 +4,7 @@ import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IHrGrade } from "../../interfaces/Hr/hr_grade";
 import { IUser } from "../../interfaces/user.interface";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import HrCsvHeaders from "../../utils/exportCsv/HrCsvHeaders";
 import { gradeSchema } from "../../validation/HR/hrgrade.validation";
 import { In } from "typeorm";
@@ -23,7 +23,7 @@ export const createGrade = async (req: RequestWithUser, res: Response) => {
     }
 
     const { grade_code, company_code } = req.body;
-    const gradeRepository = AppDataSource.getRepository(HrGrade);
+    const gradeRepository = getRepository(HrGrade);
 
     const grade = await gradeRepository.findOne({
       where: {
@@ -79,7 +79,7 @@ export const updateGrade = async (req: RequestWithUser, res: Response) => {
     }
 
     const { grade_code, company_code } = req.body;
-    const gradeRepository = AppDataSource.getRepository(HrGrade);
+    const gradeRepository = getRepository(HrGrade);
 
     const grade = await gradeRepository.findOne({
       where: {
@@ -137,7 +137,7 @@ export const createBulkGrades = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const gradeRepository = AppDataSource.getRepository(HrGrade);
+    const gradeRepository = getRepository(HrGrade);
     
     const gradesWithUser = req.body.map((grade: IHrGrade) => ({
       ...grade,
@@ -167,7 +167,7 @@ export const createBulkGrades = async (req: RequestWithUser, res: Response) => {
 
 export const exportGrade = async (req: RequestWithUser, res: Response) => {
   try {
-    const gradeRepository = AppDataSource.getRepository(HrGrade);
+    const gradeRepository = getRepository(HrGrade);
     
     let fetchedData: any[] = [];
     let csvTransform: fastCsv.CsvFormatterStream<
@@ -205,7 +205,7 @@ export const exportGrade = async (req: RequestWithUser, res: Response) => {
 export const deleteGrades = async (req: RequestWithUser, res: Response) => {
   try {
     const gradesCode = req.body;
-    const gradeRepository = AppDataSource.getRepository(HrGrade);
+    const gradeRepository = getRepository(HrGrade);
 
     if (!req.body.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({

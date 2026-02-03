@@ -6,12 +6,14 @@ import {
   updateReadLog,
 } from "../controllers/log.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
+import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 
 const router = express.Router();
 
 router.get(
   "/",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getLogs
 );
@@ -19,6 +21,7 @@ router.get(
 router.get(
   "/read",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getUnReadLogsCount
 );
@@ -26,6 +29,7 @@ router.get(
 router.put(
   "/allRead",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   updateReadLog
 );

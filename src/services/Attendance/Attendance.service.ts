@@ -6,13 +6,14 @@ import logger from "../../utils/logger";
 import { FaceRecognitionService } from "./face_recognition.service";
 import { getSignedUrl, uploadEmployeeFace } from "../../services/ociUpload.service";
 import { CacheService } from "./cache.service";
-import { AppDataSource, oracleDb, TypeORMService } from "../../database/connection"
+import { AppDataSource, oracleDb, TypeORMService, getRepository } from "../../database/connection"
 import { Between, In, Or } from "typeorm";
 import { Employee} from "../../entity/Attendance/employee.entity";
 import {AttendanceRecord} from "../../entity/Attendance/attendance_record.entity";
 import { AttendanceEvent, AttendanceEventType, AttendanceStatus, DataTransferFlag } from "../../entity/Attendance/attendance_events.entity";
 import { ProxyLog } from "../../entity/Attendance/ProxyLog.entity";
 import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
+import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
   
 const AUTO_CONFIRM_DELAY_MS = 10000; 
 const FACE_RECOGNITION_TIMEOUT = 2500;
@@ -62,6 +63,9 @@ export class AttendanceService {
   recognizedEmployee: any; 
   autoConfirmDelay: number;
 }> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   const uuid = uuidv4();
   const now = new Date();
@@ -82,7 +86,7 @@ export class AttendanceService {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const existingEvent = await AppDataSource.getRepository(AttendanceEvent).findOne({
+    const existingEvent = await getRepository(AttendanceEvent).findOne({
       where: { 
         employee_id: employeeId, 
         event_type: action === "check-in" ? AttendanceEventType.CHECK_IN : AttendanceEventType.CHECK_OUT,
@@ -242,13 +246,16 @@ export class AttendanceService {
 
 
   private static async getEmployeeWithCache(employeeId: string): Promise<any> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const cacheKey = `employee:${employeeId}`;
     let employee = await this.cache.get(cacheKey);
     if (employee) {
     return employee;
   }
     
-    const employees = AppDataSource.getRepository(Employee);
+    const employees = getRepository(Employee);
  
     const databasePromise = employees.findOne({
       where: { employee_id: employeeId },
@@ -272,6 +279,9 @@ export class AttendanceService {
   }
 
   private static async saveAttendanceToDatabase(data: any): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
       const eventData: any = {
         id: uuidv4(),
@@ -298,7 +308,7 @@ export class AttendanceService {
         });
       }
 
-      const attendanceRepo = AppDataSource.getRepository(AttendanceEvent);
+      const attendanceRepo = getRepository(AttendanceEvent);
       const newEvent = attendanceRepo.create(eventData);
       await attendanceRepo.save(newEvent);
       logger.info(`[DB-SAVE] Record saved for UUID: ${data.uuid}`);
@@ -308,6 +318,9 @@ export class AttendanceService {
     }
   }
  static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Promise<any> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   
   logger.info(`[SERVICE-CONFIRM] Starting confirmation for UUID: ${uuid}, confirmedBy: ${confirmedBy}`);
@@ -355,7 +368,7 @@ export class AttendanceService {
 
   private static async confirmAttendanceFromDatabase(uuid: string, confirmedBy: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
-
+    await ensureCorrectSchemaOnQueryRunner(transaction);
     try {
       await transaction.connect();
       await transaction.startTransaction();
@@ -463,6 +476,9 @@ export class AttendanceService {
   actualEmployeeName: string = 'User Cancelled',
   reason: string = 'user_cancelled'
 ): Promise<any> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   
   if (!await this.acquireRequestSlot()) {
@@ -554,8 +570,10 @@ export class AttendanceService {
     
     await TypeORMService.ensureConnection();
     
-   await AppDataSource.transaction (async (entity) => {
-    const attendanceEvent = entity.getRepository(AttendanceEvent);
+    const queryRunner = AppDataSource.createQueryRunner();
+    try {
+      await queryRunner.connect();
+      const attendanceEvent = queryRunner.manager.getRepository(AttendanceEvent);
     const event = await attendanceEvent
       .createQueryBuilder('event')
       .where('event.uuid = :uuid', { uuid })
@@ -587,14 +605,16 @@ export class AttendanceService {
     }
 
     // ✅ DO NOT DELETE HERE - Delete ONLY AFTER saveConfirmedAttendance completes
-    await this.saveConfirmedAttendance(pendingData, 'auto_system', entity);
+    await this.saveConfirmedAttendance(pendingData, 'auto_system', queryRunner.manager);
     
     // ✅ NOW safe to delete - attendance is confirmed, image_buffer preserved for cancellation if needed
     this.pendingConfirmations.delete(uuid);
     
     logger.info(`Auto-confirmed: ${uuid} (No S3 upload for successful attendance)`);
 
-    });
+    } finally {
+      await queryRunner.release();
+    }
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
     if (errorMsg.includes('ORA-03113') || errorMsg.includes('NJS-500') || errorMsg.includes('not connected')) {
@@ -722,7 +742,13 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       return await executeTransaction(existingTransaction);
     } else {
       logger.info(`[CONFIRM] Creating new transaction for UUID: ${data.uuid}`);
-      return await AppDataSource.transaction(executeTransaction);
+      const queryRunner = AppDataSource.createQueryRunner();
+      try {
+        await queryRunner.connect();
+        return await executeTransaction(queryRunner.manager);
+      } finally {
+        await queryRunner.release();
+      }
     }
   } catch (error) {
     logger.error('Failed to save confirmed attendance:', error);
@@ -732,6 +758,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
   static async logProxyAttempt(data: any, actualEmployeeCode: string, actualEmployeeName: string, reason: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(transaction);
     await transaction.connect();
     await transaction.startTransaction();
     
@@ -832,7 +859,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     }
     
     // Check database status
-    const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
+    const attendanceEvent = getRepository(AttendanceEvent);
     const event = await attendanceEvent.findOne({ where: { uuid } });
 
     logger.info(`🔍 [EMAIL DEBUG] Database event:`, {
@@ -842,7 +869,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     });
     
     // Check proxy log
-    const ProxyLogRepo = AppDataSource.getRepository(ProxyLog);
+    const ProxyLogRepo = getRepository(ProxyLog);
     const proxyLog = await ProxyLogRepo.findOne({ where: { uuid } });
 
     logger.info(`🔍 [EMAIL DEBUG] Proxy log:`, {
@@ -864,9 +891,10 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
   let transaction: any = null;
   try {
     transaction = AppDataSource.createQueryRunner();
-    const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
-    const ProxyLogs = AppDataSource.getRepository(ProxyLog);
-    const employee = AppDataSource.getRepository(Employee);
+    await ensureCorrectSchemaOnQueryRunner(transaction);
+    const attendanceEvent = getRepository(AttendanceEvent);
+    const ProxyLogs = getRepository(ProxyLog);
+    const employee = getRepository(Employee);
     logger.info(`[CANCEL] Starting database cancellation for UUID: ${uuid}, Reason: ${reason}`);
     
     await transaction.connect();
@@ -1200,7 +1228,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 // HANDLE LATE CANCELLATION ATTEMPTS
 private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode: string, actualEmployeeName: string): Promise<boolean> {
   try {
-    const employeeRepo = AppDataSource.getRepository(Employee);
+    const employeeRepo = getRepository(Employee);
     const [proxyEmployee, actualEmployee] = await Promise.all([
       employeeRepo.findOne({ 
         where: { employee_code: proxyLog.proxy_employee_code },
@@ -1305,7 +1333,7 @@ private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode
 
 static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string, actualEmployeeName: string, s3ImageUrl: string | null): Promise<boolean> {
   try {
-    const proxyEmployeeRepo = AppDataSource.getRepository(Employee);
+    const proxyEmployeeRepo = getRepository(Employee);
     logger.info(`📧 [EMAIL] Starting proxy email for UUID: ${data.uuid}`);
     
     let proxyEmployee: any = null;
@@ -1394,7 +1422,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     try {
       logger.info(`[EMAIL] Starting email send for proxy detection - UUID: ${proxyLog.uuid}`);
       
-      const employeeRepo = AppDataSource.getRepository(Employee);
+      const employeeRepo = getRepository(Employee);
       const [proxyEmployee, actualEmployee] = await Promise.all([
         employeeRepo.findOne({ 
           where: { employee_code: proxyLog.proxy_employee_code },
@@ -1462,7 +1490,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
       let imageUrl = await this.cache.get(cacheKey);
       
       if (!imageUrl) {
-        const employeeFaces = AppDataSource.getRepository(EmployeeFace);
+        const employeeFaces = getRepository(EmployeeFace);
         const employeeFace = await employeeFaces.findOne({
           where: { employee_id: employeeId, is_active: "1" }
         });
@@ -1482,8 +1510,11 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
   // 🎯 FIXED CHECK IF UUID IS CANCELLED IN DATABASE
   private static async isCancelledInDatabase(uuid: string): Promise<boolean> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
-      const attendanceEvents = AppDataSource.getRepository(AttendanceEvent);
+      const attendanceEvents = getRepository(AttendanceEvent);
       const event = await attendanceEvents.findOne({
         where: { uuid },
         select: ['status']
@@ -1497,8 +1528,11 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
 
   private static async markAsCancelledInDatabase(uuid: string): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
-      const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
+      const attendanceEvent = getRepository(AttendanceEvent);
       const result = await attendanceEvent.update(
         { 
           uuid,
@@ -1527,6 +1561,8 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     return this.cancelledConfirmations.has(uuid);
   }
   static async processAutoConfirm(): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
     const now = new Date();
     let memoryConfirmed = 0;
     let memoryCancelled = 0;
@@ -1579,7 +1615,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     if (employee_code) {
       whereClause.proxy_employee_code = employee_code;
     }
-    const AttendanceLog = AppDataSource.getRepository(ProxyLog);
+    const AttendanceLog = getRepository(ProxyLog);
     const [ rows, count ]  = await AttendanceLog.findAndCount({
       where: whereClause,
       order: { timestamp: 'DESC' },
@@ -1606,6 +1642,9 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     page: number = 1,
     limit: number = 20
   ): Promise<any> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const skip = (page - 1) * limit;
 
     const adjustedStartDate = new Date(startDate);
@@ -1622,7 +1661,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     let employeeWhereClause = {};
     if (department) employeeWhereClause = { department };
 
-    const AttendanceReport = AppDataSource.getRepository(AttendanceEvent)
+    const AttendanceReport = getRepository(AttendanceEvent)
     const [ rows, count ]  = await AttendanceReport.findAndCount({
       where: eventWhereClause,
       relations: 
@@ -1787,7 +1826,7 @@ This is an automated alert from the Smart Attendance System.
     try {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       
-      const staleRecords = await AppDataSource.getRepository(AttendanceEvent).find({
+      const staleRecords = await getRepository(AttendanceEvent).find({
         where: {
           status: AttendanceStatus.PENDING,
           event_time: Between(new Date(0), twoHoursAgo)

@@ -1,4 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { SecLoginUserDivision } from "../../entity/Security/seclogin-usertodivision.entity";
 import { MSHRDivisionMaster } from "../../entity/Security//mshrdivisionmaster.entity";
 import { MSCompanyUserAssign } from "../../entity/Security/mscompanyuserassign.entity";
@@ -40,6 +41,7 @@ export class UserDivisionAccessService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -119,6 +121,7 @@ export class UserDivisionAccessService {
     }>
   ): Promise<MSCompanyUserAssign[]> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
