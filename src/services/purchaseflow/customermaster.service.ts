@@ -1,4 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
 import constants from "../../helpers/constants";
 
@@ -15,7 +16,7 @@ export class CustomerMasterService {
     userId: string;
     message: string;
   }) {
-    await oracleDb.query(
+    await QueryExecutor.executeRawQuery(
       `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
       [
         params.screen,

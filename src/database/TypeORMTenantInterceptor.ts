@@ -27,7 +27,7 @@ export async function ensureCorrectSchema(): Promise<void> {
       return;
     }
     
-    console.log("[ensureCorrectSchema] ❌ No tenant context at all, using default schema");
+    console.log("[ensureCorrectSchema]  No tenant context at all, using default schema");
     return;
   }
 
@@ -58,10 +58,6 @@ export async function ensureCorrectSchema(): Promise<void> {
   }
 }
 
-/**
- * Ensure the tenant schema is set on a specific QueryRunner connection.
- * This is used for transactional flows where QueryRunner uses its own physical connection.
- */
 export async function ensureCorrectSchemaOnQueryRunner(queryRunner: any): Promise<void> {
   if (!queryRunner) return;
 
@@ -80,7 +76,6 @@ export async function ensureCorrectSchemaOnQueryRunner(queryRunner: any): Promis
       }
       return;
     }
-    // No tenant context - nothing to set
     return;
   }
 
@@ -95,10 +90,6 @@ export async function ensureCorrectSchemaOnQueryRunner(queryRunner: any): Promis
   }
 }
 
-/**
- * Create a tenant-aware query builder
- * Use this instead of repository.createQueryBuilder() for complex queries
- */
 export async function createTenantQueryBuilder<Entity>(
   repository: any,
   alias: string
@@ -116,10 +107,6 @@ export async function createTenantQueryBuilder<Entity>(
   return repository.createQueryBuilder(alias);
 }
 
-/**
- * Wrap a service method to automatically ensure correct schema
- * Usage: @AutoSchemaSwitch() on methods that use TypeORM repositories
- */
 export function AutoSchemaSwitch() {
   return function (
     target: any,

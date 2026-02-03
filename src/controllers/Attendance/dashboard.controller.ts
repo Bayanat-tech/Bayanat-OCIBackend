@@ -10,6 +10,7 @@ import {
   subDays,
 } from "date-fns";
 import { AppDataSource, getRepository, oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import { Between, MoreThanOrEqual } from "typeorm";
 import employee from "../../models/Attendance/employee";
 
@@ -125,8 +126,8 @@ export class DashboardController {
         ? new Date(endDate as string)
         : endOfMonth(new Date());
 
-      // Use a raw query to avoid the ambiguous column issue
-      const [results] = await oracleDb.query(
+      // Use tenant-aware helper to run date-bound stats query
+      const resultsRes = await QueryExecutor.executeRawQuery(
         `
         SELECT 
           DATE(ar.date) as date,
@@ -140,12 +141,11 @@ export class DashboardController {
         ORDER BY date ASC
       `,
         {
-          replacements: {
-            start: startOfDay(start).toISOString().split("T")[0],
-            end: endOfDay(end).toISOString().split("T")[0],
-          },
+          start: { val: startOfDay(start).toISOString().split("T")[0] },
+          end: { val: endOfDay(end).toISOString().split("T")[0] },
         }
       );
+      const results = resultsRes.rows || resultsRes; 
 
       const departmentWiseStats: {
         [key: string]: {
@@ -187,8 +187,8 @@ export class DashboardController {
       const monthStart = startOfMonth(date);
       const monthEnd = endOfMonth(date);
 
-      // Use a raw query to avoid the ambiguous column issue
-      const [results] = await oracleDb.query(
+      // Use tenant-aware helper to run monthly stats query
+      const resultsRes = await QueryExecutor.executeRawQuery(
         `
         SELECT 
           DATE_FORMAT(date, '%Y-%m-%d') as date,
@@ -200,12 +200,11 @@ export class DashboardController {
         ORDER BY date ASC
       `,
         {
-          replacements: {
-            start: startOfDay(monthStart).toISOString().split("T")[0],
-            end: endOfDay(monthEnd).toISOString().split("T")[0],
-          },
+          start: { val: startOfDay(monthStart).toISOString().split("T")[0] },
+          end: { val: endOfDay(monthEnd).toISOString().split("T")[0] },
         }
       );
+      const results = resultsRes.rows || resultsRes; 
 
       const monthlyStats: MonthlyStats = {};
       (results as any[]).forEach((record: any) => {
@@ -277,8 +276,8 @@ export class DashboardController {
       const { days = 30 } = req.query;
       const startDate = subDays(new Date(), Number(days));
 
-      // Use a raw query to avoid the ambiguous column issue
-      const [results] = await oracleDb.query(
+      // Use tenant-aware helper to run late arrival trends query
+      const resultsRes = await QueryExecutor.executeRawQuery(
         `
         SELECT 
           DATE(date) as date,
@@ -290,12 +289,11 @@ export class DashboardController {
         ORDER BY date ASC
       `,
         {
-          replacements: {
-            start: startOfDay(startDate).toISOString().split("T")[0],
-            end: endOfDay(new Date()).toISOString().split("T")[0],
-          },
+          start: { val: startOfDay(startDate).toISOString().split("T")[0] },
+          end: { val: endOfDay(new Date()).toISOString().split("T")[0] },
         }
       );
+      const results = resultsRes.rows || resultsRes; 
 
       const trendStats = {
         totalLateArrivals: (results as any[]).reduce(

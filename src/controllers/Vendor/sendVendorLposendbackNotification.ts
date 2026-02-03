@@ -1,4 +1,4 @@
-import { oracleDb } from "./../../../src/database/connection";
+import { QueryExecutor } from "../../../src/database/QueryExecutor";
 import { notifyUser } from "../../../src/helpers/functions";
 
 const stdSign = `
@@ -13,7 +13,14 @@ const toCsv = (parts: Array<string | null | undefined>) =>
        .join(",");
 
 async function getEmailInfo(connection?: any) {
-  const r = await oracleDb.query(
+  const execMaybe = async (sql: string, binds: any = {}, conn?: any) => {
+    if (conn && typeof conn.execute === "function") {
+      return await conn.execute(sql, binds, { outFormat: require("oracledb").OUT_FORMAT_OBJECT });
+    }
+    return await QueryExecutor.executeRawQuery(sql, binds);
+  };
+
+  const r = await execMaybe(
     `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS FROM VW_VENDOR_EMAIL_INFOR`,
     {},
     connection
@@ -44,7 +51,14 @@ const extractLastActor = (history?: string | null): string => {
 };
 
 async function getVendorEmail(docNo: string, connection?: any): Promise<string | null> {
-  const acCodeRes = await oracleDb.query(
+  const execMaybe = async (sql: string, binds: any = {}, conn?: any) => {
+    if (conn && typeof conn.execute === "function") {
+      return await conn.execute(sql, binds, { outFormat: require("oracledb").OUT_FORMAT_OBJECT });
+    }
+    return await QueryExecutor.executeRawQuery(sql, binds);
+  };
+
+  const acCodeRes = await execMaybe(
     `SELECT AC_CODE FROM TR_AC_LPO_HEADER WHERE DOC_NO = :docNo`,
     { docNo: { val: docNo } },
     connection
@@ -52,7 +66,7 @@ async function getVendorEmail(docNo: string, connection?: any): Promise<string |
   const acCode = (acCodeRes.rows?.[0] || acCodeRes[0])?.AC_CODE;
   if (!acCode) return null;
 
-  const emailRes = await oracleDb.query(
+  const emailRes = await execMaybe(
     `SELECT EMAIL_ID FROM SEC_LOGIN WHERE LOGINID = :loginId`,
     { loginId: { val: acCode } },
     connection
@@ -61,7 +75,7 @@ async function getVendorEmail(docNo: string, connection?: any): Promise<string |
 }
 
 async function getHistories(companyCode: string, docNo: string, connection?: any) {
-  const r = await oracleDb.query(
+  const r = await QueryExecutor.execMaybe(
     `SELECT NVL(SENDBACK_HISTORY,'') AS SENDBACK_HISTORY,
             NVL(REJECT_HISTORY,'') AS REJECT_HISTORY
        FROM TR_AC_LPO_HEADER
@@ -74,7 +88,14 @@ async function getHistories(companyCode: string, docNo: string, connection?: any
 }
 
 async function getMaxFlowLevel(docNo: string, connection?: any): Promise<number> {
-  const result = await oracleDb.query(
+  const execMaybe = async (sql: string, binds: any = {}, conn?: any) => {
+    if (conn && typeof conn.execute === "function") {
+      return await conn.execute(sql, binds, { outFormat: require("oracledb").OUT_FORMAT_OBJECT });
+    }
+    return await QueryExecutor.executeRawQuery(sql, binds);
+  };
+
+  const result = await execMaybe(
     `SELECT MAX(FLOW_LEVEL) AS MAX_FLOW_LEVEL
        FROM TR_AC_LPO_HEADER_HISTORY
       WHERE DOC_NO = :docNo`,

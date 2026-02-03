@@ -21,6 +21,44 @@ export class QueryExecutor {
     console.log(`[QueryExecutor.executeQuery] Executing query for loginid=${contextLoginid}, tenant=${contextTenantId}`);
     return await TenantManager.executeInTenant(contextTenantId, query, params);
   }
+
+  static async executeRawQuery(query: string, params: any = {}): Promise<any> {
+    const { getCurrentTenantId } = require("../middleware/tenantContext.middleware");
+    const tenantId = getCurrentTenantId();
+
+    if (!tenantId) {
+      console.warn("[QueryExecutor.executeRawQuery] No tenant context - cannot execute query safely");
+      throw new Error("No tenant context available for query execution. Ensure middleware is applied.");
+    }
+
+    const conn = await TenantManager.getConnection(tenantId);
+    try {
+      const result = await conn.execute(query, params, {
+        outFormat: (require("oracledb") as any).OUT_FORMAT_OBJECT,
+        autoCommit: true,
+      });
+      return result;
+    } finally {
+      await conn.close();
+    }
+  }
+
+  static async executeRawQueryForTenant(
+    tenantId: string,
+    query: string,
+    params: any = {}
+  ): Promise<any> {
+    const conn = await TenantManager.getConnection(tenantId);
+    try {
+      const result = await conn.execute(query, params, {
+        outFormat: (require("oracledb") as any).OUT_FORMAT_OBJECT,
+        autoCommit: true,
+      });
+      return result;
+    } finally {
+      await conn.close();
+    }
+  }
   
   // Execute query for specific tenant
   static async executeForTenant(
@@ -38,6 +76,18 @@ export class QueryExecutor {
     params: any = {}
   ): Promise<any[]> {
     return await TenantManager.executeForUser(loginid, query, params);
+  }
+
+  /**
+   * Execute using an existing connection when provided (transactional path),
+   * otherwise execute as a tenant-aware raw query (non-transactional).
+   */
+  static async execMaybe(query: string, params: any = {}, conn?: any): Promise<any> {
+    if (conn) {
+      const oracledb = require("oracledb");
+      return await conn.execute(query, params, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    }
+    return await QueryExecutor.executeRawQuery(query, params);
   }
 
   // Get user with tenant info (for login)

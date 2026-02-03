@@ -1,7 +1,7 @@
 import { Response } from "express";
 import constants from "../../../../helpers/constants";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
-import { oracleDb } from "../../../../database/connection";
+import { QueryExecutor } from "../../../../database/QueryExecutor";
 
 //-------------- Outbound Job---------------
 // Function to get details of an outbound job
@@ -19,7 +19,7 @@ export const getOutboundJob = async (req: RequestWithUser, res: Response) => {
     }
 
     // Using Oracle query instead of Sequelize model
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.execMaybe(
       `SELECT * FROM VW_TO_ORDER_DET WHERE JOB_NO = :job_no AND ROWNUM <= 1`,
       { job_no }
     );
@@ -64,13 +64,13 @@ export const getOutboundJobOrder = async (req: RequestWithUser, res: Response) =
       return;
     }
 
-    // Using oracleDb.query instead of raw connection
-    const result = await oracleDb.query(
+    // Use tenant-aware helper instead of direct oracleDb.query
+    const result = await QueryExecutor.executeRawQuery(
       `SELECT * FROM TO_ORDER WHERE JOB_NO = :job_no`,
-      { job_no }
+      { job_no: { val: job_no } }
     );
 
-    const rows = result.rows || [];
+    const rows = result.rows || result || [];
 
     if (rows.length === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({

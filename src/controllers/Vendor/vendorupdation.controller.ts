@@ -1,4 +1,5 @@
 import { oracleDb } from "./../../../src/database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
 import { VendorService } from "../../services/vendor.service";
@@ -127,8 +128,16 @@ async function sendDataToDotNetAPI(
   docNo: string,
   transaction: any = null
 ) {
+  // Small helper: use provided transaction/connection when present, otherwise run tenant-aware query
+  const execMaybe = async (sql: string, binds: any = {}, conn?: any) => {
+    if (conn && typeof conn.execute === "function") {
+      return await conn.execute(sql, binds, { outFormat: require("oracledb").OUT_FORMAT_OBJECT });
+    }
+    return await QueryExecutor.executeRawQuery(sql, binds);
+  };
+
   try {
-    const fileDataResult = await oracleDb.query(
+    const fileDataResult = await execMaybe(
       `SELECT 
         REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME, ATTACHMENT_SR_NO
       FROM UPLOADED_FILES_DLTS_VENDOR
@@ -182,7 +191,7 @@ async function sendDataToDotNetAPI(
     }
 
     if (fileData.length > 0) {
-      await oracleDb.query(
+      await execMaybe(
         `UPDATE UPLOADED_FILES_DLTS_VENDOR
          SET FILE_TRANSFER = 'Y' 
          WHERE REQUEST_NUMBER = :requestNumber`,
@@ -194,7 +203,7 @@ async function sendDataToDotNetAPI(
     }
 
     // Fetch all columns from TR_AC_LPO_HEADER
-    const headerResult = await oracleDb.query(
+    const headerResult = await execMaybe(
       `SELECT 
         NVL(COMPANY_CODE, '') AS COMPANY_CODE,
         NVL(DOC_NO, '') AS DOC_NO,
@@ -256,7 +265,7 @@ async function sendDataToDotNetAPI(
     const cleanedHeaderData = VendorService.cleanDetail(headerData);
 
     // Fetch all columns from TR_AC_LPO_DETAIL
-    const detailResult = await oracleDb.query(
+    const detailResult = await execMaybe(
       `SELECT 
         NVL(ITEM_REMARK, '') AS ITEM_REMARK,
         NVL(COMPANY_CODE, '') AS COMPANY_CODE,
@@ -296,7 +305,6 @@ async function sendDataToDotNetAPI(
       transaction
     );
     const detailData: any[] = detailResult.rows || detailResult;
-
     // Clean detail data
     const cleanedDetailData = detailData.map((detail) =>
       VendorService.cleanDetail(detail)
@@ -424,7 +432,7 @@ async function upsertLpoRequest(data: TVendorMain) {
     const requestNumber = await upsertLpoRequestHeader(data, connection);
 
     if (isAddMode) {
-      const codeResult: any = await oracleDb.query(
+      const codeResult: any = await QueryExecutor.execMaybe(
         `SELECT code FROM GT_SESSION_INFO WHERE session_id = SYS_CONTEXT('USERENV','SESSIONID') AND ROWNUM = 1`,
         {},
         connection
@@ -449,7 +457,7 @@ async function upsertLpoRequest(data: TVendorMain) {
     committed = true;
 
     // Fetch the latest FINAL_APPROVED from the database
-    const result: any = await oracleDb.query(
+    const result: any = await QueryExecutor.execMaybe(
       `SELECT FINAL_APPROVED
        FROM TR_AC_LPO_HEADER 
        WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
@@ -497,7 +505,7 @@ async function upsertLpoRequestHeader(
   const doc_no = defaultString(data.DOC_NO);
   const ac_code = defaultString(data.AC_CODE);
 
-  const rowsResult = await oracleDb.query(
+  const rowsResult = await QueryExecutor.execMaybe(
     `SELECT COUNT(*) as cnt 
      FROM TR_AC_LPO_HEADER 
      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo `,
@@ -629,7 +637,7 @@ async function upsertLpoRequestHeader(
              refdoc3: { val: defaultString(data.REF_DOC3) },
     };
 
-    await oracleDb.query(insertQuery, replacements, connection);
+    await QueryExecutor.execMaybe(insertQuery, replacements, connection);
   } else {
     const updateQuery = `
       UPDATE TR_AC_LPO_HEADER SET 
@@ -672,7 +680,7 @@ async function upsertLpoRequestHeader(
       docNo: { val: doc_no },
     };
 
-    await oracleDb.query(updateQuery, updateReplacements, connection);
+    await QueryExecutor.execMaybe(updateQuery, updateReplacements, connection);
   }
   await sendVendorLpoNotifications({ companyCode: company_code, docNo: doc_no }, connection);
   return data.DOC_NO ?? "";
@@ -690,7 +698,7 @@ async function upsertLpoRequestDetails(
   console.log("inside detail", key_doc_no);
   console.log("inside detail companyCode:", companyCode);
 
-  await oracleDb.query(
+  await QueryExecutor.execMaybe(
     `DELETE FROM TR_AC_LPO_DETAIL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND HEADER_AC_CODE = :headerAcCode`,
     {
       companyCode: { val: companyCode },
@@ -818,7 +826,7 @@ async function upsertLpoRequestDetails(
     };
 
     try {
-      await oracleDb.query(insertQuery, replacements, connection);
+      await QueryExecutor.execMaybe(insertQuery, replacements, connection);
     } catch (error) {
       console.error("Insert error details:", {
         error,
@@ -914,7 +922,7 @@ export const executeRawSql = async (
     }
 
     console.log("Executing modified rawSql:", rawSql);
-    const result = await oracleDb.query(rawSql);
+    const result = await QueryExecutor.executeRawQuery(rawSql);
     const rows = result.rows || result;
 
     // Format dates in the result
@@ -1069,125 +1077,6 @@ export const getPartyOutstanding = async (
     res.status(500).json({ success: false, message: err.message });
   }
 };
-//save attachment
-// export const saveFileVendorHR = async (
-//   req: Request,
-//   res: Response
-// ): Promise<Response | void> => {
-//   const { request_number, files } = req.body;
-
-//   if (!request_number) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "request_number is required.",
-//     });
-//   }
-
-//   if (!files || !Array.isArray(files) || files.length === 0) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "files must be a non-empty array.",
-//     });
-//   }
-
-//   const duplicateRecords: string[] = [];
-//   const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
-
-//   try {
-//     for (const file of files) {
-//       const { org_file_name } = file;
-
-//       const duplicateCheckResult = await oracleDb.query(
-//         `SELECT COUNT(*) AS COUNT 
-//          FROM UPLOADED_FILES_DLTS_VH 
-//          WHERE request_number = :request_number AND org_file_name = :org_file_name`,
-//         {
-//           request_number: { val: request_number },
-//           org_file_name: { val: org_file_name },
-//         }
-//       );
-
-//       const count = duplicateCheckResult.rows?.[0]?.COUNT || 0;
-
-//       if (count > 0) {
-//         duplicateRecords.push(org_file_name);
-//         continue;
-//       }
-
-//       const {
-//         company_code,
-//         file_name,
-//         extensions,
-//         aws_file_locn,
-//         flow_level,
-//         modules,
-//         updated_by,
-//         created_by,
-//         user_file_name,
-//       } = file;
-
-//       await oracleDb.query(
-//         `INSERT INTO UPLOADED_FILES_DLTS_VH (
-//           company_code, request_number, file_name, extensions, org_file_name,
-//           aws_file_locn, flow_level, modules, updated_by, created_by, 
-//           user_file_name, created_at, updated_at
-//         ) VALUES (
-//           :company_code, :request_number, :file_name, :extensions, :org_file_name,
-//           :aws_file_locn, :flow_level, :modules, :updated_by, :created_by,
-//           :user_file_name, SYSDATE, SYSDATE
-//         )`,
-//         {
-//           company_code: { val: company_code || null },
-//           request_number: { val: request_number },
-//           file_name: { val: file_name || null },
-//           extensions: { val: extensions || null },
-//           org_file_name: { val: org_file_name || null },
-//           aws_file_locn: { val: aws_file_locn || null },
-//           flow_level: { val: flow_level || null },
-//           modules: { val: modules || null },
-//           updated_by: { val: updated_by || null },
-//           created_by: { val: created_by || null },
-//           user_file_name: { val: user_file_name || null },
-//         }
-//       );
-
-//       // Fetch SR_NO
-//       const srNoResult = await oracleDb.query(
-//         `SELECT SR_NO 
-//          FROM UPLOADED_FILES_DLTS_VH 
-//          WHERE request_number = :request_number 
-//          AND org_file_name = :org_file_name 
-//          ORDER BY created_at DESC 
-//          FETCH FIRST 1 ROW ONLY`,
-//         {
-//           request_number: { val: request_number },
-//           org_file_name: { val: org_file_name },
-//         }
-//       );
-
-//       const sr_no = srNoResult.rows?.[0]?.SR_NO;
-//       if (sr_no) {
-//         successfulRecords.push({ org_file_name, sr_no });
-//       }
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "File data processed successfully.",
-//       data: {
-//         successfulRecords,
-//         duplicateRecords,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error storing file data:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "An error occurred while storing file data.",
-//       error: error instanceof Error ? error.message : String(error),
-//     });
-//   }
-// };
 export const saveFileVendorHR = async (
   req: Request,
   res: Response
@@ -1220,7 +1109,7 @@ export const saveFileVendorHR = async (
       const { org_file_name, sr_no } = file;
 
       // Check for duplicates (now checking with SR_NO too)
-      const duplicateCheckResult = await oracleDb.query(
+      const duplicateCheckResult = await QueryExecutor.executeRawQuery(
         `SELECT COUNT(*) AS COUNT 
          FROM UPLOADED_FILES_DLTS_VENDOR 
          WHERE request_number = :request_number 
@@ -1255,7 +1144,7 @@ export const saveFileVendorHR = async (
       } = file;
 
       // INSERT with all columns including the new ones
-      await oracleDb.query(
+      await QueryExecutor.executeRawQuery(
         `INSERT INTO UPLOADED_FILES_DLTS_VENDOR (
           company_code, request_number, sr_no, file_name, extensions, 
           org_file_name, aws_file_locn, flow_level, modules, updated_by, 
@@ -1286,7 +1175,7 @@ export const saveFileVendorHR = async (
       );
 
       // Fetch both SR_NO and ATTACHMENT_SR_NO
-      const result = await oracleDb.query(
+      const result = await QueryExecutor.executeRawQuery(
         `SELECT SR_NO, ATTACHMENT_SR_NO 
          FROM UPLOADED_FILES_DLTS_VENDOR 
          WHERE request_number = :request_number 
@@ -1362,12 +1251,13 @@ export async function processSubmittedRecords(
       records = [{ COMPANY_CODE: companyCode, DOC_NO: docNo }];
     } else {
       // Fetch all submitted records
-      records = await oracleDb.query(
+      const recordsResult = await QueryExecutor.executeRawQuery(
         `SELECT COMPANY_CODE, DOC_NO 
          FROM TR_AC_LPO_HEADER 
          WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y'
          FETCH FIRST 1 ROWS ONLY`
       );
+      records = recordsResult.rows || recordsResult;
     }
 
     for (const record of records) {
@@ -1403,99 +1293,6 @@ export const getTmpAcHeaderWithErpDocNoHandler = async (
   }
 };
 
-// export const updateLpoStatusHandler = async (
-//   req: Request,
-//   res: Response
-// ): Promise<void> => {
-//   const { doc_no, company_code, flow_level, remarks, action } = req.body;
-
-//   console.log("Updating LPO status:", {
-//     doc_no,
-//     company_code,
-//     flow_level,
-//     remarks,
-//     action,
-//   });
-
-//   if (
-//     !doc_no ||
-//     !company_code ||
-//     typeof flow_level !== "number" ||
-//     !remarks ||
-//     !action
-//   ) {
-//     res.status(400).json({
-//       success: false,
-//       message:
-//         "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
-//     });
-//     return;
-//   }
-
-//   if (action !== "SENTBACK" && action !== "REJECTED") {
-//     res.status(400).json({
-//       success: false,
-//       message: "Invalid action (must be SENTBACK or REJECTED)",
-//     });
-//     return;
-//   }
-
-//   try {
-//     // Check if record exists
-//     const existingResult = await oracleDb.query(
-//       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
-//       {
-//         doc_no: { val: doc_no },
-//         company_code: { val: company_code },
-//       }
-//     );
-
-//     const existing = existingResult.rows?.[0] || existingResult[0];
-
-//     if (!existing) {
-//       res.status(404).json({
-//         success: false,
-//         message: "LPO not found with the provided DOC_NO and COMPANY_CODE",
-//       });
-//       return;
-//     }
-
-//     const historyField =
-//       action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
-
-//     const query = `
-//       UPDATE TR_AC_LPO_HEADER
-//       SET
-//         FLOW_LEVEL = :flow_level,
-//         ${historyField} = COALESCE(${historyField}, '') || ' | ' || :remarks,
-//         LAST_ACTION = :action
-//       WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
-//     `;
-
-//     const updateResult = await oracleDb.query(query, {
-//       flow_level: { val: flow_level },
-//       remarks: { val: remarks },
-//       action: { val: action },
-//       doc_no: { val: doc_no },
-//       company_code: { val: company_code },
-//     });
-
-//     const affectedRows = updateResult.rowsAffected || 0;
-
-//     res.json({
-//       success: true,
-//       message: `LPO marked as ${action.toLowerCase()}`,
-//       affectedRows: affectedRows,
-//     });
-//   } catch (err: any) {
-//     console.error("Error in updateLpoStatusHandler:", err);
-//     res.status(500).json({
-//       success: false,
-//       message: err.message ?? "Internal Server Error",
-//     });
-//   }
-// };
-
 export const updateLpoStatusHandler = async (req: Request, res: Response): Promise<void> => {
   const { doc_no, company_code, flow_level, remarks, action } = req.body;
 
@@ -1513,7 +1310,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
   }
 
   try {
-    const existingResult = await oracleDb.query(
+    const existingResult = await QueryExecutor.executeRawQuery(
       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
       { doc_no: { val: doc_no }, company_code: { val: company_code } }
     );
@@ -1537,7 +1334,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
        WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
     `;
 
-    const updateResult = await oracleDb.query(query, {
+    const updateResult = await QueryExecutor.executeRawQuery(query, {
       flow_level: { val: flow_level },
       remarks: { val: remarks },   
       action: { val: action },
@@ -1589,7 +1386,7 @@ export const executeRawSqlbody = async (
     console.log("Final WHERE string:", cleanWhere);
     console.log("Final UPDATE values string:", cleanUpdate);
 
-    const procResult = await oracleDb.query(
+    const procResult = await QueryExecutor.executeRawQuery(
       `BEGIN SP_CREATE_SQL_change(:query_parameter, :query_where, :query_updatevalues, :out_sql); END;`,
       {
         query_parameter,
@@ -1612,7 +1409,7 @@ export const executeRawSqlbody = async (
     rawSql = rawSql.trim().replace(/;$/, "");
     console.log("Generated rawSql:", rawSql);
 
-    const result = await oracleDb.query(rawSql);
+    const result = await QueryExecutor.execMaybe(rawSql);
     const rows = result.rows || result;
 
     res.json({
@@ -1680,7 +1477,7 @@ export const proc_build_dynamic_sql = async (
     `;
 
     // 2️⃣ Execute the stored procedure using your wrapper
-    const procResult = await oracleDb.query(plsql, {
+    const procResult = await QueryExecutor.executeRawQuery(plsql, {
       parameter,
       code1,
       code2,
@@ -1709,7 +1506,7 @@ export const proc_build_dynamic_sql = async (
     console.log("Generated SQL:", rawSql);
 
     // 3️⃣ Execute the returned dynamic SQL
-    const execResult = await oracleDb.query(rawSql);
+    const execResult = await QueryExecutor.executeRawQuery(rawSql);
 
     const rows = execResult.rows || execResult;
 
@@ -1756,7 +1553,7 @@ export const executeVendorInvoicePrintHandler = async (
       END;
     `;
 
-    await oracleDb.query(
+    await QueryExecutor.executeRawQuery(
       plsql,
       {
         companyCode: { val: COMPANY_CODE },

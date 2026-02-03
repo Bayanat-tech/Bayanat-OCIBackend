@@ -2,6 +2,7 @@ import { Response } from "express";
 import { Request } from "express";
 import * as fastCsv from "fast-csv";
 import { oracleDb } from "../../../../database/connection";
+import { QueryExecutor } from "../../../../database/QueryExecutor";
 import constants from "../../../../helpers/constants";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import {
@@ -35,8 +36,8 @@ export const getProductStockDetails = async (
 
     // Count query
     const countQuery = `SELECT COUNT(*) as count FROM VW_STKLED ${whereClause}`;
-    const countResult = await oracleDb.query(countQuery, bindParams);
-    const count = countResult.rows?.[0]?.COUNT || 0;
+    const countResult = await QueryExecutor.executeRawQuery(countQuery, bindParams);
+    const count = (countResult.rows || countResult)[0]?.COUNT || 0;
 
     // Main query with aggregation
     const mainQuery = `
@@ -67,7 +68,7 @@ export const getProductStockDetails = async (
       ORDER BY prod_code
     `;
 
-    const result = await oracleDb.query(mainQuery, bindParams);
+    const result = await QueryExecutor.executeRawQuery(mainQuery, bindParams);
 
     // Check if result is empty and respond accordingly
     if (!result.rows) {
@@ -95,12 +96,12 @@ export const getProductStockDetails = async (
 export const getPickingOption = async (req: RequestWithUser, res: Response) => {
   try {
     // Retrieve picking options based on company code
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `SELECT * FROM MS_PICKWAVE WHERE company_code = :company_code`,
       { company_code: req.user.company_code }
     );
     
-    const pickingOption = result.rows || [];
+    const pickingOption = result.rows || result;
 
     // Check if picking options are found
     if (!pickingOption.length) {
@@ -145,8 +146,8 @@ export const getPickingItemPreferenceDetails = async (
 
     // Count query
     const countQuery = `SELECT COUNT(*) as count FROM VW_WM_OUB_JOB_PICK_FILTER ${whereClause}`;
-    const countResult = await oracleDb.query(countQuery, bindParams);
-    const resultCount = countResult.rows?.[0]?.COUNT || 0;
+    const countResult = await QueryExecutor.executeRawQuery(countQuery, bindParams);
+    const resultCount = (countResult.rows || countResult)[0]?.COUNT || 0;
 
     // Distinct field query
     const distinctQuery = `
@@ -156,7 +157,7 @@ export const getPickingItemPreferenceDetails = async (
       ORDER BY ${distinct_field}
     `;
 
-    const result = await oracleDb.query(distinctQuery, bindParams);
+    const result = await QueryExecutor.executeRawQuery(distinctQuery, bindParams);
 
     // Check if result is empty and respond accordingly
     if (!result.rows) {
@@ -228,12 +229,12 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
           AND job_no      = :job_no
       `;
 
-      const updateResult = await oracleDb.query(
+      const updateResult = await QueryExecutor.execMaybe(
         updateSql,
         {
-          company_code,
-          prin_code,
-          job_no,
+          company_code: { val: company_code },
+          prin_code: { val: prin_code },
+          job_no: { val: job_no },
         },
         connection
       );
@@ -242,7 +243,7 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
       if (toggledPackets > 0) {
         // ---- FIXED procedure call ----
-       await oracleDb.query(
+       await QueryExecutor.execMaybe(
   `BEGIN
      SP_PICK_CONFIRM(
        :vs_company_code,
@@ -252,9 +253,9 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
      );
    END;`,
   {
-    vs_company_code: company_code,
-    vs_principal_code: prin_code,
-    vs_job_no: job_no
+    vs_company_code: { val: company_code },
+    vs_principal_code: { val: prin_code },
+    vs_job_no: { val: job_no }
   },
   connection
 );
@@ -268,12 +269,12 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
             AND job_no      = :job_no
         `;
 
-        await oracleDb.query(
+        await QueryExecutor.execMaybe(
           unselectSql,
           {
-            company_code,
-            prin_code,
-            job_no,
+            company_code: { val: company_code },
+            prin_code: { val: prin_code },
+            job_no: { val: job_no },
           },
           connection
         );
@@ -390,7 +391,7 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
         console.log("🔧 DEBUG: Bind Parameters:");
         console.log(JSON.stringify(bindParams, null, 2));
 
-        const updateResult = await oracleDb.query(updateSql, bindParams, connection);
+const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connection);
         toggledPackets = updateResult.rowsAffected || 0;
         
         console.log("✅ DEBUG: UPDATE RESULT:");
@@ -412,13 +413,13 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
 
         try {
           // Call Oracle stored procedure
-          const procResult = await oracleDb.query(
+          const procResult = await QueryExecutor.execMaybe(
             `BEGIN SP_WM_OUB_PICKING(:vs_company_code, :vs_principal_code, :vs_job_no, :vs_sort); END;`,
             {
-              vs_company_code: company_code,
-              vs_principal_code: prin_code,
-              vs_job_no: job_no,
-              vs_sort: ""
+              vs_company_code: { val: company_code },
+              vs_principal_code: { val: prin_code },
+              vs_job_no: { val: job_no },
+              vs_sort: { val: "" }
             },
             connection
           );
@@ -458,7 +459,7 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
             console.log("🔧 DEBUG: Revert Bind Parameters:");
             console.log(JSON.stringify(bindParams, null, 2));
 
-            const revertResult = await oracleDb.query(unselectSql, bindParams, connection);
+            const revertResult = await QueryExecutor.execMaybe(unselectSql, bindParams, connection);
             console.log("✅ DEBUG: REVERT COMPLETE:");
             console.log("- Rows Reverted:", revertResult.rowsAffected || 0);
           }
@@ -541,12 +542,12 @@ export const exportPickingDetails = async (
     }
 
     // Fetch data for CSV export
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `SELECT * FROM PICKING_DETAILS_OUTBOUND_WMS_VIEW ${whereClause}`,
       bindParams
     );
     
-    const fetchedData = result.rows || [];
+    const fetchedData = result.rows || result || []; 
 
     // Initialize CSV formatter with headers
     csvTransform = fastCsv.format({
@@ -599,12 +600,12 @@ export const exportPickingStockDeatils = async (
     }
 
     // Fetch data for CSV export
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `SELECT * FROM VW_STKLED ${whereClause}`,
       bindParams
     );
     
-    const fetchedData = result.rows || [];
+    const fetchedData = result.rows || result || []; 
 
     // Initialize CSV formatter with headers
     csvTransform = fastCsv.format({
@@ -681,19 +682,19 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
           bindParams[`serial_no_${i}`] = sn;
         });
 
-        const updateResult = await oracleDb.query(updateSql, bindParams, connection);
+        const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connection);
         toggledPackets = updateResult.rowsAffected || 0;
       }
 
       if (toggledPackets > 0) {
         // Call Oracle stored procedure
-        await oracleDb.query(
+        await QueryExecutor.execMaybe(
           `BEGIN sp_pick_cancel(:vs_company_code, :vs_prin_code, :vs_job_no, :vs_freeze); END;`,
           {
-            vs_company_code: company_code,
-            vs_prin_code: prin_code,
-            vs_job_no: job_no,
-            vs_freeze: freeze || 'N',
+            vs_company_code: { val: company_code },
+            vs_prin_code: { val: prin_code },
+            vs_job_no: { val: job_no },
+            vs_freeze: { val: freeze || 'N' },
           },
           connection
         );
@@ -719,7 +720,7 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
             bindParams[`serial_no_${i}`] = sn;
           });
 
-          await oracleDb.query(unselectSql, bindParams, connection);
+          await QueryExecutor.execMaybe(unselectSql, bindParams, connection);
         }
       }
     });

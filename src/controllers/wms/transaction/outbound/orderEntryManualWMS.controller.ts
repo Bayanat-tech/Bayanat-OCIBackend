@@ -5,7 +5,6 @@ import oracledb, { BindParameters, ExecuteOptions, Connection } from "oracledb";
 import { oracleDb } from "../../../../database/connection"; // make sure this exports oracledb.getConnection()
 
 import { TOrderDetail } from "../../../../interfaces/wms/transaction/outbound/orderEntryWms.interface";
-import constants from "../../../../helpers/constants";
 
 // === Safe Data Utility Functions ===
 function safeDate(val: any): Date | null {

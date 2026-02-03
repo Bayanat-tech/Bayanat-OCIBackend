@@ -1,18 +1,13 @@
-import { oracleDb } from "../database/connection";
 import { VendorService } from "./vendor.service";
+import { TenantManager } from "../database/TenantManager";
+import { QueryExecutor } from "../database/QueryExecutor";
 import cron from "node-cron";
 
 export class SchedulerService {
   static async processUnsentVendorData() {
     try {
-      // Get unsent header records - Remove QueryTypes
-      const unsentHeaders = await oracleDb.query(
-        `
-        SELECT * FROM TR_AC_LPO_HEADER 
-        WHERE LAST_ACTION = 'SUBMITTED' 
-        AND DATA_TRANSFER = 'N'
-      `
-      );
+        // Iterate active tenants and process unsent header records per tenant
+      const tenantIds = await TenantManager.listActiveTenants();
 
       type Header = {
         COMPANY_CODE: string;
@@ -20,41 +15,48 @@ export class SchedulerService {
         [key: string]: any;
       };
 
-      for (const headerObj of unsentHeaders[0]) {
-        // Note: [0] for rows
-        const header = headerObj as Header;
+      for (const tenantId of tenantIds) {
         try {
-          // Send header data
-          await VendorService.insertAcHeader(header);
+          const headersRes = await QueryExecutor.executeRawQueryForTenant(
+            tenantId,
+            `SELECT * FROM TR_AC_LPO_HEADER WHERE LAST_ACTION = 'SUBMITTED' AND DATA_TRANSFER = 'N'`
+          );
 
-          // Get and send related detail records
-          const details = await oracleDb.query(
-            `
-            SELECT * FROM TR_AC_LPO_DETAIL 
-            WHERE COMPANY_CODE = :companyCode 
-            AND DOC_NO = :docNo
-          `,
-            {
-              bind: {
-                // Use 'bind' instead of 'replacements'
-                companyCode: header.COMPANY_CODE,
-                docNo: header.DOC_NO,
-              },
+          const unsentHeaders = headersRes.rows || headersRes;
+
+          for (const header of unsentHeaders) {
+            try {
+              // Send header data
+              await VendorService.insertAcHeader(header as any);
+
+              // Get and send related detail records
+              const detailsRes = await QueryExecutor.executeRawQueryForTenant(
+                tenantId,
+                `SELECT * FROM TR_AC_LPO_DETAIL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+                { companyCode: header.COMPANY_CODE, docNo: header.DOC_NO }
+              );
+
+              const details = detailsRes.rows || detailsRes;
+
+              for (const detail of details) {
+                await VendorService.insertAcDetail(detail as any);
+              }
+
+              // Mark header as transferred for this tenant
+              await QueryExecutor.executeRawQueryForTenant(
+                tenantId,
+                `UPDATE TR_AC_LPO_HEADER SET DATA_TRANSFER = 'Y' WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+                { companyCode: header.COMPANY_CODE, docNo: header.DOC_NO }
+              );
+
+              console.log(`Successfully processed document ${header.DOC_NO}`);
+            } catch (error) {
+              console.error(`Error processing document ${header.DOC_NO}:`, error);
+              continue;
             }
-          );
-
-          for (const detail of details[0]) {
-            await VendorService.insertAcDetail(detail);
           }
-
-          await VendorService.updateDataTransferFlag(
-            header.COMPANY_CODE,
-            header.DOC_NO
-          );
-
-          console.log(`Successfully processed document ${header.DOC_NO}`);
-        } catch (error) {
-          console.error(`Error processing document ${header.DOC_NO}:`, error);
+        } catch (tenantErr) {
+          console.error(`Error processing tenant ${tenantId}:`, tenantErr);
           continue;
         }
       }

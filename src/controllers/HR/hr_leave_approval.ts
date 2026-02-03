@@ -6,6 +6,7 @@ import { HrService } from "../../services/hr.service";
 import { TLeaveApproval } from "../../interfaces/Hr/hr_leave_approval";
 import {sendLeaveNotifications} from "./sendLeaveNotifications";
 import { notifyUser } from "../../helpers/functions";
+import { QueryExecutor } from "../../database/QueryExecutor";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -66,125 +67,6 @@ async function retryOnDeadlock<T>(
     throw error;
   }
 }
-
-// export async function upsertLeaveApproval(
-//   data: TLeaveApproval
-// ): Promise<string> {
-//   const { requestNumber, finalApproved } = await oracleDb.withTransaction(
-//     async (connection: oracledb.Connection) => {
-//       // perform insert or update
-//       const exists = await recordExists(
-//         data.REQUEST_NUMBER,
-//         data.COMPANY_CODE,
-//         connection
-//       );
-//       console.log("record exists:", exists);
-
-//       if (exists) {
-//         console.log("update path");
-//         await updateLeaveApproval(data, connection);
-//       } else {
-//         console.log("insert path");
-//         await insertLeaveApproval(data, connection);
-//       }
-
-//       let finalReq =
-//         data.REQUEST_NUMBER && data.REQUEST_NUMBER.trim() !== ""
-//           ? data.REQUEST_NUMBER
-//           : null;
-
-//       // 1) Try GT_SESSION_INFO (existing approach)
-//       if (!finalReq) {
-//         try {
-//           const codeRes: any = await connection.execute(
-//             `SELECT code FROM GT_SESSION_INFO WHERE session_id = SYS_CONTEXT('USERENV','SESSIONID') AND ROWNUM = 1`,
-//             {},
-//             { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//           );
-//           finalReq = codeRes.rows?.[0]?.CODE || null;
-//           console.log("Derived request number from GT_SESSION_INFO:", finalReq);
-//         } catch (err) {
-//           console.warn("Failed to read GT_SESSION_INFO for request number:", err);
-//         }
-//       }
-
-//       // 2) Fallback: query the newly inserted row inside the same transaction
-//       if (!finalReq) {
-//         try {
-//           const fallbackSql = `
-//             SELECT REQUEST_NUMBER FROM (
-//               SELECT REQUEST_NUMBER
-//               FROM LEAVE_REQUEST_FLOW
-//               WHERE COMPANY_CODE = :company_code
-//                 AND NVL(CREATED_BY, :created_by) = :created_by
-//                 AND NVL(EMPLOYEE_CODE, :employee_code) = :employee_code
-//               ORDER BY CREATED_AT DESC
-//             ) WHERE ROWNUM = 1
-//           `;
-
-//           const bindsFallback = {
-//             company_code: data.COMPANY_CODE,
-//             created_by: data.CREATED_BY || data.UPDATED_BY || "",
-//             employee_code: data.EMPLOYEE_CODE || "",
-//           };
-
-//           const fallbackRes: any = await connection.execute(fallbackSql, bindsFallback, {
-//             outFormat: oracledb.OUT_FORMAT_OBJECT,
-//           });
-
-//           finalReq = fallbackRes.rows?.[0]?.REQUEST_NUMBER || null;
-//           console.log("Derived request number from LEAVE_REQUEST_FLOW fallback:", finalReq, bindsFallback);
-//         } catch (fbErr) {
-//           console.warn("Fallback query for request number failed:", fbErr);
-//         }
-//       }
-
-//       finalReq = finalReq || "";
-
-//       const sql = `
-//         SELECT TRIM(FINAL_APPROVED) AS FINAL_APPROVED
-//         FROM LEAVE_REQUEST_FLOW
-//         WHERE REQUEST_NUMBER = :req
-//           AND COMPANY_CODE   = :comp
-//         FETCH FIRST 1 ROWS ONLY
-//       `;
-
-//       const binds = { req: finalReq, comp: data.COMPANY_CODE };
-//       console.log("Checking FINAL_APPROVED from DB with same txn:", binds);
-
-//       const res = await connection.execute<{ FINAL_APPROVED?: string }>(
-//         sql,
-//         binds,
-//         { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//       );
-
-//       const dbFlag = res.rows?.[0]?.FINAL_APPROVED ?? null;
-//       const normalizedFlag = (dbFlag ?? data.FINAL_APPROVED ?? "")
-//         .toString()
-//         .trim()
-//         .toUpperCase();
-
-//       return {
-//         requestNumber: finalReq,
-//         finalApproved: normalizedFlag === "YES",
-//       };
-//     }
-//   );
-
-//   sendLeaveNotifications(requestNumber, data.COMPANY_CODE).catch((err) => {
-//     console.error("sendLeaveNotifications failed for", requestNumber, err);
-//   });
-
-//   if (finalApproved) {
-//     console.log('Triggering background processing for approved leave (post-commit)');
-//     processApprovedLeaveRequestsForSingleRecord(requestNumber, data.COMPANY_CODE)
-//       .catch((error) => {
-//         console.error('Background processing failed:', error);
-//       });
-//   }
-
-//   return requestNumber;
-// }
 
 export async function upsertLeaveApproval(
   data: TLeaveApproval
@@ -376,7 +258,7 @@ async function recordExists(
     AND COMPANY_CODE = :company_code
   `;
 
-  const result = await oracleDb.query(
+  const result = await QueryExecutor.execMaybe(
     sql,
     {
       request_number: { val: requestNumber },
@@ -511,7 +393,7 @@ const params = {
     console.log("Update parameters:", JSON.stringify(params, null, 2));
     console.log("Update sql:", sql); 
     
-    const result = await oracleDb.query(sql, params, connection);
+    const result = await QueryExecutor.execMaybe(sql, params, connection);
     console.log("Update sql result:", result); 
   }
 
@@ -655,7 +537,7 @@ console.log(`INSERT INTO LEAVE_REQUEST_FLOW (
 console.log("--------------------------------------------------");
 
   try {
-    await oracleDb.query(sql, params, connection);
+    await QueryExecutor.execMaybe(sql, params, connection);
   } catch (error: any) {
     console.error("Insert error:", error);
     if (error.message.includes("ORA-01400")) {
@@ -757,7 +639,7 @@ export async function processApprovedLeaveRequests(options?: {
     }
 
     // Fetch file data for transfer
-    const fileDataResult = await oracleDb.query(
+    const fileDataResult = await QueryExecutor.executeRawQuery(
       `SELECT 
         REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME
       FROM UPLOADED_FILES_DLTS_VH
@@ -818,7 +700,7 @@ export async function processApprovedLeaveRequests(options?: {
     }
 
     if (fileData.length > 0) {
-      await oracleDb.query(
+      await QueryExecutor.executeRawQuery(
         `UPDATE UPLOADED_FILES_DLTS_VH 
          SET FILE_TRANSFER = 'Y' 
          WHERE REQUEST_NUMBER = :requestNumber`,
@@ -826,7 +708,7 @@ export async function processApprovedLeaveRequests(options?: {
       );
     }
 
-    const approvedRequests = await oracleDb.query(
+    const approvedRequests = await QueryExecutor.executeRawQuery(
       `
       SELECT
         NVL(REQUEST_NUMBER, '') AS "requestNumber",
@@ -904,7 +786,7 @@ export async function processApprovedLeaveRequests(options?: {
         await HrService.insertLeaveRequest(request);
         const rn = oq(request.requestNumber);
         const cc = oq(request.companyCode);
-        await oracleDb.query(
+        await QueryExecutor.executeRawQuery(
           `UPDATE LEAVE_REQUEST_FLOW
              SET DATA_TRANSFER = 'Y',
                  UPDATED_AT = SYSTIMESTAMP
@@ -961,7 +843,7 @@ export async function processApprovedLeaveRequests(options?: {
       }
     }
 
-    const resumeRequests = await oracleDb.query(
+    const resumeRequests = await QueryExecutor.executeRawQuery(
       `SELECT
           REQUEST_NUMBER                                   AS "requestNumber",
           COMPANY_CODE                                     AS "companyCode",
@@ -997,7 +879,7 @@ export async function processApprovedLeaveRequests(options?: {
 
         const rn = oq(r.requestNumber);
         const cc = oq(r.companyCode);
-        await oracleDb.query(
+        await QueryExecutor.executeRawQuery(
           `UPDATE LEAVE_REQUEST_FLOW
              SET DATE_FLAG  = 'Y',
                  UPDATED_AT = SYSTIMESTAMP
@@ -1014,7 +896,7 @@ export async function processApprovedLeaveRequests(options?: {
       }
     }
 
-    const status = await oracleDb.query(
+    const status = await QueryExecutor.executeRawQuery(
       `SELECT COUNT(*) AS total,
               COUNT(CASE WHEN NVL(DATA_TRANSFER,'N')='Y' THEN 1 END) AS inserted,
               COUNT(CASE WHEN NVL(DATE_FLAG,'N')='Y'    THEN 1 END) AS resumed
@@ -1055,7 +937,7 @@ export const saveFileHR = async (
     for (const file of files) {
       const { org_file_name } = file;
 
-      const duplicateCheckResult = await oracleDb.query(
+      const duplicateCheckResult = await QueryExecutor.executeRawQuery(
         `SELECT COUNT(*) AS COUNT 
          FROM UPLOADED_FILES_DLTS_VH 
          WHERE request_number = :request_number AND org_file_name = :org_file_name`,
@@ -1084,7 +966,7 @@ export const saveFileHR = async (
         user_file_name,
       } = file;
 
-      await oracleDb.query(
+      await QueryExecutor.executeRawQuery(
         `INSERT INTO UPLOADED_FILES_DLTS_VH (
           company_code, request_number, file_name, extensions, org_file_name,
           aws_file_locn, flow_level, modules, updated_by, created_by, 
@@ -1110,7 +992,7 @@ export const saveFileHR = async (
       );
 
       // Fetch SR_NO
-      const srNoResult = await oracleDb.query(
+      const srNoResult = await QueryExecutor.executeRawQuery(
         `SELECT SR_NO 
          FROM UPLOADED_FILES_DLTS_VH 
          WHERE request_number = :request_number 
