@@ -22,10 +22,7 @@ bank_ac_code: Joi.string().when("doc_type", { // Bank account code (conditional)
   otherwise: Joi.allow("", null), // Otherwise bank account code is optional
 }),
 cheque_bank: Joi.string().when("doc_type", { // Cheque bank (conditional)
-  is: [
-    constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, // If document type is cash receipt
-    constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // or cheque payment
-  ],
+  is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, // If document type is cash receipt
   then: Joi.forbidden(), // Then cheque bank is forbidden
   otherwise: Joi.allow("", null), // Otherwise cheque bank is optional
 }),
@@ -93,10 +90,18 @@ detail: Joi.array() // Detail (required)
   .min(1) // Minimum 1 detail item
   .required() // Detail is required
   .custom((value, helper) => {
-    // Ensure 'doc_type' in 'detail' matches the root 'doc_type'
+    // Ensure 'doc_type' in 'detail' matches the root 'doc_type' and validate CR-specific constraints
+    const rootDocType = helper.state.ancestors[0].doc_type;
     for (const item of value) {
-      if (item.doc_type !== helper.state.ancestors[0].doc_type) {
+      if (item.doc_type !== rootDocType) {
         throw new Error("doc_type in detail must match root doc_type");
+      }
+      // If root is Cash Receipt (CR), disallow cheque/bank fields at detail level
+      if (
+        rootDocType === constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT &&
+        (item.cheque_no || item.cheque_date || item.cheque_bank || item.bank_ac_code)
+      ) {
+        throw new Error("Cheque/bank fields are not allowed for Cash Receipt in detail lines");
       }
     }
     return value;
