@@ -73,35 +73,38 @@ WHERE (LTRIM(RTRIM(a.level3)) IS NOT NULL AND LTRIM(RTRIM(a.level3)) != ' ' AND 
   AND (LTRIM(RTRIM(a.level2)) IS NOT NULL AND LTRIM(RTRIM(a.level2)) != ' ' AND LENGTH(LTRIM(RTRIM(a.level2))) > 0)
 `;
 
+// Returns invoice allocation candidates for cheque/payment allocation.
+// Note: c_bal_amt_org divides the origin amount by the origin exchange rate. We use NULLIF
+// to avoid division by zero (if origin ex_rate is NULL or 0 the result will be NULL — handle in app).
 export const getChequePaymentInvoiceDetail = `
-SELECT TR_AC_INVDETAIL.inv_no, 
-TR_AC_INVDETAIL.dtl_sr_no, 
-TR_AC_INVDETAIL.doc_no,
-max(inv_date) inv_date,  
-00000000.00 amount,  
-1 sign_ind,  
-TR_AC_INVDETAIL.ac_code,  
-TR_AC_INVDETAIL.company_code,  
-sum(lcur_amount * sign_ind) inv_amt,  
-' ' c_curr_code,  
-0000000000.0000 c_curr_amt,  
-'N' c_indicator_origin,  
-max( case when indicator_origin='Y' then curr_code end) c_curr_code_origin,  
-max( case when indicator_origin='Y' then ex_rate end) c_ex_rate_origin,  
-(sum(amount_origin * sign_ind)/max(case when indicator_origin='Y' then ex_rate end)) c_bal_amt_org,
-TR_AC_INVDETAIL.div_code
-FROM TR_AC_INVDETAIL  
-WHERE TR_AC_INVDETAIL.company_code = :company_code
-  AND TR_AC_INVDETAIL.ac_code = :ac_code
-  AND TR_AC_INVDETAIL.div_code = :div_code
-  AND (TRIM(TR_AC_INVDETAIL.doc_type) || TRIM(TO_CHAR(TR_AC_INVDETAIL.doc_no)) || TRIM(TO_CHAR(TR_AC_INVDETAIL.serial_no)) <> :invrsno)
-GROUP BY TR_AC_INVDETAIL.company_code,  
-TR_AC_INVDETAIL.ac_code,  
-TR_AC_INVDETAIL.inv_no  ,
-TR_AC_INVDETAIL.div_code,
-TR_AC_INVDETAIL.doc_no,
-TR_AC_INVDETAIL.dtl_sr_no
-  HAVING ( round(sum(lcur_amount * sign_ind),3)  <> 0 )`;
+SELECT
+  inv.inv_no,
+  inv.dtl_sr_no,
+  inv.doc_no,
+  MAX(inv.inv_date) AS inv_date,
+  0.0 AS amount,
+  1 AS sign_ind,
+  inv.ac_code,
+  inv.company_code,
+  SUM(inv.lcur_amount * inv.sign_ind) AS inv_amt,
+  ' ' AS c_curr_code,
+  0.0 AS c_curr_amt,
+  'N' AS c_indicator_origin,
+  MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.curr_code END) AS c_curr_code_origin,
+  MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END) AS c_ex_rate_origin,
+  (SUM(inv.amount_origin * inv.sign_ind) / NULLIF(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END), 0)) AS c_bal_amt_org,
+  MAX(inv.job_no) AS job_no,
+  MAX(inv.bl_no) AS bl_no,
+  MAX(inv.doc_ref) AS doc_ref,
+  inv.div_code
+FROM TR_AC_INVDETAIL inv
+WHERE inv.company_code = :company_code
+  AND inv.ac_code = :ac_code
+  AND inv.div_code = :div_code
+  AND (TRIM(inv.doc_type) || TRIM(TO_CHAR(inv.doc_no)) || TRIM(TO_CHAR(inv.serial_no)) <> :invrsno)
+GROUP BY inv.company_code, inv.ac_code, inv.inv_no, inv.div_code, inv.doc_no, inv.dtl_sr_no
+HAVING ROUND(SUM(inv.lcur_amount * inv.sign_ind), 3) <> 0
+`;
 
 export const getWareHouseUtilization = `SELECT 
     C.TXN_DATE, 

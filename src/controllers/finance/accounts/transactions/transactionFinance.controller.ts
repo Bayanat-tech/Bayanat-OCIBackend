@@ -323,9 +323,15 @@ export const getChequePaymentHeader = async (
     //   }
     // };
 
+    const headerRow = result.rows?.[0] || null;
+    const mappedHeader = headerRow ? Object.keys(headerRow).reduce((acc: any, k: string) => {
+      acc[k.toLowerCase()] = (headerRow as any)[k];
+      return acc;
+    }, {}) : null;
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: result.rows?.[0] || null,
+      data: mappedHeader,
     });
     return;
 
@@ -404,10 +410,18 @@ export const getChequePaymentDetail = async (
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
+    // Normalize column names to lowercase for consistency with Sequelize-like responses
+    const rows = result.rows || [];
+    const mappedRows = (rows as any[]).map((row: any) =>
+      Object.keys(row).reduce((acc: any, k: string) => {
+        acc[k.toLowerCase()] = row[k];
+        return acc;
+      }, {})
+    );
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: result.rows || [],
+      data: mappedRows,
     });
     return;
 
@@ -1010,6 +1024,60 @@ export const createChequePaymentDocument= async (
 
     //  ---------- INVOICE  ----------
     if (children?.invoice?.length) {
+      // Validate invoice allocations against outstanding balances before inserting
+      const invNos = Array.from(new Set(children.invoice.map((inv: any) => inv.inv_no).filter(Boolean)));
+      if (invNos.length) {
+        const invBinds: any = {
+          company_code: req.user.company_code,
+          div_code: req.body.div_code,
+          doc_type: req.body.doc_type,
+          doc_no,
+        };
+        const invPlaceholders = invNos.map((_, i) => `:inv${i}`).join(', ');
+        invNos.forEach((n: any, i: number) => (invBinds[`inv${i}`] = n));
+
+        // Sum outstanding per invoice excluding current document (so we do not double-count existing allocations)
+        const outstandingSql = `
+          SELECT inv.inv_no,
+                 (SUM(inv.amount_origin * inv.sign_ind) / NULLIF(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END), 0)) AS c_bal_amt_org
+          FROM TR_AC_INVDETAIL inv
+          WHERE inv.company_code = :company_code
+            AND inv.div_code = :div_code
+            AND inv.inv_no IN (${invPlaceholders})
+            AND NOT (inv.doc_type = :doc_type AND inv.doc_no = :doc_no)
+          GROUP BY inv.inv_no
+        `;
+
+        const outRes = await connection.execute(outstandingSql, invBinds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        const outstandingMap: any = {};
+        (outRes.rows || []).forEach((r: any) => {
+          // c_bal_amt_org may be NULL - treat as 0
+          outstandingMap[r.INV_NO] = Number(r.C_BAL_AMT_ORG) || 0;
+        });
+
+        // Sum requested allocations from the payload (in case same invoice appears multiple times)
+        const requestedMap: any = {};
+        children.invoice.forEach((inv: any) => {
+          const amt = Number(inv.amount ?? inv.lcur_amount ?? 0);
+          requestedMap[inv.inv_no] = (requestedMap[inv.inv_no] || 0) + amt;
+        });
+
+        const errors: string[] = [];
+        for (const invNo of Object.keys(requestedMap)) {
+          const requested = requestedMap[invNo] || 0;
+          const avail = outstandingMap[invNo] ?? 0;
+          // Allow small epsilon for rounding
+          if (requested - avail > 0.0005) {
+            errors.push(`Invoice ${invNo} allocation exceeds available balance (requested=${requested}, available=${avail})`);
+          }
+        }
+
+        if (errors.length) {
+          res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invoice allocation validation failed', errors });
+          return;
+        }
+      }
+
       console.log('DB: CREATE-FLOW INSERT INVOICE (first)', { ...children.invoice[0], doc_no });
       await connection.executeMany(
         `
@@ -1353,6 +1421,68 @@ export const updateChequePaymentDocument = async (
       }
 
       // ---------- Delete existing child records (invoice/job/expense) for this document ---
+      // Validate invoice allocations against outstanding balances BEFORE deleting/re-inserting so we can account for existing allocations
+      if (Array.isArray(children.invoice) && children.invoice.length > 0) {
+        const invNos = Array.from(new Set(children.invoice.map((inv: any) => inv.inv_no).filter(Boolean)));
+        if (invNos.length) {
+          const invBinds: any = { company_code: req.user.company_code, doc_type, doc_no, div_code: header.div_code };
+          invNos.forEach((n: any, i: number) => (invBinds[`inv${i}`] = n));
+          const invPlaceholders = invNos.map((_, i) => `:inv${i}`).join(', ');
+
+          // Existing allocations for this document (we will remove these and allow reallocating them)
+          const existingSql = `
+            SELECT inv.inv_no, NVL(SUM(inv.amount),0) AS existing_alloc
+            FROM TR_AC_INVDETAIL inv
+            WHERE inv.company_code = :company_code
+              AND inv.doc_type = :doc_type
+              AND inv.doc_no = :doc_no
+              AND inv.inv_no IN (${invPlaceholders})
+            GROUP BY inv.inv_no
+          `;
+          const existingRes = await conn.execute(existingSql, invBinds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+          const existingMap: any = {};
+          (existingRes.rows || []).forEach((r: any) => { existingMap[r.INV_NO] = Number(r.EXISTING_ALLOC) || 0; });
+
+          // Outstanding excluding this document
+          const outstandingSql = `
+            SELECT inv.inv_no,
+                   (SUM(inv.amount_origin * inv.sign_ind) / NULLIF(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END), 0)) AS c_bal_amt_org
+            FROM TR_AC_INVDETAIL inv
+            WHERE inv.company_code = :company_code
+              AND inv.div_code = :div_code
+              AND inv.inv_no IN (${invPlaceholders})
+              AND NOT (inv.doc_type = :doc_type AND inv.doc_no = :doc_no)
+            GROUP BY inv.inv_no
+          `;
+          const outRes = await conn.execute(outstandingSql, invBinds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+          const outstandingMap: any = {};
+          (outRes.rows || []).forEach((r: any) => { outstandingMap[r.INV_NO] = Number(r.C_BAL_AMT_ORG) || 0; });
+
+          // Requested allocations in the payload
+          const requestedMap: any = {};
+          children.invoice.forEach((inv: any) => {
+            const amt = Number(inv.amount ?? inv.lcur_amount ?? 0);
+            requestedMap[inv.inv_no] = (requestedMap[inv.inv_no] || 0) + amt;
+          });
+
+          const errors: string[] = [];
+          for (const invNo of Object.keys(requestedMap)) {
+            const requested = requestedMap[invNo] || 0;
+            const existingAlloc = existingMap[invNo] || 0;
+            const avail = outstandingMap[invNo] ?? 0;
+            const allowed = avail + existingAlloc;
+            if (requested - allowed > 0.0005) {
+              errors.push(`Invoice ${invNo} allocation exceeds available balance (requested=${requested}, allowed=${allowed})`);
+            }
+          }
+
+          if (errors.length) {
+            res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invoice allocation validation failed', errors });
+            return;
+          }
+        }
+      }
+
       await conn.execute(
         `DELETE FROM ${constants.TABLE.TR_AC_INVDETAIL}
          WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type`,
