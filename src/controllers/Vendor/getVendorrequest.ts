@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { oracleDb } from "./../../../src/database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import constants from "../../../src/helpers/constants";
 import { RequestWithUser } from "../../../src/interfaces/common.interface";
 import { IUser } from "../../../src/interfaces/user.interface";
@@ -134,20 +135,14 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
     `;
 
     // Execute header query
-    const headerResult = await oracleDb.query(queryHeader, {
-      new_doc_no
- 
-    });
+const headerResult = await QueryExecutor.execMaybe(queryHeader, { new_doc_no });
 
     console.log("Header query result:", headerResult);
 
     const VendorHeaderData = headerResult.rows?.[0] || headerResult[0];
 
     // Execute details query
-    const detailResult = await oracleDb.query(queryDetail, {
-      new_doc_no
-
-    });
+    const detailResult = await QueryExecutor.execMaybe(queryDetail, { new_doc_no });
     const VendorDetailData = detailResult.rows || detailResult;
 
     if (!VendorHeaderData) {

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
@@ -33,7 +34,7 @@ export const getRequestFlowUsers = async (req: RequestWithUser, res: Response) =
       WHERE REQUEST_NUMBER = :doc_id
     `;
 
-    const roleResult = await oracleDb.query(roleQuery, { doc_id });
+    const roleResult = await QueryExecutor.execMaybe(roleQuery, { doc_id });
 
     if (!roleResult.rows || roleResult.rows.length === 0) {
       return res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -114,7 +115,7 @@ export const getRequestFlowUsers = async (req: RequestWithUser, res: Response) =
     console.log("Executing query:", roleBasedQuery);
     console.log("With parameters:", queryParams);
 
-    const usersInFlow = await oracleDb.query(roleBasedQuery, queryParams);
+    const usersInFlow = await QueryExecutor.execMaybe(roleBasedQuery, queryParams);
 
     return res.status(constants.STATUS_CODES.OK).json({
       success: false,

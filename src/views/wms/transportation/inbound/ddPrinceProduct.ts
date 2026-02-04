@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { oracleDb } from "../../../../database/connection";
+import { QueryExecutor } from "../../../../database/QueryExecutor";
 
 export const getddPrinceProduct = async (
   req: Request,
@@ -31,9 +32,9 @@ export const getddPrinceProduct = async (
 
     const binds = { company_code, prin_code };
 
-    const result = await oracleDb.query(sql, binds);
+    const result = await QueryExecutor.executeRawQuery(sql, binds);
 
-    const rows = result.rows ?? [];
+    const rows = result.rows ?? result;
 
     // ✅ Required response format
     res.status(200).json({

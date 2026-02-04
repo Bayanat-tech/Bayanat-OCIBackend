@@ -2,6 +2,7 @@ import axios from "axios";
 import https from "https";
 import { LeaveRequestFlow } from "../interfaces/leaveRequestFlow.interface";
 import { oracleDb } from "../database/connection";
+import { QueryExecutor } from "../database/QueryExecutor";
 import { RequestWithUser } from "../interfaces/common.interface";
 import { IUser } from "../interfaces/user.interface";
 import constants from "../helpers/constants";
@@ -221,14 +222,14 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
   console.log("Balance Bind Parameters:", bindParams);
 
   try {
-    const result = await oracleDb.query(balanceQuery, bindParams);
-    
-    if (result.rows.length === 0) {
+    const result = await QueryExecutor.executeRawQuery(balanceQuery, bindParams);
+    const rows = result.rows || result;
+    if (!rows || rows.length === 0) {
       console.log(`No balance found for employee ${employeeId} and leave type ${leaveType}`);
       return null;
     }
 
-    const balance = result.rows[0]?.NO_OF_LEAVES_AVAILABLE;
+    const balance = rows[0]?.NO_OF_LEAVES_AVAILABLE;
     console.log(`Found balance for ${leaveType}:`, balance);
 
     return balance;
@@ -244,15 +245,15 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
     await ensureTempTableExists();
     
     // Execute the function
-    await oracleDb.query(query, bindParams);
+    await QueryExecutor.executeRawQuery(query, bindParams);
     
     // Retrieve the result
     const resultQuery = `SELECT RESULT_VALUE as function_result FROM TEMP_FUNCTION_RESULT WHERE ROWNUM = 1`;
-    const result = await oracleDb.query(resultQuery, {});
-    const functionResult = result.rows[0]?.FUNCTION_RESULT;
+    const result = await QueryExecutor.executeRawQuery(resultQuery, {});
+    const functionResult = (result.rows || result)[0]?.FUNCTION_RESULT;
 
     // Clean up
-    await oracleDb.query(`DELETE FROM TEMP_FUNCTION_RESULT WHERE ROWNUM = 1`, {});
+    await QueryExecutor.executeRawQuery(`DELETE FROM TEMP_FUNCTION_RESULT WHERE ROWNUM = 1`, {});
 
     let leaveBalances = null;
 
@@ -584,7 +585,7 @@ async function ensureTempTableExists(): Promise<void> {
   `;
 
   try {
-    await oracleDb.query(createTableQuery, {});
+    await QueryExecutor.executeRawQuery(createTableQuery, {});
   } catch (error:any) {
     // Ignore "table already exists" errors
     if (!error.message?.includes('-955')) {

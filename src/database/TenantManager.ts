@@ -327,6 +327,26 @@ export class TenantManager {
     return await this.executeInTenant(tenantId, query, params);
   }
 
+  // List active tenants from central registry
+  static async listActiveTenants(): Promise<string[]> {
+    console.log(`[listActiveTenants] STEP 1: Querying central registry for active tenants...`);
+    const conn = await this.getCentralConnection();
+    try {
+      const result = await conn.execute(
+        `SELECT TENANT_ID FROM TENANT_REGISTRY WHERE IS_ACTIVE = 'Y'`,
+        {},
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      console.log(`[listActiveTenants]  Found ${result.rows ? result.rows.length : 0} tenants`);
+      return (result.rows as any[]).map((r) => r.TENANT_ID);
+    } catch (error) {
+      console.error(`[listActiveTenants] Failed to query tenant registry: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    } finally {
+      await conn.close();
+    }
+  }
+
   // Cleanup
   static async closeAll(): Promise<void> {
     for (const [key, poolObj] of this.tenantPools) {
@@ -334,7 +354,7 @@ export class TenantManager {
         await poolObj.pool.close();
         console.log(`✅ Closed pool: ${key}`);
       } catch (error) {
-        console.error(`❌ Error closing pool ${key}:`, error);
+        console.error(`Error closing pool ${key}:`, error);
       }
     }
     this.tenantPools.clear();
@@ -345,7 +365,7 @@ export class TenantManager {
         this.centralPool = null;
         console.log("✅ Central pool closed");
       } catch (error) {
-        console.error("❌ Error closing central pool:", error);
+        console.error("Error closing central pool:", error);
       }
     }
   }

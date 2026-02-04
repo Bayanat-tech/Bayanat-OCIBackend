@@ -3,6 +3,7 @@ import { Response } from "express";
 import constants from "../helpers/constants";
 import { ISearch, RequestWithUser } from "../interfaces/common.interface";
 import { IUser } from "../interfaces/user.interface";
+import { QueryExecutor } from "../database/QueryExecutor";
 
 // Import HR-related interfaces
 import { IHrBank } from "../interfaces/Hr/hr_bank";
@@ -215,9 +216,9 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
           console.log("Bind Params:", bindParams);
 
 
-          const countResult = await oracleDb.query(countQuery, bindParams);
+          const countResult = await QueryExecutor.executeRawQuery(countQuery, bindParams);
 
-          const totalCount = countResult.rows[0]?.TOTALCOUNT || 0;
+          const totalCount = (countResult.rows || countResult)[0]?.TOTALCOUNT || 0;
 
           const fetchQuery = `
       SELECT *
@@ -235,7 +236,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
 
   
 
-          const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
+          const fetchedData = await QueryExecutor.executeRawQuery(fetchQuery, fetchParams);
 
 
           res.status(constants.STATUS_CODES.OK).json({
@@ -284,7 +285,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
                console.log("Leaveflow_request Query:", fetchQuery);
           console.log("Leaveflow_request Params:", bindParams);
           
-          const fetchedData = await oracleDb.query(fetchQuery, bindParams);
+          const fetchedData = await QueryExecutor.executeRawQuery(fetchQuery, bindParams);
 
           console.log("fetchedData.rows", fetchedData.rows)
           

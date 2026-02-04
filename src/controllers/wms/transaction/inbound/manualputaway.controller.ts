@@ -1,16 +1,11 @@
 /**
  * @fileoverview Oracle-based upsert logic for TT_BATCH table (Putaway Manual)
- * Updated to handle ORA-00980 synonym translation errors
+ * Updated for tenant-based connections
  */
 import oracledb from "oracledb";
-import { oracleDb } from "../../../../database/connection";
-
 import { Request, Response } from "express";
 import constants from "../../../../helpers/constants";
-
-// Configuration: Set the actual schema owner if TT_BATCH is in a different schema
-const SCHEMA_OWNER = process.env.ORACLE_SCHEMA_OWNER || ""; // e.g., "WMSOWNER"
-const TT_BATCH_TABLE = SCHEMA_OWNER ? `${SCHEMA_OWNER}.TT_BATCH` : "TT_BATCH";
+import { TenantManager } from "../../../../database/TenantManager";
 
 import { TPutawaymanual } from "../../../../../src/interfaces/wms/transaction/inbound/manualputaway.interface";
 import { TtBatchService } from "../../../../services/WMS/transaction/inbound/ttBatch.service";
@@ -79,12 +74,14 @@ async function retryOnError<T>(
  * === Main Upsert Function ===
  */
 export async function upsertPutawaymanualOracle(
-  data: TPutawaymanual
+  data: TPutawaymanual,
+  tenantId: string
 ): Promise<string> {
   return retryOnError(async () => {
     let connection: oracledb.Connection | null = null;
     try {
-      connection = await oracleDb.getConnection();
+      // Use tenant-aware connection
+      connection = await TenantManager.getConnection(tenantId);
 
       await connection.execute("BEGIN NULL; END;"); // keepalive
 
@@ -108,7 +105,7 @@ export async function upsertPutawaymanualOracle(
 
       // Update all records with the same JOB_NO
       await connection.execute(
-        `UPDATE ${TT_BATCH_TABLE} 
+        `UPDATE TT_BATCH 
          SET CONFIRMED = 'N', 
              SELECTED = 'Y', 
              ALLOCATED = 'Y' 
@@ -149,7 +146,7 @@ async function recordExists(
 ): Promise<boolean> {
   const result = await connection.execute(
     `SELECT 1 
-       FROM ${TT_BATCH_TABLE} 
+       FROM TT_BATCH 
       WHERE COMPANY_CODE = :companyCode 
         AND PRIN_CODE = :prinCode 
         AND JOB_NO = :jobNo 
@@ -178,7 +175,7 @@ async function updatePutawaymanual(
   connection: oracledb.Connection
 ) {
   const sql = `
-    UPDATE ${TT_BATCH_TABLE} SET
+    UPDATE TT_BATCH SET
       TXN_DATE = :TXN_DATE, PACKDET_NO = :PACKDET_NO, KEY_NUMBER = :KEY_NUMBER, PROD_CODE = :PROD_CODE, SITE_CODE = :SITE_CODE,
       LOCATION_CODE = :LOCATION_CODE, QUANTITY = :QUANTITY, QTY_PUOM = :QTY_PUOM, QTY_LUOM = :QTY_LUOM,
       P_UOM = :P_UOM, L_UOM = :L_UOM, QTY_CONFIRMED = :QTY_CONFIRMED, PQTY_CONFIRMED = :PQTY_CONFIRMED,
@@ -287,7 +284,7 @@ async function insertPutawaymanual(
   connection: oracledb.Connection
 ) {
   const sql = `
-    INSERT INTO ${TT_BATCH_TABLE} (
+    INSERT INTO TT_BATCH (
       COMPANY_CODE, PRIN_CODE, JOB_NO, TXN_TYPE, TXN_DATE, PACKDET_NO, KEY_NUMBER, PROD_CODE, SITE_CODE, LOCATION_CODE,
       QUANTITY, QTY_PUOM, QTY_LUOM, P_UOM, L_UOM, QTY_CONFIRMED, PQTY_CONFIRMED, LQTY_CONFIRMED,
       PUOM_CONFIRMED, LUOM_CONFIRMED, UPPP, PACK_KEY, UPP, CONFIRM_DATE, CUST_CODE, ORDER_NO,
@@ -403,6 +400,15 @@ export const upsertPutawaymanualHandler = async (
 ): Promise<void> => {
   try {
     const data: TPutawaymanual = req.body;
+    const tenantId = (req as any).user?.tenantId;
+
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant ID is required. Ensure you are authenticated.",
+      });
+      return;
+    }
 
     const requiredFields: (keyof TPutawaymanual)[] = [
       "COMPANY_CODE",
@@ -424,7 +430,7 @@ export const upsertPutawaymanualHandler = async (
       return;
     }
 
-    const jobNo = await upsertPutawaymanualOracle(data);
+    const jobNo = await upsertPutawaymanualOracle(data, tenantId);
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "TT_BATCH record upserted successfully.",

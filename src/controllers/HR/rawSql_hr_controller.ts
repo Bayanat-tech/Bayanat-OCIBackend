@@ -1,4 +1,5 @@
 import { oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import { Request, Response } from "express";
 
 export const executeRawSql = async (
@@ -13,7 +14,7 @@ export const executeRawSql = async (
       return;
     }
     console.log("Executing rawSql:", rawSql);
-    const result = await oracleDb.query(rawSql);
+    const result = await QueryExecutor.executeRawQuery(rawSql);
     const rows = result.rows || result;
     res.json({ success: true, data: rows, totalCount: rows.length });
   } catch (error: any) {
@@ -44,7 +45,7 @@ export const executeRawSqlbody = async (
     console.log("Final WHERE string:", cleanWhere);
     console.log("Final UPDATE values string:", cleanUpdate);
 
-    const procResult = await oracleDb.query(
+    const procResult = await QueryExecutor.executeRawQuery(
       `BEGIN SP_CREATE_SQL_change(:query_parameter, :query_where, :query_updatevalues, :out_sql); END;`,
       {
         query_parameter,
@@ -67,7 +68,7 @@ export const executeRawSqlbody = async (
     rawSql = rawSql.trim().replace(/;$/, "");
     console.log("Generated rawSql:", rawSql);
 
-    const result = await oracleDb.query(rawSql);
+    const result = await QueryExecutor.executeRawQuery(rawSql);
     const rows = result.rows || result;
 
     res.json({

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { oracleDb } from "../../../../database/connection";
+import { QueryExecutor } from "../../../../database/QueryExecutor";
 import constants from "../../../../helpers/constants";
 import { IUser } from "../../../../interfaces/user.interface"
 import { ISearch, RequestWithUser } from "../../../../interfaces/common.interface";
@@ -20,7 +21,7 @@ export const getddPrinceCustomer = async (
       return;
     }
 
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `
       SELECT
         *
@@ -35,7 +36,7 @@ export const getddPrinceCustomer = async (
       }
     );
 
-    const locationData = result.rows || [];
+    const locationData = result.rows || result;
 
     res.status(200).json({
       success: true,

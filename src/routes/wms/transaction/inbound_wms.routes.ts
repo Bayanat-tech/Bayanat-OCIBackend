@@ -71,20 +71,13 @@ import { createOrUpdateJob ,editJob} from "../../../controllers/wms/transaction/
 // } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
 import {cancelInboundJob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller"
 import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
-import {upsertPutawaymanualOracle} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
+import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
 router.get("/getEDIPackdetHandler", getEDIPackdetHandler);
 router.post("/copyEDIToPackdetHandler", copyEDIToPackdetHandler);
-router.post("/upsertPutawaymanualHandler", async (req, res, next) => {
-  try {
-    const result = await upsertPutawaymanualOracle(req.body);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    next(error);
-  }
-});
+router.post("/upsertPutawaymanualHandler", upsertPutawaymanualHandler);
 router.post('/executeRawSql', executeRawSql);
 router.post('/executeRawSqlbody', executeRawSqlbody);
 router.post("/proc_build_dynamic_sql_wms", proc_build_dynamic_sql_wms);

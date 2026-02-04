@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { oracleDb } from "../../database/connection"; // your custom oracle file
+import { QueryExecutor } from "../../database/QueryExecutor";
 
 export const getddProductMaster = async (
   req: Request,
@@ -52,7 +52,7 @@ export const getddProductMaster = async (
       ) WHERE ROWNUM <= 5000
     `;
 
-    const result = await oracleDb.query(sql, { div_code: { val: div_code } });
+    const result = await QueryExecutor.execMaybe(sql, { div_code: { val: div_code } });
 
     const data = result?.rows || result;
 

@@ -1,4 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 import constants from "../../helpers/constants";
 
@@ -14,7 +15,7 @@ export class CostmasterService {
     userId: string,
     message: string
   ) {
-    await oracleDb.query(
+    await QueryExecutor.executeRawQuery(
       `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
       {
         replacements: { screen, type, document_number, userId, message },
@@ -175,7 +176,7 @@ export class CostmasterService {
       min_row: offset,
     };
 
-    const result = await oracleDb.query(query, params);
+    const result = await QueryExecutor.executeRawQuery(query, params);
     const data = result.rows || result;
 
     const countQuery = `
@@ -184,8 +185,8 @@ export class CostmasterService {
       WHERE "CostMaster"."COMPANY_CODE" = :company_code
     `;
 
-    const countResult = await oracleDb.query(countQuery, { company_code });
-    const totalCount = countResult.rows?.[0]?.CNT || 0;
+    const countResult = await QueryExecutor.executeRawQuery(countQuery, { company_code });
+    const totalCount = (countResult.rows || countResult)[0]?.CNT || 0;
 
     return { fetchedData: data, totalCount };
   }
