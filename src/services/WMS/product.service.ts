@@ -17,6 +17,33 @@
       });
     }
 
+    static async checkProductDuplicate(
+      company_code: string,
+      prin_code: string,
+      group_code: string | null,
+      brand_code: string | null
+    ): Promise<Product | null> {
+      const repository = this.getProductRepository();
+      const whereConditions: any = {
+        company_code,
+        prin_code
+      };
+
+      // Only add group_code if it has a value
+      if (group_code) {
+        whereConditions.group_code = group_code;
+      }
+
+      // Only add brand_code if it has a value
+      if (brand_code) {
+        whereConditions.brand_code = brand_code;
+      }
+
+      return await repository.findOne({
+        where: whereConditions,
+      });
+    }
+
     static async findByCodeAndCompany(
       prod_code: string,
       company_code: string

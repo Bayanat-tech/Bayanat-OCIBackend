@@ -14,11 +14,9 @@ import { ProductService } from "../../services/WMS/product.service";
 export const createProduct = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
+    const { ...bodyWithProdCode } = req.body;
 
-    // Remove prod_code from body before validation since it will be auto-generated
-    const { prod_code, ...bodyWithoutProdCode } = req.body;
-
-    const { error } = productSchema(bodyWithoutProdCode);
+    const { error } = productSchema(bodyWithProdCode);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
@@ -26,9 +24,27 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Pass the body without prod_code to formatProductData
-    const productData = formatProductData(bodyWithoutProdCode, requestUser.loginid);
+    // Check if product with same company code, principal code, group code, and brand code exists
+    const existingProduct = await ProductService.checkProductDuplicate(
+      bodyWithProdCode.company_code,
+      bodyWithProdCode.prin_code,
+      bodyWithProdCode.group_code,
+      bodyWithProdCode.brand_code
+    );
 
+    if (existingProduct) {
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({
+          success: false,
+          message: `Product already exists with same Company Code (${bodyWithProdCode.company_code}), Principal Code (${bodyWithProdCode.prin_code}), Group Code (${bodyWithProdCode.group_code}), and Brand Code (${bodyWithProdCode.brand_code})`
+        });
+      return;
+    }
+
+    const productData = formatProductData(bodyWithProdCode, requestUser.loginid);
+    // Check if product with same name exists
+ 
     const createdProduct = await ProductService.createProduct(productData);
     
     if (!createdProduct) {
@@ -329,6 +345,7 @@ function formatProductData(data: any, userId?: string): any {
   return {
     company_code: data.company_code,
     prin_code: data.prin_code,
+    prod_code: data.prod_code,
     prod_name: data.prod_name,
     brand_code: data.brand_code || null,
     group_code: data.group_code || null,
