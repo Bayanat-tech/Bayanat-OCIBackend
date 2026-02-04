@@ -176,8 +176,6 @@ newValidaterequest: async(params: {
   const { leaveStartDate, employeeId , leaveType } = params;
 
   console.log("Input leaveStartDate:", leaveStartDate); // '12-11-2025' (DD-MM-YYYY)
-
-  // Your date is already in DD-MM-YYYY format, no conversion needed!
   const formattedDate = leaveStartDate; // Keep as '12-11-2025'
 
   const query = `

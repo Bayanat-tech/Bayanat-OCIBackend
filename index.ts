@@ -36,14 +36,14 @@ import editLangrouter from "./src/routes/user/user.routes";
 import VendorRouter from "./src/routes/vendor.routes";
 import wmsRoutes from "./src/routes/wms.routes";
 import boldReportsRoutes from "./src/routes/boldreports.routes";
-import cfsRoutes from "./src/routes/SMS/sms.routes";
+// import cfsRoutes from "./src/routes/SMS/sms.routes";
 import pamsRoutes from "./src/routes/pams.routes";
 
 
 import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
-import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
-import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
-import { AttendanceService } from "./src/services/Attendance/Attendance.service"; 
+// import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
+// import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
+// import { AttendanceService } from "./src/services/Attendance/Attendance.service"; 
 
 //----------------routes-------------
 
@@ -113,11 +113,17 @@ const PORT = process.env.PORT || 3500;
 async function startServer() {
   try {
     console.log("Starting server...");
-    
-    // Initialize all connections
     console.log("Initializing database connections...");
     await initializeAllConnections();
-    console.log("✅ All database connections initialized");
+    console.log(" All database connections initialized");
+
+    try {
+      const { startSchedulers } = require("./src/scheduler/startSchedulers");
+      await startSchedulers();
+      console.log("✅ Schedulers initialized");
+    } catch (err) {
+      console.warn("⚠️ Schedulers failed to initialize (continuing):", err);
+    }
     
     // Start server
     console.log(`Listening on port ${PORT}...`);
@@ -131,7 +137,6 @@ async function startServer() {
   }
 }
 
-// Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
   const { closeAllConnections } = require("./src/database/connection");
