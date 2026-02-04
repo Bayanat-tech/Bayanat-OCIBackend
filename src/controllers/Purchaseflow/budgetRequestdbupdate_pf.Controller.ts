@@ -1,6 +1,12 @@
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection";
+import { oracleDb, sequelize } from "../../database/connection";
 import { TBasicBrequest } from "../../interfaces/Purchaseflow/Budgetflow.interface";
+
+// Temporary type alias for legacy budget line items — replace with proper typing later
+export type TCostbudget = any; // TODO: narrow this type
+
+// Export compatibility alias so older imports continue to work
+export const upsertBudgetRequestOracle = async (data: TBasicBrequest) => upsertBudgetRequest(data);
 
 export async function upsertBudgetRequest(data: TBasicBrequest) {
   let connection;
@@ -75,7 +81,7 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
     );
 
     // Generate new request number
-    const result = await connection.execute(
+    const result: any = await connection.execute(
       `SELECT 'BUDGET$' || LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(SUBSTR(REQUEST_NUMBER, INSTR(REQUEST_NUMBER,'$',-1)+1))),0)+1),5,'0') AS REQUEST_NUMBER
        FROM PURCHASE_REQUEST_HEADER
        WHERE COMPANY_CODE = :companyCode
@@ -108,6 +114,9 @@ export async function upsertBudgetRequest(data: TBasicBrequest) {
     if (connection) await connection.close();
   }
 }
+
+// Backwards-compatibility alias (some files import the Oracle helper name)
+export { upsertBudgetRequest as upsertBudgetRequestOracleAlias };
 
 
 export const insertBudgetCost = async (

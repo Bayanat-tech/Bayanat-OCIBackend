@@ -168,7 +168,7 @@ Employee.init(
   },
   {
     sequelize,
-    tableName: constants.TABLE.employees,
+    tableName: constants.TABLE.EMPLOYEES,
     timestamps: false,
   }
 );

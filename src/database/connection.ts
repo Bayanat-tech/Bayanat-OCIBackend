@@ -465,3 +465,32 @@ export const createBindObjects = (
 ): Record<string, any> => {
   return processBindParameters(params);
 };
+
+// ==================== SEQUELIZE SHIM (LEGACY SUPPORT) ====================
+// NOTE: Sequelize is no longer used at runtime. This export is for legacy model file imports only.
+// Legacy model files are being phased out in favor of TypeORM entities and oracle8 QueryExecutor.
+export const sequelize: any = {
+  dialect: "oracle",
+  options: { logging: false },
+  // Mock transaction method for legacy code
+  transaction: async (callback: any) => {
+    // Simple pass-through that just calls the callback with a dummy transaction object
+    try {
+      return await callback({ commit: async () => {}, rollback: async () => {} });
+    } catch (err) {
+      throw err;
+    }
+  },
+  query: async (sql: string, options?: any) => {
+    // Mock query method that returns empty array
+    return [];
+  },
+};
+
+// Basic QueryTypes shim for legacy code that expects QueryTypes.
+export const QueryTypes = {
+  SELECT: "SELECT",
+  INSERT: "INSERT",
+  UPDATE: "UPDATE",
+  DELETE: "DELETE",
+} as const;

@@ -203,3 +203,12 @@
 //     return;
 //   }
 // };
+
+// Export stub functions to satisfy module requirements
+export const createSupplier = async (req: any, res: any) => {
+  res.status(501).json({ error: "Not implemented" });
+};
+
+export const updateSupplier = async (req: any, res: any) => {
+  res.status(501).json({ error: "Not implemented" });
+};

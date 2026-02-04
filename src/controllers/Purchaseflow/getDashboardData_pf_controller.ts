@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection"; 
+import { oracleDb, sequelize } from "../../database/connection"; 
+import { QueryTypes } from "sequelize";
 export const getDashboardData = async (
   req: Request,
   res: Response,

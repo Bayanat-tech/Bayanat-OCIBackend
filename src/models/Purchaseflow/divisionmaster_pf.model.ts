@@ -47,4 +47,5 @@
 //   }
 // );
 
-// export default Divisionmaster;
+export default class Divisionmaster {}
+
