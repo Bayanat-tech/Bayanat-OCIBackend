@@ -5,17 +5,22 @@ import constants from "../helpers/constants";
 import { TenantManager } from "../database/TenantManager";
 
 // ==================== ORACLE CLIENT INIT ====================
-try {
-  oracledb.initOracleClient({
-    libDir:
-      constants.DATABASE.ORACLE_INSTANT_CLIENT_PATH ||
-      process.env.ORACLE_INSTANT_CLIENT_PATH,
-  });
-  console.log("Oracle thick mode initialized");
-} catch (err) {
-  console.error("Error initializing Oracle thick mode:", err);
-  console.log("Using thin mode as fallback");
-}
+// TEMP EMERGENCY: allow skipping Oracle thick client init using FORCE_THIN_ORACLE=1
+if (process.env.FORCE_THIN_ORACLE === "1") {
+  console.warn("FORCE_THIN_ORACLE=1 set — skipping oracledb.initOracleClient() (using thin mode)");
+} else {
+  try {
+    oracledb.initOracleClient({
+      libDir:
+        constants.DATABASE.ORACLE_INSTANT_CLIENT_PATH ||
+        process.env.ORACLE_INSTANT_CLIENT_PATH,
+    });
+    console.log("Oracle thick mode initialized");
+  } catch (err) {
+    console.error("Error initializing Oracle thick mode:", err);
+    console.log("Using thin mode as fallback");
+  }
+} 
 
 // ==================== RAW ORACLE CONFIG ====================
 const dbConfig: oracledb.PoolAttributes = {
@@ -327,8 +332,16 @@ export const initializeAllConnections = async (): Promise<void> => {
   try {
     // 1. Initialize Tenant Manager FIRST
     console.log("Initializing Tenant Manager...");
-    await TenantManager.initialize();
-    console.log("✅ Tenant Manager initialized");
+    if (process.env.EMERGENCY_SKIP_TENANT_INIT === '1') {
+      console.warn("⚠️ EMERGENCY_SKIP_TENANT_INIT=1 — skipping TenantManager.initialize() (EMERGENCY MODE)");
+    } else {
+      try {
+        await TenantManager.initialize();
+        console.log("✅ Tenant Manager initialized");
+      } catch (err) {
+        console.warn("⚠️ TenantManager.initialize() failed (continuing startup):", err);
+      }
+    }
 
     // 2. Initialize legacy connection (non-blocking)
     console.log("Initializing legacy Oracle connection...");

@@ -6,6 +6,7 @@ import { tenantContextMiddleware } from "./src/middleware/tenantContext.middlewa
 import passport from "passport";
 
 const app = express();
+console.log("🔥 index.ts loaded");
 
 app.use(cors());
 
@@ -117,13 +118,13 @@ async function startServer() {
     await initializeAllConnections();
     console.log(" All database connections initialized");
 
-    try {
-      const { startSchedulers } = require("./src/scheduler/startSchedulers");
-      await startSchedulers();
-      console.log("✅ Schedulers initialized");
-    } catch (err) {
-      console.warn("⚠️ Schedulers failed to initialize (continuing):", err);
-    }
+    // try {
+    //   const { startSchedulers } = require("./src/scheduler/startSchedulers");
+    //   await startSchedulers();
+    //   console.log("✅ Schedulers initialized");
+    // } catch (err) {
+    //   console.warn("⚠️ Schedulers failed to initialize (continuing):", err);
+    // }
     
     // Start server
     console.log(`Listening on port ${PORT}...`);
@@ -137,10 +138,13 @@ async function startServer() {
   }
 }
 
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  const { closeAllConnections } = require("./src/database/connection");
-  await closeAllConnections();
+process.on('SIGINT', () => {
+  console.log('SIGINT received, exiting immediately');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, exiting immediately');
   process.exit(0);
 });
 
