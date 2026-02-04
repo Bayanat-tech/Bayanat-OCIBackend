@@ -859,6 +859,7 @@ export const principalSchema = (
     prin_ref1: Joi.string().allow(null, ""),
     prin_status: Joi.string().allow(null, ""),
     acc_email: Joi.string().email().allow(null, ""),
+    auto_generate_product_code: Joi.string().allow(null, ""), 
     //---------------account-------------
     trn_no: Joi.number().allow(null),
     trn_exp_date: Joi.date().allow(null),
