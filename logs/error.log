@@ -65855,3 +65855,302 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.load (node:internal/modules/cjs/loader:1465:32)
     at Function._load (node:internal/modules/cjs/loader:1282:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-02-04 17:48:08 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:50:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:51:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:52:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:53:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:54:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:55:12 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:56:10 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:57:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:58:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 17:59:08 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:00:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:01:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:02:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:03:15 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:04:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:05:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:06:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:07:08 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:08:08 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:09:08 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:10:08 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-04 18:11:07 [[31merror[39m]: [WMSTST_TENANT] Error processing tenant: Request failed with status code 500 
+AxiosError: Request failed with status code 500
+    at settle (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\settle.js:19:12)
+    at IncomingMessage.handleStreamEnd (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\adapters\http.js:599:11)
+    at IncomingMessage.emit (node:events:530:35)
+    at IncomingMessage.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\axios\lib\core\Axios.js:45:41)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
