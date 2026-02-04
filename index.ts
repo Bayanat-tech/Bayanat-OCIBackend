@@ -138,16 +138,6 @@ async function startServer() {
   }
 }
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, exiting immediately');
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, exiting immediately');
-  process.exit(0);
-});
-
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
