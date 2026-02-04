@@ -346,8 +346,45 @@ export class TenantManager {
       await conn.close();
     }
   }
+  
+  static async runForTenant<T>(
+    tenantId: string,
+    fn: () => Promise<T>,
+    opts?: { loginid?: string }
+  ): Promise<T> {
+    console.log(`[runForTenant] STEP 1: Starting run for tenant: ${tenantId}`);
+    const { tenantContextStorage } = require("../middleware/tenantContext.middleware");
+    const { ensureCorrectSchema } = require("./TypeORMTenantInterceptor");
 
-  // Cleanup
+    const context = { loginid: opts?.loginid || "SYSTEM_SCHEDULER", tenantId };
+
+    return new Promise<T>((resolve, reject) => {
+      try {
+        tenantContextStorage.run(context, async () => {
+          (global as any).__currentRequestContext = context;
+          try {
+            try {
+              await ensureCorrectSchema();
+            } catch (schemaErr) {
+              console.warn(`[runForTenant] ensureCorrectSchema failed for ${tenantId}:`, schemaErr);
+            }
+
+            const res = await fn();
+            resolve(res);
+          } catch (err) {
+            reject(err);
+          } finally {
+            if ((global as any).__currentRequestContext?.tenantId === tenantId) {
+              delete (global as any).__currentRequestContext;
+            }
+          }
+        });
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
   static async closeAll(): Promise<void> {
     for (const [key, poolObj] of this.tenantPools) {
       try {

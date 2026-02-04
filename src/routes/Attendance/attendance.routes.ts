@@ -226,7 +226,6 @@ router.put(
   }
 );
 
-// Add route for employee info lookup
 router.get(
   "/employeeinfo",
   passport.authenticate("jwt", { session: false }),
