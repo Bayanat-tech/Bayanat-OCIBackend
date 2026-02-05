@@ -5,17 +5,22 @@ import constants from "../helpers/constants";
 import { TenantManager } from "../database/TenantManager";
 
 // ==================== ORACLE CLIENT INIT ====================
-try {
-  oracledb.initOracleClient({
-    libDir:
-      constants.DATABASE.ORACLE_INSTANT_CLIENT_PATH ||
-      process.env.ORACLE_INSTANT_CLIENT_PATH,
-  });
-  console.log("Oracle thick mode initialized");
-} catch (err) {
-  console.error("Error initializing Oracle thick mode:", err);
-  console.log("Using thin mode as fallback");
-}
+// TEMP EMERGENCY: allow skipping Oracle thick client init using FORCE_THIN_ORACLE=1
+if (process.env.FORCE_THIN_ORACLE === "1") {
+  console.warn("FORCE_THIN_ORACLE=1 set — skipping oracledb.initOracleClient() (using thin mode)");
+} else {
+  try {
+    oracledb.initOracleClient({
+      libDir:
+        constants.DATABASE.ORACLE_INSTANT_CLIENT_PATH ||
+        process.env.ORACLE_INSTANT_CLIENT_PATH,
+    });
+    console.log("Oracle thick mode initialized");
+  } catch (err) {
+    console.error("Error initializing Oracle thick mode:", err);
+    console.log("Using thin mode as fallback");
+  }
+} 
 
 // ==================== RAW ORACLE CONFIG ====================
 const dbConfig: oracledb.PoolAttributes = {
@@ -149,7 +154,6 @@ class TypeORMService {
               const { ensureCorrectSchema } = require("./TypeORMTenantInterceptor");
               if (ensureCorrectSchema) await ensureCorrectSchema();
             } catch (err) {
-              // If schema enforcement fails, log and continue to surface original error later
               console.warn("ensureCorrectSchema failed:", err);
             }
             return await value.apply(target, args);
@@ -163,16 +167,16 @@ class TypeORMService {
   static async ensureConnection(): Promise<void> {
     try {
       if (!AppDataSource.isInitialized) {
-        console.log("🔄 Connection lost - reinitializing...");
+        console.log("Connection lost - reinitializing...");
         this.initialized = false;
         this.initPromise = null;
         await this.initialize();
-        console.log("✅ Connection restored");
+        console.log(" Connection restored");
         return;
       }
       await AppDataSource.query("SELECT 1 FROM DUAL");
     } catch (error) {
-      console.log("🔄 Connection health check failed - reconnecting...");
+      console.log("Connection health check failed - reconnecting...");
       this.initialized = false;
       this.initPromise = null;
       
@@ -183,7 +187,7 @@ class TypeORMService {
       }
       
       await this.initialize();
-      console.log("✅ Connection restored after health check");
+      console.log("Connection restored after health check");
     }
   }
 
@@ -199,6 +203,10 @@ class TypeORMService {
 
   static isConnected(): boolean {
     return AppDataSource.isInitialized || this.initialized;
+  }
+
+  static isInitialized(): boolean {
+    return this.initialized && AppDataSource.isInitialized;
   }
 }
 
@@ -327,16 +335,24 @@ export const initializeAllConnections = async (): Promise<void> => {
   try {
     // 1. Initialize Tenant Manager FIRST
     console.log("Initializing Tenant Manager...");
-    await TenantManager.initialize();
-    console.log("✅ Tenant Manager initialized");
+    if (process.env.EMERGENCY_SKIP_TENANT_INIT === '1') {
+      console.warn("EMERGENCY_SKIP_TENANT_INIT=1 — skipping TenantManager.initialize() (EMERGENCY MODE)");
+    } else {
+      try {
+        await TenantManager.initialize();
+        console.log(" Tenant Manager initialized");
+      } catch (err) {
+        console.warn(" TenantManager.initialize() failed (continuing startup):", err);
+      }
+    }
 
     // 2. Initialize legacy connection (non-blocking)
     console.log("Initializing legacy Oracle connection...");
     try {
       await oracleDb.authenticate();
-      console.log("✅ Legacy database connection ready");
+      console.log("Legacy database connection ready");
     } catch (legacyError) {
-      console.warn("⚠️ Legacy Oracle connection failed (app will continue):", legacyError instanceof Error ? legacyError.message : String(legacyError));
+      console.warn(" Legacy Oracle connection failed (app will continue):", legacyError instanceof Error ? legacyError.message : String(legacyError));
       // Continue without legacy connection
     }
 
@@ -344,15 +360,15 @@ export const initializeAllConnections = async (): Promise<void> => {
     console.log("Initializing TypeORM...");
     try {
       await TypeORMService.initialize();
-      console.log("✅ TypeORM connection ready");
+      console.log(" TypeORM connection ready");
     } catch (typeOrmError) {
-      console.warn("⚠️ TypeORM initialization failed (continuing without it):", typeOrmError instanceof Error ? typeOrmError.message : String(typeOrmError));
+      console.warn("TypeORM initialization failed (continuing without it):", typeOrmError instanceof Error ? typeOrmError.message : String(typeOrmError));
       // Continue without TypeORM - application can still work with raw Oracle
     }
 
-    console.log("✅ Database initialization completed (some services may be unavailable)");
+    console.log("Database initialization completed (some services may be unavailable)");
   } catch (error) {
-    console.error("❌ Critical database initialization failed:", error);
+    console.error("Critical database initialization failed:", error);
     throw error;
   }
 };
@@ -452,3 +468,32 @@ export const createBindObjects = (
 ): Record<string, any> => {
   return processBindParameters(params);
 };
+
+// ==================== SEQUELIZE SHIM (LEGACY SUPPORT) ====================
+// NOTE: Sequelize is no longer used at runtime. This export is for legacy model file imports only.
+// Legacy model files are being phased out in favor of TypeORM entities and oracle8 QueryExecutor.
+export const sequelize: any = {
+  dialect: "oracle",
+  options: { logging: false },
+  // Mock transaction method for legacy code
+  transaction: async (callback: any) => {
+    // Simple pass-through that just calls the callback with a dummy transaction object
+    try {
+      return await callback({ commit: async () => {}, rollback: async () => {} });
+    } catch (err) {
+      throw err;
+    }
+  },
+  query: async (sql: string, options?: any) => {
+    // Mock query method that returns empty array
+    return [];
+  },
+};
+
+// Basic QueryTypes shim for legacy code that expects QueryTypes.
+export const QueryTypes = {
+  SELECT: "SELECT",
+  INSERT: "INSERT",
+  UPDATE: "UPDATE",
+  DELETE: "DELETE",
+} as const;

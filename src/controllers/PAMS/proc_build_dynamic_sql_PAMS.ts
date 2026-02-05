@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import oracledb from "oracledb";
 
 export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): Promise<void> => {
-  let connection;
-
   try {
     const {
       parameter,
@@ -29,10 +28,8 @@ export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): 
       return;
     }
 
-    connection = await oracledb.getConnection();
-
-    // Call the procedure correctly with OUT bind
-    const result = await connection.execute(
+    // Call the procedure correctly with OUT bind (Tenant-Aware)
+    const result = await QueryExecutor.executeRawQuery(
       `
       BEGIN
         PROC_BUILD_DYNAMIC_SQL_PAMS(
@@ -92,13 +89,11 @@ export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): 
 
     // Execute SELECT statements dynamically
     if (/^\s*(SELECT|WITH)/i.test(rawSql)) {
-      const dataResult = await connection.execute<any[]>(rawSql, [], {
-        outFormat: oracledb.OUT_FORMAT_ARRAY
-      });
+      const dataResult = await QueryExecutor.executeRawQuery(rawSql, []);
 
-      tableData = dataResult.rows?.map((row) => {
+      tableData = dataResult.rows?.map((row: any) => {
         const obj: Record<string, any> = {};
-        dataResult.metaData?.forEach((col, i) => {
+        dataResult.metaData?.forEach((col: any, i: number) => {
           obj[col.name.toLowerCase()] = row[i];
         });
         return obj;
@@ -118,13 +113,5 @@ export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): 
   } catch (error: any) {
     console.error("Oracle Error:", error);
     res.status(500).json({ error: "Failed to execute SQL", details: error.message });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Failed to close connection:", closeErr);
-      }
-    }
   }
 };

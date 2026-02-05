@@ -65,7 +65,7 @@ AttendanceRecord.init(
   },
   {
     sequelize,
-    tableName: constants.TABLE.attendance_records,
+    tableName: constants.TABLE.ATTENDANCE_RECORDS,
     timestamps: false,
   }
 );

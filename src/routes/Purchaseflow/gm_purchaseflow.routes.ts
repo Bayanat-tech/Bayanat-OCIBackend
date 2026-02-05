@@ -9,9 +9,6 @@ import express, {
 //import { cancelFinalApproval Fetchmessagebox } from "../../controllers/Purchaseflow/purchaseRequest_pf.Controller";
 import { CheckCostcontroller } from "./../../../src/controllers/Purchaseflow/checkcostcontoller";
 
-import {
-  upsertAMCDetails  
-  } from "../../controllers/Purchaseflow/update_requestAMCdata"
 //import { getBudgetexcel } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
 //import { budgetexcelupload } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";
 //import { CheckBudgetStatus } from "../../controllers/Purchaseflow/budgetRequest_pf.Controller";

@@ -1824,6 +1824,13 @@ This is an automated alert from the Smart Attendance System.
 
   static async processStalePendingRecords(): Promise<void> {
     try {
+      // Guard: Skip if TypeORM is not initialized
+      const { TypeORMService } = require("../../database/connection");
+      if (!TypeORMService.isInitialized()) {
+        logger.warn("⏭️ Skipping processStalePendingRecords — TypeORM not initialized yet");
+        return;
+      }
+
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       
       const staleRecords = await getRepository(AttendanceEvent).find({
@@ -1860,11 +1867,15 @@ AttendanceService.initializeFaceService().catch(err => {
 });
 
 setInterval(() => {
-  AttendanceService.cleanupOldData();
+  AttendanceService.cleanupOldData().catch(err => {
+    logger.error('Error in cleanupOldData:', err);
+  });
 }, 30 * 60 * 1000);
 
 setInterval(() => {
-  AttendanceService.processAutoConfirm();
+  AttendanceService.processAutoConfirm().catch(err => {
+    logger.error('Error in processAutoConfirm:', err);
+  });
 }, 30000);
 
 setInterval(() => {

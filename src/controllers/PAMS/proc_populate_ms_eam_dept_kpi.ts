@@ -1,12 +1,10 @@
 import { Request, Response } from 'express';
-import oracledb from 'oracledb';
+import { QueryExecutor } from '../../database/QueryExecutor';
 
 export const proc_populate_ms_eam_dept_kpi = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection;
-
   try {
     const { company_code, employee_code, item_type } = req.body;
 
@@ -19,10 +17,8 @@ export const proc_populate_ms_eam_dept_kpi = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
-
-    /* ================= ORACLE CALL ================= */
-    await connection.execute(
+    /* ================= ORACLE CALL (Tenant-Aware) ================= */
+    await QueryExecutor.executeRawQuery(
       `
       BEGIN
         WMSTST.PROC_POPULATE_MS_EAM_DEPT_KPI(
@@ -39,8 +35,6 @@ export const proc_populate_ms_eam_dept_kpi = async (
       }
     );
 
-    await connection.commit();
-
     res.json({
       success: true,
       message: 'KPI populated successfully'
@@ -52,13 +46,5 @@ export const proc_populate_ms_eam_dept_kpi = async (
       message: 'Failed to populate KPI',
       error: error.message
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error('Error closing connection', err);
-      }
-    }
   }
 };

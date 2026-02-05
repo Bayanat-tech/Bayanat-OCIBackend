@@ -1,11 +1,11 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
-import { initializeAllConnections } from "./src/database/connection";
-import "./src/utils/passport";
+import { initializeAllConnections, TypeORMService } from "./src/database/connection";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
 import passport from "passport";
 
 const app = express();
+console.log("index.ts loaded");
 
 app.use(cors());
 
@@ -13,11 +13,10 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-app.use(passport.initialize());
-
-export const withTenantContext = [
+// passport strategies will be initialized after TypeORM is ready (see startServer)
+export const withTenantContext = () => [
   passport.authenticate("jwt", { session: false }),
-  tenantContextMiddleware
+  tenantContextMiddleware,
 ];
 
 
@@ -58,6 +57,9 @@ app.use("/api/security", secRoutes);
 app.use("/api/hr", hrRoutes);
 
 app.use("/api/pf", pfRoutes);
+
+// Mount BT-FLOW routes
+app.use("/api/bt-flow", pfbtflowRoutes);
 
 app.use("/api/notification", logRoutes);
 
@@ -117,32 +119,39 @@ async function startServer() {
     await initializeAllConnections();
     console.log(" All database connections initialized");
 
+    console.log("Initializing TypeORM service...");
+    await TypeORMService.initialize();
+    console.log("TypeORM initialized successfully");
+
     try {
-      const { startSchedulers } = require("./src/scheduler/startSchedulers");
-      await startSchedulers();
-      console.log("✅ Schedulers initialized");
+      console.log("Initializing passport strategies...");
+      require("./src/utils/passport");
+      app.use(passport.initialize());
+      console.log("Passport initialized");
     } catch (err) {
-      console.warn("⚠️ Schedulers failed to initialize (continuing):", err);
+      console.error("Failed to initialize passport strategies:", err);
+      throw err;
     }
+
+    // try {
+    //   const { startSchedulers } = require("./src/scheduler/startSchedulers");
+    //   await startSchedulers();
+    //   console.log("Schedulers initialized");
+    // } catch (err) {
+    //   console.warn("Schedulers failed to initialize (continuing):", err);
+    // }
     
     // Start server
     console.log(`Listening on port ${PORT}...`);
     app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log("🔗 Health check: http://localhost:" + PORT + "/health");
+      console.log(`Server running on port ${PORT}`);
+      console.log("Health check: http://localhost:" + PORT + "/health");
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
+    console.error("Failed to start server:", error);
     process.exit(1);
   }
 }
-
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  const { closeAllConnections } = require("./src/database/connection");
-  await closeAllConnections();
-  process.exit(0);
-});
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);

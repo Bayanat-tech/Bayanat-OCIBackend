@@ -14,16 +14,14 @@ company_code: string;
 };
 
 
-import oracledb from "oracledb";
 import { Request, Response } from "express";
+import { QueryExecutor } from "../../database/QueryExecutor";
 //import { TAppraisalTaskDtl } from "./models";
 
 export async function updateAppraisalRatings(
   req: Request,
   res: Response
 ) {
-  const connection = await oracledb.getConnection();
-
   try {
     console.log("UPDATE API HIT");
     console.log("Incoming body:", req.body);
@@ -40,7 +38,7 @@ export async function updateAppraisalRatings(
     }));
      
     console.log("Mapped rows:", rows);
-    await connection.execute(
+    await QueryExecutor.executeRawQuery(
       `
       BEGIN
         PROC_UPD_APPRAISAL_TASK_RATING(:p_rows);
@@ -59,8 +57,5 @@ export async function updateAppraisalRatings(
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Update failed" });
-
-  } finally {
-    await connection.close();
   }
 }

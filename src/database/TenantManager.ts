@@ -28,17 +28,17 @@ export class TenantManager {
   static async initialize(): Promise<void> {
     console.log(`[TenantManager.initialize] STEP 1: Checking initialization status...`);
     if (this.initialized || this.centralPool) {
-      console.log(`[TenantManager.initialize] ✅ Already initialized, skipping`);
+      console.log(`[TenantManager.initialize] [OK] Already initialized, skipping`);
       return;
     }
 
     console.log(`[TenantManager.initialize] STEP 2: Validating environment variables...`);
-    console.log(`  - ORACLE_USER: ${process.env.ORACLE_USER ? "✅ Set" : "❌ Missing"}`);
-    console.log(`  - ORACLE_PASSWORD: ${process.env.ORACLE_PASSWORD ? "✅ Set" : "❌ Missing"}`);
-    console.log(`  - ORACLE_CONNECTION_STRING: ${process.env.ORACLE_CONNECTION_STRING ? "✅ Set" : "❌ Missing"}`);
+    console.log(`  - ORACLE_USER: ${process.env.ORACLE_USER ? "[OK] Set" : "[ERROR] Missing"}`);
+    console.log(`  - ORACLE_PASSWORD: ${process.env.ORACLE_PASSWORD ? "[OK] Set" : "[ERROR] Missing"}`);
+    console.log(`  - ORACLE_CONNECTION_STRING: ${process.env.ORACLE_CONNECTION_STRING ? "[OK] Set" : "[ERROR] Missing"}`);
 
     if (!process.env.ORACLE_USER || !process.env.ORACLE_PASSWORD || !process.env.ORACLE_CONNECTION_STRING) {
-      console.error(`[TenantManager.initialize] ❌ STEP 2 FAILED: Missing required environment variables`);
+      console.error(`[TenantManager.initialize] [ERROR] STEP 2 FAILED: Missing required environment variables`);
       this.initialized = true;
       return;
     }
@@ -59,9 +59,9 @@ export class TenantManager {
       });
 
       this.initialized = true;
-      console.log(`[TenantManager.initialize] ✅ STEP 3 SUCCESS: Central pool created`);
+      console.log(`[TenantManager.initialize] [OK] STEP 3 SUCCESS: Central pool created`);
     } catch (error) {
-      console.error(`[TenantManager.initialize] ❌ STEP 3 FAILED: Pool creation error`);
+      console.error(`[TenantManager.initialize] [ERROR] STEP 3 FAILED: Pool creation error`);
       console.error(`  - Error Type: ${error instanceof Error ? error.constructor.name : typeof error}`);
       console.error(`  - Error Message: ${error instanceof Error ? error.message : String(error)}`);
       this.initialized = true;
@@ -77,17 +77,17 @@ export class TenantManager {
     }
 
     if (!this.centralPool) {
-      console.error(`[getCentralConnection] ❌ CRITICAL: Central pool is still null after initialization`);
+      console.error(`[getCentralConnection] [ERROR] CRITICAL: Central pool is still null after initialization`);
       throw new Error("Central pool initialization failed");
     }
 
     console.log(`[getCentralConnection] STEP 3: Acquiring connection from pool...`);
     try {
       const conn = await this.centralPool.getConnection();
-      console.log(`[getCentralConnection] ✅ STEP 3 SUCCESS: Connection acquired`);
+      console.log(`[getCentralConnection] [OK] STEP 3 SUCCESS: Connection acquired`);
       return conn;
     } catch (error) {
-      console.error(`[getCentralConnection] ❌ STEP 3 FAILED: Failed to get connection`);
+      console.error(`[getCentralConnection] [ERROR] STEP 3 FAILED: Failed to get connection`);
       console.error(`  - Error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
@@ -110,23 +110,23 @@ export class TenantManager {
       console.log(`  - Rows returned: ${result.rows ? result.rows.length : 0}`);
       
     //   if (!result.rows || result.rows.length === 0) {
-    //     console.warn(`[getTenantForUser] ⚠️  No mapping found for loginid '${loginid}', using default tenant`);
+    //     console.warn(`[getTenantForUser] No mapping found for loginid '${loginid}', using default tenant`);
     //     const tenantId = 'WMSTST_TENANT';
-    //     console.log(`[getTenantForUser] ✅ RESULT: Using default tenant: ${tenantId}`);
+    //     console.log(`[getTenantForUser]  RESULT: Using default tenant: ${tenantId}`);
     //     return tenantId;
     //   }
 
       const tenantId = (result.rows as any[])[0]?.TENANT_ID;
-      console.log(`[getTenantForUser] ✅ RESULT: Found tenant for user '${loginid}': ${tenantId}`);
+      console.log(`[getTenantForUser] RESULT: Found tenant for user '${loginid}': ${tenantId}`);
       return tenantId;
     } catch (error) {
-      console.error(`[getTenantForUser] ❌ STEP 2 FAILED: Query execution error`);
+      console.error(`[getTenantForUser] STEP 2 FAILED: Query execution error`);
       console.error(`  - Error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     } finally {
       console.log(`[getTenantForUser] STEP 4: Closing connection...`);
       await conn.close();
-      console.log(`[getTenantForUser] ✅ Connection closed`);
+      console.log(`[getTenantForUser] Connection closed`);
     }
   }
 
@@ -151,7 +151,7 @@ export class TenantManager {
       console.log(`  - Rows returned: ${result.rows ? result.rows.length : 0}`);
 
       if (!result.rows || result.rows.length === 0) {
-        console.error(`[getTenantConfig] ❌ STEP 3 FAILED: Tenant ${tenantId} not found in registry`);
+        console.error(`[getTenantConfig] STEP 3 FAILED: Tenant ${tenantId} not found in registry`);
         throw new Error(`Tenant ${tenantId} not found`);
       }
 
@@ -185,16 +185,16 @@ export class TenantManager {
         console.log(`  - DB_SERVICE: ${config.DB_SERVICE} (from config)`);
       }
 
-      console.log(`[getTenantConfig] ✅ RESULT: Tenant config loaded successfully`);
+      console.log(`[getTenantConfig] RESULT: Tenant config loaded successfully`);
       return config as TenantConfig;
     } catch (error) {
-      console.error(`[getTenantConfig] ❌ STEP 2 FAILED: Query execution error`);
+      console.error(`[getTenantConfig]  STEP 2 FAILED: Query execution error`);
       console.error(`  - Error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     } finally {
       console.log(`[getTenantConfig] STEP 6: Closing connection...`);
       await conn.close();
-      console.log(`[getTenantConfig] ✅ Connection closed`);
+      console.log(`[getTenantConfig]  Connection closed`);
     }
   }
 
@@ -208,16 +208,16 @@ export class TenantManager {
     
     console.log(`[getConnection] STEP 3: Acquiring connection from tenant pool...`);
     const conn = await pool.getConnection();
-    console.log(`[getConnection] ✅ Connection acquired`);
+    console.log(`[getConnection] Connection acquired`);
     
     // Set schema if needed
     if (config.CONNECTION_TYPE === 'SCHEMA' && config.SCHEMA_NAME) {
       console.log(`[getConnection] STEP 4: Setting schema to ${config.SCHEMA_NAME}...`);
       try {
         await conn.execute(`ALTER SESSION SET CURRENT_SCHEMA = ${config.SCHEMA_NAME}`);
-        console.log(`[getConnection] ✅ Schema set successfully`);
+        console.log(`[getConnection] Schema set successfully`);
       } catch (error) {
-        console.warn(`[getConnection] ⚠️  Failed to set schema: ${error instanceof Error ? error.message : String(error)}`);
+        console.warn(`[getConnection] Failed to set schema: ${error instanceof Error ? error.message : String(error)}`);
       }
     } else {
       console.log(`[getConnection] STEP 4: Skipping schema change (CONNECTION_TYPE: ${config.CONNECTION_TYPE})`);
@@ -232,7 +232,7 @@ export class TenantManager {
     
     console.log(`[getPoolForTenant] STEP 1: Checking if pool exists for: ${poolKey}...`);
     if (this.tenantPools.has(poolKey)) {
-      console.log(`[getPoolForTenant] ✅ STEP 1 SUCCESS: Reusing existing pool`);
+      console.log(`[getPoolForTenant] STEP 1 SUCCESS: Reusing existing pool`);
       return this.tenantPools.get(poolKey)!.pool;
     }
 
@@ -262,12 +262,12 @@ export class TenantManager {
       });
 
       this.tenantPools.set(poolKey, { pool, config });
-      console.log(`[getPoolForTenant] ✅ STEP 4 SUCCESS: Pool created and cached`);
+      console.log(`[getPoolForTenant]  STEP 4 SUCCESS: Pool created and cached`);
       console.log(`  - Total pools in memory: ${this.tenantPools.size}`);
       
       return pool;
     } catch (error) {
-      console.error(`[getPoolForTenant] ❌ STEP 4 FAILED: Pool creation failed`);
+      console.error(`[getPoolForTenant]  STEP 4 FAILED: Pool creation failed`);
       console.error(`  - Tenant: ${config.TENANT_ID}`);
       console.error(`  - Pool Key: ${poolKey}`);
       console.error(`  - Error Type: ${error instanceof Error ? error.constructor.name : typeof error}`);
@@ -297,19 +297,19 @@ export class TenantManager {
         autoCommit: true,
       });
       
-      console.log(`[executeInTenant] ✅ STEP 2 SUCCESS: Query executed`);
+      console.log(`[executeInTenant]  STEP 2 SUCCESS: Query executed`);
       console.log(`  - Rows returned: ${result.rows ? result.rows.length : 0}`);
       
       return result.rows || [];
     } catch (error) {
-      console.error(`[executeInTenant] ❌ STEP 2 FAILED: Query execution error`);
+      console.error(`[executeInTenant]  STEP 2 FAILED: Query execution error`);
       console.error(`  - Tenant: ${tenantId}`);
       console.error(`  - Error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     } finally {
       console.log(`[executeInTenant] STEP 3: Closing connection...`);
       await conn.close();
-      console.log(`[executeInTenant] ✅ Connection closed`);
+      console.log(`[executeInTenant]  Connection closed`);
     }
   }
 
@@ -389,7 +389,7 @@ export class TenantManager {
     for (const [key, poolObj] of this.tenantPools) {
       try {
         await poolObj.pool.close();
-        console.log(`✅ Closed pool: ${key}`);
+        console.log(`Closed pool: ${key}`);
       } catch (error) {
         console.error(`Error closing pool ${key}:`, error);
       }
@@ -400,7 +400,7 @@ export class TenantManager {
       try {
         await this.centralPool.close();
         this.centralPool = null;
-        console.log("✅ Central pool closed");
+        console.log("Central pool closed");
       } catch (error) {
         console.error("Error closing central pool:", error);
       }

@@ -42,7 +42,7 @@ EmployeeFace.init(
   },
   {
     sequelize,
-    tableName: constants.TABLE.employee_faces,
+    tableName: constants.TABLE.EMPLOYEE_FACES,
     timestamps: false,
     indexes: [
       {

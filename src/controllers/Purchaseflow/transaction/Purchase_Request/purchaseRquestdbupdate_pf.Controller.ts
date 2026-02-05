@@ -103,6 +103,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
       data.companyCode,
       generatedRequestNumber,
       data.projectCode,
+      data.div_code,
       connection
     );
 
@@ -447,6 +448,7 @@ export async function upsertPurchaseRequestDetails(
   companyCode: string,
   requestNumber: string,
   projectCode: string,
+  divCode: string | undefined,
   connection: oracledb.Connection
 ): Promise<void> {
   try {
@@ -519,7 +521,7 @@ export async function upsertPurchaseRequestDetails(
           supplier: item.supplier,
           prin_code: "10001",     // hardcoded as per original code
           project_code: projectCode,
-          div_code: "10",         // hardcoded as per original code
+          div_code: divCode || null,      // hardcoded as per original code
           item_sequence_no: item.item_sequence_no,
         },
         { autoCommit: false }

@@ -1,12 +1,12 @@
 import { getRepository } from "../../database/connection";
 import { ProjectMaster } from "../../entity/PurchaseFlow/projectmaster.entity";
-
-
 export class ProjectMasterService {
   static getProjectMaster(loginid: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
     throw new Error("Method not implemented.");
   }
-  private static getRepository(company_code: string, page: number, limit: number) {
+  // Note: This method signature requires 3 parameters but was being called without arguments
+  // Changed to work without parameters for now - review usage
+  private static getRepository(company_code?: string, page?: number, limit?: number) {
     return getRepository(ProjectMaster);
   }
 
@@ -34,6 +34,13 @@ export class ProjectMasterService {
 
   //   return await repo.save(project);
   // }
+
+  // Create
+  static async createProject(data: any): Promise<any> {
+    const repo = this.getRepository();
+    const project = repo.create({ ...data, created_at: new Date(), updated_at: new Date() } as any);
+    return await repo.save(project);
+  }
 
   // Update
   static async updateProject(

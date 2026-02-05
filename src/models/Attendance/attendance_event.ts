@@ -147,7 +147,7 @@ AttendanceEvent.init(
   },
   {
     sequelize,
-    tableName: constants.TABLE.attendance_events,
+    tableName: constants.TABLE.ATTENDANCE_EVENTS,
     timestamps: false,
   }
 );
