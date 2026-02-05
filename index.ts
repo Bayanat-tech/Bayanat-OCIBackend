@@ -1,7 +1,6 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
-import { initializeAllConnections } from "./src/database/connection";
-import "./src/utils/passport";
+import { initializeAllConnections, TypeORMService } from "./src/database/connection";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
 import passport from "passport";
 
@@ -14,11 +13,10 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-app.use(passport.initialize());
-
-export const withTenantContext = [
+// passport strategies will be initialized after TypeORM is ready (see startServer)
+export const withTenantContext = () => [
   passport.authenticate("jwt", { session: false }),
-  tenantContextMiddleware
+  tenantContextMiddleware,
 ];
 
 
@@ -59,6 +57,9 @@ app.use("/api/security", secRoutes);
 app.use("/api/hr", hrRoutes);
 
 app.use("/api/pf", pfRoutes);
+
+// Mount BT-FLOW routes
+app.use("/api/bt-flow", pfbtflowRoutes);
 
 app.use("/api/notification", logRoutes);
 
@@ -117,6 +118,20 @@ async function startServer() {
     console.log("Initializing database connections...");
     await initializeAllConnections();
     console.log(" All database connections initialized");
+
+    console.log("Initializing TypeORM service...");
+    await TypeORMService.initialize();
+    console.log("✅ TypeORM initialized successfully");
+
+    try {
+      console.log("Initializing passport strategies...");
+      require("./src/utils/passport");
+      app.use(passport.initialize());
+      console.log("✅ Passport initialized");
+    } catch (err) {
+      console.error("Failed to initialize passport strategies:", err);
+      throw err;
+    }
 
     // try {
     //   const { startSchedulers } = require("./src/scheduler/startSchedulers");

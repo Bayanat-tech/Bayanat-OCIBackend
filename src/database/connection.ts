@@ -205,6 +205,10 @@ class TypeORMService {
   static isConnected(): boolean {
     return AppDataSource.isInitialized || this.initialized;
   }
+
+  static isInitialized(): boolean {
+    return this.initialized && AppDataSource.isInitialized;
+  }
 }
 
 function processBindParameters(binds: any): any {
