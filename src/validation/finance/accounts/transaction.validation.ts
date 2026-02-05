@@ -299,7 +299,7 @@ doc_type: Joi.string() // Document type (required)
     constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Cheque payment
   )
   .required(),
-inv_no: Joi.string().allow('', null),
+inv_no: Joi.string().optional().allow('', null),
 inv_date: Joi.date(), // Otherwise cheque date is optional
 ac_code: Joi.string().required(), // Account code (required)
 doc_date: Joi.date(), // Document date

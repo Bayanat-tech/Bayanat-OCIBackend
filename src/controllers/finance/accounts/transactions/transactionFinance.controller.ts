@@ -2151,7 +2151,7 @@ export const createPurchaseDocument = async (
       {
         company_code: req.user.company_code,
         div_code,
-        doc_type: 'INV',
+        doc_type: 'PI',
         doc_date,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
