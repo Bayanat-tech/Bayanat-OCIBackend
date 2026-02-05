@@ -1,19 +1,26 @@
 import oracledb from "oracledb";
-import { Request, Response } from "express";
+import { RequestHandler } from "express";
 
 const getValue = (obj: any, key: string) =>
-  obj[key] ?? obj[key.toLowerCase()] ?? obj[key.toUpperCase()] ?? null;
+  obj?.[key] ?? obj?.[key.toLowerCase()] ?? obj?.[key.toUpperCase()] ?? null;
 
-export async function updateSiteMaster(req: Request, res: Response) {
+export const updateSiteMaster: RequestHandler = async (req, res) => {
   let connection;
 
   try {
     console.log("UPDATE SITE MASTER API HIT");
     console.log("Incoming body:", req.body);
 
+    const { rows } = req.body;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({ error: "No site rows provided" });
+      return; // ✅ IMPORTANT
+    }
+
     connection = await oracledb.getConnection();
 
-    const siteRows = [req.body].map((s: any) => ({
+    const siteRows = rows.map((s: any) => ({
       SITE_CODE: getValue(s, "SITE_CODE"),
       SITE_IND: getValue(s, "SITE_IND"),
       SITE_TYPE: getValue(s, "SITE_TYPE"),
@@ -44,25 +51,22 @@ export async function updateSiteMaster(req: Request, res: Response) {
     }));
 
     await connection.execute(
-      `
-      BEGIN
-        PROC_UPDATE_SITE_MASTER(:p_site_tab);
-      END;
-      `,
+      `BEGIN PROC_UPDATE_SITE_MASTER(:p_site_tab); END;`,
       {
         p_site_tab: {
           type: "T_SITE_TAB",
           val: siteRows
         }
-      }
+      },
+      { autoCommit: true }
     );
 
     res.json({ message: "Site master updated successfully" });
 
   } catch (err) {
-    console.error(err);
+    console.error("updateSiteMaster error:", err);
     res.status(500).json({ error: "Site master update failed" });
   } finally {
     if (connection) await connection.close();
   }
-}
+};
