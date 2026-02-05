@@ -27,7 +27,8 @@ import {
 
   // Export Controller
   //exportTransactionDocument,
-  createChequePaymentStoreProcess, // Exports transaction data
+  createChequePaymentStoreProcess,
+  createPurchaseDocument, // Exports transaction data
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 
 // Initialize Express router
@@ -58,6 +59,9 @@ router.put("/cancel_cheque", cancelDocument);                   // Cancel existi
 router.delete("/document/:doc_type", deleteDocument);           // Delete document by type
 router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail record
 router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
+
+
+router.post("/purchase-document",createPurchaseDocument)
 
 // Export the configured router
 export default router;

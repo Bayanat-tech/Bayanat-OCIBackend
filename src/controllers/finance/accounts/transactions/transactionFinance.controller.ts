@@ -12,8 +12,8 @@ import {
 
 import { IUser } from "../../../../interfaces/user.interface"; // User interface
 
-import { chequePaymentSchema } from "../../../../validation/finance/accounts/transaction.validation"; // Validation schema
-import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions/ac_header_search.view"; 
+import { chequePaymentSchema, purchaseSchema } from "../../../../validation/finance/accounts/transaction.validation"; // Validation schema
+import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions/ac_header_search.view";
 //-------------------get---------------
 /**
  * Retrieves default transaction details based on document setup
@@ -25,7 +25,7 @@ export const getDefaultTransactionDetails = async (
   res: Response
 ) => {
   let connection;
- 
+
   try {
     // Extract query parameters for document identification and mode
     const { doc_id, isEditMode } = req.query;
@@ -40,7 +40,7 @@ export const getDefaultTransactionDetails = async (
      * - Always includes company_code filter and document ID filter
      */
     let sql: string;
-   
+
     if (isEditMode === 'false') {
       // View mode: Include all related data
       sql = `
@@ -96,31 +96,31 @@ export const getDefaultTransactionDetails = async (
     const row = result.rows?.[0] as any;
     const response = isEditMode === 'false'
       ? {
-          company_code: row.COMPANY_CODE,
-          Currency: {
-            curr_code: row.CURR_CODE,
-            curr_name: row.CURR_NAME
-          },
-          Division: {
-            div_code: row.DIV_CODE,
-            div_name: row.DIV_NAME
-          },
-          Account: {
-            ac_code: row.AC_CODE,
-            ac_name: row.AC_NAME
-          },
-          Accountsetup: {
-            tax_perc: row.TAX_PERC,
-            lcur_decimal_nos: row.LCUR_DECIMAL_NOS
-          }
+        company_code: row.COMPANY_CODE,
+        Currency: {
+          curr_code: row.CURR_CODE,
+          curr_name: row.CURR_NAME
+        },
+        Division: {
+          div_code: row.DIV_CODE,
+          div_name: row.DIV_NAME
+        },
+        Account: {
+          ac_code: row.AC_CODE,
+          ac_name: row.AC_NAME
+        },
+        Accountsetup: {
+          tax_perc: row.TAX_PERC,
+          lcur_decimal_nos: row.LCUR_DECIMAL_NOS
         }
+      }
       : {
-          company_code: row.COMPANY_CODE,
-          Accountsetup: {
-            tax_perc: row.TAX_PERC,
-            lcur_decimal_nos: row.LCUR_DECIMAL_NOS
-          }
-        };
+        company_code: row.COMPANY_CODE,
+        Accountsetup: {
+          tax_perc: row.TAX_PERC,
+          lcur_decimal_nos: row.LCUR_DECIMAL_NOS
+        }
+      };
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -281,7 +281,7 @@ export const getChequePaymentHeader = async (
 
     // // Transform the result to match Sequelize nested structure
     // const rowData: any = result.rows[0];
-   
+
     // const response = {
     //   // Transaction Header fields
     //   doc_no: rowData.DOC_NO,
@@ -297,27 +297,27 @@ export const getChequePaymentHeader = async (
     //   div_code: rowData.DIV_CODE,
     //   doc_type: rowData.DOC_TYPE,
     //   cheque_bank: rowData.CHEQUE_BANK,
-     
+
     //   // Nested objects to match Sequelize include structure
     //   Accountsetup: {
     //     tax_perc: rowData.TAX_PERC
     //   },
-     
+
     //   Account: {
     //     ac_name: rowData.AC_NAME
     //   },
-     
+
     //   MS_AC_BANKCODE: {
     //     ac_code: rowData.BANK_ACCOUNT_CODE,
     //     Account: {
     //       ac_name: rowData.BANK_AC_NAME
     //     }
     //   },
-     
+
     //   Currency: {
     //     curr_name: rowData.CURR_NAME
     //   },
-     
+
     //   Division: {
     //     div_name: rowData.DIV_NAME
     //   }
@@ -445,7 +445,7 @@ export const getChildTableName = async (
   res: Response
 ) => {
   let connection;
- 
+
   try {
     const { ac_code } = req.params;
     if (!ac_code) {
@@ -495,7 +495,7 @@ export const getChildTableName = async (
       const exp_type_code = accountData.EXP_TYPE_CODE;
       const exp_subtype_code = accountData.EXP_SUBTYPE_CODE;
       let data;
-     
+
       if (l4_bill === 'Y') {
         // Invoice table
         data = { table: 'invoice', code: '' };
@@ -548,7 +548,7 @@ export const getChildTableName = async (
 
 export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
   let connection;
- 
+
   try {
     const { ac_code } = req.query;
     connection = await getConnection();
@@ -574,8 +574,8 @@ export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
     );
     const response = result.rows && result.rows.length > 0
       ? {
-          last_cheque_no: (result.rows[0] as any).LAST_CHEQUE_NO
-        }
+        last_cheque_no: (result.rows[0] as any).LAST_CHEQUE_NO
+      }
       : null;
 
     res.status(constants.STATUS_CODES.OK).json({
@@ -789,7 +789,7 @@ export const createBulkTransactionDocument = async (
   }
 };
 
-export const createChequePaymentDocument= async (
+export const createChequePaymentDocument = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
@@ -834,7 +834,7 @@ export const createChequePaymentDocument= async (
     if (!doc_no) {
       throw new Error("Failed to generate document number");
     }
-   console.log("Get doc_date", req.body.doc_date);
+    console.log("Get doc_date", req.body.doc_date);
     const { detail, children, files, ...header } = req.body;
 
     // ---------- INSERT HEADER ----------
@@ -1994,5 +1994,254 @@ export const deleteDocument = async (req: RequestWithUser, res: Response): Promi
         console.warn("Error closing connection:", e);
       }
     }
+  }
+};
+
+export const createPurchaseDocument = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  let connection;
+
+  try {
+    /* -------------------- VALIDATION -------------------- */
+    const { error, value } = purchaseSchema(req.body);
+    if (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+
+    const {
+      doc_type,
+      doc_date,
+      ac_code,
+      curr_code,
+      ex_rate,
+      remarks,
+      div_code,
+      company_code,
+      detail,
+    } = value;
+
+    connection = await oracledb.getConnection();
+
+    /* -------------------- DOC NO -------------------- */
+    const docResult = await connection.execute(
+      `
+      SELECT FN_AC_GET_DOC_NO(
+        :company_code,
+        :div_code,
+        :doc_type,
+        TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
+      ) AS DOC_NO
+      FROM dual
+      `,
+      {
+        company_code: req.user.company_code,
+        div_code,
+        doc_type,
+        doc_date,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const doc_no = (docResult.rows?.[0] as any)?.DOC_NO;
+    if (!doc_no) throw new Error("Failed to generate document number");
+
+    /* -------------------- PURCHASE HEADER -------------------- */
+    await connection.execute(
+      `
+      INSERT INTO TR_AC_HEADER (
+        doc_no,
+        doc_type,
+        doc_date,
+        ac_code,
+        curr_code,
+        ex_rate,
+        remarks,
+        div_code,
+        company_code
+      ) VALUES (
+        :doc_no,
+        :doc_type,
+        :doc_date,
+        :ac_code,
+        :curr_code,
+        :ex_rate,
+        :remarks,
+        :div_code,
+        :company_code
+      )
+      `,
+      {
+        doc_no,
+        doc_type,
+        doc_date,
+        ac_code,
+        curr_code,
+        ex_rate,
+        remarks,
+        div_code,
+        company_code: req.user.company_code,
+      },
+      { autoCommit: false }
+    );
+
+    /* -------------------- PURCHASE DETAIL -------------------- */
+    for (const dtl of detail) {
+      await connection.execute(
+        `
+        INSERT INTO TR_AC_DETAIL (
+          doc_no,
+          doc_type,
+          serial_no,
+          ac_code,
+          amount,
+          curr_code,
+          ex_rate,
+          sign_ind,
+          div_code,
+          company_code,
+          lcur_amount
+        ) VALUES (
+          :doc_no,
+          :doc_type,
+          :serial_no,
+          :ac_code,
+          :amount,
+          :curr_code,
+          :ex_rate,
+          :sign_ind,
+          :div_code,
+          :company_code,
+          :lcur_amount
+        )
+        `,
+        {
+          doc_no,
+          doc_type,
+          serial_no: dtl.serial_no,
+          ac_code: dtl.ac_code,
+          amount: dtl.amount,
+          curr_code: dtl.curr_code,
+          ex_rate: dtl.ex_rate,
+          sign_ind: dtl.sign_ind,
+          div_code: dtl.div_code,
+          lcur_amount: dtl.lcur_amount,
+          company_code: req.user.company_code,
+        },
+        { autoCommit: false }
+      );
+    }
+
+    /* -------------------- INVOICE DOC NO -------------------- */
+    const invDocResult = await connection.execute(
+      `
+      SELECT FN_AC_GET_DOC_NO(
+        :company_code,
+        :div_code,
+        :doc_type,
+        TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
+      ) AS INV_NO
+      FROM dual
+      `,
+      {
+        company_code: req.user.company_code,
+        div_code,
+        doc_type: 'INV',
+        doc_date,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const invoice_no = (invDocResult.rows?.[0] as any)?.INV_NO;
+    if (!invoice_no) throw new Error("Failed to generate invoice number");
+
+    /* -------------------- INVOICE DETAIL -------------------- */
+    for (const dtl of detail) {
+      await connection.execute(
+        `
+        INSERT INTO TR_AC_INVDETAIL (
+          company_code,
+          doc_type,
+          doc_no,
+          serial_no,
+          dtl_sr_no,
+          doc_date,
+          ac_code,
+          inv_no,
+          inv_date,
+          due_date,
+          amount,
+          lcur_amount,
+          sign_ind,
+          curr_code,
+          ex_rate,
+          div_code
+        ) VALUES (
+          :company_code,
+          :doc_type,
+          :doc_no,
+          :serial_no,
+          :dtl_sr_no,
+          :doc_date,
+          :ac_code,
+          :inv_no,
+          :inv_date,
+          :due_date,
+          :amount,
+          :lcur_amount,
+          :sign_ind,
+          :curr_code,
+          :ex_rate,
+          :div_code
+        )
+        `,
+        {
+          company_code: req.user.company_code,
+          doc_type,
+          doc_no,
+          serial_no: dtl.serial_no,
+          dtl_sr_no: dtl.serial_no,
+          doc_date,
+          ac_code: dtl.ac_code,
+          inv_no: invoice_no,
+          inv_date: doc_date,
+          due_date: doc_date,
+          amount: dtl.amount,
+          lcur_amount: dtl.amount,
+          sign_ind: dtl.sign_ind ?? 1,
+          curr_code: dtl.curr_code,
+          ex_rate: dtl.ex_rate,
+          div_code: dtl.div_code,
+        },
+        { autoCommit: false }
+      );
+    }
+
+    /* -------------------- COMMIT -------------------- */
+    await connection.commit();
+
+    res.status(201).json({
+      success: true,
+      message: "Purchase and Invoice created successfully",
+      data: {
+        purchase_doc_no: doc_no,
+        invoice_doc_no: invoice_no,
+      },
+    });
+  } catch (err: any) {
+    if (connection) await connection.rollback();
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to create purchase",
+      error: err.message,
+    });
+  } finally {
+    if (connection) await connection.close();
   }
 };
