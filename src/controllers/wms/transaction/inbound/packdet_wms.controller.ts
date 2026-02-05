@@ -2,7 +2,8 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import constants from "../../../../helpers/constants";
 import { IPackDetailEDI } from "../../../../interfaces/wms/transaction/inbound/inboundJobWms.interface";
-import { oracleDb } from "../../../../database/connection";
+import { RequestWithUser } from "../../../../interfaces/common.interface";
+import { TenantManager } from "../../../../database/TenantManager";
 
 // === Safe Utilities ===
 function safeDate(val: any): Date | null {
@@ -76,7 +77,7 @@ export async function insertPackDetailEDI(data: IPackDetailEDI, connection: orac
 }
 
 // ==================== Upsert Handler ====================
-export const upsertPackDetailEDIHandler = async (req: Request, res: Response) => {
+export const upsertPackDetailEDIHandler = async (req: RequestWithUser, res: Response) => {
   let connection: oracledb.Connection | undefined;
   try {
     const records: IPackDetailEDI[] = req.body;
@@ -102,7 +103,16 @@ export const upsertPackDetailEDIHandler = async (req: Request, res: Response) =>
       }
     }
 
-    connection = await oracleDb.getConnection();
+    // Get tenantId from request context or lookup
+    let tenantId = (req as any).tenantId;
+    if (!tenantId) {
+      console.log(`Tenant ID not in request context, looking up for user: ${req.user.loginid}`);
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    console.log('Using tenantId:', tenantId);
+    
+    // Get tenant-specific connection
+    connection = await TenantManager.getConnection(tenantId);
     
     const bindParams: oracledb.BindParameters = { user_id: records[0].user_id };
     
@@ -123,24 +133,45 @@ export const upsertPackDetailEDIHandler = async (req: Request, res: Response) =>
       message: "Pack detail EDI records inserted successfully",
     });
   } catch (error: any) {
-    if (connection) await connection.rollback();
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        console.error('Error during rollback:', rollbackErr);
+      }
+    }
     console.error("Insert TI_PACKDET_EDI Error:", error);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: error.message || "Failed to insert TI_PACKDET_EDI records",
     });
   } finally {
-    if (connection) await connection.close();
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error('Error closing connection:', closeErr);
+      }
+    }
   }
 };
 
 // ==================== Copy EDI to Packdet ====================
-export const copyEDIToPackdetHandler = async (req: Request, res: Response) => {
+export const copyEDIToPackdetHandler = async (req: RequestWithUser, res: Response) => {
   let connection: oracledb.Connection | undefined;
   try {
     const { login_id, job_no, prin_code, company_code } = req.body;
 
-    connection = await oracleDb.getConnection();
+    // Get tenantId from request context or lookup
+    let tenantId = (req as any).tenantId;
+    if (!tenantId) {
+      console.log(`Tenant ID not in request context, looking up for user: ${req.user.loginid}`);
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    console.log('Using tenantId:', tenantId);
+    
+    // Get tenant-specific connection
+    connection = await TenantManager.getConnection(tenantId);
 
     const bindParams: oracledb.BindParameters = { 
       P_loginid: login_id, 
@@ -167,12 +198,18 @@ export const copyEDIToPackdetHandler = async (req: Request, res: Response) => {
       message: error.message || "An error occurred while copying EDI records",
     });
   } finally {
-    if (connection) await connection.close();
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error('Error closing connection:', closeErr);
+      }
+    }
   }
 };
 
 // ==================== Get EDI Packdet ====================
-export const getEDIPackdetHandler = async (req: Request, res: Response) => {
+export const getEDIPackdetHandler = async (req: RequestWithUser, res: Response) => {
   let connection: oracledb.Connection | undefined;
   try {
     const { user_id, company_code, prin_code, job_no } = req.query;
@@ -185,7 +222,16 @@ export const getEDIPackdetHandler = async (req: Request, res: Response) => {
       return;
     }
 
-    connection = await oracleDb.getConnection();
+    // Get tenantId from request context or lookup
+    let tenantId = (req as any).tenantId;
+    if (!tenantId) {
+      console.log(`Tenant ID not in request context, looking up for user: ${req.user.loginid}`);
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    console.log('Using tenantId:', tenantId);
+    
+    // Get tenant-specific connection
+    connection = await TenantManager.getConnection(tenantId);
 
     const bindParams: oracledb.BindParameters = { 
       user_id: String(user_id), 
@@ -224,6 +270,12 @@ export const getEDIPackdetHandler = async (req: Request, res: Response) => {
       message: error.message || 'Failed to fetch EDI pack detail using Oracle SQL',
     });
   } finally {
-    if (connection) await connection.close();
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error('Error closing connection:', closeErr);
+      }
+    }
   }
 };
