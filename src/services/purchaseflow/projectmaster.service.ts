@@ -1,7 +1,5 @@
 import { getRepository } from "../../database/connection";
 import { ProjectMaster } from "../../entity/purchaseflow/projectmaster.entity";
-
-
 export class ProjectMasterService {
   static getProjectMaster(loginid: string, page: number, limit: number): { fetchedData: any[]; totalCount: number; } | PromiseLike<{ fetchedData: any[]; totalCount: number; }> {
     throw new Error("Method not implemented.");

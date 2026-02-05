@@ -1,10 +1,3 @@
-/**
- * TYPEORM MULTI-TENANT AUTO-ROUTER (OPTIONAL HELPERS)
- * 
- * This file is optional - most services will work with just the middleware.
- * Use these helpers only if you need explicit control over repository routing.
- */
-
 import {
   Repository,
   SelectQueryBuilder,
@@ -19,8 +12,6 @@ export function wrapRepositoryForTenant<Entity extends ObjectLiteral>(
   return new Proxy(repository, {
     get(target, prop) {
       const originalMethod = Reflect.get(target, prop);
-
-      // Only intercept data methods
       if (typeof originalMethod === "function" && [
         "find", "findOne", "findOneBy", "count", "save", "update", "delete", "remove"
       ].includes(String(prop))) {

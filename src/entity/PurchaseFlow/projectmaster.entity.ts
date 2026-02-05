@@ -54,3 +54,5 @@ export class ProjectMaster {
   @Column({ name: "CREATED_BY", type: "varchar2", length: 20, nullable: true })
   created_by!: string;
 }
+
+//added
