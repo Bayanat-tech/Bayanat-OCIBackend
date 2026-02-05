@@ -1039,7 +1039,7 @@ export const createChequePaymentDocument = async (
         // Sum outstanding per invoice excluding current document (so we do not double-count existing allocations)
         const outstandingSql = `
           SELECT inv.inv_no,
-                 (SUM(inv.amount_origin * inv.sign_ind) / NULLIF(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END), 0)) AS c_bal_amt_org
+                 NVL((SUM(inv.amount_origin * inv.sign_ind) / NULLIF(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END), 0)), 0) AS c_bal_amt_org
           FROM TR_AC_INVDETAIL inv
           WHERE inv.company_code = :company_code
             AND inv.div_code = :div_code
@@ -1062,7 +1062,22 @@ export const createChequePaymentDocument = async (
           requestedMap[inv.inv_no] = (requestedMap[inv.inv_no] || 0) + amt;
         });
 
+        console.log('Invoice allocation validation debug: invNos=', invNos);
+        console.log('Invoice allocation validation debug: invBinds=', invBinds);
+        console.log('Invoice allocation validation debug: outstanding rows=', outRes.rows);
+        console.log('Invoice allocation validation debug: outstandingMap=', outstandingMap);
+        console.log('Invoice allocation validation debug: requestedMap=', requestedMap);
+
         const errors: string[] = [];
+        const foundInvNos = Object.keys(outstandingMap);
+        const missingInvNos = invNos.filter((n: any) => !foundInvNos.includes(n));
+        if (missingInvNos.length) {
+          missingInvNos.forEach((m: any) => {
+            console.warn(`Invoice allocation validation: invoice ${m} not found in TR_AC_INVDETAIL or has no outstanding rows`);
+            errors.push(`Invoice ${m} not found or has no outstanding balance (treated as 0)`);
+          });
+        }
+
         for (const invNo of Object.keys(requestedMap)) {
           const requested = requestedMap[invNo] || 0;
           const avail = outstandingMap[invNo] ?? 0;
