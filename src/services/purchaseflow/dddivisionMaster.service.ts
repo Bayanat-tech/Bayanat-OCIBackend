@@ -1,6 +1,6 @@
 
 import { getRepository } from "../../database/connection";
-import { DivisionMaster } from "../../entity/purchaseflow/divisionmaster_pf.entity";
+import { DivisionMaster } from "../../entity/PurchaseFlow/divisionmaster_pf.entity";
 
 export interface Master<T> {
   fetchedData: T[];

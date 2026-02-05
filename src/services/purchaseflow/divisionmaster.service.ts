@@ -1,6 +1,6 @@
 import { getRepository, oracleDb } from "../../database/connection";
 import { QueryExecutor } from "../../database/QueryExecutor";
-import { DivisionMaster } from "../../entity/purchaseflow/divisionmaster_pf.entity";
+import { DivisionMaster } from "../../entity/PurchaseFlow/divisionmaster_pf.entity";
 // import { DivisionMaster } from "../../entity/Purchaseflow/divisionmaster_pf.entity";
 import constants from "../../helpers/constants";
 

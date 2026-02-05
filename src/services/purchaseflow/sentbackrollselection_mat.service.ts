@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection"; 
-import { MSPSFlowRoleMapping } from "../../entity/purchaseflow/MSPSFlowRoleMapping .entity";
+import { MSPSFlowRoleMapping } from "../../entity/PurchaseFlow/MSPSFlowRoleMapping .entity";
 
 
 export interface SentBackRole {

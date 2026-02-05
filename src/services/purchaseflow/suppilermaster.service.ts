@@ -1,6 +1,6 @@
 import { getRepository, oracleDb } from "../../database/connection";
 import { QueryExecutor } from "../../database/QueryExecutor";
-import { SupplierMaster } from "../../entity/purchaseflow/suppliermaster_pf.entity";
+import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
 
 export class SupplierMasterService {
   private static getRepository() {

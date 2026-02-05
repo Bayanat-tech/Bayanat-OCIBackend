@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import oracledb from "oracledb";
 
 export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): Promise<void> => {
-  let connection;
-
   try {
     const {
       parameter,
@@ -30,16 +29,8 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
       return;
     }
 
-    // console.log(`value of Goal_delete-----${code1},
-    //   ${code2},
-    //   ${code3},
-    //   ${code4},
-    //   ${code5}`);
-    
-    connection = await oracledb.getConnection();
-
-    // Call procedure to get dynamic SQL
-    const result = await connection.execute(
+    // Call procedure to get dynamic SQL (Tenant-Aware)
+    const result = await QueryExecutor.executeRawQuery(
       `
       DECLARE
         v_sql VARCHAR2(32767);
@@ -101,8 +92,8 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
     console.log("Generated DELETE SQL:", rawSql);
 
     try {
-      // Execute the DELETE SQL
-      await connection.execute(rawSql, [], { autoCommit: true });
+      // Execute the DELETE SQL (Tenant-Aware)
+      await QueryExecutor.executeRawQuery(rawSql, []);
 
       res.json({
         success: true,
@@ -120,13 +111,5 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
   } catch (error: any) {
     console.error("Oracle Error:", error);
     res.status(500).json({ success: false, message: "Failed to execute procedure", details: error.message });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeErr) {
-        console.error("Failed to close Oracle connection:", closeErr);
-      }
-    }
   }
 };

@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { ProductMaster } from "../../entity/purchaseflow/prodmaster.entity";
+import { ProductMaster } from "../../entity/PurchaseFlow/prodmaster.entity";
 
 
 export interface Master<T> {

@@ -20,9 +20,9 @@
 
 
 import { getRepository } from "../../database/connection";
-import { MSPSFlowRoleMapping } from "../../entity/purchaseflow/MSPSFlowRoleMapping .entity";
+import { MSPSFlowRoleMapping } from "../../entity/PurchaseFlow/MSPSFlowRoleMapping .entity";
 // import { MSPSFlowRoleMapping } from "../../entity/purchaseflow/MSPSFlowRoleMapping.entity";
-import { MSPSRole } from "../../entity/purchaseflow/MSPSRole.entity";
+import { MSPSRole } from "../../entity/PurchaseFlow/MSPSRole.entity";
 
 export interface SentBackRole {
   role_name: string;

@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { DropdownProjectmaster } from "../../entity/purchaseflow/dropdownprojectmaster.entity";
+import { DropdownProjectmaster } from "../../entity/PurchaseFlow/dropdownprojectmaster.entity";
 import { Master } from "./dddivisionMaster.service";
 
 

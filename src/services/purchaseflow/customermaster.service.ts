@@ -1,6 +1,6 @@
 import { getRepository, oracleDb } from "../../database/connection";
 import { QueryExecutor } from "../../database/QueryExecutor";
-import { CustomerMaster } from "../../entity/purchaseflow/customermaster.entity";
+import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
 import constants from "../../helpers/constants";
 
 export class CustomerMasterService {

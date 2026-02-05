@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { ItemmasterPf } from "../../entity/purchaseflow/Itemmaster_pf.entity";
+import { ItemmasterPf } from "../../entity/PurchaseFlow/Itemmaster_pf.entity";
 import { IItemtmaster } from "../../interfaces/Purchaseflow/Purucahseflow.interface";
 
 export interface Master<T> {

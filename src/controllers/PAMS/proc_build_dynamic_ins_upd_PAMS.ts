@@ -1,12 +1,11 @@
 import { Request, Response } from "express";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import oracledb from "oracledb";
 
 export const proc_build_dynamic_ins_upd_PAMS = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  let connection;
-
   try {
     const {
       parameter,
@@ -64,10 +63,8 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
-
-    // Call procedure to build INSERT / UPDATE SQL
-    const result = await connection.execute(
+    // Call procedure to build INSERT / UPDATE SQL (Tenant-Aware)
+    const result = await QueryExecutor.executeRawQuery(
       `
       DECLARE
         v_sql CLOB;
@@ -164,8 +161,8 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
 
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
 
-    // Execute INSERT / UPDATE
-    await connection.execute(dynamicSql, [], { autoCommit: true });
+    // Execute INSERT / UPDATE (Tenant-Aware)
+    await QueryExecutor.executeRawQuery(dynamicSql, []);
 
     res.json({
       success: true,
@@ -179,13 +176,5 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
       message: "Failed to execute insert/update",
       details: error.message
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (err) {
-        console.error("Connection close error:", err);
-      }
-    }
   }
 };

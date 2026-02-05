@@ -1,15 +1,15 @@
 import { getRepository } from "../../database/connection";
-import { CostMaster } from "../../entity/purchaseflow/costmaster.entity";
+import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 
 // import { CostMaster } from "../../../src/entity/PurchaseFlow/costmaster.entity"
 // import { CostMaster } from "../../entity/Purchaseflow/costmaster.entity";
 // import { CostMaster } from "../../entity/purchaseflow/costmaster.entity";
-import { CustomerMaster } from "../../entity/purchaseflow/customermaster.entity";
-import { DdCurrency } from "../../entity/purchaseflow/ddcurrency_pf.entity";
-import { ItemmasterPf } from "../../entity/purchaseflow/Itemmaster_pf.entity";
-import { MaterialCategoryMaster } from "../../entity/purchaseflow/materialcategary.entity";
-import { Divisionmaster } from "../../entity/purchaseflow/Pf_divisionmaster.entity";
-import { SupplierMaster } from "../../entity/purchaseflow/suppliermaster_pf.entity";
+import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
+import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
+import { ItemmasterPf } from "../../entity/PurchaseFlow/Itemmaster_pf.entity";
+import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
+import { Divisionmaster } from "../../entity/PurchaseFlow/Pf_divisionmaster.entity";
+import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
  
 export interface Master<T> {
   fetchedData: T[];
