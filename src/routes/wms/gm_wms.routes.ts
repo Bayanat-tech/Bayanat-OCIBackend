@@ -49,7 +49,7 @@ import {
   deleteProducts,
 } from "../../controllers/wms/product_wms.controller";
 
-router.post("/updateSiteMaster", updateSiteMaster);
+
 
 // Import account setup controllers
 import {
@@ -503,6 +503,10 @@ router.get("/locationtype", getAllLocationTypes); // Get all location types as J
 router.post("/customer", CustomerMasterController.createCustomerMaster); 
 router.put("/customer", CustomerMasterController.updateCustomerMaster); 
 
-export default router;
+
 router.post("/locationtype/bulk", createBulkLocationType); // Create multiple location types
 router.get("/locationtype", getAllLocationTypes); // Get all location types as JSON
+
+router.post("/siteMaster", updateSiteMaster); 
+
+export default router;

@@ -1,10 +1,40 @@
 import oracledb from "oracledb";
-import { RequestHandler } from "express";
+import { RequestHandler, Response } from "express";
 
 const getValue = (obj: any, key: string) =>
   obj?.[key] ?? obj?.[key.toLowerCase()] ?? obj?.[key.toUpperCase()] ?? null;
 
-export const updateSiteMaster: RequestHandler = async (req, res) => {
+interface SiteRow {
+  SITE_CODE: string | null;
+  SITE_IND: string | null;
+  SITE_TYPE: string | null;
+  SITE_NAME: string | null;
+  CHARGE_IND: string | null;
+  LOC_TYPE: string | null;
+  COMPANY_CODE: string | null;
+  USER_ID: string | null;
+  PRIN_CODE: string | null;
+  GROUP_CODE: string | null;
+  SITE_ADDR1: string | null;
+  SITE_ADDR2: string | null;
+  SITE_ADDR3: string | null;
+  SITE_ADDR4: string | null;
+  CITY: string | null;
+  COUNTRY_CODE: string | null;
+  CONTACT_NAME: string | null;
+  TEL_NO: string | null;
+  SITE_CLASS: string | null;
+  STATUS: string | null;
+  WH_CODE: string | null;
+  PICKING_OUT: string | null;
+  SITE_VOLUME: string | null;
+  INC_STORAGE: string | null;
+  DIV_CODE: string | null;
+  SITE_RPT_NAME: string | null;
+  USABLE_LOC: string | null;
+}
+
+export const updateSiteMaster: RequestHandler = async (req, res: Response) => {
   let connection;
 
   try {
@@ -20,7 +50,7 @@ export const updateSiteMaster: RequestHandler = async (req, res) => {
 
     connection = await oracledb.getConnection();
 
-    const siteRows = rows.map((s: any) => ({
+    const siteRows: SiteRow[] = rows.map((s: any) => ({
       SITE_CODE: getValue(s, "SITE_CODE"),
       SITE_IND: getValue(s, "SITE_IND"),
       SITE_TYPE: getValue(s, "SITE_TYPE"),
@@ -65,7 +95,10 @@ export const updateSiteMaster: RequestHandler = async (req, res) => {
 
   } catch (err) {
     console.error("updateSiteMaster error:", err);
-    res.status(500).json({ error: "Site master update failed" });
+    res.status(500).json({ 
+      error: "Site master update failed",
+      details: err instanceof Error ? err.message : "Unknown error"
+    });
   } finally {
     if (connection) await connection.close();
   }
