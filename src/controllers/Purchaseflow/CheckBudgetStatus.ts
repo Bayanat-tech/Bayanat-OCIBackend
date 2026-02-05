@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../../src/database/connection";
+import { oracleDb } from "../../database/connection";
 
 /**
  * Check Budget Status using Oracle function FUN_CHECK_PR_EXCEED

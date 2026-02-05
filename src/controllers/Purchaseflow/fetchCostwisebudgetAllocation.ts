@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../../src/database/connection";
+import { oracleDb } from "../../database/connection";
 
 /**
  * Fetches cost-wise budget allocation data based on filters

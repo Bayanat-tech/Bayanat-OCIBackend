@@ -49,6 +49,8 @@ import {
   deleteProducts,
 } from "../../controllers/wms/product_wms.controller";
 
+router.post("/updateSiteMaster", updateSiteMaster);
+
 // Import account setup controllers
 import {
   createAccountsetup, // For creating account setup
@@ -223,6 +225,7 @@ import { CustomerMasterController } from "../../controllers/wms/customer_wms.con
 import { BillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
 import { checkPassword } from "../../middleware/checkPassword";
 import { createPrincipalActivity } from "../../controllers/wms/createPrincipalActivity";
+import { updateSiteMaster } from "../../controllers/wms/ms_site_wms_controller";
 
 // Country Routes - Handle country management
 router.post("/country", createCountry as unknown as express.RequestHandler); // Create new country
