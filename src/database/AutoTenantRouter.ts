@@ -12,12 +12,6 @@ import {
 } from "typeorm";
 import { TenantManager } from "./TenantManager";
 import { getCurrentTenantId } from "../middleware/tenantContext.middleware";
-import * as oracledb from "oracledb";
-
-/**
- * Optional: Wrap repository for explicit tenant awareness
- * Use if you want extra control in a service
- */
 export function wrapRepositoryForTenant<Entity extends ObjectLiteral>(
   repository: Repository<Entity>,
   tableName: string
