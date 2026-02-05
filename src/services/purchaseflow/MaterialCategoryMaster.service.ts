@@ -1,4 +1,4 @@
-import { getRepository, oracleDb } from "../../database/connection";import { QueryExecutor } from "../../database/QueryExecutor";import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
+import { getRepository, oracleDb } from "../../database/connection";import { QueryExecutor } from "../../database/QueryExecutor";import { MaterialCategoryMaster } from "../../entity/purchaseflow/materialcategary.entity";
 import constants from "../../helpers/constants";
 
 export class MaterialCategoryService {

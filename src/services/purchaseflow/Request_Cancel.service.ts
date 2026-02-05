@@ -2,7 +2,7 @@ import { Repository } from "typeorm";
 
 import { getRepository } from "../../database/connection";
 import { ensureCorrectSchema } from "../../database/TypeORMTenantInterceptor";
-import { PRRejected } from "../../entity/PurchaseFlow/PRRejected.entity";
+import { PRRejected } from "../../entity/purchaseflow/PRRejected.entity";
 
 export interface FetchResult<T> {
   fetchedData: T[];

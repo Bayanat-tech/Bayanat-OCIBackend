@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
+import { SupplierMaster } from "../../entity/purchaseflow/suppliermaster_pf.entity";
 
 export interface Master<T> {
   fetchedData: T[];

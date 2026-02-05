@@ -5,7 +5,7 @@ import { tenantContextMiddleware } from "./src/middleware/tenantContext.middlewa
 import passport from "passport";
 
 const app = express();
-console.log("🔥 index.ts loaded");
+console.log("index.ts loaded");
 
 app.use(cors());
 
@@ -121,13 +121,13 @@ async function startServer() {
 
     console.log("Initializing TypeORM service...");
     await TypeORMService.initialize();
-    console.log("✅ TypeORM initialized successfully");
+    console.log("TypeORM initialized successfully");
 
     try {
       console.log("Initializing passport strategies...");
       require("./src/utils/passport");
       app.use(passport.initialize());
-      console.log("✅ Passport initialized");
+      console.log("Passport initialized");
     } catch (err) {
       console.error("Failed to initialize passport strategies:", err);
       throw err;
@@ -136,19 +136,19 @@ async function startServer() {
     // try {
     //   const { startSchedulers } = require("./src/scheduler/startSchedulers");
     //   await startSchedulers();
-    //   console.log("✅ Schedulers initialized");
+    //   console.log("Schedulers initialized");
     // } catch (err) {
-    //   console.warn("⚠️ Schedulers failed to initialize (continuing):", err);
+    //   console.warn("Schedulers failed to initialize (continuing):", err);
     // }
     
     // Start server
     console.log(`Listening on port ${PORT}...`);
     app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log("🔗 Health check: http://localhost:" + PORT + "/health");
+      console.log(`Server running on port ${PORT}`);
+      console.log("Health check: http://localhost:" + PORT + "/health");
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
+    console.error("Failed to start server:", error);
     process.exit(1);
   }
 }

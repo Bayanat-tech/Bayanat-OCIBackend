@@ -14,16 +14,16 @@ export async function ensureCorrectSchema(): Promise<void> {
   const tenantId = getCurrentTenantId();
 
   if (!tenantId) {
-    console.log("[ensureCorrectSchema] ⚠️ No tenant context found in AsyncLocalStorage, checking fallback...");
+    console.log("[ensureCorrectSchema] [WARN] No tenant context found in AsyncLocalStorage, checking fallback...");
     const globalContext = (global as any).__currentRequestContext;
     if (globalContext?.tenantId) {
-      console.log(`[ensureCorrectSchema] ✅ Found context in global: ${globalContext.tenantId}`);
+      console.log(`[ensureCorrectSchema] [OK] Found context in global: ${globalContext.tenantId}`);
       const tenantConfig = await TenantManager.getTenantConfig(globalContext.tenantId);
       const schemaName = tenantConfig.SCHEMA_NAME;
       const connection = await AppDataSource.query(
         `ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`
       );
-      console.log(`[ensureCorrectSchema] ✅ Schema switched to ${schemaName} (from global fallback)`);
+      console.log(`[ensureCorrectSchema] [OK] Schema switched to ${schemaName} (from global fallback)`);
       return;
     }
     
@@ -51,7 +51,7 @@ export async function ensureCorrectSchema(): Promise<void> {
       `ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`
     );
 
-    console.log(`[ensureCorrectSchema] ✅ Schema switched to ${schemaName}`);
+    console.log(`[ensureCorrectSchema] [OK] Schema switched to ${schemaName}`);
   } catch (error) {
     console.error("[ensureCorrectSchema] Error switching schema:", error);
     throw error;
@@ -70,7 +70,7 @@ export async function ensureCorrectSchemaOnQueryRunner(queryRunner: any): Promis
       const schemaName = tenantConfig.SCHEMA_NAME;
       try {
         await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
-        console.log(`[ensureCorrectSchemaOnQueryRunner] ✅ Schema switched to ${schemaName} (from global fallback)`);
+        console.log(`[ensureCorrectSchemaOnQueryRunner] [OK] Schema switched to ${schemaName} (from global fallback)`);
       } catch (err) {
         console.warn(`[ensureCorrectSchemaOnQueryRunner] Failed to switch schema on QueryRunner (global fallback):`, err);
       }
@@ -83,7 +83,7 @@ export async function ensureCorrectSchemaOnQueryRunner(queryRunner: any): Promis
     const tenantConfig = await TenantManager.getTenantConfig(tenantId!);
     const schemaName = tenantConfig.SCHEMA_NAME;
     await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
-    console.log(`[ensureCorrectSchemaOnQueryRunner] ✅ Schema switched to ${schemaName} for tenant ${tenantId}`);
+    console.log(`[ensureCorrectSchemaOnQueryRunner] [OK] Schema switched to ${schemaName} for tenant ${tenantId}`);
   } catch (error) {
     console.error("[ensureCorrectSchemaOnQueryRunner] Error switching schema on QueryRunner:", error);
     throw error;

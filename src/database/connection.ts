@@ -154,7 +154,6 @@ class TypeORMService {
               const { ensureCorrectSchema } = require("./TypeORMTenantInterceptor");
               if (ensureCorrectSchema) await ensureCorrectSchema();
             } catch (err) {
-              // If schema enforcement fails, log and continue to surface original error later
               console.warn("ensureCorrectSchema failed:", err);
             }
             return await value.apply(target, args);
@@ -168,16 +167,16 @@ class TypeORMService {
   static async ensureConnection(): Promise<void> {
     try {
       if (!AppDataSource.isInitialized) {
-        console.log("🔄 Connection lost - reinitializing...");
+        console.log("Connection lost - reinitializing...");
         this.initialized = false;
         this.initPromise = null;
         await this.initialize();
-        console.log("✅ Connection restored");
+        console.log(" Connection restored");
         return;
       }
       await AppDataSource.query("SELECT 1 FROM DUAL");
     } catch (error) {
-      console.log("🔄 Connection health check failed - reconnecting...");
+      console.log("Connection health check failed - reconnecting...");
       this.initialized = false;
       this.initPromise = null;
       
@@ -188,7 +187,7 @@ class TypeORMService {
       }
       
       await this.initialize();
-      console.log("✅ Connection restored after health check");
+      console.log("Connection restored after health check");
     }
   }
 
@@ -337,13 +336,13 @@ export const initializeAllConnections = async (): Promise<void> => {
     // 1. Initialize Tenant Manager FIRST
     console.log("Initializing Tenant Manager...");
     if (process.env.EMERGENCY_SKIP_TENANT_INIT === '1') {
-      console.warn("⚠️ EMERGENCY_SKIP_TENANT_INIT=1 — skipping TenantManager.initialize() (EMERGENCY MODE)");
+      console.warn("EMERGENCY_SKIP_TENANT_INIT=1 — skipping TenantManager.initialize() (EMERGENCY MODE)");
     } else {
       try {
         await TenantManager.initialize();
-        console.log("✅ Tenant Manager initialized");
+        console.log(" Tenant Manager initialized");
       } catch (err) {
-        console.warn("⚠️ TenantManager.initialize() failed (continuing startup):", err);
+        console.warn(" TenantManager.initialize() failed (continuing startup):", err);
       }
     }
 
@@ -351,9 +350,9 @@ export const initializeAllConnections = async (): Promise<void> => {
     console.log("Initializing legacy Oracle connection...");
     try {
       await oracleDb.authenticate();
-      console.log("✅ Legacy database connection ready");
+      console.log("Legacy database connection ready");
     } catch (legacyError) {
-      console.warn("⚠️ Legacy Oracle connection failed (app will continue):", legacyError instanceof Error ? legacyError.message : String(legacyError));
+      console.warn(" Legacy Oracle connection failed (app will continue):", legacyError instanceof Error ? legacyError.message : String(legacyError));
       // Continue without legacy connection
     }
 
@@ -361,15 +360,15 @@ export const initializeAllConnections = async (): Promise<void> => {
     console.log("Initializing TypeORM...");
     try {
       await TypeORMService.initialize();
-      console.log("✅ TypeORM connection ready");
+      console.log(" TypeORM connection ready");
     } catch (typeOrmError) {
-      console.warn("⚠️ TypeORM initialization failed (continuing without it):", typeOrmError instanceof Error ? typeOrmError.message : String(typeOrmError));
+      console.warn("TypeORM initialization failed (continuing without it):", typeOrmError instanceof Error ? typeOrmError.message : String(typeOrmError));
       // Continue without TypeORM - application can still work with raw Oracle
     }
 
-    console.log("✅ Database initialization completed (some services may be unavailable)");
+    console.log("Database initialization completed (some services may be unavailable)");
   } catch (error) {
-    console.error("❌ Critical database initialization failed:", error);
+    console.error("Critical database initialization failed:", error);
     throw error;
   }
 };

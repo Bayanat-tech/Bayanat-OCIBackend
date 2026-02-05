@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
+import { DdCurrency } from "../../entity/purchaseflow/ddcurrency_pf.entity";
 
 export interface Master<T> {
   fetchedData: T[];

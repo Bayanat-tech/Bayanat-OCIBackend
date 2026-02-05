@@ -1,5 +1,5 @@
 import { getRepository } from "../../database/connection";
-import { VProjectMaster } from "../../entity/PurchaseFlow/projectmaster_pf_view.entity";
+import { VProjectMaster } from "../../entity/purchaseflow/projectmaster_pf_view.entity";
 
 export interface Master<T> {
   fetchedData: T[];

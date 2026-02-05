@@ -1,5 +1,5 @@
  import { getRepository } from "../../database/connection";
-import { UomMaster } from "../../entity/PurchaseFlow/uommaster_pf.entity";
+import { UomMaster } from "../../entity/purchaseflow/uommaster_pf.entity";
 
 export interface Master<T> {
   fetchedData: T[];
