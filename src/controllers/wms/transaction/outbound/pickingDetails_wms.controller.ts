@@ -3,6 +3,7 @@ import { Request } from "express";
 import * as fastCsv from "fast-csv";
 import { oracleDb } from "../../../../database/connection";
 import { QueryExecutor } from "../../../../database/QueryExecutor";
+import { TenantManager } from "../../../../database/TenantManager";
 import constants from "../../../../helpers/constants";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import {
@@ -204,6 +205,7 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
     }
 
     const company_code = (req.user as any).company_code;
+    const loginid = (req.user as any).loginid;
 
     // ---- FIX: format confirm date for Oracle ----
     const confirmDateObj = confirm_date
@@ -218,9 +220,12 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
     let toggledPackets = 0;
 
-    await oracleDb.withTransaction(async (conn: any) => {
-      connection = conn;
+    // Get tenant-specific connection
+    const tenantId = await TenantManager.getTenantForUser(loginid);
+    connection = await TenantManager.getConnection(tenantId);
+    console.log("✅ DEBUG: Got tenant-specific connection for tenantId:", tenantId);
 
+    try {
       const updateSql = `
         UPDATE TO_BATCH
         SET selected = 'Y'
@@ -243,22 +248,22 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
       if (toggledPackets > 0) {
         // ---- FIXED procedure call ----
-       await QueryExecutor.execMaybe(
-  `BEGIN
-     SP_PICK_CONFIRM(
-       :vs_company_code,
-       :vs_principal_code,
-       :vs_job_no,
-       SYSDATE
-     );
-   END;`,
-  {
-    vs_company_code: { val: company_code },
-    vs_principal_code: { val: prin_code },
-    vs_job_no: { val: job_no }
-  },
-  connection
-);
+        await QueryExecutor.execMaybe(
+          `BEGIN
+             SP_PICK_CONFIRM(
+               :vs_company_code,
+               :vs_principal_code,
+               :vs_job_no,
+               SYSDATE
+             );
+           END;`,
+          {
+            vs_company_code: { val: company_code },
+            vs_principal_code: { val: prin_code },
+            vs_job_no: { val: job_no }
+          },
+          connection
+        );
 
         // Unselect after procedure call
         const unselectSql = `
@@ -279,7 +284,14 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
           connection
         );
       }
-    });
+
+      await connection.commit();
+    } catch (txnErr) {
+      if (connection) {
+        await connection.rollback();
+      }
+      throw txnErr;
+    }
 
     res.status(200).json({
       success: true,
@@ -295,6 +307,14 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
       success: false,
       message: "Failed to process pick order.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 };
 
@@ -302,6 +322,8 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
 // Function to pick an order
 export const pickOrder = async (req: Request, res: Response): Promise<void> => {
+  let connection: any;
+
   try {
     // DEBUG: Log incoming request data
     console.log("=== PICK ORDER DEBUG START ===");
@@ -355,12 +377,18 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
     }
 
     const company_code = (req.user as any).company_code;
+    const loginid = (req.user as any).loginid;
     let toggledPackets = 0;
 
     console.log("🏢 DEBUG: Company Code:", company_code);
     console.log("🔄 DEBUG: Starting transaction...");
 
-    await oracleDb.withTransaction(async (connection: any) => {
+    // Get tenant-specific connection
+    const tenantId = await TenantManager.getTenantForUser(loginid);
+    connection = await TenantManager.getConnection(tenantId);
+    console.log("✅ DEBUG: Got tenant-specific connection for tenantId:", tenantId);
+
+    try {
       // DEBUG: Log before update
       console.log("🗄️ DEBUG: Database connection established");
 
@@ -391,7 +419,7 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
         console.log("🔧 DEBUG: Bind Parameters:");
         console.log(JSON.stringify(bindParams, null, 2));
 
-const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connection);
+        const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connection);
         toggledPackets = updateResult.rowsAffected || 0;
         
         console.log("✅ DEBUG: UPDATE RESULT:");
@@ -471,9 +499,17 @@ const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connec
       }
       
       console.log("🏁 DEBUG: Transaction operations completed");
-    });
 
-    console.log("✅ DEBUG: Transaction committed successfully");
+      await connection.commit();
+      console.log("✅ DEBUG: Transaction committed successfully");
+
+    } catch (txnErr) {
+      if (connection) {
+        await connection.rollback();
+      }
+      throw txnErr;
+    }
+
     console.log("📊 DEBUG: Final toggledPackets:", toggledPackets);
 
     const responseMessage = toggledPackets > 0
@@ -514,6 +550,14 @@ const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connec
       success: false,
       message: "Failed to process pick order.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 };
 
@@ -636,6 +680,8 @@ export const exportPickingStockDeatils = async (
 };
 
 export const oubcancelPick = async (req: Request, res: Response): Promise<void> => {
+  let connection: any;
+
   try {
     const { job_no } = req.params;
     const { prin_code, freeze } = req.query;
@@ -658,9 +704,15 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
     }
 
     const company_code = (req.user as any).company_code;
+    const loginid = (req.user as any).loginid;
     let toggledPackets = 0;
 
-    await oracleDb.withTransaction(async (connection: any) => {
+    // Get tenant-specific connection
+    const tenantId = await TenantManager.getTenantForUser(loginid);
+    connection = await TenantManager.getConnection(tenantId);
+    console.log("✅ DEBUG: Got tenant-specific connection for tenantId:", tenantId);
+
+    try {
       // Handle array binding for IN clause
       if (serial_no.length > 0) {
         const placeholders = serial_no.map((_, i) => `:serial_no_${i}`).join(',');
@@ -723,7 +775,15 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
           await QueryExecutor.execMaybe(unselectSql, bindParams, connection);
         }
       }
-    });
+
+      await connection.commit();
+
+    } catch (txnErr) {
+      if (connection) {
+        await connection.rollback();
+      }
+      throw txnErr;
+    }
 
     res.status(200).json({
       success: true,
@@ -738,5 +798,13 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
       success: false,
       message: "Failed to process pick cancel.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 };
