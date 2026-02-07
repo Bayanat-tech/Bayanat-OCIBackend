@@ -796,6 +796,13 @@ SELECT_AT_LEAST_ONE_SALESMAN: "SELECT AT LEAST ONE SALESMAN",
     ORACLE_CONNECTION_STRING: String(process.env.ORACLE_CONNECTION_STRING),
     ORACLE_INSTANT_CLIENT_PATH: String(process.env.ORACLE_INSTANT_CLIENT_PATH),
   },
+  
+  // QR Code Validation Database (Separate Schema - TID0004)
+  QR_DB: {
+    USER: String(process.env.QR_ORACLE_USER || "TID0004"),
+    PASSWORD: String(process.env.QR_ORACLE_PASSWORD),
+    CONNECTION_STRING: String(process.env.QR_ORACLE_CONNECTION_STRING),
+  },
   STATUS_CODES: {
     OK: 200,
     CREATED: 201,
