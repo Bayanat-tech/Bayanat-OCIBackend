@@ -17,7 +17,7 @@
 
 import express from "express";
 
-import { proc_build_dynamic_ins_upd_common } from "../../controllers/common/common_contoller";
+import { proc_build_dynamic_ins_upd_common ,proc_build_dynamic_ins_upd_column90} from "../../controllers/common/common_contoller";
 import { proc_build_dynamic_sql_common ,proc_build_dynamic_del_common} from "../../controllers/common/common_contoller";
 
 
@@ -30,6 +30,11 @@ router.post(
 );
 
 // INSERT / UPDATE  ✅ REQUIRED
+router.post(
+  "/proc_build_dynamic_ins_upd_column90",
+  proc_build_dynamic_ins_upd_column90
+);
+
 router.post(
   "/proc_build_dynamic_ins_upd_common",
   proc_build_dynamic_ins_upd_common
