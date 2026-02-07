@@ -1141,7 +1141,7 @@ export const saveFile = async (
       // Check for duplicate entry
       const duplicateCheckQuery = `
         SELECT COUNT(*) AS COUNT
-        FROM UPLOADED_FILES_DLTS
+        FROM UPLOADED_FILES_DLTS_OCIAWS
         WHERE request_number = :request_number AND org_file_name = :org_file_name
       `;
 
@@ -1159,7 +1159,7 @@ export const saveFile = async (
 
       // Insert new file record
       const query = `
-        INSERT INTO UPLOADED_FILES_DLTS (
+        INSERT INTO UPLOADED_FILES_DLTS_OCIAWS (
           company_code, request_number, file_name, extensions, org_file_name, 
           aws_file_locn, flow_level, modules, updated_by, created_by, user_file_name, created_at, updated_at
         ) VALUES (
@@ -1203,7 +1203,7 @@ export const saveFile = async (
         SELECT SR_NO
         FROM (
           SELECT SR_NO
-          FROM UPLOADED_FILES_DLTS
+          FROM UPLOADED_FILES_DLTS_OCIAWS
           WHERE request_number = :request_number AND org_file_name = :org_file_name
           ORDER BY created_at DESC
         )

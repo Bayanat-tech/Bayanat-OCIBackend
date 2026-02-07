@@ -5,8 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from "typeorm";
-
-@Entity("UPLOADED_FILES_DLTS")
+@Entity("UPLOADED_FILES_DLTS_OCIAWS")
 export class FilesPFEntity {
   @Column({ name: "COMPANY_CODE", length: 7, nullable: true })
   companyCode: string;
@@ -25,6 +24,9 @@ export class FilesPFEntity {
 
   @Column({ name: "AWS_FILE_LOCN", length: 500, nullable: true })
   awsFileLocn: string;
+
+  @Column({ name: "S3_KEY", length: 1000, nullable: true })
+  s3Key: string;
 
   @Column({ name: "FLOW_LEVEL", type: "number", precision: 3, nullable: true })
   flowLevel: number;

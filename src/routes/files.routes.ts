@@ -16,6 +16,8 @@ import {
   deleteEmployeeFiles,
   getFilesBySrNo,
   getAllVendorFiles,
+  getPFFilesPresignedUrls,
+  generatePresignedUrlForFile,
 } from "../controllers/files.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import {
@@ -23,6 +25,7 @@ import {
   uploadPFToS3,
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
+  getAWSPresignedUrl,
 } from "../services/ociUpload.service";
 
 const router = express.Router();
@@ -125,6 +128,13 @@ router.post(
 );
 
 router.post(
+  "/getPresignedUrl",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAWSPresignedUrl
+);
+
+router.post(
   "/uploadVendorAttachment",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
@@ -166,6 +176,21 @@ router.delete(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   deleteEmployeeFiles
+);
+
+// Presigned URL endpoints for secure AWS S3 file access
+router.get(
+  "/presignedUrls/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getPFFilesPresignedUrls
+);
+
+router.post(
+  "/generatePresignedUrl",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  generatePresignedUrlForFile
 );
 
 export default router;

@@ -5,6 +5,7 @@ import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
 import { oracleDb } from "../database/connection";
 import { FilesPFService } from "../services/filesPF.service";
+import { generatePresignedUrl, extractS3KeyFromUrl, generatePresignedUrlBatch, getS3KeyFromRecord } from "../services/presignedUrlHelper";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
@@ -783,6 +784,156 @@ export const deleteEmployeeFiles = async (
     });
   } catch (error: any) {
     console.error("Error in deleteHriles:", error);
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * Get presigned URLs for PF files (for secure access)
+ * Frontend can use these temporary URLs to download files
+ * Works with both old (public URL) and new (S3_KEY) formats
+ */
+export const getPFFilesPresignedUrls = async (
+  res: Response
+): Promise<void> => {
+  try {
+    const { request_number } = req.params;
+    const { modules } = req.query;
+
+    if (!request_number) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "request_number is required",
+      });
+      return;
+    }
+
+    const conditions =
+      modules === "IMPORT"
+        ? { modules, request_number }
+        : { company_code: req.user.company_code, request_number };
+
+    const files = await filesPFService.findAll(conditions);
+
+    if (!files || files.length === 0) {
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        data: [],
+        message: "No files found",
+      });
+      return;
+    }
+
+    // Generate presigned URLs for each file
+    const filesWithPresignedUrls = await Promise.all(
+      files.map(async (file: any) => {
+        try {
+          // Get S3 key from record (supports both old and new formats)
+          const s3Key = getS3KeyFromRecord(file);
+          
+          if (!s3Key) {
+            return {
+              ...file,
+              presignedUrl: null,
+              error: "Failed to extract S3 key from file record",
+            };
+          }
+
+          const presignedUrl = await generatePresignedUrl(s3Key, 3600);
+
+          return {
+            ...file,
+            presignedUrl,
+            publicUrl: file.awsFileLocn, 
+          };
+        } catch (error) {
+          console.error(`Error generating presigned URL for file: ${file.fileName}`, error);
+          return {
+            ...file,
+            presignedUrl: null,
+            error: "Failed to generate presigned URL",
+          };
+        }
+      })
+    );
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: filesWithPresignedUrls,
+      message: "Files with presigned URLs retrieved successfully",
+    });
+  } catch (error: any) {
+    console.error("Error in getPFFilesPresignedUrls:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to retrieve files with presigned URLs",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Generate presigned URL on demand for a single file
+ * Supports both S3_KEY and public URL formats
+ */
+export const generatePresignedUrlForFile = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const { publicUrl, s3Key } = req.body;
+
+    let finalS3Key: string | null = null;
+
+    // If S3_KEY is provided, use it directly
+    if (s3Key) {
+      finalS3Key = s3Key;
+    }
+    // Otherwise, extract from public URL
+    else if (publicUrl) {
+      try {
+        finalS3Key = extractS3KeyFromUrl(publicUrl);
+      } catch (error) {
+        res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+          success: false,
+          message: "Invalid public URL format",
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return;
+      }
+    } else {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Either publicUrl or s3Key is required",
+      });
+      return;
+    }
+
+    if (!finalS3Key) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Failed to extract S3 key",
+      });
+      return;
+    }
+
+    const presignedUrl = await generatePresignedUrl(finalS3Key, 3600); // 1 hour expiration
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: {
+        presignedUrl,
+        expiresIn: 3600, // 1 hour in seconds
+        originalUrl: publicUrl || null,
+        s3Key: finalS3Key,
+      },
+      message: "Presigned URL generated successfully",
+    });
+  } catch (error: any) {
+    console.error("Error in generatePresignedUrlForFile:", error);
     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
       success: false,
       message: error.message,
