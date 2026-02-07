@@ -799,7 +799,7 @@ SELECT_AT_LEAST_ONE_SALESMAN: "SELECT AT LEAST ONE SALESMAN",
   
   // QR Code Validation Database (Separate Schema - TID0004)
   QR_DB: {
-    USER: String(process.env.QR_ORACLE_USER || "TID0004"),
+    USER: String(process.env.QR_ORACLE_USER),
     PASSWORD: String(process.env.QR_ORACLE_PASSWORD),
     CONNECTION_STRING: String(process.env.QR_ORACLE_CONNECTION_STRING),
   },
