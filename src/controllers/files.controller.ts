@@ -797,6 +797,7 @@ export const deleteEmployeeFiles = async (
  * Works with both old (public URL) and new (S3_KEY) formats
  */
 export const getPFFilesPresignedUrls = async (
+  req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
