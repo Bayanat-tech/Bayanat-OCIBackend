@@ -14,7 +14,7 @@ import commonRouter from "./../routes/wms/common.routes";
 import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; // ✅ CORRECT
 import {
   getAllReports,
-  // getAllOutboundReports,
+  getAllOutboundReports,
   // getAllVendorReports,
   // getAllEmployeeReports,
   getAllDynamicReports,
@@ -35,12 +35,12 @@ router.get(
 );
 
 // Route to get all outbound reports
-// router.get(
-//   "/outbound-reports",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   getAllOutboundReports
-// );
+router.get(
+  "/outbound-reports",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAllOutboundReports
+);
 
 //route for vendor reports
 // router.get(
