@@ -2180,7 +2180,8 @@ export const createPurchaseDocument = async (
           sign_ind,
           curr_code,
           ex_rate,
-          div_code
+          div_code,
+          amount_origin
         ) VALUES (
           :company_code,
           :doc_type,
@@ -2197,7 +2198,8 @@ export const createPurchaseDocument = async (
           :sign_ind,
           :curr_code,
           :ex_rate,
-          :div_code
+          :div_code,
+          :amount_origin
         )
         `,
         {
@@ -2217,6 +2219,7 @@ export const createPurchaseDocument = async (
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
           div_code: dtl.div_code,
+          amount_origin:dtl.amount
         },
         { autoCommit: false }
       );
