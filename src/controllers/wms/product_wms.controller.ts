@@ -24,23 +24,23 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Check if product with same company code, principal code, group code, and brand code exists
-    const existingProduct = await ProductService.checkProductDuplicate(
-      bodyWithProdCode.company_code,
-      bodyWithProdCode.prin_code,
-      bodyWithProdCode.group_code,
-      bodyWithProdCode.brand_code
-    );
+    // // Check if product with same company code, principal code, group code, and brand code exists
+    // const existingProduct = await ProductService.checkProductDuplicate(
+    //   bodyWithProdCode.company_code,
+    //   bodyWithProdCode.prin_code,
+    //   bodyWithProdCode.group_code,
+    //   bodyWithProdCode.brand_code
+    // );
 
-    if (existingProduct) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({
-          success: false,
-          message: `Product already exists with same Company Code (${bodyWithProdCode.company_code}), Principal Code (${bodyWithProdCode.prin_code}), Group Code (${bodyWithProdCode.group_code}), and Brand Code (${bodyWithProdCode.brand_code})`
-        });
-      return;
-    }
+    // if (existingProduct) {
+    //   res
+    //     .status(constants.STATUS_CODES.BAD_REQUEST)
+    //     .json({
+    //       success: false,
+    //       message: `Product already exists with same Company Code (${bodyWithProdCode.company_code}), Principal Code (${bodyWithProdCode.prin_code}), Group Code (${bodyWithProdCode.group_code}), and Brand Code (${bodyWithProdCode.brand_code})`
+    //     });
+    //   return;
+    // }
 
     const productData = formatProductData(bodyWithProdCode, requestUser.loginid);
     // Check if product with same name exists
