@@ -338,7 +338,7 @@ export class FaceRecognitionService {
     });
  
     if (activeFaces.length === 0) {
-      throw new Error("No registered faces found in database");
+      throw new Error("Employee not registered");
     }
  
   // Group descriptors by employee_id
@@ -415,7 +415,11 @@ const labeledDescriptors = Array.from(grouped.entries()).map(
         )}`
       );
       return null;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "Employee not registered") {
+      logger.error("Employee not registered");
+      throw new Error("Employee not registered");
+    }
       logger.error("Face matching failed", error);
       throw error;
     }

@@ -128,8 +128,16 @@ static async markAttendance(req: Request, res: Response): Promise<void> {
     } catch (error: unknown) {
       logger.error("Attendance marking error", error);
       const message = error instanceof Error ? error.message : String(error);
+
+    if (message === "Employee not registered") {
+      res.status(400).json({
+      success: false,
+      message
+    });
+  }
       res.status(500).json({ success: false, message });
     }
+    
   }
 
 static async confirmAttendance(req: Request, res: Response): Promise<void> {
