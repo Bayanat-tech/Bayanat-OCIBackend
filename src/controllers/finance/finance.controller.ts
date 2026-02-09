@@ -190,85 +190,167 @@ export const getFinanceListData = async (
     }
         break;
 
-      case "account": {
-          console.log('account master')
-        let whereClause = `WHERE a.company_code = :company_code`;
-        let bindParams: any = {
-          company_code: requestUser.company_code,
-        };
+  //     case "account": {
+  //         console.log('account master')
+  //       let whereClause = `WHERE a.company_code = :company_code`;
+  //       let bindParams: any = {
+  //         company_code: requestUser.company_code,
+  //       };
 
-        if (filter?.search) {
-          whereClause += `
-            AND (
-              a.ac_code LIKE :search
-              OR a.ac_name LIKE :search
-            )
-          `;
-          bindParams.search = `%${filter.search}%`;
-        }
+  //       if (filter?.search) {
+  //         whereClause += `
+  //           AND (
+  //             a.ac_code LIKE :search
+  //             OR a.ac_name LIKE :search
+  //           )
+  //         `;
+  //         bindParams.search = `%${filter.search}%`;
+  //       }
    
-  // Sorting 
+  // // Sorting 
+  // const sortColumnMap: Record<string, string> = {
+  //   ac_code: "AC_CODE",
+  //   ac_name: "AC_NAME",
+  //   created_at: "CREATE_DATE",
+  //   updated_at: "EDIT_DATE",
+  // };
+
+  // let orderByClause = "";
+  // if (filter?.sort?.field_name) {
+  //   const column = sortColumnMap[filter.sort.field_name];
+  //   if (column) {
+  //     orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"}`;
+  //   }
+  // }
+  //       // let orderByClause = ``;
+  //       // if (filter?.sort && Object.keys(filter.sort).length > 0) {
+  //       //   orderByClause = `
+  //       //     ORDER BY ${filter.sort.field_name} ${
+  //       //     filter.sort.desc ? "DESC" : "ASC"
+  //       //   }
+  //       //   `;
+  //       // }
+
+  //       const countResult = await connection.execute(
+  //         `
+  //         SELECT COUNT(*) AS TOTAL_COUNT
+  //         FROM MS_ACCODES a
+  //         ${whereClause}
+  //         `,
+  //         bindParams,
+  //         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  //       );
+
+  //       totalCount =
+  //         (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+
+  //       const dataResult = await connection.execute(
+  //         `
+  //          SELECT
+  //     a.ac_code     AS "ac_code",
+  //     a.ac_name     AS "ac_name",
+  //     a.create_date AS "created_at",
+  //     a.edit_date   AS "updated_at"
+  //   FROM MS_ACCODES a
+  //         ${whereClause}
+  //         ${orderByClause}
+  //         OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+  //         `,
+  //         {
+  //           ...bindParams,
+  //           offset,
+  //           limit,
+  //         },
+  //         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  //       );
+
+  //       fetchedData = dataResult.rows || [];
+  //     }
+  //       break;
+
+  case "account": {
+  console.log("account master");
+
+  let whereClause = `
+    WHERE company_code = :company_code
+      AND doc_id = :doc_id
+      AND hdr_dtl = :hdr_dtl
+      AND (div_code = :div_code OR div_code = '*')
+  `;
+
+  // Extend filter type to include doc_id, hdr_dtl, div_code
+  const accountFilter = filter as ISearch & { doc_id?: string; hdr_dtl?: string; div_code?: string };
+
+  let bindParams: any = {
+    company_code: requestUser.company_code,
+    doc_id: accountFilter.doc_id,
+    hdr_dtl: accountFilter.hdr_dtl,
+    div_code: accountFilter.div_code,
+  };
+
+  if (filter?.search) {
+    whereClause += `
+      AND (
+        ac_code LIKE :search
+        OR ac_name LIKE :search
+      )
+    `;
+    bindParams.search = `%${filter.search}%`;
+  }
+
   const sortColumnMap: Record<string, string> = {
     ac_code: "AC_CODE",
     ac_name: "AC_NAME",
-    created_at: "CREATE_DATE",
-    updated_at: "EDIT_DATE",
   };
 
-  let orderByClause = "";
+  let orderByClause = "ORDER BY AC_CODE ASC";
   if (filter?.sort?.field_name) {
     const column = sortColumnMap[filter.sort.field_name];
     if (column) {
       orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"}`;
     }
   }
-        // let orderByClause = ``;
-        // if (filter?.sort && Object.keys(filter.sort).length > 0) {
-        //   orderByClause = `
-        //     ORDER BY ${filter.sort.field_name} ${
-        //     filter.sort.desc ? "DESC" : "ASC"
-        //   }
-        //   `;
-        // }
 
-        const countResult = await connection.execute(
-          `
-          SELECT COUNT(*) AS TOTAL_COUNT
-          FROM MS_ACCODES a
-          ${whereClause}
-          `,
-          bindParams,
-          { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
+  // COUNT QUERY
+  const countResult = await connection.execute(
+    `
+    SELECT COUNT(*) AS TOTAL_COUNT
+    FROM VW_HDR_DOC_ACCOUNTS
+    ${whereClause}
+    `,
+    bindParams,
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
 
-        totalCount =
-          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+  totalCount =
+    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-        const dataResult = await connection.execute(
-          `
-           SELECT
-      a.ac_code     AS "ac_code",
-      a.ac_name     AS "ac_name",
-      a.create_date AS "created_at",
-      a.edit_date   AS "updated_at"
-    FROM MS_ACCODES a
-          ${whereClause}
-          ${orderByClause}
-          OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-          `,
-          {
-            ...bindParams,
-            offset,
-            limit,
-          },
-          { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
+  // DATA QUERY
+  const dataResult = await connection.execute(
+    `
+    SELECT ac_code, ac_name, curr_code, l4_bill, l4_description,
+           address, fax, phone, salesman_code, sector_code
+    FROM VW_HDR_DOC_ACCOUNTS
+    ${whereClause}
+    ${orderByClause}
+    OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+    `,
+    {
+      ...bindParams,
+      offset,
+      limit,
+    },
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
 
-        fetchedData = dataResult.rows || [];
-      }
-        break;
+  fetchedData = dataResult.rows || [];
+  console.log("Get data from account master:", fetchedData);
+
+  break;
+}
+
       
-      case "bank": {
+    case "bank": {
       console.log('feteching.... ')
        let whereClause = `
          WHERE a.company_code = :company_code
@@ -1097,7 +1179,7 @@ break;
 break;
 
 
-      
+  
 
     default:
         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -1125,4 +1207,3 @@ break;
     }
   }
 };
-
