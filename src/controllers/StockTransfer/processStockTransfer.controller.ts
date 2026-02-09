@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { TsStnService } from "../../services/WMS/TsStn.service";
+import { TsStndetailService } from "../../services/WMS/TsStndetail.service";
 
 /**
  * Process Stock Transfer
@@ -41,6 +42,42 @@ export const processStockTransfer = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate that STN has details with valid quantities
+    console.log("🔍 Checking STN Details for STN_NO:", stnNo);
+    const stnDetails = await TsStndetailService.findByStnNo({
+      stn_no: Number(stnNo),
+      company_code: companyCode,
+    });
+
+    if (!stnDetails || stnDetails.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `STN ${stnNo} has no details. Please create STN Details before processing.`,
+      });
+    }
+
+    // Validate that at least one detail has valid qty_puom
+    const validDetails = stnDetails.filter(
+      (detail: any) => detail.qty_puom && detail.qty_puom > 0
+    );
+
+    if (validDetails.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `STN ${stnNo} details have invalid quantities. At least one detail must have qty_puom > 0. Found ${stnDetails.length} details with qty_puom = ${stnDetails[0]?.qty_puom || "NULL"}`,
+      });
+    }
+
+    console.log(`✅ STN ${stnNo} has ${validDetails.length} valid details out of ${stnDetails.length}`);
+
+    // Log before calling stored procedure
+    console.log("📞 Calling SP_WM_TRANSFER_PROCESS with params:", {
+      company_code: companyCode,
+      prin_code: prinCode,
+      stn_no: Number(stnNo),
+      user_id: userId,
+    });
+
     // Call stored procedure
     await TsStnService.processStockTransfer({
       company_code: companyCode,
@@ -61,9 +98,18 @@ export const processStockTransfer = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error processing stock transfer:", error);
+    
+    // Parse Oracle constraint errors
+    let userFriendlyMessage = "Failed to process stock transfer";
+    if (error.message && error.message.includes("QTYA_GREATOR_0")) {
+      userFriendlyMessage = "STN Detail has invalid quantities. Ensure qty_puom (Primary UOM Quantity) is greater than 0";
+    } else if (error.message && error.message.includes("ORA-02290")) {
+      userFriendlyMessage = "Data constraint violation. Check that all required quantity fields are valid";
+    }
+    
     return res.status(500).json({
       success: false,
-      message: "Failed to process stock transfer",
+      message: userFriendlyMessage,
       error: error.message || "Internal server error",
     });
   }

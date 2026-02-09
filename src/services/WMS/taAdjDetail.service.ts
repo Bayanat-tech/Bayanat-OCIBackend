@@ -127,16 +127,17 @@ export class TaAdjDetailService {
 
   static async getNextIdentityNumber(): Promise<number> {
     const repository = this.getRepository();
-    
-    // Get the maximum IDENTITY_NUMBER and increment by 1
-    const result = await repository
-      .createQueryBuilder("detail")
-      .select("MAX(detail.IDENTITY_NUMBER)", "maxIdentityNumber")
-      .getRawOne();
-    
-    const maxIdentityNumber = result?.maxIdentityNumber || 0;
+
+    // Get the maximum IDENTITY_NUMBER and increment by 1 (tenant-safe)
+    const latest = await repository.find({
+      select: ["IDENTITY_NUMBER"],
+      order: { IDENTITY_NUMBER: "DESC" },
+      take: 1,
+    });
+
+    const maxIdentityNumber = latest[0]?.IDENTITY_NUMBER || 0;
     const nextIdentityNumber = maxIdentityNumber + 1;
-    
+
     // Ensure the value is an integer
     return Math.floor(nextIdentityNumber);
   }

@@ -1,7 +1,9 @@
 import { getRepository, AppDataSource } from "../../database/connection";
 import { TsStn } from "../../entity/WMS/TsStn.entity";
+import { In } from "typeorm";
 
-export class TsStnService {
+export class 
+TsStnService {
   private static getTsStnRepository() {
     return getRepository(TsStn);
   }
@@ -58,14 +60,16 @@ export class TsStnService {
     prin_codes: string[];
   }): Promise<TsStn[]> {
     const repository = this.getTsStnRepository();
-    const query = repository
-      .createQueryBuilder("ts_stn")
-      .where("ts_stn.company_code = :company_code", { company_code: params.company_code })
-      .andWhere("ts_stn.prin_code IN (:...prin_codes)", { prin_codes: params.prin_codes })
-      .orderBy("ts_stn.prin_code", "ASC")
-      .addOrderBy("ts_stn.stn_no", "ASC");
-
-    return await query.getMany();
+    return await repository.find({
+      where: {
+        company_code: params.company_code,
+        prin_code: In(params.prin_codes),
+      },
+      order: {
+        prin_code: "ASC",
+        stn_no: "ASC",
+      },
+    });
   }
 
   // Create new STN record
