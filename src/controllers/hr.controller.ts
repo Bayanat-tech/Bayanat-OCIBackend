@@ -130,7 +130,19 @@ export const getHrMaster = async (
 
         switch (masters) {
           case "Pg_Leave_flow":
-            whereConditions = `company_code = :company_code
+
+            whereConditions = `
+    company_code = :company_code
+    AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
+    AND (
+         (NEXT_ACTION_BY = :loginid AND FINAL_APPROVED <> 'YES')
+         OR
+         (IMMEDIATE_SUPERVISOR = :loginid
+          AND ACTUAL_RESUME_DATE IS NOT NULL
+          AND RESUME_DATE_APPROVED = 'NO')
+        )
+  `;
+         /*   whereConditions = `company_code = :company_code
                       AND (
                           (NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
 EMPLOYEE_ID =  :loginid ) AND FINAL_APPROVED <> 'YES')
@@ -140,7 +152,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
                       )
                       AND LAST_ACTION <> 'REJECTED'
                       AND LAST_ACTION <> 'CANCEL'
-                      `;
+                      `;*/
             break;
           case "Pg_leave_flow_Rejected":
               whereConditions = `
@@ -215,9 +227,9 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
           console.log("Bind Params:", bindParams);
 
 
-          const countResult = await oracleDb.query(countQuery, bindParams);
+         // const countResult = await oracleDb.query(countQuery, bindParams);
 
-          const totalCount = countResult.rows[0]?.TOTALCOUNT || 0;
+         // const totalCount = countResult.rows[0]?.TOTALCOUNT || 0;
 
           const fetchQuery = `
       SELECT *
@@ -234,7 +246,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
           };
 
   
-
+console.log('fetchQuery',fetchQuery);
           const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
 
 
