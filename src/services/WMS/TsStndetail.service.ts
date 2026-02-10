@@ -61,7 +61,8 @@ export class TsStndetailService {
     prin_codes: string[];
   }): Promise<TsStndetail[]> {
     const repository = this.getTsStndetailRepository();
-    return await repository.find({
+    console.log("🔍 findByStnAndMultiplePrinCodes called with:", params);
+    const results = await repository.find({
       where: {
         stn_no: params.stn_no,
         company_code: params.company_code,
@@ -71,6 +72,11 @@ export class TsStndetailService {
         serial_no: "ASC",
       },
     });
+    console.log("📦 findByStnAndMultiplePrinCodes returned", results.length, "records");
+    if (results.length > 0) {
+      console.log("Sample record:", results[0]);
+    }
+    return results;
   }
 
   // Find STNDETAIL records by company_code

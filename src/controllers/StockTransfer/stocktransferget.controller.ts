@@ -78,19 +78,16 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate quantity fields - at least one should be provided and > 0
+    // Validate quantity fields - qty_puom is REQUIRED and must be > 0
     const qtyPuom = QTY_PUOM !== undefined ? QTY_PUOM : qty_puom;
     const qtyLuom = QTY_LUOM !== undefined ? QTY_LUOM : qty_luom;
     const qty = QUANTITY !== undefined ? QUANTITY : quantity;
 
-    if (
-      (qtyPuom === undefined || qtyPuom === null || qtyPuom === 0) &&
-      (qtyLuom === undefined || qtyLuom === null || qtyLuom === 0) &&
-      (qty === undefined || qty === null || qty === 0)
-    ) {
+    // qty_puom is mandatory for stock transfer processing
+    if (qtyPuom === undefined || qtyPuom === null || qtyPuom <= 0) {
       return res.status(400).json({
         success: false,
-        message: "At least one quantity field (qty_puom, qty_luom, or quantity) must be provided and greater than 0",
+        message: "qty_puom (Primary UOM Quantity) is required and must be greater than 0",
       });
     }
 
@@ -366,16 +363,27 @@ export const getTSSTNWithDetails = async (req: Request, res: Response) => {
     if (stn_no) {
       // Single STN case
       if (prin_code) {
+        console.log("🔍 Fetching details with stn_no and prin_code:", {
+          stn_no: Number(stn_no),
+          company_code,
+          prin_codes: [prin_code]
+        });
         details = await TsStndetailService.findByStnAndMultiplePrinCodes({
           stn_no: Number(stn_no),
           company_code: company_code as string,
           prin_codes: [prin_code as string]
         });
+        console.log("📦 Received details:", details.length, "records");
       } else {
+        console.log("🔍 Fetching details with stn_no only:", {
+          stn_no: Number(stn_no),
+          company_code
+        });
         details = await TsStndetailService.findByStnNo({
           stn_no: Number(stn_no),
           company_code: company_code as string
         });
+        console.log("📦 Received details:", details.length, "records");
       }
     } else if (prin_code) {
       // Multiple STNs with same prin_code - fetch details for all
