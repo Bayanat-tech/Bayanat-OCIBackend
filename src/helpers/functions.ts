@@ -1063,7 +1063,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
   });
 
   let mailOptions;
-
   switch (event) {
     case constants.EVENTS.COUNTRY_CREATED:
       mailOptions = {
@@ -1220,7 +1219,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
           "Sagar.b@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
           "gaurang.pai@bayanattechnology.com",
-          "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || "Approval Notification",
@@ -1234,10 +1232,8 @@ export const notifyUser = async (args: SendEmailInterface) => {
         from: constants.ENV.EMAIL_USER,
         to: request_users, 
         cc: [
-          "Sagar.b@bayanattechnology.com",
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-          "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || `Leave Approval Required: ${request_user?.request_number || ""}`,
@@ -1247,7 +1243,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
         attachments: attachments || [],
     };
     break;
-
     case constants.EVENTS.LEAVE_APPROVED:
       mailOptions = {
         from: constants.ENV.EMAIL_USER,
@@ -1256,7 +1251,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
           "Sagar.b@bayanattechnology.com",
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-          "pratik.shirke@bayanattechnology.com",
           "HR@almadinalogistics.com",
           ...(cc || []),
         ],
@@ -1273,10 +1267,8 @@ export const notifyUser = async (args: SendEmailInterface) => {
       from: constants.ENV.EMAIL_USER,
       to: request_users,
       cc: [
-          "Sagar.b@bayanattechnology.com",
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-          "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
       subject: subject || `Leave Rejected: ${request_user?.request_number || ""}`,
@@ -1293,10 +1285,8 @@ export const notifyUser = async (args: SendEmailInterface) => {
       from: constants.ENV.EMAIL_USER,
       to: request_users,
       cc: [
-          "Sagar.b@bayanattechnology.com",
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-          "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
       subject: subject || `Leave Sent Back: ${request_user?.request_number || ""}`,
@@ -1313,10 +1303,8 @@ export const notifyUser = async (args: SendEmailInterface) => {
         from: constants.ENV.EMAIL_USER,
         to: request_users,
         cc: [
-          "Sagar.b@bayanattechnology.com",
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-          "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || `Leave Notification: ${request_user?.request_number || ""}`,
@@ -1332,7 +1320,6 @@ export const notifyUser = async (args: SendEmailInterface) => {
         cc: [
           "gaurang.pai@bayanattechnology.com",
           "Sandeep.dandekar@bayanattechnology.com",
-          "pratik.shirke@bayanattechnology.com",
           ...(cc || []),
         ],
         subject: subject || `Leave Rejected: ${request_user?.request_number || ""}`,
@@ -1404,7 +1391,8 @@ export const notifyUser = async (args: SendEmailInterface) => {
     from: constants.ENV.EMAIL_USER,
     to: request_users, 
     cc: [
-      //'prem@bayanattechnology.com'
+      'salim.alsaltiy@almadinalogistics.onmicrosoft.com',
+      'prem@bayanattechnology.com'
     ],
     subject: subject || `🚨 PROXY ATTENDANCE DETECTED - ${proxyData?.timestamp ? new Date(proxyData.timestamp).toLocaleDateString() : new Date().toLocaleDateString()}`,
     html: htmlMessage || defaultProxyHtml,
