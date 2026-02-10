@@ -173,7 +173,6 @@ export const getLevel2AcTreeNode = async (
   }
 };
 
-
 // Create new Level 2 account node
 export const createLevel2AcTreeNode = async (
   req: RequestWithUser,

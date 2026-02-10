@@ -2224,7 +2224,7 @@ export const createPurchaseDocument = async (
           serial_no: dtl.serial_no,
           dtl_sr_no: dtl.serial_no,
           doc_date,
-          ac_code: dtl.ac_code,
+          ac_code: ac_code,
           inv_no: invoice_no,
           inv_date: doc_date,
           due_date: doc_date,
@@ -2239,7 +2239,6 @@ export const createPurchaseDocument = async (
         { autoCommit: false }
       );
     }
-
     /* -------------------- COMMIT -------------------- */
     await connection.commit();
 
