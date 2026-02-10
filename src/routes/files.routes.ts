@@ -27,6 +27,8 @@ import {
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
   uploadAFToS3,
+  // uploadPurchaseFilesToS3,
+  // uploadCPFilesToS3
 } from "../services/ociUpload.service";
 
 const router = express.Router();
@@ -57,6 +59,14 @@ router.get(
 //----------AFfile----------
 router.get(
   "/accountFiles/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAfFiles
+);
+
+
+router.get(
+  "/purchaseFiles/:request_number",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getAfFiles
@@ -99,6 +109,14 @@ router.put(
   checkUserAuthorization,
   editAFFiles
 );
+
+router.put(
+  "/editPurchaseFile",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  editAFFiles
+);
+
 
 router.put(
   "/editVendorFile",
@@ -153,6 +171,15 @@ router.post(
 );
 
 router.post(
+  "/uploadFilePurchase",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  upload.single("file"),
+  uploadAFToS3
+);
+
+
+router.post(
   "/uploadVendorAttachment",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
@@ -184,6 +211,13 @@ router.delete(
 
 router.delete(
   "/deleteAF/:request_number/:sr_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  deleteFilesAF
+);
+
+router.delete(
+  "/deletepurchase/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   deleteFilesAF

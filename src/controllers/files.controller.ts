@@ -6,6 +6,7 @@ import constants from "../helpers/constants";
 import { oracleDb } from "../database/connection";
 import { FilesPFService } from "../services/filesPF.service";
 import { FilesAFService } from "../services/accountfiles.service";
+import { deleteFile } from "../services/ociUpload.service";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
@@ -392,6 +393,12 @@ export const deleteFilesAF = async (
       });
       return;
     }
+
+    if (file.awsFileLocn) {
+  const key = getOCIObjectKey(file.awsFileLocn);
+  await deleteFile(key);
+}
+
 
     const result = await filesAFService.delete({ request_number, sr_no });
 
@@ -927,3 +934,25 @@ export const deleteEmployeeFiles = async (
     });
   }
 };
+
+function getOCIObjectKey(awsFileLocn: string): string {
+  if (!awsFileLocn) {
+    throw new Error("File location is missing");
+  }
+
+  // If already an object key
+  if (!awsFileLocn.startsWith("http")) {
+    return awsFileLocn;
+  }
+
+  const url = new URL(awsFileLocn);
+
+  // pathname example:
+  // /app-dev-bucket-test/Accounts/Cheque Payment/2026/2/2260100001/CATS.jpg
+  const pathParts = url.pathname.split("/").filter(Boolean);
+
+  // Remove bucket name
+  pathParts.shift();
+
+  return decodeURIComponent(pathParts.join("/"));
+}
