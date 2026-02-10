@@ -11,7 +11,7 @@ export const procBuildCommonProcedurewmc = async (
 
   try {
     const body = req.body;
-
+console.log('inside procBuildCommon 1')
     if (!body?.parameter || !body?.loginid) {
       res.status(400).json({
         success: false,
@@ -19,7 +19,7 @@ export const procBuildCommonProcedurewmc = async (
       });
       return;
     }
-
+console.log('inside procBuildCommon 2')
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
@@ -27,14 +27,14 @@ export const procBuildCommonProcedurewmc = async (
     if (!tenantId && (req as any).body?.loginid) {
       tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
     }
-
+console.log('inside procBuildCommon 3')
     if (!tenantId) {
       res.status(400).json({ success: false, message: "Tenant not found for request" });
       return;
     }
-
+console.log('inside procBuildCommon 4')
     connection = await TenantManager.getConnection(tenantId);
-
+console.log('inside procBuildCommon 5')
     const result = await connection.execute(
       `
       DECLARE
