@@ -2,6 +2,98 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
 
+export const procBuildCommonProcedurewmc = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  let connection;
+
+  try {
+    const body = req.body;
+
+    if (!body?.parameter || !body?.loginid) {
+      res.status(400).json({
+        success: false,
+        message: "parameter and loginid are required"
+      });
+      return;
+    }
+
+    connection = await oracledb.getConnection();
+
+    const result = await connection.execute(
+      `
+      DECLARE
+        v_msg CLOB;
+      BEGIN
+        PROC_BUILD_COMMON_PROCEDURE_WMS(
+          :parameter,
+          :loginid,
+
+          :val1s1, :val1s2, :val1s3, :val1s4, :val1s5,
+          :val1s6, :val1s7, :val1s8, :val1s9, :val1s10,
+          :val1s11, :val1s12, :val1s13, :val1s14, :val1s15,
+          :val1s16, :val1s17, :val1s18, :val1s19, :val1s20,
+
+          :val1n1, :val1n2, :val1n3, :val1n4, :val1n5,
+          :val1n6, :val1n7, :val1n8, :val1n9, :val1n10,
+
+          v_msg
+        );
+
+        :out_msg := v_msg;
+      END;
+      `,
+      {
+        parameter: body.parameter,
+        loginid: body.loginid,
+
+        // STRING VALUES
+        val1s1: body.val1s1,   val1s2: body.val1s2,
+        val1s3: body.val1s3,   val1s4: body.val1s4,
+        val1s5: body.val1s5,   val1s6: body.val1s6,
+        val1s7: body.val1s7,   val1s8: body.val1s8,
+        val1s9: body.val1s9,   val1s10: body.val1s10,
+        val1s11: body.val1s11, val1s12: body.val1s12,
+        val1s13: body.val1s13, val1s14: body.val1s14,
+        val1s15: body.val1s15, val1s16: body.val1s16,
+        val1s17: body.val1s17, val1s18: body.val1s18,
+        val1s19: body.val1s19, val1s20: body.val1s20,
+
+        // NUMBER VALUES
+        val1n1: body.val1n1,   val1n2: body.val1n2,
+        val1n3: body.val1n3,   val1n4: body.val1n4,
+        val1n5: body.val1n5,   val1n6: body.val1n6,
+        val1n7: body.val1n7,   val1n8: body.val1n8,
+        val1n9: body.val1n9,   val1n10: body.val1n10,
+
+        out_msg: {
+          dir: oracledb.BIND_OUT,
+          type: oracledb.STRING,
+          maxSize: 32767
+        }
+      }
+    );
+
+    const message = (result.outBinds as any)?.out_msg;
+
+    res.json({
+      success: !message?.toLowerCase().includes("unsuccess"),
+      message: message ?? "Procedure executed"
+    });
+
+  } catch (err: any) {
+    console.error("Oracle error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Procedure execution failed",
+      details: err.message
+    });
+  } finally {
+    if (connection) await connection.close().catch(() => {});
+  }
+};
+
 export const proc_build_dynamic_del_common = async (req: Request, res: Response): Promise<void> => {
   let connection;
 
