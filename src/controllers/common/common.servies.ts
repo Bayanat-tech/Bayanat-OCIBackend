@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 
 export const proc_build_dynamic_del_common = async (req: Request, res: Response): Promise<void> => {
   let connection;
@@ -30,7 +31,21 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
       return;
     }
 
-    connection = await oracledb.getConnection();
+    // Resolve tenantId from context or fallback to loginid lookup
+    let tenantId: string | undefined;
+    try {
+      tenantId = getCurrentTenantId();
+    } catch (e) {}
+    if (!tenantId && (req as any).body?.loginid) {
+      tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
+    }
+
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant not found for request" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     // Call procedure to get dynamic SQL
     const result = await connection.execute(
@@ -187,15 +202,28 @@ export const proc_build_dynamic_ins_upd_common = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    // Resolve tenantId from context or fallback to loginid lookup
+    let tenantId: string | undefined;
+    try {
+      tenantId = getCurrentTenantId();
+    } catch (e) {}
+    if (!tenantId && (req as any).body?.loginid) {
+      tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
+    }
 
-    // Call procedure to build INSERT / UPDATE SQL
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant not found for request" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
+
     const result = await connection.execute(
       `
       DECLARE
         v_sql CLOB;
       BEGIN
-        WMSTST.PROC_BUILD_DYNAMIC_INS_UPD_common(
+        PROC_BUILD_DYNAMIC_INS_UPD_common(
           :parameter,
           :loginid,
 
@@ -340,7 +368,21 @@ console.log('check dynamic sql',req.body);
       return;
     }
 
-    connection = await oracledb.getConnection();
+    // Resolve tenantId from context or fallback to loginid lookup
+    let tenantId: string | undefined;
+    try {
+      tenantId = getCurrentTenantId();
+    } catch (e) {}
+    if (!tenantId && (req as any).body?.loginid) {
+      tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
+    }
+
+    if (!tenantId) {
+      res.status(400).json({ error: "Tenant not found for request" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `
@@ -480,9 +522,21 @@ export const proc_build_dynamic_ins_upd_column90 = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    // Resolve tenantId from context or fallback to loginid lookup
+    let tenantId: string | undefined;
+    try {
+      tenantId = getCurrentTenantId();
+    } catch (e) {}
+    if (!tenantId && (req as any).body?.loginid) {
+      tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
+    }
 
-    // Call procedure to build INSERT / UPDATE SQL
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant not found for request" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
     const result = await connection.execute(
       `
       DECLARE
@@ -569,8 +623,6 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     }
 
     console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
-
-    // Execute INSERT / UPDATE
     await connection.execute(dynamicSql, [], { autoCommit: true });
 
     res.json({
