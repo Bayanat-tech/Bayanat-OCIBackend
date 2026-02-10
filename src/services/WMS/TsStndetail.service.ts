@@ -1,5 +1,6 @@
 import { getRepository } from "../../database/connection";
 import { TsStndetail } from "../../entity/WMS/TsStndetail.entity";
+import { In } from "typeorm";
 
 export class TsStndetailService {
   private static getTsStndetailRepository() {
@@ -36,7 +37,8 @@ export class TsStndetailService {
     company_code: string;
   }): Promise<TsStndetail[]> {
     const repository = this.getTsStndetailRepository();
-    return await repository.find({
+    console.log("🔍 findByStnNo called with:", params);
+    const results = await repository.find({
       where: {
         stn_no: params.stn_no,
         company_code: params.company_code,
@@ -45,6 +47,11 @@ export class TsStndetailService {
         serial_no: "ASC",
       },
     });
+    console.log("📦 findByStnNo returned", results.length, "records");
+    if (results.length > 0) {
+      console.log("Sample record:", results[0]);
+    }
+    return results;
   }
 
   // Find details by STN and multiple prin_codes
@@ -54,14 +61,16 @@ export class TsStndetailService {
     prin_codes: string[];
   }): Promise<TsStndetail[]> {
     const repository = this.getTsStndetailRepository();
-    const query = repository
-      .createQueryBuilder("ts_stndetail")
-      .where("ts_stndetail.stn_no = :stn_no", { stn_no: params.stn_no })
-      .andWhere("ts_stndetail.company_code = :company_code", { company_code: params.company_code })
-      .andWhere("ts_stndetail.prin_code IN (:...prin_codes)", { prin_codes: params.prin_codes })
-      .orderBy("ts_stndetail.serial_no", "ASC");
-
-    return await query.getMany();
+    return await repository.find({
+      where: {
+        stn_no: params.stn_no,
+        company_code: params.company_code,
+        prin_code: In(params.prin_codes),
+      },
+      order: {
+        serial_no: "ASC",
+      },
+    });
   }
 
   // Find STNDETAIL records by company_code
@@ -295,32 +304,24 @@ export class TsStndetailService {
     to_loc_end?: string;
   }): Promise<TsStndetail[]> {
     const repository = this.getTsStndetailRepository();
-    const queryBuilder = repository
-      .createQueryBuilder("ts_stndetail")
-      .where("ts_stndetail.company_code = :company_code", { company_code: params.company_code });
+    const where: any = {
+      company_code: params.company_code,
+    };
 
     if (params.from_loc_start) {
-      queryBuilder.andWhere("ts_stndetail.from_loc_start = :from_loc_start", {
-        from_loc_start: params.from_loc_start,
-      });
+      where.from_loc_start = params.from_loc_start;
     }
     if (params.from_loc_end) {
-      queryBuilder.andWhere("ts_stndetail.from_loc_end = :from_loc_end", {
-        from_loc_end: params.from_loc_end,
-      });
+      where.from_loc_end = params.from_loc_end;
     }
     if (params.to_loc_start) {
-      queryBuilder.andWhere("ts_stndetail.to_loc_start = :to_loc_start", {
-        to_loc_start: params.to_loc_start,
-      });
+      where.to_loc_start = params.to_loc_start;
     }
     if (params.to_loc_end) {
-      queryBuilder.andWhere("ts_stndetail.to_loc_end = :to_loc_end", {
-        to_loc_end: params.to_loc_end,
-      });
+      where.to_loc_end = params.to_loc_end;
     }
 
-    return await queryBuilder.getMany();
+    return await repository.find({ where });
   }
 
   // Get next serial number for STN
@@ -329,13 +330,18 @@ export class TsStndetailService {
     company_code: string;
   }): Promise<number> {
     const repository = this.getTsStndetailRepository();
-    const result = await repository
-      .createQueryBuilder("ts_stndetail")
-      .select("MAX(ts_stndetail.serial_no)", "max")
-      .where("ts_stndetail.stn_no = :stn_no", { stn_no: params.stn_no })
-      .andWhere("ts_stndetail.company_code = :company_code", { company_code: params.company_code })
-      .getRawOne();
+    const records = await repository.find({
+      where: {
+        stn_no: params.stn_no,
+        company_code: params.company_code,
+      },
+    });
 
-    return result.max ? result.max + 1 : 1;
+    if (records.length === 0) {
+      return 1;
+    }
+
+    const maxSerialNo = Math.max(...records.map((r: any) => r.serial_no || 0));
+    return maxSerialNo + 1;
   }
 }

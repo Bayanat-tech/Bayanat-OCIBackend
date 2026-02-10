@@ -78,12 +78,35 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate quantity fields - at least one should be provided and > 0
+    const qtyPuom = QTY_PUOM !== undefined ? QTY_PUOM : qty_puom;
+    const qtyLuom = QTY_LUOM !== undefined ? QTY_LUOM : qty_luom;
+    const qty = QUANTITY !== undefined ? QUANTITY : quantity;
+
+    if (
+      (qtyPuom === undefined || qtyPuom === null || qtyPuom === 0) &&
+      (qtyLuom === undefined || qtyLuom === null || qtyLuom === 0) &&
+      (qty === undefined || qty === null || qty === 0)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one quantity field (qty_puom, qty_luom, or quantity) must be provided and greater than 0",
+      });
+    }
+
     // Auto-generate serial_no if not provided
     if (!serialNo) {
-      serialNo = await TsStndetailService.getNextSerialNo({
-        stn_no: Number(stnNo),
-        company_code: companyCode,
-      });
+      try {
+        console.log("🔍 Calling getNextSerialNo...");
+        serialNo = await TsStndetailService.getNextSerialNo({
+          stn_no: Number(stnNo),
+          company_code: companyCode,
+        });
+        console.log("✅ getNextSerialNo returned:", serialNo);
+      } catch (error) {
+        console.error("❌ Error in getNextSerialNo:", error);
+        throw error;
+      }
     }
 
     // Check if STNDETAIL already exists
@@ -145,11 +168,8 @@ export const createSTNDetail = async (req: Request, res: Response) => {
     const lotNo = LOT_NO || lot_no;
     const mfgDate = MFG_DATE || mfg_date;
     const expDate = EXP_DATE || exp_date;
-    const qtyPuom = QTY_PUOM !== undefined ? QTY_PUOM : qty_puom;
-    const qtyLuom = QTY_LUOM !== undefined ? QTY_LUOM : qty_luom;
     const pUom = P_UOM || p_uom;
     const lUom = L_UOM || l_uom;
-    const qty = QUANTITY !== undefined ? QUANTITY : quantity;
     const keyNumber = KEY_NUMBER || key_number;
     const palletId = PALLET_ID || pallet_id;
     const expDateTo = EXP_DATE_TO || exp_date_to;
@@ -214,10 +234,14 @@ export const createSTNDetail = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error creating STN Detail:", error);
+    if (error instanceof Error) {
+      console.error("Stack trace:", error.stack);
+    }
     res.status(500).json({
       success: false,
       message: "Internal server error while creating STN Detail",
       error: error instanceof Error ? error.message : error,
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 };
@@ -330,9 +354,17 @@ export const getTSSTNWithDetails = async (req: Request, res: Response) => {
       header = await TsStnService.findByCompanyCode(company_code as string);
     }
 
-    // Fetch TS_STNDETAIL Items
+    if (!header.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No STN record found for the given parameters",
+      });
+    }
+
+    // Fetch TS_STNDETAIL Items - now handles multiple headers
     let details: any[] = [];
     if (stn_no) {
+      // Single STN case
       if (prin_code) {
         details = await TsStndetailService.findByStnAndMultiplePrinCodes({
           stn_no: Number(stn_no),
@@ -345,13 +377,18 @@ export const getTSSTNWithDetails = async (req: Request, res: Response) => {
           company_code: company_code as string
         });
       }
-    }
-
-    if (!header.length) {
-      return res.status(404).json({
-        success: false,
-        message: "No STN record found for the given parameters",
-      });
+    } else if (prin_code) {
+      // Multiple STNs with same prin_code - fetch details for all
+      const stnNos = header.map((h: any) => h.stn_no);
+      if (stnNos.length > 0) {
+        details = await TsStndetailService.findByCompanyAndPrinCode({
+          company_code: company_code as string,
+          prin_code: prin_code as string
+        });
+      }
+    } else {
+      // All STNs for company - fetch all details for that company
+      details = await TsStndetailService.findByCompanyCode(company_code as string);
     }
 
     // Always return header + details
