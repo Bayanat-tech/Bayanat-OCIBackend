@@ -1308,6 +1308,72 @@ export const createChequePaymentStoreProcess = async (
   }
 };
 
+export const getDocAccounts = async (
+  req: RequestWithUser, 
+  res: Response
+): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+
+  try {
+    const { doc_id, hdr_dtl, div_code } = req.query;
+
+    if (!doc_id || !hdr_dtl || !div_code) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "doc_id, hdr_dtl and div_code are required",
+      });
+      return;
+    }
+
+    conn = await oracledb.getConnection();
+
+    const result = await conn.execute(
+      `
+      BEGIN
+        SP_GET_DOC_ACCOUNTS(
+          :P_COMPANY_CODE,
+          :P_DOC_ID,
+          :P_HDR_DTL,
+          :P_DIV_CODE,
+          :P_RESULT
+        );
+      END;
+      `,
+      {
+        P_COMPANY_CODE: req.user.company_code,
+        P_DOC_ID: doc_id,
+        P_HDR_DTL: hdr_dtl,
+        P_DIV_CODE: div_code,
+        P_RESULT: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const cursor = (result.outBinds as any).P_RESULT;
+    const rows = await cursor.getRows(10000);
+    await cursor.close();
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: rows,
+    });
+    return;
+
+  } catch (err: any) {
+    console.error("SP error:", err);
+
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Error occurred while fetching doc accounts: " + (err?.message ?? err),
+    });
+    return;
+
+  } finally {
+    if (conn) await conn.close();
+  }
+};
+
+
 //-------------------update---------------
 export const cancelDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;

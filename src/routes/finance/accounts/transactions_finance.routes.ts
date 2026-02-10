@@ -28,7 +28,8 @@ import {
   // Export Controller
   //exportTransactionDocument,
   createChequePaymentStoreProcess,
-  createPurchaseDocument, // Exports transaction data
+  createPurchaseDocument,
+  getDocAccounts, // Exports transaction data
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 
 // Initialize Express router
@@ -42,7 +43,8 @@ router.get("/default_details", getDefaultTransactionDetails);   // Get default v
 router.get("/cheque_detail", getChequeDetail);                  // Get cheque information
 router.get("/header/:doc_no", getChequePaymentHeader);          // Get payment header by document number
 router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
-router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code
+router.get("/table_name/:ac_code", getChildTableName); 
+router.get("/doc_accounts", getDocAccounts);         // Get related table name by account code
 // router.get("/document_report", getChequePaymentReport);         // Generate payment report
 // router.get("/export", exportTransactionDocument);               // Export transaction data
 
