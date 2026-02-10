@@ -92,7 +92,15 @@ export class PrincipalService {
       });
       
       await executeMutation(sql, bindObj);
-      return principalData as PrincipalMaster;
+
+      // Fetch the created principal to return it 
+      const selectSql = `SELECT * FROM MS_PRINCIPAL WHERE PRIN_NAME = :prin_name AND COMPANY_CODE = :company_code`;
+      const createdPrincipal  = await executeSingleQuery<PrincipalMaster>(selectSql, {
+        prin_name: principalData.prin_name,
+        company_code: principalData.company_code
+      });  
+      console.log("Created Principal:", createdPrincipal); // Debug log to verify the created principal
+      return createdPrincipal as PrincipalMaster;
     } catch (error) {
       console.error("[PrincipalService.createPrincipal] Error:", error);
       throw error;
