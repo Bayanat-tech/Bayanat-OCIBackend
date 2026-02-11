@@ -654,13 +654,23 @@ break;
 
 
   case "ac_code_search": {
+   console.log("account code search");
    let whereClause = `
     WHERE company_code = :company_code
-   `;
+      AND doc_id = :doc_id
+      AND hdr_dtl = :hdr_dtl
+      AND (div_code = :div_code)
+  `;
+
+  const accountFilter = filter as ISearch & { doc_id?: string; hdr_dtl?: string; div_code?: string };
 
   let binds: any = {
     company_code: requestUser.company_code,
+    doc_id: accountFilter.doc_id,
+    hdr_dtl: accountFilter.hdr_dtl,
+    div_code: accountFilter.div_code,
   };
+  console.log("Initial binds:", binds);
 
   // SEARCH (replacement for getSearchFilterQuery)
   if (filter?.search) {
@@ -677,8 +687,6 @@ break;
   const sortColumnMap: Record<string, string> = {
     ac_code: "AC_CODE",
     ac_name: "AC_NAME",
-    created_at: "CREATE_DATE",
-    updated_at: "EDIT_DATE",
   };
 
   let orderByClause = "ORDER BY AC_CODE";
@@ -693,9 +701,15 @@ break;
 
   // COUNT
   const countResult = await connection.execute(
+  // `
+  //   SELECT COUNT(*) AS TOTAL_COUNT
+  //   FROM VW_AC_CODES_SEARCH
+  //   ${whereClause}
+  //   `,
+
     `
     SELECT COUNT(*) AS TOTAL_COUNT
-    FROM VW_AC_CODES_SEARCH
+    FROM VW_HDR_DOC_ACCOUNTS
     ${whereClause}
     `,
     binds,
@@ -705,13 +719,12 @@ break;
   totalCount =
     (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  // DATA
   const dataResult = await connection.execute(
     `
     SELECT 
     ac_code AS "ac_code",
     ac_name AS "ac_name"
-    FROM VW_AC_CODES_SEARCH
+    FROM VW_HDR_DOC_ACCOUNTS
     ${whereClause}
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
