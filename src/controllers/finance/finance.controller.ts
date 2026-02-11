@@ -328,8 +328,16 @@ export const getFinanceListData = async (
   // DATA QUERY
   const dataResult = await connection.execute(
     `
-    SELECT ac_code, ac_name, curr_code, l4_bill, l4_description,
-           address, fax, phone, salesman_code, sector_code
+    SELECT ac_code AS "ac_code", 
+           ac_name AS "ac_name", 
+           curr_code AS "curr_code", 
+           l4_bill AS "l4_bill", 
+           l4_description AS "l4_description",
+           address AS "address", 
+           fax AS "fax", 
+           phone AS "phone", 
+           salesman_code AS "salesman_code", 
+           sector_code AS "sector_code"
     FROM VW_HDR_DOC_ACCOUNTS
     ${whereClause}
     ${orderByClause}
@@ -343,7 +351,14 @@ export const getFinanceListData = async (
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
   );
 
-  fetchedData = dataResult.rows || [];
+  // Ensure lowercase column names by normalizing
+  fetchedData = (dataResult.rows || []).map((row: any) => {
+    const normalizedRow: any = {};
+    Object.keys(row).forEach((key) => {
+      normalizedRow[key.toLowerCase()] = row[key];
+    });
+    return normalizedRow;
+  });
   console.log("Get data from account master:", fetchedData);
 
   break;
