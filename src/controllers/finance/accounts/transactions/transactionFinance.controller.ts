@@ -12,7 +12,7 @@ import {
 
 import { IUser } from "../../../../interfaces/user.interface"; // User interface
 
-import { chequePaymentSchema, purchaseSchema } from "../../../../validation/finance/accounts/transaction.validation"; // Validation schema
+import { chequePaymentSchema, LpoSchema, purchaseSchema } from "../../../../validation/finance/accounts/transaction.validation"; // Validation schema
 import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions/ac_header_search.view";
 //-------------------get---------------
 /**
@@ -2262,7 +2262,8 @@ export const createPurchaseDocument = async (
           curr_code,
           ex_rate,
           div_code,
-          amount_origin
+          amount_origin,
+          indicator_origin
         ) VALUES (
           :company_code,
           :doc_type,
@@ -2280,7 +2281,8 @@ export const createPurchaseDocument = async (
           :curr_code,
           :ex_rate,
           :div_code,
-          :amount_origin
+          :amount_origin,
+          :indicator_origin
         )
         `,
         {
@@ -2300,7 +2302,8 @@ export const createPurchaseDocument = async (
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
           div_code: dtl.div_code,
-          amount_origin:dtl.amount
+          amount_origin:dtl.amount,
+          indicator_origin:'Y'
         },
         { autoCommit: false }
       );
@@ -2314,6 +2317,172 @@ export const createPurchaseDocument = async (
       data: {
         purchase_doc_no: doc_no,
         invoice_doc_no: invoice_no,
+      },
+    });
+  } catch (err: any) {
+    if (connection) await connection.rollback();
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to create purchase",
+      error: err.message,
+    });
+  } finally {
+    if (connection) await connection.close();
+  }
+};
+
+export const createLPODocument = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  let connection;
+
+  try {
+    /* -------------------- VALIDATION -------------------- */
+    const { error, value } = LpoSchema(req.body);
+    if (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+
+    const {
+      doc_type,
+      doc_date,
+      ac_code,
+      curr_code,
+      ex_rate,
+      remarks,
+      div_code,
+      company_code,
+      detail,
+    } = value;
+
+    connection = await oracledb.getConnection();
+
+    /* -------------------- DOC NO -------------------- */
+    const docResult = await connection.execute(
+      `
+      SELECT FN_AC_GET_DOC_NO(
+        :company_code,
+        :div_code,
+        :doc_type,
+        TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
+      ) AS DOC_NO
+      FROM dual
+      `,
+      {
+        company_code: req.user.company_code,
+        div_code,
+        doc_type,
+        doc_date,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const doc_no = (docResult.rows?.[0] as any)?.DOC_NO;
+    if (!doc_no) throw new Error("Failed to generate document number");
+
+    /* -------------------- PURCHASE HEADER -------------------- */
+    await connection.execute(
+      `
+      INSERT INTO TR_AC_LPO_HEADER (
+        doc_no,
+        doc_type,
+        doc_date,
+        ac_code,
+        curr_code,
+        ex_rate,
+        remarks,
+        div_code,
+        company_code
+      ) VALUES (
+        :doc_no,
+        :doc_type,
+        :doc_date,
+        :ac_code,
+        :curr_code,
+        :ex_rate,
+        :remarks,
+        :div_code,
+        :company_code
+      )
+      `,
+      {
+        doc_no,
+        doc_type,
+        doc_date,
+        ac_code,
+        curr_code,
+        ex_rate,
+        remarks,
+        div_code,
+        company_code: req.user.company_code,
+      },
+      { autoCommit: false }
+    );
+
+    /* -------------------- PURCHASE DETAIL -------------------- */
+    for (const dtl of detail) {
+      await connection.execute(
+        `
+        INSERT INTO TR_AC_LPO_DETAIL (
+          doc_no,
+          doc_type,
+          serial_no,
+          ac_code,
+          header_ac_code,
+          amount,
+          curr_code,
+          ex_rate,
+          sign_ind,
+          div_code,
+          company_code,
+          lcur_amount
+        ) VALUES (
+          :doc_no,
+          :doc_type,
+          :serial_no,
+          :ac_code,
+          :header_ac_code,
+          :amount,
+          :curr_code,
+          :ex_rate,
+          :sign_ind,
+          :div_code,
+          :company_code,
+          :lcur_amount
+        )
+        `,
+        {
+          doc_no,
+          doc_type,
+          serial_no: dtl.serial_no,
+          ac_code: dtl.ac_code,
+          header_ac_code:ac_code,
+          amount: dtl.amount,
+          curr_code: dtl.curr_code,
+          ex_rate: dtl.ex_rate,
+          sign_ind: dtl.sign_ind,
+          div_code: dtl.div_code,
+          lcur_amount: dtl.lcur_amount,
+          company_code: req.user.company_code,
+        },
+        { autoCommit: false }
+      );
+    }
+
+    await connection.commit();
+
+    res.status(201).json({
+      success: true,
+      message: "Purchase and Invoice created successfully",
+      data: {
+        purchase_doc_no: doc_no,
+        
       },
     });
   } catch (err: any) {
