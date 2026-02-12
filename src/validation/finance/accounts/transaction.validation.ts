@@ -41,11 +41,11 @@ export const chequePaymentSchema = (
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    files: Joi.array() // Files (conditional)
+    files: Joi.array().optional() // Files (conditional)
       .items(Joi.any())
       .when("doc_type", {
         is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
-        then: Joi.allow(null), // Then files are optional
+        then: Joi.allow(null,""), // Then files are optional
         otherwise: Joi.forbidden(), // Otherwise files are forbidden
       }),
     ac_payee: Joi.string().when("doc_type", { // Account payee (conditional)
@@ -314,7 +314,7 @@ export const purchaseSchema = (
       .items(Joi.any())
       .when("doc_type", {
         is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
-        then: Joi.allow(null), // Then files are optional
+        then: Joi.allow(null,""), // Then files are optional
         otherwise: Joi.forbidden(), // Otherwise files are forbidden
       }),
     tax_categoty: Joi.number().optional(),
