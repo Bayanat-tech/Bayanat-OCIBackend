@@ -73,26 +73,23 @@ WHERE (LTRIM(RTRIM(a.level3)) IS NOT NULL AND LTRIM(RTRIM(a.level3)) != ' ' AND 
   AND (LTRIM(RTRIM(a.level2)) IS NOT NULL AND LTRIM(RTRIM(a.level2)) != ' ' AND LENGTH(LTRIM(RTRIM(a.level2))) > 0)
 `;
 
-// Returns invoice allocation candidates for cheque/payment allocation.
-// Note: c_bal_amt_org divides the origin amount by the origin exchange rate. We use NULLIF
-// to avoid division by zero (if origin ex_rate is NULL or 0 the result will be NULL — handle in app).
 export const getChequePaymentInvoiceDetail = `
 SELECT
   inv.inv_no,
   inv.dtl_sr_no,
   inv.doc_no,
   MAX(inv.inv_date) AS inv_date,
-  0.0 AS amount,
+  SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END) AS amount,
   1 AS sign_ind,
   inv.ac_code,
   inv.company_code,
-  SUM(inv.lcur_amount * inv.sign_ind) AS inv_amt,
+  SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) AS inv_amt,
   ' ' AS c_curr_code,
   0.0 AS c_curr_amt,
   'N' AS c_indicator_origin,
   MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.curr_code END) AS c_curr_code_origin,
   MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END) AS c_ex_rate_origin,
-  (SUM(inv.amount_origin * inv.sign_ind) / NULLIF(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END), 0)) AS c_bal_amt_org,
+  (SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) - SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END)) AS c_bal_amt_org,
   MAX(inv.job_no) AS job_no,
   MAX(inv.bl_no) AS bl_no,
   MAX(inv.doc_ref) AS doc_ref,
@@ -103,7 +100,7 @@ WHERE inv.company_code = :company_code
   AND inv.div_code = :div_code
   AND (TRIM(inv.doc_type) || TRIM(TO_CHAR(inv.doc_no)) || TRIM(TO_CHAR(inv.serial_no)) <> :invrsno)
 GROUP BY inv.company_code, inv.ac_code, inv.inv_no, inv.div_code, inv.doc_no, inv.dtl_sr_no
-HAVING ROUND(SUM(inv.lcur_amount * inv.sign_ind), 3) <> 0
+HAVING (SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) - SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END)) > 0
 `;
 
 export const getWareHouseUtilization = `SELECT 

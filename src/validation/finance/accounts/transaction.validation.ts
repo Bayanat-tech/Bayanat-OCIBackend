@@ -41,7 +41,7 @@ export const chequePaymentSchema = (
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    files: Joi.array().optional() // Files (conditional)
+    files: Joi.array().optional().allow("", null) // Files (conditional)
       .items(Joi.any())
       .when("doc_type", {
         is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
@@ -147,6 +147,8 @@ export const chequePaymentSchema = (
             c_bal_amt_org: Joi.number().allow(null).optional(),
             // Amount (optional, default 0)
             amount: Joi.number().default(0).optional(),
+            // Local currency amount (optional, default 0)
+            lcur_amount: Joi.number().default(0).optional(),
             // Currency code (optional)
             curr_code: Joi.string().allow(null).optional(),
             // Exchange rate (optional)
@@ -310,6 +312,7 @@ export const purchaseSchema = (
     phone: Joi.number().optional(),
     ref_doc: Joi.string(),
     terms: Joi.string(),
+    files: Joi.array().optional().allow("", null),
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
       .when("doc_type", {
@@ -423,6 +426,8 @@ export const purchaseSchema = (
             c_bal_amt_org: Joi.number().allow(null).optional(),
             // Amount (optional, default 0)
             amount: Joi.number().default(0).optional(),
+            // Local currency amount (optional, default 0)
+            lcur_amount: Joi.number().default(0).optional(),
             // Currency code (optional)
             curr_code: Joi.string().allow(null).optional(),
             // Exchange rate (optional)

@@ -440,6 +440,177 @@ export const getChequePaymentDetail = async (
   }
 };
 
+/**
+ * Fetches invoice, job, and expense children for a transaction document when editing
+ * @param req Request with doc_no, div_code, doc_type
+ * @param res HTTP Response
+ */
+export const getTransactionChildren = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  let connection;
+
+  try {
+    const { doc_no } = req.params;
+    const { div_code, doc_type } = req.query;
+    const companyCode = req.user.company_code;
+
+    connection = await oracledb.getConnection();
+
+    // Fetch invoice children
+    const invoiceQuery = `
+      SELECT
+        taid.company_code,
+        taid.doc_type,
+        taid.doc_no,
+        taid.serial_no,
+        taid.dtl_sr_no,
+        taid.doc_date,
+        taid.ac_code,
+        taid.inv_no,
+        taid.inv_date,
+        taid.due_date,
+        taid.chq_no,
+        taid.chq_date,
+        taid.chq_bank,
+        taid.amount,
+        taid.lcur_amount,
+        taid.sign_ind,
+        taid.curr_code,
+        taid.ex_rate,
+        taid.div_code,
+        taid.indicator_origin,
+        taid.amount_origin,
+        -- Get original invoice amount from the PI (original) row
+        COALESCE(pi.lcur_amount, taid.amount_origin, 0) AS original_amount,
+        c.curr_name
+      FROM TR_AC_INVDETAIL taid
+      -- LEFT JOIN to PI (original) row to get original invoice amount
+      LEFT JOIN TR_AC_INVDETAIL pi ON 
+        pi.company_code = taid.company_code
+        AND pi.inv_no = taid.inv_no
+        AND pi.div_code = taid.div_code
+        AND pi.indicator_origin = 'Y'
+        AND pi.sign_ind = 1
+      LEFT JOIN MS_CURRENCY c ON taid.curr_code = c.curr_code
+      WHERE taid.company_code = :company_code
+        AND taid.doc_no = :doc_no
+        AND taid.div_code = :div_code
+        AND taid.doc_type = :doc_type
+      ORDER BY taid.serial_no, taid.dtl_sr_no
+    `;
+
+    // Fetch job children
+    const jobQuery = `
+      SELECT
+        tajd.company_code,
+        tajd.doc_type,
+        tajd.doc_no,
+        tajd.serial_no,
+        tajd.dtl_sr_no,
+        tajd.doc_date,
+        tajd.ac_code,
+        tajd.job_no,
+        tajd.doc_refno,
+        tajd.doc_refno_2,
+        tajd.amount,
+        tajd.sign_ind,
+        tajd.lcur_amount,
+        tajd.curr_code,
+        tajd.ex_rate,
+        tajd.div_code,
+        c.curr_name
+      FROM TR_AC_JOBDETAIL tajd
+      LEFT JOIN MS_CURRENCY c ON tajd.curr_code = c.curr_code
+      WHERE tajd.company_code = :company_code
+        AND tajd.doc_no = :doc_no
+        AND tajd.div_code = :div_code
+        AND tajd.doc_type = :doc_type
+      ORDER BY tajd.serial_no, tajd.dtl_sr_no
+    `;
+
+    // Fetch expense children
+    const expenseQuery = `
+      SELECT
+        taed.company_code,
+        taed.doc_type,
+        taed.doc_no,
+        taed.serial_no,
+        taed.dtl_sr_no,
+        taed.doc_date,
+        taed.ac_code,
+        taed.exp_type_code,
+        taed.exp_subtype_code,
+        taed.exp_code,
+        taed.job_no,
+        taed.amount,
+        taed.sign_ind,
+        taed.lcur_amount,
+        taed.curr_code,
+        taed.ex_rate,
+        taed.div_code,
+        c.curr_name
+      FROM TR_AC_EXPDETAIL taed
+      LEFT JOIN MS_CURRENCY c ON taed.curr_code = c.curr_code
+      WHERE taed.company_code = :company_code
+        AND taed.doc_no = :doc_no
+        AND taed.div_code = :div_code
+        AND taed.doc_type = :doc_type
+      ORDER BY taed.serial_no, taed.dtl_sr_no
+    `;
+
+    const params = {
+      company_code: companyCode,
+      doc_no,
+      div_code,
+      doc_type,
+    };
+
+    const [invoiceResult, jobResult, expenseResult] = await Promise.all([
+      connection.execute(invoiceQuery, params, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      connection.execute(jobQuery, params, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      connection.execute(expenseQuery, params, { outFormat: oracledb.OUT_FORMAT_OBJECT })
+    ]);
+
+    // Normalize column names to lowercase
+    const normalizeRows = (rows: any[]) =>
+      rows.map((row: any) =>
+        Object.keys(row).reduce((acc: any, k: string) => {
+          acc[k.toLowerCase()] = row[k];
+          return acc;
+        }, {})
+      );
+
+    const invoiceRows = normalizeRows(invoiceResult.rows || []);
+    const jobRows = normalizeRows(jobResult.rows || []);
+    const expenseRows = normalizeRows(expenseResult.rows || []);
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: {
+        invoice: invoiceRows,
+        job: jobRows,
+        expense: expenseRows
+      }
+    });
+    return;
+
+  } catch (err) {
+    console.error(err);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Error occurred while fetching children data",
+    });
+    return;
+
+  } finally {
+    if (connection) {
+      await connection.close();
+    }
+  }
+};
+
 export const getChildTableName = async (
   req: RequestWithUser,
   res: Response
@@ -931,6 +1102,10 @@ export const createChequePaymentDocument = async (
     );
 
     if (detail?.length) {
+      const isReverseDoc = req.body.doc_type === '9001';
+      const isPaymentDoc = req.body.doc_type === 'BP';
+      const bankAcCode = header.bank_ac_code ?? null;
+
       const detailBinds = detail.map((d: any, idx: number) => ({
         company_code: req.user.company_code,
         doc_type: req.body.doc_type,
@@ -942,7 +1117,7 @@ export const createChequePaymentDocument = async (
         bank_ac_code: header.bank_ac_code ?? null,
         remarks: d.remarks ?? header.remarks ?? null,
         amount: d.amount ?? 0,
-        sign_ind: d.sign_ind ?? 1,
+        sign_ind: isReverseDoc ? -1 : (isPaymentDoc ? -1 : (d.sign_ind ?? 1)),
         curr_code: d.curr_code ?? header.curr_code ?? "USD",
         ex_rate: (d.ex_rate ?? header.ex_rate ?? 1),
         lcur_amount: d.lcur_amount ?? d.amount ?? 0,
@@ -1007,15 +1182,15 @@ export const createChequePaymentDocument = async (
           tx_compnt_1_expmt, tx_compnt_2_expmt, tx_compnt_3_expmt, tx_compnt_4_expmt,
           tx_tax_filed, tx_tax_filed_dt, tx_tax_filed_refno, tx_compnt_hdisc_amt_1, created_by, updated_by
         ) VALUES (
-          :company_code, :doc_type, :doc_no, :serial_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), :ac_code, :header_ac_code, :bank_ac_code, :remarks, :amount,
-          :sign_ind, :curr_code, :ex_rate, :lcur_amount, :pdc_ind, :cheque_no, TO_DATE(SUBSTR(:cheque_date,1,10),'YYYY-MM-DD'), :cheque_desc, TO_DATE(SUBSTR(:pdc_cleared_date,1,10),'YYYY-MM-DD'), :cancelled,
-          :job_no, :recon_ind, TO_DATE(SUBSTR(:recon_date,1,10),'YYYY-MM-DD'), :dept_code, :qty, :price, :uom, :pdc_clear_jvno, :ref_doc_type, :ref_doc_no, :ref_doc_serial_no,
+          :company_code, :doc_type, :doc_no, :serial_no, CASE WHEN :doc_date IS NOT NULL THEN TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD') END, :ac_code, :header_ac_code, :bank_ac_code, :remarks, :amount,
+          :sign_ind, :curr_code, :ex_rate, :lcur_amount, :pdc_ind, :cheque_no, CASE WHEN :cheque_date IS NOT NULL THEN TO_DATE(SUBSTR(:cheque_date,1,10),'YYYY-MM-DD') END, :cheque_desc, CASE WHEN :pdc_cleared_date IS NOT NULL THEN TO_DATE(SUBSTR(:pdc_cleared_date,1,10),'YYYY-MM-DD') END, :cancelled,
+          :job_no, :recon_ind, CASE WHEN :recon_date IS NOT NULL THEN TO_DATE(SUBSTR(:recon_date,1,10),'YYYY-MM-DD') END, :dept_code, :qty, :price, :uom, :pdc_clear_jvno, :ref_doc_type, :ref_doc_no, :ref_doc_serial_no,
           :div_code, :tx_cat_code, :tx_compntcat_code_1, :tx_compntcat_code_2, :tx_compntcat_code_3, :tx_compntcat_code_4,
           :tx_compnt_perc_1, :tx_compnt_perc_2, :tx_compnt_perc_3, :tx_compnt_perc_4,
           :tx_compnt_amt_1, :tx_compnt_amt_2, :tx_compnt_amt_3, :tx_compnt_amt_4,
           :tx_compnt_lcuramt_1, :tx_compnt_lcuramt_2, :tx_compnt_lcuramt_3, :tx_compnt_lcuramt_4,
           :tx_compnt_1_expmt, :tx_compnt_2_expmt, :tx_compnt_3_expmt, :tx_compnt_4_expmt,
-          :tx_tax_filed, TO_DATE(SUBSTR(:tx_tax_filed_dt,1,10),'YYYY-MM-DD'), :tx_tax_filed_refno, :tx_compnt_hdisc_amt_1, :created_by, :updated_by
+          :tx_tax_filed, CASE WHEN :tx_tax_filed_dt IS NOT NULL THEN TO_DATE(SUBSTR(:tx_tax_filed_dt,1,10),'YYYY-MM-DD') END, :tx_tax_filed_refno, :tx_compnt_hdisc_amt_1, :created_by, :updated_by
         )
         `,
         detailBinds
@@ -1030,29 +1205,38 @@ export const createChequePaymentDocument = async (
         const invBinds: any = {
           company_code: req.user.company_code,
           div_code: req.body.div_code,
-          doc_type: req.body.doc_type,
-          doc_no,
         };
         const invPlaceholders = invNos.map((_, i) => `:inv${i}`).join(', ');
         invNos.forEach((n: any, i: number) => (invBinds[`inv${i}`] = n));
 
-        // Sum outstanding per invoice excluding current document (so we do not double-count existing allocations)
+        // Get outstanding balance using indicator_origin field
+        // Original invoice: indicator_origin = 'Y', amount_origin has original amount
+        // Payment record: indicator_origin = 'N' or NULL, lcur_amount has payment amount
         const outstandingSql = `
-          SELECT inv.inv_no,
-                 NVL((SUM(inv.amount_origin * inv.sign_ind) / NULLIF(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END), 0)), 0) AS c_bal_amt_org
-          FROM TR_AC_INVDETAIL inv
-          WHERE inv.company_code = :company_code
-            AND inv.div_code = :div_code
-            AND inv.inv_no IN (${invPlaceholders})
-            AND NOT (inv.doc_type = :doc_type AND inv.doc_no = :doc_no)
-          GROUP BY inv.inv_no
+          SELECT 
+            inv_no,
+            ABS(COALESCE(
+              MAX(CASE WHEN indicator_origin = 'Y' THEN ABS(amount_origin) ELSE 0 END) - 
+              SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END),
+              0
+            )) AS outstanding_amount,
+            MAX(CASE WHEN indicator_origin = 'Y' THEN ABS(amount_origin) ELSE 0 END) AS original_amount,
+            SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END) AS paid_amount
+          FROM TR_AC_INVDETAIL
+          WHERE company_code = :company_code
+            AND div_code = :div_code
+            AND inv_no IN (${invPlaceholders})
+          GROUP BY inv_no
         `;
 
         const outRes = await connection.execute(outstandingSql, invBinds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
         const outstandingMap: any = {};
         (outRes.rows || []).forEach((r: any) => {
-          // c_bal_amt_org may be NULL - treat as 0
-          outstandingMap[r.INV_NO] = Number(r.C_BAL_AMT_ORG) || 0;
+          outstandingMap[r.INV_NO] = {
+            outstanding: Number(r.OUTSTANDING_AMOUNT) || 0,
+            original: Number(r.ORIGINAL_AMOUNT) || 0,
+            paid: Number(r.PAID_AMOUNT) || 0,
+          };
         });
 
         // Sum requested allocations from the payload (in case same invoice appears multiple times)
@@ -1063,45 +1247,63 @@ export const createChequePaymentDocument = async (
         });
 
         console.log('Invoice allocation validation debug: invNos=', invNos);
-        console.log('Invoice allocation validation debug: invBinds=', invBinds);
         console.log('Invoice allocation validation debug: outstanding rows=', outRes.rows);
         console.log('Invoice allocation validation debug: outstandingMap=', outstandingMap);
         console.log('Invoice allocation validation debug: requestedMap=', requestedMap);
 
         const errors: string[] = [];
-        const foundInvNos = Object.keys(outstandingMap);
-        const missingInvNos = invNos.filter((n: any) => !foundInvNos.includes(n));
-        if (missingInvNos.length) {
-          missingInvNos.forEach((m: any) => {
-            console.warn(`Invoice allocation validation: invoice ${m} not found in TR_AC_INVDETAIL or has no outstanding rows`);
-            errors.push(`Invoice ${m} not found or has no outstanding balance (treated as 0)`);
-          });
+        
+        // Check if invoices found in system
+        for (const invNo of invNos) {
+          if (!outstandingMap[invNo as string]) {
+            errors.push(`Invoice ${invNo} not found or has no records`);
+          }
         }
 
-        for (const invNo of Object.keys(requestedMap)) {
+        // Check if requested amounts exceed outstanding
+        for (const invNo of Object.keys(requestedMap) as string[]) {
           const requested = requestedMap[invNo] || 0;
-          const avail = outstandingMap[invNo] ?? 0;
-          // Allow small epsilon for rounding
-          if (requested - avail > 0.0005) {
-            errors.push(`Invoice ${invNo} allocation exceeds available balance (requested=${requested}, available=${avail})`);
+          const balance = outstandingMap[invNo];
+          
+          if (!balance) {
+            errors.push(`Invoice ${invNo}: No outstanding balance found`);
+            continue;
+          }
+
+          const outstanding = balance.outstanding || 0;
+          // Allow small epsilon for rounding (0.01)
+          if (requested - outstanding > 0.01) {
+            errors.push(`Invoice ${invNo}: Payment amount ${requested} exceeds outstanding balance ${outstanding}`);
           }
         }
 
         if (errors.length) {
-          res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: 'Invoice allocation validation failed', errors });
+          res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
+            success: false, 
+            message: 'Invoice allocation validation failed', 
+            errors 
+          });
           return;
         }
       }
 
+      // INSERT INVOICE RECORDS with indicator_origin and amount_origin fields
       console.log('DB: CREATE-FLOW INSERT INVOICE (first)', { ...children.invoice[0], doc_no });
+      
+      // Determine indicator_origin and amount_origin based on document type
+      const isPaymentDoc = req.body.doc_type === 'BP'; // Bill Payment
+      
       await connection.executeMany(
         `
         INSERT INTO ${constants.TABLE.TR_AC_INVDETAIL} (
           company_code, doc_type, doc_no, serial_no, dtl_sr_no, doc_date, ac_code, inv_no, inv_date, due_date,
-          chq_no, chq_date, chq_bank, amount, lcur_amount, sign_ind, curr_code, ex_rate, div_code, created_by, updated_by
+          chq_no, chq_date, chq_bank, amount, lcur_amount, sign_ind, curr_code, ex_rate, div_code, 
+          indicator_origin, amount_origin, created_by, updated_by
         ) VALUES (
-          :company_code, :doc_type, :doc_no, :serial_no, :dtl_sr_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), :ac_code, :inv_no, TO_DATE(SUBSTR(:inv_date,1,10),'YYYY-MM-DD'), TO_DATE(SUBSTR(:due_date,1,10),'YYYY-MM-DD'),
-          :chq_no, TO_DATE(SUBSTR(:chq_date,1,10),'YYYY-MM-DD'), :chq_bank, :amount, :lcur_amount, :sign_ind, :curr_code, :ex_rate, :div_code, :created_by, :updated_by
+          :company_code, :doc_type, :doc_no, :serial_no, :dtl_sr_no, TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD'), 
+          :ac_code, :inv_no, TO_DATE(SUBSTR(:inv_date,1,10),'YYYY-MM-DD'), TO_DATE(SUBSTR(:due_date,1,10),'YYYY-MM-DD'),
+          :chq_no, TO_DATE(SUBSTR(:chq_date,1,10),'YYYY-MM-DD'), :chq_bank, :amount, :lcur_amount, :sign_ind, 
+          :curr_code, :ex_rate, :div_code, :indicator_origin, :amount_origin, :created_by, :updated_by
         )
         `,
         children.invoice.map((inv: any) => ({
@@ -1115,15 +1317,19 @@ export const createChequePaymentDocument = async (
           inv_no: inv.inv_no,
           inv_date: inv.inv_date,
           due_date: inv.due_date,
-          chq_no: inv.chq_no,
-          chq_date: inv.chq_date,
-          chq_bank: inv.chq_bank,
-          amount: inv.amount,
-          lcur_amount: inv.lcur_amount,
-          sign_ind: inv.sign_ind,
-          curr_code: inv.curr_code,
-          ex_rate: inv.ex_rate,
-          div_code: inv.div_code,
+          chq_no: inv.chq_no ?? null,
+          chq_date: inv.chq_date ?? null,
+          chq_bank: inv.chq_bank ?? null,
+          amount: inv.amount ?? 0,
+          lcur_amount: Math.abs(inv.lcur_amount || inv.amount || 0),  // Use || to treat 0 as falsy
+          sign_ind: isPaymentDoc ? -1 : 1, // Payment entries should be -1, original invoices +1
+          curr_code: inv.curr_code ?? req.body.curr_code ?? 'USD',
+          ex_rate: inv.ex_rate ?? req.body.ex_rate ?? 1,
+          div_code: inv.div_code ?? req.body.div_code,
+          // For BP (payment): indicator_origin = 'N' = Payment Record, amount_origin = NULL
+          // For PI (invoice): indicator_origin = 'Y' = Original Invoice, amount_origin = original amount
+          indicator_origin: isPaymentDoc ? 'N' : 'Y',
+          amount_origin: isPaymentDoc ? null : (inv.lcur_amount ?? inv.amount ?? 0),
           created_by: req.user.loginid,
           updated_by: req.user.loginid,
         }))
@@ -1747,8 +1953,6 @@ export const updateChequePaymentDocument = async (
             curr_code: inv.curr_code,
             ex_rate: inv.ex_rate,
             div_code: inv.div_code,
-            oracle_upload: inv.oracle_upload,
-            oracle_dt: inv.oracle_dt,
             created_by: req.user.loginid,
             updated_by: req.user.loginid,
           }))
@@ -2105,6 +2309,7 @@ export const createPurchaseDocument = async (
       div_code,
       company_code,
       detail,
+      files
     } = value;
 
     connection = await oracledb.getConnection();
@@ -2298,7 +2503,7 @@ export const createPurchaseDocument = async (
           due_date: doc_date,
           amount: dtl.amount,
           lcur_amount: dtl.amount,
-          sign_ind: dtl.sign_ind ?? 1,
+          sign_ind: 1, // PI (original invoices) always have +1 sign_ind (liability/payable)
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
           div_code: dtl.div_code,
@@ -2495,5 +2700,164 @@ export const createLPODocument = async (
     });
   } finally {
     if (connection) await connection.close();
+  }
+};
+
+/**
+ * Get outstanding balance for one or more invoices
+ * @param req Request with invoice numbers and division code
+ * @param res HTTP Response object
+ * 
+ * Query params:
+ *   inv_nos: comma-separated invoice numbers (required)
+ *   div_code: division code (required)
+ */
+export const getInvoiceOutstandingBalances = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  let connection;
+
+  try {
+    const { inv_nos, div_code } = req.query;
+    
+    if (!inv_nos || !div_code) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "inv_nos and div_code query parameters are required",
+      });
+      return;
+    }
+
+    const invNoList = (inv_nos as string)
+      .split(',')
+      .map(n => n.trim())
+      .filter(n => n);
+
+    if (invNoList.length === 0) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "At least one invoice number is required",
+      });
+      return;
+    }
+
+    connection = await oracledb.getConnection();
+
+    const placeholders = invNoList.map((_, i) => `:inv${i}`).join(',');
+    const binds: Record<string, any> = {
+      company_code: req.user.company_code,
+      div_code: div_code as string,
+    };
+
+    invNoList.forEach((inv: string, i: number) => {
+      binds[`inv${i}`] = inv;
+    });
+
+    // Use stored procedure SP_GET_INVOICE_OUTSTANDING for each invoice
+    const balances: any[] = [];
+
+    for (const invNo of invNoList) {
+      try {
+        // Direct SQL query to calculate invoice outstanding balance
+        const balanceResult = await connection.execute(
+          `
+          SELECT
+            inv_no,
+            SUM(CASE WHEN indicator_origin = 'Y' THEN ABS(lcur_amount) ELSE 0 END) AS original_amount,
+            SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END) AS paid_amount,
+            (SUM(CASE WHEN indicator_origin = 'Y' THEN ABS(lcur_amount) ELSE 0 END) - 
+             SUM(CASE WHEN NVL(indicator_origin, 'N') IN ('N', NULL) THEN ABS(lcur_amount) ELSE 0 END)) AS outstanding_amount
+          FROM TR_AC_INVDETAIL
+          WHERE company_code = :company_code
+            AND div_code = :div_code
+            AND inv_no = :inv_no
+          GROUP BY inv_no
+          `,
+          {
+            company_code: req.user.company_code,
+            inv_no: invNo,
+            div_code: div_code as string
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        if (balanceResult.rows && balanceResult.rows.length > 0) {
+          const row: any = balanceResult.rows[0];
+          const originalVal = Number(row.ORIGINAL_AMOUNT || 0);
+          const paidVal = Number(row.PAID_AMOUNT || 0);
+          const outstandingVal = Number(row.OUTSTANDING_AMOUNT || 0);
+          const percentage = originalVal > 0 ? (paidVal / originalVal) * 100 : 0;
+          
+          balances.push({
+            inv_no: invNo,
+            original_amount: originalVal,
+            paid_amount: paidVal,
+            outstanding_amount: Math.max(0, outstandingVal),
+            payment_percentage: Math.round(percentage * 100) / 100,
+            is_fully_paid: Math.max(0, outstandingVal) <= 0.01
+          });
+        } else {
+          // Invoice not found in TR_AC_INVDETAIL
+          balances.push({
+            inv_no: invNo,
+            original_amount: 0,
+            paid_amount: 0,
+            outstanding_amount: 0,
+            payment_percentage: 0,
+            is_fully_paid: true,
+            error: 'Invoice not found'
+          });
+        }
+      } catch (procErr) {
+        // If query fails for this invoice, return error
+        balances.push({
+          inv_no: invNo,
+          original_amount: 0,
+          paid_amount: 0,
+          outstanding_amount: 0,
+          payment_percentage: 0,
+          is_fully_paid: true,
+          error: (procErr as any)?.message || 'Query error'
+        });
+      }
+    }
+
+    // Add invoices that were requested but not found
+    const foundInvNos = balances.map(b => b.inv_no);
+    const notFoundInvs = invNoList.filter(inv => !foundInvNos.includes(inv));
+    
+    notFoundInvs.forEach(inv => {
+      balances.push({
+        inv_no: inv,
+        original_amount: 0,
+        paid_amount: 0,
+        outstanding_amount: 0,
+        payment_percentage: 0,
+        is_fully_paid: true,
+        error: "Invoice not found in system",
+      });
+    });
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: {
+        balances,
+        count: balances.length,
+      },
+    });
+    return;
+
+  } catch (err) {
+    console.error('Error getting invoice outstanding balances:', err);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Error occurred while fetching outstanding balances",
+      error: (err as any)?.message,
+    });
+  } finally {
+    if (connection) {
+      await connection.close();
+    }
   }
 };

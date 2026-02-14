@@ -11,10 +11,12 @@ import {
   getChequeDetail, // Gets cheque-specific information
   getChequePaymentDetail, // Gets payment transaction details
   getChequePaymentHeader, // Gets payment header information
+  getTransactionChildren, // Gets invoice/job/expense children for a document
   //getChequePaymentReport, // Generates payment reports
   getChildTableName, // Gets related table names
   getCompanyInfo, // Retrieves company information
   getDefaultTransactionDetails, // Gets default transaction values
+  getInvoiceOutstandingBalances, // Gets outstanding balances for invoices
 
   // Document Modification Controllers
   updateChequePaymentDocument, // Updates payment documents
@@ -44,8 +46,10 @@ router.get("/default_details", getDefaultTransactionDetails);   // Get default v
 router.get("/cheque_detail", getChequeDetail);                  // Get cheque information
 router.get("/header/:doc_no", getChequePaymentHeader);          // Get payment header by document number
 router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
-router.get("/table_name/:ac_code", getChildTableName); 
-router.get("/doc_accounts", getDocAccounts);         // Get related table name by account code
+router.get("/children/:doc_no", getTransactionChildren);        // Get invoice/job/expense children by document number
+router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code
+router.get("/doc_accounts", getDocAccounts);                    // Get doc accounts
+router.get("/invoice_outstanding", getInvoiceOutstandingBalances); // Get outstanding balances for invoices
 // router.get("/document_report", getChequePaymentReport);         // Generate payment report
 // router.get("/export", exportTransactionDocument);               // Export transaction data
 
