@@ -1,15 +1,16 @@
 
 import express from "express";
+import { insUpdPurchaseRequest } from "../../controllers/ALMS/insUpdPurchaseRequest";
 
-import { updateAppraisalRatings } from "../../controllers/PAMS/ems_appraisal_task_dtl_update";
+
 
 
 const router = express.Router();
 
 
 router.post(
-  "/update-ratings",
-  updateAppraisalRatings
+  "/insUpdPurchaseRequest",
+  insUpdPurchaseRequest
 );
 
 export default router;
