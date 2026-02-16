@@ -72,6 +72,7 @@ import { createOrUpdateJob ,editJob} from "../../../controllers/wms/transaction/
 import {cancelInboundJob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller"
 import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
 import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
+import { insUpdMsProductEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsProductEdit.controller";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -209,6 +210,8 @@ router.get("/tally_product_data", getTallyProductData);
 router.post(
    "/Putawaywithpalletid",  Putawaywithpalletid
  );
+router.post(
+   "insUpdMsProductEdiBulk",insUpdMsProductEdiBulk);
 
 
 router.post(
