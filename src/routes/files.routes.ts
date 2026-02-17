@@ -24,6 +24,7 @@ import {
   uploadPFToS3,
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
+  uploadTestFileToS3,
 } from "../services/ociUpload.service";
 
 const router = express.Router();
@@ -186,5 +187,14 @@ router.delete(
   checkUserAuthorization,
   deleteEmployeeFiles
 );
+
+router.post(
+  "/uploadTestFile",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  upload.single("file"),
+  uploadTestFileToS3
+)
 
 export default router;

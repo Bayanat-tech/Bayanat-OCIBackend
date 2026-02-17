@@ -302,3 +302,35 @@ export const deleteEmployeeAttachmentFromS3 = async (req: any, res: any) => {
     });
   }
 };
+
+export const uploadTestFileToS3 = async (req: any, res: any) => {
+  const file = req.file;
+  console.log("file", file);
+  
+  const fileName: string = `test_uploads/$${new Date().getFullYear()}/${
+    new Date().getMonth() + 1
+  }/${file.originalname}`;
+  console.log("fileName", fileName);
+
+  const objectParams: UploadToS3ObjectInterface = {
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+    Key: fileName,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  };
+  try {
+    await s3Client.send(new PutObjectCommand(objectParams));
+
+    const URL: string = constants.OCI_S3_COMPATIBILITY.getObjectUrl(fileName);
+    console.log("URL", URL);
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: URL,
+    });
+  } catch (error: any) {
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

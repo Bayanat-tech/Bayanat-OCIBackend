@@ -69241,3 +69241,5 @@ AxiosError: Request failed with status code 500
     at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-17 16:34:42 [[31merror[39m]: Unhandled Rejection: TypeError: Cannot read properties of undefined (reading 'name') 
+2026-02-17 16:40:12 [[31merror[39m]: Unhandled Rejection: TypeError: Cannot read properties of undefined (reading 'originalname') 

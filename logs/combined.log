@@ -71329,3 +71329,232 @@ AxiosError: Request failed with status code 500
     at async Object.bulkInsertAttendanceEvents (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\hr.service.ts:539:24)
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\attendanceEventScheduler.service.ts:81:28
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-02-17 14:35:12 [[32minfo[39m]: FaceRecognitionService instance created with performance optimizations 
+2026-02-17 14:35:12 [[33mwarn[39m]: @tensorflow/tfjs-node failed to load - falling back to JS backend. If you want the native addon, run: npm rebuild @tensorflow/tfjs-node build-addon-from-source and see https://github.com/tensorflow/tfjs/blob/master/tfjs-node/WINDOWS_TROUBLESHOOTING.md for troubleshooting. 
+2026-02-17 14:35:12 [[34mdebug[39m]: Error: The specified module could not be found.
+\\?\C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10 
+2026-02-17 14:35:12 [[33mwarn[39m]: tfjs-node not available or failed to load (you can install @tensorflow/tfjs-node for faster inference): The specified module could not be found.
+\\?\C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node 
+Error: The specified module could not be found.
+\\?\C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\lib\napi-v5\tfjs_binding.node
+    at Object..node (node:internal/modules/cjs/loader:1865:18)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\@tensorflow\tfjs-node\dist\index.js:58:16)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at node:internal/modules/cjs/loader:1839:10
+2026-02-17 14:35:12 [[32minfo[39m]: TensorFlow.js backend initialized: cpu 
+2026-02-17 14:35:12 [[32minfo[39m]: Loading optimized face recognition models... 
+2026-02-17 14:35:14 [[32minfo[39m]: TensorFlow backend warm-up completed 
+2026-02-17 14:35:14 [[32minfo[39m]: Optimized face recognition models loaded successfully 
+2026-02-17 14:35:14 [[32minfo[39m]: FaceRecognitionService initialized successfully 
+2026-02-17 14:35:21 [[32minfo[39m]: Received query parameters: 
+2026-02-17 14:45:14 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 14:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 14:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 14:55:14 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 14:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 14:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:05:12 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2026-02-17 15:05:14 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:15:19 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 15:15:19 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:15:19 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:15:19 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:15:19 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:15:19 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:15:19 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:15:19 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:15:19 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:15:19 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:15:19 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:15:19 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:15:19 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:15:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:15:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:15:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:15:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:15:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:15:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:25:13 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 15:25:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:25:13 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:25:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:25:13 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:25:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:25:13 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:25:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:25:13 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:25:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:25:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:25:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:25:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:25:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:25:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:25:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:25:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:25:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:25:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:35:12 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2026-02-17 15:35:20 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:35:20 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:35:20 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:45:14 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:45:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:45:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:55:14 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 15:55:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 15:55:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 16:05:12 [[32minfo[39m]: Cleanup completed. Removed 0 old pending confirmations, cleaned 0 image buffers, and 0 old cancelled confirmations. 
+2026-02-17 16:05:13 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 16:05:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 16:05:13 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 16:05:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 16:05:13 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 16:05:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 16:05:13 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 16:05:13 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 16:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 16:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 16:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 16:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 16:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 16:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 16:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 16:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 16:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 16:05:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 16:05:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 16:15:14 [[32minfo[39m]: 🔄 Found 9 stale pending records older than 2 hours 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: db2c3ed7-3052-4439-8bdf-c1e94aadee5c 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 21ae5034-2640-44c8-936e-235eff3523a0 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 22729360-9e85-4619-921c-f37c88e5883c 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: f8e39a69-204c-4645-958c-c2682ed3c970 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 5074d822-7f33-4700-9b13-503f5d1d80fa 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 024dad2e-c6d7-4d57-954c-5cd3151bd1d8 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: e728045b-8657-46ae-a6d9-74f6b20180e5 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: a8e4a42a-bfce-427f-abc7-9389881ff03f 
+2026-02-17 16:15:14 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 16:15:14 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 408956d2-835e-46e2-9adc-838f9a21ca15 
+2026-02-17 16:34:42 [[31merror[39m]: Unhandled Rejection: TypeError: Cannot read properties of undefined (reading 'name') 
+2026-02-17 16:40:12 [[31merror[39m]: Unhandled Rejection: TypeError: Cannot read properties of undefined (reading 'originalname') 
