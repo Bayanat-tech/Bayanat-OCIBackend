@@ -33,7 +33,8 @@ import {
   createPurchaseDocument,
   getDocAccounts,
   createLPODocument,
-  getPurchaseHeader, // Exports transaction data
+  getPurchaseHeader,
+  createSalesDocument, // Exports transaction data
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 
 // Initialize Express router
@@ -73,6 +74,8 @@ router.delete("/children_item/delete", deleteChildrenItem);     // Delete child 
 router.post("/purchase-document",createPurchaseDocument)
 
 router.post("/lpo-document",createLPODocument)
+router.post("/sales-document",createSalesDocument)
+
 
 // Export the configured router
 export default router;

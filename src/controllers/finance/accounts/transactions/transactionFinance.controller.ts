@@ -12,7 +12,7 @@ import {
 
 import { IUser } from "../../../../interfaces/user.interface"; // User interface
 
-import { chequePaymentSchema, LpoSchema, purchaseSchema } from "../../../../validation/finance/accounts/transaction.validation"; // Validation schema
+import { chequePaymentSchema, LpoSchema, purchaseSchema, salesSchema } from "../../../../validation/finance/accounts/transaction.validation"; // Validation schema
 import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions/ac_header_search.view";
 //-------------------get---------------
 /**
@@ -1388,7 +1388,7 @@ export const createChequePaymentDocument = async (
         console.log('Invoice allocation validation debug: requestedMap=', requestedMap);
 
         const errors: string[] = [];
-        
+
         // Check if invoices found in system
         for (const invNo of invNos) {
           if (!outstandingMap[invNo as string]) {
@@ -1400,7 +1400,7 @@ export const createChequePaymentDocument = async (
         for (const invNo of Object.keys(requestedMap) as string[]) {
           const requested = requestedMap[invNo] || 0;
           const balance = outstandingMap[invNo];
-          
+
           if (!balance) {
             errors.push(`Invoice ${invNo}: No outstanding balance found`);
             continue;
@@ -1414,10 +1414,10 @@ export const createChequePaymentDocument = async (
         }
 
         if (errors.length) {
-          res.status(constants.STATUS_CODES.BAD_REQUEST).json({ 
-            success: false, 
-            message: 'Invoice allocation validation failed', 
-            errors 
+          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+            success: false,
+            message: 'Invoice allocation validation failed',
+            errors
           });
           return;
         }
@@ -1425,10 +1425,10 @@ export const createChequePaymentDocument = async (
 
       // INSERT INVOICE RECORDS with indicator_origin and amount_origin fields
       console.log('DB: CREATE-FLOW INSERT INVOICE (first)', { ...children.invoice[0], doc_no });
-      
+
       // Determine indicator_origin and amount_origin based on document type
       const isPaymentDoc = req.body.doc_type === 'BP'; // Bill Payment
-      
+
       await connection.executeMany(
         `
         INSERT INTO ${constants.TABLE.TR_AC_INVDETAIL} (
@@ -1651,7 +1651,7 @@ export const createChequePaymentStoreProcess = async (
 };
 
 export const getDocAccounts = async (
-  req: RequestWithUser, 
+  req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   let conn: oracledb.Connection | undefined;
@@ -2485,7 +2485,9 @@ export const createPurchaseDocument = async (
         ex_rate,
         remarks,
         div_code,
-        company_code
+        company_code,
+        created_by,
+        updated_by
       ) VALUES (
         :doc_no,
         :doc_type,
@@ -2495,7 +2497,9 @@ export const createPurchaseDocument = async (
         :ex_rate,
         :remarks,
         :div_code,
-        :company_code
+        :company_code,
+        :created_by,
+        :updated_by
       )
       `,
       {
@@ -2508,6 +2512,8 @@ export const createPurchaseDocument = async (
         remarks,
         div_code,
         company_code: req.user.company_code,
+        created_by: req.user.loginid,
+        updated_by: req.user.loginid
       },
       { autoCommit: false }
     );
@@ -2527,7 +2533,9 @@ export const createPurchaseDocument = async (
           sign_ind,
           div_code,
           company_code,
-          lcur_amount
+          lcur_amount,
+          created_by,
+        updated_by
         ) VALUES (
           :doc_no,
           :doc_type,
@@ -2539,7 +2547,9 @@ export const createPurchaseDocument = async (
           :sign_ind,
           :div_code,
           :company_code,
-          :lcur_amount
+          :lcur_amount,
+           :created_by,
+        :updated_by
         )
         `,
         {
@@ -2554,6 +2564,8 @@ export const createPurchaseDocument = async (
           div_code: dtl.div_code,
           lcur_amount: dtl.lcur_amount,
           company_code: req.user.company_code,
+          created_by: req.user.loginid,
+          updated_by: req.user.loginid
         },
         { autoCommit: false }
       );
@@ -2604,7 +2616,9 @@ export const createPurchaseDocument = async (
           ex_rate,
           div_code,
           amount_origin,
-          indicator_origin
+          indicator_origin,
+          created_by,
+        updated_by
         ) VALUES (
           :company_code,
           :doc_type,
@@ -2623,7 +2637,9 @@ export const createPurchaseDocument = async (
           :ex_rate,
           :div_code,
           :amount_origin,
-          :indicator_origin
+          :indicator_origin,
+           :created_by,
+        :updated_by
         )
         `,
         {
@@ -2643,8 +2659,10 @@ export const createPurchaseDocument = async (
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
           div_code: dtl.div_code,
-          amount_origin:dtl.amount,
-          indicator_origin:'Y'
+          amount_origin: dtl.amount,
+          indicator_origin: 'Y',
+          created_by: req.user.loginid,
+          updated_by: req.user.loginid
         },
         { autoCommit: false }
       );
@@ -2666,6 +2684,287 @@ export const createPurchaseDocument = async (
     res.status(500).json({
       success: false,
       message: "Failed to create purchase",
+      error: err.message,
+    });
+  } finally {
+    if (connection) await connection.close();
+  }
+};
+
+
+export const createSalesDocument = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  let connection;
+
+  try {
+    /* -------------------- VALIDATION -------------------- */
+    const { error, value } = salesSchema(req.body);
+    if (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+      return;
+    }
+
+    const {
+      doc_type,
+      doc_date,
+      ac_code,
+      curr_code,
+      ex_rate,
+      remarks,
+      div_code,
+      company_code,
+      detail,
+      files,
+      salesman_code,
+      sector_code
+    } = value;
+
+    connection = await oracledb.getConnection();
+
+    /* -------------------- DOC NO -------------------- */
+    const docResult = await connection.execute(
+      `
+      SELECT FN_AC_GET_DOC_NO(
+        :company_code,
+        :div_code,
+        :doc_type,
+        TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
+      ) AS DOC_NO
+      FROM dual
+      `,
+      {
+        company_code: req.user.company_code,
+        div_code,
+        doc_type,
+        doc_date,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const doc_no = (docResult.rows?.[0] as any)?.DOC_NO;
+    if (!doc_no) throw new Error("Failed to generate document number");
+
+    /* -------------------- PURCHASE HEADER -------------------- */
+    await connection.execute(
+      `
+      INSERT INTO TR_AC_HEADER (
+        doc_no,
+        doc_type,
+        doc_date,
+        ac_code,
+        curr_code,
+        ex_rate,
+        remarks,
+        div_code,
+        company_code,
+        salesman_code,
+        sector_code,
+        created_by,
+        updated_by
+      ) VALUES (
+        :doc_no,
+        :doc_type,
+        :doc_date,
+        :ac_code,
+        :curr_code,
+        :ex_rate,
+        :remarks,
+        :div_code,
+        :company_code,
+        :salesman_code,
+        :sector_code,
+         :created_by,
+        :updated_by
+      )
+      `,
+      {
+        doc_no,
+        doc_type,
+        doc_date,
+        ac_code,
+        curr_code,
+        ex_rate,
+        remarks,
+        div_code,
+        company_code: req.user.company_code,
+        salesman_code,
+        sector_code,
+        created_by: req.user.loginid,
+        updated_by: req.user.loginid
+      },
+      { autoCommit: false }
+    );
+
+    /* -------------------- PURCHASE DETAIL -------------------- */
+    for (const dtl of detail) {
+      await connection.execute(
+        `
+        INSERT INTO TR_AC_DETAIL (
+          doc_no,
+          doc_type,
+          serial_no,
+          ac_code,
+          amount,
+          curr_code,
+          ex_rate,
+          sign_ind,
+          div_code,
+          company_code,
+          lcur_amount,created_by,
+        updated_by
+        ) VALUES (
+          :doc_no,
+          :doc_type,
+          :serial_no,
+          :ac_code,
+          :amount,
+          :curr_code,
+          :ex_rate,
+          :sign_ind,
+          :div_code,
+          :company_code,
+          :lcur_amount,
+           :created_by,
+        :updated_by
+        )
+        `,
+        {
+          doc_no,
+          doc_type,
+          serial_no: dtl.serial_no,
+          ac_code: dtl.ac_code,
+          amount: dtl.amount,
+          curr_code: dtl.curr_code,
+          ex_rate: dtl.ex_rate,
+          sign_ind: dtl.sign_ind,
+          div_code: dtl.div_code,
+          lcur_amount: dtl.lcur_amount,
+          company_code: req.user.company_code,
+          created_by: req.user.loginid,
+          updated_by: req.user.loginid
+        },
+        { autoCommit: false }
+      );
+    }
+
+    /* -------------------- INVOICE DOC NO -------------------- */
+    const invDocResult = await connection.execute(
+      `
+      SELECT FN_AC_GET_DOC_NO(
+        :company_code,
+        :div_code,
+        :doc_type,
+        TO_DATE(SUBSTR(:doc_date, 1, 10), 'YYYY-MM-DD')
+      ) AS INV_NO
+      FROM dual
+      `,
+      {
+        company_code: req.user.company_code,
+        div_code,
+        doc_type: 'SI',
+        doc_date,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const invoice_no = (invDocResult.rows?.[0] as any)?.INV_NO;
+    if (!invoice_no) throw new Error("Failed to generate invoice number");
+
+    /* -------------------- INVOICE DETAIL -------------------- */
+    for (const dtl of detail) {
+      await connection.execute(
+        `
+        INSERT INTO TR_AC_INVDETAIL (
+          company_code,
+          doc_type,
+          doc_no,
+          serial_no,
+          dtl_sr_no,
+          doc_date,
+          ac_code,
+          inv_no,
+          inv_date,
+          due_date,
+          amount,
+          lcur_amount,
+          sign_ind,
+          curr_code,
+          ex_rate,
+          div_code,
+          amount_origin,
+          indicator_origin,
+          created_by,
+        updated_by
+        ) VALUES (
+          :company_code,
+          :doc_type,
+          :doc_no,
+          :serial_no,
+          :dtl_sr_no,
+          :doc_date,
+          :ac_code,
+          :inv_no,
+          :inv_date,
+          :due_date,
+          :amount,
+          :lcur_amount,
+          :sign_ind,
+          :curr_code,
+          :ex_rate,
+          :div_code,
+          :amount_origin,
+          :indicator_origin,
+           :created_by,
+        :updated_by
+        )
+        `,
+        {
+          company_code: req.user.company_code,
+          doc_type,
+          doc_no,
+          serial_no: dtl.serial_no,
+          dtl_sr_no: dtl.serial_no,
+          doc_date,
+          ac_code: ac_code,
+          inv_no: invoice_no,
+          inv_date: doc_date,
+          due_date: doc_date,
+          amount: dtl.amount,
+          lcur_amount: dtl.amount,
+          sign_ind: 1, // PI (original invoices) always have +1 sign_ind (liability/payable)
+          curr_code: dtl.curr_code,
+          ex_rate: dtl.ex_rate,
+          div_code: dtl.div_code,
+          amount_origin: dtl.amount,
+          indicator_origin: 'Y',
+          created_by: req.user.loginid,
+          updated_by: req.user.loginid
+        },
+        { autoCommit: false }
+      );
+    }
+    /* -------------------- COMMIT -------------------- */
+    await connection.commit();
+
+    res.status(201).json({
+      success: true,
+      message: "Sales Invoice created successfully",
+      data: {
+        purchase_doc_no: doc_no,
+        invoice_doc_no: invoice_no,
+      },
+    });
+  } catch (err: any) {
+    if (connection) await connection.rollback();
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to create sales",
       error: err.message,
     });
   } finally {
@@ -2803,7 +3102,7 @@ export const createLPODocument = async (
           doc_type,
           serial_no: dtl.serial_no,
           ac_code: dtl.ac_code,
-          header_ac_code:ac_code,
+          header_ac_code: ac_code,
           amount: dtl.amount,
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
@@ -2823,7 +3122,7 @@ export const createLPODocument = async (
       message: "Purchase and Invoice created successfully",
       data: {
         purchase_doc_no: doc_no,
-        
+
       },
     });
   } catch (err: any) {
@@ -2856,7 +3155,7 @@ export const getInvoiceOutstandingBalances = async (
 
   try {
     const { inv_nos, div_code } = req.query;
-    
+
     if (!inv_nos || !div_code) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
@@ -2924,7 +3223,7 @@ export const getInvoiceOutstandingBalances = async (
           const paidVal = Number(row.PAID_AMOUNT || 0);
           const outstandingVal = Number(row.OUTSTANDING_AMOUNT || 0);
           const percentage = originalVal > 0 ? (paidVal / originalVal) * 100 : 0;
-          
+
           balances.push({
             inv_no: invNo,
             original_amount: originalVal,
@@ -2962,7 +3261,7 @@ export const getInvoiceOutstandingBalances = async (
     // Add invoices that were requested but not found
     const foundInvNos = balances.map(b => b.inv_no);
     const notFoundInvs = invNoList.filter(inv => !foundInvNos.includes(inv));
-    
+
     notFoundInvs.forEach(inv => {
       balances.push({
         inv_no: inv,
