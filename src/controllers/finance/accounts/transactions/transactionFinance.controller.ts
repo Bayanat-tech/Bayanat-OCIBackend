@@ -350,6 +350,142 @@ export const getChequePaymentHeader = async (
   }
 };
 
+export const getPurchaseHeader = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  let connection;
+
+  try {
+    const { doc_no } = req.params;
+    const { doc_type } = req.query;
+    const companyCode = req.user.company_code;
+
+    connection = await oracledb.getConnection();
+
+    const query = `
+     SELECT
+        th.doc_no,
+        th.doc_date,
+        th.ac_code,
+        inv.inv_date,
+        th.remarks,
+        th.curr_code,
+        th.ex_rate,
+        th.div_code,
+        th.doc_type,
+        acs.tax_perc,
+        acc.ac_name,
+        curr.curr_name,
+        div.div_name
+      FROM TR_AC_HEADER th
+      INNER JOIN MS_AC_SETUP acs
+        ON th.company_code = acs.company_code
+      LEFT JOIN MS_ACCODES acc
+        ON th.ac_code = acc.ac_code
+        AND th.company_code = acc.company_code
+      LEFT JOIN MS_CURRENCY curr
+        ON th.curr_code = curr.curr_code
+      LEFT JOIN TR_AC_INVDETAIL inv
+        ON inv.inv_date = inv.inv_date
+      LEFT JOIN MS_HR_DIVISION div
+        ON th.div_code = div.div_code
+        AND th.company_code = div.company_code
+      WHERE th.company_code = :company_code
+        AND th.doc_no = :doc_no
+        AND th.doc_type = :doc_type
+    `;
+
+    const result = await connection.execute(
+      query,
+      {
+        company_code: companyCode,
+        doc_no,
+        doc_type,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    // Check if any rows were returned
+    // if (!result.rows || result.rows.length === 0) {
+    //   res.status(constants.STATUS_CODES.OK).json({
+    //     success: true,
+    //     data: null
+    //   });
+    //   return;
+    // }
+
+    // // Transform the result to match Sequelize nested structure
+    // const rowData: any = result.rows[0];
+
+    // const response = {
+    //   // Transaction Header fields
+    //   doc_no: rowData.DOC_NO,
+    //   doc_date: rowData.DOC_DATE,
+    //   ac_code: rowData.AC_CODE,
+    //   bank_ac_code: rowData.BANK_AC_CODE,
+    //   cheque_no: rowData.CHEQUE_NO,
+    //   cheque_date: rowData.CHEQUE_DATE,
+    //   remarks: rowData.REMARKS,
+    //   ac_payee: rowData.AC_PAYEE,
+    //   curr_code: rowData.CURR_CODE,
+    //   ex_rate: rowData.EX_RATE,
+    //   div_code: rowData.DIV_CODE,
+    //   doc_type: rowData.DOC_TYPE,
+    //   cheque_bank: rowData.CHEQUE_BANK,
+
+    //   // Nested objects to match Sequelize include structure
+    //   Accountsetup: {
+    //     tax_perc: rowData.TAX_PERC
+    //   },
+
+    //   Account: {
+    //     ac_name: rowData.AC_NAME
+    //   },
+
+    //   MS_AC_BANKCODE: {
+    //     ac_code: rowData.BANK_ACCOUNT_CODE,
+    //     Account: {
+    //       ac_name: rowData.BANK_AC_NAME
+    //     }
+    //   },
+
+    //   Currency: {
+    //     curr_name: rowData.CURR_NAME
+    //   },
+
+    //   Division: {
+    //     div_name: rowData.DIV_NAME
+    //   }
+    // };
+
+    const headerRow = result.rows?.[0] || null;
+    const mappedHeader = headerRow ? Object.keys(headerRow).reduce((acc: any, k: string) => {
+      acc[k.toLowerCase()] = (headerRow as any)[k];
+      return acc;
+    }, {}) : null;
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: mappedHeader,
+    });
+    return;
+
+  } catch (err) {
+    console.error(err);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Error occurred while fetching data",
+    });
+    return;
+
+  } finally {
+    if (connection) {
+      await connection.close();
+    }
+  }
+};
+
 /**
  * Retrieves detailed cheque payment information with related entities
  * @param req Request containing document number, division code, and document type

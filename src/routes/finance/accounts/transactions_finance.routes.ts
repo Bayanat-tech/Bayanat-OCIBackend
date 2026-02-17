@@ -32,7 +32,8 @@ import {
   createChequePaymentStoreProcess,
   createPurchaseDocument,
   getDocAccounts,
-  createLPODocument, // Exports transaction data
+  createLPODocument,
+  getPurchaseHeader, // Exports transaction data
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 
 // Initialize Express router
@@ -44,7 +45,8 @@ const router = express.Router();
 router.get("/company_info", getCompanyInfo);                    // Get company details
 router.get("/default_details", getDefaultTransactionDetails);   // Get default values
 router.get("/cheque_detail", getChequeDetail);                  // Get cheque information
-router.get("/header/:doc_no", getChequePaymentHeader);          // Get payment header by document number
+router.get("/header/:doc_no", getChequePaymentHeader);   
+router.get("/purchaseheader/:doc_no", getPurchaseHeader);        // Get payment header by document number
 router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
 router.get("/children/:doc_no", getTransactionChildren);        // Get invoice/job/expense children by document number
 router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code
