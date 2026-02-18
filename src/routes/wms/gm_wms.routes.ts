@@ -47,9 +47,12 @@ import {
   updateProduct, // For updating product details
   importExcelProducts,
   deleteProducts,
+  importProductsJSON,
+  uploadProductEDI,
+  getProductEDI,
+  postValidProducts,
+  clearProductEDI
 } from "../../controllers/wms/product_wms.controller";
-
-
 
 // Import account setup controllers
 import {
@@ -352,14 +355,31 @@ router.put("/location", async (req, res, next) => {
 }); // Update existing location
 
 // Product Routes - Handle product management
-router.post("/product", createProduct); // Create new product
-router.put("/product", updateProduct); // Update existing product
-router.delete("/product", deleteProducts); // Update existing product
-router.post(
-  "/product/import-excel",
-  upload.single("file"),
-  importExcelProducts
+  router.post("/product", createProduct); // Create new product
+  router.put("/product", updateProduct); // Update existing product
+  router.delete("/product", deleteProducts); // Update existing product
+  router.post(
+    "/product/import-excel",
+    upload.single("file"),
+    importExcelProducts
+  );
+  router.post(
+    '/product/import-json',
+    importProductsJSON
+  );
+  router.post(
+  "/product/edi/upload",
+  uploadProductEDI
 );
+router.get("/product/edi", getProductEDI);
+router.post(
+  "/product/edi/post-valid",
+  postValidProducts
+);
+router.delete(
+  "/edi/clear",
+  clearProductEDI
+) 
 
 // Currency Routes - Handle currency management
 router.post("/currency", createcurrency); // Create new currency

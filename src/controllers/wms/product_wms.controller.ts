@@ -9,6 +9,8 @@ import {
 import * as XLSX from "xlsx";
 import { IProductEdi } from "../../interfaces/wms/gm_wms.interface";
 import { ProductService } from "../../services/WMS/product.service";
+import { getRepository } from "../../database/connection";
+import { ProductEDI } from "../../entity/WMS/product_edi.entity";
 // import ProductEdi from "../../models/wms/product_edi_wms.model"; // Keep this for now for Excel import
 
 export const createProduct = async (req: RequestWithUser, res: Response) => {
@@ -441,3 +443,204 @@ function formatProductData(data: any, userId?: string): any {
     // userId: userId ?? data.user_id ?? null,
   };
 }
+
+export const importProductsJSON = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const products = req.body;
+    
+    if (!Array.isArray(products) || products.length === 0) {
+      res.status(400).json({ 
+        success: false, 
+        message: "No products provided or invalid format" 
+      });
+      return;
+    }
+
+    const requestUser: IUser = req.user;
+    const companyCode = requestUser.company_code;
+
+    const errors: string[] = [];
+    const validProducts: any[] = [];
+
+    // Required fields validation
+    const REQUIRED_FIELDS = ['prin_code', 'prod_code', 'prod_name', 'group_code', 'brand_code', 'p_uom'];
+
+    products.forEach((product, index) => {
+      const rowErrors: string[] = [];
+
+      // Check required fields
+      REQUIRED_FIELDS.forEach(field => {
+        if (!product[field] && product[field] !== 0) {
+          rowErrors.push(`${field} is required`);
+        }
+      });
+
+      if (rowErrors.length > 0) {
+        errors.push(`Product ${index + 1}: ${rowErrors.join(', ')}`);
+      } else {
+        // Add company_code and user info
+        const productData = {
+          ...product,
+          company_code: companyCode,
+          created_by: requestUser.loginid,
+          updated_by: requestUser.loginid,
+        };
+        validProducts.push(productData);
+      }
+    });
+
+    if (errors.length > 0) {
+      res.status(422).json({
+        success: false,
+        message: "Validation failed",
+        errors,
+        validCount: validProducts.length,
+        errorCount: errors.length,
+      });
+      return;
+    }
+
+    // Import products
+    try {
+      const result = await ProductService.bulkCreateProducts(validProducts);
+      
+      res.json({
+        success: true,
+        message: `Successfully imported ${validProducts.length} products`,
+        data: {
+          imported: validProducts.length,
+          failed: 0
+        }
+      });
+      return;
+    } catch (dbError: any) {
+      console.error("Database error:", dbError);
+      res.status(500).json({ 
+        success: false, 
+        message: `Failed to import products: ${dbError.message}` 
+      });
+      return;
+    }
+
+  } catch (err) {
+    console.error("Error in importProductsJSON:", err);
+    const errorMessage = err instanceof Error ? err.message : "Server error";
+    res.status(500).json({ success: false, message: errorMessage });
+    return;
+  }
+};
+
+  export const uploadProductEDI = async (
+    req: RequestWithUser,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const products = req.body;
+      const user = req.user;
+
+      if (!Array.isArray(products) || products.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: "No products provided"
+        });
+        return;
+      }
+
+      await ProductService.insertToEDI(products, user);
+
+      res.json({
+        success: true,
+        message: "Uploaded successfully to EDI staging"
+      });
+      return;
+
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
+  };
+
+export const getProductEDI = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+
+  try {
+    const user = req.user;
+
+    const repo = getRepository(ProductEDI);
+
+    const rows = await repo.find({
+      where: {
+        company_code: user.company_code,
+        created_by: user.loginid
+      },
+      order: { created_at: "DESC" }
+    });
+
+    res.json({
+      success: true,
+      data: rows
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+    return;
+  }
+};
+
+export const postValidProducts = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+
+  try {
+    const user = req.user;
+
+    const result = await ProductService.postValidProducts(
+      user.company_code,
+      user.loginid
+    );
+
+    res.json({
+      success: true,
+      message: `${result.count} records moved to master`,
+      data: result
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const clearProductEDI = async (req: RequestWithUser, res: Response) => {
+  try {
+    const user = req.user;
+
+    await ProductService.clearEDI(user.company_code, user.loginid);
+
+    res.json({
+      success: true,
+      message: "EDI staging data cleared successfully"
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};  

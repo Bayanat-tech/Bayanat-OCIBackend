@@ -1,6 +1,9 @@
   import { getRepository } from "../../database/connection";
   import { Product } from "../../entity/WMS/product.entity";
   import { In } from "typeorm";
+import { ProductEDI } from "../../entity/WMS/product_edi.entity";
+import { IUser } from "../../interfaces/user.interface";
+import { IsNull } from "typeorm";
 
   export class ProductService {
     private static getProductRepository() {
@@ -54,14 +57,116 @@
       });
     }
 
-    static async createProduct(productData: Partial<Product>): Promise<Product> {
+      static async createProduct(productData: Partial<Product>): Promise<Product> {
       const repository = this.getProductRepository();
 
       const product = repository.create(productData);
       return await repository.save(product);
-    }
+      }
 
-    static async updateProduct(
+      // NEW METHOD: Bulk create products
+      static async bulkCreateProducts(productsData: Partial<Product>[]): Promise<Product[]> {
+        const repository = this.getProductRepository();
+
+        try {
+          console.log(`📦 Bulk creating ${productsData.length} products...`);
+
+          // Create product entities
+          const products = repository.create(productsData);
+
+          // Save in chunks to avoid overwhelming the database
+          const chunkSize = 100;
+          const savedProducts: Product[] = [];
+
+          for (let i = 0; i < products.length; i += chunkSize) {
+            const chunk = products.slice(i, i + chunkSize);
+            console.log(`💾 Saving chunk ${Math.floor(i / chunkSize) + 1}/${Math.ceil(products.length / chunkSize)}`);
+            
+            const saved = await repository.save(chunk, { chunk: chunkSize });
+            savedProducts.push(...saved);
+          }
+
+          console.log(`✅ Successfully saved ${savedProducts.length} products`);
+          return savedProducts;
+
+        } catch (error: any) {
+          console.error("❌ Error in bulkCreateProducts:", error.message);
+          throw error;
+        }
+      }
+
+      static async insertToEDI(products: Partial<ProductEDI>[], user: IUser): Promise<any> {
+
+        const repo = getRepository(ProductEDI);
+
+        const mapped = products.map(p => ({
+              ...p,
+              company_code: user.company_code,
+              user_id: user.loginid,
+              created_by: user.loginid,
+              created_at: new Date(),
+              error_message: null
+        }));
+
+      await repo.save(mapped);
+      }
+
+      static async postValidProducts(
+            company_code: string,
+            loginid: string
+          ): Promise<{ count: number }> {
+
+        const ediRepo = getRepository(ProductEDI);
+        const masterRepo = getRepository(Product);
+
+        const validRows = await ediRepo.find({
+          where: {
+            company_code,
+            created_by: loginid,
+            error_message: IsNull()
+          }
+        });
+
+        if (!validRows.length) {
+          return { count: 0 };
+        }
+
+        const mapped = validRows.map(row => {
+          const { id, error_message, ...cleanRow } = row as any; 
+          return {
+            ...cleanRow,
+            created_by: loginid,
+            updated_by: loginid,
+            created_at: new Date(),
+            updated_at: new Date()
+          };
+        });
+
+        await masterRepo.save(mapped, { chunk: 100 });
+
+        await ediRepo.delete({
+          company_code,
+          created_by: loginid
+        });
+
+        return { count: validRows.length };
+      }
+
+
+      static async clearEDI(
+        company_code: string,
+          loginid: string
+        ): Promise<any> {
+
+        const ediRepo = getRepository(ProductEDI);
+
+        await ediRepo.delete({
+          company_code: company_code,
+          created_by: loginid
+        });
+      }
+
+     static async updateProduct(
       prod_code: string,
       company_code: string,
       updateData: Partial<Product>
@@ -173,7 +278,8 @@
         console.error("Stack trace:", error.stack);
         throw error;
       }
-      }
+    }
+
     static async getByCategoryOrGroup(
       group_code: string | null,
       category_abc: string | null,
