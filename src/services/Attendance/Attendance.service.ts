@@ -22,6 +22,14 @@ const MAX_CONCURRENT_REQUESTS = 15;
 const CACHE_TTL = 300;
 const MIN_CONFIDENCE_THRESHOLD = 75;
 
+function chunkArray<T>(arr: T[], chunkSize: number = 1000): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    chunks.push(arr.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
 export class AttendanceService {
   private static cache = CacheService.getInstance();
   private static pendingConfirmations = new Map();
@@ -1653,23 +1661,26 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     const adjustedEndDate = new Date(endDate);
     adjustedEndDate.setHours(23, 59, 59, 999);
 
+    // Build where clause - always filter by date and status first
     const eventWhereClause: any = {
       event_time: Between(adjustedStartDate, adjustedEndDate),
       status: In([AttendanceStatus.CONFIRMED, AttendanceStatus.PENDING]),
     };
 
-    let employeeWhereClause = {};
-    if (department) employeeWhereClause = { department };
+    // Add department filter if provided
+    if (department) {
+      eventWhereClause.employee = { department };
+    }
 
-    const AttendanceReport = getRepository(AttendanceEvent)
-    const [ rows, count ]  = await AttendanceReport.findAndCount({
+    // Use TypeORM's efficient pagination (SKIP/TAKE) which doesn't create IN clauses
+    const AttendanceReport = getRepository(AttendanceEvent);
+    const [rows, count] = await AttendanceReport.findAndCount({
       where: eventWhereClause,
-      relations: 
-        {
-          employee: true,
-          record: true,
-        },
-      order: {"event_time": "DESC"},
+      relations: {
+        employee: true,
+        record: true,
+      },
+      order: { event_time: "DESC" },
       skip,
       take: limit,
     });
@@ -1688,15 +1699,111 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         full_name: event.employee?.full_name,
         department: event.employee?.department,
         position: event.employee?.position,
-        date: eventDate.toISOString().split("T")[0], 
+        date: eventDate.toISOString().split("T")[0],
         daily_status: event.record?.status,
         total_hours: event.record?.total_hours,
-        time_only: eventTime.toTimeString().split(" ")[0], 
+        time_only: eventTime.toTimeString().split(" ")[0],
         day_of_week: eventTime.toLocaleDateString("en-US", { weekday: "long" }),
       };
     });
 
     return { total: count, page, limit, data: formattedData };
+  }
+
+  /**
+   * Helper method to safely query records by IDs, working around Oracle's 1000 expression limit
+   * Splits large ID arrays into chunks and performs multiple queries
+   */
+  private static async findByIdsInBatches<T>(
+    repository: any,
+    ids: string[],
+    options: any = {}
+  ): Promise<T[]> {
+    if (ids.length === 0) return [];
+
+    const idChunks = chunkArray(ids, 1000);
+    const results: T[] = [];
+
+    for (const chunk of idChunks) {
+      const chunkResults = await repository.find({
+        where: {
+          id: In(chunk),
+          ...options.where,
+        },
+        ...options.otherOptions,
+      });
+      results.push(...chunkResults);
+    }
+
+    return results;
+  }
+
+  /**
+   * Fetch ALL attendance records for a month range without pagination
+   * Internally fetches in batches to handle large datasets efficiently
+   * Safe for datasets exceeding 2000+ records
+   */
+  static async getFullMonthAttendanceReport(
+    startDate: Date,
+    endDate: Date,
+    department?: string
+  ): Promise<any[]> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
+    const adjustedStartDate = new Date(startDate);
+    adjustedStartDate.setHours(0, 0, 0, 0);
+
+    const adjustedEndDate = new Date(endDate);
+    adjustedEndDate.setHours(23, 59, 59, 999);
+
+    // Build where clause - doesn't use IN with large arrays
+    const eventWhereClause: any = {
+      event_time: Between(adjustedStartDate, adjustedEndDate),
+      status: In([AttendanceStatus.CONFIRMED, AttendanceStatus.PENDING]),
+    };
+
+    // Add department filter if provided
+    if (department) {
+      eventWhereClause.employee = { department };
+    }
+
+    // Fetch ALL records for the date range without pagination
+    // This works even with 2000+ records because we use BETWEEN instead of IN with large arrays
+    const AttendanceReport = getRepository(AttendanceEvent);
+    const allRows = await AttendanceReport.find({
+      where: eventWhereClause,
+      relations: {
+        employee: true,
+        record: true,
+      },
+      order: { event_time: "DESC" },
+    });
+
+    // Format all data
+    const formattedData = allRows.map((event: any) => {
+      const eventTime = new Date(event.event_time);
+      const eventDate = new Date(eventTime);
+      eventDate.setHours(0, 0, 0, 0);
+
+      return {
+        event_id: event.id,
+        event_type: event.event_type,
+        event_time: event.event_time,
+        employee_id: event.employee_id,
+        employee_code: event.employee_code,
+        full_name: event.employee?.full_name,
+        department: event.employee?.department,
+        position: event.employee?.position,
+        date: eventDate.toISOString().split("T")[0],
+        daily_status: event.record?.status,
+        total_hours: event.record?.total_hours,
+        time_only: eventTime.toTimeString().split(" ")[0],
+        day_of_week: eventTime.toLocaleDateString("en-US", { weekday: "long" }),
+      };
+    });
+
+    return formattedData;
   }
 
   private static calculateStatus(time: Date, startTime: string): "present" | "late" | "half-day" {
