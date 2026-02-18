@@ -25,6 +25,7 @@ import {
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
   uploadTestFileToS3,
+  amlsUploadToS3,
 } from "../services/ociUpload.service";
 
 const router = express.Router();
@@ -196,5 +197,14 @@ router.post(
   upload.single("file"),
   uploadTestFileToS3
 )
+
+router.post(
+  "/amlsUploadToS3",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  upload.single("file"),
+  amlsUploadToS3
+);
 
 export default router;
