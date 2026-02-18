@@ -2445,7 +2445,11 @@ export const createPurchaseDocument = async (
       div_code,
       company_code,
       detail,
-      files
+      files,
+      party_address,
+      party_phone,
+      ref_doc_no,
+      terms,
     } = value;
 
     connection = await oracledb.getConnection();
@@ -2486,6 +2490,9 @@ export const createPurchaseDocument = async (
         remarks,
         div_code,
         company_code,
+         party_address,
+        party_phone,
+        ref_doc_no,
         created_by,
         updated_by
       ) VALUES (
@@ -2498,6 +2505,9 @@ export const createPurchaseDocument = async (
         :remarks,
         :div_code,
         :company_code,
+        :party_address,
+        :party_phone,
+        :ref_doc_no,
         :created_by,
         :updated_by
       )
@@ -2512,6 +2522,9 @@ export const createPurchaseDocument = async (
         remarks,
         div_code,
         company_code: req.user.company_code,
+        party_address,
+        party_phone,
+        ref_doc_no,
         created_by: req.user.loginid,
         updated_by: req.user.loginid
       },
@@ -2523,50 +2536,110 @@ export const createPurchaseDocument = async (
       await connection.execute(
         `
         INSERT INTO TR_AC_DETAIL (
-          doc_no,
-          doc_type,
-          serial_no,
-          ac_code,
-          amount,
-          curr_code,
-          ex_rate,
-          sign_ind,
-          div_code,
-          company_code,
-          lcur_amount,
-          created_by,
-        updated_by
+     company_code, doc_type, doc_no, serial_no, doc_date, ac_code, header_ac_code, bank_ac_code, remarks, amount,
+          sign_ind, curr_code, ex_rate, lcur_amount, pdc_ind, cheque_no, cheque_date, cheque_desc, pdc_cleared_date, cancelled,
+          job_no, recon_ind, recon_date, dept_code, qty, price, uom, pdc_clear_jvno, ref_doc_type, ref_doc_no, ref_doc_serial_no,
+          div_code, tx_cat_code, tx_compntcat_code_1, tx_compntcat_code_2, tx_compntcat_code_3, tx_compntcat_code_4,
+          tx_compnt_perc_1, tx_compnt_perc_2, tx_compnt_perc_3, tx_compnt_perc_4,
+          tx_compnt_amt_1, tx_compnt_amt_2, tx_compnt_amt_3, tx_compnt_amt_4,
+          tx_compnt_lcuramt_1, tx_compnt_lcuramt_2, tx_compnt_lcuramt_3, tx_compnt_lcuramt_4,
+          tx_compnt_1_expmt, tx_compnt_2_expmt, tx_compnt_3_expmt, tx_compnt_4_expmt,
+          tx_tax_filed, tx_tax_filed_dt, tx_tax_filed_refno, tx_compnt_hdisc_amt_1, created_by, updated_by
         ) VALUES (
-          :doc_no,
-          :doc_type,
-          :serial_no,
-          :ac_code,
-          :amount,
-          :curr_code,
-          :ex_rate,
-          :sign_ind,
-          :div_code,
-          :company_code,
-          :lcur_amount,
-           :created_by,
-        :updated_by
+          :company_code, :doc_type, :doc_no, :serial_no, CASE WHEN :doc_date IS NOT NULL THEN TO_DATE(SUBSTR(:doc_date,1,10),'YYYY-MM-DD') END, :ac_code, :header_ac_code, :bank_ac_code, :remarks, :amount,
+          :sign_ind, :curr_code, :ex_rate, :lcur_amount, :pdc_ind, :cheque_no, CASE WHEN :cheque_date IS NOT NULL THEN TO_DATE(SUBSTR(:cheque_date,1,10),'YYYY-MM-DD') END, :cheque_desc, CASE WHEN :pdc_cleared_date IS NOT NULL THEN TO_DATE(SUBSTR(:pdc_cleared_date,1,10),'YYYY-MM-DD') END, :cancelled,
+          :job_no, :recon_ind, CASE WHEN :recon_date IS NOT NULL THEN TO_DATE(SUBSTR(:recon_date,1,10),'YYYY-MM-DD') END, :dept_code, :qty, :price, :uom, :pdc_clear_jvno, :ref_doc_type, :ref_doc_no, :ref_doc_serial_no,
+          :div_code, :tx_cat_code, :tx_compntcat_code_1, :tx_compntcat_code_2, :tx_compntcat_code_3, :tx_compntcat_code_4,
+          :tx_compnt_perc_1, :tx_compnt_perc_2, :tx_compnt_perc_3, :tx_compnt_perc_4,
+          :tx_compnt_amt_1, :tx_compnt_amt_2, :tx_compnt_amt_3, :tx_compnt_amt_4,
+          :tx_compnt_lcuramt_1, :tx_compnt_lcuramt_2, :tx_compnt_lcuramt_3, :tx_compnt_lcuramt_4,
+          :tx_compnt_1_expmt, :tx_compnt_2_expmt, :tx_compnt_3_expmt, :tx_compnt_4_expmt,
+          :tx_tax_filed, CASE WHEN :tx_tax_filed_dt IS NOT NULL THEN TO_DATE(SUBSTR(:tx_tax_filed_dt,1,10),'YYYY-MM-DD') END, :tx_tax_filed_refno, :tx_compnt_hdisc_amt_1, :created_by, :updated_by
         )
         `,
         {
-          doc_no,
-          doc_type,
-          serial_no: dtl.serial_no,
-          ac_code: dtl.ac_code,
-          amount: dtl.amount,
-          curr_code: dtl.curr_code,
-          ex_rate: dtl.ex_rate,
-          sign_ind: dtl.sign_ind,
-          div_code: dtl.div_code,
-          lcur_amount: dtl.lcur_amount,
+          // Header Level
           company_code: req.user.company_code,
+          doc_type,
+          doc_no,
+          serial_no: dtl.serial_no,
+          doc_date: dtl.doc_date ?? null,
+
+          // Account Details
+          ac_code: dtl.ac_code ?? null,
+          header_ac_code: dtl.header_ac_code ?? null,
+          bank_ac_code: dtl.bank_ac_code ?? null,
+          remarks: dtl.remarks ?? null,
+          amount: dtl.amount ?? 0,
+          sign_ind: dtl.sign_ind ?? null,
+          curr_code: dtl.curr_code ?? null,
+          ex_rate: dtl.ex_rate ?? 1,
+          lcur_amount: dtl.lcur_amount ?? 0,
+
+          // Cheque / PDC
+          pdc_ind: dtl.pdc_ind ?? null,
+          cheque_no: dtl.cheque_no ?? null,
+          cheque_date: dtl.cheque_date ?? null,
+          cheque_desc: dtl.cheque_desc ?? null,
+          pdc_cleared_date: dtl.pdc_cleared_date ?? null,
+          cancelled: dtl.cancelled ?? "N",
+
+          // Job / Reconciliation
+          job_no: dtl.job_no ?? null,
+          recon_ind: dtl.recon_ind ?? null,
+          recon_date: dtl.recon_date ?? null,
+          dept_code: dtl.dept_code ?? null,
+
+          // Item Details
+          qty: dtl.qty ?? null,
+          price: dtl.price ?? null,
+          uom: dtl.uom ?? null,
+
+          // Reference
+          pdc_clear_jvno: dtl.pdc_clear_jvno ?? null,
+          ref_doc_type: dtl.ref_doc_type ?? null,
+          ref_doc_no: dtl.ref_doc_no ?? null,
+          ref_doc_serial_no: dtl.ref_doc_serial_no ?? null,
+
+          // Division & Tax
+          div_code: dtl.div_code ?? null,
+          tx_cat_code: dtl.tx_cat_code ?? null,
+
+          tx_compntcat_code_1: dtl.tx_compntcat_code_1 ?? null,
+          tx_compntcat_code_2: dtl.tx_compntcat_code_2 ?? null,
+          tx_compntcat_code_3: dtl.tx_compntcat_code_3 ?? null,
+          tx_compntcat_code_4: dtl.tx_compntcat_code_4 ?? null,
+
+          tx_compnt_perc_1: dtl.tx_compnt_perc_1 ?? null,
+          tx_compnt_perc_2: dtl.tx_compnt_perc_2 ?? null,
+          tx_compnt_perc_3: dtl.tx_compnt_perc_3 ?? null,
+          tx_compnt_perc_4: dtl.tx_compnt_perc_4 ?? null,
+
+          tx_compnt_amt_1: dtl.tx_compnt_amt_1 ?? null,
+          tx_compnt_amt_2: dtl.tx_compnt_amt_2 ?? null,
+          tx_compnt_amt_3: dtl.tx_compnt_amt_3 ?? null,
+          tx_compnt_amt_4: dtl.tx_compnt_amt_4 ?? null,
+
+          tx_compnt_lcuramt_1: dtl.tx_compnt_lcuramt_1 ?? null,
+          tx_compnt_lcuramt_2: dtl.tx_compnt_lcuramt_2 ?? null,
+          tx_compnt_lcuramt_3: dtl.tx_compnt_lcuramt_3 ?? null,
+          tx_compnt_lcuramt_4: dtl.tx_compnt_lcuramt_4 ?? null,
+
+          tx_compnt_1_expmt: dtl.tx_compnt_1_expmt ?? null,
+          tx_compnt_2_expmt: dtl.tx_compnt_2_expmt ?? null,
+          tx_compnt_3_expmt: dtl.tx_compnt_3_expmt ?? null,
+          tx_compnt_4_expmt: dtl.tx_compnt_4_expmt ?? null,
+
+          tx_tax_filed: dtl.tx_tax_filed ?? null,
+          tx_tax_filed_dt: dtl.tx_tax_filed_dt ?? null,
+          tx_tax_filed_refno: dtl.tx_tax_filed_refno ?? null,
+
+          tx_compnt_hdisc_amt_1: dtl.tx_compnt_hdisc_amt_1 ?? null,
+
           created_by: req.user.loginid,
           updated_by: req.user.loginid
         },
+
         { autoCommit: false }
       );
     }

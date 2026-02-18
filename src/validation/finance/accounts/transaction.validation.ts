@@ -308,9 +308,9 @@ export const purchaseSchema = (
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    address: Joi.string(),
-    phone: Joi.number().optional(),
-    ref_doc: Joi.string(),
+    party_address: Joi.string(),
+    party_phone: Joi.number().optional(),
+    ref_doc_no: Joi.string(),
     terms: Joi.string(),
     files: Joi.array().optional().allow("", null),
     doc_path: Joi.array() // Files (conditional)
