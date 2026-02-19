@@ -293,5 +293,37 @@ static async getProxyLogs(req: Request, res: Response): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     res.status(500).json({ success: false, message });
   }
-}
+  }
+
+  /**
+   * Get ALL attendance records for a date range (month view)
+   * Handles large datasets (2000+ records) without hitting Oracle IN clause limits
+   */
+  static async getFullMonthAttendanceReport(req: Request, res: Response): Promise<void> {
+    try {
+      const { from_date, to_date, department } = req.query;
+      logger.info("Fetching full month attendance report:", req.query);
+
+      if (!from_date || !to_date) {
+        res.status(400).json({ error: "From date and to date are required" });
+        return;
+      }
+
+      const allRecords = await AttendanceService.getFullMonthAttendanceReport(
+        new Date(from_date as string),
+        new Date(to_date as string),
+        department as string | undefined
+      );
+
+      res.status(200).json({
+        success: true,
+        total: allRecords.length,
+        data: allRecords
+      });
+    } catch (error: unknown) {
+      logger.error("Full month attendance report error", error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
 }

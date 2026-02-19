@@ -172,6 +172,21 @@ router.get(
   }
 );
 
+// Full month report endpoint - returns ALL records without pagination
+router.get(
+  "/report/full-month",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.getFullMonthAttendanceReport(req, res);
+  }
+);
+
 router.post('/stop-auto-confirm',
   passport.authenticate("jwt", { session: false }),
     async (req, res, next) => {
