@@ -701,7 +701,8 @@ async function upsertLpoRequestDetails(
   );
 
   for (const item of items) {
-    if (
+    console.log('inside item loop ', item.QTY);
+   /* if (
       (last_action === "SUBMITTED" || last_action === "APPROVED") &&
       (!item.QTY || item.QTY <= 0)
     ) {
@@ -709,7 +710,7 @@ async function upsertLpoRequestDetails(
         `Skipping insert for SERIAL_NO=${item.SERIAL_NO} due to QTY=${item.QTY} and last_action=${last_action}`
       );
       continue;
-    }
+    }*/
 
     const insertQuery = `
     INSERT INTO TR_AC_LPO_DETAIL (ITEM_REMARK,
