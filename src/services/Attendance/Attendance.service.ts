@@ -4,7 +4,7 @@ import constants from "../../helpers/constants";
 import { notifyUser } from '../../helpers/functions'; 
 import logger from "../../utils/logger";
 import { FaceRecognitionService } from "./face_recognition.service";
-import { getSignedUrl, uploadEmployeeFace } from "../../services/ociUpload.service";
+import { getSignedUrl, uploadEmployeeFace, uploadFile } from "../../services/ociUpload.service";
 import { CacheService } from "./cache.service";
 import { AppDataSource, oracleDb, TypeORMService, getRepository } from "../../database/connection"
 import { Between, In, Or } from "typeorm";
@@ -13,6 +13,7 @@ import {AttendanceRecord} from "../../entity/Attendance/attendance_record.entity
 import { AttendanceEvent, AttendanceEventType, AttendanceStatus, DataTransferFlag } from "../../entity/Attendance/attendance_events.entity";
 import { ProxyLog } from "../../entity/Attendance/ProxyLog.entity";
 import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
+import { AttendanceRequest, AttendanceRequestStatus } from "../../entity/Attendance/AttendanceRequest.entity";
 import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
   
 const AUTO_CONFIRM_DELAY_MS = 10000; 
@@ -1804,6 +1805,117 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     });
 
     return formattedData;
+  }
+
+  /**
+   * Create a pending attendance request (stores image in OCI and creates request row)
+   */
+  static async createAttendanceRequest(
+    employeeCode: string,
+    eventType: 'check_in' | 'check_out',
+    imageBuffer: Buffer,
+    requestedBy: string | null = null
+  ): Promise<any> {
+    await ensureCorrectSchema();
+    const uuid = uuidv4();
+    const now = new Date();
+
+    // Find employee by code
+    const empRepo = getRepository(Employee);
+    const employee = await empRepo.findOne({ where: { employee_code: employeeCode } });
+    if (!employee) throw new Error('Employee not found');
+
+    // Upload image to OCI
+    let s3Key: string | null = null;
+    try {
+      const key = `attendance_requests/${employee.employee_id}/${uuid}.jpg`;
+      await uploadFile(imageBuffer, key, `${uuid}.jpg`);
+      s3Key = key;
+    } catch (err) {
+      logger.error('Failed to upload attendance request image to OCI', err);
+      // proceed without image but warn
+    }
+
+    const repo = getRepository(AttendanceRequest);
+    const record: any = {
+      id: uuid,
+      employee_id: employee.employee_id,
+      employee_code: employee.employee_code,
+      requested_by: requestedBy,
+      event_type: eventType,
+      event_time: now,
+      s3_image_key: s3Key,
+      status: AttendanceRequestStatus.PENDING,
+      created_at: now
+    };
+
+    await repo.save(record);
+    return { success: true, requestId: uuid };
+  }
+
+  static async listAttendanceRequests(filters: any = {}): Promise<any> {
+    await ensureCorrectSchema();
+    const { page = 1, limit = 50, status = 'PENDING' } = filters;
+    const repo = getRepository(AttendanceRequest);
+    const skip = (page - 1) * limit;
+    const [rows, count] = await repo.findAndCount({
+      where: { status },
+      order: { created_at: 'DESC' },
+      skip,
+      take: parseInt(limit)
+    });
+
+    return { total: count, page: parseInt(page), limit: parseInt(limit), data: rows };
+  }
+
+  /**
+   * Approve an attendance request: create AttendanceEvent and mark request approved
+   */
+  static async approveAttendanceRequest(requestId: string, approvedBy: string, notes?: string): Promise<any> {
+    await ensureCorrectSchema();
+    const repo = getRepository(AttendanceRequest);
+    const request = await repo.findOne({ where: { id: requestId } });
+    if (!request) throw new Error('Request not found');
+    if (request.status !== AttendanceRequestStatus.PENDING) throw new Error('Request not pending');
+
+    // Transaction: create AttendanceEvent and update request
+    const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const eventRepo = queryRunner.manager.getRepository(AttendanceEvent);
+      const newEvent: any = {
+        id: uuidv4(),
+        employee_id: request.employee_id,
+        employee_code: request.employee_code,
+        event_time: request.event_time,
+        event_type: request.event_type === 'check_in' ? AttendanceEventType.CHECK_IN : AttendanceEventType.CHECK_OUT,
+        data_transfer: DataTransferFlag.N,
+        created_at: new Date(),
+        s3_image_url: request.s3_image_key ? constants.OCI_S3_COMPATIBILITY.getObjectUrl(request.s3_image_key) : null,
+        status: AttendanceStatus.CONFIRMED,
+        confirmed_by: approvedBy,
+        confirmed_at: new Date()
+      };
+
+      await eventRepo.save(newEvent);
+
+      request.status = AttendanceRequestStatus.APPROVED;
+      request.approved_by = approvedBy;
+      request.approved_at = new Date();
+      request.notes = notes || null;
+      await queryRunner.manager.getRepository(AttendanceRequest).save(request);
+
+      await queryRunner.commitTransaction();
+      return { success: true, eventId: newEvent.id };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      logger.error('Failed to approve attendance request', err);
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   private static calculateStatus(time: Date, startTime: string): "present" | "late" | "half-day" {

@@ -326,4 +326,62 @@ static async getProxyLogs(req: Request, res: Response): Promise<void> {
       res.status(500).json({ success: false, message });
     }
   }
+
+  // Create a pending attendance request (fallback manual request)
+  static async createAttendanceRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const file = req.file as Express.Multer.File | undefined;
+      const { employee_code, event_type } = req.body;
+      const requestedBy = (req as any).user?.loginid || null;
+
+      if (!employee_code || !event_type) {
+        res.status(400).json({ success: false, message: 'employee_code and event_type are required' });
+        return;
+      }
+
+      if (!file) {
+        res.status(400).json({ success: false, message: 'Image file is required' });
+        return;
+      }
+
+      const result = await AttendanceService.createAttendanceRequest(employee_code, event_type, file.buffer, requestedBy);
+      res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+      logger.error('Create attendance request error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
+
+  static async listAttendanceRequests(req: Request, res: Response): Promise<void> {
+    try {
+      const { page, limit, status } = req.query;
+      const data = await AttendanceService.listAttendanceRequests({ page, limit, status });
+      res.status(200).json({ success: true, data });
+    } catch (error: unknown) {
+      logger.error('List attendance requests error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
+
+  static async approveAttendanceRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const approvedBy = (req as any).user?.loginid || 'system';
+      const { notes } = req.body;
+
+      if (!id) {
+        res.status(400).json({ success: false, message: 'Request id is required' });
+        return;
+      }
+
+      const result = await AttendanceService.approveAttendanceRequest(id, approvedBy, notes);
+      res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+      logger.error('Approve attendance request error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
 }
