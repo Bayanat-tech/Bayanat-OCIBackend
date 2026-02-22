@@ -73,6 +73,8 @@ import {cancelInboundJob} from "../../../controllers/wms/transaction/inbound/cre
 import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
 import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 import { insUpdMsProductEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsProductEdit.controller";
+import { insUpdMsLocationEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsLocationEdiBulk";
+import { insUpdMsSiteEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsSiteEdiBulk";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -212,6 +214,14 @@ router.post(
  );
 router.post(
    "insUpdMsProductEdiBulk",insUpdMsProductEdiBulk);
+
+   router.post(
+   "insUpdMsLocationEdiBulk",insUpdMsLocationEdiBulk);
+
+      router.post(
+   "insUpdMsSiteEdiBulk",insUpdMsSiteEdiBulk);
+
+   
 
 
 router.post(
