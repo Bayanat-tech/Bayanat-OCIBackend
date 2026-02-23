@@ -213,13 +213,13 @@ router.post(
    "/Putawaywithpalletid",  Putawaywithpalletid
  );
 router.post(
-   "insUpdMsProductEdiBulk",insUpdMsProductEdiBulk);
+   "/insUpdMsProductEdiBulk",insUpdMsProductEdiBulk);
 
    router.post(
-   "insUpdMsLocationEdiBulk",insUpdMsLocationEdiBulk);
+   "/insUpdMsLocationEdiBulk",insUpdMsLocationEdiBulk);
 
       router.post(
-   "insUpdMsSiteEdiBulk",insUpdMsSiteEdiBulk);
+   "/insUpdMsSiteEdiBulk",insUpdMsSiteEdiBulk);
 
    
 
