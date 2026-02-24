@@ -14,6 +14,14 @@ export const insUpdMsSiteEdiBulk = async (
 
   try {
 
+    console.log("Full req.body:", JSON.stringify(req.body, null, 2));
+    console.log("req.headers['content-type']:", req.headers['content-type']);
+    console.log("sites raw value:", req.body?.sites);
+    console.log("sites type:", typeof req.body?.sites);
+    console.log("is array?", Array.isArray(req.body?.sites));
+    console.log('sites_edi',req.body?.sites)
+
+
     const sites = req.body?.sites;
 
     if (!Array.isArray(sites) || sites.length === 0) {
