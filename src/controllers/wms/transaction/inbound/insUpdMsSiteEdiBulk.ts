@@ -3,8 +3,6 @@ import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
-
-
 export const insUpdMsSiteEdiBulk = async (
   req: Request,
   res: Response
@@ -13,16 +11,8 @@ export const insUpdMsSiteEdiBulk = async (
   let connection;
 
   try {
-
-    console.log("Full req.body:", JSON.stringify(req.body, null, 2));
-    console.log("req.headers['content-type']:", req.headers['content-type']);
-    console.log("sites raw value:", req.body?.sites);
-    console.log("sites type:", typeof req.body?.sites);
-    console.log("is array?", Array.isArray(req.body?.sites));
-    console.log('sites_edi',req.body?.sites)
-
-
     const sites = req.body?.sites;
+    const loginid = req.body?.loginid;
 
     if (!Array.isArray(sites) || sites.length === 0) {
       res.status(400).json({
@@ -32,16 +22,22 @@ export const insUpdMsSiteEdiBulk = async (
       return;
     }
 
+    // Resolve tenant
     let tenantId: string | undefined;
 
-    try { tenantId = getCurrentTenantId(); } catch (e) {}
+    try {
+      tenantId = getCurrentTenantId();
+    } catch (e) {}
 
-    if (!tenantId && req.body?.loginid) {
-      tenantId = await TenantManager.getTenantForUser(req.body.loginid);
+    if (!tenantId && loginid) {
+      tenantId = await TenantManager.getTenantForUser(loginid);
     }
 
     if (!tenantId) {
-      res.status(400).json({ success: false, message: "Tenant not found" });
+      res.status(400).json({
+        success: false,
+        message: "Tenant not found"
+      });
       return;
     }
 
@@ -56,7 +52,27 @@ export const insUpdMsSiteEdiBulk = async (
       {
         p_sites: {
           type: "MS_SITE_EDI_TAB",
-          val: sites
+          val: sites.map((s: any) => ({
+            SITE_CODE:     s.site_code,
+            SITE_IND:      s.site_ind,
+            SITE_TYPE:     s.site_type,
+            SITE_NAME:     s.site_name,
+            SITE_ADDR1:    s.site_addr1,
+            SITE_ADDR2:    s.site_addr2,
+            SITE_ADDR3:    s.site_addr3,
+            SITE_ADDR4:    s.site_addr4,
+            CITY:          s.city,
+            COUNTRY_CODE:  s.country_code,
+            CONTACT_NAME:  s.contact_name,
+            TEL_NO:        s.tel_no,
+            CHARGE_IND:    s.charge_ind,
+            PRIN_CODE:     s.prin_code,
+            GROUP_CODE:    s.group_code,
+            LOC_TYPE:      s.loc_type,
+            COMPANY_CODE:  s.company_code,
+            DIV_CODE:      s.div_code,
+            SITE_RPT_NAME: s.site_rpt_name
+          }))
         }
       }
     );
@@ -70,6 +86,8 @@ export const insUpdMsSiteEdiBulk = async (
 
   } catch (err: any) {
 
+    console.error("Oracle error:", err);
+
     res.status(500).json({
       success: false,
       message: "Bulk site procedure execution failed",
@@ -77,6 +95,8 @@ export const insUpdMsSiteEdiBulk = async (
     });
 
   } finally {
-    if (connection) await connection.close().catch(() => {});
+    if (connection) {
+      await connection.close().catch(() => {});
+    }
   }
 };
