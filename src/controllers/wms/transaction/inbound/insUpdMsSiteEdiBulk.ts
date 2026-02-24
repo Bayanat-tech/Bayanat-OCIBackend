@@ -71,7 +71,8 @@ export const insUpdMsSiteEdiBulk = async (
             LOC_TYPE:      s.loc_type,
             COMPANY_CODE:  s.company_code,
             DIV_CODE:      s.div_code,
-            SITE_RPT_NAME: s.site_rpt_name
+            SITE_RPT_NAME: s.site_rpt_name,
+            CREATED_NY: loginid
           }))
         }
       }
