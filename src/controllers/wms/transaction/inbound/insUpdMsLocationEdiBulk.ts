@@ -12,6 +12,7 @@ export const insUpdMsLocationEdiBulk = async (
 
   try {
     const locations = req.body?.locations;
+    const loginid = req.body?.loginid;
 
     if (!Array.isArray(locations) || locations.length === 0) {
       res.status(400).json({
@@ -61,7 +62,8 @@ export const insUpdMsLocationEdiBulk = async (
             AISLE:         l.aisle,
             COLUMN_NO:     l.column_no,
             HEIGHT:        l.height,
-            BLOCKCYC:      l.blockcyc ?? 'N'
+            BLOCKCYC:      l.blockcyc ?? 'N',
+            CREATED_BY:    loginid,
           }))
         }
       }

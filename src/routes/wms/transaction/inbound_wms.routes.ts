@@ -210,16 +210,20 @@ router.post(
 router.get("/tally_product_data", getTallyProductData);
 
 router.post(
-   "/Putawaywithpalletid",  Putawaywithpalletid
+   "/Putawaywithpalletid",  
+   Putawaywithpalletid
  );
 router.post(
-   "insUpdMsProductEdiBulk",insUpdMsProductEdiBulk);
+   "/insUpdMsProductEdiBulk",
+   insUpdMsProductEdiBulk);
 
-   router.post(
-   "insUpdMsLocationEdiBulk",insUpdMsLocationEdiBulk);
-
-      router.post(
-   "insUpdMsSiteEdiBulk",insUpdMsSiteEdiBulk);
+router.post(
+  "/insUpdMsLocationEdiBulk",
+  insUpdMsLocationEdiBulk
+);
+router.post(
+   "/insUpdMsSiteEdiBulk",
+   insUpdMsSiteEdiBulk);
 
    
 
