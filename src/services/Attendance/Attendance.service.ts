@@ -1825,12 +1825,16 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     const employee = await empRepo.findOne({ where: { employee_code: employeeCode } });
     if (!employee) throw new Error('Employee not found');
 
+    //requestedBy 
+    const resolvedRequestedBy = requestedBy ?? employee.full_name;
+
     // Upload image to OCI
-    let s3Key: string | null = null;
+    let  s3ImageUrl: string | null = null;
     try {
       const key = `attendance_requests/${employee.employee_id}/${uuid}.jpg`;
       await uploadFile(imageBuffer, key, `${uuid}.jpg`);
-      s3Key = key;
+      // s3Key = key;
+      s3ImageUrl = constants.OCI_S3_COMPATIBILITY.getObjectUrl(key);
     } catch (err) {
       logger.error('Failed to upload attendance request image to OCI', err);
       // proceed without image but warn
@@ -1841,32 +1845,50 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
       id: uuid,
       employee_id: employee.employee_id,
       employee_code: employee.employee_code,
-      requested_by: requestedBy,
+      requested_by: resolvedRequestedBy,
       event_type: eventType,
       event_time: now,
-      s3_image_key: s3Key,
+      s3_image_key:  s3ImageUrl, //s3Key,
       status: AttendanceRequestStatus.PENDING,
       created_at: now
     };
 
     await repo.save(record);
+    console.log('Record saved:', record);
     return { success: true, requestId: uuid };
   }
 
   static async listAttendanceRequests(filters: any = {}): Promise<any> {
     await ensureCorrectSchema();
-    const { page = 1, limit = 50, status = 'PENDING' } = filters;
+    const { page = 1, limit = 50, status } = filters;
     const repo = getRepository(AttendanceRequest);
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;   
+
+    const whereClause: any = {};
+
+     if (status && status !== 'ALL') {
+        whereClause.status = status;
+      }
+
+      // if (!status) {
+      //   whereClause.status = AttendanceRequestStatus.PENDING; // Default 
+      // } else if (status !== 'ALL') {
+      //   whereClause.status = status;
+      // }
+    console.log(`Listing attendance requests :`, { status: whereClause.status });
     const [rows, count] = await repo.findAndCount({
-      where: { status },
+      where: whereClause,
+      relations: {
+       employee: true 
+      },
       order: { created_at: 'DESC' },
       skip,
       take: parseInt(limit)
     });
-
+     console.log(`Fetched ${rows.length} attendance requests with status ${status} (Total: ${count})`);
     return { total: count, page: parseInt(page), limit: parseInt(limit), data: rows };
   }
+
 
   /**
    * Approve an attendance request: create AttendanceEvent and mark request approved
@@ -1877,6 +1899,11 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     const request = await repo.findOne({ where: { id: requestId } });
     if (!request) throw new Error('Request not found');
     if (request.status !== AttendanceRequestStatus.PENDING) throw new Error('Request not pending');
+
+    // Fetch the employee record
+    const empRepo = getRepository(Employee);
+    const employee = await empRepo.findOne({ where: { employee_id: request.employee_id } });
+    if (!employee) throw new Error('Employee not found');
 
     // Transaction: create AttendanceEvent and update request
     const queryRunner = AppDataSource.createQueryRunner();
@@ -1889,6 +1916,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         id: uuidv4(),
         employee_id: request.employee_id,
         employee_code: request.employee_code,
+        employee: employee,
         event_time: request.event_time,
         event_type: request.event_type === 'check_in' ? AttendanceEventType.CHECK_IN : AttendanceEventType.CHECK_OUT,
         data_transfer: DataTransferFlag.N,
