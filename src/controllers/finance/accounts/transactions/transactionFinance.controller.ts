@@ -1239,7 +1239,8 @@ export const createChequePaymentDocument = async (
 
     if (detail?.length) {
       const isReverseDoc = req.body.doc_type === '9001';
-      const isPaymentDoc = req.body.doc_type === 'BP';
+      // const isPaymentDoc = req.body.doc_type === 'BP';
+      const isPaymentDoc = ['BP', 'BR'].includes(req.body.doc_type);
       const bankAcCode = header.bank_ac_code ?? null;
 
       const detailBinds = detail.map((d: any, idx: number) => ({
@@ -1427,7 +1428,7 @@ export const createChequePaymentDocument = async (
       console.log('DB: CREATE-FLOW INSERT INVOICE (first)', { ...children.invoice[0], doc_no });
 
       // Determine indicator_origin and amount_origin based on document type
-      const isPaymentDoc = req.body.doc_type === 'BP'; // Bill Payment
+      const isPaymentDoc = ['BP', 'BR'].includes(req.body.doc_type); // Bill Payment
 
       await connection.executeMany(
         `
@@ -2764,6 +2765,14 @@ export const createPurchaseDocument = async (
   }
 };
 
+export const updatePurchaseDocument= async(
+  req: RequestWithUser,
+  res:Response
+)=>{
+  
+
+}
+
 
 export const createSalesDocument = async (
   req: RequestWithUser,
@@ -3009,7 +3018,7 @@ export const createSalesDocument = async (
           due_date: doc_date,
           amount: dtl.amount,
           lcur_amount: dtl.amount,
-          sign_ind: 1, // PI (original invoices) always have +1 sign_ind (liability/payable)
+          sign_ind: 1, 
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
           div_code: dtl.div_code,
@@ -3044,6 +3053,8 @@ export const createSalesDocument = async (
     if (connection) await connection.close();
   }
 };
+
+
 
 export const createLPODocument = async (
   req: RequestWithUser,

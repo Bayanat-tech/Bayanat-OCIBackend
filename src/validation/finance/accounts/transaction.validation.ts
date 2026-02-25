@@ -342,7 +342,7 @@ export const purchaseSchema = (
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
-          sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
+          sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
@@ -625,7 +625,7 @@ export const salesSchema = (
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
-          sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
+          sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
@@ -697,7 +697,7 @@ export const salesSchema = (
             // Sign indicator (optional)
             sign_ind: Joi.number()
               .integer()
-              .valid(-1)
+              .valid(1)
               .required(),
 
             // Invoice number (optional)
