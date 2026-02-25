@@ -1814,7 +1814,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     employeeCode: string,
     eventType: 'check_in' | 'check_out',
     imageBuffer: Buffer,
-    requestedBy: string | null = null
+    requestedBy: string 
   ): Promise<any> {
     await ensureCorrectSchema();
     const uuid = uuidv4();
