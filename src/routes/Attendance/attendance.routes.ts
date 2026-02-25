@@ -157,6 +157,50 @@ router.get('/proxy-logs',
   }
 );
 
+// Attendance request endpoints (manual fallback)
+router.post(
+  "/request",
+  upload.single("file"),
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.createAttendanceRequest(req, res);
+  }
+);
+
+router.get(
+  "/requests",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.listAttendanceRequests(req, res);
+  }
+);
+
+router.post(
+  "/request/:id/approve",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.approveAttendanceRequest(req, res);
+  }
+);
+
 // Protected routes
 router.get(
   "/report",

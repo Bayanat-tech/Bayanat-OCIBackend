@@ -11,6 +11,7 @@ import { EmployeeFace } from "./employee_face.entity";
 import { ProxyLog } from "./ProxyLog.entity";
 import { AttendanceRecord } from "./attendance_record.entity";
 import { AttendanceEvent } from "./attendance_events.entity";
+import { AttendanceRequest } from "./AttendanceRequest.entity";
 
 @Entity({ name: constants.TABLE.EMPLOYEES })
 @Index(["employee_id"], { unique: true })
@@ -75,6 +76,9 @@ export class Employee {
   // Employee -> ProxyLog (actual employee)
   @OneToMany(() => ProxyLog, log => log.actualEmployee)
   proxyLogsAsActual!: ProxyLog[];
+
+  @OneToMany(() => AttendanceRequest, (request) => request.employee)
+  attendanceRequests!: AttendanceRequest[];
 
 }
 
