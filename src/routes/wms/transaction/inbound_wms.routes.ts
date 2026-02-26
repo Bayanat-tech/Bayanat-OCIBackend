@@ -75,6 +75,7 @@ import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/i
 import { insUpdMsProductEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsProductEdit.controller";
 import { insUpdMsLocationEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsLocationEdiBulk";
 import { insUpdMsSiteEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsSiteEdiBulk";
+import { insUpdTcStockCountBulk } from "../../../controllers/stockcount/insUpdTcStockCountBulk";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -224,6 +225,10 @@ router.post(
 router.post(
    "/insUpdMsSiteEdiBulk",
    insUpdMsSiteEdiBulk);
+   
+   router.post(
+   "/insUpdTcStockCountBulk",
+   insUpdTcStockCountBulk );
 
    
 
