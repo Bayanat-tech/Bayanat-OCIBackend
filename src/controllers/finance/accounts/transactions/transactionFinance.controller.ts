@@ -1239,8 +1239,9 @@ export const createChequePaymentDocument = async (
 
     if (detail?.length) {
       const isReverseDoc = req.body.doc_type === '9001';
-      // const isPaymentDoc = req.body.doc_type === 'BP';
-      const isPaymentDoc = ['BP', 'BR'].includes(req.body.doc_type);
+      // const isPaymentDoc = req.body.doc_type === 'BR';
+      const docType = req.body.doc_type;
+      // const isPaymentDoc = ['BP', 'BR'].includes(req.body.doc_type);
       const bankAcCode = header.bank_ac_code ?? null;
 
       const detailBinds = detail.map((d: any, idx: number) => ({
@@ -1254,7 +1255,12 @@ export const createChequePaymentDocument = async (
         bank_ac_code: header.bank_ac_code ?? null,
         remarks: d.remarks ?? header.remarks ?? null,
         amount: d.amount ?? 0,
-        sign_ind: isReverseDoc ? -1 : (isPaymentDoc ? -1 : (d.sign_ind ?? 1)),
+        sign_ind:
+          docType === 'BP'
+            ? (isReverseDoc ? -1 : 1)
+            : docType === 'BR'
+              ? (isReverseDoc ? 1 : -1)
+              : (d.sign_ind ?? 1),
         curr_code: d.curr_code ?? header.curr_code ?? "USD",
         ex_rate: (d.ex_rate ?? header.ex_rate ?? 1),
         lcur_amount: d.lcur_amount ?? d.amount ?? 0,
@@ -1429,6 +1435,7 @@ export const createChequePaymentDocument = async (
 
       // Determine indicator_origin and amount_origin based on document type
       const isPaymentDoc = ['BP', 'BR'].includes(req.body.doc_type); // Bill Payment
+      // const isPaymentDoc = req.body.doc_type === 'BR';
 
       await connection.executeMany(
         `
@@ -2729,7 +2736,7 @@ export const createPurchaseDocument = async (
           due_date: doc_date,
           amount: dtl.amount,
           lcur_amount: dtl.amount,
-          sign_ind: 1, // PI (original invoices) always have +1 sign_ind (liability/payable)
+          sign_ind: -1,
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
           div_code: dtl.div_code,
@@ -2765,11 +2772,11 @@ export const createPurchaseDocument = async (
   }
 };
 
-export const updatePurchaseDocument= async(
+export const updatePurchaseDocument = async (
   req: RequestWithUser,
-  res:Response
-)=>{
-  
+  res: Response
+) => {
+
 
 }
 
@@ -3018,7 +3025,7 @@ export const createSalesDocument = async (
           due_date: doc_date,
           amount: dtl.amount,
           lcur_amount: dtl.amount,
-          sign_ind: 1, 
+          sign_ind: 1,
           curr_code: dtl.curr_code,
           ex_rate: dtl.ex_rate,
           div_code: dtl.div_code,
