@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
-
 import TenantManager from "../../../src/database/TenantManager";
-import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware"
-
+import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware";
 
 export const insUpdTcStockCountBulk = async (
   req: Request,
@@ -15,11 +13,13 @@ export const insUpdTcStockCountBulk = async (
 
     const headers = req.body?.headers;
     const details = req.body?.details;
+    console.log('headerssandeep ',headers)
 
-    if (!Array.isArray(headers) || headers.length === 0) {
+    // ✅ Require exactly ONE header
+    if (!Array.isArray(headers) || headers.length !== 1) {
       res.status(400).json({
         success: false,
-        message: "headers array is required"
+        message: "Exactly one header record is required"
       });
       return;
     }
@@ -28,6 +28,17 @@ export const insUpdTcStockCountBulk = async (
       res.status(400).json({
         success: false,
         message: "details array is required"
+      });
+      return;
+    }
+
+    const h = headers[0];
+
+    // ✅ Prevent ORA-12899 error
+    if (h.count_no && h.count_no.length > 10) {
+      res.status(400).json({
+        success: false,
+        message: "COUNT_NO cannot exceed 10 characters"
       });
       return;
     }
@@ -57,10 +68,10 @@ export const insUpdTcStockCountBulk = async (
     connection = await TenantManager.getConnection(tenantId);
 
     // -------------------------------------------------
-    // HEADER MAPPING (ALL COLUMNS)
+    // HEADER MAPPING (Single Record inside Array)
     // -------------------------------------------------
-
-    const headerData = headers.map((h: any) => ({
+console.log('count123',h.count_no);
+    const headerData = [{
       COMPANY_CODE: h.company_code,
       COUNT_NO: h.count_no,
       PRIN_CODE: h.prin_code,
@@ -114,15 +125,20 @@ export const insUpdTcStockCountBulk = async (
       FREEZE_FLAG: h.freeze_flag,
       ADJ_NO: h.adj_no,
       COUNT_TYPE: h.count_type
-    }));
+    }];
 
     // -------------------------------------------------
-    // DETAIL MAPPING (ALL COLUMNS)
+    // DETAIL MAPPING
     // -------------------------------------------------
 
     const detailData = details.map((d: any) => ({
+
+      // Optional extra safety for detail COUNT_NO
+      COUNT_NO: d.count_no && d.count_no.length > 10
+        ? d.count_no.substring(0, 10)
+        : d.count_no,
+
       COMPANY_CODE: d.company_code,
-      COUNT_NO: d.count_no,
       PRIN_CODE: d.prin_code,
       USER_ID: d.user_id,
       USER_DT: d.user_dt ? new Date(d.user_dt) : new Date()
@@ -139,7 +155,7 @@ export const insUpdTcStockCountBulk = async (
       {
         p_header: {
           type: "TC_STOCKCOUNT_TAB",
-          val: headerData
+          val: headerData   // still array (collection type)
         },
         p_details: {
           type: "TC_COUNTDETAILS_PRIN_TAB",
