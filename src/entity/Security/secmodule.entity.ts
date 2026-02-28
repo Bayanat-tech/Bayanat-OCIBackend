@@ -30,6 +30,24 @@ export class SecModule {
   @Column({ name: "ICON", type: "varchar2", length: 100, nullable: true })
   icon!: string;
 
+  @Column({ name: "COMPONENT_NAME", type: "varchar2", length: 100, nullable: true })
+  component_name!: string;
+
+  @Column({ name: "IS_ACTIVE", type: "char", length: 1, default: "'Y'" })
+  is_active!: string;
+
+  @Column({ name: "ROUTE_TYPE", type: "varchar2", length: 20, default: "'INTERNAL'" })
+  route_type!: string;
+
+  @Column({ name: "DESCRIPTION", type: "varchar2", length: 500, nullable: true })
+  description!: string;
+
+  @Column({ name: "SORT_ORDER", type: "number", nullable: true })
+  sort_order!: number;
+
+  @Column({ name: "ICON_NAME", type: "varchar2", length: 100, nullable: true })
+  icon_name!: string;
+
   @Column({ name: "UPDATED_BY", type: "varchar2", length: 50 })
   updated_by!: string;
 

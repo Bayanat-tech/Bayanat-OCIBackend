@@ -45,6 +45,12 @@ export interface ISecmodule {
   position?: number;
   url_path: string;
   icon: string;
+  component_name?: string;
+  is_active?: string;
+  route_type?: string;
+  description?: string;
+  sort_order?: number;
+  icon_name?: string;
   created_at?: Date;
   created_by?: string;
   updated_at?: Date;

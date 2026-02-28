@@ -30,6 +30,7 @@ import logRoutes from "./src/routes/notification.routes";
 import pfRoutes from "./src/routes/pf.routes";
 import pfbtflowRoutes from "./src/routes/BT-FLOW.routes";
 import secRoutes from "./src/routes/secuity.routes";
+import routesRoutes from "./src/routes/Security/routes.routes";
 import editLangrouter from "./src/routes/user/user.routes";
 
 import VendorRouter from "./src/routes/vendor.routes";
@@ -54,6 +55,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/reports", boldReportsRoutes);
 
 app.use("/api/security", secRoutes);
+
+app.use("/api/routes", routesRoutes);
 
 app.use("/api/hr", hrRoutes);
 
