@@ -116,17 +116,23 @@ console.log('count123',h.count_no);
       AISLE_FROM: h.aisle_from,
       AISLE_TO: h.aisle_to,
 
-      COL_FROM: h.col_from,
-      COL_TO: h.col_to,
+COL_FROM: h.col_from != null ? String(h.col_from) : null,
 
-      HEIGHT_FROM: h.height_from,
-      HEIGHT_TO: h.height_to,
+COL_TO: h.col_to != null ? String(h.col_to) : null,
+HEIGHT_FROM: h.height_from != null ? String(h.height_from) : null,
+HEIGHT_TO: h.height_to != null ? String(h.height_to) : null,
+ADJ_NO: h.adj_no != null ? String(h.adj_no) : null,
+
 
       FREEZE_FLAG: h.freeze_flag,
-      ADJ_NO: h.adj_no,
-      COUNT_TYPE: h.count_type
+  
+      COUNT_TYPE: h.count_type,
+      AMLS_REP: h.amls_rep,
+AMLS_DES: h.amls_des,
+CLIENT_REP: h.client_rep,
+CLIENT_DES: h.client_des,
     }];
-
+console.log('h.amls_rep',h.amls_rep);
     // -------------------------------------------------
     // DETAIL MAPPING
     // -------------------------------------------------
@@ -147,7 +153,8 @@ console.log('count123',h.count_no);
     // -------------------------------------------------
     // Execute Procedure
     // -------------------------------------------------
-
+console.log('count123',h.count_no);
+console.log('count123',h.col_from);
     await connection.execute(
       `BEGIN
           PROC_INS_UPD_TC_STOCKCOUNT(:p_header, :p_details);
