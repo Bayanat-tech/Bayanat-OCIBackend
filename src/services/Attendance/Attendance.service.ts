@@ -1955,7 +1955,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
    // Simply update the status — NO attendance_event insert at all
      request.status = AttendanceRequestStatus.REJECTED;
-     request.approved_by = rejectedBy;   // reuse column, or add rejected_by if you have it
+     request.rejected_by = rejectedBy; 
      request.approved_at = new Date();
      request.notes = notes || null;
 
