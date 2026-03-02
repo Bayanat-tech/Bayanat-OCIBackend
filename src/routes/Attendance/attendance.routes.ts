@@ -150,6 +150,60 @@ router.get('/proxy-logs',
   }
 );
 
+// Attendance request endpoints (manual fallback)
+router.post(
+  "/request",
+  upload.single("file"),
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.createAttendanceRequest(req, res);
+  }
+);
+
+router.get(
+  "/requests",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.listAttendanceRequests(req, res);
+  }
+);
+
+router.post(
+  "/request/:id/approve",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.approveAttendanceRequest(req, res);
+  }
+);
+
+router.post(
+  "/request/:id/reject",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.rejectAttendanceRequest(req, res);
+  }
+);
+
 // Protected routes
 router.get(
   "/report",
@@ -161,6 +215,21 @@ router.get(
   async (req, res) => {
     const { AttendanceController } = await getControllers();
     return AttendanceController.getAttendanceReport(req, res);
+  }
+);
+
+// Full month report endpoint - returns ALL records without pagination
+router.get(
+  "/report/full-month",
+  passport.authenticate("jwt", { session: false }),
+  // tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.getFullMonthAttendanceReport(req, res);
   }
 );
 

@@ -76,7 +76,7 @@ async function startServerWithTypeORM() {
 
     await Promise.race([connectionPromise, timeoutPromise]);
     await initializeAllConnections();
-    await AttendanceEventScheduler.initializeScheduler();
+    //await AttendanceEventScheduler.initializeScheduler();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
