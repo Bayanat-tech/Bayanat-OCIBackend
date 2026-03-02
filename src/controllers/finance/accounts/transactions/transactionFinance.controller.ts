@@ -498,9 +498,14 @@ export const getChequePaymentDetail = async (
   let connection;
 
   try {
-    const { doc_no } = req.params;
-    const { div_code, doc_type } = req.query;
+    let { doc_no } = req.params as any;
+    const { div_code, doc_type } = req.query as any;
     const companyCode = req.user.company_code;
+
+    // ensure doc_no is string
+    if (doc_no != null && typeof doc_no !== 'string') {
+      doc_no = String(doc_no);
+    }
 
     connection = await oracledb.getConnection();
 
@@ -529,7 +534,7 @@ export const getChequePaymentDetail = async (
       LEFT JOIN MS_CURRENCY cur
         ON td.curr_code = cur.curr_code
       WHERE td.company_code = :company_code
-        AND td.doc_no = :doc_no
+        AND TO_CHAR(td.doc_no) = :doc_no
         AND td.div_code = :div_code
         AND td.doc_type = :doc_type
       ORDER BY td.serial_no
@@ -631,7 +636,7 @@ export const getTransactionChildren = async (
         AND pi.sign_ind = 1
       LEFT JOIN MS_CURRENCY c ON taid.curr_code = c.curr_code
       WHERE taid.company_code = :company_code
-        AND taid.doc_no = :doc_no
+        AND TO_CHAR(taid.doc_no) = :doc_no
         AND taid.div_code = :div_code
         AND taid.doc_type = :doc_type
       ORDER BY taid.serial_no, taid.dtl_sr_no
@@ -660,7 +665,7 @@ export const getTransactionChildren = async (
       FROM TR_AC_JOBDETAIL tajd
       LEFT JOIN MS_CURRENCY c ON tajd.curr_code = c.curr_code
       WHERE tajd.company_code = :company_code
-        AND tajd.doc_no = :doc_no
+        AND TO_CHAR(tajd.doc_no) = :doc_no
         AND tajd.div_code = :div_code
         AND tajd.doc_type = :doc_type
       ORDER BY tajd.serial_no, tajd.dtl_sr_no
@@ -690,7 +695,7 @@ export const getTransactionChildren = async (
       FROM TR_AC_EXPDETAIL taed
       LEFT JOIN MS_CURRENCY c ON taed.curr_code = c.curr_code
       WHERE taed.company_code = :company_code
-        AND taed.doc_no = :doc_no
+        AND TO_CHAR(taed.doc_no) = :doc_no
         AND taed.div_code = :div_code
         AND taed.doc_type = :doc_type
       ORDER BY taed.serial_no, taed.dtl_sr_no
@@ -1103,6 +1108,16 @@ export const createChequePaymentDocument = async (
   let connection;
 
   try {
+    // normalize numeric doc_no values to string to satisfy validation
+    if (req.body && typeof req.body.doc_no === 'number') {
+      req.body.doc_no = String(req.body.doc_no);
+    }
+    if (req.body && Array.isArray(req.body.detail)) {
+      req.body.detail.forEach((d: any) => {
+        if (typeof d.doc_no === 'number') d.doc_no = String(d.doc_no);
+      });
+    }
+
     const { error } = chequePaymentSchema(req.body);
     if (error) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -1114,7 +1129,7 @@ export const createChequePaymentDocument = async (
 
     connection = await oracledb.getConnection();
 
-    let doc_no: number;
+    let doc_no: string;
 
     // ---------- GET DOCUMENT NUMBER ----------
     const docResult = await connection.execute(
@@ -1136,9 +1151,9 @@ export const createChequePaymentDocument = async (
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    doc_no = (docResult.rows?.[0] as any)?.DOC_NO;
+    doc_no = String((docResult.rows?.[0] as any)?.DOC_NO);
 
-    if (!doc_no) {
+    if (!doc_no || doc_no === 'null') {
       throw new Error("Failed to generate document number");
     }
     console.log("Get doc_date", req.body.doc_date);
@@ -1599,7 +1614,7 @@ export const createChequePaymentDocument = async (
 export const callSpAcTxnControl = async (
   company_code: string,
   doc_type: string | number,
-  doc_no: string | number,
+  doc_no: string,
   user: string
 ) => {
   let conn: oracledb.Connection | undefined;
@@ -1775,6 +1790,10 @@ export const updateChequePaymentDocument = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
+  // also normalize during updates
+  if (req.body && typeof req.body.doc_no === 'number') {
+    req.body.doc_no = String(req.body.doc_no);
+  }
   let conn: oracledb.Connection | undefined;
   try {
     const { error } = chequePaymentSchema(req.body);

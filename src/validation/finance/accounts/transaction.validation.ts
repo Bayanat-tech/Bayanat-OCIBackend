@@ -7,32 +7,31 @@ export const chequePaymentSchema = (
   isBulkOperation?: boolean
 ) => {
   const baseSchema = Joi.object({
-    // Define the Joi schema for the cheque payment document
-    doc_no: Joi.number().optional().allow("", null), // Document number (optional)
-    doc_type: Joi.string() // Document type (required)
+    doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)), // Document number (optional, casts to string)
+    doc_type: Joi.string() 
       .valid(
-        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // Cheque payment
-        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT, // Cheque receipt
-        constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT // Cash receipt
+        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, 
+        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT, 
+        constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT 
       )
       .required(),
-    bank_ac_code: Joi.string().when("doc_type", { // Bank account code (conditional)
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, // If document type is cash receipt
-      then: Joi.forbidden(), // Then bank account code is forbidden
-      otherwise: Joi.allow("", null), // Otherwise bank account code is optional
+    bank_ac_code: Joi.string().when("doc_type", { 
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
+      then: Joi.forbidden(),
+      otherwise: Joi.allow("", null), 
     }),
-    cheque_bank: Joi.string().when("doc_type", { // Cheque bank (conditional)
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, // If document type is cash receipt
-      then: Joi.forbidden(), // Then cheque bank is forbidden
-      otherwise: Joi.allow("", null), // Otherwise cheque bank is optional
+    cheque_bank: Joi.string().when("doc_type", { 
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
+      then: Joi.forbidden(), 
+      otherwise: Joi.allow("", null),
     }),
-    cheque_no: Joi.string().when("doc_type", { // Cheque number (conditional)
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, // If document type is cash receipt
-      then: Joi.forbidden(), // Then cheque number is forbidden
-      otherwise: Joi.allow("", null), // Otherwise cheque number is optional
+    cheque_no: Joi.string().when("doc_type", { 
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
+      then: Joi.forbidden(), 
+      otherwise: Joi.allow("", null), 
     }),
-    cheque_date: Joi.date().when("doc_type", { // Cheque date (conditional)
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, // If document type is cash receipt
+    cheque_date: Joi.date().when("doc_type", { 
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
       then: Joi.forbidden(), // Then cheque date is forbidden
       otherwise: Joi.allow("", null), // Otherwise cheque date is optional
     }),
