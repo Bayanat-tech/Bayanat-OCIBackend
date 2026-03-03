@@ -76,6 +76,7 @@ import { insUpdMsProductEdiBulk } from "../../../controllers/wms/transaction/inb
 import { insUpdMsLocationEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsLocationEdiBulk";
 import { insUpdMsSiteEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsSiteEdiBulk";
 import { insUpdTcStockCountBulk } from "../../../controllers/stockcount/insUpdTcStockCountBulk";
+import { insUpdTcCountDetailsBulk } from "../../../controllers/stockcount/insUpdTcCountDetailsBulk";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -229,6 +230,10 @@ router.post(
    router.post(
    "/insUpdTcStockCountBulk",
    insUpdTcStockCountBulk );
+
+     router.post(
+   "/insUpdTcCountDetailsBulk ",
+  insUpdTcCountDetailsBulk  );
 
    
 
