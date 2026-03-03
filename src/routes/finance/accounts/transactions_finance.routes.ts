@@ -101,3 +101,23 @@
 // - Check for document existence before operations
 // - Maintain transaction integrity
 // */
+
+
+/**
+ * @fileoverview Inbound WMS Routes - Handles all inbound warehouse management system routes
+ * @requires express
+ * @requires passport
+ */
+
+import * as express from "express";
+import passport from "passport";
+import { insUpdTrAcBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
+
+
+
+const router = express.Router();
+
+router.post("/insUpdTrAcBulk", insUpdTrAcBulk );
+
+
+export default router;
