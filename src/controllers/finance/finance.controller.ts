@@ -186,7 +186,6 @@ export const getFinanceListData = async (
         );
 
         fetchedData = dataResult.rows || [];
-        console.log('Get data from fy_period :',fetchedData)
     }
         break;
 
@@ -359,8 +358,7 @@ export const getFinanceListData = async (
     });
     return normalizedRow;
   });
-  console.log("Get data from account master:", fetchedData);
-
+  
   break;
 }
 
@@ -769,11 +767,6 @@ break;
   // SORTING
   const sortColumnMap: Record<string, string> = {
     job_no: "JOB_NO",
-    job_date: "JOB_DATE",
-    confirm_date: "CONFIRM_DATE",
-    prin_code: "PRIN_CODE",
-    created_at: "CREATE_DATE",
-    updated_at: "EDIT_DATE",
   };
 
   let orderByClause = "ORDER BY JOB_NO DESC";
@@ -802,12 +795,12 @@ break;
   const dataResult = await connection.execute(
     `
     SELECT
-      job_no,
-      job_date,
-      confirm_date,
-      prin_code,
-      doc_ref,
-      dept_code
+      job_no as "job_no",
+      job_date as "job_date",
+      confirm_date as "confirm_date",
+      prin_code as "prin_code",
+      doc_ref as "doc_ref",
+      dept_code as "dept_code"
     FROM TI_JOB
     ${whereClause}
     ${orderByClause}
@@ -826,6 +819,7 @@ break;
 break;
 
  case "job": {
+  console.log("finance Job ");
    let whereClause = `
     WHERE company_code = :company_code
   `;
@@ -850,9 +844,6 @@ break;
   const sortColumnMap: Record<string, string> = {
     job_no: "JOB_NO",
     doc_no: "DOC_NO",
-    prin_code: "PRIN_CODE",
-    created_at: "CREATE_DATE",
-    updated_at: "EDIT_DATE",
   };
 
   let orderByClause = "";
@@ -891,6 +882,7 @@ break;
   );
 
   fetchedData = dataResult.rows || [];
+  console.log("Get data from job detail:", fetchedData);
 }
 break;
 
