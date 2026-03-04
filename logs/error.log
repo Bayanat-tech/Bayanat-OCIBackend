@@ -69243,3 +69243,1662 @@ AxiosError: Request failed with status code 500
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
 2026-02-17 16:34:42 [[31merror[39m]: Unhandled Rejection: TypeError: Cannot read properties of undefined (reading 'name') 
 2026-02-17 16:40:12 [[31merror[39m]: Unhandled Rejection: TypeError: Cannot read properties of undefined (reading 'originalname') 
+2026-02-25 12:33:51 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:278:15)
+    at async Function.markAttendance (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:63:22)
+2026-02-25 12:33:52 [[31merror[39m]: Face descriptor extraction failed: No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:278:15)
+    at async Function.markAttendance (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:77:22)
+2026-02-25 12:33:52 [[31merror[39m]: Attendance marking error No face detected in the image 
+Error: No face detected in the image
+    at FaceRecognitionService.extractFaceDescriptor (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\face_recognition.service.ts:278:15)
+    at async Function.markAttendance (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\controllers\Attendance\attendance.controller.ts:77:22)
+2026-02-25 13:29:05 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-25 13:29:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:30:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:30:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:31:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:31:17 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:31:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:32:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:32:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:33:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:33:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:34:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:34:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:35:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:35:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:36:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:36:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:37:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:37:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:38:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:38:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:39:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:39:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:40:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:40:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:41:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:41:17 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:41:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:42:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:42:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:43:17 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:43:47 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:54:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:54:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:55:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:56:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:56:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:57:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:57:56 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:57:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:58:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:58:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:59:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 13:59:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:00:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:00:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:01:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:01:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:02:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:02:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:03:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:03:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:04:26 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:04:56 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:05:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:05:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:06:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:06:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:07:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:07:56 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:07:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:08:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:08:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:09:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:09:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:10:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:10:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:11:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:11:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:12:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:12:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:13:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:13:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:14:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:14:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:15:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:15:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:16:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:16:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:17:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:17:56 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:17:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:18:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:18:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:19:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:19:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:20:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:20:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:21:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:21:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:22:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:22:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:23:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:23:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:24:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:24:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:25:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:25:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:26:27 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:26:57 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:28:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:28:49 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:28:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:29:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:30:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:30:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:31:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:31:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:32:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:32:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:33:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:33:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:34:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:34:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:35:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:35:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:36:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:36:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:37:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:37:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:37:56 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:38:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:38:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:39:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:39:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:40:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:40:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:41:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:41:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:42:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:42:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:43:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:43:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:44:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:44:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:45:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:45:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:46:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:46:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:47:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:47:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:47:56 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:48:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:48:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:49:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:49:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:50:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:50:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:51:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:51:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:52:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:52:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:53:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:53:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:54:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:54:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:55:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:55:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:56:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:56:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:57:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:57:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:57:56 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:58:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:58:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:59:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 14:59:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:00:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:00:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:01:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:01:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:02:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:02:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:03:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:03:49 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:04:19 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:07:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:07:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:08:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:08:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:09:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:09:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:10:21 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:10:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:10:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:11:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:11:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:12:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:12:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:13:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:13:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:14:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:14:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:15:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:15:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:16:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:16:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:17:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:17:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:18:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:18:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:19:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:19:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:20:21 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:20:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:20:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:21:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:21:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:22:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:22:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:23:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:23:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:24:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:24:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:25:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:25:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:26:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:26:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:27:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:27:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:28:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:28:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:29:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:29:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:30:21 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:30:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:30:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:31:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:31:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:32:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:32:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:33:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:33:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:34:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:34:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:35:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:35:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:36:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:36:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:37:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:37:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:38:21 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:38:51 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 15:39:59 [[31merror[39m]: Error in processStalePendingRecords: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+2026-02-25 16:08:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:08:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:09:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:09:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:10:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:10:04 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:10:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:11:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:11:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:12:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:12:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:13:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:13:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:14:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:14:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:15:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:15:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:16:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:16:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:17:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:17:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:18:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:18:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:19:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:19:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:20:04 [[31merror[39m]: Error in processStalePendingRecords: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:20:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:20:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:21:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:21:34 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 16:22:04 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 18:06:05 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 18:06:05 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 18:36:35 [[31merror[39m]: Error in processAutoConfirm: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:588:17)
+    at processTimers (node:internal/timers:523:7)
+2026-02-25 18:36:36 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-25 18:36:36 [[31merror[39m]: Error in processStalePendingRecords: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+2026-02-25 18:36:37 [[31merror[39m]: Error in processStalePendingRecords: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+2026-02-26 00:10:35 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 00:10:36 [[31merror[39m]: Error in processStalePendingRecords: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+2026-02-26 10:59:11 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 10:59:13 [[31merror[39m]: Error in processStalePendingRecords: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+2026-02-26 10:59:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:00:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:00:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:01:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:01:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:02:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:02:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:03:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:03:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:04:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:04:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:05:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:05:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:06:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:06:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:07:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:07:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:08:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:08:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:09:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:09:10 [[31merror[39m]: Error in processStalePendingRecords: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+2026-02-26 11:09:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:10:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:10:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:11:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:11:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:12:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:12:40 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 11:13:10 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:08:11 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:08:41 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:09:11 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:09:41 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:10:11 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:10:41 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:11:11 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:11:41 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-02-26 15:11:41 [[31merror[39m]: Error in processStalePendingRecords: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+2026-02-26 17:56:31 [[31merror[39m]: Error in processAutoConfirm: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 84025
+Session ID: 53 Serial number: 56647 
+Error: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 84025
+Session ID: 53 Serial number: 56647
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:139:22)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
