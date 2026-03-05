@@ -87,17 +87,27 @@ export class SecmasterService {
       updateData.userpass = await bcrypt.hash(updateData.userpass, 12);
       updateData.SEC_PASSWD = updateData.userpass;
     }
- 
-    if ("id" in updateData) {
-      delete updateData.id;
-    }
 
-    const result = await userRepository.update(
-      { loginid: loginid, company_code, id, email_id },
-      { ...updateData }
+    // strip out any immutable/PK columns that may have been sent
+    ["id", "loginid", "company_code", "email_id", "user_id", "user_code"].forEach(
+      (k) => delete updateData[k]
     );
 
-    return result.affected ? result.affected > 0 : false;
+    try {
+      const result = await userRepository.update(
+        { loginid: loginid, company_code, id, email_id },
+        { ...updateData }
+      );
+
+      return result.affected ? result.affected > 0 : false;
+    } catch (err: any) {
+      if (err && err.driverError && err.driverError.code === "ORA-01031") {
+        throw new Error(
+          "Insufficient database privileges to update the user record. Please ensure the application schema has UPDATE rights on SEC_LOGIN."
+        );
+      }
+      throw err;
+    }
   }
 
   static async checkEmailExistsExcludingCurrent(

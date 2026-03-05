@@ -198,7 +198,6 @@ detail: Joi.array() // Detail (required)
         doc_refno: Joi.string().allow("", null).optional(),
         // Document reference number 2 (optional)
         doc_refno_2: Joi.string().allow("", null).optional(),
-        // Amount (optional)
         amount: Joi.number().allow(null).optional(),
       })
     )

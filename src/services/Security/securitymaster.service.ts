@@ -51,14 +51,44 @@ export class SecurityMasterService {
     };
 
     if (sort && sort.field_name) {
-      const order: FindOptionsOrder<T> = {
-        [sort.field_name]: sort.desc ? "DESC" : "ASC",
-      } as FindOptionsOrder<T>;
-      findOptions.order = order;
+      // make sure the requested sort field actually exists on the entity
+      const metadata = repository.metadata;
+      const normalized = sort.field_name.toString();
+      const columnExists = metadata.columns.some(
+        (col) =>
+          col.propertyName === normalized ||
+          col.databaseName === normalized.toUpperCase()
+      );
+      if (columnExists) {
+        const order: FindOptionsOrder<T> = {
+          [sort.field_name]: sort.desc ? "DESC" : "ASC",
+        } as FindOptionsOrder<T>;
+        findOptions.order = order;
+      } else {
+        console.warn(
+          `[getMasterDataWithPagination] ignoring unknown sort field '${sort.field_name}' for entity ${metadata.name}`
+        );
+      }
     }
 
-    const [tableData, count] = await repository.findAndCount(findOptions);
-
+    let tableData: T[];
+    let count: number;
+    try {
+      [tableData, count] = await repository.findAndCount(findOptions);
+    } catch (err: any) {
+      if (
+        err.name === "EntityPropertyNotFound" ||
+        err.message?.includes("Property")
+      ) {
+        console.warn(
+          `[getMasterDataWithPagination] retrying without order due to error: ${err.message}`
+        );
+        delete findOptions.order;
+        [tableData, count] = await repository.findAndCount(findOptions);
+      } else {
+        throw err;
+      }
+    }
     return { tableData, count };
   }
 

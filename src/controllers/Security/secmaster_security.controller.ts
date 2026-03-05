@@ -140,6 +140,10 @@ export class SecmasterController {
         ...req.body,
         updated_by: requestUser.loginid,
       };
+      // remove any fields that should not be modified
+      ["id", "loginid", "company_code", "email_id", "user_id", "user_code"].forEach(
+        (k) => delete (updateData as any)[k]
+      );
 
       const isUpdated = await SecmasterService.updateUser(
         loginid,
