@@ -5,6 +5,7 @@ import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
 import { oracleDb } from "../database/connection";
 import { FilesPFService } from "../services/filesPF.service";
+import { deletePFFromS3 } from "../services/ociUpload.service";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
@@ -262,6 +263,15 @@ export const deleteFilesPF = async (
         message: "Delete operation failed",
       });
       return;
+    }
+    // attempt to delete the file from AWS S3 (PF uploads)
+    try {
+      if (file.awsFileLocn) {
+        await deletePFFromS3(file.awsFileLocn);
+      }
+    } catch (err) {
+      console.error("Failed to delete PF file from AWS S3:", err);
+      // continue - DB record already deleted; don't fail the entire request
     }
 
     res.status(constants.STATUS_CODES.OK).json({

@@ -29,8 +29,12 @@ import VendorRouter from "./src/routes/vendor.routes";
 import wmsRoutes from "./src/routes/wms.routes";
 import boldReportsRoutes from "./src/routes/boldreports.routes";
 import cfsRoutes from "./src/routes/SMS/sms.routes";
+import qrRoutes from "./src/routes/qr.routes";
 
 //----------------routes-------------
+
+// Public QR Authentication Routes (No authentication required)
+app.use("/api/qr", qrRoutes);
 
 app.use("/api/files", fileRoutes);
 
