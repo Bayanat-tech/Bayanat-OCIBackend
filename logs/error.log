@@ -70902,3 +70902,45 @@ Session ID: 53 Serial number: 56647
     at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:139:22)
     at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
     at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-05 15:26:22 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-05 15:26:51 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-05 15:27:21 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-05 15:27:51 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-05 15:28:21 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-05 15:28:51 [[31merror[39m]: Error in processAutoConfirm: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-05 15:29:13 [[31merror[39m]: Error in processAutoConfirm: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
+    at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)

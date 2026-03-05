@@ -301,12 +301,12 @@ export const createSTN = async (req: Request, res: Response) => {
 
 export const getAllStockTransfers = async (req: Request, res: Response) => {
   try {
-    const stockTransfers = await TsStnService.findAll();
+    const stockTransfers = await TsStnService.findAllWithPrincipalName();
 
     res.status(200).json({
       success: true,
       data: stockTransfers,
-      count: stockTransfers.length
+      count: stockTransfers.length,
     });
   } catch (error) {
     console.error("Error fetching all stock transfers:", error);
@@ -317,7 +317,6 @@ export const getAllStockTransfers = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const getTSSTNWithDetails = async (req: Request, res: Response) => {
   const { stn_no, company_code, prin_code } = req.query;
 
