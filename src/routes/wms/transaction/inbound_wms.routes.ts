@@ -232,7 +232,7 @@ router.post(
    insUpdTcStockCountBulk );
 
      router.post(
-   "/insUpdTcCountDetailsBulk ",
+   "/insUpdTcCountDetailsBulk",
   insUpdTcCountDetailsBulk  );
 
    
