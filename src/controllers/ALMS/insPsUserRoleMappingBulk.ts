@@ -23,13 +23,13 @@ export const insPsUserRoleMappingBulk = async (
       return;
     }
 
-    if (!Array.isArray(mappings) || mappings.length === 0) {
+  /*  if (!Array.isArray(mappings) || mappings.length === 0) {
       res.status(400).json({
         success: false,
         message: "mappings array is required"
       });
       return;
-    }
+    }*/
 
     // Resolve tenant
     let tenantId: string | undefined;
