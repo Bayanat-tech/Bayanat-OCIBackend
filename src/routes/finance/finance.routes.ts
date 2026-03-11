@@ -1,3 +1,20 @@
+
+import * as express from "express";
+import passport from "passport";
+
+import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.middleware"
+
+
+
+import { checkUserAuthorization } from "../../../src/middleware/checkUserAthorization"
+import { updBankReconBulk } from "../../controllers/finance/accounts/transactions/updBankReconBulk";
+const router = express.Router();
+
+
+router.post(
+  "/updBankReconBulk",
+  updBankReconBulk
+);
 // import * as express from "express";
 // import passport from "passport";
 // import { getFinanceListData } from "../../controllers/finance/finance.controller";
@@ -39,5 +56,5 @@
 //   transactionsRoutes
 // );
 
-// export default router;
+ export default router;
 

@@ -73,6 +73,11 @@ import {cancelInboundJob} from "../../../controllers/wms/transaction/inbound/cre
 import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
 import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
 import { insUpdMsProductEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsProductEdit.controller";
+import { insUpdMsLocationEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsLocationEdiBulk";
+import { insUpdMsSiteEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsSiteEdiBulk";
+import { insUpdTcStockCountBulk } from "../../../controllers/stockcount/insUpdTcStockCountBulk";
+import { insUpdTcCountDetailsBulk } from "../../../controllers/stockcount/insUpdTcCountDetailsBulk";
+import { insUpdTsStnDetailEdiBulk } from "../../../controllers/StockTransfer/insUpdTsStnDetailEdiBulk";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -208,10 +213,36 @@ router.post(
 router.get("/tally_product_data", getTallyProductData);
 
 router.post(
-   "/Putawaywithpalletid",  Putawaywithpalletid
+   "/Putawaywithpalletid",  
+   Putawaywithpalletid
  );
 router.post(
-   "insUpdMsProductEdiBulk",insUpdMsProductEdiBulk);
+   "/insUpdMsProductEdiBulk",
+   insUpdMsProductEdiBulk);
+
+router.post(
+  "/insUpdMsLocationEdiBulk",
+  insUpdMsLocationEdiBulk
+);
+router.post(
+   "/insUpdMsSiteEdiBulk",
+   insUpdMsSiteEdiBulk);
+   
+   router.post(
+   "/insUpdTcStockCountBulk",
+   insUpdTcStockCountBulk );
+
+     router.post(
+   "/insUpdTcCountDetailsBulk",
+  insUpdTcCountDetailsBulk  );
+
+ router.post(
+   "/insUpdTsStnDetailEdiBulk",
+  insUpdTsStnDetailEdiBulk  );
+
+
+
+   
 
 
 router.post(

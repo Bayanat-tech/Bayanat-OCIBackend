@@ -9,9 +9,9 @@ console.log("index.ts loaded");
 
 app.use(cors());
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({limit: '50mb', extended: true }));
 
 // passport strategies will be initialized after TypeORM is ready (see startServer)
 export const withTenantContext = () => [
@@ -24,7 +24,7 @@ import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
 import authRoutes from "./src/routes/auth.routes";
 import fileRoutes from "./src/routes/files.routes";
-// import financeRoutes from "./src/routes/finance/finance.routes";
+import financeRoutes from "./src/routes/finance/finance.routes";
 import hrRoutes from "./src/routes/hr.routes";
 import logRoutes from "./src/routes/notification.routes";
 import pfRoutes from "./src/routes/pf.routes";
@@ -65,6 +65,9 @@ app.use("/api/bt-flow", pfbtflowRoutes);
 app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
+
+
+app.use("/api/finance",financeRoutes );
 
 app.use("/api/attendance", attendanceRoutes);
 
