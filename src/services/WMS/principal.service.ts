@@ -78,55 +78,87 @@ export class PrincipalService {
   }
 
   // Create new principal
-  static async createPrincipal(principalData: Partial<PrincipalMaster>): Promise<PrincipalMaster> {
-    try {
-      const cols = Object.keys(principalData);
-      const colNames = cols.join(", ");
-      const bindParams = cols.map((_, i) => `:val${i}`).join(", ");
-      
-      const sql = `INSERT INTO MS_PRINCIPAL (${colNames}) VALUES (${bindParams})`;
-      
-      const bindObj: Record<string, any> = {};
-      cols.forEach((col, i) => {
-        bindObj[`val${i}`] = (principalData as any)[col];
-      });
-      
-      await executeMutation(sql, bindObj);
 
-      // Fetch the created principal to return it 
-      const selectSql = `SELECT * FROM MS_PRINCIPAL WHERE PRIN_NAME = :prin_name AND COMPANY_CODE = :company_code`;
-      const createdPrincipal  = await executeSingleQuery<PrincipalMaster>(selectSql, {
-        prin_name: principalData.prin_name,
-        company_code: principalData.company_code
-      });  
-      console.log("Created Principal:", createdPrincipal); // Debug log to verify the created principal
-      return createdPrincipal as PrincipalMaster;
-    } catch (error) {
-      console.error("[PrincipalService.createPrincipal] Error:", error);
-      throw error;
-    }
+static async createPrincipal(principalData: Partial<PrincipalMaster>): Promise<PrincipalMaster> {
+  const DATE_COLUMNS = new Set([
+  'trn_exp_date',
+  'comm_reg_exp_date',
+  'prin_invdate',
+  'validate_expdate',
+  'service_date',
+  'created_at',
+  'updated_at',
+]);
+
+  try {
+    const cols = Object.keys(principalData);
+    const colNames = cols.map(c => c.toUpperCase()).join(', ');
+
+    const bindParams = cols.map((col, i) => {
+      if (DATE_COLUMNS.has(col) && principalData[col as keyof PrincipalMaster] != null) {
+        return `TO_DATE(:val${i}, 'YYYY-MM-DD')`;
+      }
+      return `:val${i}`;
+    }).join(', ');
+
+    const sql = `INSERT INTO MS_PRINCIPAL (${colNames}) VALUES (${bindParams})`;
+
+    const bindObj: Record<string, any> = {};
+    cols.forEach((col, i) => {
+      bindObj[`val${i}`] = (principalData as any)[col];
+    });
+
+    await executeMutation(sql, bindObj);
+
+    const selectSql = `SELECT * FROM MS_PRINCIPAL WHERE PRIN_NAME = :prin_name AND COMPANY_CODE = :company_code`;
+    const createdPrincipal = await executeSingleQuery<PrincipalMaster>(selectSql, {
+      prin_name: principalData.prin_name,
+      company_code: principalData.company_code,
+    });
+
+    return createdPrincipal as PrincipalMaster;
+  } catch (error) {
+    console.error('[PrincipalService.createPrincipal] Error:', error);
+    throw error;
   }
+}
 
   // Update existing principal
-  static async updatePrincipal(prin_code: string, updateData: Partial<PrincipalMaster>): Promise<boolean> {
-    try {
-      const cols = Object.keys(updateData);
-      const setClause = cols.map((col, i) => `${col} = :val${i}`).join(", ");
-      
-      const sql = `UPDATE MS_PRINCIPAL SET ${setClause} WHERE PRIN_CODE = :prin_code`;
-      
-      const bindObj: Record<string, any> = { prin_code };
-      cols.forEach((col, i) => {
-        bindObj[`val${i}`] = (updateData as any)[col];
-      });
-      
-      await executeMutation(sql, bindObj);
-      return true;
-    } catch (error) {
-      console.error("[PrincipalService.updatePrincipal] Error:", error);
-      throw error;
-    }
+static async updatePrincipal(prin_code: string, updateData: Partial<PrincipalMaster>): Promise<boolean> {
+  const DATE_COLUMNS = new Set([
+    'trn_exp_date',
+    'comm_reg_exp_date',
+    'prin_invdate',
+    'validate_expdate',
+    'service_date',
+    'created_at',
+    'updated_at',
+  ]);
+
+  try {
+    const cols = Object.keys(updateData);
+
+    const setClause = cols.map((col, i) => {
+      if (DATE_COLUMNS.has(col) && updateData[col as keyof PrincipalMaster] != null) {
+        return `${col.toUpperCase()} = TO_DATE(:val${i}, 'YYYY-MM-DD')`;
+      }
+      return `${col.toUpperCase()} = :val${i}`;
+    }).join(', ');
+
+    const sql = `UPDATE MS_PRINCIPAL SET ${setClause} WHERE PRIN_CODE = :prin_code`;
+
+    const bindObj: Record<string, any> = { prin_code };
+    cols.forEach((col, i) => {
+      bindObj[`val${i}`] = (updateData as any)[col];
+    });
+
+    await executeMutation(sql, bindObj);
+    return true;
+  } catch (error) {
+    console.error('[PrincipalService.updatePrincipal] Error:', error);
+    throw error;
   }
+}
 
   // Delete principal
   static async deletePrincipal(prin_code: string): Promise<boolean> {
