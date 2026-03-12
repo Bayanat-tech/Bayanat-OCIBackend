@@ -1273,7 +1273,7 @@ export const createChequePaymentDocument = async (
         sign_ind:
           docType === 'BP'
             ? (isReverseDoc ? -1 : 1)
-            : docType === 'BR'
+            : docType === ['CR', 'BR'].includes(req.body.doc_type)
               ? (isReverseDoc ? 1 : -1)
               : (d.sign_ind ?? 1),
         curr_code: d.curr_code ?? header.curr_code ?? "USD",
@@ -1449,7 +1449,7 @@ export const createChequePaymentDocument = async (
       console.log('DB: CREATE-FLOW INSERT INVOICE (first)', { ...children.invoice[0], doc_no });
 
       // Determine indicator_origin and amount_origin based on document type
-      const isPaymentDoc = ['BP', 'BR'].includes(req.body.doc_type); // Bill Payment
+      const isPaymentDoc = ['BP', 'BR','CR'].includes(req.body.doc_type); // Bill Payment
       // const isPaymentDoc = req.body.doc_type === 'BR';
 
       await connection.executeMany(
