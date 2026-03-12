@@ -12,7 +12,9 @@ export const chequePaymentSchema = (
       .valid(
         constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, 
         constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT, 
-        constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT 
+        constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
+        constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
+        constants.TRANSACTION_DOCUMENT_TYPE.LPO,
       )
       .required(),
     bank_ac_code: Joi.string().when("doc_type", { 
@@ -40,13 +42,17 @@ export const chequePaymentSchema = (
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    files: Joi.array().optional().allow("", null) // Files (conditional)
-      .items(Joi.any())
-      .when("doc_type", {
-        is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
-        then: Joi.allow(null, ""), // Then files are optional
-        otherwise: Joi.forbidden(), // Otherwise files are forbidden
-      }),
+    // files: Joi.array().optional().allow("", null) // Files (conditional)
+    //   .items(Joi.any())
+    //   .when("doc_type", {
+    //     is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
+    //     then: Joi.allow(null, ""), // Then files are optional
+    //     otherwise: Joi.forbidden(), // Otherwise files are forbidden
+    //   }),
+    files: Joi.array()
+  .items(Joi.any())
+  .optional()
+  .allow(null, ""),
     ac_payee: Joi.string().when("doc_type", { // Account payee (conditional)
       is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
       then: Joi.allow("", null), // Then account payee is optional
@@ -75,12 +81,14 @@ export const chequePaymentSchema = (
           tx_compnt_lcuramt_1: Joi.number().allow("", null), // Transaction component 1 local currency amount (optional)
           tx_cat_code: Joi.string().allow("", null), // Transaction category code (optional)
           div_code: Joi.string().required(), // Division code (required)
-          doc_no: Joi.number().required(), // Document number (required)
+          doc_no: Joi.string().required(), // Document number (required)
           doc_type: Joi.string() // Document type (required)
             .valid(
               constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // Cheque payment
               constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT, // Cheque receipt
-              constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT // Cash receipt
+              constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,// Cash receipt
+              constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Purchase
+              constants.TRANSACTION_DOCUMENT_TYPE.LPO, // LPO
             )
             .required(),
           serial_no: Joi.number().required(), // Serial number (required)
@@ -127,7 +135,8 @@ export const chequePaymentSchema = (
               .valid(
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT,
-                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT
+                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
+                constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
               )
               .required(),
             // Division code (required)
@@ -187,7 +196,8 @@ export const chequePaymentSchema = (
               .valid(
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT,
-                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT
+                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
+                constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
               )
               .required(),
             // Division code (required)

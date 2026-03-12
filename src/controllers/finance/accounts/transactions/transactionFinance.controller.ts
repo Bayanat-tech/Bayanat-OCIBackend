@@ -162,7 +162,7 @@ export const getCompanyInfo = async (
 
     const result = await connection.execute(
       `
-      SELECT MAX(ac_fy_period) AS "ac_fy_period"
+      SELECT MAX(ac_fy_period)+1 AS "ac_fy_period"
       FROM MS_COMPANYINFO
       WHERE company_code = :company_code
       `,
