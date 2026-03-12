@@ -45,7 +45,8 @@ import almsRoutes from "./src/routes/alms.routes";
 // import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
 // import { AttendanceService } from "./src/services/Attendance/Attendance.service"; 
 
-//----------------routes-------------
+// Import the AWS to OCI file transfer scheduler
+import { startTransferScheduler } from "./awstoocifiletransfer";
 
 app.use("/api/files", fileRoutes);
 
@@ -143,6 +144,14 @@ async function startServer() {
     // } catch (err) {
     //   console.warn("Schedulers failed to initialize (continuing):", err);
     // }
+
+    // Start AWS to OCI file transfer scheduler
+    try {
+      await startTransferScheduler();
+      console.log("AWS to OCI file transfer scheduler initialized");
+    } catch (err) {
+      console.warn("AWS to OCI file transfer scheduler failed to initialize (continuing):", err);
+    }
     
     // Start server
     console.log(`Listening on port ${PORT}...`);

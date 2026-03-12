@@ -13,7 +13,6 @@ import { promisify } from "util";
 const pipeline = promisify(stream.pipeline);
 
 // ==================== CONFIGURATION ====================
-// Use PURCHASE_REQUEST_FILES_ocitransfer as the only table
 const SOURCE_TABLE = process.env.SOURCE_TABLE || "PURCHASE_REQUEST_FILES_ocitransfer";
 const BATCH_SIZE = Number(process.env.TRANSFER_BATCH_SIZE || 50);
 const SCHEDULE_CRON = process.env.SCHEDULE_CRON || "";
@@ -296,7 +295,7 @@ async function transferSingleRow(row: any): Promise<boolean> {
   const srNo = row.SR_NO;
   const fileName = row.FILE_NAME;
   const orgFileName = row.ORG_FILE_NAME;
-  const awsUrl = row.AWS_FILE_LOCN;
+  const awsUrl = row.NEW_AWS_FILE_LOCN;
   // USER_DT, USER_ID, FILE_VIEWED are not needed for transfer
 
   const targetKey = getTargetKeyFromAwsUrl(awsUrl, orgFileName);
@@ -425,7 +424,7 @@ async function ensureTableColumnsExist() {
     try {
       await oracleDb.query(`
         BEGIN
-          EXECUTE IMMEDIATE '${sql}';
+          EXECUTE IMMEDIATE q'[${sql}]';
         EXCEPTION
           WHEN OTHERS THEN
             IF SQLCODE != -1430 THEN  -- ORA-01430: column already exists
@@ -444,7 +443,7 @@ async function ensureTableColumnsExist() {
   try {
     await oracleDb.query(`
       BEGIN
-        EXECUTE IMMEDIATE 'CREATE INDEX idx_prf_transfer ON ${SOURCE_TABLE}(FILE_TRANSFER)';
+        EXECUTE IMMEDIATE q'[CREATE INDEX idx_prf_transfer ON ${SOURCE_TABLE}(FILE_TRANSFER)]';
       EXCEPTION
         WHEN OTHERS THEN
           IF SQLCODE != -955 THEN  -- ORA-00955: name already used
@@ -463,19 +462,18 @@ async function transferBatchOnce() {
   console.log(`[awsToOci] Table: ${SOURCE_TABLE}`);
   console.log(`[awsToOci] Batch size: ${BATCH_SIZE}`);
 
-  // Select rows that have AWS URL and are not yet processed (or failed)
-  // Use FILE_TRANSFER column (default 'N')
+ 
   const sql = `
-    SELECT COMPANY_CODE, REQUEST_NUMBER, SR_NO, FILE_NAME, ORG_FILE_NAME, AWS_FILE_LOCN
+    SELECT COMPANY_CODE, REQUEST_NUMBER, SR_NO, FILE_NAME, ORG_FILE_NAME, NEW_AWS_FILE_LOCN
     FROM ${SOURCE_TABLE}
-    WHERE AWS_FILE_LOCN IS NOT NULL
+    WHERE NEW_AWS_FILE_LOCN IS NOT NULL
       AND NVL(FILE_TRANSFER,'N') NOT IN ('Y', 'E', '403')
       AND ROWID IN (
         SELECT MIN(ROWID)
         FROM ${SOURCE_TABLE}
-        WHERE AWS_FILE_LOCN IS NOT NULL
+        WHERE NEW_AWS_FILE_LOCN IS NOT NULL
           AND NVL(FILE_TRANSFER,'N') NOT IN ('Y', 'E', '403')
-        GROUP BY REQUEST_NUMBER, SR_NO, AWS_FILE_LOCN
+        GROUP BY REQUEST_NUMBER, SR_NO, NEW_AWS_FILE_LOCN
       )
     ORDER BY REQUEST_NUMBER, SR_NO
     FETCH FIRST :batch ROWS ONLY
@@ -514,7 +512,7 @@ async function transferBatchOnce() {
       console.log(`[awsToOci] Running totals: Total=${totalProcessed}, Success=${totalSuccess}, Failed=${totalFailed}`);
 
       if (rows.length >= BATCH_SIZE) {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 sec delay
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
       }
     }
 
@@ -533,7 +531,7 @@ async function transferBatchOnce() {
     if (totalFailed > 0) {
       console.log(`\n[awsToOci] === FAILED ITEMS SUMMARY ===`);
       const failedSql = `
-        SELECT REQUEST_NUMBER, SR_NO, AWS_FILE_LOCN, ERROR_MESSAGE, FILE_TRANSFER
+        SELECT REQUEST_NUMBER, SR_NO, NEW_AWS_FILE_LOCN, ERROR_MESSAGE, FILE_TRANSFER
         FROM ${SOURCE_TABLE}
         WHERE FILE_TRANSFER IN ('E', '403')
         ORDER BY REQUEST_NUMBER, SR_NO
@@ -544,7 +542,7 @@ async function transferBatchOnce() {
       console.log(`[awsToOci] Found ${failedRows.length} failed transfers:`);
       failedRows.slice(0, 20).forEach((row, idx) => {
         console.log(`  ${idx + 1}. Request: ${row.REQUEST_NUMBER || 'NULL'}, SR: ${row.SR_NO}, Status: ${row.FILE_TRANSFER}`);
-        console.log(`     URL: ${row.AWS_FILE_LOCN?.substring(0, 80)}...`);
+        console.log(`     URL: ${row.NEW_AWS_FILE_LOCN?.substring(0, 80)}...`);
         console.log(`     Error: ${row.ERROR_MESSAGE || 'Unknown'}`);
       });
       if (failedRows.length > 20) {
@@ -570,9 +568,9 @@ async function transferFailedRecordsOnly() {
 
   // Retry only records with status 'E' and not 403-related errors
   const sql = `
-    SELECT COMPANY_CODE, REQUEST_NUMBER, SR_NO, FILE_NAME, ORG_FILE_NAME, AWS_FILE_LOCN
+    SELECT COMPANY_CODE, REQUEST_NUMBER, SR_NO, FILE_NAME, ORG_FILE_NAME, NEW_AWS_FILE_LOCN
     FROM ${SOURCE_TABLE}
-    WHERE AWS_FILE_LOCN IS NOT NULL
+    WHERE NEW_AWS_FILE_LOCN IS NOT NULL
       AND FILE_TRANSFER = 'E'
       AND (ERROR_MESSAGE IS NULL OR
            (ERROR_MESSAGE NOT LIKE '%403%' AND
