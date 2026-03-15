@@ -9,6 +9,7 @@ import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.m
 import { checkUserAuthorization } from "../../../src/middleware/checkUserAthorization"
 import { updBankReconBulk } from "../../controllers/finance/accounts/transactions/updBankReconBulk";
 import { insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
+//import { insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
 //import { insUpdTrAcJVBulk, insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
 const router = express.Router();
 

@@ -3,7 +3,9 @@ import oracledb from "oracledb";
 import TenantManager from "../../../../../src/database/TenantManager";
 import { getCurrentTenantId } from "../../../../../src/middleware/tenantContext.middleware";
 
-export const insUpdTrAcBulk = async (
+
+
+export const insUpdTrAcJVBulk = async (
   req: Request,
   res: Response
 ): Promise<void> => {
