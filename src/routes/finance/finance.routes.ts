@@ -8,12 +8,18 @@ import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.m
 
 import { checkUserAuthorization } from "../../../src/middleware/checkUserAthorization"
 import { updBankReconBulk } from "../../controllers/finance/accounts/transactions/updBankReconBulk";
+import { insUpdTrAcBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
 const router = express.Router();
 
 
 router.post(
   "/updBankReconBulk",
   updBankReconBulk
+);
+
+router.post(
+  "/insUpdTrAcBulk",
+  insUpdTrAcBulk
 );
 // import * as express from "express";
 // import passport from "passport";
