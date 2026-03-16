@@ -45,16 +45,16 @@ router.post(
 // import transactionsRoutes from "../finance/accounts/transactions_finance.routes";
 // const router = express.Router();
 
-// // Get finance master data
-// router.get(
-//   "/:master",
-//   // authenticate the user using the jwt token
-//   passport.authenticate("jwt", { session: false }),
-//   // check if the user has the necessary permissions
-//   checkUserAuthorization,
-//   // call the getFinanceListData function to handle the request
-//   getFinanceListData
-// );
+// Get finance master data
+router.get(
+  "/:master",
+  // authenticate the user using the jwt token
+  passport.authenticate("jwt", { session: false }),
+  // check if the user has the necessary permissions
+  checkUserAuthorization,
+  // call the getFinanceListData function to handle the request
+  getFinanceListData
+);
 
 // // Define routes for finance master data
 // router.use(
@@ -67,16 +67,16 @@ router.post(
 //   masterRoutes
 // );
 
-// // Define routes for finance transactions data
-// router.use(
-//   "/transactions",
-//   // authenticate the user using the jwt token
-//   passport.authenticate("jwt", { session: false }),
-//   // check if the user has the necessary permissions
-//   checkUserAuthorization,
-//   // call the transactionsRoutes to handle the request
-//   transactionsRoutes
-// );
+// Define routes for finance transactions data
+router.use(
+  "/transactions",
+  // authenticate the user using the jwt token
+  passport.authenticate("jwt", { session: false }),
+  // check if the user has the necessary permissions
+  checkUserAuthorization,
+  // call the transactionsRoutes to handle the request
+  transactionsRoutes
+);
 
  export default router;
 

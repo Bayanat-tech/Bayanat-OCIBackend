@@ -66,8 +66,7 @@ app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
 
-
-app.use("/api/finance",financeRoutes );
+// app.use("/api/finance",financeRoutes );
 
 app.use("/api/attendance", attendanceRoutes);
 
