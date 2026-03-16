@@ -1,6 +1,8 @@
 // controllers/invoiceController.ts
 import { Request, Response } from "express";
 import oracledb from "oracledb";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 
 export type TInvoiceDetUpd = {
   company_code: string;
@@ -24,7 +26,20 @@ export async function updatejobbillingdata(req: Request, res: Response): Promise
       return;
     }
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[updatejobbillingdata] Tenant context not available, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        throw new Error("[updatejobbillingdata] Cannot determine user loginid");
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      throw new Error("[updatejobbillingdata] Unable to determine tenant database");
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     const detailRows = req.body.rows.map((r: TInvoiceDetUpd) => ({
       COMPANY_CODE: r.company_code,
