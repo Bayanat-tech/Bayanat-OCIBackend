@@ -340,74 +340,30 @@ export const deleteStockAdjustment = async (
 export const processAdjustment = async (
   req: RequestWithUser,
   res: Response
-) => {
+): Promise<void> => {  
   try {
-    const { COMPANY_CODE, PRIN_CODE, ADJ_NO, USERID }: IProcessAdjustmentRequest = req.body;
+    const { COMPANY_CODE, PRIN_CODE, ADJ_NO, USERID, P_ADJ_SERIALNO }: 
+      IProcessAdjustmentRequest = req.body;
 
-    // Validate required fields
-    if (!COMPANY_CODE) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "COMPANY_CODE is required",
-      });
-      return;
-    }
+    if (!COMPANY_CODE) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "COMPANY_CODE is required" }); return; }
+    if (!PRIN_CODE) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "PRIN_CODE is required" }); return; }
+    if (!ADJ_NO) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_NO is required" }); return; }
+    if (!USERID) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "USERID is required" }); return; }
+    if (!P_ADJ_SERIALNO) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "P_ADJ_SERIALNO is required" }); return; }
 
-    if (!PRIN_CODE) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "PRIN_CODE is required",
-      });
-      return;
-    }
-
-    if (!ADJ_NO) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "ADJ_NO is required",
-      });
-      return;
-    }
-
-    if (!USERID) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "USERID is required",
-      });
-      return;
-    }
-
-    console.log('Processing adjustment with data:', {
-      COMPANY_CODE,
-      PRIN_CODE,
-      ADJ_NO,
-      USERID,
-    });
-
-    // Call the stored procedure
     await TaAdjDetailService.processAdjustment({
       COMPANY_CODE,
       PRIN_CODE,
       ADJ_NO,
       USERID,
+      P_ADJ_SERIALNO,
     });
 
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message: "Stock adjustment processed successfully",
-    });
+    res.status(constants.STATUS_CODES.OK).json({ success: true, message: "Stock adjustment processed successfully" });
   } catch (error: any) {
-    console.error("Error processing stock adjustment:", error);
-    console.error("Error stack:", error.stack);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Failed to process stock adjustment",
-      error: error.message,
-      details: error.stack,
-    });
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to process stock adjustment", error: error.message });
   }
 };
-
 export const createStockAdjustmentHeader = async (
   req: RequestWithUser,
   res: Response
@@ -631,27 +587,27 @@ export const createAdjustmentDetail = async (
 export const confirmAdjDetail = async (
   req: RequestWithUser,
   res: Response
-) => {
+): Promise<void> => {  // 👈
   try {
-    const { P_COMPANY_CODE, P_PRIN_CODE, P_ADJ_NO } = req.body;
+    const { P_COMPANY_CODE, P_PRIN_CODE, P_ADJ_NO, P_USERID, P_ADJ_SERIALNO } = req.body; // 👈
 
     // Validate required fields
     if (!P_COMPANY_CODE) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "P_COMPANY_CODE is required",
       });
     }
 
     if (!P_PRIN_CODE) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "P_PRIN_CODE is required",
       });
     }
 
     if (!P_ADJ_NO) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "P_ADJ_NO is required",
       });
@@ -664,11 +620,13 @@ export const confirmAdjDetail = async (
     });
 
     // Call the function to confirm adjustment detail
-    await TaAdjDetailService.confirmAdjDetail({
-      P_COMPANY_CODE,
-      P_PRIN_CODE,
-      P_ADJ_NO,
-    });
+      await TaAdjDetailService.confirmAdjDetail({
+        P_COMPANY_CODE,
+        P_PRIN_CODE,
+        P_ADJ_NO,
+        P_USERID, 
+        P_ADJ_SERIALNO,
+      });
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
