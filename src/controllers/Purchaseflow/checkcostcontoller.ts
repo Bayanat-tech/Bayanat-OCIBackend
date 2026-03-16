@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { oracleDb } from "../../database/connection";
 
 export const CheckCostcontroller = async (req: Request, res: Response): Promise<void> => {
-  let connection;
+  let connection: oracledb.Connection | null = null;
 
   try {
     // Extract and validate query parameters
@@ -18,8 +20,23 @@ export const CheckCostcontroller = async (req: Request, res: Response): Promise<
 
     console.log("✅ Inside backend CheckCostcontroller", { userId, companyCode });
 
-    // Get Oracle connection
-    connection = await oracledb.getConnection();
+    // Resolve tenant and get tenant-specific connection
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[CheckCostcontroller] Tenant context missing, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        res.status(400).json({ success: false, message: "Tenant information missing" });
+        return;
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant information missing" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     // Execute query with bind variables
     const result = await connection.execute<{ COSTCONTROLLER: string }>(

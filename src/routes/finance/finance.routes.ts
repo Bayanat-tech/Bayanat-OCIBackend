@@ -1,4 +1,3 @@
-
 import * as express from "express";
 import passport from "passport";
 import { Router } from "express";
@@ -11,8 +10,6 @@ import { tenantMiddleware } from "../../../src/middleware/tenant.middleware";
 import { updBankReconBulk } from "../../controllers/finance/accounts/transactions/updBankReconBulk";
 import { insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
 const router = express.Router();
-
-// Apply tenant middleware and context to ALL finance routes
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
