@@ -6,10 +6,15 @@ import { getFinanceListData } from "../../controllers/finance/finance.controller
 import { checkUserAuthorization } from "../../middleware/checkUserAthorization";
 import masterRoutes from "../finance/accounts/master_finance.routes";
 import transactionsRoutes from "../finance/accounts/transactions_finance.routes";
-import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.middleware"
+import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.middleware";
+import { tenantMiddleware } from "../../../src/middleware/tenant.middleware";
 import { updBankReconBulk } from "../../controllers/finance/accounts/transactions/updBankReconBulk";
 import { insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
 const router = express.Router();
+
+// Apply tenant middleware and context to ALL finance routes
+router.use(tenantMiddleware);
+router.use(tenantContextMiddleware);
 
 
 router.post(

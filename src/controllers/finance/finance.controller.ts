@@ -1,29 +1,13 @@
 import { Response } from "express";
-// import { Op, QueryTypes } from "sequelize";
-// import { sequelize } from "../../database/connection";
 import constants from "../../helpers/constants";
-//import { getSearchFilterQuery } from "../../helpers/functions";
 import { ISearch, RequestWithUser } from "../../interfaces/common.interface";
 import { ITrAcInvdetail } from "../../interfaces/finance/accounts/transactions/chequePaymentTransaction.interface";
 import { IUser } from "../../interfaces/user.interface";
-// import Account from "../../models/finance/accounts/masters/account_finance.model";
-// import AccountBlSetup from "../../models/finance/accounts/masters/account_finance_bl.model";
-// import AccountPlSetup from "../../models/finance/accounts/masters/account_finance_pl.model";
-// import ExpenseSubType from "../../models/finance/accounts/transactions/expenseSubType.model";
-// import ExpenseType from "../../models/finance/accounts/transactions/expenseType.model";
-//import MS_FY_PERIOD from "../../models/finance/accounts/transactions/ms_fy_period.model";
-// import TaxCompntancy from "../../models/finance/accounts/transactions/msTaxComPntcategory.model";
-// import TransactionHeader from "../../models/finance/accounts/transactions/tranasctionHeader_account.model";
-// import TransactionExpenseDetail from "../../models/finance/accounts/transactions/transactionExpenseDetail.model";
-// import TransactionInvoiceDetail from "../../models/finance/accounts/transactions/transactionInvoiceDetail.model";
-// import TransactionJobDetail from "../../models/finance/accounts/transactions/transactionJobDetail.model";
-// import JobInboundWms from "../../models/wms/transaction/inbound/inboundJobWms.model";
 import { getChequePaymentInvoiceDetail } from "../../utils/query";
-import VW_AC_HEADER_SEARCH from "../../views/finance/accounts/transactions/ac_header_search.view";
-import AcCodesSearchView from "../../views/finance/accounts/transactions/acCodesSearch.view";
-//import Currency from "../../models/wms/currency_wms.model";
-import oracledb from "oracledb"
 import { getSearchFilterQuery } from "../../helpers/functions";
+import oracledb from "oracledb";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 
 export const getFinanceListData = async (
   req: RequestWithUser,
@@ -35,6 +19,15 @@ export const getFinanceListData = async (
     // Extract master parameter from request
     const { master } = req.params;
     const requestUser: IUser = req.user;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
@@ -46,7 +39,7 @@ export const getFinanceListData = async (
       ? JSON.parse(req.query.filter as string)
       : {};
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     switch (master) {
       case "doc": {

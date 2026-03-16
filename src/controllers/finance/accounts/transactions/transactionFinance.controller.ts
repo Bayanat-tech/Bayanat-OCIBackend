@@ -2,18 +2,15 @@
 
 import { Response } from "express"; // Express response handling
 import oracledb, { getConnection } from "oracledb";
-
-// Helper Functions and Constants
-import constants from "../../../../helpers/constants"; // Application constants
-// Common Interfaces
+import constants from "../../../../helpers/constants"; 
 import {
-  RequestWithUser, // Extended request with user context
+  RequestWithUser, 
 } from "../../../../interfaces/common.interface";
-
 import { IUser } from "../../../../interfaces/user.interface"; // User interface
 
 import { chequePaymentSchema, LpoSchema, purchaseSchema, salesSchema } from "../../../../validation/finance/accounts/transaction.validation"; // Validation schema
-import VW_AC_HEADER_SEARCH from "../../../../views/finance/accounts/transactions/ac_header_search.view";
+import TenantManager from "../../../../database/TenantManager";
+import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 //-------------------get---------------
 /**
  * Retrieves default transaction details based on document setup
@@ -29,10 +26,26 @@ export const getDefaultTransactionDetails = async (
   try {
     // Extract query parameters for document identification and mode
     const { doc_id, isEditMode } = req.query;
+    let tenantId = getCurrentTenantId();
+    
+    // Fallback: If tenant context not available, resolve from user
+    if (!tenantId) {
+      console.warn("[getDefaultTransactionDetails] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+    
     console.log(typeof isEditMode);
 
-    // Get Oracle connection
-    connection = await oracledb.getConnection();
+    // Get Oracle connection from TENANT-SPECIFIC database
+    connection = await TenantManager.getConnection(tenantId);
 
     /* Build SQL query based on edit mode
      * - In view mode (isEditMode === 'false'): Include all related tables with LEFT JOINs
@@ -158,7 +171,23 @@ export const getCompanyInfo = async (
   let connection;
 
   try {
-    connection = await oracledb.getConnection();
+    // Get tenant ID with fallback
+    let tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      console.warn("[getCompanyInfo] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `
@@ -214,8 +243,17 @@ export const getChequePaymentHeader = async (
     const { doc_no } = req.params;
     const { doc_type } = req.query;
     const companyCode = req.user.company_code;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     const query = `
      SELECT
@@ -360,8 +398,17 @@ export const getPurchaseHeader = async (
     const { doc_no } = req.params;
     const { doc_type } = req.query;
     const companyCode = req.user.company_code;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     const query = `
      SELECT
@@ -507,7 +554,20 @@ export const getChequePaymentDetail = async (
       doc_no = String(doc_no);
     }
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[getChequePaymentDetail] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     // TransactionDetail
     const query = `
@@ -597,7 +657,20 @@ export const getTransactionChildren = async (
     const { div_code, doc_type } = req.query;
     const companyCode = req.user.company_code;
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[getTransactionChildren] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     // Fetch invoice children
     const invoiceQuery = `
@@ -768,7 +841,20 @@ export const getChildTableName = async (
       return;
     }
 
-    connection = await getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[getChildTableName] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     const sql = `
       SELECT
@@ -863,7 +949,17 @@ export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
 
   try {
     const { ac_code } = req.query;
-    connection = await getConnection();
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
+    
+    connection = await TenantManager.getConnection(tenantId);
 
     const sql = `
       SELECT
@@ -1057,7 +1153,20 @@ export const createBulkTransactionDocument = async (
       create_user: requestUser.loginid,
     }));
 
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[createBulkTransactionDocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(requestUser.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
 
     // Insert only if the header does not already exist (ignore duplicates)
     await conn.executeMany(
@@ -1127,7 +1236,20 @@ export const createChequePaymentDocument = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[createChequePaymentDocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     let doc_no: string;
 
@@ -1619,7 +1741,16 @@ export const callSpAcTxnControl = async (
 ) => {
   let conn: oracledb.Connection | undefined;
   try {
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && typeof window === 'undefined') {
+      // Fallback in case running without request context (e.g., background job)
+      // Would need user's tenant - for now, will rely on context
+      console.warn("[callSpAcTxnControl] No tenant context available");
+    }
+    if (!tenantId) {
+      throw new Error("Unable to determine tenant database for SP call");
+    }
+    conn = await TenantManager.getConnection(tenantId);
     await conn.execute(
       `BEGIN SP_AC_TXN_CONTROL(
         :vs_company_code,
@@ -1690,7 +1821,20 @@ export const getDocAccounts = async (
       return;
     }
 
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[getDocAccounts] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
 
     const result = await conn.execute(
       `
@@ -1745,7 +1889,20 @@ export const cancelDocument = async (req: RequestWithUser, res: Response): Promi
   try {
     const { doc_no, doc_type } = req.query as any;
 
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[cancelDocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
     await conn.execute(
       `UPDATE ${constants.TABLE.TR_AC_HEADER} SET updated_by = :updated_by, canceled = 'Y' WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type`,
       {
@@ -1816,7 +1973,20 @@ export const updateChequePaymentDocument = async (
       return;
     }
 
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[updateChequePaymentDocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
 
     try {
       // ---------- Handle invoices with zero amount (mark for deletion) ----------
@@ -2236,7 +2406,20 @@ export const deleteDetailItem = async (req: RequestWithUser, res: Response): Pro
   try {
     const { doc_no, doc_type, serial_no, div_code, table } = req.query as any;
 
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[deleteDetailItem] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
 
     // Delete from TR_AC_DETAIL
     await conn.execute(
@@ -2306,7 +2489,20 @@ export const deleteChildrenItem = async (req: RequestWithUser, res: Response): P
   try {
     const { doc_no, doc_type, serial_no, div_code, table, dtl_sr_no } = req.query as any;
 
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[deleteChildrenItem] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
     let result: any;
 
     switch (table) {
@@ -2378,7 +2574,20 @@ export const deleteDocument = async (req: RequestWithUser, res: Response): Promi
     const doc_no = JSON.parse(req.query.doc_no as any);
     const { doc_type } = req.params as any;
 
-    conn = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[deleteDocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    conn = await TenantManager.getConnection(tenantId);
 
     await conn.execute(`DELETE FROM ${constants.TABLE.TR_AC_HEADER} WHERE company_code = :company_code AND doc_no = :doc_no AND doc_type = :doc_type`, {
       company_code: req.user.company_code,
@@ -2479,7 +2688,20 @@ export const createPurchaseDocument = async (
       terms,
     } = value;
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[createPurchaseDocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     /* -------------------- DOC NO -------------------- */
     const docResult = await connection.execute(
@@ -2832,7 +3054,20 @@ export const createSalesDocument = async (
       sector_code
     } = value;
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[createSalesDocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     /* -------------------- DOC NO -------------------- */
     const docResult = await connection.execute(
@@ -3111,7 +3346,20 @@ export const createLPODocument = async (
       detail,
     } = value;
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[createLPODocument] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     /* -------------------- DOC NO -------------------- */
     const docResult = await connection.execute(
@@ -3287,7 +3535,20 @@ export const getInvoiceOutstandingBalances = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[getInvoiceOutstandingBalances] Tenant context not available, resolving from user...");
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Unable to determine tenant database"
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     const placeholders = invNoList.map((_, i) => `:inv${i}`).join(',');
     const binds: Record<string, any> = {

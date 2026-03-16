@@ -6,6 +6,9 @@
 
 import * as express from "express";
 import passport from "passport";
+// Update the import path if the middleware is located elsewhere, for example:
+import { tenantMiddleware } from "../../../middleware/tenant.middleware";
+import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
 import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
 import {
   getChequeDetail,
@@ -32,14 +35,18 @@ import {
 // Initialize Express router
 const router = express.Router();
 
+// Apply tenant middleware to ensure database switching
+router.use(tenantMiddleware);
+router.use(tenantContextMiddleware);
+
 router.post("/insUpdTrAcBulk", insUpdTrAcJVBulk );
 
 // GET Routes - Information Retrieval
-router.get("/company_info", getCompanyInfo);                    // Get company details
-router.get("/default_details", getDefaultTransactionDetails);   // Get default values
-router.get("/cheque_detail", getChequeDetail);                  // Get cheque information
+router.get("/company_info", getCompanyInfo);             
+router.get("/default_details", getDefaultTransactionDetails);  
+router.get("/cheque_detail", getChequeDetail);                 
 router.get("/header/:doc_no", getChequePaymentHeader);   
-router.get("/purchaseheader/:doc_no", getPurchaseHeader);        // Get payment header by document number
+router.get("/purchaseheader/:doc_no", getPurchaseHeader);  
 router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
 router.get("/children/:doc_no", getTransactionChildren);        // Get invoice/job/expense children by document number
 router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code

@@ -1,7 +1,13 @@
 import * as express from "express";
+import { tenantMiddleware } from "../../../middleware/tenant.middleware";
+import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
 import {  getAcTree, getLevel3AcTreeNode, createLevel3AcTreeNode, getLevel4AcTreeNode, createLevel4AcTreeNode, updateLevel4AcTreeNode, getAccountChildrenAcTreeNode, createAccountChildrenAcTreeNode, updateLevel3AcTreeNode ,getLevel2AcTreeNode,createLevel2AcTreeNode,updateLevel2AcTreeNode,deleteLevel2AcTreeNode, deleteLevel3AcTreeNode, deleteLevel4AcTreeNode, deleteLevel5AcTreeNode, updateAccountChildrenAcTreeNode, saveFile} from "../../../controllers/finance/accounts/masters/acTree_finance.controller";
 
 const router = express.Router();
+
+// Apply tenant middleware to ensure database switching
+router.use(tenantMiddleware);
+router.use(tenantContextMiddleware);
 
 //--------------------AC-Tree----------------
 // Get the entire account tree

@@ -6,10 +6,6 @@ import {
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
 import { IUser } from "../../../../interfaces/user.interface";
-import { EntityManager } from "typeorm";
-// Import database models
-// import Account from "../../../../models/finance/accounts/masters/account_finance.model";
-// import AccountLevelFour from "../../../../models/finance/accounts/masters/account_level_four.model";
 
 // Import validation schemas
 import {
@@ -18,17 +14,10 @@ import {
   accountLevelThreeFinanceSchema,
   accountLevelTwoFinanceSchema
 } from "../../../../validation/finance/accounts/masters.validation";
-import VwAcMaster from "../../../../views/finance/accounts/masters/acTree.view";
 import { buildHierarchy } from "../../../../helpers/functions";
-// import { sequelize } from "../../../../database/connection";
-import Files from "../../../../models/files.model";
 import oracledb from "oracledb";
-import { AppDataSource, oracleDb, TypeORMService } from "../../../../database/connection";
-import { AccountLevelThree } from "../../../../models/finance/accounts/masters/account_level_three.entity";
-import { Account } from "../../../../models/finance/accounts/masters/account_finance.entity";
-import { AccountLevelFour } from "../../../../models/finance/accounts/masters/account_level_four.entity";
-import { AccountLevelTwo } from "../../../../models/finance/accounts/masters/account_level_two.entity";
-// import { AccountLevelFour } from "../../../../models/finance/accounts/masters/account_level_four.entity";
+import TenantManager from "../../../../database/TenantManager";
+import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
 
 // Get account tree structure
@@ -36,8 +25,17 @@ export const getAcTree = async (req: RequestWithUser, res: Response) => {
   let connection;
   try {
     const requestUser: IUser = req.user;
+    const tenantId = getCurrentTenantId();
     
-    connection = await oracledb.getConnection();
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
+    
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `SELECT 
@@ -113,8 +111,17 @@ export const getLevel2AcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `
@@ -179,12 +186,20 @@ export const createLevel2AcTreeNode = async (
   res: Response
 ) => {
   let connection;
-  
 
   try {
     const requestUser: IUser = req.user;
     const { company_code, loginid } = requestUser;
     const { l1_code, l2_description } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     // Validate request body
     const { error } = accountLevelTwoFinanceSchema(req.body);
@@ -195,7 +210,7 @@ export const createLevel2AcTreeNode = async (
       });
       return;
     }
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
    
     // Check if Level 2 exists
     const level2Result = await connection.execute(
@@ -296,6 +311,15 @@ export const updateLevel2AcTreeNode = async (
     const { company_code, loginid } = req.user;
     const { ac_code } = req.params; // l3_code
     const { l1_code, l2_description } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     //  Validate request body
     const { error } = accountLevelTwoFinanceSchema(req.body);
@@ -307,7 +331,7 @@ export const updateLevel2AcTreeNode = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     // Check Level-2 exists
     const level2Result = await connection.execute(
@@ -408,8 +432,17 @@ export const deleteLevel2AcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params; // L2_CODE
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     /* ---------- Check Level-2 exists ---------- */
     const level2Result = await connection.execute(
@@ -496,8 +529,17 @@ export const deleteLevel3AcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params; // L2_CODE
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     /* ---------- Check Level-3 exists ---------- */
     const level3Result = await connection.execute(
@@ -584,8 +626,17 @@ export const deleteLevel4AcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params; // L2_CODE
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     /* ---------- Check Level-4 exists ---------- */
     const level4Result = await connection.execute(
@@ -672,8 +723,17 @@ export const deleteLevel5AcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params; // L2_CODE
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     /* ---------- Check Level-5 exists ---------- */
     const level5Result = await connection.execute(
@@ -743,8 +803,17 @@ export const getLevel3AcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `
@@ -815,6 +884,15 @@ export const createLevel3AcTreeNode = async (
     const requestUser: IUser = req.user;
     const { company_code, loginid } = requestUser;
     const { l2_code, l3_description } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     // Validate request body
     const { error } = accountLevelThreeFinanceSchema(req.body);
@@ -825,7 +903,7 @@ export const createLevel3AcTreeNode = async (
       });
       return;
     }
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     // Check if Level 2 exists
     const level2Result = await connection.execute(
@@ -929,6 +1007,15 @@ export const updateLevel3AcTreeNode = async (
     const { company_code, loginid } = req.user;
     const { ac_code } = req.params; // l3_code
     const { l2_code, l3_description } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     //  Validate request body
     const { error } = accountLevelThreeFinanceSchema(req.body);
@@ -940,7 +1027,7 @@ export const updateLevel3AcTreeNode = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     // Check Level-3 exists
     const level3Result = await connection.execute(
@@ -1046,8 +1133,17 @@ export const getLevel4AcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `
@@ -1119,6 +1215,15 @@ export const createLevel4AcTreeNode = async (
   try {
     const { company_code, loginid } = req.user;
     const { l3_code, l4_description, l4_type, l4_job, l4_bill, l4_dept } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     // Validate request body
     const { error } = accountLevelFourFinanceSchema(req.body);
@@ -1129,8 +1234,7 @@ export const createLevel4AcTreeNode = async (
       });
       return;
     }
-
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     // Check if parent Level 3 exists
     const level3Result = await connection.execute(
@@ -1222,6 +1326,15 @@ export const updateLevel4AcTreeNode = async (
     const { company_code, loginid } = req.user;
     const { ac_code } = req.params;
     const { l3_code, l4_description, l4_type, l4_job, l4_bill, l4_dept } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     // Validate request body
     const { error } = accountLevelFourFinanceSchema(req.body);
@@ -1233,7 +1346,7 @@ export const updateLevel4AcTreeNode = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     // Check Level 4 exists
     const level4Result = await connection.execute(
@@ -1364,8 +1477,17 @@ export const getAccountChildrenAcTreeNode = async (
   try {
     const { company_code } = req.user;
     const { ac_code } = req.params;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `
@@ -1495,6 +1617,15 @@ export const createAccountChildrenAcTreeNode = async (
   try {
     const { company_code, loginid } = req.user;
     const { l4_code, files, ...data } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     // Validate request
     const { error } = accountFinanceSchema(req.body);
@@ -1506,7 +1637,7 @@ export const createAccountChildrenAcTreeNode = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     // Check Level 4 exists
     const level4Result = await connection.execute(
@@ -1789,6 +1920,15 @@ export const updateAccountChildrenAcTreeNode = async (
     const { company_code, loginid } = req.user;
     const { ac_code } = req.params;
     const { l4_code, files, ...data } = req.body;
+    const tenantId = getCurrentTenantId();
+    
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found"
+      });
+      return;
+    }
 
     const { error } = accountFinanceSchema(req.body);
     if (error) {
@@ -1799,7 +1939,7 @@ export const updateAccountChildrenAcTreeNode = async (
       return;
     }
 
-    connection = await oracledb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     //  Check Account exists
     const accountResult = await connection.execute(
@@ -1960,6 +2100,14 @@ export const saveFile = async (
   res: Response
 ): Promise<Response | void> => {
   const { request_number, files } = req.body;
+  const tenantId = getCurrentTenantId();
+  
+  if (!tenantId) {
+    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: "Tenant context not found"
+    });
+  }
 
   // Validate required fields
   if (!request_number || !files || !Array.isArray(files) || files.length === 0) {
@@ -1975,7 +2123,7 @@ export const saveFile = async (
   let connection: any;
 
   try {
-    connection = await oracleDb.getConnection();
+    connection = await TenantManager.getConnection(tenantId);
 
     for (const file of files) {
       const { org_file_name } = file;
