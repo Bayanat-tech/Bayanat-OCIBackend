@@ -62,7 +62,7 @@ import {
   // getconfirmInboundjob, // Get confirmation details
   confirmInboundjob, // Confirm inbound job
 } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
-import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
+import { createOrUpdateJob ,editJob} from "../../../controllers/wms/transaction/outbound/createTojob";
 //import { upsertTIJobHandler } from "../../../controllers/Purchaseflow/updateinsertti_job";
 //import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound/createTojob";
 // import {
@@ -71,20 +71,19 @@ import { createOrUpdateJob } from "../../../controllers/wms/transaction/outbound
 // } from "../../../controllers/wms/transaction/inbound/confirminboundjob_wms.controller";
 import {cancelInboundJob} from "../../../controllers/wms/transaction/inbound/createinboundJobWms.controller"
 import {upsertPackDetailEDIHandler,getEDIPackdetHandler,copyEDIToPackdetHandler} from "../../../controllers/wms/transaction/inbound/packdet_wms.controller";
-import {upsertPutawaymanualOracle} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
+import {upsertPutawaymanualHandler} from "../../../controllers/wms/transaction/inbound/manualputaway.controller";
+import { insUpdMsProductEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsProductEdit.controller";
+import { insUpdMsLocationEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsLocationEdiBulk";
+import { insUpdMsSiteEdiBulk } from "../../../controllers/wms/transaction/inbound/insUpdMsSiteEdiBulk";
+import { insUpdTcStockCountBulk } from "../../../controllers/stockcount/insUpdTcStockCountBulk";
+import { insUpdTcCountDetailsBulk } from "../../../controllers/stockcount/insUpdTcCountDetailsBulk";
+import { insUpdTsStnDetailEdiBulk } from "../../../controllers/StockTransfer/insUpdTsStnDetailEdiBulk";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
 router.get("/getEDIPackdetHandler", getEDIPackdetHandler);
 router.post("/copyEDIToPackdetHandler", copyEDIToPackdetHandler);
-router.post("/upsertPutawaymanualHandler", async (req, res, next) => {
-  try {
-    const result = await upsertPutawaymanualOracle(req.body);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    next(error);
-  }
-});
+router.post("/upsertPutawaymanualHandler", upsertPutawaymanualHandler);
 router.post('/executeRawSql', executeRawSql);
 router.post('/executeRawSqlbody', executeRawSqlbody);
 router.post("/proc_build_dynamic_sql_wms", proc_build_dynamic_sql_wms);
@@ -112,8 +111,8 @@ router.put(
 );
 
 // Inbound Job routes - Handle creation and retrieval of inbound jobs
-router.post("/inboundjob",createOrUpdateJob);
-
+router.post("/inboundjob", createOrUpdateJob);
+router.put("/editInboundJob/:job_no", editJob); 
 router.patch("/canceljob", cancelInboundJob)
 
 // Cancel confirmed inbound job route
@@ -164,30 +163,17 @@ router.post(
   deleteShipmentItem
 );
 
-// // Packing Details routes - Handle all packing related operations
-// router.get("/packing_details/export", exportPackingDetails);
-// router.get("/packing_details", getPackingDetail);
+// --------- Packing Details ---------
+router.get("/packing_details", getPackingDetail);
+
 router.post(
   "/packing_details",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   createPackingItem
 );
-// router.post("/packing_details/bulk", createBulkPAckingDetails);
-// router.post(
-//   "/packing_details/delete",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   deletePackingItem
-// );
-// router.put(
-//   "/packing_details/:packdet_no",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   updatePackingItem
-// );
 
-// Add receiving details route - Update qty1_arrived and qty2_arrived
+// ADD RECEIVING DETAILS - SPECIFIC ROUTE FIRST
 router.put(
   "/packing_details/receiving",
   passport.authenticate("jwt", { session: false }),
@@ -195,12 +181,30 @@ router.put(
   addReceivingDetails
 );
 
-// Update clearance status route - Update clearance to 'Y'
+// UPDATE CLEARANCE - SPECIFIC ROUTE
 router.put(
   "/packing_details/clearance",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   updateClearanceStatus
+);
+
+// UPDATE PACKING ITEM - GENERIC ROUTE SECOND
+router.put(
+  "/packing_details/:packdet_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  updatePackingItem
+);
+
+
+// Bulk operations and delete
+router.post("/packing_details/bulk", createBulkPAckingDetails);
+router.post(
+  "/packing_details/delete",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  deletePackingItem
 );
 
 // Tally Details routes - Handle all tally related operations
@@ -209,8 +213,36 @@ router.put(
 router.get("/tally_product_data", getTallyProductData);
 
 router.post(
-   "/Putawaywithpalletid",  Putawaywithpalletid
+   "/Putawaywithpalletid",  
+   Putawaywithpalletid
  );
+router.post(
+   "/insUpdMsProductEdiBulk",
+   insUpdMsProductEdiBulk);
+
+router.post(
+  "/insUpdMsLocationEdiBulk",
+  insUpdMsLocationEdiBulk
+);
+router.post(
+   "/insUpdMsSiteEdiBulk",
+   insUpdMsSiteEdiBulk);
+   
+   router.post(
+   "/insUpdTcStockCountBulk",
+   insUpdTcStockCountBulk );
+
+     router.post(
+   "/insUpdTcCountDetailsBulk",
+  insUpdTcCountDetailsBulk  );
+
+ router.post(
+   "/insUpdTsStnDetailEdiBulk",
+  insUpdTsStnDetailEdiBulk  );
+
+
+
+   
 
 
 router.post(

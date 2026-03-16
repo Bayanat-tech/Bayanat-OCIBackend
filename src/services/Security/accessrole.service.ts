@@ -1,4 +1,5 @@
 import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { AccessRoleAppAccess } from "../../entity/Security/accessroleappaccess.entity";
 import { AccessSecModuleData } from "../../entity/Security/accesssecmoduledata.entity";
 import { AccessSecOperation } from "../../entity/Security/accesssecoperation.entity";
@@ -12,6 +13,9 @@ export class AccessRoleService {
     serial_no: number,
     company_code: string
   ): Promise<AccessRoleAppAccess | null> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(AccessRoleAppAccess);
     return await repository.findOne({
       where: { role_id, serial_no, company_code },
@@ -34,6 +38,9 @@ export class AccessRoleService {
     shelp: string;
     company_code: string;
   }): Promise<AccessRoleAppAccess> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(AccessRoleAppAccess);
     const access = repository.create(accessData);
     return await repository.save(access);
@@ -46,6 +53,7 @@ export class AccessRoleService {
     updateData: any
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -83,6 +91,7 @@ export class AccessRoleService {
     }>
   ): Promise<boolean> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
@@ -140,6 +149,9 @@ export class AccessRoleService {
   static async getModuleWithOperations(
     serial_no: number
   ): Promise<AccessSecModuleData | null> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const repository = getRepository(AccessSecModuleData);
     return await repository.findOne({
       where: { serial_no },
@@ -168,6 +180,7 @@ export class AccessRoleService {
     }>
   ): Promise<AccessRoleAppAccess[]> {
     const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
     await queryRunner.connect();
     await queryRunner.startTransaction();
 

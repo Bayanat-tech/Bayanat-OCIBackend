@@ -2,6 +2,7 @@ import oracledb from "oracledb";
 import { Request, Response } from "express";
 import { oracleDb } from "../../../../database/connection";
 import constants from "../../../../helpers/constants";
+import { QueryExecutor } from "../../../../database/QueryExecutor";
 
 /* ================= helpers ================= */
 
@@ -23,7 +24,7 @@ async function jobExists(
       AND JOB_TYPE = :JOB_TYPE
       AND JOB_NO = :JOB_NO
   `;
-  const r: any = await oracleDb.query(sql, { COMPANY_CODE, JOB_TYPE, JOB_NO }, conn);
+  const r: any = await QueryExecutor.execMaybe(sql, { COMPANY_CODE, JOB_TYPE, JOB_NO }, conn);
   return (r.rows?.[0]?.CNT || 0) > 0;
 }
 
@@ -132,7 +133,7 @@ TO_DATE(:JOB_START_DATE,'YYYY-MM-DD'),
 :CREATED_BY,SYSTIMESTAMP
 )
 `;
-await oracleDb.query(sql, d, c);
+await QueryExecutor.execMaybe(sql, d, c);
 }
 
 /* ================= UPDATE (ALL COLUMNS) ================= */
@@ -287,7 +288,7 @@ WHERE COMPANY_CODE=:COMPANY_CODE
 AND JOB_TYPE=:JOB_TYPE
 AND JOB_NO=:JOB_NO
 `;
-await oracleDb.query(sql, d, c);
+await QueryExecutor.execMaybe(sql, d, c);
 }
 
 /* ================= UPSERT ================= */

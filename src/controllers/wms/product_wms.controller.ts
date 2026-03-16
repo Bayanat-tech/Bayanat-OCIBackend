@@ -9,16 +9,16 @@ import {
 import * as XLSX from "xlsx";
 import { IProductEdi } from "../../interfaces/wms/gm_wms.interface";
 import { ProductService } from "../../services/WMS/product.service";
+import { getRepository } from "../../database/connection";
+import { ProductEDI } from "../../entity/WMS/product_edi.entity";
 // import ProductEdi from "../../models/wms/product_edi_wms.model"; // Keep this for now for Excel import
 
 export const createProduct = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
+    const { ...bodyWithProdCode } = req.body;
 
-    // Remove prod_code from body before validation since it will be auto-generated
-    const { prod_code, ...bodyWithoutProdCode } = req.body;
-
-    const { error } = productSchema(bodyWithoutProdCode);
+    const { error } = productSchema(bodyWithProdCode);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
@@ -26,9 +26,27 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Pass the body without prod_code to formatProductData
-    const productData = formatProductData(bodyWithoutProdCode, requestUser.loginid);
+    // // Check if product with same company code, principal code, group code, and brand code exists
+    // const existingProduct = await ProductService.checkProductDuplicate(
+    //   bodyWithProdCode.company_code,
+    //   bodyWithProdCode.prin_code,
+    //   bodyWithProdCode.group_code,
+    //   bodyWithProdCode.brand_code
+    // );
 
+    // if (existingProduct) {
+    //   res
+    //     .status(constants.STATUS_CODES.BAD_REQUEST)
+    //     .json({
+    //       success: false,
+    //       message: `Product already exists with same Company Code (${bodyWithProdCode.company_code}), Principal Code (${bodyWithProdCode.prin_code}), Group Code (${bodyWithProdCode.group_code}), and Brand Code (${bodyWithProdCode.brand_code})`
+    //     });
+    //   return;
+    // }
+
+    const productData = formatProductData(bodyWithProdCode, requestUser.loginid);
+    // Check if product with same name exists
+ 
     const createdProduct = await ProductService.createProduct(productData);
     
     if (!createdProduct) {
@@ -64,7 +82,7 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
     
-    const { prod_code, company_code } = req.body;
+    const { prod_code, company_code, prin_code, ...remainData } = req.body;
 
     // Check if product exists
     const productExists = await ProductService.checkProductExists(prod_code, company_code);
@@ -78,8 +96,7 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
     }
 
     // Pass the entire request body to formatProductData
-    const productData = formatProductData(req.body, requestUser.loginid);
-
+    const productData = formatProductData(remainData, requestUser.loginid);
     const updateResult = await ProductService.updateProduct(
       prod_code,
       company_code,
@@ -330,6 +347,7 @@ function formatProductData(data: any, userId?: string): any {
   return {
     company_code: data.company_code,
     prin_code: data.prin_code,
+    prod_code: data.prod_code,
     prod_name: data.prod_name,
     brand_code: data.brand_code || null,
     group_code: data.group_code || null,
@@ -400,7 +418,7 @@ function formatProductData(data: any, userId?: string): any {
     rcpt_exp_limit: data.rcpt_exp_limit || 0,
     qty_as_wt: data.qty_as_wt || null,
     hazmat_ind: data.hazmat_ind || null,
-    hazmatClahazmat_classss: data.hazmat_class || null,
+    hazmat_class: data.hazmat_class || null,
     food_ind: data.food_ind || null,
     pharma_ind: data.pharma_ind || null,
     special_instructions: data.special_instructions || null,
@@ -411,10 +429,10 @@ function formatProductData(data: any, userId?: string): any {
     sap_prod_code: data.sap_prod_code || null,
     sap_prod_desc: data.sap_prod_desc || null,
     temp_code: data.temp_code || null,
-    edit_user: data.edit_user || null,
-    class: data.class || null,
-    wob: data.wob || 0,
-    unified_code: data.unified_code || null,
+    edit_user: data.edit_user ?? null,
+    // class: data.class || null,
+    // wob: data.wob || 0,
+    // unified_code: data.unified_code || null,
     current_season: data.current_season || null,
     product_category: data.product_category || null,
     generic_article: data.generic_article || null,
@@ -422,6 +440,207 @@ function formatProductData(data: any, userId?: string): any {
     prod_color: data.prod_color || null,
     prod_size: data.prod_size || null,
     prnt_p_code: data.prnt_p_code || null,
-    userId: userId || data.user_id,
+    // userId: userId ?? data.user_id ?? null,
   };
 }
+
+export const importProductsJSON = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const products = req.body;
+    
+    if (!Array.isArray(products) || products.length === 0) {
+      res.status(400).json({ 
+        success: false, 
+        message: "No products provided or invalid format" 
+      });
+      return;
+    }
+
+    const requestUser: IUser = req.user;
+    const companyCode = requestUser.company_code;
+
+    const errors: string[] = [];
+    const validProducts: any[] = [];
+
+    // Required fields validation
+    const REQUIRED_FIELDS = ['prin_code', 'prod_code', 'prod_name', 'group_code', 'brand_code', 'p_uom'];
+
+    products.forEach((product, index) => {
+      const rowErrors: string[] = [];
+
+      // Check required fields
+      REQUIRED_FIELDS.forEach(field => {
+        if (!product[field] && product[field] !== 0) {
+          rowErrors.push(`${field} is required`);
+        }
+      });
+
+      if (rowErrors.length > 0) {
+        errors.push(`Product ${index + 1}: ${rowErrors.join(', ')}`);
+      } else {
+        // Add company_code and user info
+        const productData = {
+          ...product,
+          company_code: companyCode,
+          created_by: requestUser.loginid,
+          updated_by: requestUser.loginid,
+        };
+        validProducts.push(productData);
+      }
+    });
+
+    if (errors.length > 0) {
+      res.status(422).json({
+        success: false,
+        message: "Validation failed",
+        errors,
+        validCount: validProducts.length,
+        errorCount: errors.length,
+      });
+      return;
+    }
+
+    // Import products
+    try {
+      const result = await ProductService.bulkCreateProducts(validProducts);
+      
+      res.json({
+        success: true,
+        message: `Successfully imported ${validProducts.length} products`,
+        data: {
+          imported: validProducts.length,
+          failed: 0
+        }
+      });
+      return;
+    } catch (dbError: any) {
+      console.error("Database error:", dbError);
+      res.status(500).json({ 
+        success: false, 
+        message: `Failed to import products: ${dbError.message}` 
+      });
+      return;
+    }
+
+  } catch (err) {
+    console.error("Error in importProductsJSON:", err);
+    const errorMessage = err instanceof Error ? err.message : "Server error";
+    res.status(500).json({ success: false, message: errorMessage });
+    return;
+  }
+};
+
+  export const uploadProductEDI = async (
+    req: RequestWithUser,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const products = req.body;
+      const user = req.user;
+
+      if (!Array.isArray(products) || products.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: "No products provided"
+        });
+        return;
+      }
+
+      await ProductService.insertToEDI(products, user);
+
+      res.json({
+        success: true,
+        message: "Uploaded successfully to EDI staging"
+      });
+      return;
+
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
+  };
+
+export const getProductEDI = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+
+  try {
+    const user = req.user;
+
+    const repo = getRepository(ProductEDI);
+
+    const rows = await repo.find({
+      where: {
+        company_code: user.company_code,
+        created_by: user.loginid
+      },
+      order: { created_at: "DESC" }
+    });
+
+    res.json({
+      success: true,
+      data: rows
+    });
+    return;
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+    return;
+  }
+};
+
+export const postValidProducts = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+
+  try {
+    const user = req.user;
+
+    const result = await ProductService.postValidProducts(
+      user.company_code,
+      user.loginid
+    );
+
+    res.json({
+      success: true,
+      message: `${result.count} records moved to master`,
+      data: result
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+export const clearProductEDI = async (req: RequestWithUser, res: Response) => {
+  try {
+    const user = req.user;
+
+    await ProductService.clearEDI(user.company_code, user.loginid);
+
+    res.json({
+      success: true,
+      message: "EDI staging data cleared successfully"
+    });
+
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};  

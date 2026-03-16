@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../../../database/connection";
+import { TenantManager } from "../../../../database/TenantManager";
+import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import constants from "../../../../helpers/constants";
 import { IEDIOrderDetail } from "../../../../interfaces/wms/transaction/outbound/orderEntryWms.interface";
 
@@ -115,7 +116,16 @@ export const upsertEDIOrderDetailHandler = async (
       }
     }
 
-    connection = await oracleDb.getConnection();
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        message: "No tenant context available. Please ensure you are authenticated.",
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     await connection.execute(
       `DELETE FROM TO_ORDER_EDI WHERE user_id = :user_id`,
@@ -162,7 +172,16 @@ export const getEDIOrderDetailHandler = async (
   }
 
   try {
-    connection = await oracleDb.getConnection();
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        message: "No tenant context available. Please ensure you are authenticated.",
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
    const result = await connection.execute(
   `SELECT *
@@ -224,7 +243,16 @@ export const copyEDIToOrderDetailHandler = async (
   }
 
   try {
-    connection = await oracleDb.getConnection();
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(400).json({
+        success: false,
+        message: "No tenant context available. Please ensure you are authenticated.",
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     console.log("📞 Calling stored procedure PRO_COPY_OUTWARDEDI_TO_ORDRD_DET...");
     await connection.execute(

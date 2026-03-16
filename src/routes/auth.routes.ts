@@ -1,28 +1,35 @@
 import * as express from "express";
 import passport from "passport";
+import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 import {
   login,
   me,
   resetPassword,
   forgotPassword,
     resetPasswordWithLoginId,
+    diagnosticPermissions,
 } from "../controllers/auth.controller";
 
 // Create a new Express router
 const router = express.Router();
 
-// Define the login route
-// This route accepts a POST request with the username and password
-// in the request body.
 router.post("/login", login);
 router.post("/forgotPassword", forgotPassword);
 router.post("/resetPassword", resetPassword);
 router.post("/reset-password-loginid", resetPasswordWithLoginId);
 
-// Define the me route
-// This route accepts a GET request and requires a valid JWT token
-// to be passed in the Authorization header.
-router.get("/me", passport.authenticate("jwt", { session: false }), me);
+
+router.get("/me", 
+  passport.authenticate("jwt", { session: false }), 
+  tenantContextMiddleware,
+  me
+);
+
+router.get("/diagnostic-permissions",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  diagnosticPermissions
+);
 
 // Export the router
 export default router;

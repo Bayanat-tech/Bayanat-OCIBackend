@@ -2,6 +2,8 @@ import { Response } from "express";
 import { Request } from "express";
 import * as fastCsv from "fast-csv";
 import { oracleDb } from "../../../../database/connection";
+import { QueryExecutor } from "../../../../database/QueryExecutor";
+import { TenantManager } from "../../../../database/TenantManager";
 import constants from "../../../../helpers/constants";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import {
@@ -35,8 +37,8 @@ export const getProductStockDetails = async (
 
     // Count query
     const countQuery = `SELECT COUNT(*) as count FROM VW_STKLED ${whereClause}`;
-    const countResult = await oracleDb.query(countQuery, bindParams);
-    const count = countResult.rows?.[0]?.COUNT || 0;
+    const countResult = await QueryExecutor.executeRawQuery(countQuery, bindParams);
+    const count = (countResult.rows || countResult)[0]?.COUNT || 0;
 
     // Main query with aggregation
     const mainQuery = `
@@ -67,7 +69,7 @@ export const getProductStockDetails = async (
       ORDER BY prod_code
     `;
 
-    const result = await oracleDb.query(mainQuery, bindParams);
+    const result = await QueryExecutor.executeRawQuery(mainQuery, bindParams);
 
     // Check if result is empty and respond accordingly
     if (!result.rows) {
@@ -95,12 +97,12 @@ export const getProductStockDetails = async (
 export const getPickingOption = async (req: RequestWithUser, res: Response) => {
   try {
     // Retrieve picking options based on company code
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `SELECT * FROM MS_PICKWAVE WHERE company_code = :company_code`,
       { company_code: req.user.company_code }
     );
     
-    const pickingOption = result.rows || [];
+    const pickingOption = result.rows || result;
 
     // Check if picking options are found
     if (!pickingOption.length) {
@@ -145,8 +147,8 @@ export const getPickingItemPreferenceDetails = async (
 
     // Count query
     const countQuery = `SELECT COUNT(*) as count FROM VW_WM_OUB_JOB_PICK_FILTER ${whereClause}`;
-    const countResult = await oracleDb.query(countQuery, bindParams);
-    const resultCount = countResult.rows?.[0]?.COUNT || 0;
+    const countResult = await QueryExecutor.executeRawQuery(countQuery, bindParams);
+    const resultCount = (countResult.rows || countResult)[0]?.COUNT || 0;
 
     // Distinct field query
     const distinctQuery = `
@@ -156,7 +158,7 @@ export const getPickingItemPreferenceDetails = async (
       ORDER BY ${distinct_field}
     `;
 
-    const result = await oracleDb.query(distinctQuery, bindParams);
+    const result = await QueryExecutor.executeRawQuery(distinctQuery, bindParams);
 
     // Check if result is empty and respond accordingly
     if (!result.rows) {
@@ -203,6 +205,7 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
     }
 
     const company_code = (req.user as any).company_code;
+    const loginid = (req.user as any).loginid;
 
     // ---- FIX: format confirm date for Oracle ----
     const confirmDateObj = confirm_date
@@ -217,9 +220,12 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
     let toggledPackets = 0;
 
-    await oracleDb.withTransaction(async (conn: any) => {
-      connection = conn;
+    // Get tenant-specific connection
+    const tenantId = await TenantManager.getTenantForUser(loginid);
+    connection = await TenantManager.getConnection(tenantId);
+    console.log("✅ DEBUG: Got tenant-specific connection for tenantId:", tenantId);
 
+    try {
       const updateSql = `
         UPDATE TO_BATCH
         SET selected = 'Y'
@@ -228,12 +234,12 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
           AND job_no      = :job_no
       `;
 
-      const updateResult = await oracleDb.query(
+      const updateResult = await QueryExecutor.execMaybe(
         updateSql,
         {
-          company_code,
-          prin_code,
-          job_no,
+          company_code: { val: company_code },
+          prin_code: { val: prin_code },
+          job_no: { val: job_no },
         },
         connection
       );
@@ -242,22 +248,22 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
       if (toggledPackets > 0) {
         // ---- FIXED procedure call ----
-       await oracleDb.query(
-  `BEGIN
-     SP_PICK_CONFIRM(
-       :vs_company_code,
-       :vs_principal_code,
-       :vs_job_no,
-       SYSDATE
-     );
-   END;`,
-  {
-    vs_company_code: company_code,
-    vs_principal_code: prin_code,
-    vs_job_no: job_no
-  },
-  connection
-);
+        await QueryExecutor.execMaybe(
+          `BEGIN
+             SP_PICK_CONFIRM(
+               :vs_company_code,
+               :vs_principal_code,
+               :vs_job_no,
+               SYSDATE
+             );
+           END;`,
+          {
+            vs_company_code: { val: company_code },
+            vs_principal_code: { val: prin_code },
+            vs_job_no: { val: job_no }
+          },
+          connection
+        );
 
         // Unselect after procedure call
         const unselectSql = `
@@ -268,17 +274,24 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
             AND job_no      = :job_no
         `;
 
-        await oracleDb.query(
+        await QueryExecutor.execMaybe(
           unselectSql,
           {
-            company_code,
-            prin_code,
-            job_no,
+            company_code: { val: company_code },
+            prin_code: { val: prin_code },
+            job_no: { val: job_no },
           },
           connection
         );
       }
-    });
+
+      await connection.commit();
+    } catch (txnErr) {
+      if (connection) {
+        await connection.rollback();
+      }
+      throw txnErr;
+    }
 
     res.status(200).json({
       success: true,
@@ -294,6 +307,14 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
       success: false,
       message: "Failed to process pick order.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 };
 
@@ -301,6 +322,8 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
 // Function to pick an order
 export const pickOrder = async (req: Request, res: Response): Promise<void> => {
+  let connection: any;
+
   try {
     // DEBUG: Log incoming request data
     console.log("=== PICK ORDER DEBUG START ===");
@@ -354,12 +377,18 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
     }
 
     const company_code = (req.user as any).company_code;
+    const loginid = (req.user as any).loginid;
     let toggledPackets = 0;
 
     console.log("🏢 DEBUG: Company Code:", company_code);
     console.log("🔄 DEBUG: Starting transaction...");
 
-    await oracleDb.withTransaction(async (connection: any) => {
+    // Get tenant-specific connection
+    const tenantId = await TenantManager.getTenantForUser(loginid);
+    connection = await TenantManager.getConnection(tenantId);
+    console.log("✅ DEBUG: Got tenant-specific connection for tenantId:", tenantId);
+
+    try {
       // DEBUG: Log before update
       console.log("🗄️ DEBUG: Database connection established");
 
@@ -390,7 +419,7 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
         console.log("🔧 DEBUG: Bind Parameters:");
         console.log(JSON.stringify(bindParams, null, 2));
 
-        const updateResult = await oracleDb.query(updateSql, bindParams, connection);
+        const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connection);
         toggledPackets = updateResult.rowsAffected || 0;
         
         console.log("✅ DEBUG: UPDATE RESULT:");
@@ -412,13 +441,13 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
 
         try {
           // Call Oracle stored procedure
-          const procResult = await oracleDb.query(
+          const procResult = await QueryExecutor.execMaybe(
             `BEGIN SP_WM_OUB_PICKING(:vs_company_code, :vs_principal_code, :vs_job_no, :vs_sort); END;`,
             {
-              vs_company_code: company_code,
-              vs_principal_code: prin_code,
-              vs_job_no: job_no,
-              vs_sort: ""
+              vs_company_code: { val: company_code },
+              vs_principal_code: { val: prin_code },
+              vs_job_no: { val: job_no },
+              vs_sort: { val: "" }
             },
             connection
           );
@@ -458,7 +487,7 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
             console.log("🔧 DEBUG: Revert Bind Parameters:");
             console.log(JSON.stringify(bindParams, null, 2));
 
-            const revertResult = await oracleDb.query(unselectSql, bindParams, connection);
+            const revertResult = await QueryExecutor.execMaybe(unselectSql, bindParams, connection);
             console.log("✅ DEBUG: REVERT COMPLETE:");
             console.log("- Rows Reverted:", revertResult.rowsAffected || 0);
           }
@@ -470,9 +499,17 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
       }
       
       console.log("🏁 DEBUG: Transaction operations completed");
-    });
 
-    console.log("✅ DEBUG: Transaction committed successfully");
+      await connection.commit();
+      console.log("✅ DEBUG: Transaction committed successfully");
+
+    } catch (txnErr) {
+      if (connection) {
+        await connection.rollback();
+      }
+      throw txnErr;
+    }
+
     console.log("📊 DEBUG: Final toggledPackets:", toggledPackets);
 
     const responseMessage = toggledPackets > 0
@@ -513,6 +550,14 @@ export const pickOrder = async (req: Request, res: Response): Promise<void> => {
       success: false,
       message: "Failed to process pick order.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 };
 
@@ -541,12 +586,12 @@ export const exportPickingDetails = async (
     }
 
     // Fetch data for CSV export
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `SELECT * FROM PICKING_DETAILS_OUTBOUND_WMS_VIEW ${whereClause}`,
       bindParams
     );
     
-    const fetchedData = result.rows || [];
+    const fetchedData = result.rows || result || []; 
 
     // Initialize CSV formatter with headers
     csvTransform = fastCsv.format({
@@ -599,12 +644,12 @@ export const exportPickingStockDeatils = async (
     }
 
     // Fetch data for CSV export
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `SELECT * FROM VW_STKLED ${whereClause}`,
       bindParams
     );
     
-    const fetchedData = result.rows || [];
+    const fetchedData = result.rows || result || []; 
 
     // Initialize CSV formatter with headers
     csvTransform = fastCsv.format({
@@ -635,6 +680,8 @@ export const exportPickingStockDeatils = async (
 };
 
 export const oubcancelPick = async (req: Request, res: Response): Promise<void> => {
+  let connection: any;
+
   try {
     const { job_no } = req.params;
     const { prin_code, freeze } = req.query;
@@ -657,9 +704,15 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
     }
 
     const company_code = (req.user as any).company_code;
+    const loginid = (req.user as any).loginid;
     let toggledPackets = 0;
 
-    await oracleDb.withTransaction(async (connection: any) => {
+    // Get tenant-specific connection
+    const tenantId = await TenantManager.getTenantForUser(loginid);
+    connection = await TenantManager.getConnection(tenantId);
+    console.log("✅ DEBUG: Got tenant-specific connection for tenantId:", tenantId);
+
+    try {
       // Handle array binding for IN clause
       if (serial_no.length > 0) {
         const placeholders = serial_no.map((_, i) => `:serial_no_${i}`).join(',');
@@ -681,19 +734,19 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
           bindParams[`serial_no_${i}`] = sn;
         });
 
-        const updateResult = await oracleDb.query(updateSql, bindParams, connection);
+        const updateResult = await QueryExecutor.execMaybe(updateSql, bindParams, connection);
         toggledPackets = updateResult.rowsAffected || 0;
       }
 
       if (toggledPackets > 0) {
         // Call Oracle stored procedure
-        await oracleDb.query(
+        await QueryExecutor.execMaybe(
           `BEGIN sp_pick_cancel(:vs_company_code, :vs_prin_code, :vs_job_no, :vs_freeze); END;`,
           {
-            vs_company_code: company_code,
-            vs_prin_code: prin_code,
-            vs_job_no: job_no,
-            vs_freeze: freeze || 'N',
+            vs_company_code: { val: company_code },
+            vs_prin_code: { val: prin_code },
+            vs_job_no: { val: job_no },
+            vs_freeze: { val: freeze || 'N' },
           },
           connection
         );
@@ -719,10 +772,18 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
             bindParams[`serial_no_${i}`] = sn;
           });
 
-          await oracleDb.query(unselectSql, bindParams, connection);
+          await QueryExecutor.execMaybe(unselectSql, bindParams, connection);
         }
       }
-    });
+
+      await connection.commit();
+
+    } catch (txnErr) {
+      if (connection) {
+        await connection.rollback();
+      }
+      throw txnErr;
+    }
 
     res.status(200).json({
       success: true,
@@ -737,5 +798,13 @@ export const oubcancelPick = async (req: Request, res: Response): Promise<void> 
       success: false,
       message: "Failed to process pick cancel.",
     });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Error closing connection:", closeErr);
+      }
+    }
   }
 };

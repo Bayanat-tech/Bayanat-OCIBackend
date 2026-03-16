@@ -30,7 +30,7 @@ export const getPackingDetail = async (req: RequestWithUser, res: Response) => {
       packdet_no: Number(packdet_no),
     });
 
-    // Return error if packing details not found
+    // Return error if packing details not found  
     if (!packingDetails) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
@@ -143,108 +143,121 @@ console.log('inside createPackingItem2');
   }
 };
 
-// Update an existing packing item
-export const updatePackingItem = async (
-  req: RequestWithUser,
-  res: Response
-) => {
-  try {
-    console.log('inside createPackingItem3');
-    const requestUser: IUser = req.user;
-    const { packdet_no } = req.params;
-    const { prin_code, job_no } = req.query;
+    // Update an existing packing item
+    export const updatePackingItem = async (
+      req: RequestWithUser,
+      res: Response
+    ) => {
+      try {
+        console.log('inside createPackingItem3');
+        const requestUser: IUser = req.user;
+        const { packdet_no } = req.params;
+        const { prin_code, job_no } = req.query;
 
-    // Validate request body
-    const { error } = packingDetailsSchema(
-      req.body,
-      false,
-      requestUser.company_code
-    );
-    if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
-        .json({ success: false, message: error.message });
-      return;
-    }
+        // Validate packdet_no is a valid number
+        if (!packdet_no || isNaN(Number(packdet_no))) {
+          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+            success: false,
+            message: "Invalid packdet_no parameter",
+          });
+          return;
+        }
 
-    // Check if packing details exists
-    const packingResponse = await PackingDetailsService.findOne({
-      company_code: requestUser.company_code,
-      packdet_no: Number(packdet_no),
-      prin_code: prin_code as string,
-      job_no: job_no as string,
-    });
-    if (!packingResponse) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "Packing " + constants.MESSAGES.NOT_FOUND,
-      });
-      return;
-    }
+        const packdetNoNumber = Number(packdet_no);
 
-    // Validate product code if provided
-    if (!!req.body?.prod_code) {
-      const productResponse = await ProductService.findByCodeAndCompany(
-        req.body.prod_code,
-        requestUser.company_code
-      );
-      if (!productResponse) {
-        res.status(constants.STATUS_CODES.NOT_FOUND).json({
-          success: false,
-          message: "Product " + constants.MESSAGES.NOT_FOUND,
+        // Validate request body
+        const { error } = packingDetailsSchema(
+          req.body,
+          false,
+          requestUser.company_code
+        );
+        if (error) {
+          res
+            .status(constants.STATUS_CODES.BAD_REQUEST)
+            .json({ success: false, message: error.message });
+          return;
+        }
+
+        // Check if packing details exists
+        const packingResponse = await PackingDetailsService.findOne({
+          company_code: requestUser.company_code,
+          packdet_no: packdetNoNumber, // Use the validated number
+          prin_code: prin_code as string,
+          job_no: job_no as string,
+        });
+        
+        if (!packingResponse) {
+          res.status(constants.STATUS_CODES.NOT_FOUND).json({
+            success: false,
+            message: "Packing " + constants.MESSAGES.NOT_FOUND,
+          });
+          return;
+        }
+
+        // Validate product code if provided
+        if (!!req.body?.prod_code) {
+          const productResponse = await ProductService.findByCodeAndCompany(
+            req.body.prod_code,
+            requestUser.company_code
+          );
+          if (!productResponse) {
+            res.status(constants.STATUS_CODES.NOT_FOUND).json({
+              success: false,
+              message: "Product " + constants.MESSAGES.NOT_FOUND,
+            });
+            return;
+          }
+        }
+
+        // Validate country code if provided
+        if (!!req.body?.country_code) {
+          const countryResponse = await WarehouseService.findByCountryCode({
+            country_code: req.body.country_code,
+            company_code: requestUser.company_code,
+          });
+          if (!countryResponse) {
+            res.status(constants.STATUS_CODES.NOT_FOUND).json({
+              success: false,
+              message: "Country " + constants.MESSAGES.NOT_FOUND,
+            });
+            return;
+          }
+        }
+
+        // Update packing details - ensure we're using the correct packdet_no
+        const response = await PackingDetailsService.update(
+          {
+            company_code: requestUser.company_code,
+            packdet_no: packdetNoNumber, // Use validated number here
+            prin_code: prin_code as string,
+            job_no: job_no as string,
+          },
+          {
+            ...req.body,
+            packdet_no: packdetNoNumber, // Use validated number here too
+          }
+        );
+
+        if (!response) {
+          res
+            .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+            .json({ success: false, message: "Failed to update packing details" });
+          return;
+        }
+
+        res.status(constants.STATUS_CODES.OK).json({
+          success: true,
+          message: "Packing Details " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
         });
         return;
-      }
-    }
-
-    // Validate country code if provided
-    if (!!req.body?.country_code) {
-      const countryResponse = await WarehouseService.findByCountryCode({
-        country_code: req.body.country_code,
-        company_code: requestUser.company_code,
-      });
-      if (!countryResponse) {
-        res.status(constants.STATUS_CODES.NOT_FOUND).json({
-          success: false,
-          message: "Country " + constants.MESSAGES.NOT_FOUND,
-        });
+      } catch (error: any) {
+        console.error('Update packing item error:', error); // Add logging
+        res
+          .status(constants.STATUS_CODES.BAD_REQUEST)
+          .json({ success: false, message: error.message });
         return;
       }
-    }
-console.log('inside createPackingItem');
-    // Update packing details
-    const response = await PackingDetailsService.update(
-      {
-        company_code: requestUser.company_code,
-        packdet_no: Number(packdet_no),
-        prin_code: prin_code as string,
-        job_no: job_no as string,
-      },
-      {
-        ...req.body,
-        packdet_no: Number(packdet_no),
-      }
-    );
-
-    if (!response) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-        .json({ success: false, message: "Failed to update packing details" });
-      return;
-    }
-
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message: "Packing Details " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
-    });
-    return;
-  } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
-      .json({ success: false, message: error.message });
-    return;
-  }
-};
+    };  
 // Delete one or multiple packing items based on provided details
 export const deletePackingItem = async (
   req: RequestWithUser,
@@ -397,27 +410,69 @@ export const exportPackingDetails = async (
   }
 };
 
-// Add receiving details (update qty1_arrived and qty2_arrived)
 export const addReceivingDetails = async (
   req: RequestWithUser,
   res: Response
 ) => {
   try {
+    console.log('=== BACKEND: addReceivingDetails START ===');
+    console.log('Full request:', {
+      query: req.query,
+      body: req.body,
+      user: req.user?.user_id
+    });
+    
     const requestUser: IUser = req.user;
     const { prin_code, job_no, packdet_no } = req.query;
     const { qty1_arrived, qty2_arrived } = req.body;
+    
+    console.log('Parsed query:', { prin_code, job_no, packdet_no });
+    console.log('Body qty:', { qty1_arrived, qty2_arrived });
 
-    // Validate required query parameters
-    if (!prin_code || !job_no || !packdet_no) {
+    // FIXED VALIDATION - Check each parameter individually
+    if (!prin_code || prin_code.toString().trim() === '') {
+      console.log('ERROR: Missing prin_code');
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "prin_code, job_no, and packdet_no are required",
+        message: "prin_code is required",
+      });
+      return; // Just return, don't return res
+    }
+    
+    if (!job_no || job_no.toString().trim() === '') {
+      console.log('ERROR: Missing job_no');
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "job_no is required",
+      });
+      return;
+    }
+    
+    if (!packdet_no || packdet_no.toString().trim() === '') {
+      console.log('ERROR: Missing packdet_no');
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "packdet_no is required",
+      });
+      return;
+    }
+    
+    // Convert to number and validate
+    const packdetNoNum = parseInt(packdet_no.toString(), 10);
+    console.log('packdet_no parsed:', packdet_no, '->', packdetNoNum);
+    
+    if (isNaN(packdetNoNum)) {
+      console.log('ERROR: packdet_no is not a number:', packdet_no);
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Invalid packdet_no parameter - must be a number",
       });
       return;
     }
 
     // Validate that at least one quantity is provided
     if (qty1_arrived === undefined && qty2_arrived === undefined) {
+      console.log('ERROR: No quantities provided');
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "At least one of qty1_arrived or qty2_arrived must be provided",
@@ -425,15 +480,20 @@ export const addReceivingDetails = async (
       return;
     }
 
-    // Check if packing details exists
+    console.log('Checking if packing details exists...');
+    
+    // Check if packing details exists - USE THE CONVERTED NUMBER
     const packingDetails = await PackingDetailsService.findOne({
       company_code: requestUser.company_code,
       prin_code: prin_code as string,
       job_no: job_no as string,
-      packdet_no: Number(packdet_no),
+      packdet_no: packdetNoNum,
     });
 
+    console.log('Packing details found:', !!packingDetails);
+
     if (!packingDetails) {
+      console.log('ERROR: Packing details not found');
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "Packing Details " + constants.MESSAGES.NOT_FOUND,
@@ -450,18 +510,21 @@ export const addReceivingDetails = async (
       receivingData.qty2_arrived = Number(qty2_arrived);
     }
 
-    // Update receiving details
+    console.log('Updating with data:', receivingData);
+
+    // Update receiving details - USE THE CONVERTED NUMBER
     const response = await PackingDetailsService.updateReceivingDetails(
       {
         company_code: requestUser.company_code,
         prin_code: prin_code as string,
         job_no: job_no as string,
-        packdet_no: Number(packdet_no),
+        packdet_no: packdetNoNum,
       },
       receivingData
     );
 
     if (!response) {
+      console.log('ERROR: Failed to update');
       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Failed to update receiving details",
@@ -474,24 +537,27 @@ export const addReceivingDetails = async (
       company_code: requestUser.company_code,
       prin_code: prin_code as string,
       job_no: job_no as string,
-      packdet_no: Number(packdet_no),
+      packdet_no: packdetNoNum,
     });
 
+    console.log('=== BACKEND: Update successful ===');
+    
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "Receiving Details " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
       data: updatedPackingDetails,
     });
-    return;
   } catch (error: any) {
+    console.error('=== BACKEND ERROR in addReceivingDetails ===');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
+    
     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
       success: false,
       message: error.message,
     });
-    return;
   }
 };
-
 // Update clearance status to 'Y' for packing details
 export const updateClearanceStatus = async (
   req: RequestWithUser,

@@ -132,7 +132,10 @@ import { SupplierService } from "../services/WMS/suppliermaster.service"; // Add
 import { getConnection } from "typeorm";
 import { FlowMasterService } from "../services/Security/flowmaster.service"; // Add FlowMasterService import
 import { AppDataSource, TypeORMService } from "../database/connection";
+import { ensureCorrectSchemaOnQueryRunner } from "../database/TypeORMTenantInterceptor";
 import { CustomerService } from "../services/WMS/customer.service";
+import { ActivityService } from "../services/WMS/activity.service";
+import { BillingActivityService } from "../services/WMS/billing_activity.service";
 
 export type TGroup = {
   group_code: string;
@@ -167,6 +170,7 @@ export const executeRawSql = async (req: Request, res: Response): Promise<void> 
 
       const connection = AppDataSource;
       queryRunner = connection.createQueryRunner();
+      await ensureCorrectSchemaOnQueryRunner(queryRunner);
       await queryRunner.connect();
 
       // Start transaction to ensure consistent behavior for DML/DDL if needed
@@ -2133,63 +2137,46 @@ case "activitysubgroup":
   break;
 
 // Fetching billing activity data from the ActivityBillingTable model
-// case "billing_activity":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [
-//           { company_code: requestUser.company_code },
-//           {
-//             ...(!!uniqueCode && {
-//               prin_code: uniqueCode,
-//             }),
-//           },
-//           {
-//             user_id: requestUser.loginid,
-//           },
-//         ],
-//       };
-
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-
-//     // Count the total number of records
-//     totalCount = await ActivityBillingTable.count({
-//       where: outsideQuery,
-//     });
-
-//     // Fetch billing activity data with optional pagination and sorting
-//     fetchedData = await ActivityBillingTable.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort &&
-//         Object.keys(filter?.sort).length > 0 && {
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-//           ],
-//         }),
-//       ...paginationOptions,
-//     });
-//   }
-//   break;
-// Fetching activity data from the Activity model
-// case "activity": {
-//   // Fetching data using the Activity model
-//   fetchedData = (await Activity.findAll({
-//     attributes: ["activity_code", "activity", "activity_group_code"],
-//     where: {
-//       company_code: requestUser.company_code,
-//     },
-//     ...paginationOptions,
-//   })) as unknown[] as IActivity[];
-
-//   break;
-// }
-
+case "billing_activity":
+      {
+        console.log("Fetching billing activity data...");
+     
+      console.log("Params:", {
+         company_code: requestUser.company_code,
+         prin_code: uniqueCode
+         });
+ 
+     const data = await BillingActivityService.getBillingActivity(
+    requestUser.company_code,
+    String(uniqueCode)
+  );
+ 
+  fetchedData = data || [];
+  totalCount = data?.length || 0;
+      }
+   break;
+case "activity": {
+  console.log("Fetching activity data...");
+ 
+  const page = Number(req.query.page) || 1;
+  const pageLimit = Number(req.query.limit) || 1000;
+  const skip = (page - 1) * pageLimit;
+ 
+  const filters = {
+    companyCode: requestUser.company_code,
+  };
+ 
+  const { data, total } = await ActivityService.getActivities(
+    filters,
+    pageLimit,
+    skip
+  );
+ 
+  fetchedData = data;
+  totalCount = total;
+ 
+  break;
+}
 // Fetching activity KPI data from the ActivityKPI model
 case "activitykpi": {
   try {
@@ -3076,11 +3063,13 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
       
                       // If array, delete each; otherwise delete single code
                       if (Array.isArray(ids)) {
-                        for (const mocCode of ids) {
-                          await MocService.deleteMoc(mocCode);
+                        for (const {mocCode, company_code} of ids) {
+                          await MocService.deleteMoc(mocCode, company_code);
                         }
                       } else {
-                        await MocService.deleteMoc(ids);
+                        for (const item of ids) {
+                          await MocService.deleteMoc(item.moc_code, item.company_code);
+                        }
                       }
                     }
                     break;

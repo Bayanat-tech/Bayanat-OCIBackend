@@ -4,6 +4,10 @@ import { IPurchaseRequestPf ,
 } from "../../interfaces/Purchaseflow/Purucahseflow.interface";
 import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
+import { RequestWithUser } from "../../interfaces/common.interface";
+import { Response } from "express";
+import { sequelize, QueryTypes } from "../../database/connection";
+import { formatDate } from "../../utils/formatDate";
 
 import { notifyUser } from "../../helpers/functions";
 import constants from "../../helpers/constants";
@@ -69,6 +73,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
       data.companyCode,
       generatedRequestNumber,
       data.projectCode,
+      data.div_code,
       connection
     );
 
@@ -93,7 +98,7 @@ export async function upsertPurchaseRequest(data: IPurchaseRequestPf) {
           { requestNumber: generatedRequestNumber.replace(/\//g, "$") },
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        const createdBy = createdByResult.rows?.[0]?.CREATED_BY || "Unknown";
+        const createdBy = ((createdByResult.rows?.[0]) as any)?.CREATED_BY || "Unknown";
 
         const htmlMessage = await generateEmailTemplate(data, generatedRequestNumber, createdBy);
 
@@ -168,7 +173,7 @@ export async function getRequestUsers(
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const email_cc = result.rows?.[0]?.EMAIL_CC || "";
+    const email_cc = ((result.rows?.[0]) as any)?.EMAIL_CC || "";
     return email_cc;
   } catch (error) {
     console.error("Error fetching request users:", error);
@@ -476,6 +481,7 @@ export async function upsertPurchaseRequestDetails(
   companyCode: string,
   requestNumber: string,
   projectCode: string,
+  divCode: string | undefined,
   connection: oracledb.Connection
 ) {
   if (!connection) throw new Error("Oracle connection is required");
@@ -537,7 +543,7 @@ export async function upsertPurchaseRequestDetails(
       supplier: item.supplier,
       prin_code: "10001",
       project_code: projectCode,
-      div_code: div_code,
+      div_code: divCode || null,
       item_sequence_no: item.item_sequence_no,
       curr_code: item.curr_code,
     });

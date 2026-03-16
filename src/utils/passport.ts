@@ -44,34 +44,39 @@ passport.use(
   new JWTStrategy(
     {
       jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-      secretOrKey: constants.AUTHENTICATION.APP_SECRET,
+      secretOrKey: constants.AUTHENTICATION.APP_SECRET || process.env.APP_SECRET || 'BAYANAT',
     },
     async (jwtPayload, cb) => {
       try {
-        const user = await UserService.findUserByEmail(jwtPayload.email_id);
-        if (user) {
-          const userData: IUser = {
-            company_code: user.company_code,
-            loginid: user.loginid,
-            email_id: user.email_id,
-            username: user.username,
-            contact_name: user.contact_name,
-            contact_no: user.contact_no,
-            contact_email: user.contact_email,
-            updated_by: user.updated_by,
-            created_by: user.created_by,
-            created_at: user.created_at,
-            userpass: user.userpass,
-            no_of_days: user.no_of_days,
-            active_flag: user.active_flag,
-            SEC_PASSWD: user.SEC_PASSWD,
-            APPLICATION: user.APPLICATION,
-          };
-          cb(null, userData);
-        } else {
-          cb(null, false);
-        }
+        console.log(`[passport.JWT] STEP 1: Validating JWT payload...`);
+        
+        // Extract all JWT payload data (includes tenantId!)
+        const loginid = jwtPayload.loginid;
+        const tenantId = jwtPayload.tenantId;
+        const email = jwtPayload.email_id;
+        
+        console.log(`[passport.JWT] STEP 2: JWT contains: loginid=${loginid}, tenantId=${tenantId}, email=${email}`);
+        
+        // Build user object with JWT data + database fields
+        const userData: any = {
+          // From JWT (most important!)
+          loginid: jwtPayload.loginid,
+          tenantId: jwtPayload.tenantId,
+          email_id: jwtPayload.email_id,
+          username: jwtPayload.username,
+          company_code: jwtPayload.company_code,
+          
+          // From JWT token payload
+          iat: jwtPayload.iat,
+          exp: jwtPayload.exp,
+        };
+        
+        console.log(`[passport.JWT] ✅ STEP 3 SUCCESS: User data set: ${userData.loginid}`);
+        console.log(`[passport.JWT] ✅ User will have: loginid=${userData.loginid}, tenantId=${userData.tenantId}`);
+        
+        cb(null, userData);
       } catch (err) {
+        console.error(`[passport.JWT] ❌ ERROR:`, err);
         return cb(err, false);
       }
     }

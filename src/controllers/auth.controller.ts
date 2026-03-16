@@ -1,19 +1,38 @@
-import { Request, Response } from "express";
+import { Request, Response, RequestHandler } from "express";
 import constants from "../helpers/constants";
 import {
   buildTree,
   formatRolePermissions,
-  generateToken,
   notifyUser,
+  buildModuleAccessFromStructure,
 } from "../helpers/functions";
 import { loginSchema } from "../validation/auth.validation";
 import { StructuredResult } from "../interfaces/auth.interface";
 import { RequestWithUser } from "../interfaces/common.interface";
 import { AuthService } from "../services/auth.service";
 import { VendorService } from "../services/vendor.service";
+import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
 
-export const login = async (req: Request, res: Response) => {
+
+// Update generateToken to include tenant
+export async function generateToken(userData: any): Promise<string> {
+  const jwt = require('jsonwebtoken');
+  
+  const payload = {
+    username: userData.username,
+    email_id: userData.email_id,
+    loginid: userData.loginid,
+    tenantId: userData.tenantId,
+    company_code: userData.company_code,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) 
+  };
+  
+  return jwt.sign(payload, process.env.APP_SECRET || 'BAYANAT');
+}
+
+export const login: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { error } = loginSchema(req.body);
     if (error) {
@@ -26,16 +45,19 @@ export const login = async (req: Request, res: Response) => {
 
     const { email, password } = req.body;
 
-    let user = await AuthService.findUserByEmailOrLoginId(email);
+    console.log(`[login] STEP 1: Authenticating user '${email}'...`);
 
-    if (!user) {
+    // Get user with tenant info
+    let userTenant = await AuthService.getUserWithTenant(email);
+
+    if (!userTenant) {
+      console.log(`[login] User not found in SEC_LOGINTEST, checking external API...`);
+      // Try external user creation
       try {
         const apiResponse = await VendorService.checkAccountEmployee(email);
 
         if (Array.isArray(apiResponse) && apiResponse.length > 0) {
           const apiUser = apiResponse[0];
-          console.log("API User Data:", apiUser);
-
           const isExternalPassValid = password === apiUser.PASSWORD;
 
           if (!isExternalPassValid) {
@@ -47,37 +69,37 @@ export const login = async (req: Request, res: Response) => {
           }
 
           const hashedPassword = await AuthService.hashPassword(password);
-          user = await AuthService.createUserFromExternal(
+          const newUser = await AuthService.createUserFromExternal(
             apiUser,
             password,
             hashedPassword
           );
+          
+          console.log(`[login] ✅ External user created: ${newUser.LOGINID}`);
+          
+          // For external users, use default tenant
+          userTenant = {
+            user: newUser,
+            tenantId: 'WMSTST_TENANT'
+          };
         } else {
           res.status(constants.STATUS_CODES.NOT_FOUND).json({
             success: false,
-            message: "User not found in external system",
+            message: "User not found",
           });
           return;
         }
       } catch (apiError: any) {
-        if (apiError.response?.status === 401) {
-          res.status(constants.STATUS_CODES.UNAUTHORIZED).json({
-            success: false,
-            message:
-              "Unauthorized access to external system. Please check API credentials.",
-          });
-        } else {
-          res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-            success: false,
-            message: "Error validating user with external system",
-            error: apiError.message,
-          });
-        }
+        console.error(`[login] External API error:`, apiError.message);
+        res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+          success: false,
+          message: "Error validating user",
+        });
         return;
       }
     }
 
-    if (!user) {
+    if (!userTenant) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found",
@@ -85,15 +107,25 @@ export const login = async (req: Request, res: Response) => {
       return;
     }
 
-    const isUserPassMatched = await AuthService.comparePassword(
-      password,
-      user.userpass
-    );
-    const isSecPassMatched = user.SEC_PASSWD
-      ? await AuthService.comparePassword(password, user.SEC_PASSWD)
-      : false;
+    const { user, tenantId } = userTenant;
+    
+    console.log(`[login] ✅ User found: ${user?.LOGINID}, Tenant: ${tenantId}`);
 
-    if (!isUserPassMatched && !isSecPassMatched) {
+    // Verify password - handle both USERPASS and SEC_PASSWD fields
+    let isPasswordValid = false;
+    
+    if (user.USERPASS) {
+      console.log(`[login] STEP 2: Verifying password (USERPASS)...`);
+      isPasswordValid = await AuthService.comparePassword(password, user.USERPASS);
+    }
+    
+    if (!isPasswordValid && user.SEC_PASSWD) {
+      console.log(`[login] STEP 2: Verifying password (SEC_PASSWD)...`);
+      isPasswordValid = await AuthService.comparePassword(password, user.SEC_PASSWD);
+    }
+
+    if (!isPasswordValid) {
+      console.log(`[login] ❌ Invalid password`);
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.USER.INVALID_PASSWORD,
@@ -101,31 +133,52 @@ export const login = async (req: Request, res: Response) => {
       return;
     }
 
+    console.log(`[login] ✅ STEP 2 SUCCESS: Password verified`);
+
+    // Get tenant config for additional info
+    console.log(`[login] STEP 3: Getting tenant config...`);
+    const tenantConfig = await TenantManager.getTenantConfig(tenantId);
+    
+    console.log(`[login] ✅ STEP 3 SUCCESS: Tenant config loaded`);
+
+    // Generate token with tenant info
+    console.log(`[login] STEP 4: Generating JWT token...`);
     const token = await generateToken({
-      username: user.username,
-      email_id: user.email_id,
-      loginid: user.loginid,
+      username: user.USERNAME,
+      email_id: user.EMAIL_ID,
+      loginid: user.LOGINID,
+      tenantId: tenantId,
+      company_code: user.COMPANY_CODE,
+      schemaName: tenantConfig.SCHEMA_NAME
     });
+    
+    console.log(`[login] ✅ STEP 4 SUCCESS: Token generated`);
+    console.log(`[login] ✅ LOGIN SUCCESSFUL for ${user.LOGINID}`);
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      data: { token },
+      data: { 
+        token,
+        tenantId,
+        user: {
+          username: user.USERNAME,
+          email_id: user.EMAIL_ID,
+          loginid: user.LOGINID,
+          company_code: user.COMPANY_CODE
+        }
+      },
     });
-    return;
   } catch (err: any) {
+    console.error(`[login] ❌ ERROR:`, err.message);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "An error occurred",
       error: err.message || err,
     });
-    return;
   }
 };
 
-export const me = async (
-  req: RequestWithUser,
-  res: Response
-): Promise<void> => {
+export const me = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const requestUser = req.user;
 
@@ -137,8 +190,15 @@ export const me = async (
       return;
     }
 
-    const user = await AuthService.findUserByEmail(requestUser.email_id);
-    if (!user) {
+    let tenantId = requestUser.tenantId;
+    let loginid = requestUser.loginid;
+
+    console.log(`[me] INIT: User context = { loginid: ${loginid}, tenantId: ${tenantId} }`);
+
+    // Get user info (this should come from the main database, not tenant-specific)
+    const userResult = await AuthService.getUserWithTenant(requestUser.email_id);
+    
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: constants.MESSAGES.USER.USER_NOT_FOUND,
@@ -146,156 +206,249 @@ export const me = async (
       return;
     }
 
+    const user = userResult.user;
+
+    // If tenantId not in JWT, use from user result
+    if (!tenantId) {
+      tenantId = userResult.tenantId || 'WMSDEV_TENANT';
+      console.log(`[me] Using tenantId: ${tenantId}`);
+    }
+
     // Remove sensitive data
-    const { userpass, SEC_PASSWD, ...userWithoutPassword } = user;
+    const userWithoutPassword: any = { ...user };
+    delete userWithoutPassword.USERPASS;
+    delete userWithoutPassword.SEC_PASSWD;
 
-    // Get all permissions
-    let allPermissions: any[] = [];
-    try {
-      const permissionsResult = await AuthService.executeRawQuery(
-        permissionsListQuery
-      );
-      allPermissions = permissionsResult[0] || [];
-      console.log(`Retrieved ${allPermissions.length} permissions`);
-    } catch (error) {
-      console.error("Error fetching permissions:", error);
-      allPermissions = [];
-    }
-
-    const permissions: StructuredResult = (allPermissions || []).reduce(
-      (acc: any, curr: any) => {
-        const menu = curr.menu || curr.MENU;
-        const serial_no =
-          curr.serial_no || curr.SERIAL_NO || curr.serial_no_or_role_id;
-        const app_code = curr.app_code || curr.APP_CODE;
-
-        console.log("Processing permission:", { menu, serial_no, app_code });
-
-        const serialNumber: number = Number(serial_no);
-
-        if (serialNumber > 0 && app_code) {
-          if (!acc[app_code]) {
-            acc[app_code] = {
-              serial_number: serialNumber,
-              app_code: app_code,
-              children: {},
-            };
-          }
-
-          if (menu && menu !== app_code) {
-            acc[app_code].children[menu] = {
-              serial_number: serialNumber,
-              app_code,
-            };
-          }
-        }
-        return acc;
-      },
-      {}
-    );
-
-    // Get user permissions
+    // Get permissions from user's tenant
     let userPermissions: any[] = [];
+    let allPermissions: any[] = [];
     let formattedPermissions = {};
+    let permissionBasedMenuTree = {};
 
+    // CRITICAL: Get user permissions from tenant
     try {
-      console.log(`Fetching permissions for user: ${user.loginid}`);
-
-      const userPermissionsResult = await AuthService.executeRawQuery(
+      console.log(`[me] 🔍 STEP 1: Fetching user permissions...`);
+      console.log(`[me]   - User: ${loginid}`);
+      console.log(`[me]   - Tenant: ${tenantId}`);
+      
+      userPermissions = await AuthService.executeInUserTenant(
+        loginid,
         userPermissionQuery,
-        { loginid: user.loginid }
+        { loginid }
       );
-      userPermissions = userPermissionsResult[0] || [];
-      console.log(`Retrieved ${userPermissions.length} user permissions`);
-
-      // Debug the structure
-      if (userPermissions.length > 0) {
-        console.log("First permission structure:", userPermissions[0]);
-        console.log("Available keys:", Object.keys(userPermissions[0]));
-        console.log("SERIAL NO value:", userPermissions[0].SERIAL_NO);
+      
+      console.log(`[me] ✅ STEP 1 RESULT: Found ${userPermissions.length} permission records`);
+      
+      if (userPermissions.length === 0) {
+        console.warn(`[me] CRITICAL WARNING: User '${loginid}' has NO permissions!`);
       }
-
-      if (userPermissions.length > 0) {
-        formattedPermissions = formatRolePermissions(userPermissions);
-        console.log(
-          `Formatted permissions keys:`,
-          Object.keys(formattedPermissions)
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching user permissions:", error);
+    } catch (userPermError) {
+      console.error(`[me] ❌ FAILED to get user permissions:`, userPermError);
+      userPermissions = [];
     }
 
-    // Build menu tree
-    let permissionBasedMenuTree = {};
-    if (formattedPermissions && Object.keys(formattedPermissions).length > 0) {
-      const validKeys = Object.keys(formattedPermissions).filter((key) => {
-        const num = Number(key);
-        return !isNaN(num) && num > 0;
-      });
+    // Get all available permissions from tenant
+    try {
+      console.log(`[me] 🔍 STEP 2: Fetching all available permissions...`);
+      
+      allPermissions = await AuthService.executeInUserTenant(
+        loginid,
+        permissionsListQuery,
+        {}
+      );
+      
+      console.log(`[me] ✅ Found ${allPermissions.length} total permissions available`);
 
-      console.log(`Valid serial numbers for menu tree:`, validKeys);
+      // Format user permissions
+      if (userPermissions.length > 0) {
+        console.log(`[me] 🔍 STEP 3: Formatting user permissions...`);
+        formattedPermissions = formatRolePermissions(userPermissions);
+        console.log(`[me] ✅ Formatted permissions keys: ${Object.keys(formattedPermissions).length}`);
+        
+        const validKeys = Object.keys(formattedPermissions).filter((key) => {
+          const num = Number(key);
+          return !isNaN(num) && num > 0;
+        });
 
-      if (validKeys.length > 0) {
-        try {
+        if (validKeys.length > 0) {
           const serialNumbersNumeric = validKeys.map((sn) => Number(sn));
-
           const placeholders = serialNumbersNumeric
             .map((_, idx) => `:param${idx}`)
-            .join(",");
-          const bindParams: any = {};
-          serialNumbersNumeric.forEach((sn, idx) => {
-            bindParams[`param${idx}`] = sn;
-          });
-
+            .join(',');
+          
           const menuTreeQuery = `
             SELECT * FROM SEC_MODULE_DATA 
             WHERE SERIAL_NO IN (${placeholders})
             ORDER BY SERIAL_NO
           `;
 
-          console.log(
-            "Executing menu tree query with serial numbers:",
-            serialNumbersNumeric
-          );
+          const bindParams: any = {};
+          serialNumbersNumeric.forEach((sn, idx) => {
+            bindParams[`param${idx}`] = sn;
+          });
 
-          const [menuTreeData] = await AuthService.executeRawQuery(
-            menuTreeQuery,
-            bindParams
-          );
-
-          if (menuTreeData && menuTreeData.length > 0) {
-            permissionBasedMenuTree = buildTree(menuTreeData, permissions);
-            console.log(
-              `Successfully built menu tree with ${menuTreeData.length} items`
+          try {
+            console.log(`[me] 🔍 STEP 4: Building menu tree...`);
+            const menuTreeData = await AuthService.executeInUserTenant(
+              loginid,
+              menuTreeQuery,
+              bindParams
             );
+
+            if (menuTreeData && menuTreeData.length > 0) {
+              // Build structured permissions object from allPermissions
+              const structuredPermissions: StructuredResult = {};
+              
+              allPermissions.forEach((perm: any) => {
+                const appCode = (perm.app_code || '').toString().trim();
+                const menu = (perm.menu || '').toString().trim();
+                const serialNo = Number(perm.serial_no || 0);
+                
+                if (serialNo > 0 && menu && appCode) {
+                  if (!structuredPermissions[appCode]) {
+                    structuredPermissions[appCode] = {
+                      serial_number: serialNo,
+                      app_code: appCode,
+                      children: {},
+                    };
+                  }
+                  
+                  if (menu !== appCode) {
+                    structuredPermissions[appCode].children[menu] = {
+                      serial_number: serialNo,
+                      app_code: appCode,
+                    };
+                  }
+                }
+              });
+              
+              permissionBasedMenuTree = buildTree(menuTreeData, structuredPermissions);
+              console.log(`[me] ✅ Menu tree built with ${menuTreeData.length} items`);
+            } else {
+              console.warn(`[me] ⚠️ No menu tree data found`);
+              permissionBasedMenuTree = {};
+            }
+          } catch (menuError) {
+            console.warn(`[me] ⚠️ Failed to get menu tree:`, menuError);
+            permissionBasedMenuTree = {};
           }
-        } catch (error) {
-          console.error("Error fetching menu tree:", error);
+        } else {
+          console.warn(`[me] ⚠️ No valid permission keys to build menu tree`);
+          permissionBasedMenuTree = {};
         }
+      } else {
+        console.warn(`[me] ⚠️ User has no permissions, skipping menu tree build`);
+        formattedPermissions = {};
+        permissionBasedMenuTree = {};
       }
+    } catch (permError) {
+      console.error(`[me] ❌ Failed to get all permissions:`, permError);
+      allPermissions = [];
+      permissionBasedMenuTree = {};
     }
+
+    // Build structured permissions for frontend
+    const permissionsStructured: StructuredResult = {};
+    
+    if (Array.isArray(allPermissions) && allPermissions.length > 0) {
+      console.log(`[me] 🔍 Building permissions structure from ${allPermissions.length} records`);
+      console.log(`[me] 🔍 First 3 permission records:`, allPermissions.slice(0, 3));
+
+      if (allPermissions.length > 0) {
+        console.log(`[me] 🔍 Available fields in first record:`, Object.keys(allPermissions[0]));
+        console.log(`[me] 🔍 Sample record values:`, {
+          menu: allPermissions[0].menu,
+          level: allPermissions[0].level,
+          serial_no: allPermissions[0].serial_no,
+          app_code: allPermissions[0].app_code,
+          allFields: allPermissions[0]
+        });
+      }
+
+      // Build a map of serial_no → app_code
+      const serialToAppCodeMap: Record<number, string> = {};
+      allPermissions.forEach((perm: any) => {
+        const serialNo = Number(perm.serial_no || perm.SERIAL_NO || 0);
+        const appCode = (perm.app_code || perm.APP_CODE || '').toString().trim();
+        if (serialNo > 0 && appCode) serialToAppCodeMap[serialNo] = appCode;
+      });
+      console.log(`[me] 🔍 Built serial to app_code map with ${Object.keys(serialToAppCodeMap).length} entries`);
+
+      // Build structured permissions
+      allPermissions.forEach((perm: any) => {
+        const menu = (perm.menu || perm.MENU || '').toString().trim();
+        const serialNo = Number(perm.serial_no || perm.SERIAL_NO || 0);
+        const appCode = (perm.app_code || perm.APP_CODE || '').toString().trim();
+
+        if (!serialNo || !menu) return;
+
+        const actualAppCode = appCode || serialToAppCodeMap[serialNo] || 'UNKNOWN';
+        if (!actualAppCode || actualAppCode === 'UNKNOWN') return;
+
+        if (!permissionsStructured[actualAppCode]) {
+          permissionsStructured[actualAppCode] = {
+            serial_number: serialNo,
+            app_code: actualAppCode,
+            children: {},
+          };
+        }
+
+        if (menu !== actualAppCode && menu !== '0') {
+          permissionsStructured[actualAppCode].children[menu] = {
+            serial_number: serialNo,
+            app_code: actualAppCode,
+          };
+        }
+      });
+
+      console.log(`[me] Permissions structure built for ${Object.keys(permissionsStructured).length} apps`);
+      Object.entries(permissionsStructured).forEach(([appCode, appData]: [string, any]) => {
+        console.log(`[me] 📊 ${appCode}:`, {
+          serial_number: appData.serial_number,
+          children_count: Object.keys(appData.children).length,
+          children_sample: Object.keys(appData.children).slice(0, 5)
+        });
+      });
+    } else {
+      console.warn(`[me] No permissions data available`);
+    }
+
+    // Build module access
+    const userAccessibleModules = buildModuleAccessFromStructure(
+      allPermissions,
+      formattedPermissions as StructuredResult
+    );
+
+    console.log(`[me] 📤 FINAL RESPONSE SUMMARY:`, {
+      tenantId,
+      user_permission_keys: Object.keys(formattedPermissions),
+      permissions_count: allPermissions.length,
+      accessible_modules: Object.keys(userAccessibleModules).length,
+      has_permissions: Object.keys(formattedPermissions).length > 0
+    });
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {
         user: userWithoutPassword,
+        tenantId,
         permissionBasedMenuTree,
-        permissions,
+        permissions: permissionsStructured,
         user_permission: formattedPermissions,
+        userAccessibleModules,
       },
     });
   } catch (error: any) {
     console.error("Error in /api/auth/me:", error);
+    console.error("Stack trace:", error.stack);
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
-      message:
-        error.message || "An error occurred while processing your request",
+      message: error.message || "An error occurred",
     });
   }
 };
 
-export const forgotPassword = async (req: Request, res: Response) => {
+export const forgotPassword: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 
@@ -308,9 +461,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
     }
 
     // Check if user exists
-    const user = await AuthService.findUserByEmailOrLoginId(email);
+    const userResult = await AuthService.getUserWithTenant(email);
 
-    if (!user) {
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found",
@@ -318,15 +471,17 @@ export const forgotPassword = async (req: Request, res: Response) => {
       return;
     }
 
+    const user = userResult.user;
+
     // Send password reset email
     await notifyUser({
       event: constants.EVENTS.FORGOT_PASSWORD,
-      request_users: user.email_id,
+      request_users: user.EMAIL_ID,
       subject: "Password Reset Instructions",
       htmlMessage: `
         <p>Dear User,</p>
         <p>Please click on the following link to reset your password:</p>
-        <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.email_id}">Reset Password</a></p>
+        <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.EMAIL_ID}">Reset Password</a></p>
         <p>If you did not request this, please ignore this email.</p>
         <p>Best regards,</p>
         <p>Bayanat Technology</p>
@@ -347,7 +502,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
 };
 
-export const resetPassword = async (req: Request, res: Response) => {
+export const resetPassword: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -360,15 +515,17 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 
     // Find user by email
-    const user = await AuthService.findUserByEmailOrLoginId(email);
+    const userResult = await AuthService.getUserWithTenant(email);
 
-    if (!user) {
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found",
       });
       return;
     }
+
+    const user = userResult.user;
 
     // Hash the new password
     const hashedPassword = await AuthService.hashPassword(password);
@@ -379,7 +536,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     // Send confirmation email
     await notifyUser({
       event: constants.EVENTS.RESET_PASSWORD,
-      request_users: user.email_id,
+      request_users: user.EMAIL_ID,
       subject: "Password Reset Successful",
       htmlMessage: `
         <p>Dear User,</p>
@@ -404,7 +561,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     return;
   }
 };
-export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
+export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { loginId, newPassword } = req.body;
 
@@ -417,9 +574,9 @@ export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
     }
 
     // Find user by login ID
-    const user = await AuthService.findUserByEmailOrLoginId(loginId);
+    const userResult = await AuthService.getUserWithTenant(loginId);
 
-    if (!user) {
+    if (!userResult || !userResult.user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: "User not found with the provided login ID",
@@ -427,26 +584,28 @@ export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
       return;
     }
 
+    const user = userResult.user;
+
     // Hash the new password
     const hashedPassword = await AuthService.hashPassword(newPassword);
 
     // Update user's password using email
-    await AuthService.updateUserPassword(user.email_id, hashedPassword);
+    await AuthService.updateUserPassword(user.EMAIL_ID, hashedPassword);
 
     // Check if company_code contains JASRA (case-insensitive)
-    const isJasraCompany = user.company_code && 
-                           user.company_code.toUpperCase().includes("JASRA");
+    const isJasraCompany = user.COMPANY_CODE && 
+                           user.COMPANY_CODE.toUpperCase().includes("JASRA");
     
     if (isJasraCompany) {
       // For JASRA users: Send password reset link via email
       await notifyUser({
         event: constants.EVENTS.RESET_PASSWORD,
-        request_users: user.email_id,
+        request_users: user.EMAIL_ID,
         subject: "Password Reset Link",
         htmlMessage: `
-          <p>Dear ${user.username || 'User'},</p>
+          <p>Dear ${user.USERNAME || 'User'},</p>
           <p>Please click on the following link to reset your password:</p>
-          <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.email_id}">Reset Password</a></p>
+          <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.EMAIL_ID}">Reset Password</a></p>
           <p>If you did not request this, please ignore this email.</p>
           <p>Best regards,</p>
           <p>Bayanat Technology</p>
@@ -464,10 +623,10 @@ export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
       // Send confirmation email
       await notifyUser({
         event: constants.EVENTS.RESET_PASSWORD,
-        request_users: user.email_id,
+        request_users: user.EMAIL_ID,
         subject: "Password Reset Successful",
         htmlMessage: `
-          <p>Dear ${user.username || 'User'},</p>
+          <p>Dear ${user.USERNAME || 'User'},</p>
           <p>Your password has been successfully reset for login ID: ${loginId}</p>
           <p>If you did not make this change, please contact support immediately.</p>
           <p>Best regards,</p>
@@ -489,5 +648,109 @@ export const resetPasswordWithLoginId = async (req: Request, res: Response) => {
       message: error.message || "An error occurred while resetting password",
     });
     return;
+  }
+};
+
+// ============ DIAGNOSTIC ENDPOINT ============
+export const diagnosticPermissions = async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const requestUser = req.user;
+
+    if (!requestUser) {
+      res.status(constants.STATUS_CODES.UNAUTHORIZED).json({
+        success: false,
+        message: "No user context",
+      });
+      return;
+    }
+
+    const tenantId = requestUser.tenantId || 'WMSDEV_TENANT';
+    const loginid = requestUser.loginid;
+
+    console.log(`[diagnostic] 🔍 Starting permission diagnostic for user: ${loginid}, tenant: ${tenantId}`);
+
+    const diagnostics: any = {
+      user: loginid,
+      tenant: tenantId,
+      timestamp: new Date().toISOString(),
+      checks: {}
+    };
+
+    // CHECK 1: User exists
+    try {
+      const userResult = await AuthService.getUserWithTenant(requestUser.email_id);
+      diagnostics.checks.user_exists = !!userResult?.user;
+      console.log(`[diagnostic] CHECK 1: User exists = ${diagnostics.checks.user_exists}`);
+    } catch (err) {
+      diagnostics.checks.user_exists = false;
+      diagnostics.checks.user_exists_error = err instanceof Error ? err.message : String(err);
+    }
+
+    // CHECK 2: User permissions query result
+    try {
+      const userPerms = await AuthService.executeInUserTenant(
+        loginid,
+        userPermissionQuery,
+        { loginid }
+      );
+      diagnostics.checks.user_permissions_count = userPerms.length;
+      if (userPerms.length > 0) {
+        diagnostics.checks.first_permission = userPerms[0];
+      }
+      console.log(`[diagnostic] CHECK 2: User permissions found = ${userPerms.length}`);
+    } catch (err) {
+      diagnostics.checks.user_permissions_error = err instanceof Error ? err.message : String(err);
+      console.log(`[diagnostic] CHECK 2: Error fetching permissions:`, err);
+    }
+
+    // CHECK 3: All permissions available
+    try {
+      const allPerms = await AuthService.executeInUserTenant(
+        loginid,
+        permissionsListQuery,
+        {}
+      );
+      diagnostics.checks.all_permissions_count = allPerms.length;
+      console.log(`[diagnostic] CHECK 3: Total permissions available = ${allPerms.length}`);
+    } catch (err) {
+      diagnostics.checks.all_permissions_error = err instanceof Error ? err.message : String(err);
+      console.log(`[diagnostic] CHECK 3: Error fetching all permissions:`, err);
+    }
+
+    // CHECK 4: Call the actual /me endpoint logic
+    try {
+      const userResult = await AuthService.getUserWithTenant(requestUser.email_id);
+      const userPermissions = await AuthService.executeInUserTenant(
+        loginid,
+        userPermissionQuery,
+        { loginid }
+      );
+      const formattedPerms = formatRolePermissions(userPermissions);
+      diagnostics.checks.formatted_permissions = formattedPerms;
+      diagnostics.checks.formatted_permissions_count = Object.keys(formattedPerms).length;
+      console.log(`[diagnostic] CHECK 4: Formatted permissions = ${diagnostics.checks.formatted_permissions_count} keys`);
+    } catch (err) {
+      diagnostics.checks.formatted_permissions_error = err instanceof Error ? err.message : String(err);
+      console.log(`[diagnostic] CHECK 4: Error formatting permissions:`, err);
+    }
+
+    // SQL Queries to run manually
+    diagnostics.manual_sql_checks = {
+      check_user_permissions: `SELECT * FROM SEC_ROLE_FUNCTION_ACCESS_USER WHERE LOGINID = '${loginid}'`,
+      check_role_app_access: `SELECT * FROM SEC_ROLE_APP_ACCESS`,
+      check_tables_exist: `SELECT TABLE_NAME FROM USER_TABLES WHERE TABLE_NAME IN ('SEC_ROLE_FUNCTION_ACCESS_USER', 'SEC_ROLE_APP_ACCESS')`,
+    };
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      data: diagnostics
+    });
+  } catch (error: any) {
+    console.error("[diagnostic] Error in diagnostic endpoint:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || "Diagnostic failed",
+      error: error.stack
+    });
   }
 };

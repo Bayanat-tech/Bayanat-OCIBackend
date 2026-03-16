@@ -1,4 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import { DivisionMaster } from "../../entity/PurchaseFlow/divisionmaster_pf.entity";
 // import { DivisionMaster } from "../../entity/Purchaseflow/divisionmaster_pf.entity";
 import constants from "../../helpers/constants";
@@ -16,7 +17,7 @@ export class DivisionMasterService {
     userId: string;
     message: string;
   }) {
-    await oracleDb.query(
+    await QueryExecutor.executeRawQuery(
       `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
       [
         params.screen,

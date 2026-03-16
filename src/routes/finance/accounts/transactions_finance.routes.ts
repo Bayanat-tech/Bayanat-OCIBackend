@@ -1,46 +1,38 @@
-// Import required Express framework
+/**
+ * @fileoverview Inbound WMS Routes - Handles all inbound warehouse management system routes
+ * @requires express
+ * @requires passport
+ */
+
 import * as express from "express";
-
-// Import transaction-related controller functions
+import passport from "passport";
+import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
 import {
-  // Document Creation Controllers
-  createChequePaymentDocument, // Creates single cheque payment
-  createBulkTransactionDocument, // Creates multiple transactions
-
-  // Information Retrieval Controllers
-  getChequeDetail, // Gets cheque-specific information
-  getChequePaymentDetail, // Gets payment transaction details
-  getChequePaymentHeader, // Gets payment header information
-  getTransactionChildren, // Gets invoice/job/expense children for a document
-  //getChequePaymentReport, // Generates payment reports
-  getChildTableName, // Gets related table names
-  getCompanyInfo, // Retrieves company information
-  getDefaultTransactionDetails, // Gets default transaction values
-  getInvoiceOutstandingBalances, // Gets outstanding balances for invoices
-
-  // Document Modification Controllers
-  updateChequePaymentDocument, // Updates payment documents
-  cancelDocument, // Cancels existing documents
-
-  // Document Deletion Controllers
-  deleteChildrenItem, // Removes child records
-  deleteDetailItem, // Removes detail records
-  deleteDocument, // Deletes entire documents
-
-  // Export Controller
-  //exportTransactionDocument,
-  createChequePaymentStoreProcess,
-  createPurchaseDocument,
-  getDocAccounts,
-  createLPODocument,
+  getChequeDetail,
+  getChequePaymentDetail,
+  getChequePaymentHeader,
+  getChildTableName,
+  getCompanyInfo,
+  getDefaultTransactionDetails,
   getPurchaseHeader,
-  createSalesDocument, // Exports transaction data
+  getTransactionChildren,
+  createBulkTransactionDocument,
+  createChequePaymentDocument,
+  createChequePaymentStoreProcess,
+  updateChequePaymentDocument,
+  cancelDocument,
+  deleteDocument,
+  deleteDetailItem,
+  deleteChildrenItem,
+  createPurchaseDocument,
+  createLPODocument,
+  getInvoiceOutstandingBalances,
+  getDocAccounts
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
-
 // Initialize Express router
 const router = express.Router();
 
-//-------------Transaction Routes--------------
+router.post("/insUpdTrAcBulk", insUpdTrAcJVBulk );
 
 // GET Routes - Information Retrieval
 router.get("/company_info", getCompanyInfo);                    // Get company details
@@ -74,7 +66,7 @@ router.delete("/children_item/delete", deleteChildrenItem);     // Delete child 
 router.post("/purchase-document",createPurchaseDocument)
 
 router.post("/lpo-document",createLPODocument)
-router.post("/sales-document",createSalesDocument)
+// router.post("/sales-document",createSalesDocument)
 
 
 // Export the configured router

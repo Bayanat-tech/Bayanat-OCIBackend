@@ -3,7 +3,7 @@ import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { hrKpiOperationSchema } from "../../validation/HR/hrKpiOperationValidation";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { OperationMaster } from "../../models/Hr/hr_operation";
 
 export const createKpiOperation = async (
@@ -23,7 +23,7 @@ export const createKpiOperation = async (
 
     const { company_code, serial_no } = req.body;
 
-    const kpiOperationRepository = AppDataSource.getRepository(OperationMaster);
+    const kpiOperationRepository = getRepository(OperationMaster);
 
     // Check if KPI Operation already exists
     const existingKpiOperation = await kpiOperationRepository.findOne({
@@ -88,7 +88,7 @@ export const updateKpiOperation = async (
 
     const { serial_no, company_code } = req.body;
 
-    const kpiOperationRepository = AppDataSource.getRepository(OperationMaster);
+    const kpiOperationRepository = getRepository(OperationMaster);
 
     // Check if KPI Operation exists
     const existingKpiOperation = await kpiOperationRepository.findOne({

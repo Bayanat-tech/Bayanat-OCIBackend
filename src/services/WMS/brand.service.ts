@@ -1,7 +1,8 @@
 import { getRepository } from "../../database/connection";
 import { Brand } from "../../entity/WMS/brand.entity";
 import { In } from "typeorm";
-import { AppDataSource, TypeORMService } from "../../../src/database/connection";
+import { AppDataSource, TypeORMService } from "../../database/connection";
+import { executeRaw } from "./tenant-service.helper";
 import oracledb from 'oracledb';
 
 export class BrandService {
@@ -27,8 +28,6 @@ static async findByBrandCodeAndCompany(
   prinCode: string,
   groupCode: string
 ): Promise<Brand | null> {
-  let queryRunner;
-
   const sql = `
     SELECT *
     FROM ms_prodgroup
@@ -45,30 +44,12 @@ static async findByBrandCodeAndCompany(
       await TypeORMService.initialize();
     }
 
-    queryRunner = AppDataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const results = await executeRaw(sql, params);
 
-    const results = await queryRunner.query(sql, params);
-
-    await queryRunner.commitTransaction();
-
-    // Return single record or null
-    return results.length > 0 ? (results[0] as Brand) : null;
+    return results && results.length > 0 ? (results[0] as Brand) : null;
   } catch (error) {
-    if (queryRunner) {
-      try {
-        await queryRunner.rollbackTransaction();
-      } catch (_) {}
-    }
     console.error("Error fetching brand by code:", error);
     return null;
-  } finally {
-    if (queryRunner) {
-      try {
-        await queryRunner.release();
-      } catch (_) {}
-    }
   }
 }
 

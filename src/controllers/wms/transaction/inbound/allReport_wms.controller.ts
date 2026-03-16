@@ -82,7 +82,7 @@ export const getAllOutboundReports = async (
     // Initialize query parameters with TypeORM conditions
     let whereConditions: FindOptionsWhere<ReportMaster> = {
       company_code: requestUser.company_code, // Filter by company code
-      module: "outbound", // Filter for outbound module only
+      module: "OUTBOUND", // Filter for outbound module only
     };
 
     // Apply search filters to query
@@ -98,12 +98,15 @@ export const getAllOutboundReports = async (
         ? { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" }
         : undefined;
 
+      console.log('Where conditions:', whereConditions);
+      console.log('Filter:', filter);
+
     // Fetch reports with filters and get count
     const { data, totalCount } = await ReportMasterService.findAllWithFilters(
       whereConditions,
       order as { [key: string]: "ASC" | "DESC" }
     );
-
+    console.log('Found reports:', data); 
     // Return success response with data
     res.status(constants.STATUS_CODES.OK).json({
       success: true,

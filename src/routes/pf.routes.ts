@@ -1,5 +1,6 @@
 import * as express from "express";
 import passport from "passport";
+import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 // import {
 //   getPfMaster,
 //   deletepfMaster,
@@ -30,6 +31,7 @@ const router = express.Router();
 router.get(
   "/:master",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   //getPfMaster
   getPurchasefMaster
@@ -38,6 +40,7 @@ router.get(
 router.use(
   "/gm",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   gmPfRouter
 );
@@ -45,6 +48,7 @@ router.use(
 router.post(
   "/:master",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   deletepfMaster
 );
 export default router;

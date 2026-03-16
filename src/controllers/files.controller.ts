@@ -4,6 +4,7 @@ import { Response } from "express";
 import { RequestWithUser } from "../interfaces/common.interface";
 import constants from "../helpers/constants";
 import { oracleDb } from "../database/connection";
+import { QueryExecutor } from "../database/QueryExecutor";
 import { FilesPFService } from "../services/filesPF.service";
 import { FilesAFService } from "../services/accountfiles.service";
 import { deleteFile } from "../services/ociUpload.service";
@@ -204,7 +205,7 @@ export const editPFFiles = async (
       request_number,
     };
 
-    const result: any = await oracleDb.query(sql, binds);
+    const result: any = await QueryExecutor.execMaybe(sql, binds);
     const affected = result.rowsAffected ?? 0;
 
     if (Number(affected) === 0) {
@@ -477,8 +478,8 @@ export const getHrVendorFiles = async (
     sql += " ORDER BY ATTACHMENT_SR_NO ASC, CREATED_AT DESC";
 
     console.log("Executing getHrVendorFiles SQL:", { sql, binds });
-    const result = await oracleDb.query(sql, binds);
-    const files = result.rows || [];
+    const result = await QueryExecutor.execMaybe(sql, binds);
+    const files = result.rows || result;
 
     if (!files || files.length === 0) {
       res.status(constants.STATUS_CODES.OK).json({
@@ -617,8 +618,8 @@ export const getFilesBySrNo = async (
       params.modules = { val: modules };
     }
     
-    const result = await oracleDb.query(query, params);
-    const files = result.rows || [];
+    const result = await QueryExecutor.execMaybe(query, params);
+    const files = result.rows || result;
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -686,8 +687,8 @@ export const getAllVendorFiles = async (
     if (modules) binds.modules = { val: modules };
 
     console.log("Executing getAllVendorFiles SQL:", { sql, binds });
-    const result = await oracleDb.query(sql, binds);
-    const files = result.rows || [];
+    const result = await QueryExecutor.executeRawQuery(sql, binds);
+    const files = result.rows || result || [];
 
     const groupedFiles = (files || []).reduce((acc: any, file: any) => {
       const srNo = Number(file.srNo ?? 0);

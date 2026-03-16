@@ -47,7 +47,7 @@ export class PoNotGenerated {
   @Column({ name: "COMPANY_CODE", type: "varchar2", length: 20, nullable: true })
   company_code!: string;
 
-  // 🟩 Optional fields — You can add them later if needed
+  // [OPTIONAL] Optional fields — You can add them later if needed
   @Column({ name: "PROJECT_CODE", type: "varchar2", length: 50, nullable: true })
   project_code!: string;
 

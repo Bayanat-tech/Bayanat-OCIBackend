@@ -1,6 +1,7 @@
 import { NextFunction, Response } from "express";
 import * as fastCsv from "fast-csv";
 import { oracleDb } from "../../../../database/connection";
+import { QueryExecutor } from "../../../../database/QueryExecutor";
 import * as oracledb from "oracledb";
 import constants from "../../../../helpers/constants";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
@@ -103,7 +104,7 @@ export const createToOrder = async (
         WHERE order_no = :order_no
       `;
 
-      const duplicateCheckResult = await oracleDb.query(checkDuplicateQuery, {
+      const duplicateCheckResult = await QueryExecutor.execMaybe(checkDuplicateQuery, {
         order_no: order_no
       });
 
@@ -160,11 +161,11 @@ export const createToOrder = async (
     console.log("With bindParams:", bindParams);
 
     // Execute the insert query
-    await oracleDb.query(query, bindParams);
+    await QueryExecutor.execMaybe(query, bindParams);
 
     // For Oracle, we need to get the last inserted ID differently
     // Assuming there's a sequence or we can get the max ID
-    const lastIdResult = await oracleDb.query(
+    const lastIdResult = await QueryExecutor.execMaybe(
       "SELECT MAX(TO_ORDER_ID) as INSERTID FROM TO_ORDER WHERE COMPANY_CODE = :company_code AND PRIN_CODE = :prin_code",
       { company_code, prin_code }
     );
@@ -238,8 +239,8 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
       bindParams.order_no = order_no;
     }
 
-    const result = await oracleDb.query(query, bindParams);
-    const orderEntries = result.rows || [];
+    const result = await QueryExecutor.execMaybe(query, bindParams);
+    const orderEntries = result.rows || result;
 
     if (!orderEntries.length) {
       return res.status(constants.STATUS_CODES.NO_CONTENT).json({
@@ -277,12 +278,12 @@ export const getSingleOrderEntry = async (req: RequestWithUser, res: Response) =
       });
     }
 
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.execMaybe(
       `SELECT * FROM VW_TO_ORDER WHERE CUST_CODE = :cust_code`,
       { cust_code }
     );
 
-    const orderEntry = result.rows?.[0];
+    const orderEntry = result.rows?.[0] || result[0];
 
     if (!orderEntry) {
       return res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -334,7 +335,7 @@ export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response
     `;
 
     await oracleDb.withTransaction(async (connection: any) => {
-      const result = await oracleDb.query(query, bindParams, connection);
+      const result = await QueryExecutor.execMaybe(query, bindParams, connection);
 
       // Check if row was updated (Oracle returns row count differently)
       if (result.rowsAffected === 0) {
@@ -342,13 +343,13 @@ export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response
       }
 
       // Get the updated entry
-      const updatedResult = await oracleDb.query(
+      const updatedResult = await QueryExecutor.execMaybe(
         `SELECT * FROM TO_ORDER WHERE ID = :id`,
         { id },
         connection
       );
 
-      return updatedResult.rows?.[0];
+      return updatedResult.rows?.[0] || updatedResult[0];
     }).then((updatedEntry) => {
       return res.json({
         success: true,
@@ -378,7 +379,7 @@ export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
     }
 
     // First check if the order entry exists
-    const checkResult = await oracleDb.query(
+    const checkResult = await QueryExecutor.execMaybe(
       `SELECT COUNT(*) as count FROM TO_ORDER WHERE ID = :id`,
       { id }
     );
@@ -391,7 +392,7 @@ export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
     }
 
     // Perform the deletion
-    const deleteResult = await oracleDb.query(
+    const deleteResult = await QueryExecutor.execMaybe(
       `DELETE FROM TO_ORDER WHERE ID = :id`,
       { id }
     );
@@ -445,7 +446,7 @@ export const getPickingItemPreferenceDetails = async (
 
     // Count query
     const countQuery = `SELECT COUNT(*) as count FROM VW_WM_OUB_JOB_PICK_FILTER ${whereClause}`;
-    const countResult = await oracleDb.query(countQuery, bindParams);
+    const countResult = await QueryExecutor.execMaybe(countQuery, bindParams);
     const resultCount = countResult.rows?.[0]?.COUNT || 0;
 
     // Main query
@@ -455,7 +456,7 @@ export const getPickingItemPreferenceDetails = async (
       ${whereClause}
     `;
 
-    const result = await oracleDb.query(resultQuery, bindParams);
+    const result = await QueryExecutor.execMaybe(resultQuery, bindParams);
 
     if (!result.rows) {
       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
@@ -522,7 +523,7 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
 
     await oracleDb.withTransaction(async (connection: any) => {
       // Set selected = 'Y'
-      const updateResult = await oracleDb.query(
+      const updateResult = await QueryExecutor.execMaybe(
         updateSelectedSql,
         bindParams,
         connection
@@ -531,7 +532,7 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
 
       if (toggledPackets > 0) {
         // Call stored procedure
-        await oracleDb.query(
+        await QueryExecutor.execMaybe(
           `BEGIN SP_WM_OUB_PICKING_V3(:vs_company_code, :principal_code, :VS_job_no, ''); END;`,
           {
             vs_company_code: req.user.company_code,
@@ -556,7 +557,7 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
             AND serial_no = :serial_no
         `;
 
-        await oracleDb.query(unselectSql, bindParams, connection);
+        await QueryExecutor.execMaybe(unselectSql, bindParams, connection);
       }
     });
 
@@ -596,8 +597,8 @@ export const exportPickingDetails = async (
       // Implement your filtering
     }
 
-    const result = await oracleDb.query(query, bindParams);
-    const fetchedData = result.rows || [];
+    const result = await QueryExecutor.execMaybe(query, bindParams);
+    const fetchedData = result.rows || result;
 
     csvTransform = fastCsv.format({
       headers: WmsCsvHeaders.TANSACTION.OUTOUND.PICKING_DETAILS,
@@ -647,8 +648,8 @@ export const exportPickingStockDeatils = async (
       // Implement filtering
     }
 
-    const result = await oracleDb.query(query, bindParams);
-    const fetchedData = result.rows || [];
+    const result = await QueryExecutor.execMaybe(query, bindParams);
+    const fetchedData = result.rows || result;
 
     csvTransform = fastCsv.format({
       headers: WmsCsvHeaders.TANSACTION.OUTOUND.PICKING_STOCK_DETAILS,
@@ -687,10 +688,10 @@ export const deleteToOrderDetHandler = async (
 
   try {
     await oracleDb.withTransaction(async (connection: any) => {
-      const result = await oracleDb.query(
-        `DELETE FROM TO_ORDER_DET WHERE company_code = :company_code AND prin_code = :prin_code AND job_no = :job_no AND serial_no = :serial_no`,
-        {
-          company_code,
+      const result = await QueryExecutor.execMaybe(
+        `DELETE FROM WMSTST.TO_ORDER_DET WHERE company_code = :company_code AND prin_code = :prin_code AND job_no = :job_no AND serial_no = :serial_no`,
+        { 
+          company_code,  
           prin_code,
           job_no,
           serial_no: Number(serial_no)
@@ -716,12 +717,12 @@ export const getddSiteCode = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.execMaybe(
       `SELECT DISTINCT SITE_CODE FROM VW_PRODUCT_SITE_AVL_QTY`,
       {}
     );
 
-    const locationData = result.rows || [];
+    const locationData = result.rows || result;
 
     if (!locationData.length) {
       res.status(404).json({
@@ -746,12 +747,12 @@ export const getddLocationCode = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.execMaybe(
       `SELECT DISTINCT LOCATION_CODE FROM VW_PRODUCT_LOCATION_AVL_QTY`,
       {}
     );
 
-    const locationData = result.rows || [];
+    const locationData = result.rows || result;
 
     if (!locationData.length) {
       res.status(404).json({
@@ -794,7 +795,7 @@ export const getTotalAvailableQty = async (
     console.log("PROC_GET_TOTAL_QTY_AVL SQL Params:", params);
 
     // For Oracle, use OUT parameter binding
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.execMaybe(
       `DECLARE
          v_total_qty NUMBER;
        BEGIN
@@ -849,12 +850,12 @@ export const getddLotNum = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const result = await oracleDb.query(
+    const result = await QueryExecutor.execMaybe(
       `SELECT * FROM VW_PRODUCT_LOT_AVL_QTY`,
       {}
     );
 
-    const locationData = result.rows || [];
+    const locationData = result.rows || result;
 
     if (!locationData.length) {
       res.status(404).json({

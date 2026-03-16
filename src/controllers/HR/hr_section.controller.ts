@@ -4,7 +4,7 @@ import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { IHrSection } from "../../interfaces/Hr/hr_section"; 
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { sectionSchema } from "../../validation/HR/hrSection_validation"; 
 import HrCsvHeaders from "../../utils/exportCsv/HrCsvHeaders";
 import { In } from "typeorm";
@@ -23,7 +23,7 @@ export const createSection = async (req: RequestWithUser, res: Response) => {
     }
 
     const { section_code, company_code } = req.body;
-    const sectionRepository = AppDataSource.getRepository(HrSection);
+    const sectionRepository = getRepository(HrSection);
 
     const section = await sectionRepository.findOne({
       where: {
@@ -79,7 +79,7 @@ export const updateSection = async (req: RequestWithUser, res: Response) => {
     }
 
     const { section_code, company_code } = req.body;
-    const sectionRepository = AppDataSource.getRepository(HrSection);
+    const sectionRepository = getRepository(HrSection);
 
     const section = await sectionRepository.findOne({
       where: {
@@ -137,7 +137,7 @@ export const createBulkSections = async (req: RequestWithUser, res: Response) =>
       return;
     }
 
-    const sectionRepository = AppDataSource.getRepository(HrSection);
+    const sectionRepository = getRepository(HrSection);
     
     const sectionsWithUser = req.body.map((section: IHrSection) => ({
       ...section,
@@ -167,7 +167,7 @@ export const createBulkSections = async (req: RequestWithUser, res: Response) =>
 
 export const exportSection = async (req: RequestWithUser, res: Response) => {
   try {
-    const sectionRepository = AppDataSource.getRepository(HrSection);
+    const sectionRepository = getRepository(HrSection);
     
     let fetchedData: any[] = [];
     let csvTransform: fastCsv.CsvFormatterStream<
@@ -204,7 +204,7 @@ export const exportSection = async (req: RequestWithUser, res: Response) => {
 export const deleteSections = async (req: RequestWithUser, res: Response) => {
   try {
     const sectionsCode = req.body;
-    const sectionRepository = AppDataSource.getRepository(HrSection);
+    const sectionRepository = getRepository(HrSection);
 
     if (!req.body.length) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({

@@ -3,6 +3,7 @@ import express from "express";
 import multer from "multer";
 import passport from "passport";
 import { AttendanceController } from "../../controllers/Attendance/attendance.controller";
+import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -36,6 +37,7 @@ console;
 router.get(
   "/dashboard/daily",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -49,6 +51,7 @@ router.get(
 router.get(
   "/dashboard/departments",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -104,6 +107,7 @@ router.post(
   "/mark",
   upload.single("file"),
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -116,6 +120,7 @@ router.post(
 
 router.post('/confirm', 
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -128,6 +133,7 @@ router.post('/confirm',
 
 router.post('/cancel',
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -140,6 +146,7 @@ router.post('/cancel',
 
 router.get('/proxy-logs', 
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -150,10 +157,69 @@ router.get('/proxy-logs',
   }
 );
 
+// Attendance request endpoints (manual fallback)
+router.post(
+  "/request",
+  upload.single("file"),
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.createAttendanceRequest(req, res);
+  }
+);
+
+router.get(
+  "/requests",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.listAttendanceRequests(req, res);
+  }
+);
+
+router.post(
+  "/request/:id/approve",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.approveAttendanceRequest(req, res);
+  }
+);
+
+router.post(
+  "/request/:id/reject",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.rejectAttendanceRequest(req, res);
+  }
+);
+
 // Protected routes
 router.get(
   "/report",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -161,6 +227,21 @@ router.get(
   async (req, res) => {
     const { AttendanceController } = await getControllers();
     return AttendanceController.getAttendanceReport(req, res);
+  }
+);
+
+// Full month report endpoint - returns ALL records without pagination
+router.get(
+  "/report/full-month",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.getFullMonthAttendanceReport(req, res);
   }
 );
 
@@ -177,6 +258,7 @@ router.post('/stop-auto-confirm',
 router.post(
   "/employees",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -191,6 +273,7 @@ router.post(
 router.get(
   "/employees",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -204,6 +287,7 @@ router.get(
 router.put(
   "/employees/:employee_id",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);
@@ -215,10 +299,10 @@ router.put(
   }
 );
 
-// Add route for employee info lookup
 router.get(
   "/employeeinfo",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   async (req, res, next) => {
     const { checkUserAuthorization } = await getControllers();
     return checkUserAuthorization(req, res, next);

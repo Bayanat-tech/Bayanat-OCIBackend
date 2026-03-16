@@ -1,7 +1,8 @@
 import { In } from "typeorm";
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { TiPackdet } from "../../entity/WMS/TiPackdet";
 import { PackingDetailsInboundWms } from "../../entities/wms/transportation/inbound/PackingDetailsInboundWms.entity";
+import { executeRaw } from "./tenant-service.helper";
 
 export class PutwayPackingItemService {
 
@@ -19,7 +20,7 @@ export class PutwayPackingItemService {
     locationTo: string
   ): Promise<void> {
 
-    await AppDataSource.getRepository(PackingDetailsInboundWms).update(
+    await getRepository(PackingDetailsInboundWms).update(
       {
         company_code: companyCode,
         prin_code: prinCode,
@@ -47,18 +48,17 @@ export class PutwayPackingItemService {
     jobNo: string
   ): Promise<void> {
 
-    await AppDataSource
-      .getRepository(TiPackdet)
-      .createQueryBuilder()
-      .update(TiPackdet)
-      .set({
+    await getRepository(TiPackdet).update(
+      {
+        company_code: companyCode,
+        prin_code: prinCode,
+        job_no: jobNo,
+      },
+      {
         selected: "Y",
         allocated: "N",
-      })
-      .where("COMPANY_CODE = :companyCode", { companyCode })
-      .andWhere("PRIN_CODE = :prinCode", { prinCode })
-      .andWhere("JOB_NO = :jobNo", { jobNo })
-      .execute();
+      }
+    );
 
     console.log("✅ TI_PACKDET updated");
   }
@@ -73,7 +73,7 @@ export class PutwayPackingItemService {
     packdetNo: string[]
   ): Promise<void> {
 
-    await AppDataSource.getRepository(PackingDetailsInboundWms).update(
+    await getRepository(PackingDetailsInboundWms).update(
       {
         company_code: companyCode,
         prin_code: prinCode,
@@ -95,7 +95,7 @@ export class PutwayPackingItemService {
     jobNo: string
   ): Promise<void> {
 
-    await AppDataSource.query(
+    await executeRaw(
       `BEGIN SP_PUTAWAY_NORMAL(:1, :2, :3); END;`,
       [companyCode, prinCode, jobNo]
     );

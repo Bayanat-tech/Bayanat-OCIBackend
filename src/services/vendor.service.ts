@@ -3,6 +3,7 @@ import https from "https";
 import { oracleDb } from "../database/connection";
 import { getRepository } from "../database/connection";
 import { Vendor } from "../entity/Vendor";
+import { QueryExecutor } from "../database/QueryExecutor";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -347,7 +348,7 @@ export class VendorService {
   // FIXED: Use oracleDb instead of sequelize
   static async updateDataTransferFlag(companyCode: string, docNo: string) {
     try {
-      const result = await oracleDb.query(
+      const result = await QueryExecutor.executeRawQuery(
         `UPDATE TR_AC_LPO_HEADER
          SET DATA_TRANSFER = 'Y'
          WHERE COMPANY_CODE = :companyCode 

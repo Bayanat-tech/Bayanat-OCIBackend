@@ -1,11 +1,11 @@
 /**
  * @fileoverview Oracle-based upsert logic for TT_BATCH table (Putaway Manual)
+ * Updated for tenant-based connections
  */
 import oracledb from "oracledb";
-import { oracleDb } from "../../../../database/connection";
-
 import { Request, Response } from "express";
 import constants from "../../../../helpers/constants";
+import { TenantManager } from "../../../../database/TenantManager";
 
 import { TPutawaymanual } from "../../../../../src/interfaces/wms/transaction/inbound/manualputaway.interface";
 import { TtBatchService } from "../../../../services/WMS/transaction/inbound/ttBatch.service";
@@ -49,12 +49,23 @@ async function retryOnError<T>(
     return await operation();
   } catch (error: any) {
     const message = error.message || "";
+    
+    // ORA-00980: synonym translation is no longer valid
+    if (/ORA-00980/.test(message)) {
+      throw new Error(
+        `Synonym translation error: The TT_BATCH synonym is invalid. ` +
+        `Please run: npx ts-node diagnose-synonym.ts to diagnose the issue. ` +
+        `Original error: ${message}`
+      );
+    }
+    
+    // ORA-00060: deadlock detected - retry
     if (retries > 0 && /ORA-00060/.test(message)) {
-      // ORA-00060: deadlock detected
       console.warn("Deadlock detected. Retrying...");
       await sleep(RETRY_DELAY);
       return retryOnError(operation, retries - 1);
     }
+    
     throw error;
   }
 }
@@ -63,12 +74,14 @@ async function retryOnError<T>(
  * === Main Upsert Function ===
  */
 export async function upsertPutawaymanualOracle(
-  data: TPutawaymanual
+  data: TPutawaymanual,
+  tenantId: string
 ): Promise<string> {
   return retryOnError(async () => {
     let connection: oracledb.Connection | null = null;
     try {
-      connection = await oracleDb.getConnection();
+      // Use tenant-aware connection
+      connection = await TenantManager.getConnection(tenantId);
 
       await connection.execute("BEGIN NULL; END;"); // keepalive
 
@@ -387,6 +400,15 @@ export const upsertPutawaymanualHandler = async (
 ): Promise<void> => {
   try {
     const data: TPutawaymanual = req.body;
+    const tenantId = (req as any).user?.tenantId;
+
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant ID is required. Ensure you are authenticated.",
+      });
+      return;
+    }
 
     const requiredFields: (keyof TPutawaymanual)[] = [
       "COMPANY_CODE",
@@ -408,7 +430,7 @@ export const upsertPutawaymanualHandler = async (
       return;
     }
 
-    const jobNo = await upsertPutawaymanualOracle(data);
+    const jobNo = await upsertPutawaymanualOracle(data, tenantId);
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: "TT_BATCH record upserted successfully.",

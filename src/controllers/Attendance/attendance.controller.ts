@@ -13,7 +13,7 @@ try {
 
 export class AttendanceController {
   
-  static async markAttendance(req: Request, res: Response): Promise<void> {
+static async markAttendance(req: Request, res: Response): Promise<void> {
      try {
       const { 
         action, 
@@ -50,7 +50,6 @@ export class AttendanceController {
         } else if (typeof (faceService as any).loadModels === 'function') {
           await (faceService as any).loadModels();
         } else if ((faceService as any).modelsLoaded === false) {
-          // small retry/wait loop if implementation sets a flag
           for (let i = 0; i < 5 && (faceService as any).modelsLoaded === false; i++) {
             await new Promise(r => setTimeout(r, 200));
           }
@@ -133,7 +132,7 @@ export class AttendanceController {
     }
   }
 
-  static async confirmAttendance(req: Request, res: Response): Promise<void> {
+static async confirmAttendance(req: Request, res: Response): Promise<void> {
     try {
       const { uuid, confirmed_by = 'user' } = req.body;
 
@@ -174,7 +173,7 @@ export class AttendanceController {
     }
   }
 
-  static async cancelAttendance(req: Request, res: Response): Promise<void> {
+static async cancelAttendance(req: Request, res: Response): Promise<void> {
   try {
     const { 
       uuid, 
@@ -183,7 +182,10 @@ export class AttendanceController {
       reason = 'proxy_detected_by_user'
     } = req.body;
 
+    logger.info(`[CANCEL-CTRL] Cancel request received - UUID: ${uuid}, Reason: ${reason}`);
+
     if (!uuid || !actual_employee_name) {
+      logger.warn(`[CANCEL-CTRL] Missing required fields - UUID: ${uuid}, Name: ${actual_employee_name}`);
       res.status(400).json({ 
         error: "UUID and actual_employee_name are required" 
       });
@@ -193,12 +195,16 @@ export class AttendanceController {
     const validatedEmployeeCode = actual_employee_code || 'UNREGISTERED_' + Date.now();
     const validatedEmployeeName = actual_employee_name || 'Unknown Employee';
 
+    logger.info(`[CANCEL-CTRL] Calling service with - UUID: ${uuid}, Code: ${validatedEmployeeCode}, Reason: ${reason}`);
+
     const result = await AttendanceService.cancelAttendance(
       uuid, 
       validatedEmployeeCode, 
       validatedEmployeeName,
       reason 
     );
+
+    logger.info(`[CANCEL-CTRL] Service returned - Success: ${result.success}, HasProxyLog: ${!!result.proxyLog}, EmailSent: ${result.emailSent}`);
 
     res.status(200).json({
       success: true,
@@ -212,7 +218,7 @@ export class AttendanceController {
     res.status(500).json({ success: false, message });
   }
  }
-  static async getProxyLogs(req: Request, res: Response): Promise<void> {
+static async getProxyLogs(req: Request, res: Response): Promise<void> {
     try {
       const { page, limit, start_date, end_date, employee_code } = req.query;
 
@@ -287,5 +293,116 @@ export class AttendanceController {
     const message = error instanceof Error ? error.message : String(error);
     res.status(500).json({ success: false, message });
   }
-}
+  }
+
+  /**
+   * Get ALL attendance records for a date range (month view)
+   * Handles large datasets (2000+ records) without hitting Oracle IN clause limits
+   */
+  static async getFullMonthAttendanceReport(req: Request, res: Response): Promise<void> {
+    try {
+      const { from_date, to_date, department } = req.query;
+      logger.info("Fetching full month attendance report:", req.query);
+
+      if (!from_date || !to_date) {
+        res.status(400).json({ error: "From date and to date are required" });
+        return;
+      }
+
+      const allRecords = await AttendanceService.getFullMonthAttendanceReport(
+        new Date(from_date as string),
+        new Date(to_date as string),
+        department as string | undefined
+      );
+
+      res.status(200).json({
+        success: true,
+        total: allRecords.length,
+        data: allRecords
+      });
+    } catch (error: unknown) {
+      logger.error("Full month attendance report error", error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
+
+  // Create a pending attendance request (fallback manual request)
+  static async createAttendanceRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const file = req.file as Express.Multer.File | undefined;
+      const { employee_code, event_type } = req.body;
+      const requestedBy = (req as any).user?.loginid || null;
+
+      if (!employee_code || !event_type) {
+        res.status(400).json({ success: false, message: 'employee_code and event_type are required' });
+        return;
+      }
+
+      if (!file) {
+        res.status(400).json({ success: false, message: 'Image file is required' });
+        return;
+      }
+
+      const result = await AttendanceService.createAttendanceRequest(employee_code, event_type, file.buffer, requestedBy);
+      res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+      logger.error('Create attendance request error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
+
+  static async listAttendanceRequests(req: Request, res: Response): Promise<void> {
+    try {
+      const { page, limit, status } = req.query;
+      const data = await AttendanceService.listAttendanceRequests({ page, limit, status });
+      res.status(200).json({ success: true, data });
+    } catch (error: unknown) {
+      logger.error('List attendance requests error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
+
+  static async approveAttendanceRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const approvedBy = (req as any).user?.loginid || 'system';
+      const { notes } = req.body;
+
+      if (!id) {
+        res.status(400).json({ success: false, message: 'Request id is required' });
+        return;
+      }
+
+      const result = await AttendanceService.approveAttendanceRequest(id, approvedBy, notes);
+      res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+      logger.error('Approve attendance request error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
+
+
+  static async rejectAttendanceRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const approvedBy = (req as any).user?.loginid || 'system';
+      const { notes } = req.body;
+
+      if (!id) {
+        res.status(400).json({ success: false, message: 'Request id is required' });
+        return;
+      }
+
+      const result = await AttendanceService.rejectAttendanceRequest(id, approvedBy, notes);
+      res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+      logger.error('Reject attendance request error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
 }

@@ -3,7 +3,7 @@ import { Response } from "express";
 import constants from "../../helpers/constants";
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
-import { TypeORMService } from "../../database/connection";// Assuming you have this entity
+import { TypeORMService } from "../../database/connection";
 import { hrCategorySchema } from "../../validation/HR/hrCategorySchema.validation";
 import { In } from "typeorm";
 import { Categorymaster } from "../../models/Hr/hr_category";

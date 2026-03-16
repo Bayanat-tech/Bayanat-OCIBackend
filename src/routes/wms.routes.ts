@@ -1,10 +1,12 @@
 // Import required modules and dependencies
 import * as express from "express";
 import passport from "passport";
+import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 import { getWmsMaster, deleteWmsMaster } from "../controllers/wms.controller";
 import gmWmsRouter from "./wms/gm_wms.routes";
 import dashboardRouter from "./../routes/wms/dashboard_wms.routes";
 import jobInboundRouter from "./wms/transaction/inbound_wms.routes";
+import jobBillingRouter from "./wms/transaction/billing_routes";
 import stocktransferWmsRouter from "./wms/transaction/stocktransfer_wms.routes";
 import stockAdjustmentRouter from "./StockAdjustment/stockAdjustment.routes";
 import commonRouter from "./../routes/wms/common.routes";
@@ -12,10 +14,10 @@ import commonRouter from "./../routes/wms/common.routes";
 import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; // ✅ CORRECT
 import {
   getAllReports,
-  // getAllOutboundReports,
+  getAllOutboundReports,
   // getAllVendorReports,
   // getAllEmployeeReports,
-  // getAllDynamicReports,
+  getAllDynamicReports,
 } from "../controllers/wms/transaction/inbound/allReport_wms.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
@@ -27,17 +29,18 @@ const router = express.Router();
 router.get(
   "/inbound-reports",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getAllReports
 );
 
 // Route to get all outbound reports
-// router.get(
-//   "/outbound-reports",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   getAllOutboundReports
-// );
+router.get(
+  "/outbound-reports",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAllOutboundReports
+);
 
 //route for vendor reports
 // router.get(
@@ -55,20 +58,29 @@ router.get(
 //   getAllEmployeeReports
 // );
 
-// //route for Dynamic reports
-// router.get(
-//   "/dynamic-reports",
-//   passport.authenticate("jwt", { session: false }),
-//   checkUserAuthorization,
-//   getAllDynamicReports
-// );
+//route for Dynamic reports
+router.get(
+  "/dynamic-reports",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAllDynamicReports
+);
 
 // Route for outbound operations
 router.use(
   "/outbound",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   jobOutboundRouter
+);
+
+router.use(
+  "/billing",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  jobBillingRouter 
 );
 
 //console.log(router.use);
@@ -77,6 +89,7 @@ router.use(
 router.use(
   "/inbound",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   jobInboundRouter
 );
@@ -85,6 +98,7 @@ router.use(
 router.use(
   "/reports",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   stockReportCriteria
 );
@@ -93,12 +107,14 @@ router.use(
 router.use(
   "/gm",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   gmWmsRouter
 );
 router.use(
   "/stocktransfer",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   stocktransferWmsRouter
 );
@@ -107,6 +123,7 @@ router.use(
 router.use(
   "/dashboard",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   dashboardRouter
 );
@@ -115,6 +132,7 @@ router.use(
 router.use(
   "/stock-adjustment",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   stockAdjustmentRouter
 );
@@ -122,6 +140,7 @@ router.use(
 router.use(
   "/common",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   commonRouter
 );
@@ -130,6 +149,7 @@ router.use(
 router.get(
   "/:master",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getWmsMaster
 );
@@ -138,6 +158,7 @@ router.get(
 router.post(
   "/:master",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   deleteWmsMaster
 );
 

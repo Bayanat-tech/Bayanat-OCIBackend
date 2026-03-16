@@ -1,5 +1,7 @@
-import { getRepository, oracleDb } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { TaAdjDetail } from "../../entity/WMS/taAdjDetail.entity";
+import oracledb from "oracledb";
+import { executeRaw } from "./tenant-service.helper";
 
 export class TaAdjDetailService {
   private static getRepository() {
@@ -57,6 +59,43 @@ export class TaAdjDetailService {
     return await repository.save(adjustment);
   }
 
+  static async createAdjustmentDetail(detailData: {
+    ADJ_NO: number;
+    ADJ_SERIALNO: number;
+    PRIN_CODE: string;
+    COMPANY_CODE: string;
+    PROD_CODE?: string;
+    SITE_CODE?: string;
+    LOCATION_CODE?: string;
+    P_UOM?: string;
+    L_UOM?: string;
+    JOB_NO?: string;
+    LOT_NO?: string;
+    MANU_CODE?: string;
+    DOC_REF?: string;
+    KEY_NUMBER?: string;
+    PALLET_ID?: string;
+    QTY_PUOM?: number;
+    QTY_LUOM?: number;
+    ADJ_TYPE?: string;
+    USER_ID?: string;
+  }): Promise<TaAdjDetail> {
+    const repository = this.getRepository();
+
+    // Generate unique IDENTITY_NUMBER
+    const IDENTITY_NUMBER = await this.getNextIdentityNumber();
+
+    const adjustment = repository.create({
+      ...detailData,
+      IDENTITY_NUMBER,
+      POSTED_IND: 'N',
+      SELECTED: 'N',
+      CONFIRMED: 'N',
+    });
+
+    return await repository.save(adjustment);
+  }
+
   static async updateAdjustment(
     JOB_NO: string,
     COMPANY_CODE: string,
@@ -88,16 +127,17 @@ export class TaAdjDetailService {
 
   static async getNextIdentityNumber(): Promise<number> {
     const repository = this.getRepository();
-    
-    // Get the maximum IDENTITY_NUMBER and increment by 1
-    const result = await repository
-      .createQueryBuilder("detail")
-      .select("MAX(detail.IDENTITY_NUMBER)", "maxIdentityNumber")
-      .getRawOne();
-    
-    const maxIdentityNumber = result?.maxIdentityNumber || 0;
+
+    // Get the maximum IDENTITY_NUMBER and increment by 1 (tenant-safe)
+    const latest = await repository.find({
+      select: ["IDENTITY_NUMBER"],
+      order: { IDENTITY_NUMBER: "DESC" },
+      take: 1,
+    });
+
+    const maxIdentityNumber = latest[0]?.IDENTITY_NUMBER || 0;
     const nextIdentityNumber = maxIdentityNumber + 1;
-    
+
     // Ensure the value is an integer
     return Math.floor(nextIdentityNumber);
   }
@@ -105,18 +145,18 @@ export class TaAdjDetailService {
   static async processAdjustment(data: {
     COMPANY_CODE: string;
     PRIN_CODE: string;
-    // ADJ_NO: number;
+    ADJ_NO: number;
     USERID: string;
   }): Promise<void> {
     try {
       console.log('Processing adjustment with params:', data);
       
-      const result = await oracleDb.query(
+      const result = await executeRaw(
         `BEGIN SP_WM_ADJUSTMNT_PROCESS(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID); END;`,
         {
           P_COMPANY_CODE: data.COMPANY_CODE,
           P_PRIN_CODE: data.PRIN_CODE,
-          // P_ADJ_NO: data.ADJ_NO,
+          P_ADJ_NO: data.ADJ_NO,
           P_USERID: data.USERID,
         }
       );
@@ -130,6 +170,37 @@ export class TaAdjDetailService {
         offset: error.offset
       });
       throw new Error(`Failed to process adjustment: ${error.message}`);
+    }
+  }
+
+  static async confirmAdjDetail(data: {
+    P_COMPANY_CODE: string;
+    P_PRIN_CODE: string;
+    P_ADJ_NO: number;
+  }): Promise<void> {
+    try {
+      console.log('Confirming adjustment detail with params:', data);
+      
+      const result = await executeRaw(
+        `BEGIN PROC_UPDATE_STOCK_ADJ(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_SUCCESS); END;`,
+        {
+          P_COMPANY_CODE: data.P_COMPANY_CODE,
+          P_PRIN_CODE: data.P_PRIN_CODE,
+          P_ADJ_NO: data.P_ADJ_NO,
+          P_SUCCESS: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+        }
+      );
+      
+      console.log('PROC_UPDATE_STOCK_ADJ executed successfully:', result);
+      console.log('P_SUCCESS value:', result.outBinds?.P_SUCCESS);
+    } catch (error: any) {
+      console.error('Error in confirmAdjDetail service:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.errorNum,
+        offset: error.offset
+      });
+      throw new Error(`Failed to confirm adjustment detail: ${error.message}`);
     }
   }
 }

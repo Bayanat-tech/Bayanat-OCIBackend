@@ -27,12 +27,19 @@ import {
 
 // Import product type related controllers
 // import {
-//   createBulkProducttypes, // For creating multiple product types
+//   // createBulkProducttypes, // For creating multiple product types
 //   createProducttype, // For creating single product type
-//   deleteProducttypes, // For deleting product types
-//   exportProducttype, // For exporting product type data
-//   updateProducttype, // For updating product type
+//   // deleteProducttypes, // For deleting product types
+//   // exportProducttype, // For exporting product type data
+//   // updateProducttype, // For updating product type
 // } from "../../controllers/wms/producttype_wms.controller";
+import { Request, Response } from "express";
+import { 
+  createProducttype,
+  getProducttypes,
+  updateProducttype,
+  deleteProducttypes
+ } from "../../controllers/wms/producttype_wms.controller";
 
 // Import product management controllers
 import {
@@ -40,6 +47,11 @@ import {
   updateProduct, // For updating product details
   importExcelProducts,
   deleteProducts,
+  importProductsJSON,
+  uploadProductEDI,
+  getProductEDI,
+  postValidProducts,
+  clearProductEDI
 } from "../../controllers/wms/product_wms.controller";
 
 // Import account setup controllers
@@ -117,7 +129,9 @@ import {
 // Import department management controllers
 import {
   createDepartment, // For creating departments
-  updateDepartment, // For updating departments
+  updateDepartment,
+  deleteDepartments,
+   // For updating departments
 } from "../../controllers/wms/department_wms.controller";
 
 // Import salesman management controllers
@@ -170,6 +184,7 @@ import {
 import {
   CreateDivision,
   updateDivision,
+  deleteDivisions,
 } from "../../controllers/wms/division_wms.controller";
 
 // Import asset group controllers
@@ -210,6 +225,10 @@ import {
   getAllLocationTypes, // <-- Add this import
 } from "../../controllers/wms/locationtype_wms.controller";
 import { CustomerMasterController } from "../../controllers/wms/customer_wms.controller";
+import { BillingActivity } from "../../controllers/wms/billing_activity_wms.controller";
+import { checkPassword } from "../../middleware/checkPassword";
+import { createPrincipalActivity } from "../../controllers/wms/createPrincipalActivity";
+import { updateSiteMaster } from "../../controllers/wms/ms_site_wms_controller";
 
 // Country Routes - Handle country management
 router.post("/country", createCountry as unknown as express.RequestHandler); // Create new country
@@ -244,13 +263,26 @@ router.get(
   "/activity-kpi/export",
   exportActivityKPI as unknown as express.RequestHandler
 ); // Export KPI data
+// ..\controllers\wms\producttype_wms.controller.ts
 
 // Product Type Routes - Handle product type management
-// router.post("/Producttype", createProducttype); // Create new product type
-// router.put("/Producttype", updateProducttype); // Update existing product type
+
+
+router.post("/producttype", async (req: Request, res: Response) => {
+  await createProducttype(req, res);
+});
+
+router.get("/producttype", async (req: Request, res: Response) => {
+  await getProducttypes(req, res);
+}); // Export product type data
+router.put("/producttype", async (req: Request, res: Response) => {
+  await updateProducttype(req, res);
+}); // Update existing product type
+ // Create new product type
 // router.post("/Producttype/bulk", createBulkProducttypes); // Create multiple product types
-// router.get("/Producttype/export", exportProducttype); // Export product type data
-// router.post("/Producttype/delete", deleteProducttypes); // Delete product types
+router.post("/producttype/delete", async (req: Request, res: Response) => {
+  await deleteProducttypes(req, res);
+}); // Delete product types
 
 // Alert Routes - Handle alert management
 router.post("/alert", createAlert); // Create new alert
@@ -292,6 +324,13 @@ router.put("/department", async (req, res, next) => {
     next(err);
   }
 }); // Update existing department
+router.delete("/department", async (req, res, next)=>{
+  try{
+    await deleteDepartments(req as any, res as any)
+  } catch(err){
+    next(err);
+  }
+}) // Delete existing department
 // Principal Routes - Handle principal management
 // router.get("/principal/export", exportPrincipal); // Export principal data
 router.get("/principal/:prin_code", getPrincipal); // Get specific principal details
@@ -316,14 +355,31 @@ router.put("/location", async (req, res, next) => {
 }); // Update existing location
 
 // Product Routes - Handle product management
-router.post("/product", createProduct); // Create new product
-router.put("/product", updateProduct); // Update existing product
-router.delete("/product", deleteProducts); // Update existing product
-router.post(
-  "/product/import-excel",
-  upload.single("file"),
-  importExcelProducts
+  router.post("/product", createProduct); // Create new product
+  router.put("/product", updateProduct); // Update existing product
+  router.delete("/product", deleteProducts); // Update existing product
+  router.post(
+    "/product/import-excel",
+    upload.single("file"),
+    importExcelProducts
+  );
+  router.post(
+    '/product/import-json',
+    importProductsJSON
+  );
+  router.post(
+  "/product/edi/upload",
+  uploadProductEDI
 );
+router.get("/product/edi", getProductEDI);
+router.post(
+  "/product/edi/post-valid",
+  postValidProducts
+);
+router.delete(
+  "/edi/clear",
+  clearProductEDI
+) 
 
 // Currency Routes - Handle currency management
 router.post("/currency", createcurrency); // Create new currency
@@ -402,6 +458,21 @@ router.post(
   deletePartners as unknown as express.RequestHandler
 ); // Delete partner
 
+// Billing Activity Routes
+router.post(
+  "/activity_billing/:principalCode",
+  checkPassword,
+  BillingActivity
+); // Create billing activity for principal
+router.put(
+  "/activity_billing/:principalCode/:activityCode",
+  checkPassword,
+  BillingActivity
+); // Update billing activity
+
+
+
+router.post("/createPrincipalActivity", createPrincipalActivity); // Create new activity subgroup
 // Activity Billing Routes - Handle billing activities
 // router.post(
 //   "/activity_billing/:principalCode",
@@ -423,7 +494,7 @@ router.put("/activitysubgroup", updateActivitysubgroup); // Update existing acti
 // Division Routes - Handle division management
 router.post("/division", CreateDivision); // Create new division
 router.put("/division", updateDivision); // Update existing division
-
+router.delete("/division",deleteDivisions);
 // Port Routes - Handle port management
 // Add this line for GET
 // router.get("/port", getPort); // Uncomment and use your actual GET handler
@@ -452,6 +523,10 @@ router.get("/locationtype", getAllLocationTypes); // Get all location types as J
 router.post("/customer", CustomerMasterController.createCustomerMaster); 
 router.put("/customer", CustomerMasterController.updateCustomerMaster); 
 
-export default router;
+
 router.post("/locationtype/bulk", createBulkLocationType); // Create multiple location types
 router.get("/locationtype", getAllLocationTypes); // Get all location types as JSON
+
+router.post("/siteMaster", updateSiteMaster); 
+
+export default router;

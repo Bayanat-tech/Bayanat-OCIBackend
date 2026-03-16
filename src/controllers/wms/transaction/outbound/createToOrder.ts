@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import oracledb, { BindParameters, Connection } from "oracledb";
-import { oracleDb } from "../../../../database/connection";
+import { TenantManager } from "../../../../database/TenantManager";
+import { RequestWithUser } from "../../../../interfaces/common.interface";
 import { IToOrderEntry } from "../../../../interfaces/wms/transaction/outbound/orderEntryWms.interface";
 
 /* ============================================================
@@ -30,7 +31,12 @@ async function orderExists(
 
   const r = await connection.execute(
     q,
-    { company_code, prin_code, job_no, order_no },
+    {
+      company_code,
+      prin_code,
+      job_no,
+      order_no,
+    },
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
   );
 
@@ -54,7 +60,13 @@ async function deleteOrder(
       AND job_no = :job_no
       AND order_no = :order_no
   `;
-  await connection.execute(deleteSQL, { company_code, prin_code, job_no, order_no }, { autoCommit: false });
+  
+  await connection.execute(deleteSQL, {
+    company_code,
+    prin_code,
+    job_no,
+    order_no,
+  });
 }
 
 /* ============================================================
@@ -131,9 +143,7 @@ export async function upsertOrderDetail(
       manu_code: data.manu_code,
     };
 
-    console.log('Bind parameters prepared:', JSON.stringify(binds, null, 2));
-    console.log('pick_start value:', data.pack_start);
-    console.log('pick_end value:', data.pack_end);
+    console.log('Bind parameters prepared');
 
     if (exists) {
       console.log('=== EXECUTING UPDATE ===');
@@ -191,9 +201,7 @@ export async function upsertOrderDetail(
           AND order_no=:order_no
       `;
 
-      console.log('UPDATE SQL:', updateSQL);
-      console.log('Executing UPDATE with binds...');
-
+      console.log('Executing UPDATE...');
       const result = await connection.execute(updateSQL, binds, { autoCommit: false });
       console.log('UPDATE successful. Rows affected:', result.rowsAffected);
       console.log('=== UPDATE COMPLETE ===');
@@ -231,9 +239,7 @@ export async function upsertOrderDetail(
       )
     `;
 
-    console.log('INSERT SQL:', insertSQL);
-    console.log('Executing INSERT with binds...');
-
+    console.log('Executing INSERT...');
     const result = await connection.execute(insertSQL, binds, { autoCommit: false });
     console.log('INSERT successful. Rows affected:', result.rowsAffected);
     console.log('=== INSERT COMPLETE ===');
@@ -244,16 +250,8 @@ export async function upsertOrderDetail(
     console.error('=== ERROR in upsertOrderDetail ===');
     console.error('Error message:', error.message);
     console.error('Error code:', error.errorNum || error.code);
-    console.error('Error offset:', error.offset);
     console.error('Full error object:', JSON.stringify(error, null, 2));
     console.error('Error stack:', error.stack);
-
-    // Check if it's the CREATED_AT error specifically
-    if (error.message && error.message.includes('CREATED_AT')) {
-      console.error('=== CREATED_AT ERROR DETECTED ===');
-      console.error('This suggests the TO_ORDER table has a CREATED_AT column that is not in the INSERT statement.');
-      console.error('Please check your table structure and add CREATED_AT to INSERT if needed.');
-    }
 
     throw error;
   } finally {
@@ -264,20 +262,32 @@ export async function upsertOrderDetail(
 /* ============================================================
    MAIN HANDLER
 ============================================================ */
-export const createToOrder = async (req: Request, res: Response): Promise<void> => {
+export const createToOrder = async (req: RequestWithUser, res: Response): Promise<void> => {
   let connection: Connection | undefined;
   console.log('inside createToOrder');
+  
   try {
     const data: IToOrderEntry = req.body;
-    console.log('checking job delete', data.job_no)
+    console.log('checking job delete', data.job_no);
+    
+    // Get tenantId from request context or lookup
+    let tenantId = (req as any).tenantId;
+    if (!tenantId) {
+      console.log(`Tenant ID not in request context, looking up for user: ${req.user.loginid}`);
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    console.log('Using tenantId:', tenantId);
+    
+    // Get tenant-specific connection
+    connection = await TenantManager.getConnection(tenantId);
+    console.log('Got connection for tenant:', tenantId);
+    
     // Extract actual job_no and check DELETE
     const splitJobNo = (data.job_no || '$$$').split('$$$');
     data.job_no = splitJobNo[0];
     const deleteFlag = splitJobNo[1];
 
     if (deleteFlag && deleteFlag.toUpperCase() === "DELETE") {
-      connection = await oracleDb.getConnection();
-
       await deleteOrder(
         data.company_code,
         data.prin_code,
@@ -285,14 +295,14 @@ export const createToOrder = async (req: Request, res: Response): Promise<void> 
         data.order_no,
         connection
       );
-
+      
       await connection.commit();
 
       res.status(200).json({
         success: true,
         message: `Order deleted successfully: ${data.order_no}`,
       });
-      return; // Ensure void return type
+      return;
     }
 
     const required: (keyof IToOrderEntry)[] = [
@@ -312,7 +322,6 @@ export const createToOrder = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    connection = await oracleDb.getConnection();
     const orderNo = await upsertOrderDetail(data, connection);
     await connection.commit();
 
@@ -322,13 +331,26 @@ export const createToOrder = async (req: Request, res: Response): Promise<void> 
       order_no: orderNo,
     });
   } catch (err: any) {
-    if (connection) await connection.rollback();
-
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        console.error('Error during rollback:', rollbackErr);
+      }
+    }
+    
+    console.error('Error in createToOrder:', err.message);
     res.status(500).json({
       success: false,
       message: err.message || "Failed to upsert order",
     });
   } finally {
-    if (connection) await connection.close();
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (closeErr) {
+        console.error('Error closing connection:', closeErr);
+      }
+    }
   }
 };

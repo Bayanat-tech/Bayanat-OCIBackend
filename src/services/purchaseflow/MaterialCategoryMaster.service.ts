@@ -1,5 +1,4 @@
-import { getRepository, oracleDb } from "../../database/connection";
-import { MaterialCategoryMaster } from "../../entity/Purchaseflow/materialcategary.entity";
+import { getRepository, oracleDb } from "../../database/connection";import { QueryExecutor } from "../../database/QueryExecutor";import { MaterialCategoryMaster } from "../../entity/PurchaseFlow/materialcategary.entity";
 import constants from "../../helpers/constants";
 
 export class MaterialCategoryService {
@@ -15,7 +14,7 @@ export class MaterialCategoryService {
     userId: string;
     message: string;
   }) {
-    await oracleDb.query(
+    await QueryExecutor.executeRawQuery(
       `CALL PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message)`,
       [
         params.screen,

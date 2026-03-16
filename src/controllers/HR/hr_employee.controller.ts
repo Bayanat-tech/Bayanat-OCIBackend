@@ -6,7 +6,7 @@ import { employeeSchema } from "../../validation/HR/hr.validation";
 import * as fastCsv from "fast-csv";
 
 // Import necessary entities and repositories
-import { AppDataSource } from "../../database/connection";
+import { getRepository } from "../../database/connection";
 import { HrViewEmp } from "../../views/hr/hr_view_employee";
 
 // Import necessary helper functions
@@ -41,7 +41,7 @@ export const createEmployee = async (req: RequestWithUser, res: Response) => {
 
     // Extract the alternate ID and employee code from the request body.
     const { alternate_id, employee_code, ...remainingData } = req.body;
-    const employeeRepository = AppDataSource.getRepository(HrEmployee);
+    const employeeRepository = getRepository(HrEmployee);
 
     if (alternate_id) {
       // Check if an employee with the same alternate ID already exists.
@@ -71,7 +71,7 @@ export const createEmployee = async (req: RequestWithUser, res: Response) => {
     const savedEmployee = await employeeRepository.save(newEmployee);
 
     // Get the session code from the database using TypeORM query builder
-    const sessionRepository = AppDataSource.getRepository("GtSessionInfo");
+    const sessionRepository = getRepository("GtSessionInfo");
     const getSessionCode = await sessionRepository
       .createQueryBuilder("session")
       .select("session.code")
@@ -101,7 +101,7 @@ export const updateEmployee = async (req: RequestWithUser, res: Response) => {
     const requestUser = req.user;
     const { employeeCode } = req.params;
     const { error } = employeeSchema(req.body);
-    const employeeRepository = AppDataSource.getRepository(HrEmployee);
+    const employeeRepository = getRepository(HrEmployee);
 
     if (error) {
       res
@@ -163,7 +163,7 @@ export const getSingleEmployee = async (req: RequestWithUser, res: Response) => 
   try {
     const { employeeCode } = req.params;
     const requestUser: IUser = req.user;
-    const employeeRepository = AppDataSource.getRepository(HrEmployee);
+    const employeeRepository = getRepository(HrEmployee);
 
     const employee = await employeeRepository.findOne({
       where: {
@@ -207,7 +207,7 @@ export const exportEmployee = async (req: RequestWithUser, res: Response) => {
       ? JSON.parse(req.query.filter)
       : {};
 
-    const viewEmpRepository = AppDataSource.getRepository(HrViewEmp);
+    const viewEmpRepository = getRepository(HrViewEmp);
     
     // Build initial where condition
     let whereCondition: any = {
@@ -270,7 +270,7 @@ export const exportEmployee = async (req: RequestWithUser, res: Response) => {
 export const createBulkEmployee = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
-    const employeeRepository = AppDataSource.getRepository(HrEmployee);
+    const employeeRepository = getRepository(HrEmployee);
 
     // Transform the employee data
     const employeesWithUser = req.body.map((employee: any[]) => ({

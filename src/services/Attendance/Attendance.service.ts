@@ -4,22 +4,32 @@ import constants from "../../helpers/constants";
 import { notifyUser } from '../../helpers/functions'; 
 import logger from "../../utils/logger";
 import { FaceRecognitionService } from "./face_recognition.service";
-import { getSignedUrl, uploadEmployeeFace } from "../../services/ociUpload.service";
+import { getSignedUrl, uploadEmployeeFace, uploadFile } from "../../services/ociUpload.service";
 import { CacheService } from "./cache.service";
-import { AppDataSource, oracleDb, TypeORMService } from "../../database/connection"
+import { AppDataSource, oracleDb, TypeORMService, getRepository } from "../../database/connection"
 import { Between, In, Or } from "typeorm";
 import { Employee} from "../../entity/Attendance/employee.entity";
 import {AttendanceRecord} from "../../entity/Attendance/attendance_record.entity";
 import { AttendanceEvent, AttendanceEventType, AttendanceStatus, DataTransferFlag } from "../../entity/Attendance/attendance_events.entity";
 import { ProxyLog } from "../../entity/Attendance/ProxyLog.entity";
 import { EmployeeFace } from "../../entity/Attendance/employee_face.entity";
+import { AttendanceRequest, AttendanceRequestStatus } from "../../entity/Attendance/AttendanceRequest.entity";
+import { ensureCorrectSchema, ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
   
 const AUTO_CONFIRM_DELAY_MS = 10000; 
 const FACE_RECOGNITION_TIMEOUT = 2500;
 const DATABASE_QUERY_TIMEOUT = 3000;
 const MAX_CONCURRENT_REQUESTS = 15;
 const CACHE_TTL = 300;
-const MIN_CONFIDENCE_THRESHOLD = 65;
+const MIN_CONFIDENCE_THRESHOLD = 75;
+
+function chunkArray<T>(arr: T[], chunkSize: number = 1000): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    chunks.push(arr.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
 
 export class AttendanceService {
   private static cache = CacheService.getInstance();
@@ -62,6 +72,9 @@ export class AttendanceService {
   recognizedEmployee: any; 
   autoConfirmDelay: number;
 }> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   const uuid = uuidv4();
   const now = new Date();
@@ -80,10 +93,9 @@ export class AttendanceService {
       throw new Error("Employee not found");
     }
 
-    // 🆕 CHECK FOR EXISTING PENDING RECORDS
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const existingEvent = await AppDataSource.getRepository(AttendanceEvent).findOne({
+    const existingEvent = await getRepository(AttendanceEvent).findOne({
       where: { 
         employee_id: employeeId, 
         event_type: action === "check-in" ? AttendanceEventType.CHECK_IN : AttendanceEventType.CHECK_OUT,
@@ -118,6 +130,12 @@ export class AttendanceService {
       autoConfirmTimer: null as NodeJS.Timeout | null
     };
 
+    logger.info(`[MARK] Stored image buffer in memory for UUID: ${uuid}`, {
+      hasImageBuffer: !!imageBuffer,
+      imageBufferSize: imageBuffer?.length || 0,
+      imageBufferType: typeof imageBuffer
+    });
+
     this.pendingConfirmations.set(uuid, pendingData);
     const autoConfirmTimer = setTimeout(async () => {
       try {
@@ -144,6 +162,9 @@ export class AttendanceService {
     pendingData.autoConfirmTimer = autoConfirmTimer;
     this.pendingConfirmations.set(uuid, pendingData);
 
+    // ✅ DO NOT UPLOAD IMAGE HERE - ONLY UPLOAD IF ATTENDANCE IS CANCELLED (PROXY)
+    // Image buffer is kept in memory (pendingData.image_buffer) for use during cancellation
+    
     this.saveAttendanceToDatabase(pendingData)
       .catch(err => logger.error('Background database save failed:', err));
 
@@ -232,36 +253,18 @@ export class AttendanceService {
     return fullName.split(' ')[0] || fullName;
   }
 
-  private static async uploadImageIfNeeded(uuid: string): Promise<string | null> {
-    try {
-      const pendingData = this.pendingConfirmations.get(uuid);
-      if (!pendingData || !pendingData.image_buffer) {
-        logger.warn(`No image buffer found for UUID: ${uuid}`);
-        return null;
-      }
-
-      const key = `attendance/${uuid}_${Date.now()}.jpg`;
-      const url = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
-      logger.info(`📸 S3 upload completed for cancelled attendance UUID: ${uuid}`);
-      
-      pendingData.image_buffer = null;
-      this.pendingConfirmations.set(uuid, pendingData);
-      
-      return url;
-    } catch (error) {
-      logger.error('S3 upload for cancellation failed:', error);
-      return null;
-    }
-  }
 
   private static async getEmployeeWithCache(employeeId: string): Promise<any> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const cacheKey = `employee:${employeeId}`;
     let employee = await this.cache.get(cacheKey);
     if (employee) {
     return employee;
   }
     
-    const employees = AppDataSource.getRepository(Employee);
+    const employees = getRepository(Employee);
  
     const databasePromise = employees.findOne({
       where: { employee_id: employeeId },
@@ -285,6 +288,9 @@ export class AttendanceService {
   }
 
   private static async saveAttendanceToDatabase(data: any): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
       const eventData: any = {
         id: uuidv4(),
@@ -311,7 +317,7 @@ export class AttendanceService {
         });
       }
 
-      const attendanceRepo = AppDataSource.getRepository(AttendanceEvent);
+      const attendanceRepo = getRepository(AttendanceEvent);
       const newEvent = attendanceRepo.create(eventData);
       await attendanceRepo.save(newEvent);
       logger.info(`[DB-SAVE] Record saved for UUID: ${data.uuid}`);
@@ -321,6 +327,9 @@ export class AttendanceService {
     }
   }
  static async confirmAttendance(uuid: string, confirmedBy: string = 'user'): Promise<any> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   
   logger.info(`[SERVICE-CONFIRM] Starting confirmation for UUID: ${uuid}, confirmedBy: ${confirmedBy}`);
@@ -368,7 +377,7 @@ export class AttendanceService {
 
   private static async confirmAttendanceFromDatabase(uuid: string, confirmedBy: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
-
+    await ensureCorrectSchemaOnQueryRunner(transaction);
     try {
       await transaction.connect();
       await transaction.startTransaction();
@@ -476,6 +485,9 @@ export class AttendanceService {
   actualEmployeeName: string = 'User Cancelled',
   reason: string = 'user_cancelled'
 ): Promise<any> {
+  // Ensure correct tenant schema before executing TypeORM queries
+  await ensureCorrectSchema();
+
   const startTime = Date.now();
   
   if (!await this.acquireRequestSlot()) {
@@ -547,8 +559,7 @@ export class AttendanceService {
 
   private static async autoConfirmFromMemory(uuid: string): Promise<void> {
   if (this.isAutoConfirmCancelled(uuid)) {
-    this.pendingConfirmations.delete(uuid);
-    logger.info(`Auto-confirm skipped - cancelled in memory: ${uuid}`);
+    logger.info(`Auto-confirm skipped - cancelled in memory: ${uuid}, NOT deleting pendingData yet (needed for cancellation)`);
     return;
   }
 
@@ -559,7 +570,7 @@ export class AttendanceService {
   }
 
   if (pendingData.is_cancelled) {
-    this.pendingConfirmations.delete(uuid);
+    logger.info(`Auto-confirm skipped - already marked cancelled: ${uuid}, keeping pendingData for cancellation handler`);
     return;
   }
 
@@ -568,8 +579,10 @@ export class AttendanceService {
     
     await TypeORMService.ensureConnection();
     
-   await AppDataSource.transaction (async (entity) => {
-    const attendanceEvent = entity.getRepository(AttendanceEvent);
+    const queryRunner = AppDataSource.createQueryRunner();
+    try {
+      await queryRunner.connect();
+      const attendanceEvent = queryRunner.manager.getRepository(AttendanceEvent);
     const event = await attendanceEvent
       .createQueryBuilder('event')
       .where('event.uuid = :uuid', { uuid })
@@ -600,12 +613,17 @@ export class AttendanceService {
       return;
     }
 
+    // ✅ DO NOT DELETE HERE - Delete ONLY AFTER saveConfirmedAttendance completes
+    await this.saveConfirmedAttendance(pendingData, 'auto_system', queryRunner.manager);
+    
+    // ✅ NOW safe to delete - attendance is confirmed, image_buffer preserved for cancellation if needed
     this.pendingConfirmations.delete(uuid);
-    await this.saveConfirmedAttendance(pendingData, 'auto_system', entity);
     
     logger.info(`Auto-confirmed: ${uuid} (No S3 upload for successful attendance)`);
 
-    });
+    } finally {
+      await queryRunner.release();
+    }
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
     if (errorMsg.includes('ORA-03113') || errorMsg.includes('NJS-500') || errorMsg.includes('not connected')) {
@@ -630,12 +648,12 @@ export class AttendanceService {
 
 private static async saveConfirmedAttendance(data: any, confirmedBy: string, existingTransaction?: any): Promise<any> {
   try {
-    return await AppDataSource.transaction(async (entity) => {
-    const today = new Date(data.timestamp);
-    today.setHours(0, 0, 0, 0);
+    const executeTransaction = async (entity: any) => {
+      const today = new Date(data.timestamp);
+      today.setHours(0, 0, 0, 0);
 
-    const attendanceRecord = entity.getRepository(AttendanceRecord);
-    const attendanceEvent = entity.getRepository(AttendanceEvent);
+      const attendanceRecord = entity.getRepository(AttendanceRecord);
+      const attendanceEvent = entity.getRepository(AttendanceEvent);
 
     let record = await attendanceRecord.findOne({ 
       where: { 
@@ -693,7 +711,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         data_transfer: DataTransferFlag.N,
         uuid: data.uuid,
         confidence: data.confidence,
-        s3_image_url: null,
+        s3_image_url: data.s3_image_url || null,
         status: AttendanceStatus.CONFIRMED,
         confirmed_by: confirmedBy,
         confirmed_at: new Date(),
@@ -716,16 +734,31 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     } else {
       await attendanceEvent.update(
         { id: event.id },
-    {
-        status: AttendanceStatus.CONFIRMED,
-        data_transfer: DataTransferFlag.N,
-        confirmed_by: confirmedBy,
-        confirmed_at: new Date(),
-        attendance_record_id: record.id
-      });
+        {
+          status: AttendanceStatus.CONFIRMED,
+          data_transfer: DataTransferFlag.N,
+          confirmed_by: confirmedBy,
+          confirmed_at: new Date(),
+          attendance_record_id: record.id
+        });
     } 
     return { event, record };
-    });
+    };
+
+    // ✅ USE EXISTING TRANSACTION IF PROVIDED, OTHERWISE CREATE NEW ONE
+    if (existingTransaction) {
+      logger.info(`[CONFIRM] Using existing transaction for UUID: ${data.uuid}`);
+      return await executeTransaction(existingTransaction);
+    } else {
+      logger.info(`[CONFIRM] Creating new transaction for UUID: ${data.uuid}`);
+      const queryRunner = AppDataSource.createQueryRunner();
+      try {
+        await queryRunner.connect();
+        return await executeTransaction(queryRunner.manager);
+      } finally {
+        await queryRunner.release();
+      }
+    }
   } catch (error) {
     logger.error('Failed to save confirmed attendance:', error);
     throw error;
@@ -734,6 +767,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
 
   static async logProxyAttempt(data: any, actualEmployeeCode: string, actualEmployeeName: string, reason: string): Promise<any> {
     const transaction = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(transaction);
     await transaction.connect();
     await transaction.startTransaction();
     
@@ -834,7 +868,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     }
     
     // Check database status
-    const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
+    const attendanceEvent = getRepository(AttendanceEvent);
     const event = await attendanceEvent.findOne({ where: { uuid } });
 
     logger.info(`🔍 [EMAIL DEBUG] Database event:`, {
@@ -844,7 +878,7 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
     });
     
     // Check proxy log
-    const ProxyLogRepo = AppDataSource.getRepository(ProxyLog);
+    const ProxyLogRepo = getRepository(ProxyLog);
     const proxyLog = await ProxyLogRepo.findOne({ where: { uuid } });
 
     logger.info(`🔍 [EMAIL DEBUG] Proxy log:`, {
@@ -863,12 +897,13 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
   actualEmployeeName: string, 
   reason: string
 ): Promise<any> {
-  let transaction: any;
+  let transaction: any = null;
   try {
-    const transaction = AppDataSource.createQueryRunner();
-    const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
-    const ProxyLogs = AppDataSource.getRepository(ProxyLog);
-    const employee = AppDataSource.getRepository(Employee);
+    transaction = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(transaction);
+    const attendanceEvent = getRepository(AttendanceEvent);
+    const ProxyLogs = getRepository(ProxyLog);
+    const employee = getRepository(Employee);
     logger.info(`[CANCEL] Starting database cancellation for UUID: ${uuid}, Reason: ${reason}`);
     
     await transaction.connect();
@@ -894,6 +929,23 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         where: { employee_code: event.employee_code },
       });
 
+      let s3ImageUrl = null;
+      const pendingData = this.pendingConfirmations.get(uuid);
+      
+      if (reason === 'proxy_detected_by_user' && pendingData?.image_buffer) {
+        logger.info(`[CANCEL] 📸 Uploading image for late cancellation - UUID: ${uuid}`);
+        try {
+          const key = `attendance/proxy/${uuid}_${Date.now()}.jpg`;
+          s3ImageUrl = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
+          logger.info(`[CANCEL] ✅ Image uploaded for late cancel: ${s3ImageUrl}`);
+        } catch (uploadError: any) {
+          logger.error(`[CANCEL] ❌ Failed to upload image for late cancel - UUID: ${uuid}`, {
+            errorMessage: uploadError?.message,
+            errorName: uploadError?.name,
+          });
+        }
+      }
+
       const proxyLog = transaction.manager.getRepository(ProxyLog).create({
         id: uuidv4(),
         uuid: event.uuid,
@@ -903,36 +955,97 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
         actual_employee_code: actualEmployeeCode,
         actual_employee_name: actualEmployeeName,
         confidence: event.confidence ?? 0,
-        s3_image_url: event.s3_image_url ?? null,
+        s3_image_url: s3ImageUrl ?? event.s3_image_url ?? null,
         location_data: event.location_data ? JSON.stringify(event.location_data) : null,
         action: event.event_type,
-        action_taken: 'attempted_cancellation_after_confirmation',
+        action_taken: 'cancel_confirmed',
         device_type: 'web',
         status: 'reported',
         reason: reason + '_after_confirmation',
       });
-      await transaction.manager.getRepository(ProxyLog).save(proxyLog);
+      const savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
       await transaction.commitTransaction();
       let emailSent = false;
       if (reason === 'proxy_detected_by_user') {
-        emailSent = await this.sendLateCancellationEmail(proxyLog, actualEmployeeCode, actualEmployeeName);
+        emailSent = await this.sendLateCancellationEmail(savedProxyLog, actualEmployeeCode, actualEmployeeName);
       }
       return { 
         success: false,
         alreadyConfirmed: true,
-        proxyLog, 
+        proxyLog: savedProxyLog,
         emailSent,
         message: 'Attendance was already confirmed and cannot be cancelled'
       };
     }
 
     if (event.status === AttendanceStatus.CANCELLED) {
-      await transaction.rollbackTransaction();
-      logger.info(`[CANCEL] Already cancelled for UUID: ${uuid}`);
+      logger.warn(`[CANCEL] ⚠️ Event already cancelled for UUID: ${uuid}, but recording new proxy report - Reason: ${reason}`);
+      const proxyEmployee = await transaction.manager.getRepository(Employee).findOne({
+        where: { employee_code: event.employee_code },
+      });
+
+      // 🆕 CHECK FOR IMAGE UPLOAD IN DUPLICATE CANCELLATION CASE TOO
+      let s3ImageUrl = null;
+      const pendingData = this.pendingConfirmations.get(uuid);
+      
+      if (reason === 'proxy_detected_by_user' && pendingData?.image_buffer) {
+        logger.info(`[CANCEL] 📸 Uploading image for duplicate cancellation - UUID: ${uuid}`);
+        try {
+          const key = `attendance/proxy/${uuid}_${Date.now()}.jpg`;
+          s3ImageUrl = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
+          logger.info(`[CANCEL] ✅ Image uploaded for duplicate cancel: ${s3ImageUrl}`);
+        } catch (uploadError: any) {
+          logger.error(`[CANCEL] ❌ Failed to upload image for duplicate cancel - UUID: ${uuid}`, {
+            errorMessage: uploadError?.message,
+            errorName: uploadError?.name,
+          });
+        }
+      }
+
+      const proxyLogData = {
+        id: uuidv4(),
+        uuid: event.uuid,
+        timestamp: new Date(),
+        proxy_employee_code: event.employee_code,
+        proxy_employee_name: proxyEmployee?.full_name || 'Unknown',
+        actual_employee_code: actualEmployeeCode,
+        actual_employee_name: actualEmployeeName,
+        confidence: event.confidence ?? 0,
+        s3_image_url: s3ImageUrl ?? event.s3_image_url ?? null,
+        location_data: event.location_data ? JSON.stringify(event.location_data) : null,
+        action: event.event_type,
+        action_taken: 'duplicate_cancel',
+        device_type: 'web',
+        status: 'reported',
+        reason: reason + '_duplicate',
+      };
+
+      const proxyLog = transaction.manager.getRepository(ProxyLog).create(proxyLogData);
+      
+      let savedProxyLog: any;
+      try {
+        savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
+        logger.info(`[CANCEL] Duplicate cancellation proxy log saved for UUID: ${uuid}`);
+      } catch (saveError: any) {
+        logger.error(`[CANCEL] Failed to save duplicate cancellation proxy log for UUID: ${uuid}`, saveError);
+      }
+
+      await transaction.commitTransaction();
+
+      let emailSent = false;
+      if (reason === 'proxy_detected_by_user') {
+        logger.info(`[CANCEL] Sending alert email for duplicate cancellation attempt - UUID: ${uuid}`);
+        // ✅ Pass savedProxyLog which contains all the data
+        emailSent = await this.sendProxyAlertEmailBackgroundFromDB(savedProxyLog, actualEmployeeCode, actualEmployeeName);
+        logger.info(`[CANCEL] Email sent result: ${emailSent} for UUID: ${uuid}`);
+      }
+
       return { 
         success: true, 
-        alreadyCancelled: true, 
-        message: "Attendance already cancelled" 
+        alreadyCancelled: true,
+        proxyLog: savedProxyLog,
+        emailSent,
+        message: "Attendance already cancelled - Duplicate cancellation attempt logged as proxy" 
       };
     }
 
@@ -954,19 +1067,74 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       event.cancellation_reason = reason;
       event.data_transfer = DataTransferFlag.C;
     await transaction.manager.getRepository(AttendanceEvent).save(event);
-
-    let s3ImageUrl = event.s3_image_url;
-    if (!s3ImageUrl && reason === 'proxy_detected_by_user') {
-      logger.info(`[CANCEL] Uploading image to S3 for proxy detection UUID: ${uuid}`);
-      s3ImageUrl = await this.uploadImageIfNeeded(uuid);
+    let s3ImageUrl = null;
+    const pendingData = this.pendingConfirmations.get(uuid);
+    
+    logger.info(`[CANCEL] Checking for image upload - UUID: ${uuid}`, {
+      hasPendingData: !!pendingData,
+      pendingDataKeys: pendingData ? Object.keys(pendingData) : [],
+      hasImageBuffer: !!pendingData?.image_buffer,
+      imageBufferType: pendingData?.image_buffer ? typeof pendingData.image_buffer : 'undefined',
+      imageBufferSize: pendingData?.image_buffer?.length || 0,
+      reason: reason,
+      reasonMatches: reason === 'proxy_detected_by_user',
+      shouldUpload: !!(pendingData && pendingData.image_buffer && reason === 'proxy_detected_by_user')
+    });
+    
+    if (pendingData && pendingData.image_buffer && reason === 'proxy_detected_by_user') {
+      logger.info(`[CANCEL] 📸 Starting image upload to S3 for proxy - UUID: ${uuid}`, {
+        bufferSize: pendingData.image_buffer.length,
+        bufferType: typeof pendingData.image_buffer,
+        bufferIsBuffer: Buffer.isBuffer(pendingData.image_buffer)
+      });
+      try {
+        const key = `attendance/proxy/${uuid}_${Date.now()}.jpg`;
+        logger.info(`[CANCEL] Uploading image with key: ${key}, buffer size: ${pendingData.image_buffer.length} bytes`);
+        
+        logger.info(`[CANCEL] Calling uploadEmployeeFace function...`);
+        s3ImageUrl = await uploadEmployeeFace(pendingData.image_buffer, key, 'image/jpeg');
+        logger.info(`[CANCEL] uploadEmployeeFace returned:`, {
+          result: s3ImageUrl,
+          isNull: s3ImageUrl === null,
+          isEmpty: s3ImageUrl === '',
+          resultLength: typeof s3ImageUrl === 'string' ? s3ImageUrl.length : 'not-a-string'
+        });
+        
+        if (s3ImageUrl) {
+          logger.info(`[CANCEL] ✅ Image uploaded to S3 successfully - UUID: ${uuid}, URL: ${s3ImageUrl.substring(0, 100)}...`);
+        } else {
+          logger.warn(`[CANCEL] ⚠️ Image upload returned null/empty URL - UUID: ${uuid}, uploadResult: ${s3ImageUrl}`);
+        }
+      } catch (uploadError) {
+        logger.error(`[CANCEL] ❌ Failed to upload image to S3 - UUID: ${uuid}`, {
+          errorMessage: uploadError instanceof Error ? uploadError.message : String(uploadError),
+          errorName: uploadError instanceof Error ? uploadError.name : 'unknown',
+          errorStack: uploadError instanceof Error ? uploadError.stack : undefined,
+          bufferSize: pendingData?.image_buffer?.length || 0
+        });
+        
+      }
+    } else {
+      logger.warn(`[CANCEL] ⚠️ Image upload SKIPPED for UUID: ${uuid}`, {
+        reason: reason,
+        reasonMatches: reason === 'proxy_detected_by_user',
+        hasPendingData: !!pendingData,
+        hasImageBuffer: !!pendingData?.image_buffer,
+        imageBufferSize: pendingData?.image_buffer?.length || 0,
+        imageBufferType: pendingData?.image_buffer ? typeof pendingData.image_buffer : 'undefined',
+        allConditionsMet: !!(pendingData && pendingData.image_buffer && reason === 'proxy_detected_by_user'),
+        condition1_hasPendingData: !!pendingData,
+        condition2_hasImageBuffer: !!pendingData?.image_buffer,
+        condition3_reasonMatches: reason === 'proxy_detected_by_user'
+      });
     }
 
     const proxyEmployee = await transaction.manager.getRepository(Employee).findOne({
       where: { employee_code: event.employee_code },
     });
 
-    logger.info(`[CANCEL] Creating proxy log for UUID: ${uuid}`);
-    const proxyLog = transaction.manager.getRepository(ProxyLog).create({
+    logger.info(`[CANCEL] Creating proxy log for UUID: ${uuid}, Reason: ${reason}`);
+    const proxyLogData = {
       id: uuidv4(),
       uuid: event.uuid,
       timestamp: new Date(),
@@ -982,25 +1150,58 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       device_type: 'web',
       status: 'reported',
       reason: reason,
+    };
+    
+    logger.info(`[CANCEL] Proxy log data prepared:`, { 
+      id: proxyLogData.id,
+      uuid: proxyLogData.uuid,
+      proxy_code: proxyLogData.proxy_employee_code,
+      actual_code: proxyLogData.actual_employee_code,
+      reason: proxyLogData.reason,
+      s3_image_url: s3ImageUrl ? `✅ YES - ${s3ImageUrl.substring(0, 80)}...` : '❌ NO'
     });
+    
+    const proxyLog = transaction.manager.getRepository(ProxyLog).create(proxyLogData);
 
-    await transaction.manager.getRepository(ProxyLog).save(proxyLog);
+    let savedProxyLog: any;
+    try {
+      logger.info(`[CANCEL] About to save proxy log to database for UUID: ${uuid}`);
+      savedProxyLog = await transaction.manager.getRepository(ProxyLog).save(proxyLog);
+      logger.info(`✅ [CANCEL] Proxy log saved successfully to database for UUID: ${uuid}`, {
+        savedId: savedProxyLog.id,
+        savedUuid: savedProxyLog.uuid,
+        s3ImageUrl: s3ImageUrl ? `✅ Stored - ${s3ImageUrl.substring(0, 60)}...` : '❌ No image'
+      });
+    } catch (saveError: any) {
+      logger.error(`[CANCEL] Failed to save proxy log for UUID: ${uuid}`, {
+        errorMessage: saveError.message,
+        errorCode: saveError.code,
+        errorName: saveError.name,
+        fullError: saveError
+      });
+      throw new Error(`Failed to save proxy log: ${saveError.message}`);
+    }
+
     await transaction.commitTransaction();
+    logger.info(`[CANCEL] Transaction committed successfully for UUID: ${uuid}`);
 
     logger.info(`[CANCEL] Successfully cancelled attendance for UUID: ${uuid}`);
 
     let emailSent = false;
+    logger.info(`[CANCEL] Checking reason: '${reason}' === 'proxy_detected_by_user' ? ${reason === 'proxy_detected_by_user'}`);
+    
     if (reason === 'proxy_detected_by_user') {
-      logger.info(`[CANCEL] Triggering email for proxy detection - UUID: ${uuid}`);
-      emailSent = await this.sendProxyAlertEmailBackgroundFromDB(proxyLog, actualEmployeeCode, actualEmployeeName);
+      logger.info(`[CANCEL] ✅ Reason matches - Triggering email for proxy detection - UUID: ${uuid}`);
+      // ✅ Pass savedProxyLog which contains the s3_image_url
+      emailSent = await this.sendProxyAlertEmailBackgroundFromDB(savedProxyLog, actualEmployeeCode, actualEmployeeName);
       logger.info(`[CANCEL] Email sent result: ${emailSent} for UUID: ${uuid}`);
     } else {
-      logger.info(`[CANCEL] No email sent - reason: ${reason} for UUID: ${uuid}`);
+      logger.info(`[CANCEL] ⚠️ Reason does NOT match 'proxy_detected_by_user' - No email sent. Actual reason: '${reason}'`);
     }
 
     return { 
       success: true,
-      proxyLog, 
+      proxyLog: savedProxyLog,
       cancelledEvent: event,
       emailSent,
       message: 'Attendance cancelled successfully'
@@ -1022,12 +1223,21 @@ private static async saveConfirmedAttendance(data: any, confirmedBy: string, exi
       logger.error('Cancel attendance transaction failed:', error);
       throw error;
     }
+  } finally {
+    if (transaction) {
+      try {
+        await transaction.release();
+        logger.info(`[CANCEL] Transaction released for UUID: ${uuid}`);
+      } catch (releaseError) {
+        logger.warn(`[CANCEL] Error releasing transaction for UUID: ${uuid}`, releaseError);
+      }
+    }
   }
 }
 // HANDLE LATE CANCELLATION ATTEMPTS
 private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode: string, actualEmployeeName: string): Promise<boolean> {
   try {
-    const employeeRepo = AppDataSource.getRepository(Employee);
+    const employeeRepo = getRepository(Employee);
     const [proxyEmployee, actualEmployee] = await Promise.all([
       employeeRepo.findOne({ 
         where: { employee_code: proxyLog.proxy_employee_code },
@@ -1072,13 +1282,13 @@ private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode
 <body>
   <div class="container">
     <div class="header">
-      <h2>⚠️ LATE CANCELLATION ATTEMPT</h2>
+      <h2>LATE CANCELLATION ATTEMPT</h2>
       <p>User tried to cancel after auto-confirmation</p>
     </div>
     
     <div class="content">
       <div class="warning">
-        <h3>⚠️ Attention Required</h3>
+        <h3>Attention Required</h3>
         <p><strong>This attendance was already auto-confirmed before the user could cancel it.</strong></p>
         <p>The user attempted to report a proxy detection after the system had already confirmed the attendance.</p>
       </div>
@@ -1132,7 +1342,7 @@ private static async sendLateCancellationEmail(proxyLog: any, actualEmployeeCode
 
 static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string, actualEmployeeName: string, s3ImageUrl: string | null): Promise<boolean> {
   try {
-    const proxyEmployeeRepo = AppDataSource.getRepository(Employee);
+    const proxyEmployeeRepo = getRepository(Employee);
     logger.info(`📧 [EMAIL] Starting proxy email for UUID: ${data.uuid}`);
     
     let proxyEmployee: any = null;
@@ -1219,7 +1429,9 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
  // 🎯 BACKGROUND EMAIL SEND
   private static async sendProxyAlertEmailBackgroundFromDB(proxyLog: any, actualEmployeeCode: string, actualEmployeeName: string): Promise<boolean> {
     try {
-      const employeeRepo = AppDataSource.getRepository(Employee);
+      logger.info(`[EMAIL] Starting email send for proxy detection - UUID: ${proxyLog.uuid}`);
+      
+      const employeeRepo = getRepository(Employee);
       const [proxyEmployee, actualEmployee] = await Promise.all([
         employeeRepo.findOne({ 
           where: { employee_code: proxyLog.proxy_employee_code },
@@ -1241,26 +1453,41 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         actual_employee_name: actualEmployeeName,
         actual_department: actualEmployee?.department || 'Unknown',
         confidence: proxyLog.confidence || 0,
-        action_taken: 'cancelled_by_user',
+        action_taken: proxyLog.action_taken || 'cancelled_by_user',
         s3_image_url: proxyLog.s3_image_url || null,
-        location_data: proxyLog.location_data || null,
+        location_data: proxyLog.location_data ? (typeof proxyLog.location_data === 'string' ? JSON.parse(proxyLog.location_data) : proxyLog.location_data) : null,
         image_available: !!proxyLog.s3_image_url
       };
 
       const adminEmails = ["Sagar.b@bayanattechnology.com"];
 
-      await notifyUser({
-        event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
-        request_user: proxyData, 
-        request_users: adminEmails.join(','), 
-        subject: `🚨 PROXY ATTENDANCE DETECTED - ${proxyData.proxy_employee_name}`,
-        message: this.generateProxyEmailMessage(proxyData, actualEmployeeName, !!proxyLog.s3_image_url),
-        attachments: [] 
-      });
-
-      return true;
+      logger.info(`[EMAIL] Calling notifyUser with admin emails: ${adminEmails.join(',')} for UUID: ${proxyLog.uuid}`);
+      
+      try {
+        // Use notifyUser from functions.ts - it handles HTML generation in PROXY_ATTENDANCE_DETECTED case
+        // IMPORTANT: Await the email send to ensure it completes before returning
+        // This ensures: 1) Database save ✓  2) Email sent ✓  THEN return
+        await notifyUser({
+          event: constants.EVENTS.PROXY_ATTENDANCE_DETECTED,
+          request_user: proxyData, 
+          request_users: adminEmails.join(','), 
+          subject: `🚨 PROXY ATTENDANCE DETECTED - ${proxyData.proxy_employee_name}`,
+          message: this.generateProxyEmailMessage(proxyData, actualEmployeeName, !!proxyLog.s3_image_url),
+          attachments: [] 
+        });
+        
+        logger.info(`[EMAIL] ✅ Email sent successfully for UUID: ${proxyLog.uuid}`);
+        return true;
+      } catch (emailError: any) {
+        logger.error(`[EMAIL] ❌ Failed to send email for UUID: ${proxyLog.uuid}`, {
+          errorMessage: emailError.message,
+          errorCode: emailError.code,
+          fullError: emailError
+        });
+        return false;
+      }
     } catch (error) {
-      logger.error('Background email failed:', error);
+      logger.error(`[EMAIL] Error preparing email for UUID: ${proxyLog.uuid}`, error);
       return false;
     }
   }
@@ -1272,7 +1499,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
       let imageUrl = await this.cache.get(cacheKey);
       
       if (!imageUrl) {
-        const employeeFaces = AppDataSource.getRepository(EmployeeFace);
+        const employeeFaces = getRepository(EmployeeFace);
         const employeeFace = await employeeFaces.findOne({
           where: { employee_id: employeeId, is_active: "1" }
         });
@@ -1292,8 +1519,11 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
   // 🎯 FIXED CHECK IF UUID IS CANCELLED IN DATABASE
   private static async isCancelledInDatabase(uuid: string): Promise<boolean> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
-      const attendanceEvents = AppDataSource.getRepository(AttendanceEvent);
+      const attendanceEvents = getRepository(AttendanceEvent);
       const event = await attendanceEvents.findOne({
         where: { uuid },
         select: ['status']
@@ -1307,8 +1537,11 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
 
 
   private static async markAsCancelledInDatabase(uuid: string): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     try {
-      const attendanceEvent = AppDataSource.getRepository(AttendanceEvent);
+      const attendanceEvent = getRepository(AttendanceEvent);
       const result = await attendanceEvent.update(
         { 
           uuid,
@@ -1337,6 +1570,8 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     return this.cancelledConfirmations.has(uuid);
   }
   static async processAutoConfirm(): Promise<void> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
     const now = new Date();
     let memoryConfirmed = 0;
     let memoryCancelled = 0;
@@ -1389,7 +1624,7 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     if (employee_code) {
       whereClause.proxy_employee_code = employee_code;
     }
-    const AttendanceLog = AppDataSource.getRepository(ProxyLog);
+    const AttendanceLog = getRepository(ProxyLog);
     const [ rows, count ]  = await AttendanceLog.findAndCount({
       where: whereClause,
       order: { timestamp: 'DESC' },
@@ -1416,6 +1651,9 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     page: number = 1,
     limit: number = 20
   ): Promise<any> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
     const skip = (page - 1) * limit;
 
     const adjustedStartDate = new Date(startDate);
@@ -1424,23 +1662,26 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     const adjustedEndDate = new Date(endDate);
     adjustedEndDate.setHours(23, 59, 59, 999);
 
+    // Build where clause - always filter by date and status first
     const eventWhereClause: any = {
       event_time: Between(adjustedStartDate, adjustedEndDate),
       status: In([AttendanceStatus.CONFIRMED, AttendanceStatus.PENDING]),
     };
 
-    let employeeWhereClause = {};
-    if (department) employeeWhereClause = { department };
+    // Add department filter if provided
+    if (department) {
+      eventWhereClause.employee = { department };
+    }
 
-    const AttendanceReport = AppDataSource.getRepository(AttendanceEvent)
-    const [ rows, count ]  = await AttendanceReport.findAndCount({
+    // Use TypeORM's efficient pagination (SKIP/TAKE) which doesn't create IN clauses
+    const AttendanceReport = getRepository(AttendanceEvent);
+    const [rows, count] = await AttendanceReport.findAndCount({
       where: eventWhereClause,
-      relations: 
-        {
-          employee: true,
-          record: true,
-        },
-      order: {"event_time": "DESC"},
+      relations: {
+        employee: true,
+        record: true,
+      },
+      order: { event_time: "DESC" },
       skip,
       take: limit,
     });
@@ -1459,15 +1700,267 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         full_name: event.employee?.full_name,
         department: event.employee?.department,
         position: event.employee?.position,
-        date: eventDate.toISOString().split("T")[0], 
+        date: eventDate.toISOString().split("T")[0],
         daily_status: event.record?.status,
         total_hours: event.record?.total_hours,
-        time_only: eventTime.toTimeString().split(" ")[0], 
+        time_only: eventTime.toTimeString().split(" ")[0],
         day_of_week: eventTime.toLocaleDateString("en-US", { weekday: "long" }),
       };
     });
 
     return { total: count, page, limit, data: formattedData };
+  }
+
+  /**
+   * Helper method to safely query records by IDs, working around Oracle's 1000 expression limit
+   * Splits large ID arrays into chunks and performs multiple queries
+   */
+  private static async findByIdsInBatches<T>(
+    repository: any,
+    ids: string[],
+    options: any = {}
+  ): Promise<T[]> {
+    if (ids.length === 0) return [];
+
+    const idChunks = chunkArray(ids, 1000);
+    const results: T[] = [];
+
+    for (const chunk of idChunks) {
+      const chunkResults = await repository.find({
+        where: {
+          id: In(chunk),
+          ...options.where,
+        },
+        ...options.otherOptions,
+      });
+      results.push(...chunkResults);
+    }
+
+    return results;
+  }
+
+  /**
+   * Fetch ALL attendance records for a month range without pagination
+   * Internally fetches in batches to handle large datasets efficiently
+   * Safe for datasets exceeding 2000+ records
+   */
+  static async getFullMonthAttendanceReport(
+    startDate: Date,
+    endDate: Date,
+    department?: string
+  ): Promise<any[]> {
+    // Ensure correct tenant schema before executing TypeORM queries
+    await ensureCorrectSchema();
+
+    const adjustedStartDate = new Date(startDate);
+    adjustedStartDate.setHours(0, 0, 0, 0);
+
+    const adjustedEndDate = new Date(endDate);
+    adjustedEndDate.setHours(23, 59, 59, 999);
+
+    // Build where clause - doesn't use IN with large arrays
+    const eventWhereClause: any = {
+      event_time: Between(adjustedStartDate, adjustedEndDate),
+      status: In([AttendanceStatus.CONFIRMED, AttendanceStatus.PENDING]),
+    };
+
+    // Add department filter if provided
+    if (department) {
+      eventWhereClause.employee = { department };
+    }
+
+    // Fetch ALL records for the date range without pagination
+    // This works even with 2000+ records because we use BETWEEN instead of IN with large arrays
+    const AttendanceReport = getRepository(AttendanceEvent);
+    const allRows = await AttendanceReport.find({
+      where: eventWhereClause,
+      relations: {
+        employee: true,
+        record: true,
+      },
+      order: { event_time: "DESC" },
+    });
+
+    // Format all data
+    const formattedData = allRows.map((event: any) => {
+      const eventTime = new Date(event.event_time);
+      const eventDate = new Date(eventTime);
+      eventDate.setHours(0, 0, 0, 0);
+
+      return {
+        event_id: event.id,
+        event_type: event.event_type,
+        event_time: event.event_time,
+        employee_id: event.employee_id,
+        employee_code: event.employee_code,
+        full_name: event.employee?.full_name,
+        department: event.employee?.department,
+        position: event.employee?.position,
+        date: eventDate.toISOString().split("T")[0],
+        daily_status: event.record?.status,
+        total_hours: event.record?.total_hours,
+        time_only: eventTime.toTimeString().split(" ")[0],
+        day_of_week: eventTime.toLocaleDateString("en-US", { weekday: "long" }),
+      };
+    });
+
+    return formattedData;
+  }
+
+  /**
+   * Create a pending attendance request (stores image in OCI and creates request row)
+   */
+  static async createAttendanceRequest(
+    employeeCode: string,
+    eventType: 'check_in' | 'check_out',
+    imageBuffer: Buffer,
+    requestedBy: string 
+  ): Promise<any> {
+    await ensureCorrectSchema();
+    const uuid = uuidv4();
+    const now = new Date();
+
+    // Find employee by code
+    const empRepo = getRepository(Employee);
+    const employee = await empRepo.findOne({ where: { employee_code: employeeCode } });
+    if (!employee) throw new Error('Employee not found');
+
+    //requestedBy 
+    const resolvedRequestedBy = requestedBy ?? employee.full_name;
+
+    // Upload image to OCI
+    let  s3ImageUrl: string | null = null;
+    try {
+      const key = `attendance_requests/${employee.employee_id}/${uuid}.jpg`;
+      await uploadFile(imageBuffer, key, `${uuid}.jpg`);
+      // s3Key = key;
+      s3ImageUrl = constants.OCI_S3_COMPATIBILITY.getObjectUrl(key);
+    } catch (err) {
+      logger.error('Failed to upload attendance request image to OCI', err);
+      // proceed without image but warn
+    }
+
+    const repo = getRepository(AttendanceRequest);
+    const record: any = {
+      id: uuid,
+      employee_id: employee.employee_id,
+      employee_code: employee.employee_code,
+      requested_by: resolvedRequestedBy,
+      event_type: eventType,
+      event_time: now,
+      s3_image_key:  s3ImageUrl, //s3Key,
+      status: AttendanceRequestStatus.PENDING,
+      created_at: now
+    };
+
+    await repo.save(record);
+    console.log('Record saved:', record);
+    return { success: true, requestId: uuid };
+  }
+
+  static async listAttendanceRequests(filters: any = {}): Promise<any> {
+    await ensureCorrectSchema();
+    const { page = 1, limit = 50, status } = filters;
+    const repo = getRepository(AttendanceRequest);
+    const skip = (page - 1) * limit;   
+
+    const whereClause: any = {};
+
+     if (status && status !== 'ALL') {
+        whereClause.status = status;
+      }
+
+  //    if (!status) {
+  //   whereClause.status = AttendanceRequestStatus.PENDING;
+  // } else if (status !== 'ALL') {
+  //   whereClause.status = status;
+  // }
+    console.log(`Listing attendance requests :`, { status: whereClause.status });
+    const [rows, count] = await repo.findAndCount({
+      where: whereClause,
+      relations: {
+       employee: true 
+      },
+      order: { created_at: 'DESC' },
+      skip,
+      take: parseInt(limit)
+    });
+     console.log(`Fetched ${rows.length} attendance requests with status ${status} (Total: ${count})`);
+    return { total: count, page: parseInt(page), limit: parseInt(limit), data: rows };
+  }
+
+
+  /**
+   * Approve an attendance request: create AttendanceEvent and mark request approved
+   */
+  static async approveAttendanceRequest(requestId: string, approvedBy: string, notes?: string): Promise<any> {
+    await ensureCorrectSchema();
+    const repo = getRepository(AttendanceRequest);
+    const request = await repo.findOne({ where: { id: requestId } });
+    if (!request) throw new Error('Request not found');
+    if (request.status !== AttendanceRequestStatus.PENDING) throw new Error('Request not pending');
+
+    // Fetch the employee record
+    const empRepo = getRepository(Employee);
+    const employee = await empRepo.findOne({ where: { employee_id: request.employee_id } });
+    if (!employee) throw new Error('Employee not found');
+
+    // Transaction: create AttendanceEvent and update request
+    const queryRunner = AppDataSource.createQueryRunner();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      const eventRepo = queryRunner.manager.getRepository(AttendanceEvent);
+      const newEvent: any = {
+        id: uuidv4(),
+        employee_id: request.employee_id,
+        employee_code: request.employee_code,
+        employee: employee,
+        event_time: request.event_time,
+        event_type: request.event_type === 'check_in' ? AttendanceEventType.CHECK_IN : AttendanceEventType.CHECK_OUT,
+        data_transfer: DataTransferFlag.N,
+        created_at: new Date(),
+        s3_image_url: request.s3_image_key ? constants.OCI_S3_COMPATIBILITY.getObjectUrl(request.s3_image_key) : null,
+        status: AttendanceStatus.CONFIRMED,
+        confirmed_by: approvedBy,
+        confirmed_at: new Date()
+      };
+
+      await eventRepo.save(newEvent);
+
+      request.status = AttendanceRequestStatus.APPROVED;
+      request.approved_by = approvedBy;
+      request.approved_at = new Date();
+      request.notes = notes || null;
+      await queryRunner.manager.getRepository(AttendanceRequest).save(request);
+
+      await queryRunner.commitTransaction();
+      return { success: true, eventId: newEvent.id };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      logger.error('Failed to approve attendance request', err);
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  static async rejectAttendanceRequest(requestId: string, rejectedBy: string, notes?: string): Promise<any> {
+    await ensureCorrectSchema();
+     const repo = getRepository(AttendanceRequest);
+     const request = await repo.findOne({ where: { id: requestId } });
+    if (!request) throw new Error('Request not found');
+    if (request.status !== AttendanceRequestStatus.PENDING) throw new Error('Request not pending');
+
+   // Simply update the status — NO attendance_event insert at all
+     request.status = AttendanceRequestStatus.REJECTED;
+     request.rejected_by = rejectedBy; 
+     request.approved_at = new Date();
+     request.notes = notes || null;
+
+    await repo.save(request);
+    return { success: true };
   }
 
   private static calculateStatus(time: Date, startTime: string): "present" | "late" | "half-day" {
@@ -1595,9 +2088,16 @@ This is an automated alert from the Smart Attendance System.
 
   static async processStalePendingRecords(): Promise<void> {
     try {
+      // Guard: Skip if TypeORM is not initialized
+      const { TypeORMService } = require("../../database/connection");
+      if (!TypeORMService.isInitialized()) {
+        logger.warn("⏭️ Skipping processStalePendingRecords — TypeORM not initialized yet");
+        return;
+      }
+
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       
-      const staleRecords = await AppDataSource.getRepository(AttendanceEvent).find({
+      const staleRecords = await getRepository(AttendanceEvent).find({
         where: {
           status: AttendanceStatus.PENDING,
           event_time: Between(new Date(0), twoHoursAgo)
@@ -1631,11 +2131,15 @@ AttendanceService.initializeFaceService().catch(err => {
 });
 
 setInterval(() => {
-  AttendanceService.cleanupOldData();
+  AttendanceService.cleanupOldData().catch(err => {
+    logger.error('Error in cleanupOldData:', err);
+  });
 }, 30 * 60 * 1000);
 
 setInterval(() => {
-  AttendanceService.processAutoConfirm();
+  AttendanceService.processAutoConfirm().catch(err => {
+    logger.error('Error in processAutoConfirm:', err);
+  });
 }, 30000);
 
 setInterval(() => {

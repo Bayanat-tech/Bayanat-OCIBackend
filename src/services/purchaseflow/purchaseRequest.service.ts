@@ -1,11 +1,12 @@
 import { oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 
 export class MessageBoxService {
   static async fetchMessageBox(
     userId: string, 
     companyCode: string
 ) {
-    return await oracleDb.query(
+    const result = await QueryExecutor.executeRawQuery(
       `
       SELECT 
         MESSAGE_BOX,
@@ -18,5 +19,6 @@ export class MessageBoxService {
         replacements: { userId, companyCode }
       }
     );
+    return result;
   }
 }

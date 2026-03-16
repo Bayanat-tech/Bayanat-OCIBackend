@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
+import crypto from 'crypto';
+
 import oracledb, { BindParameters, ExecuteOptions, Connection } from "oracledb";
 import { oracleDb } from "../../../../database/connection"; // make sure this exports oracledb.getConnection()
 
 import { TOrderDetail } from "../../../../interfaces/wms/transaction/outbound/orderEntryWms.interface";
-import constants from "../../../../helpers/constants";
 
 // === Safe Data Utility Functions ===
 function safeDate(val: any): Date | null {
@@ -33,6 +34,8 @@ export async function upsertOrderDetail(
     safeNumber(data.serial_no),
     connection
   );
+
+  const id = crypto.randomUUID();
 
   const binds: BindParameters = {
     company_code: safeString(data.company_code),
@@ -448,10 +451,10 @@ export const upsertOutboundOrderDetailManualHandler = async (
       imp_job_no: d.imp_job_no ?? null,
       manu_code: d.manu_code ?? null,
       container_no: d.container_no ?? null,
-      production_from: d.production_from ?? null,
-      production_to: d.production_to ?? null,
-      expiry_from: d.expiry_from ?? null,
-      expiry_to: d.expiry_to ?? null,
+      production_from: d.production_from ? new Date(d.production_from) : null,
+      production_to: d.production_to ? new Date(d.production_to) : null,
+      expiry_from: d.expiry_from ? new Date(d.expiry_from) : null,
+      expiry_to: d.expiry_to ? new Date(d.expiry_to) : null,
       unit_price: d.unit_price ?? null,
       site_code: d.site_code ?? null,
       loc_code_from: d.loc_code_from ?? null,
@@ -645,7 +648,7 @@ export const upsertOutboundOrderDetailManualHandler = async (
           AND job_no = :job_no
           AND cust_code = :cust_code
           AND order_no = :order_no
-          AND serial_no = serial_no
+          AND serial_no = :serial_no
       `;
 
       console.log("UPDATE SQL with actual values:\n", getSqlWithValues(updateSql, bindData));
@@ -695,11 +698,6 @@ export const upsertOutboundOrderDetailManualHandler = async (
     if (connection) await connection.close();
   }
 };
-
-
-
-
-
 
 
 

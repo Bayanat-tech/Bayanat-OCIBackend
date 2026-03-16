@@ -1,6 +1,8 @@
 // notifications.ts
 import { oracleDb } from "./../../../src/database/connection";
 import { notifyUser } from "../../../src/helpers/functions";
+import { QueryExecutor } from "../../../src/database/QueryExecutor";
+
 
 type EmailInfo = { level1: string; level2: string };
 
@@ -8,7 +10,7 @@ const toCsv = (list: (string | null | undefined)[]) =>
   list.filter(Boolean).join(",");
 
 async function getApproverListsFromFixedView(connection: any): Promise<EmailInfo> {
-  const r = await oracleDb.query(
+  const r = await QueryExecutor.execMaybe(
     `SELECT EMP_ID_LEVEL1_EMAILS, EMP_ID_LEVEL2_EMAILS FROM VW_VENDOR_EMAIL_INFOR`,
     {},
     connection
@@ -21,7 +23,7 @@ async function getApproverListsFromFixedView(connection: any): Promise<EmailInfo
 }
 
 async function getVendorEmailByDocNo(docNo: string, connection: any): Promise<string | null> {
-  const acCodeRes = await oracleDb.query(
+  const acCodeRes = await QueryExecutor.execMaybe(
     `SELECT AC_CODE FROM TR_AC_LPO_HEADER WHERE DOC_NO = :docNo`,
     { docNo: { val: docNo } },
     connection
@@ -30,7 +32,7 @@ async function getVendorEmailByDocNo(docNo: string, connection: any): Promise<st
   const acCode = acCodeRow?.AC_CODE;
   if (!acCode) return null;
 
-  const emailRes = await oracleDb.query(
+  const emailRes = await QueryExecutor.execMaybe(
     `SELECT EMAIL_ID FROM SEC_LOGIN WHERE LOGINID = :loginId`,
     { loginId: { val: acCode } },
     connection
@@ -47,7 +49,7 @@ export async function sendVendorLpoNotifications(
   connection: any
 ): Promise<void> {
 
-  const stateRes = await oracleDb.query(
+  const stateRes = await QueryExecutor.execMaybe(
     `SELECT FLOW_LEVEL, LAST_ACTION, FINAL_APPROVED, 
             NVL(SENDBACK_HISTORY,'No reason provided.') AS SENDBACK_HISTORY,
             NVL(REJECT_HISTORY,'No reason provided.') AS REJECT_HISTORY

@@ -1,6 +1,6 @@
 import { Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../../../database/connection";
+import TenantManager from "../../../../database/TenantManager";
 import constants from "../../../../helpers/constants";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 
@@ -13,8 +13,17 @@ export const Putawaywithpalletid = async (
   let connection: oracledb.Connection | undefined;
 
   try {
-    console.log('beforesandeep flag');
-    connection = await oracleDb.getConnection();
+    console.log('Getting tenant-based connection...');
+    // Get tenant ID from request context or lookup by user login ID
+    let tenantId = (req as any).tenantId;
+    
+    if (!tenantId) {
+      console.log(`Tenant ID not in request context, looking up for user: ${req.user.loginid}`);
+      tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+    }
+    
+    console.log(`Using tenant ID: ${tenantId}`);
+    connection = await TenantManager.getConnection(tenantId);
     await connection.execute("BEGIN NULL; END;"); // Ensure connection
 
     const replacementsFlag = {
@@ -27,20 +36,18 @@ export const Putawaywithpalletid = async (
       p_pallet_id: pallet_id,
       p_location_code: location_from,
     };
-    console.log('before flag');
+    
     // Log each variable clearly
-console.log("Calling SP_UPDATE_FLAG_BF_SP_PUT_TALLY with:");
-console.log("p_flag:", replacementsFlag.p_flag);
-console.log("p_company_code:", replacementsFlag.p_company_code);
-console.log("p_prin_code:", replacementsFlag.p_prin_code);
-console.log("p_job_no:", replacementsFlag.p_job_no);
-console.log("p_prod_code:", replacementsFlag.p_prod_code);
-console.log("p_packdet_no:", replacementsFlag.p_packdet_no);
-console.log("p_pallet_id:", replacementsFlag.p_pallet_id);
-console.log("p_location_code:", replacementsFlag.p_location_code);
+    console.log("Calling SP_UPDATE_FLAG_BF_SP_PUT_TALLY with:");
+    console.log("p_flag:", replacementsFlag.p_flag);
+    console.log("p_company_code:", replacementsFlag.p_company_code);
+    console.log("p_prin_code:", replacementsFlag.p_prin_code);
+    console.log("p_job_no:", replacementsFlag.p_job_no);
+    console.log("p_prod_code:", replacementsFlag.p_prod_code);
+    console.log("p_packdet_no:", replacementsFlag.p_packdet_no);
+    console.log("p_pallet_id:", replacementsFlag.p_pallet_id);
+    console.log("p_location_code:", replacementsFlag.p_location_code);
 
-// Optional: log the entire object at once
-console.log("Full replacementsFlag object:", JSON.stringify(replacementsFlag, null, 2));
     // Step 1: Set flag = 'Y'
     await connection.execute(
       `BEGIN SP_UPDATE_FLAG_BF_SP_PUT_TALLY(
@@ -51,7 +58,7 @@ console.log("Full replacementsFlag object:", JSON.stringify(replacementsFlag, nu
     );
 
     try {
-        console.log('after flag');
+      console.log('Flag set to Y, calling putaway procedure...');
       // Step 2: Call Putaway procedure
       await connection.execute(
         `BEGIN SP_PUTAWAY_MADINA_WITHTALLY(
@@ -66,13 +73,14 @@ console.log("Full replacementsFlag object:", JSON.stringify(replacementsFlag, nu
 
       // Commit if everything succeeds
       await connection.commit();
+      console.log('Transaction committed successfully');
 
       res.status(constants.STATUS_CODES.OK).json({
         success: true,
         message: "Putaway with pallet id processed successfully",
       });
     } catch (putawayError) {
-           console.log('error after flag');
+      console.log('Putaway procedure failed, rolling back flag...');
       // Step 3: Rollback flag = 'N' if putaway fails
       await connection.execute(
         `BEGIN SP_UPDATE_FLAG_BF_SP_PUT_TALLY(
@@ -86,6 +94,7 @@ console.log("Full replacementsFlag object:", JSON.stringify(replacementsFlag, nu
       throw putawayError;
     }
   } catch (error: any) {
+    console.error("Putaway error details:", error);
     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
       success: false,
       message: error.message || "Error processing putaway with pallet id",

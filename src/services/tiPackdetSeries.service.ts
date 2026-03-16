@@ -6,7 +6,6 @@ export class TiPackdetSeriesService {
     return getRepository(TiPackdetSeries);
   }
 
-  // Find all records by company, principal, and job number
   static async findByCompanyPrinJob(
     company_code: string,
     prin_code: string,
@@ -19,7 +18,6 @@ export class TiPackdetSeriesService {
     });
   }
 
-  // Find by pack detail number
   static async findByPackdetNo(
     company_code: string,
     prin_code: string,
@@ -32,7 +30,6 @@ export class TiPackdetSeriesService {
     });
   }
 
-  // Find by serial number
   static async findBySerialNumber(
     company_code: string,
     prin_code: string,
@@ -115,7 +112,7 @@ export class TiPackdetSeriesService {
     return result.affected ? result.affected > 0 : false;
   }
 
-  // Delete record
+
   static async delete(
     company_code: string,
     prin_code: string,
@@ -149,7 +146,6 @@ export class TiPackdetSeriesService {
     });
   }
 
-  // Get total quantity by pack detail
   static async getTotalQuantityByPackdet(
     company_code: string,
     prin_code: string,

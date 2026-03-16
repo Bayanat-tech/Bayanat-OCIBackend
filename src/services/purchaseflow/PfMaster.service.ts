@@ -1,5 +1,6 @@
 import { In } from "typeorm";
 import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { CostMaster } from "../../entity/PurchaseFlow/costmaster.entity";
 import { CustomerMaster } from "../../entity/PurchaseFlow/customermaster.entity";
 import { DdCurrency } from "../../entity/PurchaseFlow/ddcurrency_pf.entity";
@@ -138,6 +139,7 @@ static async deleteMasterRecords(
   ids: (string | number)[]
 ): Promise<boolean> {
   const queryRunner = AppDataSource.createQueryRunner();
+  await ensureCorrectSchemaOnQueryRunner(queryRunner);
   await queryRunner.connect();
   await queryRunner.startTransaction();
 

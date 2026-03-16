@@ -1,5 +1,3 @@
-import oracledb from "oracledb";
-import { oracleDb } from "../../../../database/connection";
 import { Response } from "express";
 import constants from "../../../../helpers/constants";
 import {
@@ -7,6 +5,7 @@ import {
   RequestWithUser,
 } from "../../../../interfaces/common.interface";
 import { ConfirmInboundjobService } from "../../../../services/WMS/confirmInboundjob.service";
+import { executeRaw } from "../../../../services/WMS/tenant-service.helper";
 // import ConfirmInboundInboundWms from "../../../../models/wms/transaction/inbound/confirmInboundjob_wms.model";
 
 
@@ -60,8 +59,6 @@ export const confirmInboundjob = async (
   req: RequestWithUser,
   res: Response
 ) => {
-  let connection: oracledb.Connection | null = null;
-
   try {
     console.log("Starting confirmInboundjob process...");
     const { job_no } = req.params;
@@ -73,13 +70,8 @@ export const confirmInboundjob = async (
     console.log("Principal:", prin_code);
     console.log("Company Code:", company_code);
 
-    connection = await oracleDb.getConnection();
-
-    // Start a transaction
-    await connection.execute("SAVEPOINT before_confirm");
-
     /**
-     * Step 1️⃣: Update TT_BATCH
+     * Step 1️⃣: Update TT_BATCH - Using schema-qualified name to avoid synonym issues
      */
     const updateQuery = `
       UPDATE TT_BATCH
@@ -90,8 +82,15 @@ export const confirmInboundjob = async (
     `;
 
     console.log('Executing TT_BATCH update...');
-    await connection.execute(updateQuery, { job_no }, { autoCommit: false });
-    console.log("TT_BATCH update completed.");
+    console.log('Update Query:', updateQuery);
+    console.log('Parameters:', { job_no });
+    try {
+      await executeRaw(updateQuery, { job_no });
+      console.log("TT_BATCH update completed successfully.");
+    } catch (updateError: any) {
+      console.error("TT_BATCH update failed:", updateError);
+      throw new Error(`Failed to update TT_BATCH: ${updateError.message}`);
+    }
 
     /**
      * Step 2️⃣: Call the Oracle stored procedure
@@ -103,15 +102,24 @@ export const confirmInboundjob = async (
     `;
 
     console.log("Calling stored procedure SP_PUTAWAY_CONFIRM_NORMAL...");
-    await connection.execute(callProc, {
+    console.log('Procedure Call:', callProc);
+    console.log('Procedure Parameters:', {
       vs_company_code: company_code,
       principal_code: prin_code,
       vs_job_no: job_no,
     });
-
-    // Commit all updates + procedure
-    await connection.commit();
-    console.log("Transaction committed successfully.");
+    
+    try {
+      await executeRaw(callProc, {
+        vs_company_code: company_code,
+        principal_code: prin_code,
+        vs_job_no: job_no,
+      });
+      console.log("Stored procedure executed successfully.");
+    } catch (procError: any) {
+      console.error("Stored procedure execution failed:", procError);
+      throw new Error(`Failed to call SP_PUTAWAY_CONFIRM_NORMAL: ${procError.message}`);
+    }
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -119,26 +127,16 @@ export const confirmInboundjob = async (
     });
   } catch (error: any) {
     console.error("Oracle Confirm Inbound Error:", error);
-
-    if (connection) {
-      try {
-        await connection.rollback();
-      } catch (rollbackError) {
-        console.error("Rollback failed:", rollbackError);
-      }
+    
+    // Better error message for synonym translation errors
+    let errorMessage = error.message || "Error confirming inbound job.";
+    if (error.message?.includes('ORA-00980')) {
+      errorMessage = `Synonym translation invalid. Ensure TT_BATCH and SP_PUTAWAY_CONFIRM_NORMAL are available in the current schema. Error: ${error.message}`;
     }
 
     res.status(constants.STATUS_CODES.BAD_REQUEST).json({
       success: false,
-      message: error.message || "Error confirming inbound job.",
+      message: errorMessage,
     });
-  } finally {
-    if (connection) {
-      try {
-        await connection.close();
-      } catch (closeError) {
-        console.error("Error closing Oracle connection:", closeError);
-      }
-    }
   }
 };

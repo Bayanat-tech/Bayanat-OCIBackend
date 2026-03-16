@@ -1,4 +1,5 @@
 import { getRepository, oracleDb } from "../../database/connection";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import { SupplierMaster } from "../../entity/PurchaseFlow/suppliermaster_pf.entity";
 
 export class SupplierMasterService {
@@ -25,7 +26,7 @@ export class SupplierMasterService {
         message: { val: message },
       };
 
-      await oracleDb.query(
+      await QueryExecutor.executeRawQuery(
         `BEGIN PROC_LOADMESSAGEBOX(:screen, :type, :document_number, :userId, :message); END;`,
         binds
       );

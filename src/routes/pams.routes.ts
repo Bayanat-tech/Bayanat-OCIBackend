@@ -1,6 +1,7 @@
 
 import * as express from "express";
 import passport from "passport";
+import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
 
 
 import gmPamsRouter from "./Pams/pams.routes";
@@ -11,8 +12,10 @@ const router = express.Router();
 router.use(
   "/:transaction",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
-  gmPamsRouter
+  gmPamsRouter    
 );
 
 export default router;
+  

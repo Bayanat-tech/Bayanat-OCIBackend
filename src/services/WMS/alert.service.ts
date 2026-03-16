@@ -39,14 +39,14 @@ export class AlertService {
     })));
     
     // Try with string comparison too
-    const resultWithString = await repository
-      .createQueryBuilder("alert")
-      .where("CAST(alert.opCode AS CHAR) = :opCode", { opCode: String(opCode) })
-      .andWhere("alert.opType = :opType", { opType: String(opType).trim() })
-      .andWhere("alert.companyCode = :companyCode", { companyCode: String(companyCode).trim() })
-      .getOne();
+    // const resultWithString = await repository
+    //   .createQueryBuilder("alert")
+    //   .where("CAST(alert.opCode AS CHAR) = :opCode", { opCode: String(opCode) })
+    //   .andWhere("alert.opType = :opType", { opType: String(opType).trim() })
+    //   .andWhere("alert.companyCode = :companyCode", { companyCode: String(companyCode).trim() })
+    //   .getOne();
     
-    console.log("Query with string cast result:", resultWithString ? "Found" : "Not found");
+    // console.log("Query with string cast result:", resultWithString ? "Found" : "Not found");
     
     const result = await repository
       .createQueryBuilder("alert")
@@ -56,7 +56,7 @@ export class AlertService {
       .getOne();
     
     console.log("Query result:", result ? "Found" : "Not found");
-    return result || resultWithString;
+    return result;
   }
 
   static async findByDescriptionAndCompany(
