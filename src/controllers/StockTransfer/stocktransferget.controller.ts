@@ -53,6 +53,9 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       PROCESSED, processed,
       RECEIPT_TYPE, receipt_type,
       EXP_DATE_TO, exp_date_to,
+      EXP_DATE_FROM, exp_date_from,
+      MFG_DATE_FROM, mfg_date_from,
+      MFG_DATE_TO, mfg_date_to,
       LOT_NO_TO, lot_no_to,
       BATCH_NO_FROM, batch_no_from,
       BATCH_NO_TO, batch_no_to,
@@ -62,6 +65,7 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       CARTON_NO_TO, carton_no_to,
       PALLET_ID_FROM, pallet_id_from,
       PALLET_ID_TO, pallet_id_to,
+      
     } = req.body;
 
     // Normalize values (prefer uppercase)
@@ -170,6 +174,9 @@ export const createSTNDetail = async (req: Request, res: Response) => {
     const keyNumber = KEY_NUMBER || key_number;
     const palletId = PALLET_ID || pallet_id;
     const expDateTo = EXP_DATE_TO || exp_date_to;
+    const expDateFrom = EXP_DATE_FROM || exp_date_from;
+    const mfgDateTo = MFG_DATE_TO || mfg_date_to;
+    const mfgDateFrom = MFG_DATE_FROM || mfg_date_from
     const lotNoTo = LOT_NO_TO || lot_no_to;
     const batchNoFrom = BATCH_NO_FROM || batch_no_from;
     const batchNoTo = BATCH_NO_TO || batch_no_to;
@@ -179,6 +186,9 @@ export const createSTNDetail = async (req: Request, res: Response) => {
     const palletIdFrom = PALLET_ID_FROM || pallet_id_from;
     const palletIdTo = PALLET_ID_TO || pallet_id_to;
 
+if (expDateFrom) stnDetailData.exp_date_from = new Date(expDateFrom); 
+if (mfgDateTo)   stnDetailData.mfg_date_to   = new Date(mfgDateTo);  
+if (mfgDateFrom) stnDetailData.mfg_date_from = new Date(mfgDateFrom);
     if (prodCode) stnDetailData.prod_code = prodCode;
     if (jobNo) stnDetailData.job_no = jobNo;
     if (containerNo) stnDetailData.container_no = containerNo;
@@ -301,12 +311,12 @@ export const createSTN = async (req: Request, res: Response) => {
 
 export const getAllStockTransfers = async (req: Request, res: Response) => {
   try {
-    const stockTransfers = await TsStnService.findAll();
+    const stockTransfers = await TsStnService.findAllWithPrincipalName();
 
     res.status(200).json({
       success: true,
       data: stockTransfers,
-      count: stockTransfers.length
+      count: stockTransfers.length,
     });
   } catch (error) {
     console.error("Error fetching all stock transfers:", error);
@@ -317,7 +327,6 @@ export const getAllStockTransfers = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const getTSSTNWithDetails = async (req: Request, res: Response) => {
   const { stn_no, company_code, prin_code } = req.query;
 

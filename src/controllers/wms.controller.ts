@@ -2,6 +2,8 @@
 import { Response } from "express";
 import constants from "../helpers/constants";
 import oracledb from 'oracledb';
+import TenantManager from "../database/TenantManager";
+import { getCurrentTenantId } from "../middleware/tenantContext.middleware";
 
 // import { QueryTypes } from "sequelize"; 
 // import { WhereOptions } from "sequelize";
@@ -150,18 +152,13 @@ export type TGroup = {
 
 export const executeRawSql = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Accept SQL string either in body.raw_sql or query.sql
     const rawSql: string = req.body?.raw_sql || req.query?.sql;
-    // Optional bind parameters (array) for parameterized queries (Oracle style)
     const params: any[] = req.body?.params || req.query?.params || [];
 
     if (!rawSql || typeof rawSql !== 'string') {
       res.status(400).json({ error: 'Missing or invalid raw SQL string' });
       return;
     }
-
-    // Use AppDataSource (TypeORM DataSource) and a QueryRunner to execute the SQL
-    // Ensure the AppDataSource is initialized; initialize via TypeORMService if needed
     let queryRunner;
     try {
       if (!AppDataSource.isInitialized) {
@@ -172,12 +169,9 @@ export const executeRawSql = async (req: Request, res: Response): Promise<void> 
       queryRunner = connection.createQueryRunner();
       await ensureCorrectSchemaOnQueryRunner(queryRunner);
       await queryRunner.connect();
-
-      // Start transaction to ensure consistent behavior for DML/DDL if needed
       await queryRunner.startTransaction();
 
-      // Execute the query with optional bind parameters
-      // params should be an array when provided; otherwise pass empty array
+  
       const bindParams = Array.isArray(params) ? params : [params];
       const results = await queryRunner.query(rawSql, bindParams);
 
@@ -239,7 +233,21 @@ export const executeRawSqlbody = async (req: Request, res: Response): Promise<vo
     console.log("Extracted Parameter:", extractedParameter);
     console.log("Extracted Company Code:", extractedCompanyCode);
 
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[executeRawSqlbody] Tenant context not available, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        res.status(400).json({ error: "Tenant information missing" });
+        return;
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      res.status(400).json({ error: "Tenant information missing" });
+      return;
+    }
+    connection = await TenantManager.getConnection(tenantId);
 
     const result = await connection.execute(
       `
@@ -369,8 +377,21 @@ export const proc_build_dynamic_sql_wms = async (req: Request, res: Response): P
       return;
     }
 
-    // Use raw Oracle connection - no TypeORM dependency
-    connection = await oracledb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[proc_build_dynamic_sql_wms] Tenant context not available, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        res.status(400).json({ error: "Tenant information missing" });
+        return;
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      res.status(400).json({ error: "Tenant information missing" });
+      return;
+    }
+    connection = await TenantManager.getConnection(tenantId);
 
     // 1️⃣ Call procedure to generate SQL using proper Oracle syntax
     const result = await connection.execute(

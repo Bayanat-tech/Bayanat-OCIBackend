@@ -689,9 +689,9 @@ export const deleteToOrderDetHandler = async (
   try {
     await oracleDb.withTransaction(async (connection: any) => {
       const result = await QueryExecutor.execMaybe(
-        `DELETE FROM TO_ORDER_DET WHERE company_code = :company_code AND prin_code = :prin_code AND job_no = :job_no AND serial_no = :serial_no`,
-        {
-          company_code,
+        `DELETE FROM WMSTST.TO_ORDER_DET WHERE company_code = :company_code AND prin_code = :prin_code AND job_no = :job_no AND serial_no = :serial_no`,
+        { 
+          company_code,  
           prin_code,
           job_no,
           serial_no: Number(serial_no)

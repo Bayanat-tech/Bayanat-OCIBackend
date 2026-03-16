@@ -7,13 +7,24 @@ TsStnService {
   private static getTsStnRepository() {
     return getRepository(TsStn);
   }
-
+// Find all STN records with principal name
+static async findAllWithPrincipalName(): Promise<(TsStn & { prin_name: string })[]> {
+  const result = await AppDataSource.query(`
+    SELECT s.*, p.prin_name
+    FROM ts_stn s
+    LEFT JOIN ms_principal p 
+      ON s.prin_code = p.prin_code 
+      AND s.company_code = p.company_code
+    ORDER BY s.stn_no DESC
+  `);
+  return result;
+}
   // Get all STN records
   static async findAll(): Promise<TsStn[]> {
     const repository = this.getTsStnRepository();
     return await repository.find({
       order: {
-        stn_date: "DESC",
+        stn_no: "DESC",
       },
     });
   }

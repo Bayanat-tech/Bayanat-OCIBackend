@@ -2,6 +2,7 @@
 import * as express from "express";
 import passport from "passport";
 import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
+import { tenantMiddleware } from "../middleware/tenant.middleware";
 import { getWmsMaster, deleteWmsMaster } from "../controllers/wms.controller";
 import gmWmsRouter from "./wms/gm_wms.routes";
 import dashboardRouter from "./../routes/wms/dashboard_wms.routes";
@@ -70,6 +71,7 @@ router.get(
 router.use(
   "/outbound",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   jobOutboundRouter
@@ -78,6 +80,7 @@ router.use(
 router.use(
   "/billing",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   jobBillingRouter 
@@ -89,6 +92,7 @@ router.use(
 router.use(
   "/inbound",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   jobInboundRouter
@@ -98,6 +102,7 @@ router.use(
 router.use(
   "/reports",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   stockReportCriteria
@@ -107,6 +112,7 @@ router.use(
 router.use(
   "/gm",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   gmWmsRouter
@@ -114,6 +120,7 @@ router.use(
 router.use(
   "/stocktransfer",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   stocktransferWmsRouter
@@ -123,6 +130,7 @@ router.use(
 router.use(
   "/dashboard",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   dashboardRouter
@@ -132,6 +140,7 @@ router.use(
 router.use(
   "/stock-adjustment",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   stockAdjustmentRouter
@@ -140,6 +149,7 @@ router.use(
 router.use(
   "/common",
   passport.authenticate("jwt", { session: false }),
+  tenantMiddleware,
   tenantContextMiddleware,
   checkUserAuthorization,
   commonRouter

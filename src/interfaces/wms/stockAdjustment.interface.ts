@@ -60,4 +60,5 @@ export interface IProcessAdjustmentRequest {
   PRIN_CODE: string;
   ADJ_NO: number;
   USERID: string;
+  P_ADJ_SERIALNO: any;
 }

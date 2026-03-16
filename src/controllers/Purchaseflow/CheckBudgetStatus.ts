@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { oracleDb } from "../../database/connection";
 
 /**
@@ -24,10 +26,24 @@ export const CheckBudgetStatus = async (
       return;
     }
 
-    // Sanitize request_number (replace '/' with '$' if needed)
     const request_number1 = request_number.replace(/\//g, "$");
 
-    connection = await oracleDb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[CheckBudgetStatus] Tenant context missing, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        res.status(400).json({ success: false, message: "Tenant information missing" });
+        return;
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant information missing" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
     if (!connection) throw new Error("Failed to get Oracle connection");
 
     // Call Oracle function
