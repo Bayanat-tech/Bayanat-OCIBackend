@@ -37,7 +37,8 @@ export const insUpdTrAcJVBulk = async (
       });
       return;
     }
-
+console.log('header',header)
+console.log('details',details)
     connection = await TenantManager.getConnection(tenantId);
 
     // -------------------------------
