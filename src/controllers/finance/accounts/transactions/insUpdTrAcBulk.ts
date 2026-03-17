@@ -9,6 +9,8 @@ export const insUpdTrAcJVBulk = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+   console.log('insUpdTrAcJVBulk called-------------'); 
+  console.log('req.body:------------------', req.body); 
 
   let connection: oracledb.Connection | undefined;
 
@@ -16,6 +18,8 @@ export const insUpdTrAcJVBulk = async (
 
     const header = req.body?.header;
     const details = req.body?.details;
+    console.log('header:------------------', header);
+    console.log('details:------------------', details);
 
     if (!header || !Array.isArray(details)) {
       res.status(400).json({
@@ -39,10 +43,12 @@ export const insUpdTrAcJVBulk = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
-
+    console.log('header received in backend==============:', header);
+   // console.log('doc_type:--------------', header.doc_type);
     // -------------------------------
     // Execute Procedure
     // -------------------------------
+    console.log('header:', header, 'details:', details);
     await connection.execute(
       `
       BEGIN
@@ -54,6 +60,7 @@ export const insUpdTrAcJVBulk = async (
           type: "TR_AC_HEADER_TAB",
           val: [
             {
+
               DOC_TYPE: header.doc_type,
               DOC_NO: header.doc_no,
               DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,

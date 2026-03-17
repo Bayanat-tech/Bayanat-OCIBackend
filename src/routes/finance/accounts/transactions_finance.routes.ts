@@ -39,7 +39,8 @@ const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
-router.post("/insUpdTrAcBulk", insUpdTrAcJVBulk );
+router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
+
 
 // GET Routes - Information Retrieval
 router.get("/company_info", getCompanyInfo);             

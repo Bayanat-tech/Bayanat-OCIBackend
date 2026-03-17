@@ -31,9 +31,12 @@ router.use(
 );
 
 router.post(
-  "/insUpdTrAcJVBulk",
+  "/insUpdTrAcBulk",
   insUpdTrAcJVBulk
 );
+
+
+
 // import * as express from "express";
 // import passport from "passport";
 // import { getFinanceListData } from "../../controllers/finance/finance.controller";
