@@ -9,7 +9,7 @@ import passport from "passport";
 // Update the import path if the middleware is located elsewhere, for example:
 import { tenantMiddleware } from "../../../middleware/tenant.middleware";
 import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
-import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
+import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
 import {
   getChequeDetail,
   getChequePaymentDetail,
