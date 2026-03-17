@@ -32,14 +32,10 @@ router.use(
 );
 
 router.post(
-  "/insUpdTrAcJVBulk",
+  "/insUpdTrAcBulk",
   insUpdTrAcJVBulk
 );
 
-router.post(
-  "/upsertAssetSaleRegister",
-  upsertAssetSaleRegister 
-);
 
 // import * as express from "express";
 // import passport from "passport";
