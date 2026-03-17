@@ -12,6 +12,9 @@ export const insPsFlowRoleMappingBulk = async (
   try {
 
     const { company_code, flow_code, mappings } = req.body;
+    console.log("Received bulk flow role mapping request:", {
+      mappings
+    });
 
     if (!company_code || !flow_code) {
       res.status(400).json({
@@ -58,12 +61,12 @@ export const insPsFlowRoleMappingBulk = async (
         p_mappings: {
           type: "MS_PS_FLOW_ROLE_MAP_TAB",
           val: mappings.map((m: any) => ({
-            FLOW_CODE: m.flow_code,
-            FLOW_LEVEL: m.flow_level,
-            FLOW_ROLE: m.flow_role,
-            CONDITION1: m.condition1,
-            COMPANY_CODE: m.company_code,
-            USER_ID: m.user_id
+            FLOW_CODE: m.FLOW_CODE,
+            FLOW_LEVEL: m.FLOW_LEVEL,
+            FLOW_ROLE: m.FLOW_ROLE,
+            CONDITION1: m.CONDITION1,
+            COMPANY_CODE: m.COMPANY_CODE,
+            USER_ID: m.USER_ID
           }))
         }
       }
