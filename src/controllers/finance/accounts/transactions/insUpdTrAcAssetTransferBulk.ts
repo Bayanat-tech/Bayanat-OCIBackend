@@ -12,11 +12,12 @@ export const insUpdTrAcAssetTransferBulk = async (
 
   let connection: oracledb.Connection | undefined;
 
-  try {
+  try { 
     const header = req.body?.header;
     const details = req.body?.details;
 
     if (!header || !Array.isArray(details)) {
+     
       res.status(400).json({
         success: false,
         message: "Header and details are required",
@@ -34,8 +35,9 @@ export const insUpdTrAcAssetTransferBulk = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
-
+ console.log("DOC_NO:", header.doc_no);
     await connection.execute(
+      
       `
       BEGIN
         PROC_INS_UPD_ASSET_TRANSFER(:p_header, :p_details);
@@ -60,7 +62,9 @@ export const insUpdTrAcAssetTransferBulk = async (
               DIV_CODE: header.div_code,
             },
           ],
+         
         },
+        
         p_details: {
           type: "TR_AC_ASSET_TRANSFER_DET_TAB",
           val: details.map((d: any) => ({
@@ -79,6 +83,7 @@ export const insUpdTrAcAssetTransferBulk = async (
             DIV_CODE: d.div_code,
           })),
         },
+        
       },
       { autoCommit: false }
     );
