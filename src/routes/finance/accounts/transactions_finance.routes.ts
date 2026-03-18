@@ -29,6 +29,7 @@ import {
   deleteChildrenItem,
   createPurchaseDocument,
   createLPODocument,
+  createSalesDocument,
   getInvoiceOutstandingBalances,
   getDocAccounts
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
@@ -74,7 +75,7 @@ router.delete("/children_item/delete", deleteChildrenItem);     // Delete child 
 router.post("/purchase-document",createPurchaseDocument)
 
 router.post("/lpo-document",createLPODocument)
-// router.post("/sales-document",createSalesDocument)
+router.post("/sales-document",createSalesDocument)
 
 
 // Export the configured router
