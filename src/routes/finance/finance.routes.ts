@@ -10,6 +10,7 @@ import { tenantMiddleware } from "../../../src/middleware/tenant.middleware";
 import { updBankReconBulk } from "../../controllers/finance/accounts/transactions/updBankReconBulk";
 import { insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
 import { upsertAssetSaleRegister } from "../../controllers/finance/accounts/transactions/upsertAssetSaleRegister";
+import { insUpdTrAcAssetTransferBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcAssetTransferBulk";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -34,6 +35,10 @@ router.use(
 router.post(
   "/insUpdTrAcJVBulk",
   insUpdTrAcJVBulk
+);
+router.post(
+  "/insUpdTrAcAssetTransferBulk",
+  insUpdTrAcAssetTransferBulk
 );
 
 
