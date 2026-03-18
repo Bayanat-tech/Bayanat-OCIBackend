@@ -11,6 +11,7 @@ import { updBankReconBulk } from "../../controllers/finance/accounts/transaction
 import { insUpdTrAcJVBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
 import { upsertAssetSaleRegister } from "../../controllers/finance/accounts/transactions/upsertAssetSaleRegister";
 import { insUpdTrAcAssetTransferBulk } from "../../controllers/finance/accounts/transactions/insUpdTrAcAssetTransferBulk";
+import { upsertPrepaid } from "../../controllers/finance/accounts/transactions/upsertPrepaid";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -41,11 +42,16 @@ router.post(
   insUpdTrAcAssetTransferBulk
 );
 
-upsertAssetSaleRegister
 router.post(
   "/upsertAssetSaleRegister",
   upsertAssetSaleRegister
 );
+
+router.post(
+  "/upsertPrepaid",
+  upsertPrepaid
+);
+
 
 // import * as express from "express";
 // import passport from "passport";
