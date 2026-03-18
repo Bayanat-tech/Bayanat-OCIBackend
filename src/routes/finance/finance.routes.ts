@@ -32,7 +32,7 @@ router.use(
 );
 
 router.post(
-  "/insUpdTrAcBulk",
+  "/insUpdTrAcJVBulk",
   insUpdTrAcJVBulk
 );
 
