@@ -9,7 +9,7 @@ import passport from "passport";
 // Update the import path if the middleware is located elsewhere, for example:
 import { tenantMiddleware } from "../../../middleware/tenant.middleware";
 import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
-import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcBulk";
+import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -29,6 +29,7 @@ import {
   deleteChildrenItem,
   createPurchaseDocument,
   createLPODocument,
+  createSalesDocument,
   getInvoiceOutstandingBalances,
   getDocAccounts
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
@@ -39,7 +40,8 @@ const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
-router.post("/insUpdTrAcBulk", insUpdTrAcJVBulk );
+router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
+
 
 // GET Routes - Information Retrieval
 router.get("/company_info", getCompanyInfo);             
@@ -73,7 +75,7 @@ router.delete("/children_item/delete", deleteChildrenItem);     // Delete child 
 router.post("/purchase-document",createPurchaseDocument)
 
 router.post("/lpo-document",createLPODocument)
-// router.post("/sales-document",createSalesDocument)
+router.post("/sales-document",createSalesDocument)
 
 
 // Export the configured router
