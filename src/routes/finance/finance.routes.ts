@@ -41,6 +41,11 @@ router.post(
   insUpdTrAcAssetTransferBulk
 );
 
+upsertAssetSaleRegister
+router.post(
+  "/upsertAssetSaleRegister",
+  upsertAssetSaleRegister
+);
 
 // import * as express from "express";
 // import passport from "passport";
