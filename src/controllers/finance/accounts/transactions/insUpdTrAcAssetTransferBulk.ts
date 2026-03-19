@@ -50,7 +50,9 @@ export const insUpdTrAcAssetTransferBulk = async (
             {
               COMPANY_CODE: header.company_code,
               DOC_TYPE: header.doc_type,
-              DOC_NO: header.doc_no,
+            DOC_NO: header.doc_no != null && header.doc_no !== 0 
+  ? String(header.doc_no) 
+  : null,
               DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,
               SITE_FROM: header.site_from,
               SITE_TO: header.site_to,
@@ -70,7 +72,9 @@ export const insUpdTrAcAssetTransferBulk = async (
           val: details.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
-            DOC_NO: d.doc_no,
+         DOC_NO: d.doc_no && d.doc_no !== 0 
+  ? String(d.doc_no) 
+  : null,
             SERIAL_NO: d.serial_no,
             ASSET_ID: d.asset_id,
             SITE_FROM: d.site_from,
