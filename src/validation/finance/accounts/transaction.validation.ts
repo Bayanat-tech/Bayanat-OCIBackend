@@ -312,7 +312,9 @@ export const purchaseSchema = (
       .required(),
     inv_no: Joi.string().optional().allow('', null),
     inv_date: Joi.date(), // Otherwise cheque date is optional
-    ac_code: Joi.string().required(), // Account code (required)
+    address: Joi.string().optional().allow("", null),
+    ac_code: Joi.string().required(),
+    phone: Joi.string().optional().allow("", null), // Account code (required)
     doc_date: Joi.date(), // Document date
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
