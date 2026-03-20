@@ -1254,6 +1254,13 @@ export const createChequePaymentDocument = async (
     let doc_no: string;
 
     // ---------- GET DOCUMENT NUMBER ----------
+    // ensure doc_date is bound as YYYY-MM-DD string to avoid implicit NLS conversion
+    const docDateBind = req.body && req.body.doc_date
+      ? (typeof req.body.doc_date === 'string'
+          ? String(req.body.doc_date).substring(0, 10)
+          : new Date(req.body.doc_date).toISOString().substring(0, 10))
+      : null;
+
     const docResult = await connection.execute(
       `
       SELECT FN_AC_GET_DOC_NO(
@@ -1268,7 +1275,7 @@ export const createChequePaymentDocument = async (
         company_code: req.user.company_code,
         div_code: req.body.div_code,
         doc_type: req.body.doc_type,
-        doc_date: req.body.doc_date,
+        doc_date: docDateBind,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -2661,6 +2668,21 @@ export const createPurchaseDocument = async (
   let connection;
 
   try {
+    /* Normalize incoming aliases so validation accepts them
+       - frontend may send `address` / `phone`; server expects `party_address` / `party_phone`
+       - remove `doc_no` if sent (server generates document numbers)
+    */
+    if ((req.body as any).address && !(req.body as any).party_address) {
+      (req.body as any).party_address = (req.body as any).address;
+    }
+    if ((req.body as any).phone && !(req.body as any).party_phone) {
+      (req.body as any).party_phone = (req.body as any).phone;
+    }
+    // If client sent a doc_no, strip it so validation doesn't reject or accidentally use it
+    if ((req.body as any).doc_no !== undefined) {
+      delete (req.body as any).doc_no;
+    }
+
     /* -------------------- VALIDATION -------------------- */
     const { error, value } = purchaseSchema(req.body);
     if (error) {
@@ -2704,6 +2726,11 @@ export const createPurchaseDocument = async (
     connection = await TenantManager.getConnection(tenantId);
 
     /* -------------------- DOC NO -------------------- */
+    // Bind doc_date as YYYY-MM-DD string to avoid implicit DATE->STRING formatting
+    const docDateBind = doc_date
+      ? (typeof doc_date === 'string' ? String(doc_date).substring(0, 10) : new Date(doc_date).toISOString().substring(0, 10))
+      : null;
+
     const docResult = await connection.execute(
       `
       SELECT FN_AC_GET_DOC_NO(
@@ -2718,7 +2745,7 @@ export const createPurchaseDocument = async (
         company_code: req.user.company_code,
         div_code,
         doc_type,
-        doc_date,
+        doc_date: docDateBind,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -2908,7 +2935,7 @@ export const createPurchaseDocument = async (
         company_code: req.user.company_code,
         div_code,
         doc_type: 'PI',
-        doc_date,
+        doc_date: docDateBind,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -3070,6 +3097,10 @@ export const createSalesDocument = async (
     connection = await TenantManager.getConnection(tenantId);
 
     /* -------------------- DOC NO -------------------- */
+    const docDateBind = doc_date
+      ? (typeof doc_date === 'string' ? String(doc_date).substring(0, 10) : new Date(doc_date).toISOString().substring(0, 10))
+      : null;
+
     const docResult = await connection.execute(
       `
       SELECT FN_AC_GET_DOC_NO(
@@ -3084,7 +3115,7 @@ export const createSalesDocument = async (
         company_code: req.user.company_code,
         div_code,
         doc_type,
-        doc_date,
+        doc_date: docDateBind,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -3210,7 +3241,7 @@ export const createSalesDocument = async (
         company_code: req.user.company_code,
         div_code,
         doc_type: 'SI',
-        doc_date,
+        doc_date: docDateBind,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -3362,6 +3393,10 @@ export const createLPODocument = async (
     connection = await TenantManager.getConnection(tenantId);
 
     /* -------------------- DOC NO -------------------- */
+    const docDateBind = doc_date
+      ? (typeof doc_date === 'string' ? String(doc_date).substring(0, 10) : new Date(doc_date).toISOString().substring(0, 10))
+      : null;
+
     const docResult = await connection.execute(
       `
       SELECT FN_AC_GET_DOC_NO(
@@ -3376,7 +3411,7 @@ export const createLPODocument = async (
         company_code: req.user.company_code,
         div_code,
         doc_type,
-        doc_date,
+        doc_date: docDateBind,
       },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
