@@ -7,7 +7,7 @@ import constants from "../../../../helpers/constants";
 // Import the interface for AccountLevelFour attributes
 import { IAccountLevelFourAttributes } from "../../../../interfaces/finance/accounts/masters/actree_finance.interface";
 // Import the Account model (although it's not used in this file, it might be intended for future use or relationships)
-import Account from "./account_finance.model";
+import Account from "../masters/account_finance.model";
 
 // Define the AccountLevelFour class, extending Sequelize's Model class with specific attributes
 class AccountLevelFour extends Model<IAccountLevelFourAttributes> {}

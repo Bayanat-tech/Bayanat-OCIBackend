@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
-import { oracleDb } from "../../database/connection";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { format, parse } from "date-fns";
 
 interface BudgetRow {
@@ -8,8 +9,8 @@ interface BudgetRow {
   cost_code: string;
   equal_amount: number;
   total_amount: number;
-  from_date: string; // "dd/MM/yyyy"
-  to_date: string;   // "dd/MM/yyyy"
+  from_date: string; 
+  to_date: string;  
 }
 
 interface RequestWithBody extends Request {
@@ -20,10 +21,25 @@ interface RequestWithBody extends Request {
 }
 
 export const budgetExcelUpload = async (req: RequestWithBody, res: Response) => {
-  let connection;
+  let connection: any = null;
 
   try {
-    connection = await oracleDb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[budgetExcelUpload] Tenant context missing, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        res.status(400).json({ success: false, message: "Tenant information missing" });
+        return;
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant information missing" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
     await connection.execute("ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'");
 
     const { values, request_number } = req.body;
@@ -72,7 +88,6 @@ export const budgetExcelUpload = async (req: RequestWithBody, res: Response) => 
       );
     }
 
-    // Call procedure for request_number
     await connection.execute(`BEGIN PRO_load_DATA(:request_number); END;`, {
       request_number,
     });
@@ -88,7 +103,7 @@ export const budgetExcelUpload = async (req: RequestWithBody, res: Response) => 
     if (connection) await connection.rollback();
 
     console.error(
-      "❌ Error uploading budget data:",
+      "Error uploading budget data:",
       error instanceof Error ? error.message : JSON.stringify(error)
     );
 

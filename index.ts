@@ -66,12 +66,15 @@ app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
 
-
-app.use("/api/finance",financeRoutes );
+// app.use("/api/finance",financeRoutes );
 
 app.use("/api/attendance", attendanceRoutes);
 
 app.use("/api/pams/", pamsRoutes);
+
+app.use("/api/wms", wmsRoutes);
+
+app.use("/api/finance", financeRoutes);
 
 app.use("/api/alms/", almsRoutes);
 
@@ -123,6 +126,7 @@ async function startServer() {
     console.log("Starting server...");
     console.log("Initializing database connections...");
     await initializeAllConnections();
+    // await AttendanceEventScheduler.initializeScheduler();
     console.log(" All database connections initialized");
 
     console.log("Initializing TypeORM service...");
@@ -138,16 +142,6 @@ async function startServer() {
       console.error("Failed to initialize passport strategies:", err);
       throw err;
     }
-
-    // try {
-    //   const { startSchedulers } = require("./src/scheduler/startSchedulers");
-    //   await startSchedulers();
-    //   console.log("Schedulers initialized");
-    // } catch (err) {
-    //   console.warn("Schedulers failed to initialize (continuing):", err);
-    // }
-    
-    // Start server
     console.log(`Listening on port ${PORT}...`);
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

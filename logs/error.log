@@ -70944,3 +70944,41 @@ Error: ORA-12543: TNS:destination host unreachable
     at async Function.getTenantConfig (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
     at async ensureCorrectSchema (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TypeORMTenantInterceptor.ts:42:26)
     at async Function.processAutoConfirm (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\services\Attendance\Attendance.service.ts:1573:5)
+2026-03-16 16:08:12 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/sendLeaveNotifications.ts[0m:[93m171[0m:[93m13[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m171[0m       await connection.close();
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/sendLeaveNotifications.ts[0m:[93m171[0m:[93m13[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m171[0m       await connection.close();
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/HR/sendLeaveNotifications.ts[0m:[93m171[0m:[93m13[0m - [91merror[0m[90m TS2304: [0mCannot find name 'connection'.
+
+[7m171[0m       await connection.close();
+[7m   [0m [91m            ~~~~~~~~~~[0m
+
+    at createTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (D:\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
