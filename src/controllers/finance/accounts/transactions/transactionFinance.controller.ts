@@ -571,34 +571,14 @@ export const getChequePaymentDetail = async (
 
     // TransactionDetail
     const query = `
-      SELECT
-        td.company_code,
-        td.doc_no,
-        td.doc_type,
-        td.div_code,
-        td.serial_no,
-        td.ac_code,
-        td.amount,
-        td.lcur_amount,
-        td.curr_code,
-        td.dept_code,
-        td.sign_ind,
-        acc.ac_name,
-        dept.dept_name,
-        cur.curr_name
-      FROM TR_AC_DETAIL td
-      LEFT JOIN MS_ACCODES acc
-        ON td.ac_code = acc.ac_code
-      LEFT JOIN MS_DEPARTMENT dept
-        ON td.dept_code = dept.dept_code
-      LEFT JOIN MS_CURRENCY cur
-        ON td.curr_code = cur.curr_code
-      WHERE td.company_code = :company_code
-        AND TO_CHAR(td.doc_no) = :doc_no
-        AND td.div_code = :div_code
-        AND td.doc_type = :doc_type
-      ORDER BY td.serial_no
+      SELECT * FROM VW_TR_AC_DETAIL_DATA
+      WHERE company_code = :company_code
+        AND TO_CHAR(doc_no) = :doc_no
+        AND div_code = :div_code
+        AND doc_type = :doc_type
+      ORDER BY serial_no
     `;
+console.log("query:------", query);
 
     const result = await connection.execute(
       query,
