@@ -49,9 +49,7 @@ export const getFinanceListData = async (
           company_code: requestUser.company_code,
         };
 
-        // Support structured search filters (array of groups) and plain-string search
         if (filter?.search) {
-          // If search is an array of filter groups like [[{field_name, field_value, operator}, ...], [...]]
           if (Array.isArray(filter.search)) {
             (filter.search as any[]).forEach((group, gi) => {
               if (!Array.isArray(group)) return;
@@ -60,7 +58,6 @@ export const getFinanceListData = async (
                 const { field_name, field_value, operator } = cond;
                 if (field_value === undefined || field_value === null || field_value === "") return;
 
-                // Only allow known searchable columns for safety
                 const allowedFields = ["doc_no", "doc_type", "div_code", "fy_period", "ac_code", "ref_no"];
                 if (!allowedFields.includes(field_name)) return;
 
@@ -77,7 +74,6 @@ export const getFinanceListData = async (
                     binds[safeParam] = `%${field_value}%`;
                     break;
                   default:
-                    // fallback to like
                     groupClauses.push(`UPPER(${field_name}) LIKE UPPER(:${safeParam})`);
                     binds[safeParam] = `%${field_value}%`;
                 }
@@ -162,7 +158,6 @@ export const getFinanceListData = async (
           { outFormat: oracledb.OUT_FORMAT_ARRAY }
         );
 
-        //totalCount = Number(countResult.rows?.[0]?.[0] ?? 0);
         const row = countResult.rows?.[0] as { TOTAL_COUNT?: number };
         totalCount = row?.TOTAL_COUNT ?? 0;
 
@@ -270,7 +265,6 @@ export const getFinanceListData = async (
       AND (div_code = :div_code OR div_code = '*')
   `;
 
-  // Extend filter type to include doc_id, hdr_dtl, div_code
   const accountFilter = filter as ISearch & { doc_id?: string; hdr_dtl?: string; div_code?: string };
 
   let bindParams: any = {
@@ -1191,10 +1185,7 @@ break;
 }
 break;
 
-
-  
-
-    default:
+  default:
         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: "Invalid master type",
