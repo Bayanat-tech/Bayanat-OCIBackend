@@ -10,10 +10,10 @@ export const upsertPrepaid = async (req: Request, res: Response): Promise<void> 
 
     const data = req.body;
 
-    if (!data?.company_code || !data?.doc_no || !data?.doc_type) {
+    if (!data?.company_code  || !data?.doc_type) {
       res.status(400).json({
         success: false,
-        message: "company_code, doc_type and doc_no are required"
+        message: "company_code, doc_type  are required"
       });
       return;
     }
