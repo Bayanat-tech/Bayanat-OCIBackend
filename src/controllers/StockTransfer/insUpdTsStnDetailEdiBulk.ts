@@ -55,29 +55,49 @@ export const insUpdTsStnDetailEdiBulk = async (
         p_rows: {
           type: "TS_STNDETAIL_EDI_TAB",
           val: rows.map((row: any) => ({
+            
+              COMPANY_CODE: row.company_code?.toString() || "",
+              STN_NO: Number(row.stn_no) || 0,
 
-            COMPANY_CODE: row.company_code?.toString() || "",
-            STN_NO: Number(row.stn_no) || 0,
-            PRIN_CODE: row.prin_code?.toString() || "",
-            PROD_CODE: row.prod_code?.toString() || "",
-            PROD_NAME: row.prod_name?.toString() || "",
-            SITE_CODE: row.site_code?.toString() || "", 
-            JOB_NO: row.job_no?.toString() || "",
-            PALLET_ID: row.pallet_id?.toString() || "",
-            LOT_NO: row.lot_no?.toString() || "",
-            BATCH_NO_FROM: row.batch_no_from?.toString() || "",
-            P_UOM: row.p_uom?.toString() || "",
-            L_UOM: row.l_uom?.toString() || "",
-            FROM_SITE: row.from_site?.toString() || "",
-            TO_SITE: row.to_site?.toString() || "",
-            FROM_LOC_START: row.from_loc_start?.toString() || "",
-            TO_LOC_END: row.to_loc_end?.toString() || "",
-            KEY_NUMBER: row.key_number?.toString() || "",
-            QUANTITY: Number(row.quantity) || 0,
-            QTY_PUOM: Number(row.qty_puom) || 0,
-            QTY_LUOM: Number(row.qty_luom) || 0,
-            USER_ID: row.user_id?.toString() || ""
+              PRIN_CODE: row.prin_code?.toString() || "",
+              PROD_CODE: row.prod_code?.toString() || "",
+              PROD_NAME: row.prod_name?.toString() || "",
+              SITE_CODE: row.site_code?.toString() || "",
 
+              JOB_NO: row.job_no?.toString() || "",
+              PALLET_ID: row.pallet_id?.toString() || "",
+
+              LOT_NO_FROM: row.lot_no_from?.toString() || "",
+              LOT_NO_TO: row.lot_no_to?.toString() || "",
+
+              BATCH_NO_FROM: row.batch_no_from?.toString() || "",
+              BATCH_NO_TO: row.batch_no_to?.toString() || "",
+
+              P_UOM: row.p_uom?.toString() || "",
+              L_UOM: row.l_uom?.toString() || "",
+
+              FROM_SITE: row.from_site?.toString() || "",
+              TO_SITE: row.to_site?.toString() || "",
+
+              FROM_LOC_START: row.from_loc_start?.toString() || "",
+              FROM_LOC_END: row.from_loc_end?.toString() || "",
+
+              TO_LOC_START: row.to_loc_start?.toString() || "",
+              TO_LOC_END: row.to_loc_end?.toString() || "",
+
+              MFG_DATE_FROM: row.mfg_date_from || null,
+              MFG_DATE_TO: row.mfg_date_to || null,
+
+              EXP_DATE_FROM: row.exp_date_from || null,
+              EXP_DATE_TO: row.exp_date_to || null,
+
+              KEY_NUMBER: row.key_number?.toString() || "",
+
+              QUANTITY: Number(row.quantity) || 0,
+              QTY_PUOM: Number(row.qty_puom) || 0,
+              QTY_LUOM: Number(row.qty_luom) || 0,
+
+              USER_ID: row.user_id?.toString() || ""
           }))
         }
       }
