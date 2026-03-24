@@ -103,7 +103,7 @@ export const insUpdTrAcJVBulk = async (req: Request, res: Response): Promise<voi
 };
     // Map details with null defaults
     const detailRows = details.map((d: any) => ({
-  DOC_TYPE: 'JV',
+  DOC_TYPE: header.doc_type ?? null,
   DOC_NO: d.doc_no ?? null,
   SERIAL_NO: d.serial_no ?? null,
   DOC_DATE: d.doc_date ? new Date(d.doc_date) : null,
