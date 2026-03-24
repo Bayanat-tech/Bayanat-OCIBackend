@@ -157,7 +157,7 @@ async function spInsertInvoiceRows(
     invoice.map((inv: any) => ({
       company_code,
       doc_type:      inv.doc_type  ?? doc_type,
-      doc_no,
+      doc_no,                                   
       serial_no:     inv.serial_no,
       dtl_sr_no:     inv.dtl_sr_no,
       doc_date:      toDate(inv.doc_date),
@@ -365,7 +365,7 @@ export const getChequePaymentDetail = async (req: RequestWithUser, res: Response
   try {
     conn = await getConn(req);
     const result = await conn.execute(
-      `SELECT * FROM VW_CHQ_PAYMENT_DETAIL
+      `SELECT * FROM VW_TR_AC_DETAIL_DATA
        WHERE company_code = :cc AND TO_CHAR(doc_no) = :dn
          AND div_code = :dc AND doc_type = :dt
        ORDER BY serial_no`,
