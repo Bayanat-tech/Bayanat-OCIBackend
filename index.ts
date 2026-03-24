@@ -39,7 +39,7 @@ import boldReportsRoutes from "./src/routes/boldreports.routes";
 import pamsRoutes from "./src/routes/pams.routes";
 
 
-import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
+// import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
 import almsRoutes from "./src/routes/alms.routes";
 // import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
 // import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
@@ -68,7 +68,7 @@ app.use("/api/vendor", VendorRouter);
 
 // app.use("/api/finance",financeRoutes );
 
-app.use("/api/attendance", attendanceRoutes);
+// app.use("/api/attendance", attendanceRoutes);
 
 app.use("/api/pams/", pamsRoutes);
 
