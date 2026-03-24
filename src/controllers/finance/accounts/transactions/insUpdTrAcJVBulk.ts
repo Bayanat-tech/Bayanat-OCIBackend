@@ -29,7 +29,7 @@ export const insUpdTrAcJVBulk = async (req: Request, res: Response): Promise<voi
     // Prepare full header mapping with all columns
   const headerRow = {
   COMPANY_CODE: header.company_code ?? null,
-  DOC_TYPE: 'JV',  // Fixed as JV
+  DOC_TYPE: header.doc_type ?? null, // Fixed as JV
   DOC_NO: header.doc_no != null ? String(header.doc_no) : null,
   DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,
   AC_CODE: header.ac_code ?? null,
