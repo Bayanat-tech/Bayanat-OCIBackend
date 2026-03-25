@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { TsStnService } from "../../services/WMS/TsStn.service";
 import { TsStndetailService } from "../../services/WMS/TsStndetail.service";
+import { AppDataSource } from "../../database/connection";
 
 /**
  * Process Stock Transfer
@@ -112,5 +113,133 @@ export const processStockTransfer = async (req: Request, res: Response) => {
       message: userFriendlyMessage,
       error: error.message || "Internal server error",
     });
+  }
+};
+
+export const updateStockTransfer = async (req: Request, res: Response) => {
+  const queryRunner = AppDataSource.createQueryRunner();
+
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    const body = req.body;
+
+    const companyCode = body.COMPANY_CODE || body.company_code;
+    const stnNo = body.STN_NO || body.stn_no;
+
+    if (!companyCode || !stnNo) {
+      return res.status(400).json({
+        success: false,
+        message: "company_code and stn_no are required",
+      });
+    }
+
+    // 🔍 Check STN exists
+    const stn = await queryRunner.manager.query(
+      `SELECT * FROM TS_STN WHERE COMPANY_CODE = :1 AND STN_NO = :2`,
+      [companyCode, stnNo]
+    );
+
+    if (!stn.length) {
+      return res.status(404).json({
+        success: false,
+        message: `STN ${stnNo} not found`,
+      });
+    }
+
+    // 🚫 Prevent edit if confirmed
+    if (stn[0].CONFIRMED === "Y") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot edit confirmed stock transfer",
+      });
+    }
+
+    // 🎯 Allowed fields to update (IMPORTANT)
+    const allowedFields = [
+      "PRIN_CODE",
+      "DESCRIPTION",
+      "STN_DATE",
+      "ALLOCATED",
+      "ALLOCATED_DATE",
+      "CONFIRMED",
+      "CONFIRMED_DATE",
+      "REPLENISH_NO",
+      "REPLENISH_DATE",
+      "REMARKS",
+      "OUT_JOB_NO",
+      "COUNT_NO",
+      "CANCEL",
+      "TEST"
+    ];
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    let index = 1;
+
+    for (const key of allowedFields) {
+      const lowerKey = key.toLowerCase();
+
+      if (body[key] !== undefined || body[lowerKey] !== undefined) {
+        const value = body[key] ?? body[lowerKey];
+
+        updates.push(`${key} = :${index}`);
+        values.push(value);
+        index++;
+      }
+    }
+
+    // ❌ Nothing to update
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update",
+      });
+    }
+
+    // 🧠 Always update audit fields
+    updates.push(`USER_ID = :${index}`);
+    values.push(body.USER_ID || body.user_id || "SYSTEM");
+    index++;
+
+    updates.push(`USER_DT = SYSDATE`);
+
+    // WHERE params
+    values.push(companyCode);
+    values.push(stnNo);
+
+    const query = `
+      UPDATE TS_STN
+      SET ${updates.join(", ")}
+      WHERE COMPANY_CODE = :${index}
+      AND STN_NO = :${index + 1}
+    `;
+
+    console.log("🧠 Dynamic Update Query:", query);
+    console.log("📦 Values:", values);
+
+    await queryRunner.manager.query(query, values);
+
+    await queryRunner.commitTransaction();
+
+    return res.status(200).json({
+      success: true,
+      message: "Stock transfer updated successfully",
+    });
+
+  } catch (error: any) {
+    await queryRunner.rollbackTransaction();
+
+    console.error("❌ Update Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update stock transfer",
+      error: error.message,
+    });
+  } finally {
+    await queryRunner.release();
   }
 };
