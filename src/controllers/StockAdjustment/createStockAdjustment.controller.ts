@@ -818,3 +818,125 @@ export const deleteStockAdjustmentDetail = async (
     });
   }
 };
+
+export const editAdjDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const {
+      ADJ_NO,
+      ADJ_SERIALNO,
+      JOB_NO,
+      PRIN_CODE,
+      PROD_CODE,
+      SITE_CODE,
+      LOCATION_CODE,
+      P_UOM,
+      L_UOM,
+      KEY_NUMBER,
+      QTY_PUOM,
+      QTY_LUOM,
+      ADJ_TYPE,
+      PALLET_ID,
+    } = req.body;
+
+    if (!ADJ_NO)       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_NO is required" });
+    if (!JOB_NO)       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });
+    if (!PRIN_CODE)    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "PRIN_CODE is required" });
+    if (!KEY_NUMBER)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "KEY_NUMBER is required" });
+
+    const COMPANY_CODE = req.user.company_code;
+    const USER_ID      = req.user.loginid;
+
+    // Check the record exists first
+    const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);
+    if (!existing) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Adjustment detail not found",
+      });
+    }
+
+    const updated = await TaAdjDetailService.updateAdjustment(
+      JOB_NO,
+      COMPANY_CODE,
+      {
+        PROD_CODE,
+        SITE_CODE,
+        LOCATION_CODE,
+        P_UOM,
+        L_UOM,
+        KEY_NUMBER,
+        QTY_PUOM,
+        QTY_LUOM,
+        ADJ_TYPE,
+        PALLET_ID,
+        USER_ID,
+      }
+    );
+
+    if (!updated) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to update adjustment detail",
+      });
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail updated successfully",
+    });
+  } catch (error: any) {
+    console.error("Error editing adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to edit adjustment detail",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteAdjDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { ADJ_CODE, JOB_NO } = req.params;
+
+    if (!ADJ_CODE) return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_CODE is required" });
+    if (!JOB_NO)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });
+
+    const COMPANY_CODE = req.user.company_code;
+
+    // Check the record exists first
+    const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);
+    if (!existing) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Adjustment detail not found",
+      });
+    }
+
+    const deleted = await TaAdjDetailService.deleteAdjustment(JOB_NO, COMPANY_CODE);
+
+    if (!deleted) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to delete adjustment detail",
+      });
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Error deleting adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to delete adjustment detail",
+      error: error.message,
+    });
+  }
+};
