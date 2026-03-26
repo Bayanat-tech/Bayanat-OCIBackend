@@ -425,3 +425,121 @@ export const getTSSTNWithDetails = async (req: Request, res: Response) => {
     });
   }
 };
+export const editSTN = async (req: Request, res: Response) => {
+  try {
+    const { stn_no, company_code } = req.params;
+    const updateData = req.body;
+
+    // Validate required parameters
+    if (!stn_no || !company_code) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required path parameters: stn_no and company_code",
+      });
+    }
+
+    // Validate that stn_no is a number
+    const stnNoNumber = Number(stn_no);
+    if (isNaN(stnNoNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid stn_no: must be a number",
+      });
+    }
+
+    // Check if STN exists before updating
+    const stnExists = await TsStnService.checkStnExists({
+      stn_no: stnNoNumber,
+      company_code: company_code as string,
+    });
+
+    if (!stnExists) {
+      return res.status(404).json({
+        success: false,
+        message: `STN record with stn_no ${stn_no} and company_code ${company_code} not found`,
+      });
+    }
+
+    // Prepare update data (only allow specific fields to be updated)
+    const allowedFields = [
+      'prin_code',
+      'description',
+      'stn_date',
+      'allocated',
+      'confirmed',
+      'cancelled',
+      'date_cancelled'
+    ];
+
+    const sanitizedUpdateData: any = {};
+
+    // Only include allowed fields that are present in the request body
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        sanitizedUpdateData[field] = updateData[field];
+      }
+    }
+
+    // Handle date fields conversion
+    if (sanitizedUpdateData.stn_date) {
+      sanitizedUpdateData.stn_date = new Date(sanitizedUpdateData.stn_date);
+    }
+
+    if (sanitizedUpdateData.date_cancelled) {
+      sanitizedUpdateData.date_cancelled = new Date(sanitizedUpdateData.date_cancelled);
+    }
+
+    // Add update timestamp
+    sanitizedUpdateData.user_dt = new Date();
+
+    // Update the user_id if provided in the update data
+    if (updateData.user_id) {
+      sanitizedUpdateData.user_id = updateData.user_id;
+    }
+
+    // Check if no valid fields to update
+    if (Object.keys(sanitizedUpdateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update",
+      });
+    }
+
+    // Perform the update
+    const updated = await TsStnService.updateStn(
+      {
+        stn_no: stnNoNumber,
+        company_code: company_code as string,
+      },
+      sanitizedUpdateData
+    );
+
+    if (updated) {
+      // Fetch the updated record to return
+      const updatedSTN = await TsStnService.findById({
+        stn_no: stnNoNumber,
+        company_code: company_code as string,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "STN updated successfully",
+        data: updatedSTN,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to update STN record",
+      });
+    }
+  } catch (error) {
+    console.error("Error updating STN:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while updating STN",
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+};
+
+// Optional: Add a separate controller for updating STN details if needed
