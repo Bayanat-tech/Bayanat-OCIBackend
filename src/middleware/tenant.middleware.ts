@@ -12,7 +12,6 @@ export const tenantMiddleware = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Skip for auth routes
     if (req.path.startsWith('/api/auth/login') || 
         req.path.startsWith('/api/auth/forgot-password') ||
         req.path === '/health') {
@@ -42,6 +41,10 @@ export const tenantMiddleware = async (
       username: decoded.username,
       company_code: decoded.company_code
     };
+    // Also set tenantId on req.user for compatibility with tenantContextMiddleware
+    try {
+      (req.user as any).tenantId = req.tenantId;
+    } catch (_) {}
     
     next();
   } catch (error: any) {

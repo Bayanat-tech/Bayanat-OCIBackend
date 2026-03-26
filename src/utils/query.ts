@@ -68,32 +68,34 @@ WHERE (LTRIM(RTRIM(level3)) IS NOT NULL AND LTRIM(RTRIM(level3)) != ' ')
 `;
 
 export const getChequePaymentInvoiceDetail = `
-SELECT TR_AC_INVDETAIL.inv_no, 
-dtl_sr_no, 
-doc_no,
-max(inv_date) inv_date,  
-00000000.00 amount,  
-1 sign_ind,  
-TR_AC_INVDETAIL.ac_code,  
-TR_AC_INVDETAIL.company_code,  
-sum(lcur_amount * sign_ind) inv_amt,  
-' ' c_curr_code,  
-0000000000.0000 c_curr_amt,  
-'N' c_indicator_origin,  
-max( case when indicator_origin='Y' then curr_code end) c_curr_code_origin,  
-max( case when indicator_origin='Y' then ex_rate end) c_ex_rate_origin,  
-(sum(amount_origin * sign_ind)/max(ex_rate_origin)) c_bal_amt_org,
-div_code
-FROM TR_AC_INVDETAIL  
-WHERE ( TR_AC_INVDETAIL.company_code = :company_code ) AND  
-( TR_AC_INVDETAIL.ac_code = :ac_code ) AND  
-( TR_AC_INVDETAIL.div_code = :div_code ) AND  
-( trim(TR_AC_INVDETAIL.doc_type) || trim(doc_no) || trim(serial_no) <> :invrsno )  
-GROUP BY TR_AC_INVDETAIL.company_code,  
-TR_AC_INVDETAIL.ac_code,  
-TR_AC_INVDETAIL.inv_no  ,
-TR_AC_INVDETAIL.div_code
-  HAVING ( round(sum(lcur_amount * sign_ind),3)  <> 0 );`;
+SELECT
+  inv.inv_no,
+  inv.dtl_sr_no,
+  inv.doc_no,
+  MAX(inv.inv_date) AS inv_date,
+  SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END) AS amount,
+  1 AS sign_ind,
+  inv.ac_code,
+  inv.company_code,
+  SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) AS inv_amt,
+  ' ' AS c_curr_code,
+  0.0 AS c_curr_amt,
+  'N' AS c_indicator_origin,
+  MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.curr_code END) AS c_curr_code_origin,
+  MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.ex_rate END) AS c_ex_rate_origin,
+  (SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) - SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END)) AS c_bal_amt_org,
+  MAX(inv.job_no) AS job_no,
+  MAX(inv.bl_no) AS bl_no,
+  MAX(inv.doc_ref) AS doc_ref,
+  inv.div_code
+FROM TR_AC_INVDETAIL inv
+WHERE inv.company_code = :company_code
+  AND inv.ac_code = :ac_code
+  AND inv.div_code = :div_code
+  AND (TRIM(inv.doc_type) || TRIM(TO_CHAR(inv.doc_no)) || TRIM(TO_CHAR(inv.serial_no)) <> :invrsno)
+GROUP BY inv.company_code, inv.ac_code, inv.inv_no, inv.div_code, inv.doc_no, inv.dtl_sr_no
+HAVING (SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) - SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END)) > 0
+`;
 
 export const getWareHouseUtilization = `SELECT 
     C.TXN_DATE, 

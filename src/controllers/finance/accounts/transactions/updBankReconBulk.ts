@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
-import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
 export const updBankReconBulk = async (
-  req: Request,
+  req: Request, 
   res: Response
 ): Promise<void> => {
 
@@ -22,7 +21,7 @@ export const updBankReconBulk = async (
       return;
     }
 
-    // Resolve tenant
+    // Resolve tenant 
     let tenantId: string | undefined;
 
     try {

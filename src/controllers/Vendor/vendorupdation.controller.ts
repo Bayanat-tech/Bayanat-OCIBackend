@@ -6,6 +6,8 @@ import { VendorService } from "../../services/vendor.service";
 import {sendVendorLpoNotifications} from "./sendVendorLpoNotifications";
 import {sendVendorLposendbackNotification} from "./sendVendorLposendbackNotification";
 import { notifyUser } from "../../../src/helpers/functions";
+import TenantManager from "./../../../src/database/TenantManager";
+import { getCurrentTenantId } from "./../../../src/middleware/tenantContext.middleware";
 
 function formatDateForOracle(date: unknown): string | null {
   if (!date) return null;
@@ -105,7 +107,7 @@ export const postLpoRequestHandler = async (
         })) ?? [],
     };
 
-    const result = await upsertLpoRequest(sanitizedData);
+    const result = await upsertLpoRequest(sanitizedData, req);
     console.log("result", result);
 
     res.status(200).json({
@@ -418,11 +420,24 @@ function escapeHtml(input: any): string {
     .replace(/'/g, "&#039;");
 }
 
-async function upsertLpoRequest(data: TVendorMain) {
+async function upsertLpoRequest(data: TVendorMain, req: Request) {
   let connection: any;
   let committed = false;
   try {
-    connection = await oracleDb.getConnection();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[upsertLpoRequest] Tenant context not available, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        throw new Error("[upsertLpoRequest] Cannot determine user loginid");
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      throw new Error("[upsertLpoRequest] Unable to determine tenant database");
+    }
+    
+    connection = await TenantManager.getConnection(tenantId);
     await connection.execute("BEGIN NULL; END;"); 
 
     const isAddMode = !data.DOC_NO;

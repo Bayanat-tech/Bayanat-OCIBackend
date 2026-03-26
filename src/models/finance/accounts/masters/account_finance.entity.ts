@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from "typeorm";
 import constants from "../../../../helpers/constants";
-import AccountLevelFour from "./account_level_four.model";
+import { AccountLevelFour } from "./account_level_four.entity";
+// import {AccountLevelFour} from "../masters/account_level_four.entity"
 
 
 @Entity(constants.TABLE.MS_ACCODES)

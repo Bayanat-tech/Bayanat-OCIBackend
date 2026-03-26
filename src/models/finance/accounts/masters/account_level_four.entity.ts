@@ -3,7 +3,7 @@ import constants from "../../../../helpers/constants";
 
 
 @Entity({ name: constants.TABLE.MS_AC_L4 })
-export class AccountLevelFourEntity {
+export class AccountLevelFour  {
   @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 7 })
   company_code!: string;
 
