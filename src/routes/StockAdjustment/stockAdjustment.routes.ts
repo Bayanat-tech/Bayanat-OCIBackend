@@ -41,9 +41,9 @@ router.get("/", getStockAdjustments);
 // router.get("/:JOB_NO", getStockAdjustmentByJobNo);
 
 // PUT - Update stock adjustment
-router.put("/:JOB_NO", updateStockAdjustment);
+router.put("/:ADJ_CODE", updateStockAdjustment);
 
 // DELETE - Delete stock adjustment
-router.delete("/:JOB_NO", deleteStockAdjustment);
+router.delete("/:ADJ_CODE", deleteStockAdjustment);
 
 export default router;
