@@ -363,6 +363,8 @@ export const purchaseSchema = (
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
+          rate: Joi.number(),
+          qty: Joi.number(),
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
@@ -456,6 +458,8 @@ export const purchaseSchema = (
             curr_code: Joi.string().allow(null).optional(),
             // Exchange rate (optional)
             ex_rate: Joi.number().allow(null).optional(),
+            rate: Joi.number(),
+            qty: Joi.number().allow("", null),
             // Current currency amount (optional)
             c_curr_amt: Joi.number().allow(null).optional(),
             amount_origin: Joi.number().default(0).optional(),
@@ -512,6 +516,8 @@ export const purchaseSchema = (
             doc_refno_2: Joi.string().allow("", null).optional(),
             // Amount (optional)
             amount: Joi.number().allow(null).optional(),
+            rate: Joi.number().optional().allow("", null),
+            qty: Joi.number().optional().allow("", null),
           })
         )
         .optional()
@@ -570,6 +576,8 @@ export const purchaseSchema = (
             job_no: Joi.string().optional().allow("", null),
             // Amount (required)
             amount: Joi.number(),
+            rate: Joi.number().optional().allow("", null),
+            qty: Joi.number().optional().allow("", null),
           })
         )
         .optional()
