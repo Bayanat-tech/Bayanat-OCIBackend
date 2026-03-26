@@ -10,7 +10,9 @@ import {
   // createStockAdjustmentHeader,
   createAdjHeader,
   createAdjustmentDetail,
-  confirmAdjDetail
+  confirmAdjDetail,
+  editStockAdjustmentDetail,
+  deleteStockAdjustmentDetail
 } from "../../controllers/StockAdjustment/createStockAdjustment.controller";
 
 const router = express.Router();
@@ -41,9 +43,16 @@ router.get("/", getStockAdjustments);
 // router.get("/:JOB_NO", getStockAdjustmentByJobNo);
 
 // PUT - Update stock adjustment
-router.put("/:ADJ_CODE", updateStockAdjustment);
+router.put("/updateStockAdjustment/:ADJ_CODE", updateStockAdjustment);
 
 // DELETE - Delete stock adjustment
-router.delete("/:ADJ_CODE", deleteStockAdjustment);
+router.delete("/deleteAdjustment/:ADJ_CODE", deleteStockAdjustment);
+
+router.put("/stock-adjustment/edit-detail/:ADJ_CODE/:JOB_NO", async (req: Request, res: Response) => {
+  await editStockAdjustmentDetail(req, res);
+});
+router.delete("/stock-adjustment/delete-detail/:ADJ_CODE/:JOB_NO",async (req: Request, res: Response) => {
+  await deleteStockAdjustmentDetail(req, res);
+});
 
 export default router;
