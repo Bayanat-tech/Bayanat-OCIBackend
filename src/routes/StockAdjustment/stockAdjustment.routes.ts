@@ -2,7 +2,7 @@ import * as express from "express";
 import { Request, Response } from "express";
 import {
   createStockAdjustment,
-  updateStockAdjustment,
+  // updateStockAdjustment,
   getStockAdjustments,
   // getStockAdjustmentByJobNo,
   deleteStockAdjustment,
@@ -11,7 +11,7 @@ import {
   createAdjHeader,
   createAdjustmentDetail,
   confirmAdjDetail,
-  editStockAdjustmentDetail,
+  // editStockAdjustmentDetail,
   deleteStockAdjustmentDetail,
   editAdjDetail,
   deleteAdjDetail
@@ -29,7 +29,7 @@ router.post("/confirm-adj-detail", confirmAdjDetail as express.RequestHandler);
 router.get("/", getStockAdjustments as express.RequestHandler);
 
 // PUT
-router.put("/updateStockAdjustment/:ADJ_CODE", updateStockAdjustment as express.RequestHandler);
+// router.put("/updateStockAdjustment/:ADJ_CODE", updateStockAdjustment as express.RequestHandler);
 router.put("/edit-detail", editAdjDetail as unknown as express.RequestHandler);   // ← body-based, no URL params
 
 // DELETE
