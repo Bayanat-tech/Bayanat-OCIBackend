@@ -166,7 +166,7 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
 
     res.json({
       success: true,
-      message: "Appraisal Created Successfully"
+      // message: "Appraisal Created Successfully"
     });
 
   } catch (error: any) {
