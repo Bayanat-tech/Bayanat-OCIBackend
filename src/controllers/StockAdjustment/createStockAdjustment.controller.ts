@@ -643,3 +643,300 @@ export const confirmAdjDetail = async (
     });
   }
 };
+
+export const editStockAdjustmentDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { ADJ_CODE, JOB_NO } = req.params;
+    const {
+      PROD_CODE,
+      ADJ_TYPE,
+      QTY_PUOM,
+      SITE_CODE,
+      LOCATION_CODE,
+      QTY_LUOM,
+      PRIN_CODE,
+      P_UOM,
+      L_UOM,
+      PALLET_ID,
+      KEY_NUMBER,
+    } = req.body;
+
+    if (!ADJ_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "ADJ_CODE is required",
+      });
+    }
+
+    if (!JOB_NO) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "JOB_NO is required",
+      });
+    }
+
+    const requestUser = req.user;
+    const COMPANY_CODE = requestUser.company_code;
+    const username = requestUser.loginid;
+
+    // Check if adjustment header exists
+    const existingHeader = await TaAdjHeaderService.findByAdjCode(
+      ADJ_CODE,
+      COMPANY_CODE
+    );
+
+    if (!existingHeader) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Stock adjustment header not found",
+      });
+    }
+
+    // Update stock adjustment detail using existing updateAdjustment method
+    const detailUpdated = await TaAdjDetailService.updateAdjustment(
+      JOB_NO,
+      COMPANY_CODE,
+      {
+        PROD_CODE,
+        ADJ_TYPE,
+        QTY_PUOM,
+        SITE_CODE,
+        LOCATION_CODE,
+        QTY_LUOM,
+        PRIN_CODE,
+        P_UOM,
+        L_UOM,
+        PALLET_ID,
+        KEY_NUMBER,
+        USER_ID: username,
+      }
+    );
+
+    if (detailUpdated) {
+      // Fetch all details and find the updated one
+      const allDetails = await TaAdjDetailService.findByCompany(COMPANY_CODE);
+      const updatedDetail = allDetails.find(
+        detail => detail.JOB_NO === JOB_NO && detail.ADJ_NO === existingHeader.ADJ_NO
+      );
+      
+      return res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: "Stock adjustment detail updated successfully",
+        data: updatedDetail,
+      });
+    } else {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to update stock adjustment detail",
+      });
+    }
+  } catch (error: any) {
+    console.error("Error editing stock adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to edit stock adjustment detail",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteStockAdjustmentDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { ADJ_CODE, JOB_NO } = req.params;
+    const requestUser = req.user;
+    const COMPANY_CODE = requestUser.company_code;
+
+    if (!ADJ_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "ADJ_CODE is required",
+      });
+    }
+
+    if (!JOB_NO) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "JOB_NO is required",
+      });
+    }
+
+    // Check if adjustment header exists
+    const existingHeader = await TaAdjHeaderService.findByAdjCode(
+      ADJ_CODE,
+      COMPANY_CODE
+    );
+
+    if (!existingHeader) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Stock adjustment header not found",
+      });
+    }
+
+    // Check if detail exists
+    const allDetails = await TaAdjDetailService.findByCompany(COMPANY_CODE);
+    const existingDetail = allDetails.find(
+      detail => detail.JOB_NO === JOB_NO && detail.ADJ_NO === existingHeader.ADJ_NO
+    );
+
+    if (!existingDetail) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Stock adjustment detail not found",
+      });
+    }
+
+    // Delete the detail using existing deleteAdjustment method
+    const detailDeleted = await TaAdjDetailService.deleteAdjustment(
+      JOB_NO,
+      COMPANY_CODE
+    );
+
+    if (detailDeleted) {
+      return res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: "Stock adjustment detail deleted successfully",
+      });
+    } else {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to delete stock adjustment detail",
+      });
+    }
+  } catch (error: any) {
+    console.error("Error deleting stock adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to delete stock adjustment detail",
+      error: error.message,
+    });
+  }
+};
+
+export const editAdjDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const {
+      ADJ_NO,
+      ADJ_SERIALNO,
+      JOB_NO,
+      PRIN_CODE,
+      PROD_CODE,
+      SITE_CODE,
+      LOCATION_CODE,
+      P_UOM,
+      L_UOM,
+      KEY_NUMBER,
+      QTY_PUOM,
+      QTY_LUOM,
+      ADJ_TYPE,
+      PALLET_ID,
+    } = req.body;
+
+    if (!ADJ_NO)       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_NO is required" });
+    if (!JOB_NO)       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });
+    if (!PRIN_CODE)    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "PRIN_CODE is required" });
+    if (!KEY_NUMBER)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "KEY_NUMBER is required" });
+
+    const COMPANY_CODE = req.user.company_code;
+    const USER_ID      = req.user.loginid;
+
+    // Check the record exists first
+    const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);
+    if (!existing) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Adjustment detail not found",
+      });
+    }
+
+    const updated = await TaAdjDetailService.updateAdjustment(
+      JOB_NO,
+      COMPANY_CODE,
+      {
+        PROD_CODE,
+        SITE_CODE,
+        LOCATION_CODE,
+        P_UOM,
+        L_UOM,
+        KEY_NUMBER,
+        QTY_PUOM,
+        QTY_LUOM,
+        ADJ_TYPE,
+        PALLET_ID,
+        USER_ID,
+      }
+    );
+
+    if (!updated) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to update adjustment detail",
+      });
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail updated successfully",
+    });
+  } catch (error: any) {
+    console.error("Error editing adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to edit adjustment detail",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteAdjDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { ADJ_CODE, JOB_NO } = req.params;
+
+    if (!ADJ_CODE) return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_CODE is required" });
+    if (!JOB_NO)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });
+
+    const COMPANY_CODE = req.user.company_code;
+
+    // Check the record exists first
+    const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);
+    if (!existing) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Adjustment detail not found",
+      });
+    }
+
+    const deleted = await TaAdjDetailService.deleteAdjustment(JOB_NO, COMPANY_CODE);
+
+    if (!deleted) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to delete adjustment detail",
+      });
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Error deleting adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to delete adjustment detail",
+      error: error.message,
+    });
+  }
+};
