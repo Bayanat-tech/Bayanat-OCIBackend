@@ -63,6 +63,17 @@ export const chequePaymentSchema = (
     detail: Joi.array() // Detail (required)
       .items(
         Joi.object({
+         Account: Joi.object({
+             ac_name: Joi.string()
+         }).optional(),  
+         Currency: Joi.object({
+          curr_name: Joi.string()
+         }).optional(),
+         Department: Joi.object({
+           dept_name: Joi.string().optional().allow("", null)
+         }).optional().allow("",null),
+          Qty: Joi.number().optional().allow("", null),
+          rate: Joi.number().optional().allow("", null),
           doc_date: Joi.date(), // Document date
           company_code: Joi.string().required(), // Company code (required)
           ac_code: Joi.string().required(), // Account code (required)
@@ -80,6 +91,7 @@ export const chequePaymentSchema = (
           lcur_amount: Joi.number().allow("", null), // Local currency amount (optional)
           tx_compnt_lcuramt_1: Joi.number().allow("", null), // Transaction component 1 local currency amount (optional)
           tx_cat_code: Joi.string().allow("", null), // Transaction category code (optional)
+          ref_no: Joi.number().optional().allow("", null),
           div_code: Joi.string().required(), // Division code (required)
           doc_no: Joi.string().required(), // Document number (required)
           doc_type: Joi.string() // Document type (required)
@@ -314,15 +326,16 @@ export const purchaseSchema = (
     inv_date: Joi.date(), // Otherwise cheque date is optional
     address: Joi.string().optional().allow("", null),
     ac_code: Joi.string().required(),
-    phone: Joi.string().optional().allow("", null), // Account code (required)
+    phone: Joi.string().optional().allow("", null), 
     doc_date: Joi.date(), // Document date
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
     party_address: Joi.string(),
     party_phone: Joi.number().optional(),
+    party_fax: Joi.string().optional().allow("", null),
     ref_doc_no: Joi.string(),
-    terms: Joi.string(),
+    payment_terms: Joi.string().optional().allow("", null),
     files: Joi.array().optional().allow("", null),
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
@@ -350,6 +363,8 @@ export const purchaseSchema = (
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
+          rate: Joi.number(),
+          qty: Joi.number(),
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
@@ -443,6 +458,8 @@ export const purchaseSchema = (
             curr_code: Joi.string().allow(null).optional(),
             // Exchange rate (optional)
             ex_rate: Joi.number().allow(null).optional(),
+            rate: Joi.number(),
+            qty: Joi.number().allow("", null),
             // Current currency amount (optional)
             c_curr_amt: Joi.number().allow(null).optional(),
             amount_origin: Joi.number().default(0).optional(),
@@ -499,6 +516,8 @@ export const purchaseSchema = (
             doc_refno_2: Joi.string().allow("", null).optional(),
             // Amount (optional)
             amount: Joi.number().allow(null).optional(),
+            rate: Joi.number().optional().allow("", null),
+            qty: Joi.number().optional().allow("", null),
           })
         )
         .optional()
@@ -557,6 +576,8 @@ export const purchaseSchema = (
             job_no: Joi.string().optional().allow("", null),
             // Amount (required)
             amount: Joi.number(),
+            rate: Joi.number().optional().allow("", null),
+            qty: Joi.number().optional().allow("", null),
           })
         )
         .optional()
@@ -605,7 +626,7 @@ export const salesSchema = (
     address: Joi.string(),
     phone: Joi.number().optional(),
     ref_doc: Joi.string(),
-    terms: Joi.string(),
+    payment_terms: Joi.string().optional().allow("", null),
     files: Joi.array().optional().allow("", null),
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
@@ -879,6 +900,7 @@ export const LpoSchema = (
     ref_no: Joi.string().optional().allow('', null),
     ref_date: Joi.date(), // Otherwise cheque date is optional
     ac_code: Joi.string().required(), // Account code (required)
+    ac_name: Joi.string().required(),
     doc_date: Joi.date(), // Document date
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
@@ -888,7 +910,7 @@ export const LpoSchema = (
     contact: Joi.number().optional(),
     email: Joi.string(),
     app_ref_no: Joi.string(),
-    terms: Joi.string(),
+    payment_terms: Joi.string().optional().allow("", null),
     delivary_info: Joi.string(),
     delivary_term: Joi.string(),
     tax_categoty: Joi.number().optional(),
@@ -910,13 +932,13 @@ export const LpoSchema = (
           doc_date: Joi.date(), // Document date
           company_code: Joi.string().required(), // Company code (required)
           ac_code: Joi.string().required(), // Account code (required)
+          ac_name: Joi.string(),
           header_ac_code: Joi.string(),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
-          ac_name: Joi.string(),
           sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
