@@ -38,7 +38,7 @@ export const upsertPrepaid = async (req: Request, res: Response): Promise<void> 
     connection = await TenantManager.getConnection(tenantId);
 
     // Get the Oracle object type class
-    const TR_AC_PREPAID_OBJ = await connection.getDbObjectClass("WMSTST.TR_AC_PREPAID_OBJ");
+    const TR_AC_PREPAID_OBJ = await connection.getDbObjectClass("TR_AC_PREPAID_OBJ");
 
     // Create Oracle object instance
     const objInstance = new TR_AC_PREPAID_OBJ({
@@ -74,7 +74,7 @@ export const upsertPrepaid = async (req: Request, res: Response): Promise<void> 
     // Call the PL/SQL procedure
     await connection.execute(
       `BEGIN
-         WMSTST.PROC_UPSERT_AC_PREPAID(:p_data);
+         PROC_UPSERT_AC_PREPAID(:p_data);
        END;`,
       {
         p_data: objInstance
