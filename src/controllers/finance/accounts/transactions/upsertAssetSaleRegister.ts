@@ -98,7 +98,7 @@ export const upsertAssetSaleRegister = async (
   CUSTOMER_AC_CODE: data.customer_ac_code,
 
   STATUS: data.status,
-  AC_EXP_CODE: data.ac_exp_code,
+  AC_EXP_CODE: data.exp_code,
   EXP_SUBTYPE_CODE: data.exp_subtype_code,
 
   SOLD: data.sold,
