@@ -62,25 +62,53 @@ export const upsertAssetSaleRegister = async (
     );
 
     // 🔹 Create object with correct date conversion
-   const obj: any = new AssetSaleObjClass({
+  const obj: any = new AssetSaleObjClass({
   COMPANY_CODE: data.company_code,
   ASSET_ID: data.asset_id,
   ASSET_NAME: data.asset_name,
-  SALES_DATE: toDate(data.sales_date),
-  DOC_DATE: toDate(data.doc_date),
-  DIV_CODE: data.div_code,
-  // Numeric fields
-  SALES_AMOUNT: toNumber(data.sales_amount),
-  TOTALDRPC_AMOUNT: toNumber(data.totaldrpc_amount),
-  PRICE: toNumber(data.price),
-  QUANTITY: toNumber(data.quantity),
+  ASSET_AC_CODE: data.asset_ac_code,
+  DPRC_AC_CODE: data.dprc_ac_code,
+  ACCUDPRC_AC_CODE: data.accudprc_ac_code,
+
   DPRC_PERCENTAGE: toNumber(data.dprc_percentage),
-  CURRDRPC_AMOUNT: toNumber(data.currdrpc_amount),
+  DPRC_COMMENCE_DATE: toDate(data.dprc_commence_date),
+
+  DOC_TYPE: data.doc_type,
+  DOC_NO: data.doc_no,
+
+  ASSET_PROPERTIES: data.asset_properties,
+
+  ACUUDRPC_OPENING: toNumber(data.acuudrpc_opening),
   PREVDRPC_AMOUNT: toNumber(data.prevdrpc_amount),
+  CURRDRPC_AMOUNT: toNumber(data.currdrpc_amount),
+  TOTALDRPC_AMOUNT: toNumber(data.totaldrpc_amount),
+
+  SALES_DATE: toDate(data.sales_date),
+  SALES_AMOUNT: toNumber(data.sales_amount),
+  SALES_PROFITLOSS: toNumber(data.sales_profitloss),
+
+  QUANTITY: toNumber(data.quantity),
+  PRICE: toNumber(data.price),
+  AMOUNT: toNumber(data.amount),
+
   WD_VALUE: toNumber(data.wd_value),
   SALVAGE_VALUE: toNumber(data.salvage_value),
-  SALES_PROFITLOSS: toNumber(data.sales_profitloss),
-  AMOUNT: toNumber(data.amount)
+
+  CUSTOMER_NAME: data.customer_name,
+  CUSTOMER_AC_CODE: data.customer_ac_code,
+
+  STATUS: data.status,
+  AC_EXP_CODE: data.ac_exp_code,
+  EXP_SUBTYPE_CODE: data.exp_subtype_code,
+
+  SOLD: data.sold,
+
+  DOC_DATE: toDate(data.doc_date),
+
+  FA_DISPOSAL_AC: data.fa_disposal_ac,
+  PL_FA_DISPOSAL_AC: data.pl_fa_disposal_ac,
+
+  DIV_CODE: data.div_code
 });
 
     // 🔹 Call procedure (NO schema prefix)
