@@ -81,7 +81,7 @@ export const upsertAssetSaleRegister = async (
   ACUUDRPC_OPENING: toNumber(data.acuudrpc_opening),
   PREVDRPC_AMOUNT: toNumber(data.prevdrpc_amount),
   CURRDRPC_AMOUNT: toNumber(data.currdrpc_amount),
-  TOTALDRPC_AMOUNT: toNumber(data.totaldrpc_amount),
+  TOTALDRPC_AMOUNT: toNumber(data.total_depreciation_amount),
 
   SALES_DATE: toDate(data.sales_date),
   SALES_AMOUNT: toNumber(data.sales_amount),
