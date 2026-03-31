@@ -89,7 +89,7 @@ export const upsertAssetSaleRegister = async (
 
   QUANTITY: toNumber(data.quantity),
   PRICE: toNumber(data.price),
-  AMOUNT: toNumber(data.amount),
+  AMOUNT:toNumber(data.asset_amount),
 
   WD_VALUE: toNumber(data.wd_value),
   SALVAGE_VALUE: toNumber(data.salvage_value),
