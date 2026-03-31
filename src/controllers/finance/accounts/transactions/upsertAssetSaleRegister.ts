@@ -74,7 +74,7 @@ export const upsertAssetSaleRegister = async (
   DPRC_COMMENCE_DATE: toDate(data.dprc_commence_date),
 
   DOC_TYPE: data.doc_type,
-  DOC_NO: data.doc_no,
+DOC_NO: toNumber(data.doc_no),
 
   ASSET_PROPERTIES: data.asset_properties,
 
