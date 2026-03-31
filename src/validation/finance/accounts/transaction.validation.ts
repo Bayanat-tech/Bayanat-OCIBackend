@@ -900,6 +900,7 @@ export const LpoSchema = (
     ref_no: Joi.string().optional().allow('', null),
     ref_date: Joi.date(), // Otherwise cheque date is optional
     ac_code: Joi.string().required(), // Account code (required)
+    ac_name: Joi.string().required(),
     doc_date: Joi.date(), // Document date
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
@@ -931,13 +932,13 @@ export const LpoSchema = (
           doc_date: Joi.date(), // Document date
           company_code: Joi.string().required(), // Company code (required)
           ac_code: Joi.string().required(), // Account code (required)
+          ac_name: Joi.string(),
           header_ac_code: Joi.string(),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
-          ac_name: Joi.string(),
           sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
