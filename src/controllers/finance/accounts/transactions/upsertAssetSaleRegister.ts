@@ -68,7 +68,7 @@ export const upsertAssetSaleRegister = async (
   ASSET_NAME: data.asset_name,
   SALES_DATE: toDate(data.sales_date),
   DOC_DATE: toDate(data.doc_date),
-
+  DIV_CODE: data.div_code,
   // Numeric fields
   SALES_AMOUNT: toNumber(data.sales_amount),
   TOTALDRPC_AMOUNT: toNumber(data.totaldrpc_amount),
