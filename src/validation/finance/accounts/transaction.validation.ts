@@ -15,6 +15,7 @@ export const chequePaymentSchema = (
         constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
         constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
         constants.TRANSACTION_DOCUMENT_TYPE.LPO,
+        constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
       )
       .required(),
     bank_ac_code: Joi.string().when("doc_type", { 
@@ -101,6 +102,7 @@ export const chequePaymentSchema = (
               constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,// Cash receipt
               constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Purchase
               constants.TRANSACTION_DOCUMENT_TYPE.LPO, // LPO
+              constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT // Petty cash payment
             )
             .required(),
           serial_no: Joi.number().required(), // Serial number (required)
@@ -149,6 +151,8 @@ export const chequePaymentSchema = (
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT,
                 constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
                 constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
+                constants.TRANSACTION_DOCUMENT_TYPE.LPO,
+                constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
               )
               .required(),
             // Division code (required)
@@ -210,6 +214,8 @@ export const chequePaymentSchema = (
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT,
                 constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
                 constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
+                constants.TRANSACTION_DOCUMENT_TYPE.LPO,
+                constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT,
               )
               .required(),
             // Division code (required)
@@ -261,7 +267,10 @@ export const chequePaymentSchema = (
               .valid(
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT,
-                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT
+                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
+                constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
+                constants.TRANSACTION_DOCUMENT_TYPE.LPO,
+                constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT,
               )
               .required(),
             // Division code (required)

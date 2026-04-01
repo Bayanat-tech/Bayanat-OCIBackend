@@ -541,7 +541,7 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
     if (!doc_no) throw new Error('Failed to generate document number');
 
     // Step 2 — insert all children via _SINGLE SPs, then commit
-    const isPayment = ['BP', 'BR', 'CR'].includes(h.doc_type);
+    const isPayment = ['BP', 'BR', 'CR', 'CP'].includes(h.doc_type);
     await spInsertAllChildren(conn, req.user.company_code, h.doc_type, doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, detail, children, files);
 
     res.json({ success: true, data: { data: constants.MESSAGES.CREATED_SUCCESSFULLY, doc_no, doc_type: h.doc_type } });
