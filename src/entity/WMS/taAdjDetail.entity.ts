@@ -45,8 +45,8 @@ export class TaAdjDetail {
   @Column({ name: "QTY_LUOM", type: "number", precision: 12, scale: 1, nullable: true })
   QTY_LUOM?: number;
 
-  @Column({ name: "KEY_NUMBER", type: "varchar2", length: 15 })
-  KEY_NUMBER!: string;
+  @Column({ name: "KEY_NUMBER", type: "varchar2", length: 15,nullable: true })
+  KEY_NUMBER?: string;
 
   @Column({ name: "LOT_NO", type: "varchar2", length: 20, nullable: true })
   LOT_NO?: string;

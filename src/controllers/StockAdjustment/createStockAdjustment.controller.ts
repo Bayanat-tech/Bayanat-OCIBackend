@@ -84,7 +84,7 @@ export const createStockAdjustment = async (
       P_UOM,
       L_UOM,
       PALLET_ID,
-      KEY_NUMBER: KEY_NUMBER || "0",
+      ...(ADJ_TYPE === '-' && { KEY_NUMBER }),   
       COMPANY_CODE,
       CREATED_BY: username,
       UPDATED_BY: username,
@@ -108,117 +108,117 @@ export const createStockAdjustment = async (
   }
 };
 
-export const updateStockAdjustment = async (
-  req: RequestWithUser,
-  res: Response
-) => {
-  try {
-    const { ADJ_CODE } = req.params;
-    const { 
-      // Header fields
-      PRIN_CODE,
-      REMARKS,
-      CONFIRMED,
-      ADJ_DATE,
-      CONFIRMED_DATE,
+// export const updateStockAdjustment = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   try {
+//     const { ADJ_CODE } = req.params;
+//     const { 
+//       // Header fields
+//       PRIN_CODE,
+//       REMARKS,
+//       CONFIRMED,
+//       ADJ_DATE,
+//       CONFIRMED_DATE,
       
-      // Detail fields
-      JOB_NO,
-      PROD_CODE, 
-      ADJ_TYPE,
-      QTY_PUOM, 
-      SITE_CODE,
-      LOCATION_CODE,
-      QTY_LUOM, 
-      P_UOM,
-      L_UOM,
-      PALLET_ID,
-      KEY_NUMBER
-    }: ICreateStockAdjustmentRequest = req.body;
+//       // Detail fields
+//       JOB_NO,
+//       PROD_CODE, 
+//       ADJ_TYPE,
+//       QTY_PUOM, 
+//       SITE_CODE,
+//       LOCATION_CODE,
+//       QTY_LUOM, 
+//       P_UOM,
+//       L_UOM,
+//       PALLET_ID,
+//       KEY_NUMBER
+//     }: ICreateStockAdjustmentRequest = req.body;
 
-    if (!ADJ_CODE) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "ADJ_CODE is required",
-      });
-      return;
-    }
+//     if (!ADJ_CODE) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "ADJ_CODE is required",
+//       });
+//       return;
+//     }
 
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
-    const username = requestUser.loginid;
+//     const requestUser = req.user;
+//     const COMPANY_CODE = requestUser.company_code;
+//     const username = requestUser.loginid;
 
-    // Check if adjustment header exists
-    const existingHeader = await TaAdjHeaderService.findByAdjCode(
-      ADJ_CODE,
-      COMPANY_CODE
-    );
+//     // Check if adjustment header exists
+//     const existingHeader = await TaAdjHeaderService.findByAdjCode(
+//       ADJ_CODE,
+//       COMPANY_CODE
+//     );
 
-    if (!existingHeader) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "Stock adjustment header not found",
-      });
-      return;
-    }
+//     if (!existingHeader) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: "Stock adjustment header not found",
+//       });
+//       return;
+//     }
 
-    // Update stock adjustment header
-    const headerUpdated = await TaAdjHeaderService.updateHeader(
-      ADJ_CODE,
-      COMPANY_CODE,
-      {
-        PRIN_CODE,
-        REMARKS,
-        CONFIRMED,
-        ADJ_DATE,
-        CONFIRMED_DATE,
-        USER_ID: username,
-      }
-    );
+//     // Update stock adjustment header
+//     const headerUpdated = await TaAdjHeaderService.updateHeader(
+//       ADJ_CODE,
+//       COMPANY_CODE,
+//       {
+//         PRIN_CODE,
+//         REMARKS,
+//         CONFIRMED,
+//         ADJ_DATE,
+//         CONFIRMED_DATE,
+//         USER_ID: username,
+//       }
+//     );
 
-    // Update stock adjustment detail if JOB_NO is provided
-    let detailUpdated = true;
-    if (JOB_NO) {
-      detailUpdated = await TaAdjDetailService.updateAdjustment(
-        JOB_NO,
-        COMPANY_CODE,
-        {
-          PROD_CODE,
-          ADJ_TYPE,
-          QTY_PUOM,
-          SITE_CODE,
-          LOCATION_CODE,
-          QTY_LUOM,
-          PRIN_CODE,
-          P_UOM,
-          L_UOM,
-          PALLET_ID,
-          KEY_NUMBER,
-          USER_ID: username,
-        }
-      );
-    }
+//     // Update stock adjustment detail if JOB_NO is provided
+//     let detailUpdated = true;
+//     if (JOB_NO) {
+//       detailUpdated = await TaAdjDetailService.updateAdjustment(
+//         JOB_NO,
+//         COMPANY_CODE,
+//         {
+//           PROD_CODE,
+//           ADJ_TYPE,
+//           QTY_PUOM,
+//           SITE_CODE,
+//           LOCATION_CODE,
+//           QTY_LUOM,
+//           PRIN_CODE,
+//           P_UOM,
+//           L_UOM,
+//           PALLET_ID,
+//           KEY_NUMBER,
+//           USER_ID: username,
+//         }
+//       );
+//     }
 
-    if (headerUpdated && detailUpdated) {
-      res.status(constants.STATUS_CODES.OK).json({
-        success: true,
-        message: "Stock adjustment updated successfully",
-      });
-    } else {
-      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Failed to update stock adjustment",
-      });
-    }
-  } catch (error: any) {
-    console.error("Error updating stock adjustment:", error);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Failed to update stock adjustment",
-      error: error.message,
-    });
-  }
-};
+//     if (headerUpdated && detailUpdated) {
+//       res.status(constants.STATUS_CODES.OK).json({
+//         success: true,
+//         message: "Stock adjustment updated successfully",
+//       });
+//     } else {
+//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//         success: false,
+//         message: "Failed to update stock adjustment",
+//       });
+//     }
+//   } catch (error: any) {
+//     console.error("Error updating stock adjustment:", error);
+//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//       success: false,
+//       message: "Failed to update stock adjustment",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const getStockAdjustments = async (
   req: RequestWithUser,
@@ -340,74 +340,30 @@ export const deleteStockAdjustment = async (
 export const processAdjustment = async (
   req: RequestWithUser,
   res: Response
-) => {
+): Promise<void> => {  
   try {
-    const { COMPANY_CODE, PRIN_CODE, ADJ_NO, USERID }: IProcessAdjustmentRequest = req.body;
+    const { COMPANY_CODE, PRIN_CODE, ADJ_NO, USERID, P_ADJ_SERIALNO }: 
+      IProcessAdjustmentRequest = req.body;
 
-    // Validate required fields
-    if (!COMPANY_CODE) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "COMPANY_CODE is required",
-      });
-      return;
-    }
+    if (!COMPANY_CODE) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "COMPANY_CODE is required" }); return; }
+    if (!PRIN_CODE) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "PRIN_CODE is required" }); return; }
+    if (!ADJ_NO) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_NO is required" }); return; }
+    if (!USERID) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "USERID is required" }); return; }
+    if (!P_ADJ_SERIALNO) { res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "P_ADJ_SERIALNO is required" }); return; }
 
-    if (!PRIN_CODE) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "PRIN_CODE is required",
-      });
-      return;
-    }
-
-    if (!ADJ_NO) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "ADJ_NO is required",
-      });
-      return;
-    }
-
-    if (!USERID) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "USERID is required",
-      });
-      return;
-    }
-
-    console.log('Processing adjustment with data:', {
-      COMPANY_CODE,
-      PRIN_CODE,
-      ADJ_NO,
-      USERID,
-    });
-
-    // Call the stored procedure
     await TaAdjDetailService.processAdjustment({
       COMPANY_CODE,
       PRIN_CODE,
       ADJ_NO,
       USERID,
+      P_ADJ_SERIALNO,
     });
 
-    res.status(constants.STATUS_CODES.OK).json({
-      success: true,
-      message: "Stock adjustment processed successfully",
-    });
+    res.status(constants.STATUS_CODES.OK).json({ success: true, message: "Stock adjustment processed successfully" });
   } catch (error: any) {
-    console.error("Error processing stock adjustment:", error);
-    console.error("Error stack:", error.stack);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Failed to process stock adjustment",
-      error: error.message,
-      details: error.stack,
-    });
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to process stock adjustment", error: error.message });
   }
 };
-
 export const createStockAdjustmentHeader = async (
   req: RequestWithUser,
   res: Response
@@ -552,6 +508,9 @@ export const createAdjustmentDetail = async (
       QTY_PUOM,
       QTY_LUOM,
       ADJ_TYPE,
+      MFG_DATE,
+      EXP_DATE,
+      BATCH_NO,
     } = req.body;
 
     // Validate required fields
@@ -576,12 +535,20 @@ export const createAdjustmentDetail = async (
       });
     }
 
-    if (!KEY_NUMBER) {
+    // KEY_NUMBER only required for subtraction (-)
+    if (ADJ_TYPE === '-' && !KEY_NUMBER) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "KEY_NUMBER is required",
+        message: "KEY_NUMBER is required for adjustment type '-'",
       });
     }
+// ── Date parser: handles ISO strings / null safely ─────────────────────
+    const parseDate = (val: any): Date | null => {
+      if (!val) return null;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
 
     // Get user info from request
     const requestUser = req.user;
@@ -600,14 +567,17 @@ export const createAdjustmentDetail = async (
       P_UOM,
       L_UOM,
       JOB_NO,
-      LOT_NO,
       MANU_CODE,
       DOC_REF,
-      KEY_NUMBER,
+      KEY_NUMBER:  ADJ_TYPE === '+' ? null : KEY_NUMBER,
       PALLET_ID,
       QTY_PUOM,
       QTY_LUOM,
       ADJ_TYPE,
+      MFG_DATE:    ADJ_TYPE === '+' ? parseDate(MFG_DATE) : null,
+      EXP_DATE:    ADJ_TYPE === '+' ? parseDate(EXP_DATE) : null,
+      BATCH_NO:    ADJ_TYPE === '+' ? BATCH_NO  : null,
+      LOT_NO:      ADJ_TYPE === '+' ? LOT_NO    : null,
       USER_ID: username,
     });
 
@@ -631,27 +601,27 @@ export const createAdjustmentDetail = async (
 export const confirmAdjDetail = async (
   req: RequestWithUser,
   res: Response
-) => {
+): Promise<void> => {  // 👈
   try {
-    const { P_COMPANY_CODE, P_PRIN_CODE, P_ADJ_NO } = req.body;
+    const { P_COMPANY_CODE, P_PRIN_CODE, P_ADJ_NO, P_USERID, P_ADJ_SERIALNO } = req.body; // 👈
 
     // Validate required fields
     if (!P_COMPANY_CODE) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "P_COMPANY_CODE is required",
       });
     }
 
     if (!P_PRIN_CODE) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "P_PRIN_CODE is required",
       });
     }
 
     if (!P_ADJ_NO) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "P_ADJ_NO is required",
       });
@@ -664,11 +634,13 @@ export const confirmAdjDetail = async (
     });
 
     // Call the function to confirm adjustment detail
-    await TaAdjDetailService.confirmAdjDetail({
-      P_COMPANY_CODE,
-      P_PRIN_CODE,
-      P_ADJ_NO,
-    });
+      await TaAdjDetailService.confirmAdjDetail({
+        P_COMPANY_CODE,
+        P_PRIN_CODE,
+        P_ADJ_NO,
+        P_USERID, 
+        P_ADJ_SERIALNO,
+      });
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
@@ -682,6 +654,309 @@ export const confirmAdjDetail = async (
       message: "Failed to confirm adjustment detail",
       error: error.message,
       details: error.stack,
+    });
+  }
+};
+
+// export const editStockAdjustmentDetail = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   try {
+//     const { ADJ_CODE, JOB_NO } = req.params;
+//     const {
+//       PROD_CODE,
+//       ADJ_TYPE,
+//       QTY_PUOM,
+//       SITE_CODE,
+//       LOCATION_CODE,
+//       QTY_LUOM,
+//       PRIN_CODE,
+//       P_UOM,
+//       L_UOM,
+//       PALLET_ID,
+//       KEY_NUMBER,
+//     } = req.body;
+
+//     if (!ADJ_CODE) {
+//       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "ADJ_CODE is required",
+//       });
+//     }
+
+//     if (!JOB_NO) {
+//       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "JOB_NO is required",
+//       });
+//     }
+
+//     const requestUser = req.user;
+//     const COMPANY_CODE = requestUser.company_code;
+//     const username = requestUser.loginid;
+
+//     // Check if adjustment header exists
+//     const existingHeader = await TaAdjHeaderService.findByAdjCode(
+//       ADJ_CODE,
+//       COMPANY_CODE
+//     );
+
+//     if (!existingHeader) {
+//       return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: "Stock adjustment header not found",
+//       });
+//     }
+
+//     // Update stock adjustment detail using existing updateAdjustment method
+//     const detailUpdated = await TaAdjDetailService.updateAdjustment(
+//       JOB_NO,
+//       COMPANY_CODE,
+//       {
+//         PROD_CODE,
+//         ADJ_TYPE,
+//         QTY_PUOM,
+//         SITE_CODE,
+//         LOCATION_CODE,
+//         QTY_LUOM,
+//         PRIN_CODE,
+//         P_UOM,
+//         L_UOM,
+//         PALLET_ID,
+//         KEY_NUMBER,
+//         USER_ID: username,
+//       }
+//     );
+
+//     if (detailUpdated) {
+//       // Fetch all details and find the updated one
+//       const allDetails = await TaAdjDetailService.findByCompany(COMPANY_CODE);
+//       const updatedDetail = allDetails.find(
+//         detail => detail.JOB_NO === JOB_NO && detail.ADJ_NO === existingHeader.ADJ_NO
+//       );
+      
+//       return res.status(constants.STATUS_CODES.OK).json({
+//         success: true,
+//         message: "Stock adjustment detail updated successfully",
+//         data: updatedDetail,
+//       });
+//     } else {
+//       return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//         success: false,
+//         message: "Failed to update stock adjustment detail",
+//       });
+//     }
+//   } catch (error: any) {
+//     console.error("Error editing stock adjustment detail:", error);
+//     return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//       success: false,
+//       message: "Failed to edit stock adjustment detail",
+//       error: error.message,
+//     });
+//   }
+// };
+
+export const deleteStockAdjustmentDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { ADJ_CODE, JOB_NO } = req.params;
+    const requestUser = req.user;
+    const COMPANY_CODE = requestUser.company_code;
+
+    if (!ADJ_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "ADJ_CODE is required",
+      });
+    }
+
+    if (!JOB_NO) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "JOB_NO is required",
+      });
+    }
+
+    // Check if adjustment header exists
+    const existingHeader = await TaAdjHeaderService.findByAdjCode(
+      ADJ_CODE,
+      COMPANY_CODE
+    );
+
+    if (!existingHeader) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Stock adjustment header not found",
+      });
+    }
+
+    // Check if detail exists
+    const allDetails = await TaAdjDetailService.findByCompany(COMPANY_CODE);
+    const existingDetail = allDetails.find(
+      detail => detail.JOB_NO === JOB_NO && detail.ADJ_NO === existingHeader.ADJ_NO
+    );
+
+    if (!existingDetail) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Stock adjustment detail not found",
+      });
+    }
+
+    // Delete the detail using existing deleteAdjustment method
+    const detailDeleted = await TaAdjDetailService.deleteAdjustment(
+      JOB_NO,
+      COMPANY_CODE
+    );
+
+    if (detailDeleted) {
+      return res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: "Stock adjustment detail deleted successfully",
+      });
+    } else {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to delete stock adjustment detail",
+      });
+    }
+  } catch (error: any) {
+    console.error("Error deleting stock adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to delete stock adjustment detail",
+      error: error.message,
+    });
+  }
+};
+
+export const editAdjDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const {
+      ADJ_NO,
+      ADJ_SERIALNO,
+      JOB_NO,
+      PRIN_CODE,
+      PROD_CODE,
+      SITE_CODE,
+      LOCATION_CODE,
+      P_UOM,
+      L_UOM,
+      KEY_NUMBER,
+      QTY_PUOM,
+      QTY_LUOM,
+        QUANTITY,        // ← add this
+      ADJ_TYPE,
+      PALLET_ID,
+    } = req.body;
+
+    if (!ADJ_NO)       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_NO is required" });
+    if (!JOB_NO)       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });
+    if (!PRIN_CODE)    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "PRIN_CODE is required" });
+    if (!KEY_NUMBER)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "KEY_NUMBER is required" });
+
+    const COMPANY_CODE = req.user.company_code;
+    const USER_ID      = req.user.loginid;
+
+    // Check the record exists first
+    const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);
+    if (!existing) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Adjustment detail not found",
+      });
+    }
+
+// Controller — just change the updateAdjustment call
+const updated = await TaAdjDetailService.updateAdjustment(
+  {
+    ADJ_NO:       Number(ADJ_NO),
+    ADJ_SERIALNO: Number(ADJ_SERIALNO),
+    PRIN_CODE,
+    COMPANY_CODE,
+  },
+  {
+    PROD_CODE,
+    SITE_CODE,
+    LOCATION_CODE,
+    P_UOM,
+    L_UOM,
+    KEY_NUMBER,
+    QTY_PUOM,
+    QTY_LUOM,
+    QUANTITY,
+    ADJ_TYPE,
+    PALLET_ID,
+    USER_ID,
+  }
+);
+    if (!updated) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to update adjustment detail",
+      });
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail updated successfully",
+    });
+  } catch (error: any) {
+    console.error("Error editing adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to edit adjustment detail",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteAdjDetail = async (
+  req: RequestWithUser,
+  res: Response
+) => {
+  try {
+    const { ADJ_CODE, JOB_NO } = req.params;
+
+    if (!ADJ_CODE) return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_CODE is required" });
+    if (!JOB_NO)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });
+
+    const COMPANY_CODE = req.user.company_code;
+
+    // Check the record exists first
+    const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);
+    if (!existing) {
+      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Adjustment detail not found",
+      });
+    }
+
+    const deleted = await TaAdjDetailService.deleteAdjustment(JOB_NO, COMPANY_CODE);
+
+    if (!deleted) {
+      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Failed to delete adjustment detail",
+      });
+    }
+
+    return res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Adjustment detail deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Error deleting adjustment detail:", error);
+    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to delete adjustment detail",
+      error: error.message,
     });
   }
 };

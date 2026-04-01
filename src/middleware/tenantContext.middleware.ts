@@ -19,17 +19,16 @@ export async function tenantContextMiddleware(
   next: NextFunction
 ): Promise<void> {
   try {
-    // Skip for public routes (user will be undefined)
     if (!req.user || !req.user.loginid) {
-      console.log(`[tenantContextMiddleware] ℹ️  No user context yet (public route or unauthenticated)`);
+      console.log(`[tenantContextMiddleware]  No user context yet (public route or unauthenticated)`);
       return next();
     }
 
-    console.log(`[tenantContextMiddleware] ✅ MIDDLEWARE CALLED for user: ${req.user.loginid}`);
+    console.log(`[tenantContextMiddleware] MIDDLEWARE CALLED for user: ${req.user.loginid}`);
     console.log(`[tenantContextMiddleware] STEP 1: User from req: ${req.user.loginid}`);
 
-    let tenantId = req.user.tenantId;
-    
+    let tenantId = (req.user && (req.user as any).tenantId) || (req as any).tenantId;
+
     if (!tenantId) {
       console.log(`[tenantContextMiddleware] STEP 2: Tenant not set, looking up from database...`);
       return next();
@@ -46,7 +45,7 @@ export async function tenantContextMiddleware(
       return;
     }
 
-    console.log(`[tenantContextMiddleware] ✅ Tenant detected: ${tenantId} for user: ${req.user.loginid}`);
+    console.log(`[tenantContextMiddleware]  Tenant detected: ${tenantId} for user: ${req.user.loginid}`);
 
     // Create tenant context
     const tenantContext: TenantContext = {
@@ -60,7 +59,7 @@ export async function tenantContextMiddleware(
     req.user!.tenantId = tenantId;
     (req as any).tenantContext = tenantContext;
     
-    console.log(`[tenantContextMiddleware] ✅ CONTEXT SET: loginid=${req.user!.loginid}, tenant=${tenantId}, schema=${tenantId.split('_')[0]}`);
+    console.log(`[tenantContextMiddleware] CONTEXT SET: loginid=${req.user!.loginid}, tenant=${tenantId}, schema=${tenantId.split('_')[0]}`);
     
     (global as any).__currentRequestContext = tenantContext;
 
@@ -77,15 +76,15 @@ export async function tenantContextMiddleware(
         try {
           console.log(`[tenantContextMiddleware] Executing ALTER SESSION for schema: ${schemaName}`);
           await queryRunner.query(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
-          console.log(`[tenantContextMiddleware] ✅ TypeORM schema switched to ${schemaName}`);
+          console.log(`[tenantContextMiddleware] TypeORM schema switched to ${schemaName}`);
         } finally {
           await queryRunner.release();
         }
       } else {
-        console.log(`[tenantContextMiddleware] ℹ️  TypeORM not initialized, skipping schema switch`);
+        console.log(`[tenantContextMiddleware] TypeORM not initialized, skipping schema switch`);
       }
     } catch (schemaError) {
-      console.warn(`[tenantContextMiddleware] ⚠️  Schema switch failed (continuing anyway):`, schemaError);
+      console.warn(`[tenantContextMiddleware] Schema switch failed (continuing anyway):`, schemaError);
     }
     
     // ✨ Clear global context when response finishes to prevent memory leaks
@@ -98,7 +97,7 @@ export async function tenantContextMiddleware(
     // Now safe to call next() since schema switch awaited
     next();
   } catch (error: any) {
-    console.error(`[tenantContextMiddleware] ❌ ERROR:`, error.message);
+    console.error(`[tenantContextMiddleware]  ERROR:`, error.message);
     res.status(500).json({
       success: false,
       message: "Error setting up tenant context",

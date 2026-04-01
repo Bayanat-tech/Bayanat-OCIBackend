@@ -3,6 +3,7 @@ import oracledb from "oracledb";
 import { oracleDb } from "./../../../src/database/connection";
 import { notifyUser } from "../../../src/helpers/functions";
 import constants from "../../helpers/constants";
+import TenantManager from "./../../../src/database/TenantManager";
 
 type LeaveRow = {
   REQUEST_NUMBER?: string;
@@ -17,9 +18,45 @@ type LeaveRow = {
   LAST_ACTION?: string | null;
 };
 
-export async function sendLeaveNotifications(requestNumber: string, companyCode?: string) {
-  const connection = await oracleDb.getConnection();
+// Helper function to get tenantId from companyCode
+async function getTenantIdFromCompanyCode(companyCode?: string): Promise<string> {
+  if (!companyCode) {
+    console.warn("[getTenantIdFromCompanyCode] No companyCode provided, using default tenant");
+    return 'WMSTST_TENANT'; // Default tenant fallback
+  }
+
+  const centralConn = await TenantManager["getCentralConnection"]() as any;
   try {
+    const result = await centralConn.execute(
+      `SELECT TENANT_ID FROM TENANT_REGISTRY WHERE COMPANY_CODE = :companyCode AND IS_ACTIVE = 'Y' FETCH FIRST 1 ROWS ONLY`,
+      { companyCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (result.rows && result.rows.length > 0) {
+      const tenantId = (result.rows[0] as any).TENANT_ID;
+      console.log(`[getTenantIdFromCompanyCode] Found tenant ${tenantId} for companyCode ${companyCode}`);
+      return tenantId;
+    } else {
+      console.warn(`[getTenantIdFromCompanyCode] No tenant found for companyCode ${companyCode}, using default`);
+      return 'WMSTST_TENANT'; // Default tenant fallback
+    }
+  } finally {
+    try {
+      await centralConn.close();
+    } catch (err) {
+      console.warn("[getTenantIdFromCompanyCode] Error closing central connection:", err);
+    }
+  }
+}
+
+export async function sendLeaveNotifications(requestNumber: string, companyCode?: string) {
+  let connection: any = null;
+  try {
+    const tenantId = await getTenantIdFromCompanyCode(companyCode);
+    console.log(`[sendLeaveNotifications] Using tenantId: ${tenantId} for requestNumber: ${requestNumber}`);
+    
+    connection = await TenantManager.getConnection(tenantId);
     const sql = `
       SELECT
         TRIM(NVL(REQUEST_NUMBER,'')) AS REQUEST_NUMBER,
@@ -40,7 +77,7 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
     const binds: any = { req: requestNumber };
     if (companyCode) binds.comp = companyCode;
 
-    const res = await connection.execute<LeaveRow>(sql, binds, {
+    const res = await connection.execute(sql, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
 
@@ -132,7 +169,9 @@ export async function sendLeaveNotifications(requestNumber: string, companyCode?
     throw err;
   } finally {
     try {
-      await connection.close();
+      if (connection) {
+        await connection.close();
+      }
     } catch (closeErr) {
       console.warn("[sendLeaveNotifications] Close connection error", closeErr);
     }

@@ -1870,11 +1870,11 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
         whereClause.status = status;
       }
 
-      // if (!status) {
-      //   whereClause.status = AttendanceRequestStatus.PENDING; // Default 
-      // } else if (status !== 'ALL') {
-      //   whereClause.status = status;
-      // }
+  //    if (!status) {
+  //   whereClause.status = AttendanceRequestStatus.PENDING;
+  // } else if (status !== 'ALL') {
+  //   whereClause.status = status;
+  // }
     console.log(`Listing attendance requests :`, { status: whereClause.status });
     const [rows, count] = await repo.findAndCount({
       where: whereClause,
@@ -1944,6 +1944,23 @@ static async sendProxyAlertEmailWithImage(data: any, actualEmployeeCode: string,
     } finally {
       await queryRunner.release();
     }
+  }
+
+  static async rejectAttendanceRequest(requestId: string, rejectedBy: string, notes?: string): Promise<any> {
+    await ensureCorrectSchema();
+     const repo = getRepository(AttendanceRequest);
+     const request = await repo.findOne({ where: { id: requestId } });
+    if (!request) throw new Error('Request not found');
+    if (request.status !== AttendanceRequestStatus.PENDING) throw new Error('Request not pending');
+
+   // Simply update the status — NO attendance_event insert at all
+     request.status = AttendanceRequestStatus.REJECTED;
+     request.rejected_by = rejectedBy; 
+     request.approved_at = new Date();
+     request.notes = notes || null;
+
+    await repo.save(request);
+    return { success: true };
   }
 
   private static calculateStatus(time: Date, startTime: string): "present" | "late" | "half-day" {

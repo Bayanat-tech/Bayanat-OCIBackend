@@ -79,6 +79,9 @@ export class TaAdjDetailService {
     QTY_LUOM?: number;
     ADJ_TYPE?: string;
     USER_ID?: string;
+    MFG_DATE? : any;
+    EXP_DATE?: any;
+    BATCH_NO?:string; 
   }): Promise<TaAdjDetail> {
     const repository = this.getRepository();
 
@@ -96,20 +99,20 @@ export class TaAdjDetailService {
     return await repository.save(adjustment);
   }
 
-  static async updateAdjustment(
-    JOB_NO: string,
-    COMPANY_CODE: string,
-    updateData: Partial<TaAdjDetail>
-  ): Promise<boolean> {
-    const repository = this.getRepository();
-
-    const result = await repository.update(
-      { JOB_NO, COMPANY_CODE },
-      updateData
-    );
-
-    return result.affected ? result.affected > 0 : false;
-  }
+// Service
+static async updateAdjustment(
+  whereCondition: {
+    ADJ_NO: number;
+    ADJ_SERIALNO: number;
+    PRIN_CODE: string;
+    COMPANY_CODE: string;
+  },
+  updateData: Partial<TaAdjDetail>
+): Promise<boolean> {
+  const repository = this.getRepository();
+  const result = await repository.update(whereCondition, updateData);
+  return result.affected ? result.affected > 0 : false;
+}
 
   static async deleteAdjustment(JOB_NO: string, COMPANY_CODE: string): Promise<boolean> {
     const repository = this.getRepository();
@@ -142,65 +145,51 @@ export class TaAdjDetailService {
     return Math.floor(nextIdentityNumber);
   }
 
-  static async processAdjustment(data: {
-    COMPANY_CODE: string;
-    PRIN_CODE: string;
-    ADJ_NO: number;
-    USERID: string;
-  }): Promise<void> {
-    try {
-      console.log('Processing adjustment with params:', data);
-      
-      const result = await executeRaw(
-        `BEGIN SP_WM_ADJUSTMNT_PROCESS(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID); END;`,
-        {
-          P_COMPANY_CODE: data.COMPANY_CODE,
-          P_PRIN_CODE: data.PRIN_CODE,
-          P_ADJ_NO: data.ADJ_NO,
-          P_USERID: data.USERID,
-        }
-      );
-      
-      console.log('Stored procedure executed successfully:', result);
-    } catch (error: any) {
-      console.error('Error in processAdjustment service:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.errorNum,
-        offset: error.offset
-      });
-      throw new Error(`Failed to process adjustment: ${error.message}`);
-    }
+static async processAdjustment(data: {
+  COMPANY_CODE: string;
+  PRIN_CODE: string;
+  ADJ_NO: number;
+  USERID: string;
+  P_ADJ_SERIALNO: string;
+}): Promise<void> {
+  try {
+    await executeRaw(
+      // ✅ matches: ('BSG', '0001', 17, 'Admin', 1)
+      `BEGIN SP_WM_ADJUSTMNT_PROCESS(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID, :P_ADJ_SERIALNO); END;`,
+      {
+        P_COMPANY_CODE: data.COMPANY_CODE,
+        P_PRIN_CODE: data.PRIN_CODE,
+        P_ADJ_NO: data.ADJ_NO,
+        P_USERID: data.USERID,
+        P_ADJ_SERIALNO: data.P_ADJ_SERIALNO,  // 👈 was missing entirely before
+      }
+    );
+  } catch (error: any) {
+    throw new Error(`Failed to process adjustment: ${error.message}`);
   }
+}
 
-  static async confirmAdjDetail(data: {
-    P_COMPANY_CODE: string;
-    P_PRIN_CODE: string;
-    P_ADJ_NO: number;
-  }): Promise<void> {
-    try {
-      console.log('Confirming adjustment detail with params:', data);
-      
-      const result = await executeRaw(
-        `BEGIN PROC_UPDATE_STOCK_ADJ(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_SUCCESS); END;`,
-        {
-          P_COMPANY_CODE: data.P_COMPANY_CODE,
-          P_PRIN_CODE: data.P_PRIN_CODE,
-          P_ADJ_NO: data.P_ADJ_NO,
-          P_SUCCESS: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
-        }
-      );
-      
-      console.log('PROC_UPDATE_STOCK_ADJ executed successfully:', result);
-      console.log('P_SUCCESS value:', result.outBinds?.P_SUCCESS);
-    } catch (error: any) {
-      console.error('Error in confirmAdjDetail service:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.errorNum,
-        offset: error.offset
-      });
-      throw new Error(`Failed to confirm adjustment detail: ${error.message}`);
-    }
+static async confirmAdjDetail(data: {
+  P_COMPANY_CODE: string;
+  P_PRIN_CODE: string;
+  P_ADJ_NO: number;
+  P_USERID: string;       // 👈 add
+  P_ADJ_SERIALNO: string;
+}): Promise<void> {
+  try {
+    await executeRaw(
+      `BEGIN SP_WM_ADJUSTMNT_CONFIRM(:P_COMPANY_CODE, :P_PRIN_CODE, :P_ADJ_NO, :P_USERID, :P_ADJ_SERIALNO); END;`,
+      {
+        P_COMPANY_CODE: data.P_COMPANY_CODE,
+        P_PRIN_CODE: data.P_PRIN_CODE,
+        P_ADJ_NO: data.P_ADJ_NO,
+        P_USERID: data.P_USERID,            // 👈 add
+        P_ADJ_SERIALNO: data.P_ADJ_SERIALNO,
+      }
+    );
+  } catch (error: any) {
+    throw new Error(`Failed to confirm adjustment: ${error.message}`);
   }
+}
+
 }

@@ -19,12 +19,12 @@ export const withTenantContext = () => [
   tenantContextMiddleware,
 ];
 
-
+import freight from "./src/routes/Freight/freight.routes"
 import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
 import authRoutes from "./src/routes/auth.routes";
 import fileRoutes from "./src/routes/files.routes";
-// import financeRoutes from "./src/routes/finance/finance.routes";
+import financeRoutes from "./src/routes/finance/finance.routes";
 import hrRoutes from "./src/routes/hr.routes";
 import logRoutes from "./src/routes/notification.routes";
 import pfRoutes from "./src/routes/pf.routes";
@@ -40,7 +40,7 @@ import boldReportsRoutes from "./src/routes/boldreports.routes";
 import pamsRoutes from "./src/routes/pams.routes";
 
 
-import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
+// import attendanceRoutes from "./src/routes/Attendance/attendance.routes";
 import almsRoutes from "./src/routes/alms.routes";
 // import { AttendanceEventScheduler } from "./src/services/Attendance/attendanceEventScheduler.service";
 // import { FaceRecognitionService } from "./src/services/Attendance/face_recognition.service"; 
@@ -69,9 +69,17 @@ app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
 
-app.use("/api/attendance", attendanceRoutes);
+// app.use("/api/finance",financeRoutes );
+
+// app.use("/api/attendance", attendanceRoutes);
 
 app.use("/api/pams/", pamsRoutes);
+
+app.use("/api/wms", wmsRoutes);
+
+app.use("/api/finance", financeRoutes);
+
+app.use("/api/freight", freight);
 
 app.use("/api/alms/", almsRoutes);
 
@@ -123,6 +131,7 @@ async function startServer() {
     console.log("Starting server...");
     console.log("Initializing database connections...");
     await initializeAllConnections();
+    // await AttendanceEventScheduler.initializeScheduler();
     console.log(" All database connections initialized");
 
     console.log("Initializing TypeORM service...");
@@ -138,16 +147,6 @@ async function startServer() {
       console.error("Failed to initialize passport strategies:", err);
       throw err;
     }
-
-    // try {
-    //   const { startSchedulers } = require("./src/scheduler/startSchedulers");
-    //   await startSchedulers();
-    //   console.log("Schedulers initialized");
-    // } catch (err) {
-    //   console.warn("Schedulers failed to initialize (continuing):", err);
-    // }
-    
-    // Start server
     console.log(`Listening on port ${PORT}...`);
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

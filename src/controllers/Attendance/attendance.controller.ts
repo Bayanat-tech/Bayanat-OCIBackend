@@ -384,4 +384,25 @@ static async getProxyLogs(req: Request, res: Response): Promise<void> {
       res.status(500).json({ success: false, message });
     }
   }
+
+
+  static async rejectAttendanceRequest(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const approvedBy = (req as any).user?.loginid || 'system';
+      const { notes } = req.body;
+
+      if (!id) {
+        res.status(400).json({ success: false, message: 'Request id is required' });
+        return;
+      }
+
+      const result = await AttendanceService.rejectAttendanceRequest(id, approvedBy, notes);
+      res.status(200).json({ success: true, data: result });
+    } catch (error: unknown) {
+      logger.error('Reject attendance request error', error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message });
+    }
+  }
 }

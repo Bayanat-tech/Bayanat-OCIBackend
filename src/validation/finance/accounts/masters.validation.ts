@@ -4,9 +4,21 @@ import {
   IAccountFinanceAttributes,
   IAccountLevelFourAttributes,
   IAccountLevelThreeAttributes,
+  IAccountLevelTwoAttributes
 } from "../../../interfaces/finance/accounts/masters/actree_finance.interface";
 
 // Validation schema for level three finance accounts
+export const accountLevelTwoFinanceSchema = (
+  data: IAccountLevelTwoAttributes
+) => {
+  const schema = Joi.object().keys({
+    l2_description: Joi.string().required(),
+    l1_code: Joi.string().required(),
+  });
+  return schema.validate(data);
+};
+
+
 // Validates description and parent level 2 code
 export const accountLevelThreeFinanceSchema = (
   data: IAccountLevelThreeAttributes
@@ -26,9 +38,9 @@ export const accountLevelFourFinanceSchema = (
   const schema = Joi.object().keys({
     l3_code: Joi.string().required(),
     l4_description: Joi.string().required(),
-    l4_type: Joi.string().valid("Y", "N").required(),
-    l4_job: Joi.string().valid("Y", "N").required(),
-    l4_bill: Joi.string().valid("Y", "N").required(),
+    l4_type: Joi.string().valid("Y", "N").optional().allow(null).allow(""), // Optional type flag
+    l4_job: Joi.string().valid("Y", "N").optional().allow(""),  // Optional job flag
+    l4_bill: Joi.string().valid("Y", "N").optional().allow(""), // Optional billing flag
   });
   return schema.validate(data);
 };

@@ -201,6 +201,20 @@ router.post(
   }
 );
 
+router.post(
+  "/request/:id/reject",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { AttendanceController } = await getControllers();
+    return AttendanceController.rejectAttendanceRequest(req, res);
+  }
+);
+
 // Protected routes
 router.get(
   "/report",
@@ -296,6 +310,19 @@ router.get(
   async (req, res) => {
     const { EmployeeController } = await getControllers();
     return EmployeeController.getEmployeeInfo(req, res);
+  }
+);
+
+router.get(
+  "/employeeinfo/bayanatdb",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    const { checkUserAuthorization } = await getControllers();
+    return checkUserAuthorization(req, res, next);
+  },
+  async (req, res) => {
+    const { EmployeeController } = await getControllers();
+    return EmployeeController.getEmployeeInfoBayanatDb(req, res);
   }
 );
 

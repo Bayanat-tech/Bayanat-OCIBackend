@@ -35,8 +35,11 @@ export class AttendanceRequest {
   @Column({ name: "STATUS", type: "varchar2", length: 20, default: AttendanceRequestStatus.PENDING })
   status!: AttendanceRequestStatus;
 
-  @Column({ name: "APPROVED_BY", type: "varchar2", length: 50, nullable: true })
-  approved_by!: string | null;
+    @Column({ name: "APPROVED_BY", type: "varchar2", length: 50, nullable: true })
+    approved_by!: string | null;
+
+  @Column({ name: "REJECTED_BY", type: "varchar2", length: 50, nullable: true })
+  rejected_by!: string | null;
 
   @Column({ name: "APPROVED_AT", type: "timestamp", nullable: true })
   approved_at!: Date | null;

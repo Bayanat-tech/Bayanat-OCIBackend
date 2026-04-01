@@ -1,16 +1,16 @@
 export type TAppraisalTaskDtl = {
-company_code: string;
-  item_type: string;
-  employee_code: string;
-  appraisal_doc_no?: string | Date;
-  kpi_code?: string;
-  rating?: number;
-  score?: number;
+ COMPANY_CODE: string;
+  ITEM_TYPE: string;
+  EMPLOYEE_CODE: string;
+  APPRAISAL_DOC_NO?: string | Date;
+  KPI_CODE?: string;
+  RATING?: number;
+  SCORE?: number;
   KPI_TYPE_CODE?: string;
   KPI_DESC?: string;
-  standard_weightage?: number;
+  STANDARD_WEIGHTAGE?: number;
   KPI_TYPE_DESC?: string;
-  total?: number;
+  TOTAL?: number;
 };
 
 
@@ -27,14 +27,14 @@ export async function updateAppraisalRatings(
     console.log("Incoming body:", req.body);
     
     const rows = req.body.rows.map((r: TAppraisalTaskDtl) => ({
-      COMPANY_CODE: r.company_code,
-      APPRAISAL_DOC_NO: r.appraisal_doc_no,
-      ITEM_TYPE: r.item_type,
-      EMPLOYEE_CODE: r.employee_code,
-      KPI_CODE: r.kpi_code ?? null,
-      RATING: r.rating ?? null,
-      TOTAL: r.total ?? null,
-      STANDARD_WEIGHTAGE: r.standard_weightage ?? null
+      COMPANY_CODE: r.COMPANY_CODE,
+      APPRAISAL_DOC_NO: r.APPRAISAL_DOC_NO,
+      ITEM_TYPE: r.ITEM_TYPE,
+      EMPLOYEE_CODE: r.EMPLOYEE_CODE,
+      KPI_CODE: r.KPI_CODE ?? null,
+      RATING: r.RATING ?? null,
+      TOTAL: r.TOTAL ?? null,
+      STANDARD_WEIGHTAGE: r.STANDARD_WEIGHTAGE ?? null
     }));
      
     console.log("Mapped rows:", rows);

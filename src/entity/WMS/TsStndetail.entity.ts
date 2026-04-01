@@ -144,6 +144,15 @@ export class TsStndetail {
   @Column({ name: "EXP_DATE_TO", type: "date", nullable: true })
   exp_date_to?: Date;
 
+    @Column({ name: "MFG_DATE_TO", type: "date", nullable: true })
+  mfg_date_to?: Date;
+
+      @Column({ name: "EXP_DATE_FROM", type: "date", nullable: true })
+  exp_date_from?: Date;
+
+    @Column({ name: "MFG_DATE_FROM", type: "date", nullable: true })
+  mfg_date_from?: Date
+
   @Column({ name: "LOT_NO_TO", type: "varchar2", length: 20, nullable: true })
   lot_no_to?: string;
 

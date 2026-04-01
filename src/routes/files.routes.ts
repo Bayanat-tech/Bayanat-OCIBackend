@@ -16,6 +16,9 @@ import {
   deleteEmployeeFiles,
   getFilesBySrNo,
   getAllVendorFiles,
+  getAfFiles,
+  editAFFiles,
+  deleteFilesAF,
 } from "../controllers/files.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import { tenantContextMiddleware } from "../middleware/tenantContext.middleware";
@@ -24,6 +27,9 @@ import {
   uploadPFToS3,
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
+  uploadAFToS3,
+  // uploadPurchaseFilesToS3,
+  // uploadCPFilesToS3
   uploadTestFileToS3,
   amlsUploadToS3,
 } from "../services/ociUpload.service";
@@ -54,6 +60,23 @@ router.get(
   checkUserAuthorization,
   getpfFiles
 );
+
+//----------AFfile----------
+router.get(
+  "/accountFiles/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAfFiles
+);
+
+
+router.get(
+  "/purchaseFiles/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAfFiles
+);
+
 
 //------Vendor files----------
 router.get(
@@ -88,6 +111,21 @@ router.put(
   checkUserAuthorization,
   editPFFiles
 );
+
+router.put(
+  "/editAFFile",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  editAFFiles
+);
+
+router.put(
+  "/editPurchaseFile",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  editAFFiles
+);
+
 
 router.put(
   "/editVendorFile",
@@ -140,6 +178,23 @@ router.post(
 );
 
 router.post(
+  "/uploadFileAf",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  upload.single("file"),
+  uploadAFToS3
+);
+
+router.post(
+  "/uploadFilePurchase",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  upload.single("file"),
+  uploadAFToS3
+);
+
+
+router.post(
   "/uploadVendorAttachment",
   passport.authenticate("jwt", { session: false }),
   tenantContextMiddleware,
@@ -171,6 +226,20 @@ router.delete(
   tenantContextMiddleware,
   checkUserAuthorization,
   deleteFilesPF
+);
+
+router.delete(
+  "/deleteAF/:request_number/:sr_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  deleteFilesAF
+);
+
+router.delete(
+  "/deletepurchase/:request_number/:sr_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  deleteFilesAF
 );
 
 router.delete(

@@ -1,66 +1,85 @@
-// // Import required Express framework
-// import * as express from "express";
+/**
+ * @fileoverview Inbound WMS Routes - Handles all inbound warehouse management system routes
+ * @requires express
+ * @requires passport
+ */
 
-// // Import transaction-related controller functions
-// import {
-//   // Document Creation Controllers
-//   createChequePaymentDocument, // Creates single cheque payment
-//   createBulkTransactionDocument, // Creates multiple transactions
+import * as express from "express";
+import passport from "passport";
+// Update the import path if the middleware is located elsewhere, for example:
+import { tenantMiddleware } from "../../../middleware/tenant.middleware";
+import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
+import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
+import {
+  getChequeDetail,
+  getChequePaymentDetail,
+  getChequePaymentHeader,
+  getChildTableName,
+  getCompanyInfo,
+  getDefaultTransactionDetails,
+  getPurchaseHeader,
+  getTransactionChildren,
+  createBulkTransactionDocument,
+  createChequePaymentDocument,
+  createChequePaymentStoreProcess,
+  updateChequePaymentDocument,
+  cancelDocument,
+  deleteDocument,
+  deleteDetailItem,
+  deleteChildrenItem,
+  createPurchaseDocument,
+  createLPODocument,
+  createSalesDocument,
+  getInvoiceOutstandingBalances,
+  getDocAccounts
+} from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
+// Initialize Express router
+const router = express.Router();
 
-//   // Information Retrieval Controllers
-//   getChequeDetail, // Gets cheque-specific information
-//   getChequePaymentDetail, // Gets payment transaction details
-//   getChequePaymentHeader, // Gets payment header information
-//   getChequePaymentReport, // Generates payment reports
-//   getChildTableName, // Gets related table names
-//   getCompanyInfo, // Retrieves company information
-//   getDefaultTransactionDetails, // Gets default transaction values
+// Apply tenant middleware to ensure database switching
+router.use(tenantMiddleware);
+router.use(tenantContextMiddleware);
 
-//   // Document Modification Controllers
-//   updateChequePaymentDocument, // Updates payment documents
-//   cancelDocument, // Cancels existing documents
+router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 
-//   // Document Deletion Controllers
-//   deleteChildrenItem, // Removes child records
-//   deleteDetailItem, // Removes detail records
-//   deleteDocument, // Deletes entire documents
 
-//   // Export Controller
-//   exportTransactionDocument,
-//   createChequePaymentStoreProcess, // Exports transaction data
-// } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
-
-// // Initialize Express router
-// const router = express.Router();
-
-// //-------------Transaction Routes--------------
-
-// // GET Routes - Information Retrieval
-// router.get("/company_info", getCompanyInfo);                    // Get company details
-// router.get("/default_details", getDefaultTransactionDetails);   // Get default values
-// router.get("/cheque_detail", getChequeDetail);                  // Get cheque information
-// router.get("/header/:doc_no", getChequePaymentHeader);          // Get payment header by document number
-// router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
-// router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code
+// GET Routes - Information Retrieval
+router.get("/company_info", getCompanyInfo);             
+router.get("/default_details", getDefaultTransactionDetails);  
+router.get("/cheque_detail", getChequeDetail);                 
+router.get("/header/:doc_no", getChequePaymentHeader);   
+router.get("/purchaseheader/:doc_no", getPurchaseHeader);  
+router.get("/detail/:doc_no", getChequePaymentDetail);          // Get payment details by document number
+router.get("/children/:doc_no", getTransactionChildren);        // Get invoice/job/expense children by document number
+router.get("/table_name/:ac_code", getChildTableName);          // Get related table name by account code
+router.get("/doc_accounts", getDocAccounts);                    // Get doc accounts
+router.get("/invoice_outstanding", getInvoiceOutstandingBalances); // Get outstanding balances for invoices
 // router.get("/document_report", getChequePaymentReport);         // Generate payment report
 // router.get("/export", exportTransactionDocument);               // Export transaction data
 
-// // POST Routes - Document Creation
-// router.post("/document/bulk", createBulkTransactionDocument);   // Create multiple transactions
-// router.post("/document", createChequePaymentDocument);          // Create single cheque payment
-// router.post("/document/storeProcess", createChequePaymentStoreProcess); 
+// POST Routes - Document Creation
+router.post("/document/bulk", createBulkTransactionDocument);   // Create multiple transactions
+router.post("/document", createChequePaymentDocument);          // Create single cheque payment
+router.post("/document/storeProcess", createChequePaymentStoreProcess);
 
-// // PUT Routes - Document Updates
-// router.put("/document", updateChequePaymentDocument);           // Update payment document
-// router.put("/cancel_cheque", cancelDocument);                   // Cancel existing document
+// PUT Routes - Document Updates
+router.put("/document", updateChequePaymentDocument);           // Update payment document
+router.put("/cancel_cheque", cancelDocument);                   // Cancel existing document
 
-// // DELETE Routes - Record Removal
-// router.delete("/document/:doc_type", deleteDocument);           // Delete document by type
-// router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail record
-// router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
+// DELETE Routes - Record Removal
+router.delete("/document/:doc_type", deleteDocument);           // Delete document by type
+router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail record
+router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
 
-// // Export the configured router
-// export default router;
+
+router.post("/purchase-document",createPurchaseDocument)
+
+router.post("/lpo-document",createLPODocument)
+router.post("/sales-document",createSalesDocument)
+
+
+// Export the configured router
+export default router;
 
 // /* Router Purpose:
 // This router manages financial transaction endpoints with:

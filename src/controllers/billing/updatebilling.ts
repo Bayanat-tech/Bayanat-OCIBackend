@@ -1,5 +1,7 @@
 import oracledb from "oracledb";
 import { Request, Response } from "express";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 
 /* =======================
    Interfaces (unchanged)
@@ -45,11 +47,25 @@ export async function updateBilling(
   req: Request,
   res: Response
 ) {
-  const connection = await oracledb.getConnection();
-
+  let connection: any;
   try {
     console.log("UPDATE BILLING API HIT");
     console.log("Incoming body:", req.body);
+
+    let tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      console.warn("[updateBilling] Tenant context not available, resolving from user...");
+      const loginid = (req as any).user?.loginid || (req as any).loginid;
+      if (!loginid) {
+        throw new Error("[updateBilling] Cannot determine user loginid");
+      }
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      throw new Error("[updateBilling] Unable to determine tenant database");
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     const { invoiceHeader, invoiceDetails } = req.body;
 
@@ -138,6 +154,8 @@ const headerRows = invoiceHeader.map((h: any) => ({
     console.error(err);
     res.status(500).json({ error: "Invoice update failed" });
   } finally {
-    await connection.close();
+    if (connection) {
+      await connection.close();
+    }
   }
 }

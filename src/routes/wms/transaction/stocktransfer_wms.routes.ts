@@ -9,8 +9,8 @@ import { checkUserAuthorization } from "../../../middleware/checkUserAthorizatio
 
 // Controller imports
 // import { createOrUpdateTSSTNSequential } from "../../../controllers/StockTransfer/strocktransferdbupdate.controller";
-import { getAllStockTransfers, createSTN, getTSSTNWithDetails, createSTNDetail } from "../../../controllers/StockTransfer/stocktransferget.controller";
-import { processStockTransfer } from "../../../controllers/StockTransfer/processStockTransfer.controller";
+import { getAllStockTransfers, createSTN, getTSSTNWithDetails, createSTNDetail, editSTN } from "../../../controllers/StockTransfer/stocktransferget.controller";
+import { processStockTransfer, updateStockTransfer, deleteStockTransfer } from "../../../controllers/StockTransfer/processStockTransfer.controller";
 import { confirmStockTransfer } from "../../../controllers/StockTransfer/confirmStockTransfer.controller";
 // import { getProductAvailability } from "../../../controllers/StockTransfer/getProductAvailability";
  // ✅ new import
@@ -45,6 +45,18 @@ router.post("/processStockTransfer", async (req, res) => {
 router.post("/confirmStockTransfer", async (req, res) => {
   await confirmStockTransfer(req, res);
 });
+
+router.patch("/editstocktransfer", async (req,res) => {
+  await updateStockTransfer(req, res)
+})
+
+router.delete("/deletestocktransfer", async(req, res) => {
+  await deleteStockTransfer(req,res)
+})
+
+router.put('/stn/:stn_no/:company_code', async(req, res) => {
+  await editSTN(req,res)
+})
 
 // ✅ New GET API for product availability
 // router.get("/getProductAvailability", async (req, res) => {
