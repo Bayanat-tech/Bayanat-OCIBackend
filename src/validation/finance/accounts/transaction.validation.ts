@@ -330,6 +330,8 @@ export const purchaseSchema = (
     doc_date: Joi.date(), // Document date
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
+    rate: Joi.number().default(1), // Rate (default 1)
+    qty: Joi.number().default(1), // Quantity (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
     party_address: Joi.string(),
     party_phone: Joi.number().optional(),
@@ -363,8 +365,8 @@ export const purchaseSchema = (
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
-          rate: Joi.number(),
-          qty: Joi.number(),
+          rate: Joi.number().default(1), // Rate (default 1)
+          qty: Joi.number().default(1), // Quantity (default 1)
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
@@ -902,7 +904,11 @@ export const LpoSchema = (
     ac_code: Joi.string().required(), // Account code (required)
     ac_name: Joi.string().required(),
     doc_date: Joi.date(), // Document date
+    product_code: Joi.string().optional().allow("", null),
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
+    cost_code: Joi.string().optional().allow("", null),
+    rate: Joi.number().default(1), // Rate (default 1)
+    qty: Joi.number().default(1), // Quantity (default 1)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
     address: Joi.string(),
@@ -934,12 +940,16 @@ export const LpoSchema = (
           ac_code: Joi.string().required(), // Account code (required)
           ac_name: Joi.string(),
           header_ac_code: Joi.string(),
+          product_code: Joi.string().optional().allow("", null),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
+          cost_code: Joi.string().optional().allow("", null),
+          rate: Joi.number().default(1), // Rate (default 1)
+          qty: Joi.number().default(1), // Quantity (default 1) 
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
-          sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
+          sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
@@ -1162,3 +1172,63 @@ export const LpoSchema = (
   // Validate the data using the schema, depending on whether it's a bulk operation
   return isBulkOperation ? schema.validate(data) : baseSchema.validate(data);
 };
+
+
+//Petty cash payment
+export const pettyCashSchema = (
+  data: any,
+  userCompany?: string,
+  isBulkOperation?: boolean
+) => {
+  const baseSchema = Joi.object({
+    doc_no: Joi.number().optional().allow("", null), 
+    doc_type: Joi.string()
+      .valid(
+        constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT, // Petty cash payment
+      ).required(),
+    ac_code: Joi.string().required(),
+    ac_name: Joi.string().required(),
+    doc_date: Joi.date().optional(),
+    curr_code: Joi.string().required(),
+    ac_payee: Joi.string().required(),
+    ex_rate: Joi.number().default(1),
+    remarks:Joi.string().optional().allow("",null),
+    div_code: Joi.string().required(), // Division code (required)
+
+      detail: Joi.array() // Detail (required)
+      .items(
+        Joi.object({
+          div_code: Joi.string().required(), // Division code (required)
+          company_code: Joi.string().required(), // Company code (required)
+          ac_code: Joi.string().required(), 
+          ac_name: Joi.string(),
+          remarks: Joi.string().optional().allow("", null), 
+          curr_code: Joi.string().required(), 
+          ex_rate:Joi.number().default(1),
+          rate: Joi.number().default(1),
+          qty: Joi.number().default(1),
+          amount: Joi.number().required(),
+          sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (1)
+          tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
+          tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
+          tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
+          tx_compnt_amt_1: Joi.number().allow(null), // Transaction component 1 amount (optional)
+          job_no: Joi.string().optional().allow("", null), // Job number (optional)
+          dept_code: Joi.string().allow("", null), // Department code (optional)
+          lcur_amount: Joi.number().allow("", null), // Local currency amount (optional)
+          tx_compnt_lcuramt_1: Joi.number().allow("", null), // Transaction component 1 local currency amount (optional)
+          tx_cat_code: Joi.string().allow("", null), // Transaction category code (optional)
+          doc_no: Joi.number().required(), // Document number (required)
+          doc_type: Joi.string() // Document type (required)
+            .valid(
+              constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT, // Petty cash payment
+            )
+            .required(),
+          serial_no: Joi.number().required(),
+        })
+      )
+
+  })
+  const schema = Joi.array().items(baseSchema);
+  return isBulkOperation ? schema.validate(data) : baseSchema.validate(data);
+}

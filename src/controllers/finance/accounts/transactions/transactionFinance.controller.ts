@@ -8,6 +8,7 @@ import {
   LpoSchema,
   purchaseSchema,
   salesSchema,
+  pettyCashSchema
 } from '../../../../validation/finance/accounts/transaction.validation';
 import TenantManager          from '../../../../database/TenantManager';
 import { getCurrentTenantId } from '../../../../middleware/tenantContext.middleware';
