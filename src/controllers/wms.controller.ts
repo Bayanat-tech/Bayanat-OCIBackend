@@ -2390,7 +2390,7 @@ case "uom": {
     const pageLimit = Number(req.query.limit) || 100;
     
     // Get all UOMs for the company
-    const allUoms = await UomService.findByCompany(requestUser.company_code);
+    const allUoms = await UomService.findAll();
     
     // Apply search filter if present
     let filteredUoms = allUoms;
@@ -2567,7 +2567,7 @@ break;
         const pageLimit = Number(req.query.limit) || 100;
         
         // Get all MOCs for the company
-        const allMocs = await MocService.findByCompany(requestUser.company_code);
+        const allMocs = await MocService.findAll();
         
         // Apply search filter if present
         let filteredMocs = allMocs;
