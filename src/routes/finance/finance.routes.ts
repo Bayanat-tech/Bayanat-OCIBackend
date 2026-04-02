@@ -39,7 +39,7 @@ router.post(
 );
 
 router.post(
-  "/upsertAcBudget ",
+  "/upsertAcBudget",
   upsertAcBudget 
 );
 
