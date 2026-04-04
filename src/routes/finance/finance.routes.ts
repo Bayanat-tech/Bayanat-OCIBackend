@@ -16,6 +16,7 @@ import { upsertBankRemittance } from "../../controllers/finance/accounts/transac
 import { insUpdChqDepositBulk } from "../../controllers/finance/accounts/transactions/insUpdChqDepositBulk";
 import { upsertBudget } from "../../controllers/finance/accounts/transactions/upsertBudget";
 import { upsertAcBudget } from "../../controllers/finance/accounts/masters/upsertAcBudget";
+import { insUpdAcExpTypeBulk } from "../../controllers/finance/accounts/transactions/insUpdAcExpTypeBulk";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -31,6 +32,12 @@ router.post(
   "/upsertBudget",
   upsertBudget
 );
+
+router.post(
+  "/insUpdAcExpTypeBulk",
+  insUpdAcExpTypeBulk
+);
+
 
  
 router.post(
