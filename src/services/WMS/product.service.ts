@@ -60,7 +60,11 @@ import { IsNull } from "typeorm";
       static async createProduct(productData: Partial<Product>): Promise<Product> {
       const repository = this.getProductRepository();
 
-      const product = repository.create(productData);
+      const product = repository.create({
+        ...productData,
+      created_at: new Date(),
+      updated_at: new Date(),
+      });
       return await repository.save(product);
       }
 
@@ -175,7 +179,10 @@ import { IsNull } from "typeorm";
 
       const result = await repository.update(
         { prod_code, company_code },
-        updateData
+        {
+         ...updateData,
+         updated_at: new Date(),
+        }
       );
 
       return result.affected ? result.affected > 0 : false;
