@@ -19,6 +19,7 @@ import {
   // getAllVendorReports,
   // getAllEmployeeReports,
   getAllDynamicReports,
+  getAllStockTransReports
 } from "../controllers/wms/transaction/inbound/allReport_wms.controller";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import stockReportCriteria from "./wms/reports/stockCriteria_wms.routes";
@@ -65,6 +66,15 @@ router.get(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getAllDynamicReports
+);
+
+//ROUTE FOR STOCK ADJ REPORTS
+router.get(
+  "/stock_trans-reports",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getAllStockTransReports
 );
 
 // Route for outbound operations
