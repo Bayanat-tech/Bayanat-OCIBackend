@@ -15,6 +15,9 @@ import { upsertPrepaid } from "../../controllers/finance/accounts/transactions/u
 import { upsertBankRemittance } from "../../controllers/finance/accounts/transactions/upsertBankRemittance";
 import { insUpdChqDepositBulk } from "../../controllers/finance/accounts/transactions/insUpdChqDepositBulk";
 import { upsertBudget } from "../../controllers/finance/accounts/transactions/upsertBudget";
+import { upsertAcBudget } from "../../controllers/finance/accounts/masters/upsertAcBudget";
+import { insUpdAcExpTypeBulk } from "../../controllers/finance/accounts/transactions/insUpdAcExpTypeBulk";
+import { insUpdBTProject } from "../../controllers/finance/accounts/transactions/insUpdBTProject";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -31,10 +34,27 @@ router.post(
   upsertBudget
 );
 
+router.post(
+  "/insUpdAcExpTypeBulk",
+  insUpdAcExpTypeBulk
+);
+
+
+
+
+router.post(
+  "/insUpdBTProject",
+  insUpdBTProject
+);
  
 router.post(
   "/upsertBankRemittance",
   upsertBankRemittance
+);
+
+router.post(
+  "/upsertAcBudget",
+  upsertAcBudget 
 );
 
 router.post(
