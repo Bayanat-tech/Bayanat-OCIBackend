@@ -23,6 +23,7 @@ import {
   createChequePaymentDocument,
   createChequePaymentStoreProcess,
   updateChequePaymentDocument,
+  updatePurchaseDocument,
   cancelDocument,
   deleteDocument,
   deleteDetailItem,
@@ -72,6 +73,9 @@ router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail
 router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
 
 router.post("/purchase-document",createPurchaseDocument)
+
+// PUT route for updating existing purchase documents
+router.put("/purchase-document", updatePurchaseDocument);
 
 router.post("/lpo-document",createLPODocument)
 router.post("/sales-document",createSalesDocument)

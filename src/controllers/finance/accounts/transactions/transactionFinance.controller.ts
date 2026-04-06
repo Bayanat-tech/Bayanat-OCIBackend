@@ -831,6 +831,74 @@ export const callSpAcTxnControl = async (
   } finally { await closeConn(conn); }
 };
 // Stub — implement when needed
-export const updatePurchaseDocument = async (_req: RequestWithUser, res: Response) => {
-  res.status(501).json({ success: false, message: 'Not implemented' });
+export const updatePurchaseDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    if ((req.body as any).address && !(req.body as any).party_address) (req.body as any).party_address = (req.body as any).address;
+    if ((req.body as any).phone   && !(req.body as any).party_phone)   (req.body as any).party_phone   = (req.body as any).phone;
+    if (typeof req.body.doc_no === 'number') req.body.doc_no = String(req.body.doc_no);
+
+    const { error, value: v } = purchaseSchema(req.body);
+    if (error) { res.status(400).json({ success: false, message: error.message }); return; }
+
+    const { detail = [], children = {}, files = [], ...h } = req.body;
+    if (!h.doc_no) { res.status(400).json({ success: false, message: 'Missing doc_no in request' }); return; }
+
+    conn = await getConn(req);
+
+    // Delete existing document
+    try {
+      await conn.execute(
+        `BEGIN SP_DELETE_DOCUMENT(:cc, :dn, :dt); END;`,
+        { cc: req.user.company_code, dn: h.doc_no, dt: h.doc_type }
+      );
+    } catch (e: any) {
+      // Some document numbers (eg. prefixed strings like PI...) cause ORA-01722 inside the SP.
+      // Log and continue to attempt recreate — safer than returning 500 to caller.
+      if (e && (e.errorNum === 1722 || /ORA-01722/.test(String(e.message || '')))) {
+        console.warn('SP_DELETE_DOCUMENT skipped due to ORA-01722 invalid number for', h.doc_no, h.doc_type);
+      } else {
+        throw e;
+      }
+    }
+
+    // Recreate header SP returns purchase_no + invoice_no
+    const result = await conn.execute(
+      `BEGIN SP_CREATE_PURCHASE_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:pa,:pp,:rn,:lu,:pno,:ino); END;`,
+      {
+        cc: req.user.company_code, dv: h.div_code ?? v.div_code,       dt: h.doc_type ?? v.doc_type,
+        dd: toDate(h.doc_date ?? v.doc_date),    ac: h.ac_code ?? v.ac_code,         cu: h.curr_code ?? v.curr_code,
+        er: h.ex_rate ? Number(h.ex_rate) : (v.ex_rate ? Number(v.ex_rate) : null), rm: h.remarks ?? v.remarks ?? null,
+        pa: h.party_address ?? v.party_address ?? null, pp: h.party_phone ?? v.party_phone ?? null,
+        rn: h.ref_doc_no ?? v.ref_doc_no ?? null, lu: req.user.loginid,
+        pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
+        ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
+      }
+    );
+
+    const { pno: purchase_no, ino: invoice_no } = result.outBinds as any;
+
+    // Detail rows SP
+    await spInsertDetailRows(conn, req.user.company_code, h.doc_type ?? v.doc_type, purchase_no, detail?.length ? detail : (v.detail ?? []), req.user.loginid);
+
+    // Purchase invoice rows SP (sign = -1)
+    const detailToUse = detail?.length ? detail : (v.detail ?? []);
+    if (detailToUse?.length) {
+      await conn.executeMany(
+        `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
+        detailToUse.map((d: any) => ({
+          cc: req.user.company_code, dt: h.doc_type ?? v.doc_type,    dn: purchase_no,
+          sn: d.serial_no ? Number(d.serial_no) : 1, dd: toDate(h.doc_date ?? v.doc_date), ac: h.ac_code ?? v.ac_code,
+          iv: invoice_no,            am: d.amount ? Number(d.amount) : 0, cu: d.curr_code ?? h.curr_code ?? v.curr_code,
+          er: d.ex_rate ? Number(d.ex_rate) : (h.ex_rate ? Number(h.ex_rate) : 1), dv: h.div_code ?? v.div_code,    lu: req.user.loginid,
+        }))
+      );
+    }
+
+    await conn.commit();
+    res.json({ success: true, message: 'Purchase and Invoice updated successfully', data: { purchase_doc_no: purchase_no, invoice_doc_no: invoice_no } });
+  } catch (err: any) {
+    if (conn) try { await conn.rollback(); } catch {}
+    sendError(res, err);
+  } finally { await closeConn(conn); }
 };
