@@ -134,13 +134,14 @@ export const getAllDynamicReports = async (
       : {};
     const module = req.query.module as string;
     const reportname = req.query.reportname as string;
+    const company_code = req.query.company_code as string;
 
     // Get authenticated user details
     const requestUser: IUser = await req.user;
 
     // Initialize query parameters with TypeORM conditions
     let whereConditions: FindOptionsWhere<ReportMaster> = {
-      company_code: requestUser.company_code,
+      company_code: company_code || requestUser.company_code,
     };
 
     // Add optional filters
