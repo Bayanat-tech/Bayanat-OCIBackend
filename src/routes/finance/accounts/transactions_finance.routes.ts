@@ -32,6 +32,7 @@ import {
   createSalesDocument,
   getInvoiceOutstandingBalances,
   getDocAccounts
+  getDocAccounts,
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 // Initialize Express router
 const router = express.Router();
