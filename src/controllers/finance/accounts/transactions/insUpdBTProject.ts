@@ -25,6 +25,7 @@ export type TBTProject = {
   RESULTS1?: number;
   OVERALL_RESULT?: number;
   OVERALL_WEIGHTAGE_ACCOMPLISHED?: number;
+  ID?: number;
 };
 
 export const insUpdBTProject = async (req: Request, res: Response): Promise<void> => {
@@ -68,7 +69,8 @@ export const insUpdBTProject = async (req: Request, res: Response): Promise<void
       RESULTS1: d.RESULTS1 ?? 0,
       OVERALL_RESULT: d.OVERALL_RESULT ?? 0,
       OVERALL_WEIGHTAGE_ACCOMPLISHED: d.OVERALL_WEIGHTAGE_ACCOMPLISHED ?? 0,
-      MODULE: module
+      MODULE: module,
+      ID: d.ID ?? 0,
     }));
 
     await connection.execute(
