@@ -344,3 +344,54 @@ export const getAllStockTransReports = async (req: RequestWithUser, res: Respons
     return;
   }
 };
+
+export const getAllStockAdjReports = async (req: RequestWithUser, res: Response) => {
+  try {
+    // Parse filter from query parameters or use empty object
+    const filter: ISearch = req.query.filter
+      ? JSON.parse(req.query.filter as string)
+      : {};
+
+    // Get authenticated user details
+    const requestUser: IUser = await req.user;
+
+    // Initialize query parameters with TypeORM conditions
+    let whereConditions: FindOptionsWhere<ReportMaster> = {
+      company_code: requestUser.company_code, // Filter by company code
+      module: "STOCK_ADJ", // Filter for inbound module only
+    };
+
+    // Apply search filters to query
+    whereConditions = getSearchFilterQuery({
+      insideQuery: [],
+      filter: filter.search,
+      outsideQuery: whereConditions,
+    });
+
+    // Build order object for sorting if specified
+    const order =
+      filter?.sort && Object.keys(filter?.sort).length > 0
+        ? { [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC" }
+        : undefined;
+
+    // Fetch reports with filters and get count
+    const { data, totalCount } = await ReportMasterService.findAllWithFilters(
+      whereConditions,
+      order as { [key: string]: "ASC" | "DESC" }
+    );
+
+    // Return success response with data
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      totalCount,
+      data,
+    });
+  } catch (error: any) {
+    // Handle errors and return error response
+    res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+      success: false,
+      message: error.message,
+    });
+    return;
+  }
+};
