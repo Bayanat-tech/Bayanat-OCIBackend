@@ -122,6 +122,18 @@ newValidaterequest: async(params: {
 
   console.log("Input leaveStartDate:", leaveStartDate); // '12-11-2025' (DD-MM-YYYY)
 
+  // Validate date format
+  if (!/^\d{2}-\d{2}-\d{4}$/.test(leaveStartDate)) {
+    throw new Error("Invalid date format. Expected DD-MM-YYYY");
+  }
+
+  // Validate date components
+  const [day, month, year] = leaveStartDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    throw new Error("Invalid date components");
+  }
+
   // Your date is already in DD-MM-YYYY format, no conversion needed!
   const formattedDate = leaveStartDate; // Keep as '12-11-2025'
 

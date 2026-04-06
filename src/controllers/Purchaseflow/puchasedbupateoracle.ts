@@ -19,16 +19,19 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function retryOnDeadlock<T>(
+async function retryOnError<T>(
   operation: () => Promise<T>,
   retries = MAX_RETRIES
 ): Promise<T> {
   try {
     return await operation();
   } catch (error: any) {
-    if (retries > 0 && error.errorNum === 60) { // ORA-00060: deadlock detected
+    const errorCode = error.errorNum || error.code;
+    const retryableErrors = [60, 12514, 12505, 12154]; // deadlock, listener not reached, etc.
+    if (retries > 0 && (retryableErrors.includes(errorCode) || error.message?.includes('NJS-040'))) {
+      console.warn(`[retryOnError] Retrying operation due to error ${errorCode}: ${error.message}`);
       await sleep(RETRY_DELAY);
-      return retryOnDeadlock(operation, retries - 1);
+      return retryOnError(operation, retries - 1);
     }
     throw error;
   }
@@ -174,16 +177,34 @@ export async function getRequestUsers(
     );
 
     // Get the flow role first
-    const roleResult = await conn.execute<{ ROLE_NAME: string }>(
-      `SELECT FUN_GET_FLOW_ROLE_JAS(:updatedBy, :companyCode) AS ROLE_NAME FROM DUAL`,
-      {
-        updatedBy: data.updated_by,
-        companyCode: data.companyCode,
-      },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
-    const userRole = roleResult.rows?.[0]?.ROLE_NAME || "";
+    let userRole = "";
+    try {
+      const roleResult = await conn.execute<{ ROLE_NAME: string }>(
+        `SELECT FUN_GET_FLOW_ROLE_JAS(:updatedBy, :companyCode) AS ROLE_NAME FROM DUAL`,
+        {
+          updatedBy: data.updated_by,
+          companyCode: data.companyCode,
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      userRole = roleResult.rows?.[0]?.ROLE_NAME || "";
+    } catch (error: any) {
+      console.error("[getRequestUsers] Error getting role:", error.message);
+      if (error.message.includes("ORA-01422")) {
+        console.warn("[getRequestUsers] Function returned multiple rows, using fallback");
+        // Fallback: try to get role from user mapping
+        try {
+          const fallbackResult = await conn.execute<{ ROLE_NAME: string }>(
+            `SELECT MAX(role_name) AS ROLE_NAME FROM ms_ps_user_role_mapping WHERE user_name = :user`,
+            { user: data.updated_by },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          userRole = fallbackResult.rows?.[0]?.ROLE_NAME || "";
+        } catch (fallbackError) {
+          console.error("[getRequestUsers] Fallback also failed:", fallbackError);
+        }
+      }
+    }
     
     if (!userRole) {
       console.warn("[getRequestUsers] No role found for user", {

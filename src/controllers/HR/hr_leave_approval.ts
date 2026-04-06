@@ -52,16 +52,19 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function retryOnDeadlock<T>(
+async function retryOnError<T>(
   operation: () => Promise<T>,
   retries = MAX_RETRIES
 ): Promise<T> {
   try {
     return await operation();
   } catch (error: any) {
-    if (retries > 0 && error.errorNum === 60) {
+    const errorCode = error.errorNum || error.code;
+    const retryableErrors = [60, 12514, 12505, 12154]; // deadlock, listener not reached, etc.
+    if (retries > 0 && (retryableErrors.includes(errorCode) || error.message?.includes('NJS-040'))) {
+      console.warn(`[retryOnError] Retrying operation due to error ${errorCode}: ${error.message}`);
       await sleep(RETRY_DELAY);
-      return retryOnDeadlock(operation, retries - 1);
+      return retryOnError(operation, retries - 1);
     }
     throw error;
   }

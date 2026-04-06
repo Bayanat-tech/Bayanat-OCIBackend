@@ -277,8 +277,7 @@ console.log('fetchQuery',fetchQuery);
         if (request_number) {
           bindParams.request_number = request_number;
         }
-
-
+        
         try {
           const fetchQuery = `
       SELECT *
@@ -286,23 +285,13 @@ console.log('fetchQuery',fetchQuery);
       WHERE ${whereConditions}
       ORDER BY request_number ASC
     `;
-
-
-  
-          
-          // const queryParams = [requestUser.company_code];
-          // if (request_number) queryParams.push(request_number);
-
-               console.log("Leaveflow_request Query:", fetchQuery);
+          console.log("Leaveflow_request Query:", fetchQuery);
           console.log("Leaveflow_request Params:", bindParams);
           
           const fetchedData = await oracleDb.query(fetchQuery, bindParams);
 
           console.log("fetchedData.rows", fetchedData.rows)
-          
-
-          
-
+        
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
             data: {

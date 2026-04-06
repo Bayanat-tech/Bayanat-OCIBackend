@@ -48,9 +48,9 @@ export const getRequestFlowUsers = async (req: RequestWithUser, res: Response) =
     console.log("DEPT_HEAD from DB:", roleData.DEPT_HEAD, "type:", typeof roleData.DEPT_HEAD, "length:", roleData.DEPT_HEAD_LENGTH);
     console.log("IMMEDIATE_SUPERVISOR from DB:", roleData.IMMEDIATE_SUPERVISOR, "type:", typeof roleData.IMMEDIATE_SUPERVISOR, "length:", roleData.IMMEDIATE_SUPERVISOR_LENGTH);
 
-    const HOD = roleData.HOD;
-    const DEPT_HEAD = roleData.DEPT_HEAD;
-    const IMMEDIATE_SUPERVISOR = roleData.IMMEDIATE_SUPERVISOR;
+    const HOD = roleData.HOD?.trim();
+    const DEPT_HEAD = roleData.DEPT_HEAD?.trim();
+    const IMMEDIATE_SUPERVISOR = roleData.IMMEDIATE_SUPERVISOR?.trim();
 
     // const paddedLoginId = loginid.padStart(5, '0');
     // console.log("Padded loginid:", paddedLoginId, "length:", paddedLoginId.length);

@@ -26,7 +26,7 @@ const dbConfig: oracledb.PoolAttributes = {
     constants.DATABASE.ORACLE_CONNECTION_STRING ||
     process.env.ORACLE_CONNECTION_STRING,
   poolMin: 5,
-  poolMax: 20,
+  poolMax: 30,
   poolIncrement: 2,
   poolTimeout: 60,
 };
@@ -53,7 +53,7 @@ export const AppDataSource = new DataSource({
   subscribers: ["src/subscriber/**/*.ts"],
   extra: {
     poolMin: 5,
-    poolMax: 20,
+    poolMax: 50,
     poolIncrement: 2,
     poolTimeout: 60,
   },
