@@ -967,7 +967,9 @@ export const LpoSchema = (
     tax_categoty: Joi.number().optional(),
     tax_code: Joi.number().optional().allow("", null),
     tax_type: Joi.string().optional().allow("", null),
+    lpo_category: Joi.string().optional().allow("", null),
     div_code: Joi.string().required(), // Division code (required)
+    div_name: Joi.string(),
     ...(isBulkOperation && { company_code: userCompany }), // Company code (conditional)
     files: Joi.array()
       .items(

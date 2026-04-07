@@ -327,7 +327,14 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     if (!result.rows?.length) { res.status(500).json({ success: false }); return; }
-    res.json({ success: true, data: result.rows[0] });
+
+     // Normalize uppercase keys to lowercase
+    const row = result.rows[0] as Record<string, any>;
+    const normalizedData = Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])
+    );
+    
+    res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
