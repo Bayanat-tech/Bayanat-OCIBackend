@@ -70982,42 +70982,121 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
-2026-04-02 15:46:01 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
-Error: listen EADDRINUSE: address already in use :::3500
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at Server.listen (node:net:2102:7)
-    at Function.listen (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
-    at startServer (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\index.ts:146:9) 
-Error: listen EADDRINUSE: address already in use :::3500
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at Server.listen (node:net:2102:7)
-    at Function.listen (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
-    at startServer (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\index.ts:146:9)
-2026-04-02 15:55:53 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
-Error: listen EADDRINUSE: address already in use :::3500
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at Server.listen (node:net:2102:7)
-    at Function.listen (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
-    at startServer (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\index.ts:146:9) 
-Error: listen EADDRINUSE: address already in use :::3500
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at Server.listen (node:net:2102:7)
-    at Function.listen (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
-    at startServer (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\index.ts:146:9)
-2026-04-02 16:09:28 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
-Error: listen EADDRINUSE: address already in use :::3500
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at Server.listen (node:net:2102:7)
-    at Function.listen (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
-    at startServer (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\index.ts:146:9) 
-Error: listen EADDRINUSE: address already in use :::3500
-    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
-    at listenInCluster (node:net:1997:12)
-    at Server.listen (node:net:2102:7)
-    at Function.listen (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
-    at startServer (C:\Users\Srishti.nayal\Documents\GitHub\Bayanat-OCIBackend\index.ts:146:9)
+2026-03-29 16:48:23 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m5[0m:[93m3[0m - [91merror[0m[90m TS2724: [0m'"../../controllers/StockAdjustment/createStockAdjustment.controller"' has no exported member named 'updateStockAdjustment'. Did you mean 'createStockAdjustment'?
+
+[7m5[0m   updateStockAdjustment,
+[7m [0m [91m  ~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/StockAdjustment/createStockAdjustment.controller.ts[0m:[93m8[0m:[93m14[0m
+    [7m8[0m export const createStockAdjustment = async (
+    [7m [0m [96m             ~~~~~~~~~~~~~~~~~~~~~[0m
+    'createStockAdjustment' is declared here.
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m14[0m:[93m3[0m - [91merror[0m[90m TS2724: [0m'"../../controllers/StockAdjustment/createStockAdjustment.controller"' has no exported member named 'editStockAdjustmentDetail'. Did you mean 'deleteStockAdjustmentDetail'?
+
+[7m14[0m   editStockAdjustmentDetail,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/StockAdjustment/createStockAdjustment.controller.ts[0m:[93m760[0m:[93m14[0m
+    [7m760[0m export const deleteStockAdjustmentDetail = async (
+    [7m   [0m [96m             ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    'deleteStockAdjustmentDetail' is declared here.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m5[0m:[93m3[0m - [91merror[0m[90m TS2724: [0m'"../../controllers/StockAdjustment/createStockAdjustment.controller"' has no exported member named 'updateStockAdjustment'. Did you mean 'createStockAdjustment'?
+
+[7m5[0m   updateStockAdjustment,
+[7m [0m [91m  ~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/StockAdjustment/createStockAdjustment.controller.ts[0m:[93m8[0m:[93m14[0m
+    [7m8[0m export const createStockAdjustment = async (
+    [7m [0m [96m             ~~~~~~~~~~~~~~~~~~~~~[0m
+    'createStockAdjustment' is declared here.
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m14[0m:[93m3[0m - [91merror[0m[90m TS2724: [0m'"../../controllers/StockAdjustment/createStockAdjustment.controller"' has no exported member named 'editStockAdjustmentDetail'. Did you mean 'deleteStockAdjustmentDetail'?
+
+[7m14[0m   editStockAdjustmentDetail,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/StockAdjustment/createStockAdjustment.controller.ts[0m:[93m760[0m:[93m14[0m
+    [7m760[0m export const deleteStockAdjustmentDetail = async (
+    [7m   [0m [96m             ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    'deleteStockAdjustmentDetail' is declared here.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m5[0m:[93m3[0m - [91merror[0m[90m TS2724: [0m'"../../controllers/StockAdjustment/createStockAdjustment.controller"' has no exported member named 'updateStockAdjustment'. Did you mean 'createStockAdjustment'?
+
+[7m5[0m   updateStockAdjustment,
+[7m [0m [91m  ~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/StockAdjustment/createStockAdjustment.controller.ts[0m:[93m8[0m:[93m14[0m
+    [7m8[0m export const createStockAdjustment = async (
+    [7m [0m [96m             ~~~~~~~~~~~~~~~~~~~~~[0m
+    'createStockAdjustment' is declared here.
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m14[0m:[93m3[0m - [91merror[0m[90m TS2724: [0m'"../../controllers/StockAdjustment/createStockAdjustment.controller"' has no exported member named 'editStockAdjustmentDetail'. Did you mean 'deleteStockAdjustmentDetail'?
+
+[7m14[0m   editStockAdjustmentDetail,
+[7m  [0m [91m  ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/StockAdjustment/createStockAdjustment.controller.ts[0m:[93m760[0m:[93m14[0m
+    [7m760[0m export const deleteStockAdjustmentDetail = async (
+    [7m   [0m [96m             ~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    'deleteStockAdjustmentDetail' is declared here.
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-03-29 16:50:05 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m32[0m:[93m48[0m - [91merror[0m[90m TS2552: [0mCannot find name 'updateStockAdjustment'. Did you mean 'createStockAdjustment'?
+
+[7m32[0m router.put("/updateStockAdjustment/:ADJ_CODE", updateStockAdjustment as express.RequestHandler);
+[7m  [0m [91m                                               ~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m32[0m:[93m48[0m - [91merror[0m[90m TS2552: [0mCannot find name 'updateStockAdjustment'. Did you mean 'createStockAdjustment'?
+
+[7m32[0m router.put("/updateStockAdjustment/:ADJ_CODE", updateStockAdjustment as express.RequestHandler);
+[7m  [0m [91m                                               ~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/StockAdjustment/stockAdjustment.routes.ts[0m:[93m32[0m:[93m48[0m - [91merror[0m[90m TS2552: [0mCannot find name 'updateStockAdjustment'. Did you mean 'createStockAdjustment'?
+
+[7m32[0m router.put("/updateStockAdjustment/:ADJ_CODE", updateStockAdjustment as express.RequestHandler);
+[7m  [0m [91m                                               ~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)

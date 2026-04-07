@@ -19,7 +19,7 @@ export const withTenantContext = () => [
   tenantContextMiddleware,
 ];
 
-
+import freight from "./src/routes/Freight/freight.routes"
 import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
 import authRoutes from "./src/routes/auth.routes";
@@ -75,6 +75,8 @@ app.use("/api/pams/", pamsRoutes);
 app.use("/api/wms", wmsRoutes);
 
 app.use("/api/finance", financeRoutes);
+
+app.use("/api/freight", freight);
 
 app.use("/api/alms/", almsRoutes);
 

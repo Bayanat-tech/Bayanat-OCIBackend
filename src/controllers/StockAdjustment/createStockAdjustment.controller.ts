@@ -84,7 +84,7 @@ export const createStockAdjustment = async (
       P_UOM,
       L_UOM,
       PALLET_ID,
-      KEY_NUMBER: KEY_NUMBER || "0",
+      ...(ADJ_TYPE === '-' && { KEY_NUMBER }),   
       COMPANY_CODE,
       CREATED_BY: username,
       UPDATED_BY: username,
@@ -108,117 +108,117 @@ export const createStockAdjustment = async (
   }
 };
 
-export const updateStockAdjustment = async (
-  req: RequestWithUser,
-  res: Response
-) => {
-  try {
-    const { ADJ_CODE } = req.params;
-    const { 
-      // Header fields
-      PRIN_CODE,
-      REMARKS,
-      CONFIRMED,
-      ADJ_DATE,
-      CONFIRMED_DATE,
+// export const updateStockAdjustment = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   try {
+//     const { ADJ_CODE } = req.params;
+//     const { 
+//       // Header fields
+//       PRIN_CODE,
+//       REMARKS,
+//       CONFIRMED,
+//       ADJ_DATE,
+//       CONFIRMED_DATE,
       
-      // Detail fields
-      JOB_NO,
-      PROD_CODE, 
-      ADJ_TYPE,
-      QTY_PUOM, 
-      SITE_CODE,
-      LOCATION_CODE,
-      QTY_LUOM, 
-      P_UOM,
-      L_UOM,
-      PALLET_ID,
-      KEY_NUMBER
-    }: ICreateStockAdjustmentRequest = req.body;
+//       // Detail fields
+//       JOB_NO,
+//       PROD_CODE, 
+//       ADJ_TYPE,
+//       QTY_PUOM, 
+//       SITE_CODE,
+//       LOCATION_CODE,
+//       QTY_LUOM, 
+//       P_UOM,
+//       L_UOM,
+//       PALLET_ID,
+//       KEY_NUMBER
+//     }: ICreateStockAdjustmentRequest = req.body;
 
-    if (!ADJ_CODE) {
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "ADJ_CODE is required",
-      });
-      return;
-    }
+//     if (!ADJ_CODE) {
+//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "ADJ_CODE is required",
+//       });
+//       return;
+//     }
 
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
-    const username = requestUser.loginid;
+//     const requestUser = req.user;
+//     const COMPANY_CODE = requestUser.company_code;
+//     const username = requestUser.loginid;
 
-    // Check if adjustment header exists
-    const existingHeader = await TaAdjHeaderService.findByAdjCode(
-      ADJ_CODE,
-      COMPANY_CODE
-    );
+//     // Check if adjustment header exists
+//     const existingHeader = await TaAdjHeaderService.findByAdjCode(
+//       ADJ_CODE,
+//       COMPANY_CODE
+//     );
 
-    if (!existingHeader) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "Stock adjustment header not found",
-      });
-      return;
-    }
+//     if (!existingHeader) {
+//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: "Stock adjustment header not found",
+//       });
+//       return;
+//     }
 
-    // Update stock adjustment header
-    const headerUpdated = await TaAdjHeaderService.updateHeader(
-      ADJ_CODE,
-      COMPANY_CODE,
-      {
-        PRIN_CODE,
-        REMARKS,
-        CONFIRMED,
-        ADJ_DATE,
-        CONFIRMED_DATE,
-        USER_ID: username,
-      }
-    );
+//     // Update stock adjustment header
+//     const headerUpdated = await TaAdjHeaderService.updateHeader(
+//       ADJ_CODE,
+//       COMPANY_CODE,
+//       {
+//         PRIN_CODE,
+//         REMARKS,
+//         CONFIRMED,
+//         ADJ_DATE,
+//         CONFIRMED_DATE,
+//         USER_ID: username,
+//       }
+//     );
 
-    // Update stock adjustment detail if JOB_NO is provided
-    let detailUpdated = true;
-    if (JOB_NO) {
-      detailUpdated = await TaAdjDetailService.updateAdjustment(
-        JOB_NO,
-        COMPANY_CODE,
-        {
-          PROD_CODE,
-          ADJ_TYPE,
-          QTY_PUOM,
-          SITE_CODE,
-          LOCATION_CODE,
-          QTY_LUOM,
-          PRIN_CODE,
-          P_UOM,
-          L_UOM,
-          PALLET_ID,
-          KEY_NUMBER,
-          USER_ID: username,
-        }
-      );
-    }
+//     // Update stock adjustment detail if JOB_NO is provided
+//     let detailUpdated = true;
+//     if (JOB_NO) {
+//       detailUpdated = await TaAdjDetailService.updateAdjustment(
+//         JOB_NO,
+//         COMPANY_CODE,
+//         {
+//           PROD_CODE,
+//           ADJ_TYPE,
+//           QTY_PUOM,
+//           SITE_CODE,
+//           LOCATION_CODE,
+//           QTY_LUOM,
+//           PRIN_CODE,
+//           P_UOM,
+//           L_UOM,
+//           PALLET_ID,
+//           KEY_NUMBER,
+//           USER_ID: username,
+//         }
+//       );
+//     }
 
-    if (headerUpdated && detailUpdated) {
-      res.status(constants.STATUS_CODES.OK).json({
-        success: true,
-        message: "Stock adjustment updated successfully",
-      });
-    } else {
-      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Failed to update stock adjustment",
-      });
-    }
-  } catch (error: any) {
-    console.error("Error updating stock adjustment:", error);
-    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Failed to update stock adjustment",
-      error: error.message,
-    });
-  }
-};
+//     if (headerUpdated && detailUpdated) {
+//       res.status(constants.STATUS_CODES.OK).json({
+//         success: true,
+//         message: "Stock adjustment updated successfully",
+//       });
+//     } else {
+//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//         success: false,
+//         message: "Failed to update stock adjustment",
+//       });
+//     }
+//   } catch (error: any) {
+//     console.error("Error updating stock adjustment:", error);
+//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//       success: false,
+//       message: "Failed to update stock adjustment",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const getStockAdjustments = async (
   req: RequestWithUser,
@@ -508,6 +508,9 @@ export const createAdjustmentDetail = async (
       QTY_PUOM,
       QTY_LUOM,
       ADJ_TYPE,
+      MFG_DATE,
+      EXP_DATE,
+      BATCH_NO,
     } = req.body;
 
     // Validate required fields
@@ -532,12 +535,20 @@ export const createAdjustmentDetail = async (
       });
     }
 
-    if (!KEY_NUMBER) {
+    // KEY_NUMBER only required for subtraction (-)
+    if (ADJ_TYPE === '-' && !KEY_NUMBER) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "KEY_NUMBER is required",
+        message: "KEY_NUMBER is required for adjustment type '-'",
       });
     }
+// ── Date parser: handles ISO strings / null safely ─────────────────────
+    const parseDate = (val: any): Date | null => {
+      if (!val) return null;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
 
     // Get user info from request
     const requestUser = req.user;
@@ -556,14 +567,17 @@ export const createAdjustmentDetail = async (
       P_UOM,
       L_UOM,
       JOB_NO,
-      LOT_NO,
       MANU_CODE,
       DOC_REF,
-      KEY_NUMBER,
+      KEY_NUMBER:  ADJ_TYPE === '+' ? null : KEY_NUMBER,
       PALLET_ID,
       QTY_PUOM,
       QTY_LUOM,
       ADJ_TYPE,
+      MFG_DATE:    ADJ_TYPE === '+' ? parseDate(MFG_DATE) : null,
+      EXP_DATE:    ADJ_TYPE === '+' ? parseDate(EXP_DATE) : null,
+      BATCH_NO:    ADJ_TYPE === '+' ? BATCH_NO  : null,
+      LOT_NO:      ADJ_TYPE === '+' ? LOT_NO    : null,
       USER_ID: username,
     });
 
@@ -644,104 +658,104 @@ export const confirmAdjDetail = async (
   }
 };
 
-export const editStockAdjustmentDetail = async (
-  req: RequestWithUser,
-  res: Response
-) => {
-  try {
-    const { ADJ_CODE, JOB_NO } = req.params;
-    const {
-      PROD_CODE,
-      ADJ_TYPE,
-      QTY_PUOM,
-      SITE_CODE,
-      LOCATION_CODE,
-      QTY_LUOM,
-      PRIN_CODE,
-      P_UOM,
-      L_UOM,
-      PALLET_ID,
-      KEY_NUMBER,
-    } = req.body;
+// export const editStockAdjustmentDetail = async (
+//   req: RequestWithUser,
+//   res: Response
+// ) => {
+//   try {
+//     const { ADJ_CODE, JOB_NO } = req.params;
+//     const {
+//       PROD_CODE,
+//       ADJ_TYPE,
+//       QTY_PUOM,
+//       SITE_CODE,
+//       LOCATION_CODE,
+//       QTY_LUOM,
+//       PRIN_CODE,
+//       P_UOM,
+//       L_UOM,
+//       PALLET_ID,
+//       KEY_NUMBER,
+//     } = req.body;
 
-    if (!ADJ_CODE) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "ADJ_CODE is required",
-      });
-    }
+//     if (!ADJ_CODE) {
+//       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "ADJ_CODE is required",
+//       });
+//     }
 
-    if (!JOB_NO) {
-      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "JOB_NO is required",
-      });
-    }
+//     if (!JOB_NO) {
+//       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+//         success: false,
+//         message: "JOB_NO is required",
+//       });
+//     }
 
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
-    const username = requestUser.loginid;
+//     const requestUser = req.user;
+//     const COMPANY_CODE = requestUser.company_code;
+//     const username = requestUser.loginid;
 
-    // Check if adjustment header exists
-    const existingHeader = await TaAdjHeaderService.findByAdjCode(
-      ADJ_CODE,
-      COMPANY_CODE
-    );
+//     // Check if adjustment header exists
+//     const existingHeader = await TaAdjHeaderService.findByAdjCode(
+//       ADJ_CODE,
+//       COMPANY_CODE
+//     );
 
-    if (!existingHeader) {
-      return res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "Stock adjustment header not found",
-      });
-    }
+//     if (!existingHeader) {
+//       return res.status(constants.STATUS_CODES.NOT_FOUND).json({
+//         success: false,
+//         message: "Stock adjustment header not found",
+//       });
+//     }
 
-    // Update stock adjustment detail using existing updateAdjustment method
-    const detailUpdated = await TaAdjDetailService.updateAdjustment(
-      JOB_NO,
-      COMPANY_CODE,
-      {
-        PROD_CODE,
-        ADJ_TYPE,
-        QTY_PUOM,
-        SITE_CODE,
-        LOCATION_CODE,
-        QTY_LUOM,
-        PRIN_CODE,
-        P_UOM,
-        L_UOM,
-        PALLET_ID,
-        KEY_NUMBER,
-        USER_ID: username,
-      }
-    );
+//     // Update stock adjustment detail using existing updateAdjustment method
+//     const detailUpdated = await TaAdjDetailService.updateAdjustment(
+//       JOB_NO,
+//       COMPANY_CODE,
+//       {
+//         PROD_CODE,
+//         ADJ_TYPE,
+//         QTY_PUOM,
+//         SITE_CODE,
+//         LOCATION_CODE,
+//         QTY_LUOM,
+//         PRIN_CODE,
+//         P_UOM,
+//         L_UOM,
+//         PALLET_ID,
+//         KEY_NUMBER,
+//         USER_ID: username,
+//       }
+//     );
 
-    if (detailUpdated) {
-      // Fetch all details and find the updated one
-      const allDetails = await TaAdjDetailService.findByCompany(COMPANY_CODE);
-      const updatedDetail = allDetails.find(
-        detail => detail.JOB_NO === JOB_NO && detail.ADJ_NO === existingHeader.ADJ_NO
-      );
+//     if (detailUpdated) {
+//       // Fetch all details and find the updated one
+//       const allDetails = await TaAdjDetailService.findByCompany(COMPANY_CODE);
+//       const updatedDetail = allDetails.find(
+//         detail => detail.JOB_NO === JOB_NO && detail.ADJ_NO === existingHeader.ADJ_NO
+//       );
       
-      return res.status(constants.STATUS_CODES.OK).json({
-        success: true,
-        message: "Stock adjustment detail updated successfully",
-        data: updatedDetail,
-      });
-    } else {
-      return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Failed to update stock adjustment detail",
-      });
-    }
-  } catch (error: any) {
-    console.error("Error editing stock adjustment detail:", error);
-    return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: "Failed to edit stock adjustment detail",
-      error: error.message,
-    });
-  }
-};
+//       return res.status(constants.STATUS_CODES.OK).json({
+//         success: true,
+//         message: "Stock adjustment detail updated successfully",
+//         data: updatedDetail,
+//       });
+//     } else {
+//       return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//         success: false,
+//         message: "Failed to update stock adjustment detail",
+//       });
+//     }
+//   } catch (error: any) {
+//     console.error("Error editing stock adjustment detail:", error);
+//     return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+//       success: false,
+//       message: "Failed to edit stock adjustment detail",
+//       error: error.message,
+//     });
+//   }
+// };
 
 export const deleteStockAdjustmentDetail = async (
   req: RequestWithUser,
@@ -837,6 +851,7 @@ export const editAdjDetail = async (
       KEY_NUMBER,
       QTY_PUOM,
       QTY_LUOM,
+        QUANTITY,        // ← add this
       ADJ_TYPE,
       PALLET_ID,
     } = req.body;
@@ -858,24 +873,29 @@ export const editAdjDetail = async (
       });
     }
 
-    const updated = await TaAdjDetailService.updateAdjustment(
-      JOB_NO,
-      COMPANY_CODE,
-      {
-        PROD_CODE,
-        SITE_CODE,
-        LOCATION_CODE,
-        P_UOM,
-        L_UOM,
-        KEY_NUMBER,
-        QTY_PUOM,
-        QTY_LUOM,
-        ADJ_TYPE,
-        PALLET_ID,
-        USER_ID,
-      }
-    );
-
+// Controller — just change the updateAdjustment call
+const updated = await TaAdjDetailService.updateAdjustment(
+  {
+    ADJ_NO:       Number(ADJ_NO),
+    ADJ_SERIALNO: Number(ADJ_SERIALNO),
+    PRIN_CODE,
+    COMPANY_CODE,
+  },
+  {
+    PROD_CODE,
+    SITE_CODE,
+    LOCATION_CODE,
+    P_UOM,
+    L_UOM,
+    KEY_NUMBER,
+    QTY_PUOM,
+    QTY_LUOM,
+    QUANTITY,
+    ADJ_TYPE,
+    PALLET_ID,
+    USER_ID,
+  }
+);
     if (!updated) {
       return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
         success: false,

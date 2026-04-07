@@ -79,6 +79,9 @@ export class TaAdjDetailService {
     QTY_LUOM?: number;
     ADJ_TYPE?: string;
     USER_ID?: string;
+    MFG_DATE? : any;
+    EXP_DATE?: any;
+    BATCH_NO?:string; 
   }): Promise<TaAdjDetail> {
     const repository = this.getRepository();
 
@@ -96,20 +99,20 @@ export class TaAdjDetailService {
     return await repository.save(adjustment);
   }
 
-  static async updateAdjustment(
-    JOB_NO: string,
-    COMPANY_CODE: string,
-    updateData: Partial<TaAdjDetail>
-  ): Promise<boolean> {
-    const repository = this.getRepository();
-
-    const result = await repository.update(
-      { JOB_NO, COMPANY_CODE },
-      updateData
-    );
-
-    return result.affected ? result.affected > 0 : false;
-  }
+// Service
+static async updateAdjustment(
+  whereCondition: {
+    ADJ_NO: number;
+    ADJ_SERIALNO: number;
+    PRIN_CODE: string;
+    COMPANY_CODE: string;
+  },
+  updateData: Partial<TaAdjDetail>
+): Promise<boolean> {
+  const repository = this.getRepository();
+  const result = await repository.update(whereCondition, updateData);
+  return result.affected ? result.affected > 0 : false;
+}
 
   static async deleteAdjustment(JOB_NO: string, COMPANY_CODE: string): Promise<boolean> {
     const repository = this.getRepository();
