@@ -18,6 +18,8 @@ import { upsertBudget } from "../../controllers/finance/accounts/transactions/up
 import { upsertAcBudget } from "../../controllers/finance/accounts/masters/upsertAcBudget";
 import { insUpdAcExpTypeBulk } from "../../controllers/finance/accounts/transactions/insUpdAcExpTypeBulk";
 import { insUpdBTProject } from "../../controllers/finance/accounts/transactions/insUpdBTProject";
+import { upsertMsAcAsset } from "../../controllers/finance/accounts/transactions/upsertMsAcAsset";
+import { insDocAccodeBulk } from "../../controllers/finance/accounts/transactions/insDocAccodeBulk";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -39,6 +41,9 @@ router.post(
   insUpdAcExpTypeBulk
 );
 
+router.post(
+  "/insDocAccodeBulk",
+  insDocAccodeBulk);
 
 
 
@@ -85,6 +90,11 @@ router.post(
 router.post(
   "/upsertAssetSaleRegister",
   upsertAssetSaleRegister
+);
+
+router.post(
+  "/upsertMsAcAsset",
+  upsertMsAcAsset
 );
 
 router.post(
