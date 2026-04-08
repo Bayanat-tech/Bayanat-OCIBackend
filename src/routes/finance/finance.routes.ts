@@ -20,6 +20,7 @@ import { insUpdAcExpTypeBulk } from "../../controllers/finance/accounts/transact
 import { insUpdBTProject } from "../../controllers/finance/accounts/transactions/insUpdBTProject";
 import { upsertMsAcAsset } from "../../controllers/finance/accounts/transactions/upsertMsAcAsset";
 import { insDocAccodeBulk } from "../../controllers/finance/accounts/transactions/insDocAccodeBulk";
+import { upsertHrDocTypes } from "../../controllers/finance/accounts/transactions/upsertHrDocTypes";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -45,7 +46,9 @@ router.post(
   "/insDocAccodeBulk",
   insDocAccodeBulk);
 
-
+router.post(
+  "/upsertHrDocTypes",
+  upsertHrDocTypes)
 
 router.post(
   "/insUpdBTProject",
