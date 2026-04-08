@@ -93,7 +93,7 @@ export const chequePaymentSchema = (
            dept_name: Joi.string().optional().allow("", null)
          }).optional().allow("",null),
           qty: Joi.number().optional().allow("", null),
-          rate: Joi.number().optional().allow("", null),
+          price: Joi.number().optional().allow("", null),
           doc_date: Joi.date(), // Document date
           company_code: Joi.string().required(), // Company code (required)
           ac_code: Joi.string().required(), // Account code (required)
@@ -351,7 +351,7 @@ export const purchaseSchema = (
       )
       .required(),
     inv_no: Joi.string().optional().allow('', null),
-    inv_date: Joi.date(), // Otherwise cheque date is optional
+    inv_date: Joi.date(), 
     address: Joi.string().optional().allow("", null),
     supplier: Joi.string().optional().allow("", null),
     company_code: Joi.string().optional().allow("", null),
@@ -363,7 +363,7 @@ export const purchaseSchema = (
     doc_date: Joi.date(), // Document date
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
-    rate: Joi.number().default(1), // Rate (default 1)
+    price: Joi.number().default(1), // Price (default 1)
     qty: Joi.number().default(1), // Quantity (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
     party_address: Joi.string(),
@@ -408,7 +408,7 @@ export const purchaseSchema = (
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
-          rate: Joi.number().default(1), // Rate (default 1)
+          price: Joi.number().default(1), // Price (default 1)
           qty: Joi.number().default(1), // Quantity (default 1)
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
@@ -503,7 +503,7 @@ export const purchaseSchema = (
             curr_code: Joi.string().allow(null).optional(),
             // Exchange rate (optional)
             ex_rate: Joi.number().allow(null).optional(),
-            rate: Joi.number(),
+            price: Joi.number(),
             qty: Joi.number().allow("", null),
             ref_no: Joi.number().optional().allow("", null),
             // Current currency amount (optional)
@@ -562,7 +562,7 @@ export const purchaseSchema = (
             doc_refno_2: Joi.string().allow("", null).optional(),
             // Amount (optional)
             amount: Joi.number().allow(null).optional(),
-            rate: Joi.number().optional().allow("", null),
+            price: Joi.number().optional().allow("", null),
             qty: Joi.number().optional().allow("", null),
           })
         )
@@ -622,7 +622,7 @@ export const purchaseSchema = (
             job_no: Joi.string().optional().allow("", null),
             // Amount (required)
             amount: Joi.number(),
-            rate: Joi.number().optional().allow("", null),
+            price: Joi.number().optional().allow("", null),
             qty: Joi.number().optional().allow("", null),
           })
         )
@@ -952,7 +952,7 @@ export const LpoSchema = (
     product_code: Joi.string().optional().allow("", null),
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     cost_code: Joi.string().optional().allow("", null),
-    rate: Joi.number().default(1), // Rate (default 1)
+    price: Joi.number().default(1), // Price (default 1)
     qty: Joi.number().default(1), // Quantity (default 1)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
@@ -990,7 +990,7 @@ export const LpoSchema = (
           product_code: Joi.string().optional().allow("", null),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           cost_code: Joi.string().optional().allow("", null),
-          rate: Joi.number().default(1), // Rate (default 1)
+          price: Joi.number().default(1), // Price (default 1)
           qty: Joi.number().default(1), // Quantity (default 1) 
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
@@ -1252,7 +1252,7 @@ export const pettyCashSchema = (
           remarks: Joi.string().optional().allow("", null), 
           curr_code: Joi.string().required(), 
           ex_rate:Joi.number().default(1),
-          rate: Joi.number().default(1),
+          price: Joi.number().default(1),
           qty: Joi.number().default(1),
           amount: Joi.number().required(),
           sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (1)
