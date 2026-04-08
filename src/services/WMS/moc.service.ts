@@ -213,7 +213,12 @@ export class MocService {
   }
 
   static async findAll() {
-    return this.repo().find();
+    return this.repo().find({
+            order:{
+            updated_at:"DESC",  
+          }
+      }
+    );
   }
 
   static async findByCompany(company_code: string) {

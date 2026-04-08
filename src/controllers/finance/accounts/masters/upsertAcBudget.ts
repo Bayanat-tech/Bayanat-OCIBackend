@@ -17,7 +17,7 @@ const toDate = (val: any): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-export const upsertAssetSaleRegister = async (
+export const upsertAcBudget = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -27,10 +27,10 @@ export const upsertAssetSaleRegister = async (
   try {
     const data = req.body;
 
-    if (!data?.company_code ) {
+    if (!data?.company_code || !data?.budget_year || !data?.ac_code) {
       res.status(400).json({
         success: false,
-        message: "company_code are required"
+        message: "company_code, budget_year, ac_code are required"
       });
       return;
     }
@@ -57,64 +57,46 @@ export const upsertAssetSaleRegister = async (
     connection = await TenantManager.getConnection(tenantId);
 
     // 🔹 Get Oracle Object Class (NO schema prefix)
-    const AssetSaleObjClass = await connection.getDbObjectClass(
-      "TR_AC_ASSET_SALE_OBJ"
+    const BudgetObjClass = await connection.getDbObjectClass(
+      "TR_AC_BUDGET_OBJ"
     );
 
-    // 🔹 Create object with correct date conversion
-  const obj: any = new AssetSaleObjClass({
-  COMPANY_CODE: data.company_code,
-  ASSET_ID: data.asset_id,
-  ASSET_NAME: data.asset_name,
-  ASSET_AC_CODE: data.asset_ac_code,
-  DPRC_AC_CODE: data.dprc_ac_code,
-  ACCUDPRC_AC_CODE: data.accudprc_ac_code,
+    // 🔹 Create object (VW format → object)
+    const obj: any = new BudgetObjClass({
+      COMPANY_CODE: data.company_code,
 
-  DPRC_PERCENTAGE: toNumber(data.dprc_percentage),
-  DPRC_COMMENCE_DATE: toDate(data.dprc_commence_date),
+      DOC_TYPE: data.doc_type,
+      DOC_NO: toNumber(data.doc_no),
+      DOC_DATE: toDate(data.doc_date),
 
-  DOC_TYPE: data.doc_type,
-DOC_NO: toNumber(data.doc_no),
+      BUDGET_YEAR: data.budget_year,
+      AC_CODE: data.ac_code,
 
-  ASSET_PROPERTIES: data.asset_properties,
+      JAN_AMOUNT: toNumber(data.jan_budget_month),
+      FEB_AMOUNT: toNumber(data.feb_budget_month),
+      MAR_AMOUNT: toNumber(data.mar_budget_month),
+      APR_AMOUNT: toNumber(data.apr_budget_month),
+      MAY_AMOUNT: toNumber(data.may_budget_month),
+      JUN_AMOUNT: toNumber(data.jun_budget_month),
+      JUL_AMOUNT: toNumber(data.jul_budget_month),
+      AUG_AMOUNT: toNumber(data.aug_budget_month),
+      SEP_AMOUNT: toNumber(data.sep_budget_month),
+      OCT_AMOUNT: toNumber(data.oct_budget_month),
+      NOV_AMOUNT: toNumber(data.nov_budget_month),
+      DEC_AMOUNT: toNumber(data.dec_budget_month),
 
-  ACUUDRPC_OPENING: toNumber(data.acuudrpc_opening),
-  PREVDRPC_AMOUNT: toNumber(data.prevdrpc_amount),
-  CURRDRPC_AMOUNT: toNumber(data.currdrpc_amount),
-  TOTALDRPC_AMOUNT: toNumber(data.total_depreciation_amount),
+      CURR_CODE: data.curr_code,
+      EX_RATE: toNumber(data.ex_rate),
 
-  SALES_DATE: toDate(data.sales_date),
-  SALES_AMOUNT: toNumber(data.sales_amount),
-  SALES_PROFITLOSS: toNumber(data.sales_profitloss),
-
-  QUANTITY: toNumber(data.quantity),
-  PRICE: toNumber(data.price),
-  AMOUNT:toNumber(data.asset_amount),
-
-  WD_VALUE: toNumber(data.wd_value),
-  SALVAGE_VALUE: toNumber(data.salvage_value),
-
-  CUSTOMER_NAME: data.customer_name,
-  CUSTOMER_AC_CODE: data.customer_ac_code,
-
-  STATUS: data.status,
-  AC_EXP_CODE: data.exp_code,
-  EXP_SUBTYPE_CODE: data.exp_subtype_code,
-
-  SOLD: data.sold,
-
-  DOC_DATE: toDate(data.doc_date),
-
-  FA_DISPOSAL_AC: data.fa_disposal_ac,
-  PL_FA_DISPOSAL_AC: data.pl_fa_disposal_ac,
-
-  DIV_CODE: data.div_code
-});
+      USER_ID: data.user_id,
+      VERSION: data.version,
+      DIV_CODE: data.div_code
+    });
 
     // 🔹 Call procedure (NO schema prefix)
     await connection.execute(
       `BEGIN
-         PROC_UPSERT_ASSET_SALE_REGISTER(:p_data);
+         PROC_UPSERT_BUDGET(:p_data);
        END;`,
       {
         p_data: obj
@@ -125,7 +107,7 @@ DOC_NO: toNumber(data.doc_no),
 
     res.json({
       success: true,
-      message: "Record saved successfully"
+      message: "Budget saved successfully"
     });
 
   } catch (err: any) {
@@ -133,7 +115,7 @@ DOC_NO: toNumber(data.doc_no),
 
     res.status(500).json({
       success: false,
-      message: "Upsert failed",
+      message: "Budget upsert failed",
       details: err.message
     });
 

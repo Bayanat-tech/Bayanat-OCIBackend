@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, UpdateDateColumn, CreateDateColumn } from 'typeorm';
 
 @Entity('MS_PRODUCT')
 export class Product {
@@ -277,4 +277,24 @@ export class Product {
 
     @Column({ name: 'CURRENT_SEASON', type: 'varchar', length: 50, nullable: true })
     current_season: string;
+
+    @CreateDateColumn({
+        name: "CREATED_AT",
+        type: "timestamp",
+        default: () => "SYSDATE",
+      })
+      created_at!: Date;
+    
+    @UpdateDateColumn({
+        name: "UPDATED_AT",
+        type: "timestamp",
+        default: () => "SYSDATE",
+      })
+      updated_at!: Date;
+
+    @Column({ name: "UPDATED_BY", type: "varchar2", length: 50, nullable: true })
+    updated_by?: string;
+
+    @Column({ name: "CREATED_BY", type: "varchar2", length: 20, nullable: true })
+    created_by?: string;
 }

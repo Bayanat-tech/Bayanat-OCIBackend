@@ -47,7 +47,11 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
     const productData = formatProductData(bodyWithProdCode, requestUser.loginid);
     // Check if product with same name exists
  
-    const createdProduct = await ProductService.createProduct(productData);
+    const createdProduct = await ProductService.createProduct({
+       ...productData,
+       created_by: requestUser.loginid,
+       updated_by: requestUser.loginid,
+    });
     
     if (!createdProduct) {
       res
@@ -99,8 +103,10 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
     const productData = formatProductData(remainData, requestUser.loginid);
     const updateResult = await ProductService.updateProduct(
       prod_code,
-      company_code,
-      productData
+      company_code,{
+      ...productData,
+      updated_by: requestUser.loginid,
+      }
     );
     
     if (!updateResult) {
