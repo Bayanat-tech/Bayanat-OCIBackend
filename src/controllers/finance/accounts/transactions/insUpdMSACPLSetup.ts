@@ -42,7 +42,7 @@ export const insUpdMSACPLSetup = async (req: Request, res: Response): Promise<vo
 
     await connection.execute(
       `BEGIN
-         WMSTST.PROC_INS_UPD_MS_AC_PLSETUP(:p_data);
+         PROC_INS_UPD_MS_AC_PLSETUP(:p_data);
        END;`,
       {
         p_data: {
