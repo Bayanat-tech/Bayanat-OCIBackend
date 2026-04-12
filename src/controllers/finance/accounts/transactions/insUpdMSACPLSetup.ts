@@ -31,14 +31,18 @@ export const insUpdMSACPLSetup = async (req: Request, res: Response): Promise<vo
 
     connection = await TenantManager.getConnection(tenantId);
 
-    const oracleData = data.map((d: TMSACPLSetup) => ({
-      COMPANY_CODE: d.COMPANY_CODE,
-      PL_CODE: d.PL_CODE,
-      PL_NAME: d.PL_NAME ?? null,
-      PL_TYPE: d.PL_TYPE ?? null,
-      H_CODE: d.H_CODE ?? null,
-      PRV_CODE: d.PRV_CODE ?? null
+    console.log('oracleData1',data);
+
+    const oracleData = data.map((d: any) => ({
+      COMPANY_CODE: d.COMPANY_CODE ?? d.company_code ?? null,
+      PL_CODE: d.PL_CODE ?? d.pl_code ?? null,
+      PL_NAME: d.PL_NAME ?? d.pl_name ?? null,
+      PL_TYPE: d.PL_TYPE ?? d.pl_type ?? null,
+      H_CODE:  d.H_CODE  ?? d.h_code  ?? null,
+      PRV_CODE:d.PRV_CODE ?? d.prv_code ?? null
     }));
+
+    console.log('oracleData2',oracleData);
 
     await connection.execute(
       `BEGIN
@@ -51,7 +55,8 @@ export const insUpdMSACPLSetup = async (req: Request, res: Response): Promise<vo
         }
       },
       { autoCommit: true }
-    );
+    )
+    console.log('executing PROC_INS_UPD_MS_AC_PLSETUP');
 
     res.json({
       success: true,
