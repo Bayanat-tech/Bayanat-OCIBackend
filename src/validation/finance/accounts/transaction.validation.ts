@@ -8,33 +8,33 @@ export const chequePaymentSchema = (
 ) => {
   const baseSchema = Joi.object({
     doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)), // Document number (optional, casts to string)
-    doc_type: Joi.string() 
+    doc_type: Joi.string()
       .valid(
-        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, 
-        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT, 
+        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
+        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT,
         constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
         constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
         constants.TRANSACTION_DOCUMENT_TYPE.LPO,
         constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
       )
       .required(),
-    bank_ac_code: Joi.string().when("doc_type", { 
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
+    bank_ac_code: Joi.string().when("doc_type", {
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
       then: Joi.forbidden(),
-      otherwise: Joi.allow("", null), 
-    }),
-    cheque_bank: Joi.string().when("doc_type", { 
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
-      then: Joi.forbidden(), 
       otherwise: Joi.allow("", null),
     }),
-    cheque_no: Joi.string().when("doc_type", { 
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
-      then: Joi.forbidden(), 
-      otherwise: Joi.allow("", null), 
+    cheque_bank: Joi.string().when("doc_type", {
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
+      then: Joi.forbidden(),
+      otherwise: Joi.allow("", null),
     }),
-    cheque_date: Joi.date().when("doc_type", { 
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT, 
+    cheque_no: Joi.string().when("doc_type", {
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
+      then: Joi.forbidden(),
+      otherwise: Joi.allow("", null),
+    }),
+    cheque_date: Joi.date().when("doc_type", {
+      is: constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
       then: Joi.forbidden(), // Then cheque date is forbidden
       otherwise: Joi.allow("", null), // Otherwise cheque date is optional
     }),
@@ -51,16 +51,19 @@ export const chequePaymentSchema = (
     //     otherwise: Joi.forbidden(), // Otherwise files are forbidden
     //   }),
     files: Joi.array()
-  .items(Joi.any())
-  .optional()
-  .allow(null, ""),
-    ac_payee: Joi.string().when("doc_type", { // Account payee (conditional)
-      is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT && constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT, // If document type is cheque payment
-      then: Joi.allow("", null), // Then account payee is optional
-      otherwise: Joi.forbidden(), // Otherwise account payee is forbidden
+      .items(Joi.any())
+      .optional()
+      .allow(null, ""),
+    ac_payee: Joi.string().when("doc_type", {
+      is: Joi.valid(
+        constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
+        constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
+      ),
+      then: Joi.allow("", null),
+      otherwise: Joi.forbidden(),
     }),
     ref_no: Joi.number().optional().allow("", null),
-    ref_date: Joi.date().optional().allow("", null), 
+    ref_date: Joi.date().optional().allow("", null),
     inv_date: Joi.date().optional().allow("", null), // Document date
     supplier: Joi.string().optional().allow("", null),
     address: Joi.string().optional().allow("", null),
@@ -70,7 +73,7 @@ export const chequePaymentSchema = (
     fy_code: Joi.number().optional().allow("", null), // Fiscal year code 
     hse_compliance: Joi.string().optional().allow("", null),
     terms: Joi.string().optional().allow("", null), // Payment terms
-    delivery_info: Joi.date().optional().allow("", null), 
+    delivery_info: Joi.date().optional().allow("", null),
     delivery_term: Joi.string().optional().allow("", null),
     contact: Joi.number().optional().allow("", null),
     email: Joi.string().email().optional().allow("", null),
@@ -83,15 +86,15 @@ export const chequePaymentSchema = (
     detail: Joi.array() // Detail (required)
       .items(
         Joi.object({
-         Account: Joi.object({
-             ac_name: Joi.string()
-         }).optional(),  
-         Currency: Joi.object({
-          curr_name: Joi.string()
-         }).optional(),
-         Department: Joi.object({
-           dept_name: Joi.string().optional().allow("", null)
-         }).optional().allow("",null),
+          Account: Joi.object({
+            ac_name: Joi.string()
+          }).optional(),
+          Currency: Joi.object({
+            curr_name: Joi.string()
+          }).optional(),
+          Department: Joi.object({
+            dept_name: Joi.string().optional().allow("", null)
+          }).optional().allow("", null),
           qty: Joi.number().optional().allow("", null),
           price: Joi.number().optional().allow("", null),
           doc_date: Joi.date(), // Document date
@@ -351,12 +354,12 @@ export const purchaseSchema = (
       )
       .required(),
     inv_no: Joi.string().optional().allow('', null),
-    inv_date: Joi.date(), 
+    inv_date: Joi.date(),
     address: Joi.string().optional().allow("", null),
     supplier: Joi.string().optional().allow("", null),
     company_code: Joi.string().optional().allow("", null),
     contact: Joi.string().optional().allow("", null),
-    phone: Joi.string().optional().allow("", null), 
+    phone: Joi.string().optional().allow("", null),
     mobile: Joi.string().optional().allow("", null),
     fax: Joi.string().optional().allow("", null),
     ac_code: Joi.string().required(),
@@ -656,7 +659,7 @@ export const salesSchema = (
     doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)), // Document number (optional)
     doc_type: Joi.string() // Document type (required)
       .valid(
-        constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
+        constants.TRANSACTION_DOCUMENT_TYPE.SALES,
         constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE, // Cheque payment
       )
       .required(),
@@ -717,8 +720,8 @@ export const salesSchema = (
           doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).required().custom((v, h) => v == null ? v : String(v)), // Document number (required)
           doc_type: Joi.string() // Document type (required)
             .valid(
-              constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
-               constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE// Cheque payment
+              constants.TRANSACTION_DOCUMENT_TYPE.SALES,
+              constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE// Cheque payment
             )
             .required(),
           serial_no: Joi.number().required(), // Serial number (required)
@@ -938,7 +941,7 @@ export const LpoSchema = (
   const baseSchema = Joi.object({
     // Define the Joi schema for the cheque payment document
     // doc_no: Joi.number().optional().allow("", null), // Document number (optional)
-    doc_no:Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)),
+    doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow("", null).custom((v, h) => v == null ? v : String(v)),
     doc_type: Joi.string() // Document type (required)
       .valid(
         constants.TRANSACTION_DOCUMENT_TYPE.LPO, // Cheque payment
@@ -1228,7 +1231,7 @@ export const pettyCashSchema = (
   isBulkOperation?: boolean
 ) => {
   const baseSchema = Joi.object({
-    doc_no: Joi.number().optional().allow("", null), 
+    doc_no: Joi.number().optional().allow("", null),
     doc_type: Joi.string()
       .valid(
         constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT, // Petty cash payment
@@ -1239,19 +1242,19 @@ export const pettyCashSchema = (
     curr_code: Joi.string().required(),
     ac_payee: Joi.string().required(),
     ex_rate: Joi.number().default(1),
-    remarks:Joi.string().optional().allow("",null),
+    remarks: Joi.string().optional().allow("", null),
     div_code: Joi.string().required(), // Division code (required)
 
-      detail: Joi.array() // Detail (required)
+    detail: Joi.array() // Detail (required)
       .items(
         Joi.object({
           div_code: Joi.string().required(), // Division code (required)
           company_code: Joi.string().required(), // Company code (required)
-          ac_code: Joi.string().required(), 
+          ac_code: Joi.string().required(),
           ac_name: Joi.string(),
-          remarks: Joi.string().optional().allow("", null), 
-          curr_code: Joi.string().required(), 
-          ex_rate:Joi.number().default(1),
+          remarks: Joi.string().optional().allow("", null),
+          curr_code: Joi.string().required(),
+          ex_rate: Joi.number().default(1),
           price: Joi.number().default(1),
           qty: Joi.number().default(1),
           amount: Joi.number().required(),
