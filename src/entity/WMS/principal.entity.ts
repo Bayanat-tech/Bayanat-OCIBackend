@@ -256,6 +256,9 @@ export class PrincipalMaster {
   @Column({ name: "AUTOMATE_ACTIVITY", type: "char", length: 1, nullable: true })
   automate_activity?: string;
 
+  @Column({ name: "AUTO_GENERATE_PRODUCT_CODE", type: "char", length: 1, nullable: true })
+  auto_generate_product_code?: string;
+
   @Column({ name: "TERRITORY_CODE", type: "varchar2", length: 10, nullable: true })
   territory_code?: string;
 
