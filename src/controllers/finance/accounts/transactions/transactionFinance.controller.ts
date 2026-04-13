@@ -896,7 +896,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
 
     conn = await getConn(req);
 
-    // Update header and delete existing child records (WITH inv_date)
+    // Update header and delete existing child records
     await conn.execute(
       `BEGIN SP_UPDATE_PURCHASE_DOCUMENT(
         :cc, :dn, :dt, :dv, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt
@@ -915,24 +915,54 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
         pp: h.party_phone || null,
         rn: h.ref_doc_no || null,
         lu: req.user.loginid,
-        inv_dt: toDate(h.inv_date || h.doc_date), // Pass inv_date
+        inv_dt: toDate(h.inv_date || h.doc_date),
       }
     );
 
-    // Insert detail rows
+    // Clean detail items - CRITICAL: Remove doc_no and ensure proper types
     const detailToUse = detail?.length ? detail : (v.detail || []);
     
     if (detailToUse.length === 0) {
       throw new Error('At least one detail row is required');
     }
 
-    // Clean detail items
-    const cleanDetail = detailToUse.map((d: any) => {
-      const clean = { ...d };
-      delete clean.doc_no;
+    // Thoroughly clean each detail item
+    const cleanDetail = detailToUse.map((d: any, index: number) => {
+      const clean: any = {};
+      
+      // Copy only the fields we need, with proper types
+      clean.serial_no = d.serial_no ? Number(d.serial_no) : (index + 1);
+      clean.ac_code = d.ac_code || h.ac_code;
+      clean.amount = d.amount ? Number(d.amount) : 0;
+      clean.sign_ind = d.sign_ind ? Number(d.sign_ind) : 1;
+      clean.curr_code = d.curr_code || h.curr_code;
+      clean.ex_rate = d.ex_rate ? Number(d.ex_rate) : (h.ex_rate ? Number(h.ex_rate) : 1);
+      clean.lcur_amount = d.lcur_amount ? Number(d.lcur_amount) : (Number(d.amount) * Number(d.ex_rate || h.ex_rate || 1));
+      clean.div_code = d.div_code || h.div_code;
+      clean.dept_code = d.dept_code || null;
+      clean.job_no = d.job_no || null;
+      clean.remarks = d.remarks || null;
+      clean.qty = d.qty ? Number(d.qty) : null;
+      clean.price = d.price ? Number(d.price) : null;
+      clean.uom = d.uom || null;
+      
+      // Tax related fields
+      clean.tx_cat_code = d.tx_cat_code || null;
+      clean.tx_compntcat_code_1 = d.tx_compntcat_code_1 || null;
+      clean.tx_compnt_perc_1 = d.tx_compnt_perc_1 ? Number(d.tx_compnt_perc_1) : null;
+      clean.tx_compnt_amt_1 = d.tx_compnt_amt_1 ? Number(d.tx_compnt_amt_1) : null;
+      clean.tx_compnt_lcuramt_1 = d.tx_compnt_lcuramt_1 ? Number(d.tx_compnt_lcuramt_1) : null;
+      clean.tx_compnt_1_expmt = d.tx_compnt_1_expmt || 'S';
+      
+      // IMPORTANT: Remove any doc_no field if present
+      // Do NOT include doc_no in the clean object
+      
       return clean;
     });
 
+    console.log('Cleaned detail items:', JSON.stringify(cleanDetail, null, 2));
+
+    // Insert detail rows
     await spInsertDetailRows(
       conn, 
       req.user.company_code, 
@@ -945,18 +975,18 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     // Insert invoice child rows
     await conn.executeMany(
       `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
-      cleanDetail.map((d: any, index: number) => ({
+      cleanDetail.map((d: any) => ({
         cc: req.user.company_code, 
         dt: h.doc_type,    
         dn: h.doc_no,
-        sn: d.serial_no ? Number(d.serial_no) : (index + 1), 
-        dd: toDate(h.inv_date || h.doc_date), 
+        sn: d.serial_no, 
+        dd: toDate(h.doc_date), 
         ac: h.ac_code,
         iv: h.doc_no,
-        am: Number(d.amount) || 0, 
-        cu: d.curr_code || h.curr_code,
-        er: d.ex_rate ? Number(d.ex_rate) : (h.ex_rate ? Number(h.ex_rate) : 1), 
-        dv: d.div_code || h.div_code,    
+        am: d.amount, 
+        cu: d.curr_code,
+        er: d.ex_rate, 
+        dv: d.div_code,    
         lu: req.user.loginid,
       }))
     );
