@@ -581,7 +581,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     // Step 1 — update header + delete existing children via SP
     await conn.execute(
-      `BEGIN SP_UPDATE_CHQ_HEADER(
+      `BEGIN SP_UPDATE_CHQ_PAYMENT_HEADER(
         :cc, :dn, :dt, :dv, :ac, :bk, :rn, :rd,
         :rm, :cu, :er, :cn, :cd, :ca, :pt, :ln, :ld, :lu
       ); END;`,

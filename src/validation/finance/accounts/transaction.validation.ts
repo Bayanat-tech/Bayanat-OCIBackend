@@ -187,8 +187,14 @@ export const chequePaymentSchema = (
             inv_no: Joi.string().allow("", null).allow("", null),
             // Invoice date (optional)
             inv_date: Joi.date().allow(null).optional(),
-            // Invoice amount (optional)
+            // Document date (optional)
+            due_date: Joi.date().allow(null).optional(),
+            chq_date: Joi.date().allow(null).optional(),
+            chq_bank: Joi.string().allow(null).optional(),
+            chq_no: Joi.string().allow(null).optional(),
             inv_amt: Joi.number().allow(null).optional(),
+            indicator_origin: Joi.string().default('Y'),
+            amount_origin: Joi.number().allow(null).optional(),
             // Current balance amount (optional)
             c_bal_amt_org: Joi.number().allow(null).optional(),
             // Amount (optional, default 0)
