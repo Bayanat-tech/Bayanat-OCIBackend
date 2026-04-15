@@ -264,16 +264,12 @@ export const proc_build_dynamic_ins_upd_common = async (
       val1s8,
       val1s9,
       val1s10,
-      val1s11,
 
       val1n1,
       val1n2,
       val1n3,
       val1n4,
       val1n5,
-      val1n6,
-      val1n7,
-
 
       val1d1,
       val1d2,
@@ -333,9 +329,9 @@ export const proc_build_dynamic_ins_upd_common = async (
           :loginid,
 
           :val1s1, :val1s2, :val1s3, :val1s4, :val1s5,
-          :val1s6, :val1s7, :val1s8, :val1s9, :val1s10,:val1s11,
+          :val1s6, :val1s7, :val1s8, :val1s9, :val1s10,
 
-          :val1n1, :val1n2, :val1n3, :val1n4, :val1n5,:val1n6, :val1n7,
+          :val1n1, :val1n2, :val1n3, :val1n4, :val1n5,
 
           :val1d1, :val1d2, :val1d3, :val1d4, :val1d5,
 
@@ -364,15 +360,12 @@ export const proc_build_dynamic_ins_upd_common = async (
         val1s8,
         val1s9,
         val1s10,
-        val1s11,
 
         val1n1,
         val1n2,
         val1n3,
         val1n4,
         val1n5,
-        val1n6,
-        val1n7,
 
         val1d1,
         val1d2,
