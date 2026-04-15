@@ -597,11 +597,22 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       }
     );
 
-    // Step 2 — re-insert children via _SINGLE SPs, then commit
-    const isPayment = ['BP', 'BR', 'CR', 'CP'].includes(h.doc_type);
-    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, detail, children, files);
+    // Step 2 — recalculate LCUR_AMOUNT for invoices based on updated amount
+    const exRate = h.ex_rate ?? 1;
+    const updatedInvoices = (children.invoice ?? []).map((inv: any) => ({
+      ...inv,
+      lcur_amount: Math.abs(Number(inv.amount ?? inv.lcur_amount ?? 0)),
+    }));
+    const updatedChildren = {
+      ...children,
+      invoice: updatedInvoices,
+    };
 
-    // Step 3 — store process
+    // Step 3 — re-insert children via _SINGLE SPs, then commit
+    const isPayment = ['BP', 'BR', 'CR', 'CP'].includes(h.doc_type);
+    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, exRate, isPayment, req.user.loginid, detail, updatedChildren, files);
+
+    // Step 4 — store process
     await callSpAcTxnControl(req.user.company_code, h.doc_type, h.doc_no, req.user.loginid);
 
     res.json({ success: true, data: constants.MESSAGES.CREATED_SUCCESSFULLY });
