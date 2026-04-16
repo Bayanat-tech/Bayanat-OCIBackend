@@ -348,6 +348,8 @@ export const purchaseSchema = (
     doc_type: Joi.string() // Document type (required)
       .valid(
         constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Cheque payment
+        constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
+        constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE, // Cheque payment
       )
       .required(),
     inv_no: Joi.string().optional().allow('', null),
@@ -397,7 +399,8 @@ export const purchaseSchema = (
     email: Joi.string().email().optional().allow("", null),
     app_ref_no: Joi.number().optional().allow("", null),
     fy_code: Joi.string().optional().allow("", null),
-    hse_compliance: Joi.string().optional().allow("", null),
+    //hse_compliance: Joi.string().optional().allow("", null),
+    hse_compliance: Joi.any().optional().allow(null, ""),
     ...(isBulkOperation && { company_code: userCompany }), // Company code (conditional)
     detail: Joi.array() // Detail (required)
       .items(
@@ -428,6 +431,8 @@ export const purchaseSchema = (
           doc_type: Joi.string() // Document type (required)
             .valid(
               constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Cheque payment
+              constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
+              constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE,
             )
             .required(),
           serial_no: Joi.number().required(), // Serial number (required)
@@ -661,7 +666,7 @@ export const salesSchema = (
       )
       .required(),
     inv_no: Joi.string().optional().allow('', null),
-    inv_date: Joi.date(), // Otherwise cheque date is optional
+    inv_date: Joi.date().optional().allow("", null), // Otherwise cheque date is optional
     ac_code: Joi.string().required(), // Account code (required)
     doc_date: Joi.date(), // Document date
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
@@ -700,6 +705,8 @@ export const salesSchema = (
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
+          qty: Joi.number().default(1), // Quantity (default 1)
+          price: Joi.number().default(1), // Price (default 1)
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
