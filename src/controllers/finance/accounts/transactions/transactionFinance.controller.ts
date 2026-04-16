@@ -709,13 +709,14 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
     conn = await getConn(req);
 
     const result = await conn.execute(
-      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:sno,:ino); END;`,
+      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:inv_dt,:sno,:ino); END;`,
       {
         cc: req.user.company_code, dv: v.div_code,       dt: v.doc_type,
         dd: toDate(v.doc_date),    ac: v.ac_code,         cu: v.curr_code,
         er: v.ex_rate,             rm: v.remarks        ?? null,
         sc: v.salesman_code     ?? null, se: v.sector_code ?? null,
         lu: req.user.loginid,
+        inv_dt: toDate(v.inv_date || v.doc_date),
         sno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
