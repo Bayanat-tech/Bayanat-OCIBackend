@@ -8,6 +8,7 @@ import {
   LpoSchema,
   purchaseSchema,
   salesSchema,
+  pettyCashSchema
 } from '../../../../validation/finance/accounts/transaction.validation';
 import TenantManager          from '../../../../database/TenantManager';
 import { getCurrentTenantId } from '../../../../middleware/tenantContext.middleware';
@@ -326,7 +327,14 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     if (!result.rows?.length) { res.status(500).json({ success: false }); return; }
-    res.json({ success: true, data: result.rows[0] });
+
+     // Normalize uppercase keys to lowercase
+    const row = result.rows[0] as Record<string, any>;
+    const normalizedData = Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])
+    );
+    
+    res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
@@ -540,9 +548,11 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
     if (!doc_no) throw new Error('Failed to generate document number');
 
     // Step 2 — insert all children via _SINGLE SPs, then commit
-    const isPayment = ['BP', 'BR', 'CR'].includes(h.doc_type);
+    const isPayment = ['BP', 'BR', 'CR', 'CP'].includes(h.doc_type);
     await spInsertAllChildren(conn, req.user.company_code, h.doc_type, doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, detail, children, files);
 
+    console.log(`Created document ${h.doc_type} ${doc_no} with ${detail.length} detail rows, ${children.invoice?.length ?? 0} invoice rows, ${children.job?.length ?? 0} job rows and ${children.expense?.length ?? 0} expense rows`);
+    
     res.json({ success: true, data: { data: constants.MESSAGES.CREATED_SUCCESSFULLY, doc_no, doc_type: h.doc_type } });
   } catch (err: any) {
     if (conn) try { await conn.rollback(); } catch {}
@@ -571,7 +581,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     // Step 1 — update header + delete existing children via SP
     await conn.execute(
-      `BEGIN SP_UPDATE_CHQ_HEADER(
+      `BEGIN SP_UPDATE_CHQ_PAYMENT_HEADER(
         :cc, :dn, :dt, :dv, :ac, :bk, :rn, :rd,
         :rm, :cu, :er, :cn, :cd, :ca, :pt, :ln, :ld, :lu
       ); END;`,
@@ -587,11 +597,22 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       }
     );
 
-    // Step 2 — re-insert children via _SINGLE SPs, then commit
-    const isPayment = ['BP', 'BR', 'CR'].includes(h.doc_type);
-    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, detail, children, files);
+    // Step 2 — recalculate LCUR_AMOUNT for invoices based on updated amount
+    const exRate = h.ex_rate ?? 1;
+    const updatedInvoices = (children.invoice ?? []).map((inv: any) => ({
+      ...inv,
+      lcur_amount: Math.abs(Number(inv.amount ?? inv.lcur_amount ?? 0)),
+    }));
+    const updatedChildren = {
+      ...children,
+      invoice: updatedInvoices,
+    };
 
-    // Step 3 — store process
+    // Step 3 — re-insert children via _SINGLE SPs, then commit
+    const isPayment = ['BP', 'BR', 'CR', 'CP'].includes(h.doc_type);
+    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, exRate, isPayment, req.user.loginid, detail, updatedChildren, files);
+
+    // Step 4 — store process
     await callSpAcTxnControl(req.user.company_code, h.doc_type, h.doc_no, req.user.loginid);
 
     res.json({ success: true, data: constants.MESSAGES.CREATED_SUCCESSFULLY });
@@ -604,53 +625,79 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
 export const createPurchaseDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    if ((req.body as any).address && !(req.body as any).party_address) (req.body as any).party_address = (req.body as any).address;
-    if ((req.body as any).phone   && !(req.body as any).party_phone)   (req.body as any).party_phone   = (req.body as any).phone;
+    if ((req.body as any).address && !(req.body as any).party_address) 
+      (req.body as any).party_address = (req.body as any).address;
+    if ((req.body as any).phone && !(req.body as any).party_phone)   
+      (req.body as any).party_phone = (req.body as any).phone;
+    
     delete (req.body as any).doc_no;
-
     const { error, value: v } = purchaseSchema(req.body);
-    if (error) { res.status(400).json({ success: false, message: error.message }); return; }
-
+    if (error) { 
+      res.status(400).json({ success: false, message: error.message }); 
+      return; 
+    }
     conn = await getConn(req);
-
-    // Header SP returns purchase_no + invoice_no
     const result = await conn.execute(
-      `BEGIN SP_CREATE_PURCHASE_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:pa,:pp,:rn,:lu,:pno,:ino); END;`,
+      `BEGIN SP_CREATE_PURCHASE_HEADER(
+        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :pno, :ino, :inv_dt
+      ); END;`,
       {
-        cc: req.user.company_code, dv: v.div_code,       dt: v.doc_type,
-        dd: toDate(v.doc_date),    ac: v.ac_code,         cu: v.curr_code,
-        er: v.ex_rate,             rm: v.remarks       ?? null,
-        pa: v.party_address     ?? null, pp: v.party_phone ?? null,
-        rn: v.ref_doc_no        ?? null, lu: req.user.loginid,
+        cc: req.user.company_code, 
+        dv: v.div_code,       
+        dt: v.doc_type,
+        dd: toDate(v.doc_date),    
+        ac: v.ac_code,         
+        cu: v.curr_code,
+        er: v.ex_rate,             
+        rm: v.remarks ?? null,
+        pa: v.party_address ?? null, 
+        pp: v.party_phone ?? null,
+        rn: v.ref_doc_no ?? null, 
+        lu: req.user.loginid,
+        inv_dt: toDate(v.inv_date || v.doc_date),
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
     );
 
     const { pno: purchase_no, ino: invoice_no } = result.outBinds as any;
-
     // Detail rows SP
     await spInsertDetailRows(conn, req.user.company_code, v.doc_type, purchase_no, v.detail ?? [], req.user.loginid);
-
-    // Purchase invoice rows SP (sign = -1)
     if (v.detail?.length) {
       await conn.executeMany(
         `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
         v.detail.map((d: any) => ({
-          cc: req.user.company_code, dt: v.doc_type,    dn: purchase_no,
-          sn: d.serial_no,           dd: toDate(v.doc_date), ac: v.ac_code,
-          iv: invoice_no,            am: d.amount,      cu: d.curr_code,
-          er: d.ex_rate ?? 1,        dv: d.div_code,    lu: req.user.loginid,
+          cc: req.user.company_code, 
+          dt: v.doc_type,    
+          dn: purchase_no,
+          sn: d.serial_no,           
+          dd: toDate(v.inv_date || v.doc_date), 
+          ac: v.ac_code,
+          iv: invoice_no,            
+          am: d.amount,      
+          cu: d.curr_code,
+          er: d.ex_rate ?? 1,        
+          dv: d.div_code,    
+          lu: req.user.loginid,
         }))
       );
     }
 
     await conn.commit();
-    res.status(201).json({ success: true, message: 'Purchase and Invoice created successfully', data: { purchase_doc_no: purchase_no, invoice_doc_no: invoice_no } });
+    res.status(201).json({ 
+      success: true, 
+      message: 'Purchase and Invoice created successfully', 
+      data: { 
+        purchase_doc_no: purchase_no, 
+        invoice_doc_no: invoice_no 
+      } 
+    });
   } catch (err: any) {
     if (conn) try { await conn.rollback(); } catch {}
     sendError(res, err);
-  } finally { await closeConn(conn); }
+  } finally { 
+    await closeConn(conn); 
+  }
 };
 
 export const createSalesDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
@@ -827,7 +874,161 @@ export const callSpAcTxnControl = async (
     await conn.commit();
   } finally { await closeConn(conn); }
 };
-// Stub — implement when needed
-export const updatePurchaseDocument = async (_req: RequestWithUser, res: Response) => {
-  res.status(501).json({ success: false, message: 'Not implemented' });
+
+export const updatePurchaseDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    // Data cleanup
+    if ((req.body as any).address && !(req.body as any).party_address) 
+      (req.body as any).party_address = (req.body as any).address;
+    if ((req.body as any).phone && !(req.body as any).party_phone) 
+      (req.body as any).party_phone = (req.body as any).phone;
+    if (typeof req.body.doc_no === 'number') 
+      req.body.doc_no = String(req.body.doc_no);
+
+    // Validate schema
+    const { error, value: v } = purchaseSchema(req.body);
+    if (error) { 
+      res.status(400).json({ success: false, message: error.message }); 
+      return; 
+    }
+
+    const { detail = [], children = {}, files = [], ...h } = req.body;
+    
+    if (!h.doc_no) { 
+      res.status(400).json({ success: false, message: 'Missing doc_no in request' }); 
+      return; 
+    }
+    
+    if (!h.doc_type) {
+      res.status(400).json({ success: false, message: 'Missing doc_type in request' });
+      return;
+    }
+
+    conn = await getConn(req);
+
+    // Update header and delete existing child records
+    await conn.execute(
+      `BEGIN SP_UPDATE_PURCHASE_DOCUMENT(
+        :cc, :dn, :dt, :dv, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt
+      ); END;`,
+      {
+        cc: req.user.company_code,
+        dn: h.doc_no,
+        dt: h.doc_type,
+        dv: h.div_code,
+        dd: toDate(h.doc_date),
+        ac: h.ac_code,
+        cu: h.curr_code,
+        er: h.ex_rate ? Number(h.ex_rate) : 1,
+        rm: h.remarks || null,
+        pa: h.party_address || null,
+        pp: h.party_phone || null,
+        rn: h.ref_doc_no || null,
+        lu: req.user.loginid,
+        inv_dt: toDate(h.inv_date || h.doc_date),
+      }
+    );
+
+    // Clean detail items - CRITICAL: Remove doc_no and ensure proper types
+    const detailToUse = detail?.length ? detail : (v.detail || []);
+    
+    if (detailToUse.length === 0) {
+      throw new Error('At least one detail row is required');
+    }
+
+    // Thoroughly clean each detail item
+    const cleanDetail = detailToUse.map((d: any, index: number) => {
+      const clean: any = {};
+      
+      // Copy only the fields we need, with proper types
+      clean.serial_no = d.serial_no ? Number(d.serial_no) : (index + 1);
+      clean.ac_code = d.ac_code || h.ac_code;
+      clean.amount = d.amount ? Number(d.amount) : 0;
+      clean.sign_ind = d.sign_ind ? Number(d.sign_ind) : 1;
+      clean.curr_code = d.curr_code || h.curr_code;
+      clean.ex_rate = d.ex_rate ? Number(d.ex_rate) : (h.ex_rate ? Number(h.ex_rate) : 1);
+      clean.lcur_amount = d.lcur_amount ? Number(d.lcur_amount) : (Number(d.amount) * Number(d.ex_rate || h.ex_rate || 1));
+      clean.div_code = d.div_code || h.div_code;
+      clean.dept_code = d.dept_code || null;
+      clean.job_no = d.job_no || null;
+      clean.remarks = d.remarks || null;
+      clean.qty = d.qty ? Number(d.qty) : null;
+      clean.price = d.price ? Number(d.price) : null;
+      clean.uom = d.uom || null;
+      
+      // Tax related fields
+      clean.tx_cat_code = d.tx_cat_code || null;
+      clean.tx_compntcat_code_1 = d.tx_compntcat_code_1 || null;
+      clean.tx_compnt_perc_1 = d.tx_compnt_perc_1 ? Number(d.tx_compnt_perc_1) : null;
+      clean.tx_compnt_amt_1 = d.tx_compnt_amt_1 ? Number(d.tx_compnt_amt_1) : null;
+      clean.tx_compnt_lcuramt_1 = d.tx_compnt_lcuramt_1 ? Number(d.tx_compnt_lcuramt_1) : null;
+      clean.tx_compnt_1_expmt = d.tx_compnt_1_expmt || 'S';
+      
+      // IMPORTANT: Remove any doc_no field if present
+      // Do NOT include doc_no in the clean object
+      
+      return clean;
+    });
+
+    console.log('Cleaned detail items:', JSON.stringify(cleanDetail, null, 2));
+
+    // Insert detail rows
+    await spInsertDetailRows(
+      conn, 
+      req.user.company_code, 
+      h.doc_type, 
+      h.doc_no,
+      cleanDetail, 
+      req.user.loginid
+    );
+
+    // Insert invoice child rows
+    await conn.executeMany(
+      `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
+      cleanDetail.map((d: any) => ({
+        cc: req.user.company_code, 
+        dt: h.doc_type,    
+        dn: h.doc_no,
+        sn: d.serial_no, 
+        dd: toDate(h.doc_date), 
+        ac: h.ac_code,
+        iv: h.doc_no,
+        am: d.amount, 
+        cu: d.curr_code,
+        er: d.ex_rate, 
+        dv: d.div_code,    
+        lu: req.user.loginid,
+      }))
+    );
+
+    await conn.commit();
+    
+    console.log(`Updated purchase document ${h.doc_type} ${h.doc_no} with ${cleanDetail.length} detail rows`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Purchase and Invoice updated successfully', 
+      data: { 
+        purchase_doc_no: h.doc_no,  
+        invoice_doc_no: h.doc_no     
+      } 
+    });
+    
+  } catch (err: any) {
+    console.error('Update purchase error:', err);
+    if (conn) {
+      try { 
+        await conn.rollback(); 
+      } catch (rollbackErr) { 
+        console.error('Rollback error:', rollbackErr); 
+      }
+    }
+    
+    const statusCode = err.status ?? constants.STATUS_CODES.INTERNAL_SERVER_ERROR;
+    const message = err.message ?? 'Error updating purchase document';
+    res.status(statusCode).json({ success: false, message });
+  } finally { 
+    await closeConn(conn); 
+  }
 };

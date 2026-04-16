@@ -23,8 +23,13 @@ export class UomService {
   // Get all UOMs
   static async findAll(): Promise<UomMaster[]> {
     const repository = this.getUomRepository();
-    return await repository.find();
-  }
+    return await repository.find({
+      order:{
+            updated_at:"DESC",
+          }
+        }
+      );
+    }
 
   // Find UOM by code
   static async findByCode(uom_code: string): Promise<UomMaster | null> {

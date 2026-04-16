@@ -15,6 +15,14 @@ import { upsertPrepaid } from "../../controllers/finance/accounts/transactions/u
 import { upsertBankRemittance } from "../../controllers/finance/accounts/transactions/upsertBankRemittance";
 import { insUpdChqDepositBulk } from "../../controllers/finance/accounts/transactions/insUpdChqDepositBulk";
 import { upsertBudget } from "../../controllers/finance/accounts/transactions/upsertBudget";
+import { upsertAcBudget } from "../../controllers/finance/accounts/masters/upsertAcBudget";
+import { insUpdAcExpTypeBulk } from "../../controllers/finance/accounts/transactions/insUpdAcExpTypeBulk";
+import { insUpdBTProject } from "../../controllers/finance/accounts/transactions/insUpdBTProject";
+import { upsertMsAcAsset } from "../../controllers/finance/accounts/transactions/upsertMsAcAsset";
+import { insDocAccodeBulk } from "../../controllers/finance/accounts/transactions/insDocAccodeBulk";
+import { upsertHrDocTypes } from "../../controllers/finance/accounts/transactions/upsertHrDocTypes";
+import { insUpdMSACPLSetup } from "../../controllers/finance/accounts/transactions/insUpdMSACPLSetup";
+import { upsertSetupDoc } from "../../controllers/finance/accounts/transactions/upsertSetupDoc";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -31,11 +39,46 @@ router.post(
   upsertBudget
 );
 
+router.post(
+  "/insUpdAcExpTypeBulk",
+  insUpdAcExpTypeBulk
+);
+
+router.post(
+  "/insDocAccodeBulk",
+  insDocAccodeBulk);
+
+router.post(
+  "/upsertHrDocTypes",
+  upsertHrDocTypes)
+
+router.post(
+  "/insUpdBTProject",
+  insUpdBTProject
+);
  
+router.post(
+  "/insUpdMSACPLSetup",
+  insUpdMSACPLSetup
+);
+
 router.post(
   "/upsertBankRemittance",
   upsertBankRemittance
 );
+
+router.post(
+  "/upsertSetupDoc",
+  upsertSetupDoc
+);
+
+
+router.post(
+  "/upsertAcBudget",
+  upsertAcBudget 
+);
+
+
 
 router.post(
   "/updBankReconBulk",
@@ -65,6 +108,11 @@ router.post(
 router.post(
   "/upsertAssetSaleRegister",
   upsertAssetSaleRegister
+);
+
+router.post(
+  "/upsertMsAcAsset",
+  upsertMsAcAsset
 );
 
 router.post(
