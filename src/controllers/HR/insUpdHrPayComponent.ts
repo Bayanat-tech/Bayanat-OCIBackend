@@ -80,7 +80,7 @@ export const insUpdHrPayComponent = async (
     // ================= EXECUTE =================
     await connection.execute(
       `BEGIN
-         WMSTST.PROC_INS_UPD_HR_PAYCOMP(:p_header, :p_details);
+         PROC_INS_UPD_HR_PAYCOMP(:p_header, :p_details);
        END;`,
       {
         p_header: { type: "HR_PAYCOMP_TAB", val: [headerRow] },
