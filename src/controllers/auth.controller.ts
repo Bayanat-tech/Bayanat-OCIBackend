@@ -427,6 +427,26 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       has_permissions: Object.keys(formattedPermissions).length > 0
     });
 
+    // Debug: list routes missing component_name so we can map them
+    try {
+      const missingComponents: string[] = [];
+      const findMissing = (node: any) => {
+        if (!node) return;
+        if (node.type === 'item' && !(node.component_name || node.COMPONENT_NAME)) {
+          missingComponents.push(node.url_path || node.title || node.id || 'unknown');
+        }
+        if (Array.isArray(node.children)) node.children.forEach(findMissing);
+      };
+      if (Array.isArray(permissionBasedMenuTree)) permissionBasedMenuTree.forEach(findMissing);
+      if (missingComponents.length > 0) {
+        console.log('[me] 🔧 Missing component_name for routes (sample 50):', missingComponents.slice(0, 50));
+      } else {
+        console.log('[me] ✅ No missing component_name found in permissionBasedMenuTree');
+      }
+    } catch (dbgErr) {
+      console.warn('[me] ⚠️ Error while checking missing component_name:', dbgErr);
+    }
+
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {

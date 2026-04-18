@@ -14,6 +14,7 @@ export class SecModuleService {
     level3: string;
     url_path: string;
     icon: string;
+    component_name?: string;
   }): Promise<SecModule | null> {
     const repository = this.getSecModuleRepository();
     return await repository.findOne({
@@ -25,6 +26,7 @@ export class SecModuleService {
         level3: params.level3,
         url_path: params.url_path,
         icon: params.icon,
+        component_name: params.component_name,
       },
     });
   }
@@ -48,6 +50,7 @@ export class SecModuleService {
     position: number;
     url_path: string;
     icon: string;
+    component_name?: string;
     created_by: string;
     updated_by: string;
   }): Promise<SecModule> {

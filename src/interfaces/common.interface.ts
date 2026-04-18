@@ -27,6 +27,10 @@ export interface TreeNode {
   type: "collapse" | "item" | "group";
   icon: string;
   url_path?: string | null;
+  component_name?: string | null;
+  route_type?: string | null;
+  is_active?: string | null;
+  serial_no?: number | null;
   children?: TreeNode[];
 }
 export type TLogin = { email: string; password: string };

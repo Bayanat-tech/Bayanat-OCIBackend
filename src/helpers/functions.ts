@@ -108,6 +108,10 @@ export const buildTree = (
         type: "collapse",
         icon: "AbcIcon",
         url_path: APP_CODE.toLowerCase(),
+        component_name: row.COMPONENT_NAME || row.component_name || null,
+        route_type: row.ROUTE_TYPE || row.route_type || null,
+        is_active: row.IS_ACTIVE || row.is_active || null,
+        serial_no: ROW_SERIAL || null,
         children: [],
       };
     }
@@ -130,6 +134,10 @@ export const buildTree = (
               title: LEVEL1,
               type: "group",
               icon: "AbcIcon",
+              component_name: row.COMPONENT_NAME || row.component_name || null,
+              route_type: row.ROUTE_TYPE || row.route_type || null,
+              is_active: row.IS_ACTIVE || row.is_active || null,
+              serial_no: ROW_SERIAL || null,
               children: [],
             }
           : {
@@ -138,6 +146,10 @@ export const buildTree = (
               type: "item",
               icon: "AbcIcon",
               url_path: URL_PATH || "",
+              component_name: row.COMPONENT_NAME || row.component_name || null,
+              route_type: row.ROUTE_TYPE || row.route_type || null,
+              is_active: row.IS_ACTIVE || row.is_active || null,
+              serial_no: ROW_SERIAL || null,
             };
         tree[APP_CODE].children.push(level1Node);
       }
@@ -156,6 +168,10 @@ export const buildTree = (
                 title: LEVEL2,
                 type: "collapse",
                 icon: "AbcIcon",
+                component_name: row.COMPONENT_NAME || row.component_name || null,
+                route_type: row.ROUTE_TYPE || row.route_type || null,
+                is_active: row.IS_ACTIVE || row.is_active || null,
+                serial_no: ROW_SERIAL || null,
                 children: [],
               }
             : {
@@ -164,6 +180,10 @@ export const buildTree = (
                 type: "item",
                 icon: "AbcIcon",
                 url_path: URL_PATH || "",
+                component_name: row.COMPONENT_NAME || row.component_name || null,
+                route_type: row.ROUTE_TYPE || row.route_type || null,
+                is_active: row.IS_ACTIVE || row.is_active || null,
+                serial_no: ROW_SERIAL || null,
               };
           level1Node.children.push(level2Node);
         }
@@ -183,6 +203,10 @@ export const buildTree = (
               type: "item",
               icon: "AbcIcon",
               url_path: URL_PATH || "",
+              component_name: row.COMPONENT_NAME || row.component_name || null,
+              route_type: row.ROUTE_TYPE || row.route_type || null,
+              is_active: row.IS_ACTIVE || row.is_active || null,
+              serial_no: ROW_SERIAL || null,
             };
             level2Node.children.push(level3Node);
           }

@@ -29,6 +29,7 @@ export const createsecmodulemaster = async (
       position,
       url_path,
       icon,
+      component_name,
     } = req.body;
 
     // Check for duplicate module
@@ -40,6 +41,7 @@ export const createsecmodulemaster = async (
       level3,
       url_path,
       icon,
+      component_name,
     });
 
     if (duplicateModule) {
@@ -60,6 +62,7 @@ export const createsecmodulemaster = async (
       position,
       url_path,
       icon,
+      component_name,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
     });
