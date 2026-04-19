@@ -581,7 +581,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     // Step 1 — update header + delete existing children via SP
     await conn.execute(
-      `BEGIN SP_UPDATE_CHQ_HEADER(
+      `BEGIN SP_UPDATE_CHQ_PAYMENT_HEADER(
         :cc, :dn, :dt, :dv, :ac, :bk, :rn, :rd,
         :rm, :cu, :er, :cn, :cd, :ca, :pt, :ln, :ld, :lu
       ); END;`,
@@ -597,11 +597,22 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       }
     );
 
-    // Step 2 — re-insert children via _SINGLE SPs, then commit
-    const isPayment = ['BP', 'BR', 'CR', 'CP'].includes(h.doc_type);
-    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, detail, children, files);
+    // Step 2 — recalculate LCUR_AMOUNT for invoices based on updated amount
+    const exRate = h.ex_rate ?? 1;
+    const updatedInvoices = (children.invoice ?? []).map((inv: any) => ({
+      ...inv,
+      lcur_amount: Math.abs(Number(inv.amount ?? inv.lcur_amount ?? 0)),
+    }));
+    const updatedChildren = {
+      ...children,
+      invoice: updatedInvoices,
+    };
 
-    // Step 3 — store process
+    // Step 3 — re-insert children via _SINGLE SPs, then commit
+    const isPayment = ['BP', 'BR', 'CR', 'CP'].includes(h.doc_type);
+    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, exRate, isPayment, req.user.loginid, detail, updatedChildren, files);
+
+    // Step 4 — store process
     await callSpAcTxnControl(req.user.company_code, h.doc_type, h.doc_no, req.user.loginid);
 
     res.json({ success: true, data: constants.MESSAGES.CREATED_SUCCESSFULLY });
@@ -698,13 +709,14 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
     conn = await getConn(req);
 
     const result = await conn.execute(
-      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:sno,:ino); END;`,
+      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:inv_dt,:sno,:ino); END;`,
       {
         cc: req.user.company_code, dv: v.div_code,       dt: v.doc_type,
         dd: toDate(v.doc_date),    ac: v.ac_code,         cu: v.curr_code,
         er: v.ex_rate,             rm: v.remarks        ?? null,
         sc: v.salesman_code     ?? null, se: v.sector_code ?? null,
         lu: req.user.loginid,
+        inv_dt: toDate(v.inv_date || v.doc_date),
         sno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }

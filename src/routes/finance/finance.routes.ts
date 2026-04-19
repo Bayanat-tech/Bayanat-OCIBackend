@@ -23,6 +23,8 @@ import { insDocAccodeBulk } from "../../controllers/finance/accounts/transaction
 import { upsertHrDocTypes } from "../../controllers/finance/accounts/transactions/upsertHrDocTypes";
 import { insUpdMSACPLSetup } from "../../controllers/finance/accounts/transactions/insUpdMSACPLSetup";
 import { upsertSetupDoc } from "../../controllers/finance/accounts/transactions/upsertSetupDoc";
+import { insUpdHrGrade } from "../../controllers/HR/insUpdHrGrade";
+import { insUpdHrPayComponent } from "../../controllers/HR/insUpdHrPayComponent";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -114,6 +116,16 @@ router.post(
   "/upsertMsAcAsset",
   upsertMsAcAsset
 );
+
+
+router.post(
+  "/insUpdHrPayComponent",
+  insUpdHrPayComponent)
+
+
+router.post(
+  "/insUpdHrGrade",
+  insUpdHrGrade);
 
 router.post(
   "/upsertPrepaid",
