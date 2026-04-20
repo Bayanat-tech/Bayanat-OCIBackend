@@ -263,6 +263,11 @@ export const chequePaymentSchema = (
             doc_refno_2: Joi.string().allow("", null).optional(),
             // Amount (optional)
             amount: Joi.number().allow(null).optional(),
+            lcur_amount: Joi.number().default(0).optional(),
+            // Currency code (optional)
+            curr_code: Joi.string().allow(null).optional(),
+            // Exchange rate (optional)
+            ex_rate: Joi.number().allow(null).optional(),
           })
         )
         .optional()
@@ -357,7 +362,7 @@ export const purchaseSchema = (
     doc_type: Joi.string() // Document type (required)
       .valid(
         constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Cheque payment
-        constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
+        constants.TRANSACTION_DOCUMENT_TYPE.SALES,
         constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE, // Cheque payment
       )
       .required(),
@@ -440,7 +445,7 @@ export const purchaseSchema = (
           doc_type: Joi.string() // Document type (required)
             .valid(
               constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Cheque payment
-              constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
+              constants.TRANSACTION_DOCUMENT_TYPE.SALES,
               constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE,
             )
             .required(),
