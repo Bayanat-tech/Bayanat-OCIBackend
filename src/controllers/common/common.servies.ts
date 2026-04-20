@@ -13,6 +13,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
       code2,
       code3,
       code4,
+      code5,
       number1,
       number2,
       number3,
@@ -32,6 +33,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
 
     connection = await oracledb.getConnection();
 
+    console.log("code 5 values", code5);
     // Call procedure to get dynamic SQL
     const result = await connection.execute(
       `
@@ -45,6 +47,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
           :code2,
           :code3,
           :code4,
+          :code5,
           :number1,
           :number2,
           :number3,
@@ -65,6 +68,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
         code2,
         code3,
         code4,
+        code5,
         number1,
         number2,
         number3,
@@ -325,6 +329,7 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
       code2,
       code3,
       code4,
+      code5,
       number1,
       number2,
       number3,
@@ -354,6 +359,7 @@ console.log('check dynamic sql',req.body);
           :code2,
           :code3,
           :code4,
+          :code5,
           :number1,
           :number2,
           :number3,
@@ -374,6 +380,7 @@ console.log('check dynamic sql',req.body);
         code2,
         code3,
         code4,
+        code5,
         number1,
         number2,
         number3,
