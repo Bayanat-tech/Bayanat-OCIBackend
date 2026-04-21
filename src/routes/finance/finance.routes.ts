@@ -24,6 +24,9 @@ import { upsertHrDocTypes } from "../../controllers/finance/accounts/transaction
 import { insUpdMSACPLSetup } from "../../controllers/finance/accounts/transactions/insUpdMSACPLSetup";
 import { upsertSetupDoc } from "../../controllers/finance/accounts/transactions/upsertSetupDoc";
 import { insUpdHrGrade } from "../../controllers/HR/insUpdHrGrade";
+import { insUpdHrPayComponent } from "../../controllers/HR/insUpdHrPayComponent";
+import { insUpdSecPayCompAc } from "../../controllers/HR/insUpdSecPayCompAc";
+import { insUpdHrEmployee } from "../../controllers/HR/insUpdHrEmployee";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -48,10 +51,20 @@ router.post(
 router.post(
   "/insDocAccodeBulk",
   insDocAccodeBulk);
-
+// hr
 router.post(
   "/upsertHrDocTypes",
   upsertHrDocTypes)
+
+
+  router.post(
+  "/insUpdHrEmployee",
+  insUpdHrEmployee)
+
+//hr
+  router.post(
+  "/insUpdSecPayCompAc",
+  insUpdSecPayCompAc)
 
 router.post(
   "/insUpdBTProject",
@@ -115,6 +128,11 @@ router.post(
   "/upsertMsAcAsset",
   upsertMsAcAsset
 );
+
+
+router.post(
+  "/insUpdHrPayComponent",
+  insUpdHrPayComponent)
 
 
 router.post(
