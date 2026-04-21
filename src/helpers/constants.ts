@@ -794,9 +794,13 @@ SELECT_AT_LEAST_ONE_SALESMAN: "SELECT AT LEAST ONE SALESMAN",
     ORACLE_USER: String(process.env.ORACLE_USER),
     ORACLE_PASSWORD: String(process.env.ORACLE_PASSWORD),
     ORACLE_CONNECTION_STRING: String(process.env.ORACLE_CONNECTION_STRING),
-    ORACLE_INSTANT_CLIENT_PATH: String(process.env.ORACLE_INSTANT_CLIENT_PATH),
+    ORACLE_INSTANT_CLIENT_PATH: String(process.env.ORACLE_INSTANT_CLIENT_PATH), 
   },
-  
+
+  // Slack Webhook URL
+  SLACK: {
+  WEBHOOK_URL: String(process.env.SLACK_WEBHOOK_URL),
+  },
   // QR Code Validation Database (Separate Schema - TID0004)
   QR_DB: {
     USER: String(process.env.QR_ORACLE_USER),
