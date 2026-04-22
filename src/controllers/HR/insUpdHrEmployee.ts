@@ -1,9 +1,6 @@
 import { Request, Response, RequestHandler } from "express";
 import oracledb from "oracledb";
-
 import TenantManager from "../../../src/database/TenantManager"
-
-
 import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware"
 
 // ---------- helpers ----------
@@ -13,6 +10,8 @@ const toNumber = (v: any) => (v !== undefined && v !== null ? Number(v) : null);
 // ---------- FULL OBJECT ----------
 const buildEmployeeObject = (e: any) => ({
   // --- Existing fields ---
+  COMPANY_CDOE: e.company_code ?? null,
+  EMPLOYER_CODE: e.employer_code ?? null,
   EMPLOYEE_ID: e.employee_id ?? null,
   EMPLOYEE_CODE: e.employee_code ?? null,
   ALTERNATE_ID: e.alternate_id ?? null,
