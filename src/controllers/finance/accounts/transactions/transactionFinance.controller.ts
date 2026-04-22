@@ -516,6 +516,20 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
   let conn: oracledb.Connection | undefined;
   try {
     if (typeof req.body.doc_no === 'number') req.body.doc_no = String(req.body.doc_no);
+    // Normalize children.invoice entries so required fields exist for validation
+    if (req.body.children && Array.isArray(req.body.children.invoice)) {
+      req.body.children.invoice = req.body.children.invoice.map((inv: any) => ({
+        ...inv,
+        company_code: inv.company_code ?? req.user.company_code,
+      }));
+    }
+    // Normalize detail entries so required fields exist for validation
+    if (Array.isArray(req.body.detail)) {
+      req.body.detail = req.body.detail.map((d: any) => ({
+        ...d,
+        company_code: d.company_code ?? req.user.company_code,
+      }));
+    }
     const { error } = chequePaymentSchema(req.body);
     if (error) { res.status(400).json({ success: false, message: error.message }); return; }
 
@@ -571,6 +585,20 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
   let conn: oracledb.Connection | undefined;
   try {
     if (typeof req.body.doc_no === 'number') req.body.doc_no = String(req.body.doc_no);
+    // Normalize children.invoice entries so required fields exist for validation
+    if (req.body.children && Array.isArray(req.body.children.invoice)) {
+      req.body.children.invoice = req.body.children.invoice.map((inv: any) => ({
+        ...inv,
+        company_code: inv.company_code ?? req.user.company_code,
+      }));
+    }
+    // Normalize detail entries so required fields exist for validation
+    if (Array.isArray(req.body.detail)) {
+      req.body.detail = req.body.detail.map((d: any) => ({
+        ...d,
+        company_code: d.company_code ?? req.user.company_code,
+      }));
+    }
     const { error } = chequePaymentSchema(req.body);
     if (error) { res.status(400).json({ success: false, message: error.message }); return; }
 
