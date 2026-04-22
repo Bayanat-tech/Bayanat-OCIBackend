@@ -1,73 +1,180 @@
 import { Request, Response } from "express";
+import { QueryExecutor } from "../../database/QueryExecutor";
 import oracledb from "oracledb";
-import TenantManager from "../../database/TenantManager";
-import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 
-// Type for header/detail/term can be refined if using TypeScript interfaces
-export const insUpdPurchaseRequest = async (req: Request, res: Response): Promise<void> => {
-  let connection;
-
+export const proc_build_dynamic_ins_upd_ALMS = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    const body = req.body;
+    const {
+      parameter,
+      loginid,
 
-    // Basic validation
-    if (!body?.header || !body?.detail || !body?.term) {
+      // INSERT / UPDATE VALUES
+      val1s1,
+      val1s2,
+      val1s3,
+      val1s4,
+      val1s5,
+      val1s6,
+      val1s7,
+      val1s8,
+      val1s9,
+      val1s10,
+
+      val1n1,
+      val1n2,
+      val1n3,
+      val1n4,
+      val1n5,
+
+      val1d1,
+      val1d2,
+      val1d3,
+      val1d4,
+      val1d5,
+
+      // WHERE VALUES
+      wval1s1,
+      wval1s2,
+      wval1s3,
+      wval1s4,
+      wval1s5,
+
+      wval1n1,
+      wval1n2,
+      wval1n3,
+      wval1n4,
+      wval1n5,
+
+      wval1d1,
+      wval1d2,
+      wval1d3,
+      wval1d4,
+      wval1d5
+    } = req.body;
+
+    if (!parameter) {
       res.status(400).json({
         success: false,
-        message: "header, detail and term arrays are required"
+        message: "Missing required parameter 'parameter'"
       });
       return;
     }
 
-    // Tenant resolution
-    let tenantId: string | undefined;
-    try {
-      tenantId = getCurrentTenantId();
-    } catch (e) {}
-    if (!tenantId && body?.loginid) {
-      tenantId = await TenantManager.getTenantForUser(body.loginid);
-    }
-
-    if (!tenantId) {
-      res.status(400).json({ success: false, message: "Tenant not found for request" });
-      return;
-    }
-
-    connection = await TenantManager.getConnection(tenantId);
-
-    // Call the procedure
-    await connection.execute(
+    // Step 1 — Build SQL via procedure
+    const result = await QueryExecutor.executeRawQuery(
       `
+      DECLARE
+        v_sql VARCHAR2(32767);
       BEGIN
-        PROC_INS_UPD_PURCHASE_REQUEST(
-          :p_header,
-          :p_detail,
-          :p_term
+        PROC_BUILD_DYNAMIC_INS_UPD_COMMON(
+          :parameter,
+          :loginid,
+
+          :val1s1,  :val1s2,  :val1s3,  :val1s4,  :val1s5,
+          :val1s6,  :val1s7,  :val1s8,  :val1s9,  :val1s10,
+
+          :val1n1,  :val1n2,  :val1n3,  :val1n4,  :val1n5,
+
+          :val1d1,  :val1d2,  :val1d3,  :val1d4,  :val1d5,
+
+          :wval1s1, :wval1s2, :wval1s3, :wval1s4, :wval1s5,
+
+          :wval1n1, :wval1n2, :wval1n3, :wval1n4, :wval1n5,
+
+          :wval1d1, :wval1d2, :wval1d3, :wval1d4, :wval1d5,
+
+          v_sql
         );
+        :out_sql := v_sql;
       END;
       `,
       {
-        p_header: { type: "PR_HEADER_TAB", val: body.header },
-        p_detail: { type: "PR_DETAIL_TAB", val: body.detail },
-        p_term: { type: "PR_TERM_TAB", val: body.term }
+        parameter,
+        loginid,
+
+        val1s1,
+        val1s2,
+        val1s3,
+        val1s4,
+        val1s5,
+        val1s6,
+        val1s7,
+        val1s8,
+        val1s9,
+        val1s10,
+
+        val1n1,
+        val1n2,
+        val1n3,
+        val1n4,
+        val1n5,
+
+        val1d1,
+        val1d2,
+        val1d3,
+        val1d4,
+        val1d5,
+
+        wval1s1,
+        wval1s2,
+        wval1s3,
+        wval1s4,
+        wval1s5,
+
+        wval1n1,
+        wval1n2,
+        wval1n3,
+        wval1n4,
+        wval1n5,
+
+        wval1d1,
+        wval1d2,
+        wval1d3,
+        wval1d4,
+        wval1d5,
+
+        out_sql: {
+          dir: oracledb.BIND_OUT,
+          type: oracledb.STRING,
+          maxSize: 32767
+        }
       }
     );
 
-    await connection.commit();
+    interface ProcOut {
+      out_sql: string | null;
+    }
+
+    const outBinds = result.outBinds as ProcOut;
+    const dynamicSql = outBinds?.out_sql;
+
+    if (!dynamicSql) {
+      res.status(400).json({
+        success: false,
+        message: "Procedure returned no SQL"
+      });
+      return;
+    }
+
+    console.log("[ALMS] Generated SQL:", dynamicSql);
+
+    // Step 2 — Execute the generated SQL
+    await QueryExecutor.executeRawQuery(dynamicSql, []);
 
     res.json({
-      success: true,
-      message: "Purchase request inserted/updated successfully"
+      success: true
     });
 
-  } catch (err: any) {
-    console.error("Oracle error:", err);
+  } catch (error: any) {
+    console.error("[ALMS] Oracle Error:", error);
     res.status(500).json({
       success: false,
-      message: "Procedure execution failed",
-      details: err.message
+      message: "Failed to execute insert/update",
+      details: error.message
     });
-  } finally {
-    if (connection) await connection.close().catch(() => {});
   }
 };
+
