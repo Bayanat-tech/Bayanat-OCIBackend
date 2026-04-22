@@ -523,6 +523,22 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
         company_code: inv.company_code ?? req.user.company_code,
       }));
     }
+    // Normalize children.job entries
+    if (req.body.children && Array.isArray(req.body.children.job)) {
+      req.body.children.job = req.body.children.job.map((j: any) => ({
+        ...j,
+        company_code: j.company_code ?? req.user.company_code,
+        ac_code: j.ac_code ?? req.body.ac_code ?? (Array.isArray(req.body.detail) && req.body.detail[0]?.ac_code) ?? null,
+      }));
+    }
+    // Normalize children.expense entries
+    if (req.body.children && Array.isArray(req.body.children.expense)) {
+      req.body.children.expense = req.body.children.expense.map((e: any) => ({
+        ...e,
+        company_code: e.company_code ?? req.user.company_code,
+        ac_code: e.ac_code ?? req.body.ac_code ?? (Array.isArray(req.body.detail) && req.body.detail[0]?.ac_code) ?? null,
+      }));
+    }
     // Normalize detail entries so required fields exist for validation
     if (Array.isArray(req.body.detail)) {
       req.body.detail = req.body.detail.map((d: any) => ({
@@ -590,6 +606,22 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       req.body.children.invoice = req.body.children.invoice.map((inv: any) => ({
         ...inv,
         company_code: inv.company_code ?? req.user.company_code,
+      }));
+    }
+    // Normalize children.job entries
+    if (req.body.children && Array.isArray(req.body.children.job)) {
+      req.body.children.job = req.body.children.job.map((j: any) => ({
+        ...j,
+        company_code: j.company_code ?? req.user.company_code,
+        ac_code: j.ac_code ?? req.body.ac_code ?? (Array.isArray(req.body.detail) && req.body.detail[0]?.ac_code) ?? null,
+      }));
+    }
+    // Normalize children.expense entries
+    if (req.body.children && Array.isArray(req.body.children.expense)) {
+      req.body.children.expense = req.body.children.expense.map((e: any) => ({
+        ...e,
+        company_code: e.company_code ?? req.user.company_code,
+        ac_code: e.ac_code ?? req.body.ac_code ?? (Array.isArray(req.body.detail) && req.body.detail[0]?.ac_code) ?? null,
       }));
     }
     // Normalize detail entries so required fields exist for validation
