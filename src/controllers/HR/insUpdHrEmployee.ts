@@ -149,7 +149,7 @@ export const insUpdHrEmployee: RequestHandler = async (req: Request, res: Respon
 
     await connection.execute(
       `BEGIN
-         WMSTST.PROC_INS_UPD_HR_EMPLOYEE(:p_emp);
+         PROC_INS_UPD_HR_EMPLOYEE(:p_emp);
        END;`,
       {
         p_emp: {
