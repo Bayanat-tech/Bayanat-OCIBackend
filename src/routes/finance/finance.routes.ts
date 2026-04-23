@@ -18,6 +18,15 @@ import { upsertBudget } from "../../controllers/finance/accounts/transactions/up
 import { upsertAcBudget } from "../../controllers/finance/accounts/masters/upsertAcBudget";
 import { insUpdAcExpTypeBulk } from "../../controllers/finance/accounts/transactions/insUpdAcExpTypeBulk";
 import { insUpdBTProject } from "../../controllers/finance/accounts/transactions/insUpdBTProject";
+import { upsertMsAcAsset } from "../../controllers/finance/accounts/transactions/upsertMsAcAsset";
+import { insDocAccodeBulk } from "../../controllers/finance/accounts/transactions/insDocAccodeBulk";
+import { upsertHrDocTypes } from "../../controllers/finance/accounts/transactions/upsertHrDocTypes";
+import { insUpdMSACPLSetup } from "../../controllers/finance/accounts/transactions/insUpdMSACPLSetup";
+import { upsertSetupDoc } from "../../controllers/finance/accounts/transactions/upsertSetupDoc";
+import { insUpdHrGrade } from "../../controllers/HR/insUpdHrGrade";
+import { insUpdHrPayComponent } from "../../controllers/HR/insUpdHrPayComponent";
+import { insUpdSecPayCompAc } from "../../controllers/HR/insUpdSecPayCompAc";
+import { insUpdHrEmployee } from "../../controllers/HR/insUpdHrEmployee";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -39,8 +48,23 @@ router.post(
   insUpdAcExpTypeBulk
 );
 
+router.post(
+  "/insDocAccodeBulk",
+  insDocAccodeBulk);
+// hr
+router.post(
+  "/upsertHrDocTypes",
+  upsertHrDocTypes)
 
 
+  router.post(
+  "/insUpdHrEmployee",
+  insUpdHrEmployee)
+
+//hr
+  router.post(
+  "/insUpdSecPayCompAc",
+  insUpdSecPayCompAc)
 
 router.post(
   "/insUpdBTProject",
@@ -48,14 +72,27 @@ router.post(
 );
  
 router.post(
+  "/insUpdMSACPLSetup",
+  insUpdMSACPLSetup
+);
+
+router.post(
   "/upsertBankRemittance",
   upsertBankRemittance
 );
 
 router.post(
+  "/upsertSetupDoc",
+  upsertSetupDoc
+);
+
+
+router.post(
   "/upsertAcBudget",
   upsertAcBudget 
 );
+
+
 
 router.post(
   "/updBankReconBulk",
@@ -86,6 +123,21 @@ router.post(
   "/upsertAssetSaleRegister",
   upsertAssetSaleRegister
 );
+
+router.post(
+  "/upsertMsAcAsset",
+  upsertMsAcAsset
+);
+
+
+router.post(
+  "/insUpdHrPayComponent",
+  insUpdHrPayComponent)
+
+
+router.post(
+  "/insUpdHrGrade",
+  insUpdHrGrade);
 
 router.post(
   "/upsertPrepaid",

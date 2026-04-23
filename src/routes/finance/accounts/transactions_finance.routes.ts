@@ -23,6 +23,7 @@ import {
   createChequePaymentDocument,
   createChequePaymentStoreProcess,
   updateChequePaymentDocument,
+  updatePurchaseDocument,
   cancelDocument,
   deleteDocument,
   deleteDetailItem,
@@ -31,7 +32,7 @@ import {
   createLPODocument,
   createSalesDocument,
   getInvoiceOutstandingBalances,
-  getDocAccounts
+  getDocAccounts,
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 // Initialize Express router
 const router = express.Router();
@@ -71,8 +72,10 @@ router.delete("/document/:doc_type", deleteDocument);           // Delete docume
 router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail record
 router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
 
-
 router.post("/purchase-document",createPurchaseDocument)
+
+// PUT route for updating existing purchase documents
+router.put("/purchase-document", updatePurchaseDocument);
 
 router.post("/lpo-document",createLPODocument)
 router.post("/sales-document",createSalesDocument)
