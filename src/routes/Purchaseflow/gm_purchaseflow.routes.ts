@@ -98,7 +98,7 @@ import { SupplierMasterController } from "../../controllers/Purchaseflow/pf_supp
 //   getddProductMaster,
 // } from "../../controllers/Purchaseflow/getdddivisiondata_pf.cotroller";
 
-// import { executeRawSql, getDashboardData,handleGenerateExpenseAdj ,handleSaveExpSamt} from "../../controllers/Purchaseflow/getDashboardData_pf_controller";
+import { getDashboardData } from "../../controllers/Purchaseflow/getDashboardData_pf_controller";
 
 // import {
 //   updateReasonForPO,
@@ -169,7 +169,7 @@ router.get("/purchaseRequest/:request_number", getPurchaserequest);
 
 // // Define the route
 
-// router.get("/getDashboardData", getDashboardData);
+router.get("/getDashboardData", getDashboardData);
 // router.get("/getPfglobalsearch/:master", getPfglobalsearch);
 // router.get("/fetchPRregisterdata", fetchPRregisterdata);
  router.get("/fetchPOlisting/:request_number", fetchPOlisting);

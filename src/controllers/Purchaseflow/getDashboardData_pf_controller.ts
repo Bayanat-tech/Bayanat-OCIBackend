@@ -210,44 +210,6 @@ export const handleGenerateExpenseAdj = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  try {
-    const { company_code, request_number } = req.body;
-
-    // Validate inputs
-    if (!company_code || !request_number) {
-      res.status(400).json({ error: "company_code and request_number are required." });
-      return;
-    }
-
-    console.log("Calling PROC_CREATE_GT_EXPENSE_ADJ with:", {
-      company_code,
-      request_number,
-    });
-
-    // ✅ Execute the stored procedure
-    const [results] = await sequelize.query(
-      `CALL PROC_CREATE_GT_EXPENSE_ADJ(:company_code, :request_number);`,
-      {
-        replacements: { company_code, request_number },
-        type: QueryTypes.RAW,
-      }
-    );
-
-    // ✅ Return the results to frontend
-    res.status(200).json({
-      success: true,
-      message: "GT_EXPENSE_ADJ generated successfully.",
-      data: results,
-    });
-  } catch (error: any) {
-    console.error("Error in handleGenerateExpenseAdj:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Error while generating GT_EXPENSE_ADJ.",
-      error: error.message,
-    });
-  }
 };
 
 
@@ -255,78 +217,6 @@ export const handleGenerateExpenseAdj = async (
 
 
 export const handleSaveExpSamt = async (req: Request, res: Response): Promise<void> => {
-  const { company_code, request_number, expense_data } = req.body;
-
-  if (!company_code || !request_number || !Array.isArray(expense_data) || expense_data.length === 0) {
-    res.status(400).json({ success: false, message: "company_code, request_number, and expense_data are required." });
-    return;
-  }
-
-  const transaction = await sequelize.transaction();
-
-  try {
-    // 1️⃣ Delete existing rows
-    await sequelize.query(
-      `DELETE FROM GT_EXPENSE_ADJ `,
-      {
-        replacements: { company_code, request_number },
-        transaction,
-        type: QueryTypes.DELETE,
-      }
-    );
-
-    // 2️⃣ Insert multiple rows from frontend
-   for (const row of expense_data) {
-  // ✅ Convert "June 2025" → "2025-06-01"
-  const parsedDate = new Date(`${row.REQUEST_DATE} 1`); // Add day 1
-  const year = parsedDate.getFullYear();
-  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-  const firstDay = `${year}-${month}-01`; // ✅ always first day
-
-  await sequelize.query(
-    `INSERT INTO GT_EXPENSE_ADJ 
-      (REQUEST_DATE, NEW_ADJ_AMOUNT)
-     VALUES
-      (:request_date, :new_adj_amount)`,
-    {
-      replacements: {
-        request_date: firstDay,
-        new_adj_amount: row.NEW_ADJ_AMOUNT,
-      },
-      transaction,
-      type: QueryTypes.INSERT,
-    }
-  );
-}
-
-
-
-    // 3️⃣ Call procedure to process PURCHASE_REQUEST_DETAILS_AMC
-    await sequelize.query(
-      `CALL PROC_ADJAMT_PURCHASE_REQUEST_DETAILS_AMC(:company_code, :request_number)`,
-      {
-        replacements: { company_code, request_number },
-        transaction,
-        type: QueryTypes.RAW,
-      }
-    );
-
-    // 4️⃣ Commit transaction
-    await transaction.commit();
-
-    res.status(200).json({
-      success: true,
-      message: "GT_EXPENSE_ADJ processed and PROC_ADJAMT_PURCHASE_REQUEST_DETAILS_AMC executed successfully.",
-    });
-  } catch (error: any) {
-    console.error("Error in handleSaveExpSamt:", error);
-    await transaction.rollback();
-    res.status(500).json({
-      success: false,
-      message: "Error while processing GT_EXPENSE_ADJ",
-      error: error.message,
-    });
-  }
 };
 
 
