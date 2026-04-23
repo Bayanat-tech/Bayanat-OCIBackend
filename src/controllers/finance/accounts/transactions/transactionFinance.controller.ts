@@ -517,13 +517,31 @@ export const createBulkTransactionDocument = async (req: RequestWithUser, res: R
 export const createChequePaymentDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
+    // If client incorrectly passes doc_no as 0 (merge/artifact), remove it so DB generates a new doc_no
     if (typeof req.body.doc_no === 'number') req.body.doc_no = String(req.body.doc_no);
+    if (req.body.doc_no === 0 || req.body.doc_no === '0') delete req.body.doc_no;
+    console.log('createChequePaymentDocument payload preview:', { doc_no: req.body.doc_no, doc_type: req.body.doc_type, div_code: req.body.div_code });
+    // Remove transient UI fields that Joi schema doesn't allow
+    if (req.body.div_name !== undefined) delete req.body.div_name;
     // Normalize children.invoice entries so required fields exist for validation
     if (req.body.children && Array.isArray(req.body.children.invoice)) {
-      req.body.children.invoice = req.body.children.invoice.map((inv: any) => ({
-        ...inv,
-        company_code: inv.company_code ?? req.user.company_code,
-      }));
+      const allowedInvoiceFields = [
+        'doc_date','ac_code','IsDeletable','serial_no','dtl_sr_no','doc_no','doc_type','div_code',
+        'company_code','sign_ind','inv_no','inv_date','due_date','chq_date','chq_bank','chq_no',
+        'inv_amt','indicator_origin','amount_origin','c_bal_amt_org','amount','lcur_amount',
+        'curr_code','ex_rate','c_curr_amt','ref_no'
+      ];
+      req.body.children.invoice = req.body.children.invoice.map((inv: any) => {
+        const out: any = {};
+        for (const k of allowedInvoiceFields) {
+          if (inv[k] !== undefined) out[k] = inv[k];
+        }
+        out.company_code = out.company_code ?? req.user.company_code;
+        // coerce numeric doc_no to string if present
+        if (out.doc_no == null) out.doc_no = '';
+        else if (typeof out.doc_no === 'number') out.doc_no = String(out.doc_no);
+        return out;
+      });
     }
     // Normalize children.job entries
     if (req.body.children && Array.isArray(req.body.children.job)) {
@@ -541,11 +559,14 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
         ac_code: e.ac_code ?? req.body.ac_code ?? (Array.isArray(req.body.detail) && req.body.detail[0]?.ac_code) ?? null,
       }));
     }
+    // Remove transient UI fields that Joi schema doesn't allow
+    if (req.body.div_name !== undefined) delete req.body.div_name;
     // Normalize detail entries so required fields exist for validation
     if (Array.isArray(req.body.detail)) {
       req.body.detail = req.body.detail.map((d: any) => ({
         ...d,
         company_code: d.company_code ?? req.user.company_code,
+        doc_no: d.doc_no == null ? '' : (typeof d.doc_no === 'number' ? String(d.doc_no) : d.doc_no),
       }));
     }
     const { error } = chequePaymentSchema(req.body);
@@ -603,12 +624,26 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
   let conn: oracledb.Connection | undefined;
   try {
     if (typeof req.body.doc_no === 'number') req.body.doc_no = String(req.body.doc_no);
+    // Remove transient UI fields that Joi schema doesn't allow
+    if (req.body.div_name !== undefined) delete req.body.div_name;
     // Normalize children.invoice entries so required fields exist for validation
     if (req.body.children && Array.isArray(req.body.children.invoice)) {
-      req.body.children.invoice = req.body.children.invoice.map((inv: any) => ({
-        ...inv,
-        company_code: inv.company_code ?? req.user.company_code,
-      }));
+      const allowedInvoiceFields = [
+        'doc_date','ac_code','IsDeletable','serial_no','dtl_sr_no','doc_no','doc_type','div_code',
+        'company_code','sign_ind','inv_no','inv_date','due_date','chq_date','chq_bank','chq_no',
+        'inv_amt','indicator_origin','amount_origin','c_bal_amt_org','amount','lcur_amount',
+        'curr_code','ex_rate','c_curr_amt','ref_no'
+      ];
+      req.body.children.invoice = req.body.children.invoice.map((inv: any) => {
+        const out: any = {};
+        for (const k of allowedInvoiceFields) {
+          if (inv[k] !== undefined) out[k] = inv[k];
+        }
+        out.company_code = out.company_code ?? req.user.company_code;
+        if (out.doc_no == null) out.doc_no = '';
+        else if (typeof out.doc_no === 'number') out.doc_no = String(out.doc_no);
+        return out;
+      });
     }
     // Normalize children.job entries
     if (req.body.children && Array.isArray(req.body.children.job)) {
@@ -631,6 +666,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       req.body.detail = req.body.detail.map((d: any) => ({
         ...d,
         company_code: d.company_code ?? req.user.company_code,
+        doc_no: d.doc_no == null ? '' : (typeof d.doc_no === 'number' ? String(d.doc_no) : d.doc_no),
       }));
     }
     const { error } = chequePaymentSchema(req.body);
