@@ -82,6 +82,8 @@ app.use("/api/alms/", almsRoutes);
 
 app.use("/api/wms", wmsRoutes);
 
+app.use("/api/user", editLangrouter);
+
 // Health check
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({
