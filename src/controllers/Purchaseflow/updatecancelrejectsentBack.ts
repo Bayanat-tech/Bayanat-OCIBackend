@@ -11,8 +11,13 @@ interface EmailRow {
   EMAIL_ID: string;
 }
 
+
+
 export const updateCancelRejectSentBack = async (req: Request, res: Response): Promise<void> => {
+    // Sandeep changes made on 23042026 for connection error.
   let connection: oracledb.Connection | undefined;
+ connection = await oracleDb.getConnection(); // ✅ assign first
+ // changes end.
 
   try {
     const { LAST_ACTION, REQUEST_NUMBER, COMPANY_CODE, loginid, REMARKS, CREATEPR, LEVEL } = req.body;
