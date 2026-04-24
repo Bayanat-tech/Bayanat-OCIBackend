@@ -187,6 +187,7 @@ async function spInsertJobRows(
   company_code: string,
   doc_type: string,
   doc_no: string,
+  curr_code: string | undefined,
   job: any[],
   login_user: string
 ) {
@@ -213,7 +214,7 @@ async function spInsertJobRows(
       amount: j.amount,
       sign_ind: j.sign_ind,
       lcur_amount: j.lcur_amount,
-      curr_code: j.curr_code,
+      curr_code: j.curr_code ?? curr_code ?? null,
       ex_rate: j.ex_rate ?? 1,
       div_code: j.div_code,
       login_user,
@@ -227,39 +228,68 @@ async function spInsertExpenseRows(
   company_code: string,
   doc_type: string,
   doc_no: string,
+  curr_code: string | undefined,
   expense: any[],
   login_user: string
 ) {
   if (!expense?.length) return;
-  await conn.executeMany(
-    `BEGIN SP_INSERT_EXPENSE_SINGLE(
+  const sql = `BEGIN SP_INSERT_EXPENSE_SINGLE(
       :company_code, :doc_type, :doc_no,
       :serial_no, :dtl_sr_no, :doc_date,
       :ac_code, :exp_type_code, :exp_subtype_code, :exp_code,
       :job_no, :amount, :sign_ind, :lcur_amount,
       :curr_code, :ex_rate, :div_code, :login_user
-    ); END;`,
-    expense.map((e: any) => ({
-      company_code,
-      doc_type: e.doc_type ?? doc_type,
-      doc_no,
-      serial_no: e.serial_no,
-      dtl_sr_no: e.dtl_sr_no,
-      doc_date: toDate(e.doc_date),
-      ac_code: e.ac_code,
-      exp_type_code: e.exp_type_code,
-      exp_subtype_code: e.exp_subtype_code,
-      exp_code: e.exp_code,
-      job_no: e.job_no ?? null,
-      amount: e.amount,
-      sign_ind: e.sign_ind,
-      lcur_amount: e.lcur_amount,
-      curr_code: e.curr_code,
-      ex_rate: e.ex_rate ?? 1,
-      div_code: e.div_code,
-      login_user,
-    }))
-  );
+    ); END;`;
+
+  const binds = expense.map((e: any) => ({
+    company_code,
+    doc_type: e.doc_type ?? doc_type,
+    // Keep full header doc_no (may include prefix like 'BP') so expense rows store the same display value
+    doc_no: typeof doc_no === 'string' ? doc_no : String(doc_no),
+    serial_no: e.serial_no == null || e.serial_no === '' ? null : Number(e.serial_no),
+    dtl_sr_no: e.dtl_sr_no == null || e.dtl_sr_no === '' ? null : Number(e.dtl_sr_no),
+    doc_date: toDate(e.doc_date),
+    ac_code: e.ac_code == null || e.ac_code === '' ? null : String(e.ac_code),
+    exp_type_code: e.exp_type_code == null || e.exp_type_code === '' ? null : String(e.exp_type_code),
+    exp_subtype_code: e.exp_subtype_code == null || e.exp_subtype_code === '' ? null : String(e.exp_subtype_code),
+    exp_code: e.exp_code == null || e.exp_code === '' ? null : String(e.exp_code),
+    job_no: e.job_no == null || e.job_no === '' ? null : String(e.job_no),
+    amount: e.amount == null || e.amount === '' ? 0 : Number(e.amount),
+    sign_ind: e.sign_ind == null || e.sign_ind === '' ? 1 : Number(e.sign_ind),
+    lcur_amount: e.lcur_amount == null || e.lcur_amount === '' ? (e.amount == null || e.amount === '' ? 0 : Number(e.amount)) : Number(e.lcur_amount),
+    curr_code: e.curr_code ?? curr_code ?? null,
+    ex_rate: e.ex_rate == null || e.ex_rate === '' ? 1 : Number(e.ex_rate),
+    div_code: e.div_code == null || e.div_code === '' ? null : String(e.div_code),
+    login_user,
+  }));
+
+  try {
+    console.log('spInsertExpenseRows binds:', JSON.stringify(binds, null, 2));
+    const bindDefs = {
+      company_code: { type: oracledb.STRING, maxSize: 10 },
+      doc_type: { type: oracledb.STRING, maxSize: 5 },
+      doc_no: { type: oracledb.STRING, maxSize: 50 },
+      serial_no: { type: oracledb.NUMBER },
+      dtl_sr_no: { type: oracledb.NUMBER },
+      doc_date: { type: oracledb.STRING, maxSize: 10 },
+      ac_code: { type: oracledb.STRING, maxSize: 20 },
+      exp_type_code: { type: oracledb.STRING, maxSize: 10 },
+      exp_subtype_code: { type: oracledb.STRING, maxSize: 10 },
+      exp_code: { type: oracledb.STRING, maxSize: 10 },
+      job_no: { type: oracledb.STRING, maxSize: 20 },
+      amount: { type: oracledb.NUMBER },
+      sign_ind: { type: oracledb.NUMBER },
+      lcur_amount: { type: oracledb.NUMBER },
+      curr_code: { type: oracledb.STRING, maxSize: 10 },
+      ex_rate: { type: oracledb.NUMBER },
+      div_code: { type: oracledb.STRING, maxSize: 10 },
+      login_user: { type: oracledb.STRING, maxSize: 50 },
+    };
+    await conn.executeMany(sql, binds, { bindDefs });
+  } catch (err) {
+    console.error('spInsertExpenseRows executeMany error, binds:', JSON.stringify(binds, null, 2));
+    throw err;
+  }
 }
 
 /** Calls SP_INSERT_FILE_SINGLE via executeMany — owns UPLOADED_FILES_DLTS INSERT */
@@ -295,8 +325,8 @@ async function spInsertAllChildren(
 ) {
   await spInsertDetailRows(conn, company_code, doc_type, doc_no, detail, login_user);
   await spInsertInvoiceRows(conn, company_code, doc_type, doc_no, div_code, curr_code, ex_rate, is_payment, children?.invoice ?? [], login_user);
-  await spInsertJobRows(conn, company_code, doc_type, doc_no, children?.job ?? [], login_user);
-  await spInsertExpenseRows(conn, company_code, doc_type, doc_no, children?.expense ?? [], login_user);
+  await spInsertJobRows(conn, company_code, doc_type, doc_no, curr_code, children?.job ?? [], login_user);
+  await spInsertExpenseRows(conn, company_code, doc_type, doc_no, curr_code, children?.expense ?? [], login_user);
   await spInsertFiles(conn, doc_type, doc_no, files ?? []);
   await conn.commit();
 }
@@ -396,11 +426,19 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
+    const invRows = normalize(inv.rows || []);
+    const jobRows = normalize(job.rows || []);
+    const expRows = normalize(exp.rows || []).map((r: any) => ({
+      ...r,
+      // Child tables store numeric DOC_NO; provide a display field combining doc_type + doc_no
+      display_doc_no: (r.doc_type ?? '') + String(r.doc_no ?? ''),
+    }));
+
     res.json({
       success: true, data: {
-        invoice: normalize(inv.rows || []),
-        job: normalize(job.rows || []),
-        expense: normalize(exp.rows || []),
+        invoice: invRows,
+        job: jobRows,
+        expense: expRows,
       }
     });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }

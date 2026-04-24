@@ -207,6 +207,8 @@ export const chequePaymentSchema = (
             amount: Joi.number().default(0).optional(),
             // Local currency amount (optional, default 0)
             lcur_amount: Joi.number().default(0).optional(),
+            // Selection flag from UI
+            isSelected: Joi.boolean().optional(),
             // Currency code (optional)
             curr_code: Joi.string().allow(null).optional(),
             // Exchange rate (optional)
@@ -269,9 +271,10 @@ export const chequePaymentSchema = (
             doc_refno_2: Joi.string().allow("", null).optional(),
             // Amount (optional)
             amount: Joi.number().allow(null).optional(),
+            // Local currency amount and UI selection
             lcur_amount: Joi.number().default(0).optional(),
-            // Currency code (optional)
             curr_code: Joi.string().allow(null).optional(),
+            isSelected: Joi.boolean().optional(),
             // Exchange rate (optional)
             ex_rate: Joi.number().allow(null).optional(),
           })
@@ -335,6 +338,10 @@ export const chequePaymentSchema = (
             job_no: Joi.string().optional().allow("", null),
             // Amount (required)
             amount: Joi.number(),
+            // Optional local currency amount and UI selection flag
+            lcur_amount: Joi.number().optional(),
+            curr_code: Joi.string().allow(null).optional(),
+            isSelected: Joi.boolean().optional(),
           })
         )
         .optional()
