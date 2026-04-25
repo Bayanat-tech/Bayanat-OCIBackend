@@ -999,32 +999,33 @@ export const LpoSchema = (
     qty: Joi.number().default(1), // Quantity (default 1)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    // Address/Contact fields (accept both `address` and `party_address` variants)
-    address: Joi.string().optional().allow('', null),
-    party_address: Joi.string().optional().allow('', null),
-    // Phone/contact may be sent as string or number
-    phone: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
-    party_phone: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
-    contact: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
-    mobile: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
-    fax: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
+    // address: Joi.string(),
+    // phone: Joi.number().optional(),
+    // contact: Joi.number().optional(),
     email: Joi.string().optional().allow('', null),
+    party_address: Joi.string().optional().allow('', null),
+    party_phone: Joi.number().optional(),
+    dlvr_contact: Joi.number().optional(),
+    dlvr_email: Joi.string().optional().allow('', null),
+    dlvr_mobile: Joi.string().optional().allow("", null),
     app_ref_no: Joi.string().optional().allow('', null),
+    delivary_term: Joi.string().optional().allow("", null),
+    dlvr_term: Joi.string().optional().allow("", null),
+    payment_terms: Joi.string().optional().allow("", null),
+    delivary_info: Joi.string().optional().allow('', null),
+    fax: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
     // LPO PDO type (optional) - matches frontend select options
     pdo_type: Joi.string().optional().allow('', null).valid('PDO-OTO', 'PDO-NON-OTO', 'NON-PDO'),
     // Payment/delivery/terms (accept frontend spelling variants)
-    payment_terms: Joi.string().optional().allow("", null),
     terms: Joi.string().optional().allow("", null),
     delivery_info: Joi.string().optional().allow('', null),
-    delivary_info: Joi.string().optional().allow('', null),
-    delivery_term: Joi.string().optional().allow('', null),
-    delivary_term: Joi.string().optional().allow('', null),
-    // Tax fields (accept correct and misspelled keys)
-    tax_category: Joi.number().optional().allow(null),
-    tax_categoty: Joi.number().optional().allow(null),
+    //delivary_term: Joi.string(),
+    tax_categoty: Joi.number().optional(),
     tax_code: Joi.number().optional().allow("", null),
     tax_type: Joi.string().optional().allow("", null),
     lpo_category: Joi.string().optional().allow("", null),
+    //pdo_type: Joi.string().optional().allow("", null),
+    inv_date: Joi.date().optional().allow("", null),
     div_code: Joi.string().required(), // Division code (required)
     div_name: Joi.string().optional().allow('', null),
     ...(isBulkOperation && { company_code: userCompany }), 

@@ -33,6 +33,10 @@ import {
   createSalesDocument,
   getInvoiceOutstandingBalances,
   getDocAccounts,
+  getLpoDoc,
+  getLPOHeader,
+  getLpoDetail,
+  updateLPODocument
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 // Initialize Express router
 const router = express.Router();
@@ -73,13 +77,17 @@ router.delete("/detail_item/delete", deleteDetailItem);         // Delete detail
 router.delete("/children_item/delete", deleteChildrenItem);     // Delete child records
 
 router.post("/purchase-document",createPurchaseDocument)
-
 // PUT route for updating existing purchase documents
 router.put("/purchase-document", updatePurchaseDocument);
 
-router.post("/lpo-document",createLPODocument)
 router.post("/sales-document",createSalesDocument)
 
+//LPO Routes
+router.get("/lpo", getLpoDoc);
+router.get("/lpo/:doc_no", getLPOHeader);
+router.get("/lpo/:doc_no/detail", getLpoDetail);     
+router.post("/lpo-document", createLPODocument);
+router.put("/lpo-update", updateLPODocument);
 
 // Export the configured router
 export default router;
