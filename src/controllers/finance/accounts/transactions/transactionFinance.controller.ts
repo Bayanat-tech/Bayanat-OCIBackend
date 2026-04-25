@@ -488,6 +488,279 @@ export const getDocAccounts = async (req: RequestWithUser, res: Response): Promi
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
+export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+
+    // ── Pagination ───────────────────────────────────────────────
+    const page   = Math.max(1, parseInt(req.query.page  as string) || 1);
+    const limit  = Math.max(1, parseInt(req.query.limit as string) || 10);
+    const offset = (page - 1) * limit;
+
+    // ── Base WHERE ───────────────────────────────────────────────
+    let whereClause = `WHERE company_code = :company_code`;
+    const binds: any = {
+      company_code: req.user.company_code,
+    };
+
+    // ── div_code filter ──────────────────────────────────────────
+    if (req.query.div_code) {
+      whereClause += ` AND div_code = :div_code`;
+      binds.div_code = req.query.div_code;
+    }
+
+    // ── Year / FY / Date Range filter ────────────────────────────
+    if (req.query.from_date && req.query.to_date) {
+      whereClause += ` AND doc_date BETWEEN TO_DATE(:fd, 'YYYY-MM-DD') AND TO_DATE(:td, 'YYYY-MM-DD')`;
+      binds.fd = req.query.from_date;
+      binds.td = req.query.to_date;
+    } else if (req.query.fy_period) {
+      whereClause += ` AND fy_period = :fy_period`;
+      binds.fy_period = req.query.fy_period;
+    } else if (req.query.year) {
+      whereClause += ` AND EXTRACT(YEAR FROM doc_date) = :yr`;
+      binds.yr = Number(req.query.year);
+    } else {
+      // Default → current calendar year
+      whereClause += ` AND EXTRACT(YEAR FROM doc_date) = :yr`;
+      binds.yr = new Date().getFullYear();
+    }
+
+    // ── Search filter ────────────────────────────────────────────
+    const search = req.query.search as string;
+    if (search?.trim()) {
+      whereClause += `
+        AND (
+          UPPER(doc_no)          LIKE UPPER(:search)
+          OR UPPER(party_name)   LIKE UPPER(:search)
+          OR UPPER(ref_no)       LIKE UPPER(:search)
+          OR UPPER(div_code)     LIKE UPPER(:search)
+          OR UPPER(invoice_number) LIKE UPPER(:search)
+        )
+      `;
+      binds.search = `%${search.trim()}%`;
+    }
+
+    // ── Specific field filters ────────────────────────────────────
+    const allowedFields = [
+      "doc_no", "doc_type", "div_code", "ac_code",
+      "ref_no", "party_name", "final_approved",
+      "last_action", "invoice_number", "canceled",
+    ];
+    allowedFields.forEach((field) => {
+      if (req.query[field]) {
+        const safeParam = `f_${field}`;
+        whereClause += ` AND UPPER(${field}) = UPPER(:${safeParam})`;
+        binds[safeParam] = req.query[field];
+      }
+    });
+
+    // ── COUNT query ───────────────────────────────────────────────
+    const countResult = await conn.execute(
+      `SELECT COUNT(*) AS TOTAL_COUNT
+       FROM VW_AC_LPO_HEADER_DETAIL
+       ${whereClause}`,
+      binds,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    console.log("LPO count result:", countResult);
+
+    const countRow  = countResult.rows?.[0] as { TOTAL_COUNT?: number };
+    const totalCount = countRow?.TOTAL_COUNT ?? 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // ── DATA query with pagination ────────────────────────────────
+    const dataResult = await conn.execute(
+      `SELECT *
+       FROM VW_AC_LPO_HEADER_DETAIL
+       ${whereClause}
+       ORDER BY doc_date DESC, doc_no DESC
+       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`,
+      { ...binds, offset, limit },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    console.log("LPO data result:", dataResult.rows?.length, "rows");
+
+    const data = (dataResult.rows || []).map((row: any) => {
+      const mapped: any = {};
+      Object.keys(row).forEach((k) => {
+        mapped[k.toLowerCase()] = row[k];
+      });
+      return mapped;
+    });
+
+    res.json({
+      success:     true,
+      data,
+      pagination: {
+        total:       totalCount,
+        total_pages: totalPages,
+        page,
+        limit,
+        has_next:    page < totalPages,
+        has_prev:    page > 1,
+      },
+    });
+  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
+// export const getLPOHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
+//   let conn: oracledb.Connection | undefined;
+//   try {
+//     conn = await getConn(req);
+//     const result = await conn.execute(
+//       `SELECT * FROM VW_AC_LPO_HEADER_DETAIL
+//        WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
+//       { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+//     const row = result.rows?.[0] || null;
+//     console.log("LPO header result:", row);
+//     res.json({ success: true, data: row ? normalize([row])[0] : null });
+//     console.log('LPO header Normalizeeeee:', row ? normalize([row])[0] : null);
+//   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+// };
+
+// ── GET SINGLE LPO HEADER ────────────────────────────────────────────────────
+export const getLPOHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { doc_no }             = req.params;
+    const { doc_type } = req.query;
+
+    if (!doc_no || !doc_type) {
+      res.status(400).json({ success: false, message: 'doc_no and doc_type are required' });
+      console.log('Missing required parameters:', { doc_no, doc_type });
+      return;
+    }
+
+    conn = await getConn(req);
+
+    const result = await conn.execute(
+      `SELECT *
+       FROM   VW_AC_LPO_HEADER_DETAIL
+       WHERE  company_code = :cc
+         AND  doc_no       = :dn
+         AND  doc_type     = :dt
+        ORDER BY doc_no DESC`,
+      {
+        cc: req.user.company_code,
+        dn: String(doc_no),
+        dt: doc_type,
+        // ...(div_code && { dc: div_code }),
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!result.rows?.length) {
+      res.status(404).json({ success: false, message: 'LPO document not found' });
+      return;
+    }
+
+    const row = normalize([result.rows[0] as any])[0];
+    res.json({ success: true, data: row });
+
+  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
+
+// ── GET LPO DETAIL ─────────────────────────────────────────────────────
+export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { doc_no }  = req.params;
+    const { doc_type } = req.query;
+
+    // if (!doc_no || !doc_type ) {
+    //   res.status(400).json({
+    //     success: false,
+    //     message: 'doc_no and doc_type are required',
+    //   });
+    //   console.log('Detailssssssssssss:', { doc_no, doc_type });
+    //   return;
+    // }
+
+    conn = await getConn(req);
+
+    const result = await conn.execute(
+      `SELECT
+          d.company_code,
+          d.doc_type,
+          d.doc_no,
+          d.serial_no,
+          d.doc_date,
+          d.ac_code,
+          m.ac_name,
+          d.header_ac_code,
+          d.remarks,
+          d.amount,
+          d.sign_ind,
+          d.curr_code,
+          d.ex_rate,
+          d.lcur_amount,
+          d.job_no,
+          d.dept_code,
+          d.qty,
+          d.price,
+          d.uom,
+          d.prod_code,
+          d.qty_rcv,
+          d.amount_rcv,
+          d.other_remarks,
+          d.item_remark,
+          d.div_code,
+          d.tx_cat_code,
+          d.tx_compntcat_code_1,
+          d.tx_compntcat_code_2,
+          d.tx_compntcat_code_3,
+          d.tx_compntcat_code_4,
+          d.tx_compnt_perc_1,
+          d.tx_compnt_perc_2,
+          d.tx_compnt_perc_3,
+          d.tx_compnt_perc_4,
+          d.tx_compnt_amt_1,
+          d.tx_compnt_amt_2,
+          d.tx_compnt_amt_3,
+          d.tx_compnt_amt_4,
+          d.tx_compnt_lcuramt_1,
+          d.tx_compnt_lcuramt_2,
+          d.tx_compnt_lcuramt_3,
+          d.tx_compnt_lcuramt_4,
+          d.tx_compnt_1_expmt,
+          d.tx_compnt_2_expmt,
+          d.tx_compnt_3_expmt,
+          d.tx_compnt_4_expmt,
+          d.original_qty,
+          d.edit_user,
+          d.create_user
+       FROM   TR_AC_LPO_DETAIL  d
+       LEFT JOIN wmstst.ms_accodes m
+              ON m.ac_code = d.ac_code
+       WHERE  d.company_code        = :cc
+         AND  d.doc_no              = :dn
+         AND  d.doc_type            = :dt
+         AND  NVL(d.cancelled, 'N') = 'N'
+       ORDER BY d.serial_no`,
+      {
+        cc: req.user.company_code,
+        dn: String(doc_no),
+        dt: doc_type
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    res.json({
+      success: true,
+      data:    normalize(result.rows as any[] || []),
+      count:   result.rows?.length ?? 0,
+    });
+    console.log('Fetched LPO details:', result.rows?.length ?? 0, 'rows');
+
+  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
+
 // =============================================================================
 // WRITE HANDLERS — zero raw SQL, all delegate to SPs
 // =============================================================================
@@ -884,6 +1157,149 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
     if (conn) try { await conn.rollback(); } catch { }
     sendError(res, err);
   } finally { await closeConn(conn); }
+};
+
+export const updateLPODocument = async (req: RequestWithUser, res: Response) : Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+
+  try {
+    const { doc_no, doc_type } = req.body;
+
+    if (!doc_no || !doc_type) {
+      res.status(400).json({
+        success: false,
+        message: 'doc_no and doc_type are required'
+      });
+      return;
+    }
+
+    conn = await getConn(req);
+
+    // Fetch existing header (VERY IMPORTANT for partial update)
+    const existing = await conn.execute(
+      `SELECT * FROM TR_AC_LPO_HEADER
+       WHERE company_code = :cc
+         AND doc_no = :dn
+         AND doc_type = :dt`,
+      {
+        cc: req.user.company_code,
+        dn: doc_no,
+        dt: doc_type
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!existing.rows?.length) {
+      res.status(404).json({
+        success: false,
+        message: 'LPO not found'
+      });
+      return;
+    }
+
+    const old: any = existing.rows[0];
+
+    //  Merge payload + existing DB values
+    const h = {
+      doc_date: req.body.doc_date ?? old.DOC_DATE,
+      ac_code: req.body.ac_code ?? old.AC_CODE,
+      curr_code: req.body.curr_code ?? old.CURR_CODE,
+      ex_rate: req.body.ex_rate ?? old.EX_RATE ?? 1,
+      remarks: req.body.remarks ?? old.REMARKS,
+      party_name: req.body.party_name ?? old.PARTY_NAME,
+      party_address: req.body.party_address ?? old.PARTY_ADDRESS,
+      party_phone: req.body.party_phone ?? old.PARTY_PHONE,
+      party_fax: req.body.party_fax ?? old.PARTY_FAX,
+      ref_no: req.body.ref_no ?? old.REF_NO,
+      ref_date: req.body.ref_date ?? old.REF_DATE,
+      invoice_no: req.body.invoice_no ?? old.INVOICE_NUMBER,
+      invoice_date: req.body.invoice_date ?? old.INVOICE_DATE,
+      div_code: req.body.div_code ?? old.DIV_CODE
+    };
+
+    //  Call your SP safely
+    await conn.execute(
+      `BEGIN WMSTST.SP_UPDATE_LPO(
+        :cc, :dt, :dn,
+        :dd, :ac, :cu, :er,
+        :rm,
+        :pn, :pa, :pp, :pf,
+        :rn, :rd,
+        :ino, :idt,
+        :dv, :lu
+      ); END;`,
+      {
+        cc: req.user.company_code,
+        dt: doc_type,
+        dn: doc_no,
+        dd: toDate(h.doc_date),
+        ac: h.ac_code,
+        cu: h.curr_code,
+        er: h.ex_rate,
+        rm: h.remarks,
+        pn: h.party_name,
+        pa: h.party_address,
+        pp: h.party_phone,
+        pf: h.party_fax,
+        rn: h.ref_no,
+        rd: toDate(h.ref_date),
+        ino: h.invoice_no,
+        idt: toDate(h.invoice_date),
+        dv: h.div_code,
+        lu: req.user.loginid
+      }
+    );
+
+    // Delete + reinsert details (your existing logic is fine)
+    await conn.execute(
+      `DELETE FROM TR_AC_LPO_DETAIL
+       WHERE company_code = :cc
+         AND doc_no = :dn
+         AND doc_type = :dt`,
+      {
+        cc: req.user.company_code,
+        dn: doc_no,
+        dt: doc_type
+      }
+    );
+
+    if (req.body.detail?.length) {
+      await conn.executeMany(
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
+          :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la
+        ); END;`,
+        req.body.detail.map((d: any, i: number) => ({
+          cc: req.user.company_code,
+          dt: doc_type,
+          dn: doc_no,
+          sn: d.serial_no ?? (i + 1),
+          ac: d.ac_code,
+          hac: h.ac_code,
+          am: Number(d.amount || 0),
+          cu: d.curr_code ?? h.curr_code,
+          er: d.ex_rate ?? h.ex_rate ?? 1,
+          si: d.sign_ind ?? 1,
+          dv: d.div_code ?? h.div_code,
+          la: d.lcur_amount ?? (Number(d.amount || 0) * Number(h.ex_rate ?? 1))
+        }))
+      );
+    }
+
+    await conn.commit();
+
+     res.json({
+      success: true,
+      message: 'LPO updated successfully',
+      data: { doc_no }
+    });
+
+
+  } catch (err: any) {
+    if (conn) await conn.rollback().catch(() => {});
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
 };
 
 // =============================================================================
