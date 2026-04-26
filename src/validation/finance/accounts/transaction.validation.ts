@@ -1014,6 +1014,7 @@ export const LpoSchema = (
     payment_terms: Joi.string().optional().allow("", null),
     delivary_info: Joi.string().optional().allow('', null),
     fax: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
+    party_fax: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
     // LPO PDO type (optional) - matches frontend select options
     pdo_type: Joi.string().optional().allow('', null).valid('PDO-OTO', 'PDO-NON-OTO', 'NON-PDO'),
     // Payment/delivery/terms (accept frontend spelling variants)
@@ -1026,6 +1027,7 @@ export const LpoSchema = (
     lpo_category: Joi.string().optional().allow("", null),
     //pdo_type: Joi.string().optional().allow("", null),
     inv_date: Joi.date().optional().allow("", null),
+    invoice_date: Joi.date().optional().allow("", null),
     div_code: Joi.string().required(), // Division code (required)
     div_name: Joi.string().optional().allow('', null),
     ...(isBulkOperation && { company_code: userCompany }), 
@@ -1042,14 +1044,17 @@ export const LpoSchema = (
         Joi.object({
           doc_date: Joi.date(), // Document date
           company_code: Joi.string().required(), // Company code (required)
+          prod_code: Joi.string().optional().allow("", null),
           ac_code: Joi.string().required(), // Account code (required)
           ac_name: Joi.string(),
           header_ac_code: Joi.string(),
           product_code: Joi.string().optional().allow("", null),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
+          other_remarks: Joi.string().optional().allow("", null),
           cost_code: Joi.string().optional().allow("", null),
           price: Joi.number().default(1), // Price (default 1)
           qty: Joi.number().default(1), // Quantity (default 1) 
+          qty_pending: Joi.number().optional().allow("", null),
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
