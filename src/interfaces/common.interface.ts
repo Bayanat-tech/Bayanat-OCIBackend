@@ -28,6 +28,7 @@ export interface TreeNode {
   icon: string;
   url_path?: string | null;
   component_name?: string | null;
+  api_endpoint?: string | null;
   route_type?: string | null;
   is_active?: string | null;
   serial_no?: number | null;

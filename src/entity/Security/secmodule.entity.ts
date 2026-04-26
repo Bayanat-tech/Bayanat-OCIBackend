@@ -48,6 +48,9 @@ export class SecModule {
   @Column({ name: "ICON_NAME", type: "varchar2", length: 100, nullable: true })
   icon_name!: string;
 
+  @Column({ name: "API_ENDPOINT", type: "varchar2", length: 1000, nullable: true })
+  api_endpoint!: string;
+
   @Column({ name: "UPDATED_BY", type: "varchar2", length: 50 })
   updated_by!: string;
 

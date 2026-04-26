@@ -26,7 +26,21 @@ export const getSecMaster = async (
 
     console.log("Fetching master data for:", master);
 
-    switch (master) {
+    // canonicalize incoming master param to support alias forms like 'sec_module_page'
+    const masterRaw = (master || "").toString().toLowerCase();
+    let masterKey = masterRaw.replace(/[^a-z0-9_]/g, "");
+    if (masterKey.includes("secmodule") && masterKey.includes("resolve")) {
+      masterKey = "sec_module_resolve";
+    } else if (masterKey.includes("secmodule") && masterKey.includes("dropdown")) {
+      masterKey = "sec_module_dropdown";
+    } else if (masterKey.includes("secmodule") && masterKey.includes("page")) {
+      masterKey = "sec_module_resolve";
+    } else if (masterKey.includes("secmodule")) {
+      masterKey = "sec_module";
+    }
+    console.log("Canonical masterKey:", masterKey);
+
+    switch (masterKey) {
       case "flow_master":
         result = await SecurityMasterService.getFlowMaster(
           requestUser.company_code,
@@ -57,7 +71,7 @@ export const getSecMaster = async (
         );
         break;
 
-      case "sec_module_data":
+      case "sec_module":
         result = await SecurityMasterService.getSecModuleData(
           requestUser.company_code,
           page,
@@ -65,6 +79,13 @@ export const getSecMaster = async (
           sort,
           filter.search
         );
+        break;
+
+      case "sec_module_resolve":
+        // resolve serial number for a given path query param
+        const pathToResolve = (req.query.path as string) || '';
+        const serial = await SecurityMasterService.resolveSerialByPath(requestUser.company_code, pathToResolve);
+        result = { tableData: [{ serial_no: serial }], count: serial ? 1 : 0 };
         break;
 
       case "sec_company":

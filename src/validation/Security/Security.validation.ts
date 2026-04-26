@@ -71,6 +71,7 @@ export const secmoduleSchema = (data: ISecmodule) => {
     url_path: Joi.string(),
     icon: Joi.string().optional().allow("").allow(null),
     component_name: Joi.string().optional().allow("").allow(null),
+    api_endpoint: Joi.string().optional().allow("").allow(null),
     is_active: Joi.string().valid('Y', 'N').optional().default('Y'),
     route_type: Joi.string().valid('INTERNAL', 'EXTERNAL', 'COMING_SOON').optional().default('INTERNAL'),
     description: Joi.string().optional().allow("").allow(null),

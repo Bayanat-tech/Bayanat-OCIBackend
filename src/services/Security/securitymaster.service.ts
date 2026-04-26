@@ -162,17 +162,64 @@ export class SecurityMasterService {
     sort?: { field_name: string; desc: boolean },
     searchFilter?: any
   ) {
-    const whereCondition = this.buildSearchCondition<SecModule>(
-      company_code,
-      searchFilter
-    );
-    return await this.getMasterDataWithPagination<SecModule>(
-      SecModule,
-      whereCondition,
-      page,
-      limit,
-      sort
-    );
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    const qb = await repository.createQueryBuilder('s');
+    qb.where('s.company_code = :company', { company: company_code });
+
+    if (searchFilter && searchFilter.field && searchFilter.value) {
+      // Use case-insensitive search by lower-casing both sides
+      const field = String(searchFilter.field);
+      qb.andWhere(`LOWER(s.${field}) LIKE :val`, { val: `%${String(searchFilter.value).toLowerCase()}%` });
+    }
+
+    if (sort && sort.field_name) {
+      qb.orderBy(`s.${sort.field_name}`, sort.desc ? 'DESC' : 'ASC');
+    }
+
+    const skip = (page - 1) * limit;
+    qb.skip(skip).take(limit);
+
+    const [tableData, count] = await qb.getManyAndCount();
+    return { tableData, count };
+  }
+
+  static async resolveSerialByPath(
+    company_code: string,
+    path: string
+  ): Promise<number | null> {
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    const normalized = (path || '').toString().trim().toLowerCase();
+
+    // Fast path: try equality match on normalized url_path_norm column (indexed)
+    let qb = await repository.createQueryBuilder('s');
+    let record = await qb
+      .where('s.company_code = :company', { company: company_code })
+      .andWhere('s.url_path_norm = :p', { p: normalized })
+      .getOne();
+
+    if (record) return (record as any).serial_no;
+
+    // Try component_name
+    qb = await repository.createQueryBuilder('s');
+    record = await qb
+      .where('s.company_code = :company', { company: company_code })
+      .andWhere('LOWER(TRIM(s.component_name)) = :p', { p: normalized })
+      .getOne();
+
+    if (record) return (record as any).serial_no;
+
+    // Try partial match on url_path or component_name
+    qb = await repository.createQueryBuilder('s');
+    record = await qb
+      .where('s.company_code = :company', { company: company_code })
+      .andWhere('LOWER(NVL(s.url_path, s.component_name)) LIKE :p', { p: `%${normalized}%` })
+      .getOne();
+
+    if (record) return (record as any).serial_no;
+
+    return null;
   }
 
   static async getProjectAccess(

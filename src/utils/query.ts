@@ -30,7 +30,8 @@ SELECT
   app_code AS menu, 
   '0' AS "level", 
   0 AS serial_no, 
-  app_code 
+  app_code,
+  url_path
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level1)) IS NULL OR LTRIM(RTRIM(level1)) = ' ' OR LENGTH(LTRIM(RTRIM(level1))) = 0)
 
@@ -40,7 +41,8 @@ SELECT
   level1 AS menu, 
   app_code AS "level", 
   serial_no, 
-  app_code 
+  app_code,
+  url_path
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level1)) IS NOT NULL AND LTRIM(RTRIM(level1)) != ' ')
   AND (LTRIM(RTRIM(level2)) IS NULL OR LTRIM(RTRIM(level2)) = ' ' OR LENGTH(LTRIM(RTRIM(level2))) = 0)
@@ -51,7 +53,8 @@ SELECT
   level2 AS menu, 
   level1 AS "level", 
   serial_no, 
-  app_code 
+  app_code,
+  url_path
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level2)) IS NOT NULL AND LTRIM(RTRIM(level2)) != ' ')
   AND (LTRIM(RTRIM(level3)) IS NULL OR LTRIM(RTRIM(level3)) = ' ' OR LENGTH(LTRIM(RTRIM(level3))) = 0)
@@ -62,7 +65,8 @@ SELECT
   level3 AS menu, 
   level2 AS "level", 
   serial_no, 
-  app_code 
+  app_code,
+  url_path
 FROM SEC_MODULE_DATA 
 WHERE (LTRIM(RTRIM(level3)) IS NOT NULL AND LTRIM(RTRIM(level3)) != ' ')
 `;

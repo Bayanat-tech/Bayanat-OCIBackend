@@ -289,11 +289,25 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
 
           try {
             console.log(`[me] 🔍 STEP 4: Building menu tree...`);
-            const menuTreeData = await AuthService.executeInUserTenant(
+            const menuTreeDataRaw = await AuthService.executeInUserTenant(
               loginid,
               menuTreeQuery,
               bindParams
             );
+
+            // Enrich rows with `api_endpoint` fallback when DB column is absent
+            const menuTreeData = (menuTreeDataRaw || []).map((row: any) => {
+              const urlPath = (row.url_path || row.URL_PATH || '').toString().trim();
+              let api_endpoint = row.api_endpoint || row.API_ENDPOINT || null;
+              if (!api_endpoint && urlPath) {
+                const parts = urlPath.split('/').filter(Boolean);
+                const last = parts.length ? parts[parts.length - 1] : null;
+                api_endpoint = last ? last.toLowerCase() : null;
+              }
+              return { ...row, api_endpoint };
+            });
+
+            console.log(`[me] 🔍 Enriched menuTreeData with api_endpoint: ${menuTreeData.filter((m: any) => m.api_endpoint).length}/${menuTreeData.length}`);
 
             if (menuTreeData && menuTreeData.length > 0) {
               // Build structured permissions object from allPermissions
@@ -302,8 +316,9 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
               allPermissions.forEach((perm: any) => {
                 const appCode = (perm.app_code || '').toString().trim();
                 const menu = (perm.menu || '').toString().trim();
+                const urlPath = (perm.url_path || perm.URL_PATH || '').toString().trim();
                 const serialNo = Number(perm.serial_no || 0);
-                
+
                 if (serialNo > 0 && menu && appCode) {
                   if (!structuredPermissions[appCode]) {
                     structuredPermissions[appCode] = {
@@ -312,12 +327,37 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
                       children: {},
                     };
                   }
-                  
+
+                  const urlLastRaw = urlPath ? urlPath.split('/').pop() : null;
+                  const urlKeyLower = urlLastRaw ? urlLastRaw.toLowerCase() : null;
+                  const urlKeyUpper = urlLastRaw ? urlLastRaw.toUpperCase() : null;
+
                   if (menu !== appCode) {
+                    // keep title-based key for backward compatibility
                     structuredPermissions[appCode].children[menu] = {
                       serial_number: serialNo,
                       app_code: appCode,
                     };
+
+                    // deterministically add url-based keys so frontend lookups by path segment succeed
+                    if (urlKeyLower) {
+                      structuredPermissions[appCode].children[urlKeyLower] = {
+                        serial_number: serialNo,
+                        app_code: appCode,
+                      };
+                    }
+                    if (urlKeyUpper && urlKeyUpper !== menu) {
+                      structuredPermissions[appCode].children[urlKeyUpper] = {
+                        serial_number: serialNo,
+                        app_code: appCode,
+                      };
+                    }
+                    if (urlLastRaw && urlLastRaw !== menu && urlLastRaw !== urlKeyLower && urlLastRaw !== urlKeyUpper) {
+                      structuredPermissions[appCode].children[urlLastRaw] = {
+                        serial_number: serialNo,
+                        app_code: appCode,
+                      };
+                    }
                   }
                 }
               });
@@ -376,7 +416,8 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
 
       // Build structured permissions
       allPermissions.forEach((perm: any) => {
-        const menu = (perm.menu || perm.MENU || '').toString().trim();
+        const menu    = (perm.menu || perm.MENU || '').toString().trim();
+        const urlPath = (perm.url_path || perm.URL_PATH || '').toString().trim();
         const serialNo = Number(perm.serial_no || perm.SERIAL_NO || 0);
         const appCode = (perm.app_code || perm.APP_CODE || '').toString().trim();
 
@@ -393,11 +434,37 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
           };
         }
 
+        // Extract last segment of url_path e.g. "wms/masters/gm/principal" → "principal"
+        const urlLastRaw = urlPath ? urlPath.split('/').pop() : null;
+        const urlKeyLower = urlLastRaw ? urlLastRaw.toLowerCase() : null;
+        const urlKeyUpper = urlLastRaw ? urlLastRaw.toUpperCase() : null;
+
         if (menu !== actualAppCode && menu !== '0') {
+          // Keep existing title-based key
           permissionsStructured[actualAppCode].children[menu] = {
             serial_number: serialNo,
             app_code: actualAppCode,
           };
+
+          // Deterministically add url-based keys so frontend lookup by path segment works
+          if (urlKeyLower) {
+            permissionsStructured[actualAppCode].children[urlKeyLower] = {
+              serial_number: serialNo,
+              app_code: actualAppCode,
+            };
+          }
+          if (urlKeyUpper && urlKeyUpper !== menu) {
+            permissionsStructured[actualAppCode].children[urlKeyUpper] = {
+              serial_number: serialNo,
+              app_code: actualAppCode,
+            };
+          }
+          if (urlLastRaw && urlLastRaw !== menu && urlLastRaw !== urlKeyLower && urlLastRaw !== urlKeyUpper) {
+            permissionsStructured[actualAppCode].children[urlLastRaw] = {
+              serial_number: serialNo,
+              app_code: actualAppCode,
+            };
+          }
         }
       });
 
@@ -409,6 +476,10 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
           children_sample: Object.keys(appData.children).slice(0, 5)
         });
       });
+          // Extra debug: print WMS child keys (helpful to confirm insertion of url-segment keys)
+          if (permissionsStructured['WMS']) {
+            console.log('[me] 🔎 WMS children keys sample (first 200):', Object.keys(permissionsStructured['WMS'].children).slice(0, 200));
+          }
     } else {
       console.warn(`[me] No permissions data available`);
     }
