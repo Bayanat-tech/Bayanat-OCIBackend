@@ -1,9 +1,6 @@
 import { Request, Response, RequestHandler } from "express";
 import oracledb from "oracledb";
-
 import TenantManager from "../../../src/database/TenantManager"
-
-
 import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware"
 
 // ---------- helpers ----------
@@ -12,6 +9,9 @@ const toNumber = (v: any) => (v !== undefined && v !== null ? Number(v) : null);
 
 // ---------- FULL OBJECT ----------
 const buildEmployeeObject = (e: any) => ({
+  // --- Existing fields ---
+  COMPANY_CDOE: e.company_code ?? null,
+  EMPLOYER_CODE: e.employer_code ?? null,
   EMPLOYEE_ID: e.employee_id ?? null,
   EMPLOYEE_CODE: e.employee_code ?? null,
   ALTERNATE_ID: e.alternate_id ?? null,
@@ -58,8 +58,60 @@ const buildEmployeeObject = (e: any) => ({
   SECTION_CODE: e.section_code ?? null,
   USER_ID: e.user_id ?? null,
   USER_DT: toDate(e.user_dt),
+
+  // --- TPersnolHr: missing fields ---
+  EMP_PHOTO: e.emp_photo ?? null,
+  CATEGORY_CODE: e.category_code ?? null,
+  PROBATION_CONFIRM_DATE: toDate(e.probation_confirm_date),
+
+  // --- TPayrollHr ---
+  INCLUDE_IN_PAYROLL: e.include_in_payroll ?? null,
+  PAYROLL_START_DATE: toDate(e.payroll_start_date),
+  PAYMENT_MODE: e.payment_mode ?? null,
+  COMPANY_BANK_CODE: e.company_bank_code ?? null,
+  SALARY_ACCT_NO: e.salary_acct_no ?? null,
+  SALARY_BANK_CODE: e.salary_bank_code ?? null,
+  CURRENCY_ID: e.currency_id ?? null,
+  EXCH_RATE: toNumber(e.exch_rate),
+  EMP_IBAN_NO: e.emp_iban_no ?? null,
+
+  // --- TContractHr ---
+  CONTRACT_TYPE: e.contract_type ?? null,
+  CONTRACT_START_DATE: toDate(e.contract_start_date),
+  CONTRACT_END_DATE: toDate(e.contract_end_date),
+  CONTRACT_RENEWABLE: e.contract_renewable ?? null,
+
+  // --- TSponsorHr ---
+  SPONSOR_ID: e.sponsor_id ?? null,
+  VISA_TYPE: e.visa_type ?? null,
+  VISA_VALID_FROM: toDate(e.visa_valid_from),
+  VISA_VALID_TO: toDate(e.visa_valid_to),
+
+  // --- TIsuranceHr ---
+  INS_CARD_NO: e.ins_card_no ?? null,
+  INS_CARD_ISSUE_DT: toDate(e.ins_card_issue_dt),
+  INS_CARD_EXP_DT: toDate(e.ins_card_exp_dt),
+  INS_CARD_TYPE: e.ins_card_type ?? null,
+
+  // --- TILPHr ---
+  LABOURCARD_NO: e.labourcard_no ?? null,
+  PASI_NO: e.pasi_no ?? null,
+  LABOURCARD_VALID_FROM: toDate(e.labourcard_valid_from),
+  LABOURCARD_VALID_TO: toDate(e.labourcard_valid_to),
+  LABOURCARD_STATUS: e.labourcard_status ?? null,
+
+  // --- TAirfareHr ---
+  AIRPORT_CODE: e.airport_code ?? null,
+  TICKET_ELIGIBILITY: e.ticket_eligibility ?? null,
+  TICKET_DPEND_ADULT: toNumber(e.ticket_dpend_adult),
+  TA_NO: toNumber(e.ta_no),
+  TC_NO: toNumber(e.tc_no),
+  TI_NO: toNumber(e.ti_no),
+  TICKET_ELIGIBLE_PERIOD: toNumber(e.ticket_eligible_period),
+
+  // --- Timestamps ---
   UPDATED_AT: new Date(),
-  CREATED_AT: new Date()
+  CREATED_AT: new Date(),
 });
 
 // ---------- CONTROLLER ----------
@@ -96,7 +148,7 @@ export const insUpdHrEmployee: RequestHandler = async (req: Request, res: Respon
 
     await connection.execute(
       `BEGIN
-         WMSTST.PROC_INS_UPD_HR_EMPLOYEE(:p_emp);
+         PROC_INS_UPD_HR_EMPLOYEE(:p_emp);
        END;`,
       {
         p_emp: {

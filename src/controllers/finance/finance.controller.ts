@@ -12,7 +12,7 @@ import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 export const getFinanceListData = async (
   req: RequestWithUser,
   res: Response
-): Promise <void> => {
+): Promise<void> => {
   let connection;
 
   try {
@@ -20,7 +20,7 @@ export const getFinanceListData = async (
     const { master } = req.params;
     const requestUser: IUser = req.user;
     const tenantId = getCurrentTenantId();
-    
+
     if (!tenantId) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
@@ -103,7 +103,7 @@ export const getFinanceListData = async (
           binds,
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        console.log('Get doc count from view:',countResult)
+        console.log('Get doc count from view:', countResult)
 
         const countRow = countResult.rows?.[0] as { TOTAL_COUNT?: number };
         totalCount = countRow?.TOTAL_COUNT ?? 0;
@@ -131,10 +131,10 @@ export const getFinanceListData = async (
           });
           return mapped;
         });
-        console.log('Get data from doc :',fetchedData);
-    };
-    break;
-    
+        console.log('Get data from doc :', fetchedData);
+      };
+        break;
+
       case "fy_period": {
         let whereClause = `WHERE company_code = :company_code`;
         let binds: any = {
@@ -174,146 +174,146 @@ export const getFinanceListData = async (
         );
 
         fetchedData = dataResult.rows || [];
-    }
+      }
         break;
 
-  //     case "account": {
-  //         console.log('account master')
-  //       let whereClause = `WHERE a.company_code = :company_code`;
-  //       let bindParams: any = {
-  //         company_code: requestUser.company_code,
-  //       };
+      //     case "account": {
+      //         console.log('account master')
+      //       let whereClause = `WHERE a.company_code = :company_code`;
+      //       let bindParams: any = {
+      //         company_code: requestUser.company_code,
+      //       };
 
-  //       if (filter?.search) {
-  //         whereClause += `
-  //           AND (
-  //             a.ac_code LIKE :search
-  //             OR a.ac_name LIKE :search
-  //           )
-  //         `;
-  //         bindParams.search = `%${filter.search}%`;
-  //       }
-   
-  // // Sorting 
-  // const sortColumnMap: Record<string, string> = {
-  //   ac_code: "AC_CODE",
-  //   ac_name: "AC_NAME",
-  //   created_at: "CREATE_DATE",
-  //   updated_at: "EDIT_DATE",
-  // };
+      //       if (filter?.search) {
+      //         whereClause += `
+      //           AND (
+      //             a.ac_code LIKE :search
+      //             OR a.ac_name LIKE :search
+      //           )
+      //         `;
+      //         bindParams.search = `%${filter.search}%`;
+      //       }
 
-  // let orderByClause = "";
-  // if (filter?.sort?.field_name) {
-  //   const column = sortColumnMap[filter.sort.field_name];
-  //   if (column) {
-  //     orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"}`;
-  //   }
-  // }
-  //       // let orderByClause = ``;
-  //       // if (filter?.sort && Object.keys(filter.sort).length > 0) {
-  //       //   orderByClause = `
-  //       //     ORDER BY ${filter.sort.field_name} ${
-  //       //     filter.sort.desc ? "DESC" : "ASC"
-  //       //   }
-  //       //   `;
-  //       // }
+      // // Sorting 
+      // const sortColumnMap: Record<string, string> = {
+      //   ac_code: "AC_CODE",
+      //   ac_name: "AC_NAME",
+      //   created_at: "CREATE_DATE",
+      //   updated_at: "EDIT_DATE",
+      // };
 
-  //       const countResult = await connection.execute(
-  //         `
-  //         SELECT COUNT(*) AS TOTAL_COUNT
-  //         FROM MS_ACCODES a
-  //         ${whereClause}
-  //         `,
-  //         bindParams,
-  //         { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  //       );
+      // let orderByClause = "";
+      // if (filter?.sort?.field_name) {
+      //   const column = sortColumnMap[filter.sort.field_name];
+      //   if (column) {
+      //     orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"}`;
+      //   }
+      // }
+      //       // let orderByClause = ``;
+      //       // if (filter?.sort && Object.keys(filter.sort).length > 0) {
+      //       //   orderByClause = `
+      //       //     ORDER BY ${filter.sort.field_name} ${
+      //       //     filter.sort.desc ? "DESC" : "ASC"
+      //       //   }
+      //       //   `;
+      //       // }
 
-  //       totalCount =
-  //         (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+      //       const countResult = await connection.execute(
+      //         `
+      //         SELECT COUNT(*) AS TOTAL_COUNT
+      //         FROM MS_ACCODES a
+      //         ${whereClause}
+      //         `,
+      //         bindParams,
+      //         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      //       );
 
-  //       const dataResult = await connection.execute(
-  //         `
-  //          SELECT
-  //     a.ac_code     AS "ac_code",
-  //     a.ac_name     AS "ac_name",
-  //     a.create_date AS "created_at",
-  //     a.edit_date   AS "updated_at"
-  //   FROM MS_ACCODES a
-  //         ${whereClause}
-  //         ${orderByClause}
-  //         OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-  //         `,
-  //         {
-  //           ...bindParams,
-  //           offset,
-  //           limit,
-  //         },
-  //         { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  //       );
+      //       totalCount =
+      //         (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  //       fetchedData = dataResult.rows || [];
-  //     }
-  //       break;
+      //       const dataResult = await connection.execute(
+      //         `
+      //          SELECT
+      //     a.ac_code     AS "ac_code",
+      //     a.ac_name     AS "ac_name",
+      //     a.create_date AS "created_at",
+      //     a.edit_date   AS "updated_at"
+      //   FROM MS_ACCODES a
+      //         ${whereClause}
+      //         ${orderByClause}
+      //         OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+      //         `,
+      //         {
+      //           ...bindParams,
+      //           offset,
+      //           limit,
+      //         },
+      //         { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      //       );
 
-  case "account": {
-  console.log("account master");
+      //       fetchedData = dataResult.rows || [];
+      //     }
+      //       break;
 
-  let whereClause = `
+      case "account": {
+        console.log("account master");
+
+        let whereClause = `
     WHERE company_code = :company_code
       AND doc_id = :doc_id
       AND hdr_dtl = :hdr_dtl
       AND (div_code = :div_code OR div_code = '*')
   `;
 
-  const accountFilter = filter as ISearch & { doc_id?: string; hdr_dtl?: string; div_code?: string };
+        const accountFilter = filter as ISearch & { doc_id?: string; hdr_dtl?: string; div_code?: string };
 
-  let bindParams: any = {
-    company_code: requestUser.company_code,
-    doc_id: accountFilter.doc_id,
-    hdr_dtl: accountFilter.hdr_dtl,
-    div_code: accountFilter.div_code,
-  };
+        let bindParams: any = {
+          company_code: requestUser.company_code,
+          doc_id: accountFilter.doc_id,
+          hdr_dtl: accountFilter.hdr_dtl,
+          div_code: accountFilter.div_code,
+        };
 
-  if (filter?.search) {
-    whereClause += `
+        if (filter?.search) {
+          whereClause += `
       AND (
         ac_code LIKE :search
         OR ac_name LIKE :search
       )
     `;
-    bindParams.search = `%${filter.search}%`;
-  }
+          bindParams.search = `%${filter.search}%`;
+        }
 
-  const sortColumnMap: Record<string, string> = {
-    ac_code: "AC_CODE",
-    ac_name: "AC_NAME",
-  };
+        const sortColumnMap: Record<string, string> = {
+          ac_code: "AC_CODE",
+          ac_name: "AC_NAME",
+        };
 
-  let orderByClause = "ORDER BY AC_CODE ASC";
-  if (filter?.sort?.field_name) {
-    const column = sortColumnMap[filter.sort.field_name];
-    if (column) {
-      orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"}`;
-    }
-  }
+        let orderByClause = "ORDER BY AC_CODE ASC";
+        if (filter?.sort?.field_name) {
+          const column = sortColumnMap[filter.sort.field_name];
+          if (column) {
+            orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"}`;
+          }
+        }
 
-  // COUNT QUERY
-  const countResult = await connection.execute(
-    `
+        // COUNT QUERY
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM VW_HDR_DOC_ACCOUNTS
     ${whereClause}
     `,
-    bindParams,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          bindParams,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  // DATA QUERY
-  const dataResult = await connection.execute(
-    `
+        // DATA QUERY
+        const dataResult = await connection.execute(
+          `
     SELECT ac_code AS "ac_code", 
            ac_name AS "ac_name", 
            curr_code AS "curr_code", 
@@ -329,184 +329,183 @@ export const getFinanceListData = async (
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...bindParams,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...bindParams,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  // Ensure lowercase column names by normalizing
-  fetchedData = (dataResult.rows || []).map((row: any) => {
-    const normalizedRow: any = {};
-    Object.keys(row).forEach((key) => {
-      normalizedRow[key.toLowerCase()] = row[key];
-    });
-    return normalizedRow;
-  });
-  
-  break;
-}
+        // Ensure lowercase column names by normalizing
+        fetchedData = (dataResult.rows || []).map((row: any) => {
+          const normalizedRow: any = {};
+          Object.keys(row).forEach((key) => {
+            normalizedRow[key.toLowerCase()] = row[key];
+          });
+          return normalizedRow;
+        });
 
-      
-    case "bank": {
-      console.log('feteching.... ')
-       let whereClause = `
+        break;
+      }
+
+
+      case "bank": {
+        console.log('feteching.... ')
+        let whereClause = `
          WHERE a.company_code = :company_code
          AND (a.ac_status <> 'C' OR a.ac_status IS NULL)
          AND a.ac_code IN (SELECT ac_code FROM MS_AC_BANKCODE)
         `;
 
-     let binds: any = {
-     company_code: requestUser.company_code,
-    };
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-    // SEARCH FILTER
-   if (filter?.search) {
-    whereClause += `
+        // SEARCH FILTER
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(a.ac_code) LIKE UPPER(:search)
         OR UPPER(a.ac_name) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-   }
+          binds.search = `%${filter.search}%`;
+        }
 
-   // COUNT
-   const countResult = await connection.execute(
-    `
+        // COUNT
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM MS_ACCODES a
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-   );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-   totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-   const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT
       a.ac_code AS "ac_code",
       a.ac_name AS "ac_name"
     FROM MS_ACCODES a
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-   );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-   fetchedData = dataResult.rows || [];
-  };
- break;
+        fetchedData = dataResult.rows || [];
+      };
+        break;
 
-    case "ac_payee": {
-      console.log("fetching ac_payee...");
+      case "ac_payee": {
+        console.log("fetching ac_payee...");
 
-  let whereClause = `
+        let whereClause = `
     WHERE company_code = :company_code
       AND TRIM(ac_payee) IS NOT NULL
       AND TRIM(ac_payee) <> ''
   `;
 
-  let binds: any = {
-    company_code: req.user.company_code,
-  };
+        let binds: any = {
+          company_code: req.user.company_code,
+        };
 
-  // SEARCH FILTER
-  if (filter?.search) {
-    whereClause += `
+        // SEARCH FILTER
+        if (filter?.search) {
+          whereClause += `
       AND UPPER(ac_payee) LIKE UPPER(:search)
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  const countResult = await connection.execute(
-    `
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(DISTINCT ac_payee) AS TOTAL_COUNT
     FROM TR_AC_HEADER
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT DISTINCT
       ac_payee AS "ac_payee"
     FROM TR_AC_HEADER
     ${whereClause}
     ORDER BY ac_payee
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
-}
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
-    case "tax": {
-  let whereClause = `
+      case "tax": {
+        let whereClause = `
     WHERE company_code = :company_code
   `;
 
-  let binds: any = {
-    company_code: requestUser.company_code,
-  };
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-  // SEARCH
-  if (filter?.search) {
-    whereClause += `
+        // SEARCH
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(tx_compntcat_code) LIKE UPPER(:search)
         OR UPPER(tx_compntcat_name) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  // SORTING
-  const sortColumnMap: Record<string, string> = {
-    tx_compntcat_code: "TX_COMPNTCAT_CODE",
-    tx_compntcat_name: "TX_COMPNTCAT_NAME",
-    created_at: "CREATE_DATE",
-    updated_at: "EDIT_DATE",
-  };
+        // SORTING
+        const sortColumnMap: Record<string, string> = {
+          tx_compntcat_code: "TX_COMPNTCAT_CODE",
+          tx_compntcat_name: "TX_COMPNTCAT_NAME",
+          created_at: "CREATE_DATE",
+          updated_at: "EDIT_DATE",
+        };
 
-  let orderByClause = "ORDER BY TX_COMPNTCAT_CODE";
-  if (filter?.sort?.field_name) {
-    const column = sortColumnMap[filter.sort.field_name];
-    if (column) {
-      orderByClause = `ORDER BY ${column} ${
-        filter.sort.desc ? "DESC" : "ASC"
-      }`;
-    }
-  }
+        let orderByClause = "ORDER BY TX_COMPNTCAT_CODE";
+        if (filter?.sort?.field_name) {
+          const column = sortColumnMap[filter.sort.field_name];
+          if (column) {
+            orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"
+              }`;
+          }
+        }
 
-  // COUNT
-  const countResult = await connection.execute(
-    `
+        // COUNT
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM MS_TAX_COMPNTCATEGORY
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT
       tx_compntcat_code AS "tx_compntcat_code",
       tx_compntcat_name AS "tx_compntcat_name"
@@ -515,54 +514,54 @@ break;
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...binds,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...binds,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
- }
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
-  case "invoice": {
-   const {
-    code,
-    extra_param1,
-    extra_param2,
-    extra_param3,
-    extra_param4,
-  } = req.query;
+      case "invoice": {
+        const {
+          code,
+          extra_param1,
+          extra_param2,
+          extra_param3,
+          extra_param4,
+        } = req.query;
 
-  let defaultData: { [key: string]: any } = {};
+        let defaultData: { [key: string]: any } = {};
 
-  const invoiceResult = await connection.execute(
-    `
+        const invoiceResult = await connection.execute(
+          `
     ${getChequePaymentInvoiceDetail}
     `,
-    {
-      company_code: req.user.company_code,
-      ac_code: code,
-      div_code: extra_param1,
-      invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            company_code: req.user.company_code,
+            ac_code: code,
+            div_code: extra_param1,
+            invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  // Use the outer `fetchedData` (do not shadow it) so the response includes data and count consistently
-  fetchedData = invoiceResult.rows || [];
+        // Use the outer `fetchedData` (do not shadow it) so the response includes data and count consistently
+        fetchedData = invoiceResult.rows || [];
 
-  const fetchedInvoiceNumbers = (fetchedData as any[]).map((row: any) => {
-    defaultData[row.inv_no] = row;
-    return row.inv_no;
-  });
+        const fetchedInvoiceNumbers = (fetchedData as any[]).map((row: any) => {
+          defaultData[row.inv_no] = row;
+          return row.inv_no;
+        });
 
-  
-    
-  const existingResult = await connection.execute(
-    `
+
+
+        const existingResult = await connection.execute(
+          `
     SELECT
       tid.*,
       c.curr_name
@@ -574,138 +573,137 @@ break;
       AND tid.doc_no   = :doc_no
       AND tid.serial_no = :serial_no
     `,
-    {
-      company_code: req.user.company_code,
-      doc_type: extra_param2,
-      doc_no: extra_param3,
-      serial_no: extra_param4,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            company_code: req.user.company_code,
+            doc_type: extra_param2,
+            doc_no: extra_param3,
+            serial_no: extra_param4,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  const existingInvoiceDetails = existingResult.rows || [];
+        const existingInvoiceDetails = existingResult.rows || [];
 
-  let maxDtlSrNo = 0;
-  const existingInvoiceInvNos = existingInvoiceDetails.map((row: any) => {
-    maxDtlSrNo = Math.max(maxDtlSrNo, row.dtl_sr_no || 0);
-    return row.inv_no;
-  });
+        let maxDtlSrNo = 0;
+        const existingInvoiceInvNos = existingInvoiceDetails.map((row: any) => {
+          maxDtlSrNo = Math.max(maxDtlSrNo, row.dtl_sr_no || 0);
+          return row.inv_no;
+        });
 
-  const matchedData: any[] = [];
-  const remainingExistingInvoices: any[] = [];
+        const matchedData: any[] = [];
+        const remainingExistingInvoices: any[] = [];
 
-  for (const eachExistingData of existingInvoiceDetails) {
-    const existingData = eachExistingData as any;
-    if (fetchedInvoiceNumbers.includes(existingData.inv_no)) {
-      matchedData.push({
-        ...existingData,
-        inv_amt: defaultData[existingData.inv_no]?.inv_amt ?? 0,
-        c_bal_amt_org:
-          defaultData[existingData.inv_no]?.c_bal_amt_org ?? 0,
-      });
-    } else {
-      remainingExistingInvoices.push({
-        ...existingData,
-        IsDeletable: true,
-      });
-    }
-  }
+        for (const eachExistingData of existingInvoiceDetails) {
+          const existingData = eachExistingData as any;
+          if (fetchedInvoiceNumbers.includes(existingData.inv_no)) {
+            matchedData.push({
+              ...existingData,
+              inv_amt: defaultData[existingData.inv_no]?.inv_amt ?? 0,
+              c_bal_amt_org:
+                defaultData[existingData.inv_no]?.c_bal_amt_org ?? 0,
+            });
+          } else {
+            remainingExistingInvoices.push({
+              ...existingData,
+              IsDeletable: true,
+            });
+          }
+        }
 
-  const newFetchedDataWithDtlSrNo = fetchedData.filter((item: any) => {
-    if (!existingInvoiceInvNos.includes(item.inv_no)) {
-      maxDtlSrNo += 1;
-      item.dtl_sr_no = maxDtlSrNo;
-      item.IsDeletable = false;
-      return true;
-    }
-    return false;
-  });
+        const newFetchedDataWithDtlSrNo = fetchedData.filter((item: any) => {
+          if (!existingInvoiceInvNos.includes(item.inv_no)) {
+            maxDtlSrNo += 1;
+            item.dtl_sr_no = maxDtlSrNo;
+            item.IsDeletable = false;
+            return true;
+          }
+          return false;
+        });
 
-  fetchedData = [
-    ...matchedData,
-    ...newFetchedDataWithDtlSrNo,
-    ...remainingExistingInvoices,
-  ].map((row: any) => {
-    const mapped: any = {};
-    Object.keys(row).forEach((k) => {
-      mapped[k.toLowerCase()] = (row as any)[k];
-    });
-    return mapped;
-  });
+        fetchedData = [
+          ...matchedData,
+          ...newFetchedDataWithDtlSrNo,
+          ...remainingExistingInvoices,
+        ].map((row: any) => {
+          const mapped: any = {};
+          Object.keys(row).forEach((k) => {
+            mapped[k.toLowerCase()] = (row as any)[k];
+          });
+          return mapped;
+        });
 
-  totalCount = fetchedData.length;
-}
-break;
+        totalCount = fetchedData.length;
+      }
+        break;
 
 
-  case "ac_code_search": {
-   console.log("account code search");
-   let whereClause = `
+      case "ac_code_search": {
+        console.log("account code search");
+        let whereClause = `
     WHERE company_code = :company_code
       AND doc_id = :doc_id
       AND hdr_dtl = :hdr_dtl
       AND (div_code = :div_code)
   `;
 
-  const accountFilter = filter as ISearch & { doc_id?: string; hdr_dtl?: string; div_code?: string };
+        const accountFilter = filter as ISearch & { doc_id?: string; hdr_dtl?: string; div_code?: string };
 
-  let binds: any = {
-    company_code: requestUser.company_code,
-    doc_id: accountFilter.doc_id,
-    hdr_dtl: accountFilter.hdr_dtl,
-    div_code: accountFilter.div_code,
-  };
-  console.log("Initial binds:", binds);
+        let binds: any = {
+          company_code: requestUser.company_code,
+          doc_id: accountFilter.doc_id,
+          hdr_dtl: accountFilter.hdr_dtl,
+          div_code: accountFilter.div_code,
+        };
+        console.log("Initial binds:", binds);
 
-  // SEARCH (replacement for getSearchFilterQuery)
-  if (filter?.search) {
-    whereClause += `
+        // SEARCH (replacement for getSearchFilterQuery)
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(ac_code) LIKE UPPER(:search)
         OR UPPER(ac_name) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  // SORTING
-  const sortColumnMap: Record<string, string> = {
-    ac_code: "AC_CODE",
-    ac_name: "AC_NAME",
-  };
+        // SORTING
+        const sortColumnMap: Record<string, string> = {
+          ac_code: "AC_CODE",
+          ac_name: "AC_NAME",
+        };
 
-  let orderByClause = "ORDER BY AC_CODE";
-  if (filter?.sort?.field_name) {
-    const column = sortColumnMap[filter.sort.field_name];
-    if (column) {
-      orderByClause = `ORDER BY ${column} ${
-        filter.sort.desc ? "DESC" : "ASC"
-      }`;
-    }
-  }
+        let orderByClause = "ORDER BY AC_CODE";
+        if (filter?.sort?.field_name) {
+          const column = sortColumnMap[filter.sort.field_name];
+          if (column) {
+            orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"
+              }`;
+          }
+        }
 
-  // COUNT
-  const countResult = await connection.execute(
-  // `
-  //   SELECT COUNT(*) AS TOTAL_COUNT
-  //   FROM VW_AC_CODES_SEARCH
-  //   ${whereClause}
-  //   `,
+        // COUNT
+        const countResult = await connection.execute(
+          // `
+          //   SELECT COUNT(*) AS TOTAL_COUNT
+          //   FROM VW_AC_CODES_SEARCH
+          //   ${whereClause}
+          //   `,
 
-    `
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM VW_HDR_DOC_ACCOUNTS
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT 
     ac_code AS "ac_code",
     ac_name AS "ac_name"
@@ -714,33 +712,33 @@ break;
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...binds,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...binds,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
- }
- break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
 
-  case "job_no": {
-  console.log("finance Job No");
+      case "job_no": {
+        console.log("finance Job No");
 
-  let whereClause = `
+        let whereClause = `
     WHERE company_code = :company_code
   `;
 
-  let binds: any = {
-    company_code: requestUser.company_code,
-  };
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-  // SEARCH FILTER (equivalent to getSearchFilterQuery)
-  if (filter?.search) {
-    whereClause += `
+        // SEARCH FILTER (equivalent to getSearchFilterQuery)
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(job_no) LIKE UPPER(:search)
         OR UPPER(prin_code) LIKE UPPER(:search)
@@ -748,39 +746,38 @@ break;
         OR UPPER(dept_code) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  // SORTING
-  const sortColumnMap: Record<string, string> = {
-    job_no: "JOB_NO",
-  };
+        // SORTING
+        const sortColumnMap: Record<string, string> = {
+          job_no: "JOB_NO",
+        };
 
-  let orderByClause = "ORDER BY JOB_NO DESC";
-  if (filter?.sort?.field_name) {
-    const column = sortColumnMap[filter.sort.field_name];
-    if (column) {
-      orderByClause = `ORDER BY ${column} ${
-        filter.sort.desc ? "DESC" : "ASC"
-      }`;
-    }
-  }
+        let orderByClause = "ORDER BY JOB_NO DESC";
+        if (filter?.sort?.field_name) {
+          const column = sortColumnMap[filter.sort.field_name];
+          if (column) {
+            orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"
+              }`;
+          }
+        }
 
-  const countResult = await connection.execute(
-    `
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM TI_JOB
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT
       job_no as "job_no",
       job_date as "job_date",
@@ -793,98 +790,115 @@ break;
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...binds,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...binds,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
-}
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
- case "job": {
-  console.log("finance Job ");
-   let whereClause = `
-    WHERE company_code = :company_code
-  `;
+      case "job": {
+        console.log("finance Job ");
+        let whereClause = `
+          WHERE company_code = :company_code
+        `;
 
-  let binds: any = {
-    company_code: requestUser.company_code,
-  };
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-  if (filter?.search) {
-    whereClause += `
-      AND (
-        UPPER(job_no) LIKE UPPER(:search)
-        OR UPPER(doc_no) LIKE UPPER(:search)
-        OR UPPER(prin_code) LIKE UPPER(:search)
-        OR UPPER(ref_no) LIKE UPPER(:search)
-      )
-    `;
-    binds.search = `%${filter.search}%`;
-  }
+        // if (filter?.search) {
+        //   whereClause += `
+        //     AND (
+        //       UPPER(job_no) LIKE UPPER(:search)
+        //       OR UPPER(doc_no) LIKE UPPER(:search)
+        //       OR UPPER(prin_code) LIKE UPPER(:search)
+        //       OR UPPER(doc_refno) LIKE UPPER(:search)
+        //     )
+        //   `;
+        //   binds.search = `%${filter.search}%`;
+        // }
+        if (filter?.search) {
+          whereClause += `
+            AND (
+              UPPER(job_no) LIKE UPPER(:search)
+              OR UPPER(doc_no) LIKE UPPER(:search)
+              OR UPPER(doc_refno) LIKE UPPER(:search)
+            )
+          `;
+          binds.search = `%${filter.search}%`;
+        }
+        console.log("-------------------->", filter?.search, binds)
 
-  // SORTING
-  const sortColumnMap: Record<string, string> = {
-    job_no: "JOB_NO",
-    doc_no: "DOC_NO",
-  };
+        // SORTING
+        const sortColumnMap: Record<string, string> = {
+          job_no: "JOB_NO",
+          doc_no: "DOC_NO",
+        };
 
-  let orderByClause = "";
-  if (filter?.sort?.field_name) {
-    const column = sortColumnMap[filter.sort.field_name];
-    if (column) {
-      orderByClause = `ORDER BY ${column} ${
-        filter.sort.desc ? "DESC" : "ASC"
-      }`;
-    }
-  }
+        let orderByClause = "";
+        if (filter?.sort?.field_name) {
+          const column = sortColumnMap[filter.sort.field_name];
+          if (column) {
+            orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"
+              }`;
+          }
+        }
 
-  // COUNT
-  const countResult = await connection.execute(
-    `
-    SELECT COUNT(*) AS TOTAL_COUNT
-    FROM TR_AC_JOBDETAIL
-    ${whereClause}
-    `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+        // COUNT
+        const countResult = await connection.execute(
+          `
+          SELECT COUNT(*) AS TOTAL_COUNT
+          FROM TR_AC_JOBDETAIL
+          ${whereClause}
+          `,
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  const dataResult = await connection.execute(
-    `
-    SELECT *
-    FROM TR_AC_JOBDETAIL
-    ${whereClause}
-    ${orderByClause}
-    `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
 
-  fetchedData = dataResult.rows || [];
-  console.log("Get data from job detail:", fetchedData);
-}
-break;
+        console.log(`SELECT *
+          FROM TR_AC_JOBDETAIL
+          ${whereClause}
+          ${orderByClause}
+          `)
+        const dataResult = await connection.execute(
+          `
+          SELECT *
+          FROM TR_AC_JOBDETAIL
+          ${whereClause}
+          ${orderByClause}
+          `,
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  case "expense": {
-   let whereClause = `
+        fetchedData = dataResult.rows || [];
+        console.log("Get data from job detail:", fetchedData);
+      }
+        break;
+
+
+      case "expense": {
+        let whereClause = `
     WHERE ted.company_code = :company_code
   `;
 
-  let binds: any = {
-    company_code: requestUser.company_code,
-  };
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-  //  SEARCH (equivalent to getSearchFilterQuery)
-  if (filter?.search) {
-    whereClause += `
+        //  SEARCH (equivalent to getSearchFilterQuery)
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(ted.exp_type_code) LIKE UPPER(:search)
         OR UPPER(ted.exp_subtype_code) LIKE UPPER(:search)
@@ -892,32 +906,31 @@ break;
         OR UPPER(est.exp_subtype_description) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  //  SORTING
-  const sortColumnMap: Record<string, string> = {
-    exp_type_code: "ted.EXP_TYPE_CODE",
-    exp_subtype_code: "ted.EXP_SUBTYPE_CODE",
-    exp_description: "et.EXP_DESCRIPTION",
-    exp_subtype_description: "est.EXP_SUBTYPE_DESCRIPTION",
-    created_at: "ted.CREATE_DATE",
-    updated_at: "ted.EDIT_DATE",
-  };
+        //  SORTING
+        const sortColumnMap: Record<string, string> = {
+          exp_type_code: "ted.EXP_TYPE_CODE",
+          exp_subtype_code: "ted.EXP_SUBTYPE_CODE",
+          exp_description: "et.EXP_DESCRIPTION",
+          exp_subtype_description: "est.EXP_SUBTYPE_DESCRIPTION",
+          created_at: "ted.CREATE_DATE",
+          updated_at: "ted.EDIT_DATE",
+        };
 
-  let orderByClause = "";
-  if (filter?.sort?.field_name) {
-    const column = sortColumnMap[filter.sort.field_name];
-    if (column) {
-      orderByClause = `ORDER BY ${column} ${
-        filter.sort.desc ? "DESC" : "ASC"
-      }`;
-    }
-  }
+        let orderByClause = "";
+        if (filter?.sort?.field_name) {
+          const column = sortColumnMap[filter.sort.field_name];
+          if (column) {
+            orderByClause = `ORDER BY ${column} ${filter.sort.desc ? "DESC" : "ASC"
+              }`;
+          }
+        }
 
-  //  COUNT
-  const countResult = await connection.execute(
-    `
+        //  COUNT
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM TR_AC_EXPDETAIL ted
     INNER JOIN MS_AC_EXPSUBTYPE est
@@ -927,15 +940,15 @@ break;
       ON ted.exp_type_code = et.exp_type_code
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount =
-    (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount =
+          (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT
       ted.*,
       et.exp_description,
@@ -949,51 +962,51 @@ break;
     ${whereClause}
     ${orderByClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
-}
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
-  case "expense_type": {
-   let whereClause = `WHERE company_code = :company_code`;
-   let binds: any = {
-    company_code: requestUser.company_code,
-   };
+      case "expense_type": {
+        let whereClause = `WHERE company_code = :company_code`;
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-   if (filter?.search) {
-     whereClause += `
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(exp_code) LIKE UPPER(:search)
         OR UPPER(exp_description) LIKE UPPER(:search)
       )
       `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  const countResult = await connection.execute(
-    `
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM MS_AC_EXPCODE
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  let orderByClause = `ORDER BY exp_code`;
-  if (filter?.sort?.field_name) {
-    orderByClause = `
+        let orderByClause = `ORDER BY exp_code`;
+        if (filter?.sort?.field_name) {
+          orderByClause = `
       ORDER BY ${filter.sort.field_name} ${filter.sort.desc ? 'DESC' : 'ASC'}
     `;
-  }
+        }
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT
       exp_code,
       exp_description
@@ -1002,55 +1015,55 @@ break;
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...binds,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...binds,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
-}
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
-  case "expense_sub_type": {
-  let whereClause = `WHERE company_code = :company_code`;
-  let binds: any = {
-    company_code: requestUser.company_code,
-  };
+      case "expense_sub_type": {
+        let whereClause = `WHERE company_code = :company_code`;
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-  if (filter?.search) {
-    whereClause += `
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(exp_subtype_code) LIKE UPPER(:search)
         OR UPPER(exp_subtype_description) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  const countResult = await connection.execute(
-    `
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM MS_AC_EXPSUBTYPE
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  let orderByClause = `ORDER BY exp_subtype_code`;
-  if (filter?.sort?.field_name) {
-    orderByClause = `
+        let orderByClause = `ORDER BY exp_subtype_code`;
+        if (filter?.sort?.field_name) {
+          orderByClause = `
       ORDER BY ${filter.sort.field_name} ${filter.sort.desc ? 'DESC' : 'ASC'}
     `;
-  }
+        }
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT
       exp_type_code,
       exp_subtype_code,
@@ -1060,132 +1073,132 @@ break;
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...binds,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...binds,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
-}
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
-  case "pl_setup": {
-     let whereClause = `WHERE company_code = :company_code`;
-     let binds: any = {
-       company_code: requestUser.company_code,
-     };
+      case "pl_setup": {
+        let whereClause = `WHERE company_code = :company_code`;
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-  if (filter?.search) {
-    whereClause += `
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(pl_code) LIKE UPPER(:search)
         OR UPPER(pl_description) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  const countResult = await connection.execute(
-    `
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM MS_AC_PLSETUP
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  let orderByClause = `ORDER BY pl_code`;
-  if (filter?.sort?.field_name) {
-    orderByClause = `
+        let orderByClause = `ORDER BY pl_code`;
+        if (filter?.sort?.field_name) {
+          orderByClause = `
       ORDER BY ${filter.sort.field_name} ${filter.sort.desc ? 'DESC' : 'ASC'}
     `;
-  }
+        }
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT *
     FROM MS_AC_PLSETUP
     ${whereClause}
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...binds,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...binds,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
-}
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
-  case "bl_setup": {
-   let whereClause = `WHERE company_code = :company_code`;
-   let binds: any = {
-    company_code: requestUser.company_code,
-   };
+      case "bl_setup": {
+        let whereClause = `WHERE company_code = :company_code`;
+        let binds: any = {
+          company_code: requestUser.company_code,
+        };
 
-   // SEARCH
-  if (filter?.search) {
-    whereClause += `
+        // SEARCH
+        if (filter?.search) {
+          whereClause += `
       AND (
         UPPER(bl_code) LIKE UPPER(:search)
         OR UPPER(bl_description) LIKE UPPER(:search)
       )
     `;
-    binds.search = `%${filter.search}%`;
-  }
+          binds.search = `%${filter.search}%`;
+        }
 
-  // COUNT
-  const countResult = await connection.execute(
-    `
+        // COUNT
+        const countResult = await connection.execute(
+          `
     SELECT COUNT(*) AS TOTAL_COUNT
     FROM MS_AC_BLSETUP
     ${whereClause}
     `,
-    binds,
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          binds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
+        totalCount = (countResult.rows?.[0] as { TOTAL_COUNT?: number })?.TOTAL_COUNT ?? 0;
 
-  // SORT
-  let orderByClause = `ORDER BY bl_code`;
-  if (filter?.sort?.field_name) {
-    orderByClause = `
+        // SORT
+        let orderByClause = `ORDER BY bl_code`;
+        if (filter?.sort?.field_name) {
+          orderByClause = `
       ORDER BY ${filter.sort.field_name} ${filter.sort.desc ? "DESC" : "ASC"}
     `;
-  }
+        }
 
-  const dataResult = await connection.execute(
-    `
+        const dataResult = await connection.execute(
+          `
     SELECT *
     FROM MS_AC_BLSETUP
     ${whereClause}
     ${orderByClause}
     OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `,
-    {
-      ...binds,
-      offset,
-      limit,
-    },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+          {
+            ...binds,
+            offset,
+            limit,
+          },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
 
-  fetchedData = dataResult.rows || [];
-}
-break;
+        fetchedData = dataResult.rows || [];
+      }
+        break;
 
-  default:
+      default:
         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
           success: false,
           message: "Invalid master type",
@@ -1193,7 +1206,7 @@ break;
         return;
     }
 
-     res.status(constants.STATUS_CODES.OK).json({
+    res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: { tableData: fetchedData, count: totalCount },
     });
@@ -1201,7 +1214,7 @@ break;
 
   } catch (err) {
     console.error(err);
-     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
       success: false,
       message: "Error occurred while fetching data",
     });

@@ -15,7 +15,9 @@ export const chequePaymentSchema = (
         constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
         constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
         constants.TRANSACTION_DOCUMENT_TYPE.LPO,
-        constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
+        constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT,
+        constants.TRANSACTION_DOCUMENT_TYPE.CREDIT_NOTE,
+        constants.TRANSACTION_DOCUMENT_TYPE.DEBIT_NOTE,
       )
       .required(),
     bank_ac_code: Joi.string().when("doc_type", {
@@ -66,10 +68,10 @@ export const chequePaymentSchema = (
     ref_date: Joi.date().optional().allow("", null),
     inv_date: Joi.date().optional().allow("", null), // Document date
     supplier: Joi.string().optional().allow("", null),
-    address: Joi.string().optional().allow("", null),
-    phone: Joi.number().optional().allow("", null),
+    party_address: Joi.string().optional().allow("", null),
+    party_phone: Joi.number().optional().allow("", null),
     mobile: Joi.number().optional().allow("", null),
-    fax: Joi.string().optional().allow("", null),
+    party_fax: Joi.string().optional().allow("", null),
     fy_code: Joi.number().optional().allow("", null), // Fiscal year code 
     hse_compliance: Joi.string().optional().allow("", null),
     terms: Joi.string().optional().allow("", null), // Payment terms
@@ -124,7 +126,9 @@ export const chequePaymentSchema = (
               constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,// Cash receipt
               constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Purchase
               constants.TRANSACTION_DOCUMENT_TYPE.LPO, // LPO
-              constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT // Petty cash payment
+              constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT,// Petty cash payment
+              constants.TRANSACTION_DOCUMENT_TYPE.CREDIT_NOTE,
+              constants.TRANSACTION_DOCUMENT_TYPE.DEBIT_NOTE,
             )
             .required(),
           serial_no: Joi.number().required(), // Serial number (required),
@@ -161,7 +165,7 @@ export const chequePaymentSchema = (
             // Is deletable (optional, default false)
             IsDeletable: Joi.boolean().optional().default(false),
             // Serial number (required)
-            serial_no: Joi.number().required(),
+            serial_no: Joi.number().optional(),
             // Detail serial number (required)
             dtl_sr_no: Joi.number().required(),
             // Document number (optional)
@@ -174,7 +178,9 @@ export const chequePaymentSchema = (
                 constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
                 constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
                 constants.TRANSACTION_DOCUMENT_TYPE.LPO,
-                constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
+                constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT,
+                constants.TRANSACTION_DOCUMENT_TYPE.CREDIT_NOTE,
+                constants.TRANSACTION_DOCUMENT_TYPE.DEBIT_NOTE,
               )
               .required(),
             // Division code (required)
@@ -263,6 +269,11 @@ export const chequePaymentSchema = (
             doc_refno_2: Joi.string().allow("", null).optional(),
             // Amount (optional)
             amount: Joi.number().allow(null).optional(),
+            lcur_amount: Joi.number().default(0).optional(),
+            // Currency code (optional)
+            curr_code: Joi.string().allow(null).optional(),
+            // Exchange rate (optional)
+            ex_rate: Joi.number().allow(null).optional(),
           })
         )
         .optional()
@@ -357,7 +368,7 @@ export const purchaseSchema = (
     doc_type: Joi.string() // Document type (required)
       .valid(
         constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Cheque payment
-        constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
+        constants.TRANSACTION_DOCUMENT_TYPE.SALES,
         constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE, // Cheque payment
       )
       .required(),
@@ -447,7 +458,7 @@ export const purchaseSchema = (
           doc_type: Joi.string() // Document type (required)
             .valid(
               constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE, // Cheque payment
-              constants.TRANSACTION_DOCUMENT_TYPE.SALES, 
+              constants.TRANSACTION_DOCUMENT_TYPE.SALES,
               constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE,
             )
             .required(),
@@ -807,6 +818,7 @@ export const salesSchema = (
             sign_ind: Joi.number()
               .integer()
               .valid(-1)
+              .valid(1,-1)
               .required(),
 
             // Invoice number (optional)
