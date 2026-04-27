@@ -1165,15 +1165,19 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
     conn = await getConn(req);
 
     const result = await conn.execute(
-      `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,:dn); END;`,
+      `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,:pa,:pn,:pp,:pf,:de,:di,:dp,:dc,:pt,:dtm,:cp,:rn,:dn); END;`,
       {
         cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
         dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
         er: v.ex_rate, rm: v.remarks ?? null,
         lu: req.user.loginid,
+        pa: v.party_address, pn: v.party_name, pp: v.party_phone, pf: v.party_fax,
+        de: v.dlvr_email, di: v.delivery_to, dp: v.dlvr_phone, dc: v.dlvr_contact,
+        pt: v.payment_terms, dtm: v.dlvr_term, cp: v.credit_period, rn: v.ref_no,
         dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
     );
+    console.log('SP_LPO_HEADER result:', result.outBinds);
 
     const doc_no = (result.outBinds as any).dn;
 
@@ -1189,6 +1193,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
           or: d.other_remarks ?? null,
         }))
       );
+      console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
     }
 
     await conn.commit();
