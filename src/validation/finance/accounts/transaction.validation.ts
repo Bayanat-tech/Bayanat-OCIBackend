@@ -1006,21 +1006,38 @@ export const LpoSchema = (
     qty: Joi.number().default(1), // Quantity (default 1)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    address: Joi.string(),
-    phone: Joi.number().optional(),
-    contact: Joi.number().optional(),
-    email: Joi.string(),
-    app_ref_no: Joi.string(),
+    // address: Joi.string(),
+    // phone: Joi.number().optional(),
+    // contact: Joi.number().optional(),
+    email: Joi.string().optional().allow('', null),
+    party_address: Joi.string().optional().allow('', null),
+    party_phone: Joi.number().optional(),
+    dlvr_contact: Joi.number().optional(),
+    dlvr_email: Joi.string().optional().allow('', null),
+    dlvr_mobile: Joi.string().optional().allow("", null),
+    app_ref_no: Joi.string().optional().allow('', null),
+    delivary_term: Joi.string().optional().allow("", null),
+    dlvr_term: Joi.string().optional().allow("", null),
     payment_terms: Joi.string().optional().allow("", null),
-    delivary_info: Joi.string(),
-    delivary_term: Joi.string(),
+    delivary_info: Joi.string().optional().allow('', null),
+    fax: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
+    party_fax: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow('', null),
+    // LPO PDO type (optional) - matches frontend select options
+    pdo_type: Joi.string().optional().allow('', null).valid('PDO-OTO', 'PDO-NON-OTO', 'NON-PDO'),
+    // Payment/delivery/terms (accept frontend spelling variants)
+    terms: Joi.string().optional().allow("", null),
+    delivery_info: Joi.string().optional().allow('', null),
+    //delivary_term: Joi.string(),
     tax_categoty: Joi.number().optional(),
     tax_code: Joi.number().optional().allow("", null),
     tax_type: Joi.string().optional().allow("", null),
     lpo_category: Joi.string().optional().allow("", null),
+    //pdo_type: Joi.string().optional().allow("", null),
+    inv_date: Joi.date().optional().allow("", null),
+    invoice_date: Joi.date().optional().allow("", null),
     div_code: Joi.string().required(), // Division code (required)
-    div_name: Joi.string(),
-    ...(isBulkOperation && { company_code: userCompany }), // Company code (conditional)
+    div_name: Joi.string().optional().allow('', null),
+    ...(isBulkOperation && { company_code: userCompany }), 
     files: Joi.array()
       .items(
         Joi.object({
@@ -1034,14 +1051,18 @@ export const LpoSchema = (
         Joi.object({
           doc_date: Joi.date(), // Document date
           company_code: Joi.string().required(), // Company code (required)
+          prod_code: Joi.string().optional().allow("", null),
           ac_code: Joi.string().required(), // Account code (required)
           ac_name: Joi.string(),
           header_ac_code: Joi.string(),
           product_code: Joi.string().optional().allow("", null),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
+          other_remarks: Joi.string().optional().allow("", null),
           cost_code: Joi.string().optional().allow("", null),
           price: Joi.number().default(1), // Price (default 1)
           qty: Joi.number().default(1), // Quantity (default 1) 
+          qty_pending: Joi.number().optional().allow("", null),
+          original_qty: Joi.number().optional().allow("", null),
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
