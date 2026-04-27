@@ -1030,6 +1030,7 @@ export const LpoSchema = (
     invoice_date: Joi.date().optional().allow("", null),
     div_code: Joi.string().required(), // Division code (required)
     div_name: Joi.string().optional().allow('', null),
+    warranty: Joi.string().optional().allow('', null),
     ...(isBulkOperation && { company_code: userCompany }), 
     files: Joi.array()
       .items(
