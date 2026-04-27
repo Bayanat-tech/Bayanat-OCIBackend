@@ -395,8 +395,8 @@ export const purchaseSchema = (
     price: Joi.number().default(1), // Price (default 1)
     qty: Joi.number().default(1), // Quantity (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    party_address: Joi.string(),
-    party_phone: Joi.number().optional(),
+    party_address: Joi.string().optional().allow("", null),
+    party_phone: Joi.number().optional().allow("", null),
     party_fax: Joi.string().optional().allow("", null),
     ref_doc_no: Joi.string(),
     payment_terms: Joi.string().optional().allow("", null),
@@ -1291,8 +1291,6 @@ export const LpoSchema = (
   return isBulkOperation ? schema.validate(data) : baseSchema.validate(data);
 };
 
-
-//Petty cash payment
 export const pettyCashSchema = (
   data: any,
   userCompany?: string,

@@ -1062,8 +1062,8 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         pa: v.party_address ?? null,
         pp: v.party_phone ?? null,
         rn: v.ref_doc_no ?? null,
-        lu: req.user.loginid,
-        inv_dt: toDate(v.inv_date || v.doc_date),
+        lu: req.user.loginid, 
+        inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
