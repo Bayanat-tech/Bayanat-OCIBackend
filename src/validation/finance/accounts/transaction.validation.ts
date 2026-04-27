@@ -1055,6 +1055,7 @@ export const LpoSchema = (
           price: Joi.number().default(1), // Price (default 1)
           qty: Joi.number().default(1), // Quantity (default 1) 
           qty_pending: Joi.number().optional().allow("", null),
+          original_qty: Joi.number().optional().allow("", null),
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
