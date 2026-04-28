@@ -1165,14 +1165,14 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
     conn = await getConn(req);
 
     const result = await conn.execute(
-      `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,:pa,:pn,:pp,:pf,:de,:di,:dp,:dc,:pt,:dtm,:cp,:rn,:dn); END;`,
+      `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,:pa,:pn,:pp,:pf,:de,:di,:dm,:dc,:pt,:dtm,:cp,:rn,:dn); END;`,
       {
         cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
         dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
         er: v.ex_rate, rm: v.remarks ?? null,
         lu: req.user.loginid,
         pa: v.party_address, pn: v.party_name, pp: v.party_phone, pf: v.party_fax,
-        de: v.dlvr_email, di: v.delivery_to, dp: v.dlvr_phone, dc: v.dlvr_contact,
+        de: v.dlvr_email, di: v.delivery_to, dm: v.dlvr_mobile, dc: v.dlvr_contact,
         pt: v.payment_terms, dtm: v.dlvr_term, cp: v.credit_period, rn: v.ref_no,
         dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
@@ -1183,7 +1183,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or); END;`,
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
           sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
@@ -1191,6 +1191,9 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
           si: d.sign_ind, dv: d.div_code, la: d.lcur_amount,
           qty: d.qty, pr: d.price, pc: d.prod_code,
           or: d.other_remarks ?? null,
+          rm: d.remarks ?? null,
+          tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
+          tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
         }))
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
@@ -1259,7 +1262,11 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
       ref_date: req.body.ref_date ?? old.REF_DATE,
       invoice_no: req.body.invoice_no ?? old.INVOICE_NUMBER,
       invoice_date: req.body.invoice_date ?? old.INVOICE_DATE,
-      div_code: req.body.div_code ?? old.DIV_CODE
+      div_code: req.body.div_code ?? old.DIV_CODE,
+      qty: req.body.qty ?? old.QTY,
+      price: req.body.price ?? old.PRICE,
+      prod_code: req.body.prod_code ?? old.PROD_CODE,
+      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS
     };
 
     //  Call your SP safely
@@ -1311,7 +1318,8 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
     if (req.body.detail?.length) {
       await conn.executeMany(
         `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
-          :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la
+          :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
+          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm
         ); END;`,
         req.body.detail.map((d: any, i: number) => ({
           cc: req.user.company_code,
@@ -1325,7 +1333,16 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
           er: d.ex_rate ?? h.ex_rate ?? 1,
           si: d.sign_ind ?? 1,
           dv: d.div_code ?? h.div_code,
-          la: d.lcur_amount ?? (Number(d.amount || 0) * Number(h.ex_rate ?? 1))
+          la: d.lcur_amount ?? (Number(d.amount || 0) * Number(h.ex_rate ?? 1)),
+          qty: Number(d.qty ?? 1),
+          pr: Number(d.price ?? 0),
+          pc: d.prod_code ?? null,
+          or: d.other_remarks ?? null,
+          rm: d.remarks ?? null,
+          tcc: d.tx_cat_code ?? null,
+          tc: d.tx_compntcat_code_1 ?? null,
+          tp: d.tx_compnt_perc_1 ?? null,
+          tm: d.tx_compnt_amt_1 ?? null
         }))
       );
     }

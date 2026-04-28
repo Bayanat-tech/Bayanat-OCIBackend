@@ -401,7 +401,7 @@ export const purchaseSchema = (
     ref_doc_no: Joi.string(),
     payment_terms: Joi.string().optional().allow("", null),
     files: Joi.array().optional().allow("", null),
-    ref_no: Joi.number().optional().allow("", null),
+    ref_no: Joi.string().optional().allow("", null),
     ref_date: Joi.date().optional().allow("", null),
     delivery_info: Joi.date().optional().allow("", null),
     delivery_term: Joi.string().optional().allow("", null),
@@ -415,6 +415,11 @@ export const purchaseSchema = (
     tax_categoty: Joi.number().optional(),
     tax_category: Joi.string().optional().allow("", null),
     tax_code: Joi.number().optional().allow("", null),
+    tax_percentage: Joi.number().optional().allow("", null),
+    tax_cat_code: Joi.string().optional().allow("", null),
+    tx_compntcat_code_1: Joi.string().optional().allow("", null),
+    tx_compnt_perc_1: Joi.number().optional().allow("", null),
+    tx_compnt_amt_1: Joi.number().optional().allow("", null),
     tax_type: Joi.string().optional().allow("", null),
     ac_payee: Joi.string().when("doc_type", { // Account payee (conditional)
       is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
