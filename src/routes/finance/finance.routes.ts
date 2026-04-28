@@ -28,6 +28,7 @@ import { insUpdHrPayComponent } from "../../controllers/HR/insUpdHrPayComponent"
 import { insUpdSecPayCompAc } from "../../controllers/HR/insUpdSecPayCompAc";
 import { insUpdHrEmployee } from "../../controllers/HR/insUpdHrEmployee";
 import { insUpdHrSalaryAdvDed } from "../../controllers/HR/insUpdHrSalaryAdvDed";
+import { insUpdHrJoinRpt } from "../../controllers/HR/insUpdHrJoinRpt";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -61,6 +62,11 @@ router.post(
 router.post(
   "/insUpdHrSalaryAdvDed", 
   insUpdHrSalaryAdvDed)
+
+// hr
+router.post(
+  "/insUpdHrJoinRpt", 
+  insUpdHrJoinRpt)
 
 
   router.post(
