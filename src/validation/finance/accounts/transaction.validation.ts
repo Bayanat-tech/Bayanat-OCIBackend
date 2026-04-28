@@ -166,6 +166,8 @@ export const chequePaymentSchema = (
             IsDeletable: Joi.boolean().optional().default(false),
             // Serial number (required)
             serial_no: Joi.number().optional(),
+            // UI id (frontend internal id)
+            id: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow(null),
             // Detail serial number (required)
             dtl_sr_no: Joi.number().required(),
             // Document number (optional)
@@ -191,6 +193,8 @@ export const chequePaymentSchema = (
             sign_ind: Joi.number().valid(-1, 1).allow(null),
             // Invoice number (optional)
             inv_no: Joi.string().allow("", null).allow("", null),
+            // Display document number (UI-only)
+            display_doc_no: Joi.string().optional().allow("", null),
             // Invoice date (optional)
             inv_date: Joi.date().allow(null).optional(),
             // Document date (optional)
@@ -211,6 +215,8 @@ export const chequePaymentSchema = (
             isSelected: Joi.boolean().optional(),
             // Currency code (optional)
             curr_code: Joi.string().allow(null).optional(),
+            // Currency display name (UI-only)
+            curr_name: Joi.string().optional().allow("", null),
             // Exchange rate (optional)
             ex_rate: Joi.number().allow(null).optional(),
             // Current currency amount (optional)
@@ -240,6 +246,8 @@ export const chequePaymentSchema = (
             ac_code: Joi.string().required(),
             // Serial number (required)
             serial_no: Joi.number().required(),
+            // UI id (frontend internal id)
+            id: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow(null),
             // Detail serial number (required)
             dtl_sr_no: Joi.number().required(),
             // Document number (optional)
@@ -267,6 +275,8 @@ export const chequePaymentSchema = (
             job_no: Joi.string().allow("", null).optional(),
             // Document reference number (optional)
             doc_refno: Joi.string().allow("", null).optional(),
+            // Display document number (UI-only)
+            display_doc_no: Joi.string().optional().allow("", null),
             // Document reference number 2 (optional)
             doc_refno_2: Joi.string().allow("", null).optional(),
             // Amount (optional)
@@ -274,6 +284,8 @@ export const chequePaymentSchema = (
             // Local currency amount and UI selection
             lcur_amount: Joi.number().default(0).optional(),
             curr_code: Joi.string().allow(null).optional(),
+            // Currency display name (UI-only)
+            curr_name: Joi.string().optional().allow("", null),
             isSelected: Joi.boolean().optional(),
             // Exchange rate (optional)
             ex_rate: Joi.number().allow(null).optional(),
@@ -301,6 +313,8 @@ export const chequePaymentSchema = (
             ac_code: Joi.string().required(),
             // Serial number (required)
             serial_no: Joi.number().required(),
+            // UI id (frontend internal id)
+            id: Joi.alternatives().try(Joi.string(), Joi.number()).optional().allow(null),
             // Detail serial number (required)
             dtl_sr_no: Joi.number().required(),
             // Document number (optional)
@@ -338,9 +352,15 @@ export const chequePaymentSchema = (
             job_no: Joi.string().optional().allow("", null),
             // Amount (required)
             amount: Joi.number(),
+            // Exchange rate (optional from UI)
+            ex_rate: Joi.number().allow(null).optional(),
+            // Display document number (UI-only)
+            display_doc_no: Joi.string().optional().allow("", null),
             // Optional local currency amount and UI selection flag
             lcur_amount: Joi.number().optional(),
             curr_code: Joi.string().allow(null).optional(),
+            // Currency display name (UI-only)
+            curr_name: Joi.string().optional().allow("", null),
             isSelected: Joi.boolean().optional(),
           })
         )
@@ -408,9 +428,9 @@ export const purchaseSchema = (
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
       .when("doc_type", {
-        is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
-        then: Joi.allow(null, ""), // Then files are optional
-        otherwise: Joi.forbidden(), // Otherwise files are forbidden
+        is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, 
+        then: Joi.allow(null, ""), 
+        otherwise: Joi.forbidden(), 
       }),
     tax_categoty: Joi.number().optional(),
     tax_category: Joi.string().optional().allow("", null),
