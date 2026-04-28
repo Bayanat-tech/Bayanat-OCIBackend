@@ -2,7 +2,7 @@
 import express from "express";
 import { insPsUserRoleMappingBulk } from "../../controllers/ALMS/insPsUserRoleMappingBulk";
 import { insPsFlowRoleMappingBulk } from "../../controllers/ALMS/insPsFlowRoleMappingBulk ";
-import { proc_build_dynamic_ins_upd_ALMS } from "../../controllers/ALMS/insUpdPurchaseRequest";
+import { insUpdPurchaseRequest } from '../../controllers/ALMS/insUpdPurchaseRequest';
 
 
 
@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.post(
   "/insUpdPurchaseRequest",
-  proc_build_dynamic_ins_upd_ALMS
+  insUpdPurchaseRequest
 );
 
 router.post(

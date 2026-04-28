@@ -21,7 +21,7 @@ export const proc_populate_ms_eam_dept_kpi = async (
     await QueryExecutor.executeRawQuery(
       `
       BEGIN
-        WMSTST.PROC_POPULATE_MS_EAM_DEPT_KPI(
+        PROC_POPULATE_BULK_MS_EAM_DEPT_KPI(
           :company_code,
           :employee_code,
           :item_type

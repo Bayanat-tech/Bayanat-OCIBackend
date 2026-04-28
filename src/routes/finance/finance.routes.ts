@@ -27,6 +27,9 @@ import { insUpdHrGrade } from "../../controllers/HR/insUpdHrGrade";
 import { insUpdHrPayComponent } from "../../controllers/HR/insUpdHrPayComponent";
 import { insUpdSecPayCompAc } from "../../controllers/HR/insUpdSecPayCompAc";
 import { insUpdHrEmployee } from "../../controllers/HR/insUpdHrEmployee";
+import { insUpdHrSalaryAdvDed } from "../../controllers/HR/insUpdHrSalaryAdvDed";
+import { insUpdHrJoinRpt } from "../../controllers/HR/insUpdHrJoinRpt";
+import { insUpdHrPayCompDepend } from "../../controllers/HR/insUpdHrPayCompDepend";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -55,6 +58,21 @@ router.post(
 router.post(
   "/upsertHrDocTypes",
   upsertHrDocTypes)
+
+  // hr
+router.post(
+  "/insUpdHrPayCompDepend",
+  insUpdHrPayCompDepend)
+  
+// hr
+router.post(
+  "/insUpdHrSalaryAdvDed", 
+  insUpdHrSalaryAdvDed)
+
+// hr
+router.post(
+  "/insUpdHrJoinRpt", 
+  insUpdHrJoinRpt)
 
 
   router.post(
