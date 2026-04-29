@@ -643,23 +643,6 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
-// export const getLPOHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
-//   let conn: oracledb.Connection | undefined;
-//   try {
-//     conn = await getConn(req);
-//     const result = await conn.execute(
-//       `SELECT * FROM VW_AC_LPO_HEADER_DETAIL
-//        WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
-//       { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type },
-//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
-//     );
-//     const row = result.rows?.[0] || null;
-//     console.log("LPO header result:", row);
-//     res.json({ success: true, data: row ? normalize([row])[0] : null });
-//     console.log('LPO header Normalizeeeee:', row ? normalize([row])[0] : null);
-//   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
-// };
-
 // ── GET SINGLE LPO HEADER ────────────────────────────────────────────────────
 export const getLPOHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
@@ -1164,19 +1147,58 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     conn = await getConn(req);
 
+    // const result = await conn.execute(
+    //   `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:rd,:lu,:pa,:pn,:pp,:pf,:de,:di,:dm,:dc,:pt,:dtm,:cp,:rn,:ar,:tcc,:tc,:dn); END;`,
+    //   {
+    //     cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
+    //     dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
+    //     er: v.ex_rate, rm: v.remarks ?? null, rd: toDate(v.ref_date),
+    //     lu: req.user.loginid,
+    //     pa: v.party_address, pn: v.party_name, pp: v.party_phone, pf: v.party_fax,
+    //     de: v.dlvr_email, di: v.delivery_to, dm: v.dlvr_mobile, dc: v.dlvr_contact,
+    //     pt: v.payment_terms, dtm: v.dlvr_term, cp: v.credit_period, rn: v.ref_no,
+    //     ar: v.app_ref_no, tcc: v.tx_cat_code, tc: v.tx_compntcat_code_1 ?? null,
+    //     dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
+    //   }
+    // );
+
     const result = await conn.execute(
-      `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,:pa,:pn,:pp,:pf,:de,:di,:dm,:dc,:pt,:dtm,:cp,:rn,:dn); END;`,
-      {
-        cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
-        dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
-        er: v.ex_rate, rm: v.remarks ?? null,
-        lu: req.user.loginid,
-        pa: v.party_address, pn: v.party_name, pp: v.party_phone, pf: v.party_fax,
-        de: v.dlvr_email, di: v.delivery_to, dm: v.dlvr_mobile, dc: v.dlvr_contact,
-        pt: v.payment_terms, dtm: v.dlvr_term, cp: v.credit_period, rn: v.ref_no,
-        dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
-      }
-    );
+  `BEGIN SP_CREATE_LPO_HEADER(
+    :cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,
+    :pa,:pn,:pp,:pf,:de,:di,:dm,:dc,
+    :pt,:dtm,:cp,:rn,:rd,:ar,:pdo,:tcc,:tc,:dn
+  ); END;`,
+  {
+    cc: req.user.company_code,
+    dv: v.div_code,
+    dt: v.doc_type,
+    dd: toDate(v.doc_date),
+    ac: v.ac_code,
+    cu: v.curr_code,
+    er: v.ex_rate,
+    rm: v.remarks ?? null,
+    lu: req.user.loginid,  
+    pa: v.party_address,
+    pn: v.party_name,
+    pp: v.party_phone,
+    pf: v.party_fax,
+    de: v.dlvr_email,
+    di: v.delivery_to,
+    dm: v.dlvr_mobile,
+    dc: v.dlvr_contact,
+    pt: v.payment_terms,
+    dtm: v.dlvr_term,
+    cp: v.credit_period,
+    rn: v.ref_no,
+    rd: toDate(v.ref_date),   
+    ar: v.app_ref_no,
+    pdo: v.pdo_type,          
+    tcc: v.tx_cat_code,
+    tc: v.tx_compntcat_code_1 ?? null,
+
+    dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
+  }
+);
     console.log('SP_LPO_HEADER result:', result.outBinds);
 
     const doc_no = (result.outBinds as any).dn;
