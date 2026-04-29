@@ -61,6 +61,7 @@ import {
 } from "../../controllers/HR/hr_net.controller";
 import { executeRawSql } from "../../controllers/HR/rawSql_hr_controller";
 import { getRequestFlowUsers } from "../../controllers/HR/hr_leave_flow_sentback";
+import { BTgetLeaveEntitleHandler, BTvalidateLeaveHandler, getBTEmployeesHandler } from "../../BT_INDIA/controllers/BThr_net.controller";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -120,6 +121,7 @@ router.post("/saveFile", (req, res, next) => {
   saveFileHR(req, res).catch(next);
 });
 router.get("/getRequestFlowUsers", getRequestFlowUsers as any );
+
 // HR .NET API routes
 router.get("/employees", getEmployeesHandler);
 router.get("/leavebalance/:employeeId", getLeaveBalanceHandler);
@@ -128,6 +130,11 @@ router.get("/leavehistory", getLeaveHistoryHandler);
 // router.get("/validateleave", validateLeaveHandler);
 router.get("/validateleave", newvalidateLeaveHandler);
 router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
+
+//BT Hr routes
+router.get("/Btemployees",getBTEmployeesHandler);
+router.get("/BTvalidateleave",BTvalidateLeaveHandler);
+router.get("/BTleaveentitle/:employeeId", BTgetLeaveEntitleHandler);
 
 // Exporting the router
 
