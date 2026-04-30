@@ -1031,7 +1031,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     conn = await getConn(req);
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :pf, :pt, S:rn, :lu, :tcc, :tc, :pno, :ino, :inv_dt
+      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc, :pno, :ino 
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1044,17 +1044,20 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         rm: v.remarks ?? null,
         pa: v.party_address ?? null,
         pp: v.party_phone ?? null,
-        pf: v.party_fax,
-        pt: v.payment_terms,
         rn: v.ref_doc_no ?? null,
         lu: req.user.loginid, 
+        inv_dt: toDate(v.inv_date || v.doc_date), 
+        pf: v.party_fax,
+        pt: v.payment_terms,
         tcc: v.tx_cat_code,
         tc: v.tx_compntcat_code_1,
-        inv_dt: toDate(v.inv_date || v.doc_date), 
+        // inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
     );
+
+    
 
     const { pno: purchase_no, ino: invoice_no } = result.outBinds as any;
     // Detail rows SP
