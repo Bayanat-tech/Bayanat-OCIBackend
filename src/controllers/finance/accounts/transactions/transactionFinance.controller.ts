@@ -1031,7 +1031,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     conn = await getConn(req);
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :pno, :ino, :inv_dt
+        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :pf, :pt, S:rn, :lu, :tcc, :tc, :pno, :ino, :inv_dt
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1044,8 +1044,12 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         rm: v.remarks ?? null,
         pa: v.party_address ?? null,
         pp: v.party_phone ?? null,
+        pf: v.party_fax,
+        pt: v.payment_terms,
         rn: v.ref_doc_no ?? null,
         lu: req.user.loginid, 
+        tcc: v.tx_cat_code,
+        tc: v.tx_compntcat_code_1,
         inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
@@ -1166,7 +1170,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
   `BEGIN SP_CREATE_LPO_HEADER(
     :cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,
     :pa,:pn,:pp,:pf,:de,:di,:dm,:dc,
-    :pt,:dtm,:cp,:rn,:rd,:ar,:pdo,:tcc,:tc,:dn
+    :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:dn
   ); END;`,
   {
     cc: req.user.company_code,
@@ -1192,7 +1196,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
     rn: v.ref_no,
     rd: toDate(v.ref_date),   
     ar: v.app_ref_no,
-    pdo: v.pdo_type,          
+    // pdo: v.pdo_type,          
     tcc: v.tx_cat_code,
     tc: v.tx_compntcat_code_1 ?? null,
 
@@ -1530,7 +1534,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     // Update header and delete existing child records
     await conn.execute(
       `BEGIN SP_UPDATE_PURCHASE_DOCUMENT(
-        :cc, :dn, :dt, :dv, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt
+        :cc, :dn, :dt, :dv, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn,:pf,:pt, :tcc, :tc, :lu, :inv_dt
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1545,6 +1549,10 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
         pa: h.party_address || null,
         pp: h.party_phone || null,
         rn: h.ref_doc_no || null,
+        pf: h.party_fax || null,
+        pt: h.payment_terms || null,
+        tcc: h.tx_cat_code || null,
+        tc: h.tx_compntcat_code_1 || null,
         lu: req.user.loginid,
         inv_dt: toDate(h.inv_date || h.doc_date),
       }

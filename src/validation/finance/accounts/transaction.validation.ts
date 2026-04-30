@@ -438,6 +438,8 @@ export const purchaseSchema = (
     tax_percentage: Joi.number().optional().allow("", null),
     tx_cat_code: Joi.string().optional().allow("", null),
     tx_compntcat_code_1: Joi.string().optional().allow("", null),
+    tx_compncat_code_1: Joi.string().optional().allow("", null),
+    tx_compnt_1_expmt: Joi.string().optional().allow("", null),
     tx_compnt_perc_1: Joi.number().optional().allow("", null),
     tx_compnt_amt_1: Joi.number().optional().allow("", null),
     tax_type: Joi.string().optional().allow("", null),
@@ -449,7 +451,7 @@ export const purchaseSchema = (
     div_code: Joi.string().required(), // Division code (required)
     terms: Joi.string().optional().allow("", null),
     email: Joi.string().email().optional().allow("", null),
-    app_ref_no: Joi.number().optional().allow("", null),
+    app_ref_no: Joi.string().optional().allow("", null),
     fy_code: Joi.string().optional().allow("", null),
     //hse_compliance: Joi.string().optional().allow("", null),
     hse_compliance: Joi.any().optional().allow(null, ""),
@@ -740,11 +742,18 @@ export const salesSchema = (
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
     salesman_code: Joi.string().optional(),
-    sector_code: Joi.string().optional(),
+    sector_code: Joi.string().optional().allow("", null),
     address: Joi.string(),
     phone: Joi.number().optional(),
+    party_address: Joi.string().optional().allow("", null),
+    party_phone: Joi.number().optional().allow("", null),
+    party_fax: Joi.string().optional().allow("", null),
     ref_doc: Joi.string(),
     payment_terms: Joi.string().optional().allow("", null),
+    tx_cat_code: Joi.string().optional().allow("", null), 
+    tx_compntcat_code_1: Joi.string().optional().allow("", null),
+    tx_compnt_perc_1: Joi.number().optional().allow("", null),
+    tx_compnt_amt_1: Joi.number().optional().allow("", null),
     files: Joi.array().optional().allow("", null),
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
