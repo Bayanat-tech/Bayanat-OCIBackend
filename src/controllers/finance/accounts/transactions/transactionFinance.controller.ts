@@ -187,6 +187,7 @@ async function spInsertJobRows(
   company_code: string,
   doc_type: string,
   doc_no: string,
+  curr_code: string | undefined,
   job: any[],
   login_user: string
 ) {
@@ -213,7 +214,7 @@ async function spInsertJobRows(
       amount: j.amount,
       sign_ind: j.sign_ind,
       lcur_amount: j.lcur_amount,
-      curr_code: j.curr_code,
+      curr_code: j.curr_code ?? curr_code ?? null,
       ex_rate: j.ex_rate ?? 1,
       div_code: j.div_code,
       login_user,
@@ -227,39 +228,68 @@ async function spInsertExpenseRows(
   company_code: string,
   doc_type: string,
   doc_no: string,
+  curr_code: string | undefined,
   expense: any[],
   login_user: string
 ) {
   if (!expense?.length) return;
-  await conn.executeMany(
-    `BEGIN SP_INSERT_EXPENSE_SINGLE(
+  const sql = `BEGIN SP_INSERT_EXPENSE_SINGLE(
       :company_code, :doc_type, :doc_no,
       :serial_no, :dtl_sr_no, :doc_date,
       :ac_code, :exp_type_code, :exp_subtype_code, :exp_code,
       :job_no, :amount, :sign_ind, :lcur_amount,
       :curr_code, :ex_rate, :div_code, :login_user
-    ); END;`,
-    expense.map((e: any) => ({
-      company_code,
-      doc_type: e.doc_type ?? doc_type,
-      doc_no,
-      serial_no: e.serial_no,
-      dtl_sr_no: e.dtl_sr_no,
-      doc_date: toDate(e.doc_date),
-      ac_code: e.ac_code,
-      exp_type_code: e.exp_type_code,
-      exp_subtype_code: e.exp_subtype_code,
-      exp_code: e.exp_code,
-      job_no: e.job_no ?? null,
-      amount: e.amount,
-      sign_ind: e.sign_ind,
-      lcur_amount: e.lcur_amount,
-      curr_code: e.curr_code,
-      ex_rate: e.ex_rate ?? 1,
-      div_code: e.div_code,
-      login_user,
-    }))
-  );
+    ); END;`;
+
+  const binds = expense.map((e: any) => ({
+    company_code,
+    doc_type: e.doc_type ?? doc_type,
+    // Keep full header doc_no (may include prefix like 'BP') so expense rows store the same display value
+    doc_no: typeof doc_no === 'string' ? doc_no : String(doc_no),
+    serial_no: e.serial_no == null || e.serial_no === '' ? null : Number(e.serial_no),
+    dtl_sr_no: e.dtl_sr_no == null || e.dtl_sr_no === '' ? null : Number(e.dtl_sr_no),
+    doc_date: toDate(e.doc_date),
+    ac_code: e.ac_code == null || e.ac_code === '' ? null : String(e.ac_code),
+    exp_type_code: e.exp_type_code == null || e.exp_type_code === '' ? null : String(e.exp_type_code),
+    exp_subtype_code: e.exp_subtype_code == null || e.exp_subtype_code === '' ? null : String(e.exp_subtype_code),
+    exp_code: e.exp_code == null || e.exp_code === '' ? null : String(e.exp_code),
+    job_no: e.job_no == null || e.job_no === '' ? null : String(e.job_no),
+    amount: e.amount == null || e.amount === '' ? 0 : Number(e.amount),
+    sign_ind: e.sign_ind == null || e.sign_ind === '' ? 1 : Number(e.sign_ind),
+    lcur_amount: e.lcur_amount == null || e.lcur_amount === '' ? (e.amount == null || e.amount === '' ? 0 : Number(e.amount)) : Number(e.lcur_amount),
+    curr_code: e.curr_code ?? curr_code ?? null,
+    ex_rate: e.ex_rate == null || e.ex_rate === '' ? 1 : Number(e.ex_rate),
+    div_code: e.div_code == null || e.div_code === '' ? null : String(e.div_code),
+    login_user,
+  }));
+
+  try {
+    console.log('spInsertExpenseRows binds:', JSON.stringify(binds, null, 2));
+    const bindDefs = {
+      company_code: { type: oracledb.STRING, maxSize: 10 },
+      doc_type: { type: oracledb.STRING, maxSize: 5 },
+      doc_no: { type: oracledb.STRING, maxSize: 50 },
+      serial_no: { type: oracledb.NUMBER },
+      dtl_sr_no: { type: oracledb.NUMBER },
+      doc_date: { type: oracledb.STRING, maxSize: 10 },
+      ac_code: { type: oracledb.STRING, maxSize: 20 },
+      exp_type_code: { type: oracledb.STRING, maxSize: 10 },
+      exp_subtype_code: { type: oracledb.STRING, maxSize: 10 },
+      exp_code: { type: oracledb.STRING, maxSize: 10 },
+      job_no: { type: oracledb.STRING, maxSize: 20 },
+      amount: { type: oracledb.NUMBER },
+      sign_ind: { type: oracledb.NUMBER },
+      lcur_amount: { type: oracledb.NUMBER },
+      curr_code: { type: oracledb.STRING, maxSize: 10 },
+      ex_rate: { type: oracledb.NUMBER },
+      div_code: { type: oracledb.STRING, maxSize: 10 },
+      login_user: { type: oracledb.STRING, maxSize: 50 },
+    };
+    await conn.executeMany(sql, binds, { bindDefs });
+  } catch (err) {
+    console.error('spInsertExpenseRows executeMany error, binds:', JSON.stringify(binds, null, 2));
+    throw err;
+  }
 }
 
 /** Calls SP_INSERT_FILE_SINGLE via executeMany — owns UPLOADED_FILES_DLTS INSERT */
@@ -295,8 +325,8 @@ async function spInsertAllChildren(
 ) {
   await spInsertDetailRows(conn, company_code, doc_type, doc_no, detail, login_user);
   await spInsertInvoiceRows(conn, company_code, doc_type, doc_no, div_code, curr_code, ex_rate, is_payment, children?.invoice ?? [], login_user);
-  await spInsertJobRows(conn, company_code, doc_type, doc_no, children?.job ?? [], login_user);
-  await spInsertExpenseRows(conn, company_code, doc_type, doc_no, children?.expense ?? [], login_user);
+  await spInsertJobRows(conn, company_code, doc_type, doc_no, curr_code, children?.job ?? [], login_user);
+  await spInsertExpenseRows(conn, company_code, doc_type, doc_no, curr_code, children?.expense ?? [], login_user);
   await spInsertFiles(conn, doc_type, doc_no, files ?? []);
   await conn.commit();
 }
@@ -396,11 +426,19 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
+    const invRows = normalize(inv.rows || []);
+    const jobRows = normalize(job.rows || []);
+    const expRows = normalize(exp.rows || []).map((r: any) => ({
+      ...r,
+      // Child tables store numeric DOC_NO; provide a display field combining doc_type + doc_no
+      display_doc_no: (r.doc_type ?? '') + String(r.doc_no ?? ''),
+    }));
+
     res.json({
       success: true, data: {
-        invoice: normalize(inv.rows || []),
-        job: normalize(job.rows || []),
-        expense: normalize(exp.rows || []),
+        invoice: invRows,
+        job: jobRows,
+        expense: expRows,
       }
     });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
@@ -488,6 +526,262 @@ export const getDocAccounts = async (req: RequestWithUser, res: Response): Promi
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
+export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+
+    // ── Pagination ───────────────────────────────────────────────
+    const page   = Math.max(1, parseInt(req.query.page  as string) || 1);
+    const limit  = Math.max(1, parseInt(req.query.limit as string) || 10);
+    const offset = (page - 1) * limit;
+
+    // ── Base WHERE ───────────────────────────────────────────────
+    let whereClause = `WHERE company_code = :company_code`;
+    const binds: any = {
+      company_code: req.user.company_code,
+    };
+
+    // ── div_code filter ──────────────────────────────────────────
+    if (req.query.div_code) {
+      whereClause += ` AND div_code = :div_code`;
+      binds.div_code = req.query.div_code;
+    }
+
+    // ── Year / FY / Date Range filter ────────────────────────────
+    if (req.query.from_date && req.query.to_date) {
+      whereClause += ` AND doc_date BETWEEN TO_DATE(:fd, 'YYYY-MM-DD') AND TO_DATE(:td, 'YYYY-MM-DD')`;
+      binds.fd = req.query.from_date;
+      binds.td = req.query.to_date;
+    } else if (req.query.fy_period) {
+      whereClause += ` AND fy_period = :fy_period`;
+      binds.fy_period = req.query.fy_period;
+    } else if (req.query.year) {
+      whereClause += ` AND EXTRACT(YEAR FROM doc_date) = :yr`;
+      binds.yr = Number(req.query.year);
+    } else {
+      // Default → current calendar year
+      whereClause += ` AND EXTRACT(YEAR FROM doc_date) = :yr`;
+      binds.yr = new Date().getFullYear();
+    }
+
+    // ── Search filter ────────────────────────────────────────────
+    const search = req.query.search as string;
+    if (search?.trim()) {
+      whereClause += `
+        AND (
+          UPPER(doc_no)          LIKE UPPER(:search)
+          OR UPPER(party_name)   LIKE UPPER(:search)
+          OR UPPER(ref_no)       LIKE UPPER(:search)
+          OR UPPER(div_code)     LIKE UPPER(:search)
+          OR UPPER(invoice_number) LIKE UPPER(:search)
+        )
+      `;
+      binds.search = `%${search.trim()}%`;
+    }
+
+    // ── Specific field filters ────────────────────────────────────
+    const allowedFields = [
+      "doc_no", "doc_type", "div_code", "ac_code",
+      "ref_no", "party_name", "final_approved",
+      "last_action", "invoice_number", "canceled",
+    ];
+    allowedFields.forEach((field) => {
+      if (req.query[field]) {
+        const safeParam = `f_${field}`;
+        whereClause += ` AND UPPER(${field}) = UPPER(:${safeParam})`;
+        binds[safeParam] = req.query[field];
+      }
+    });
+
+    // ── COUNT query ───────────────────────────────────────────────
+    const countResult = await conn.execute(
+      `SELECT COUNT(*) AS TOTAL_COUNT
+       FROM VW_AC_LPO_HEADER_DETAIL
+       ${whereClause}`,
+      binds,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    console.log("LPO count result:", countResult);
+
+    const countRow  = countResult.rows?.[0] as { TOTAL_COUNT?: number };
+    const totalCount = countRow?.TOTAL_COUNT ?? 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // ── DATA query with pagination ────────────────────────────────
+    const dataResult = await conn.execute(
+      `SELECT *
+       FROM VW_AC_LPO_HEADER_DETAIL
+       ${whereClause}
+       ORDER BY doc_date DESC, doc_no DESC
+       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`,
+      { ...binds, offset, limit },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    console.log("LPO data result:", dataResult.rows?.length, "rows");
+
+    const data = (dataResult.rows || []).map((row: any) => {
+      const mapped: any = {};
+      Object.keys(row).forEach((k) => {
+        mapped[k.toLowerCase()] = row[k];
+      });
+      return mapped;
+    });
+
+    res.json({
+      success:     true,
+      data,
+      pagination: {
+        total:       totalCount,
+        total_pages: totalPages,
+        page,
+        limit,
+        has_next:    page < totalPages,
+        has_prev:    page > 1,
+      },
+    });
+  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
+// ── GET SINGLE LPO HEADER ────────────────────────────────────────────────────
+export const getLPOHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { doc_no }             = req.params;
+    const { doc_type } = req.query;
+
+    if (!doc_no || !doc_type) {
+      res.status(400).json({ success: false, message: 'doc_no and doc_type are required' });
+      console.log('Missing required parameters:', { doc_no, doc_type });
+      return;
+    }
+
+    conn = await getConn(req);
+
+    const result = await conn.execute(
+      `SELECT *
+       FROM   VW_AC_LPO_HEADER_DETAIL
+       WHERE  company_code = :cc
+         AND  doc_no       = :dn
+         AND  doc_type     = :dt
+        ORDER BY doc_no DESC`,
+      {
+        cc: req.user.company_code,
+        dn: String(doc_no),
+        dt: doc_type,
+        // ...(div_code && { dc: div_code }),
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!result.rows?.length) {
+      res.status(404).json({ success: false, message: 'LPO document not found' });
+      return;
+    }
+
+    const row = normalize([result.rows[0] as any])[0];
+    res.json({ success: true, data: row });
+
+  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
+
+// ── GET LPO DETAIL ─────────────────────────────────────────────────────
+export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { doc_no }  = req.params;
+    const { doc_type } = req.query;
+
+    // if (!doc_no || !doc_type ) {
+    //   res.status(400).json({
+    //     success: false,
+    //     message: 'doc_no and doc_type are required',
+    //   });
+    //   console.log('Detailssssssssssss:', { doc_no, doc_type });
+    //   return;
+    // }
+
+    conn = await getConn(req);
+
+    const result = await conn.execute(
+      `SELECT
+          d.company_code,
+          d.doc_type,
+          d.doc_no,
+          d.serial_no,
+          d.doc_date,
+          d.ac_code,
+          m.ac_name,
+          d.header_ac_code,
+          d.remarks,
+          d.amount,
+          d.sign_ind,
+          d.curr_code,
+          d.ex_rate,
+          d.lcur_amount,
+          d.job_no,
+          d.dept_code,
+          d.qty,
+          d.price,
+          d.uom,
+          d.prod_code,
+          d.qty_rcv,
+          d.amount_rcv,
+          d.other_remarks,
+          d.item_remark,
+          d.div_code,
+          d.tx_cat_code,
+          d.tx_compntcat_code_1,
+          d.tx_compntcat_code_2,
+          d.tx_compntcat_code_3,
+          d.tx_compntcat_code_4,
+          d.tx_compnt_perc_1,
+          d.tx_compnt_perc_2,
+          d.tx_compnt_perc_3,
+          d.tx_compnt_perc_4,
+          d.tx_compnt_amt_1,
+          d.tx_compnt_amt_2,
+          d.tx_compnt_amt_3,
+          d.tx_compnt_amt_4,
+          d.tx_compnt_lcuramt_1,
+          d.tx_compnt_lcuramt_2,
+          d.tx_compnt_lcuramt_3,
+          d.tx_compnt_lcuramt_4,
+          d.tx_compnt_1_expmt,
+          d.tx_compnt_2_expmt,
+          d.tx_compnt_3_expmt,
+          d.tx_compnt_4_expmt,
+          d.original_qty,
+          d.edit_user,
+          d.create_user
+       FROM   TR_AC_LPO_DETAIL  d
+       LEFT JOIN wmstst.ms_accodes m
+              ON m.ac_code = d.ac_code
+       WHERE  d.company_code        = :cc
+         AND  d.doc_no              = :dn
+         AND  d.doc_type            = :dt
+         AND  NVL(d.cancelled, 'N') = 'N'
+       ORDER BY d.serial_no`,
+      {
+        cc: req.user.company_code,
+        dn: String(doc_no),
+        dt: doc_type
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    res.json({
+      success: true,
+      data:    normalize(result.rows as any[] || []),
+      count:   result.rows?.length ?? 0,
+    });
+    console.log('Fetched LPO details:', result.rows?.length ?? 0, 'rows');
+
+  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
+
 // =============================================================================
 // WRITE HANDLERS — zero raw SQL, all delegate to SPs
 // =============================================================================
@@ -517,13 +811,31 @@ export const createBulkTransactionDocument = async (req: RequestWithUser, res: R
 export const createChequePaymentDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
+    // If client incorrectly passes doc_no as 0 (merge/artifact), remove it so DB generates a new doc_no
     if (typeof req.body.doc_no === 'number') req.body.doc_no = String(req.body.doc_no);
+    if (req.body.doc_no === 0 || req.body.doc_no === '0') delete req.body.doc_no;
+    console.log('createChequePaymentDocument payload preview:', { doc_no: req.body.doc_no, doc_type: req.body.doc_type, div_code: req.body.div_code });
+    // Remove transient UI fields that Joi schema doesn't allow
+    if (req.body.div_name !== undefined) delete req.body.div_name;
     // Normalize children.invoice entries so required fields exist for validation
     if (req.body.children && Array.isArray(req.body.children.invoice)) {
-      req.body.children.invoice = req.body.children.invoice.map((inv: any) => ({
-        ...inv,
-        company_code: inv.company_code ?? req.user.company_code,
-      }));
+      const allowedInvoiceFields = [
+        'doc_date','ac_code','IsDeletable','serial_no','dtl_sr_no','doc_no','doc_type','div_code',
+        'company_code','sign_ind','inv_no','inv_date','due_date','chq_date','chq_bank','chq_no',
+        'inv_amt','indicator_origin','amount_origin','c_bal_amt_org','amount','lcur_amount',
+        'curr_code','ex_rate','c_curr_amt','ref_no'
+      ];
+      req.body.children.invoice = req.body.children.invoice.map((inv: any) => {
+        const out: any = {};
+        for (const k of allowedInvoiceFields) {
+          if (inv[k] !== undefined) out[k] = inv[k];
+        }
+        out.company_code = out.company_code ?? req.user.company_code;
+        // coerce numeric doc_no to string if present
+        if (out.doc_no == null) out.doc_no = '';
+        else if (typeof out.doc_no === 'number') out.doc_no = String(out.doc_no);
+        return out;
+      });
     }
     // Normalize children.job entries
     if (req.body.children && Array.isArray(req.body.children.job)) {
@@ -541,11 +853,14 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
         ac_code: e.ac_code ?? req.body.ac_code ?? (Array.isArray(req.body.detail) && req.body.detail[0]?.ac_code) ?? null,
       }));
     }
+    // Remove transient UI fields that Joi schema doesn't allow
+    if (req.body.div_name !== undefined) delete req.body.div_name;
     // Normalize detail entries so required fields exist for validation
     if (Array.isArray(req.body.detail)) {
       req.body.detail = req.body.detail.map((d: any) => ({
         ...d,
         company_code: d.company_code ?? req.user.company_code,
+        doc_no: d.doc_no == null ? '' : (typeof d.doc_no === 'number' ? String(d.doc_no) : d.doc_no),
       }));
     }
     const { error } = chequePaymentSchema(req.body);
@@ -603,12 +918,26 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
   let conn: oracledb.Connection | undefined;
   try {
     if (typeof req.body.doc_no === 'number') req.body.doc_no = String(req.body.doc_no);
+    // Remove transient UI fields that Joi schema doesn't allow
+    if (req.body.div_name !== undefined) delete req.body.div_name;
     // Normalize children.invoice entries so required fields exist for validation
     if (req.body.children && Array.isArray(req.body.children.invoice)) {
-      req.body.children.invoice = req.body.children.invoice.map((inv: any) => ({
-        ...inv,
-        company_code: inv.company_code ?? req.user.company_code,
-      }));
+      const allowedInvoiceFields = [
+        'doc_date','ac_code','IsDeletable','serial_no','dtl_sr_no','doc_no','doc_type','div_code',
+        'company_code','sign_ind','inv_no','inv_date','due_date','chq_date','chq_bank','chq_no',
+        'inv_amt','indicator_origin','amount_origin','c_bal_amt_org','amount','lcur_amount',
+        'curr_code','ex_rate','c_curr_amt','ref_no'
+      ];
+      req.body.children.invoice = req.body.children.invoice.map((inv: any) => {
+        const out: any = {};
+        for (const k of allowedInvoiceFields) {
+          if (inv[k] !== undefined) out[k] = inv[k];
+        }
+        out.company_code = out.company_code ?? req.user.company_code;
+        if (out.doc_no == null) out.doc_no = '';
+        else if (typeof out.doc_no === 'number') out.doc_no = String(out.doc_no);
+        return out;
+      });
     }
     // Normalize children.job entries
     if (req.body.children && Array.isArray(req.body.children.job)) {
@@ -631,6 +960,7 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       req.body.detail = req.body.detail.map((d: any) => ({
         ...d,
         company_code: d.company_code ?? req.user.company_code,
+        doc_no: d.doc_no == null ? '' : (typeof d.doc_no === 'number' ? String(d.doc_no) : d.doc_no),
       }));
     }
     const { error } = chequePaymentSchema(req.body);
@@ -701,7 +1031,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     conn = await getConn(req);
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :pno, :ino, :inv_dt
+        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :pf, :pt, S:rn, :lu, :tcc, :tc, :pno, :ino, :inv_dt
       ); END;`,
       {
         cc: req.user.company_code,
@@ -714,9 +1044,13 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         rm: v.remarks ?? null,
         pa: v.party_address ?? null,
         pp: v.party_phone ?? null,
+        pf: v.party_fax,
+        pt: v.payment_terms,
         rn: v.ref_doc_no ?? null,
-        lu: req.user.loginid,
-        inv_dt: toDate(v.inv_date || v.doc_date),
+        lu: req.user.loginid, 
+        tcc: v.tx_cat_code,
+        tc: v.tx_compntcat_code_1,
+        inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
@@ -817,29 +1151,78 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     conn = await getConn(req);
 
+    // const result = await conn.execute(
+    //   `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:rd,:lu,:pa,:pn,:pp,:pf,:de,:di,:dm,:dc,:pt,:dtm,:cp,:rn,:ar,:tcc,:tc,:dn); END;`,
+    //   {
+    //     cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
+    //     dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
+    //     er: v.ex_rate, rm: v.remarks ?? null, rd: toDate(v.ref_date),
+    //     lu: req.user.loginid,
+    //     pa: v.party_address, pn: v.party_name, pp: v.party_phone, pf: v.party_fax,
+    //     de: v.dlvr_email, di: v.delivery_to, dm: v.dlvr_mobile, dc: v.dlvr_contact,
+    //     pt: v.payment_terms, dtm: v.dlvr_term, cp: v.credit_period, rn: v.ref_no,
+    //     ar: v.app_ref_no, tcc: v.tx_cat_code, tc: v.tx_compntcat_code_1 ?? null,
+    //     dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
+    //   }
+    // );
+
     const result = await conn.execute(
-      `BEGIN SP_CREATE_LPO_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,:dn); END;`,
-      {
-        cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
-        dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
-        er: v.ex_rate, rm: v.remarks ?? null,
-        lu: req.user.loginid,
-        dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
-      }
-    );
+  `BEGIN SP_CREATE_LPO_HEADER(
+    :cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,
+    :pa,:pn,:pp,:pf,:de,:di,:dm,:dc,
+    :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:dn
+  ); END;`,
+  {
+    cc: req.user.company_code,
+    dv: v.div_code,
+    dt: v.doc_type,
+    dd: toDate(v.doc_date),
+    ac: v.ac_code,
+    cu: v.curr_code,
+    er: v.ex_rate,
+    rm: v.remarks ?? null,
+    lu: req.user.loginid,  
+    pa: v.party_address,
+    pn: v.party_name,
+    pp: v.party_phone,
+    pf: v.party_fax,
+    de: v.dlvr_email,
+    di: v.delivery_to,
+    dm: v.dlvr_mobile,
+    dc: v.dlvr_contact,
+    pt: v.payment_terms,
+    dtm: v.dlvr_term,
+    cp: v.credit_period,
+    rn: v.ref_no,
+    rd: toDate(v.ref_date),   
+    ar: v.app_ref_no,
+    // pdo: v.pdo_type,          
+    tcc: v.tx_cat_code,
+    tc: v.tx_compntcat_code_1 ?? null,
+
+    dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
+  }
+);
+    console.log('SP_LPO_HEADER result:', result.outBinds);
 
     const doc_no = (result.outBinds as any).dn;
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la); END;`,
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
           sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
           am: d.amount, cu: d.curr_code, er: d.ex_rate,
           si: d.sign_ind, dv: d.div_code, la: d.lcur_amount,
+          qty: d.qty, pr: d.price, pc: d.prod_code,
+          or: d.other_remarks ?? null,
+          rm: d.remarks ?? null,
+          tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
+          tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
         }))
       );
+      console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
     }
 
     await conn.commit();
@@ -848,6 +1231,163 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
     if (conn) try { await conn.rollback(); } catch { }
     sendError(res, err);
   } finally { await closeConn(conn); }
+};
+
+export const updateLPODocument = async (req: RequestWithUser, res: Response) : Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+
+  try {
+    const { doc_no, doc_type } = req.body;
+
+    if (!doc_no || !doc_type) {
+      res.status(400).json({
+        success: false,
+        message: 'doc_no and doc_type are required'
+      });
+      return;
+    }
+
+    conn = await getConn(req);
+
+    // Fetch existing header (VERY IMPORTANT for partial update)
+    const existing = await conn.execute(
+      `SELECT * FROM TR_AC_LPO_HEADER
+       WHERE company_code = :cc
+         AND doc_no = :dn
+         AND doc_type = :dt`,
+      {
+        cc: req.user.company_code,
+        dn: doc_no,
+        dt: doc_type
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!existing.rows?.length) {
+      res.status(404).json({
+        success: false,
+        message: 'LPO not found'
+      });
+      return;
+    }
+
+    const old: any = existing.rows[0];
+
+    //  Merge payload + existing DB values
+    const h = {
+      doc_date: req.body.doc_date ?? old.DOC_DATE,
+      ac_code: req.body.ac_code ?? old.AC_CODE,
+      curr_code: req.body.curr_code ?? old.CURR_CODE,
+      ex_rate: req.body.ex_rate ?? old.EX_RATE ?? 1,
+      remarks: req.body.remarks ?? old.REMARKS,
+      party_name: req.body.party_name ?? old.PARTY_NAME,
+      party_address: req.body.party_address ?? old.PARTY_ADDRESS,
+      party_phone: req.body.party_phone ?? old.PARTY_PHONE,
+      party_fax: req.body.party_fax ?? old.PARTY_FAX,
+      ref_no: req.body.ref_no ?? old.REF_NO,
+      ref_date: req.body.ref_date ?? old.REF_DATE,
+      invoice_no: req.body.invoice_no ?? old.INVOICE_NUMBER,
+      invoice_date: req.body.invoice_date ?? old.INVOICE_DATE,
+      div_code: req.body.div_code ?? old.DIV_CODE,
+      qty: req.body.qty ?? old.QTY,
+      price: req.body.price ?? old.PRICE,
+      prod_code: req.body.prod_code ?? old.PROD_CODE,
+      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS
+    };
+
+    //  Call your SP safely
+    await conn.execute(
+      `BEGIN WMSTST.SP_UPDATE_LPO(
+        :cc, :dt, :dn,
+        :dd, :ac, :cu, :er,
+        :rm,
+        :pn, :pa, :pp, :pf,
+        :rn, :rd,
+        :ino, :idt,
+        :dv, :lu
+      ); END;`,
+      {
+        cc: req.user.company_code,
+        dt: doc_type,
+        dn: doc_no,
+        dd: toDate(h.doc_date),
+        ac: h.ac_code,
+        cu: h.curr_code,
+        er: h.ex_rate,
+        rm: h.remarks,
+        pn: h.party_name,
+        pa: h.party_address,
+        pp: h.party_phone,
+        pf: h.party_fax,
+        rn: h.ref_no,
+        rd: toDate(h.ref_date),
+        ino: h.invoice_no,
+        idt: toDate(h.invoice_date),
+        dv: h.div_code,
+        lu: req.user.loginid
+      }
+    );
+
+    // Delete + reinsert details (your existing logic is fine)
+    await conn.execute(
+      `DELETE FROM TR_AC_LPO_DETAIL
+       WHERE company_code = :cc
+         AND doc_no = :dn
+         AND doc_type = :dt`,
+      {
+        cc: req.user.company_code,
+        dn: doc_no,
+        dt: doc_type
+      }
+    );
+
+    if (req.body.detail?.length) {
+      await conn.executeMany(
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
+          :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
+          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm
+        ); END;`,
+        req.body.detail.map((d: any, i: number) => ({
+          cc: req.user.company_code,
+          dt: doc_type,
+          dn: doc_no,
+          sn: d.serial_no ?? (i + 1),
+          ac: d.ac_code,
+          hac: h.ac_code,
+          am: Number(d.amount || 0),
+          cu: d.curr_code ?? h.curr_code,
+          er: d.ex_rate ?? h.ex_rate ?? 1,
+          si: d.sign_ind ?? 1,
+          dv: d.div_code ?? h.div_code,
+          la: d.lcur_amount ?? (Number(d.amount || 0) * Number(h.ex_rate ?? 1)),
+          qty: Number(d.qty ?? 1),
+          pr: Number(d.price ?? 0),
+          pc: d.prod_code ?? null,
+          or: d.other_remarks ?? null,
+          rm: d.remarks ?? null,
+          tcc: d.tx_cat_code ?? null,
+          tc: d.tx_compntcat_code_1 ?? null,
+          tp: d.tx_compnt_perc_1 ?? null,
+          tm: d.tx_compnt_amt_1 ?? null
+        }))
+      );
+    }
+
+    await conn.commit();
+
+     res.json({
+      success: true,
+      message: 'LPO updated successfully',
+      data: { doc_no }
+    });
+
+
+  } catch (err: any) {
+    if (conn) await conn.rollback().catch(() => {});
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
 };
 
 // =============================================================================
@@ -994,7 +1534,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
     // Update header and delete existing child records
     await conn.execute(
       `BEGIN SP_UPDATE_PURCHASE_DOCUMENT(
-        :cc, :dn, :dt, :dv, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt
+        :cc, :dn, :dt, :dv, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn,:pf,:pt, :tcc, :tc, :lu, :inv_dt
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1009,6 +1549,10 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
         pa: h.party_address || null,
         pp: h.party_phone || null,
         rn: h.ref_doc_no || null,
+        pf: h.party_fax || null,
+        pt: h.payment_terms || null,
+        tcc: h.tx_cat_code || null,
+        tc: h.tx_compntcat_code_1 || null,
         lu: req.user.loginid,
         inv_dt: toDate(h.inv_date || h.doc_date),
       }
