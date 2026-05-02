@@ -24,6 +24,7 @@ import {
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
 } from "../services/ociUpload.service";
+import { BTdeleteEmployeeFiles, BTeditEmployeeFiles, BTgetEmployeeFiles } from "../BT_INDIA/controllers/Btfiles.controller";
 
 const router = express.Router();
 const upload = multer({
@@ -66,6 +67,7 @@ router.get(
   getEmployeeFiles 
 );
 
+
 router.put(
   "/editFiles",
   passport.authenticate("jwt", { session: false }),
@@ -107,6 +109,7 @@ router.put(
   checkUserAuthorization,
   editEmployeeFiles
 );
+
 
 router.post(
   "/upload",
@@ -166,6 +169,29 @@ router.delete(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   deleteEmployeeFiles
+);
+
+// BT employee files route
+
+router.get(
+  "/BTemployees/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  BTgetEmployeeFiles 
+);
+
+router.put(
+  "/BTeditEmployeeFile",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  BTeditEmployeeFiles
+);
+
+router.delete(
+  "/BTdeleteEmployeeFiles/:request_number(.+)/:sr_no",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  BTdeleteEmployeeFiles
 );
 
 export default router;
