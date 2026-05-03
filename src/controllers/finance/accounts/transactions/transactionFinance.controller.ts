@@ -1173,7 +1173,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
   `BEGIN SP_CREATE_LPO_HEADER(
     :cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,
     :pa,:pn,:pp,:pf,:de,:di,:dm,:dc,
-    :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:dn
+    :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:pdo,:dn
   ); END;`,
   {
     cc: req.user.company_code,
@@ -1198,10 +1198,10 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
     cp: v.credit_period,
     rn: v.ref_no,
     rd: toDate(v.ref_date),   
-    ar: v.app_ref_no,
-    // pdo: v.pdo_type,          
+    ar: v.app_ref_no,          
     tcc: v.tx_cat_code,
     tc: v.tx_compntcat_code_1 ?? null,
+    pdo: v.pdo_type,
 
     dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
   }
@@ -1212,7 +1212,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm); END;`,
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
           sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
@@ -1223,6 +1223,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
           tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
+          dd:  toDate(d.doc_date ?? v.doc_date), 
         }))
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
