@@ -1031,7 +1031,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     conn = await getConn(req);
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc, :pno, :ino 
+      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc,:te, :pno, :ino 
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1051,32 +1051,35 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         pt: v.payment_terms,
         tcc: v.tx_cat_code,
         tc: v.tx_compntcat_code_1,
+        te:v.tx_compnt_1_expmt,
         // inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
     );
 
-    
-
     const { pno: purchase_no, ino: invoice_no } = result.outBinds as any;
     // Detail rows SP
     await spInsertDetailRows(conn, req.user.company_code, v.doc_type, purchase_no, v.detail ?? [], req.user.loginid);
     if (v.detail?.length) {
+      // ✅ Use user-provided inv_no if present, else fallback to generated
+const userInvNo = v.inv_no?.trim() || null;
+
       await conn.executeMany(
-        `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
+        `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:id,:lu); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code,
           dt: v.doc_type,
           dn: purchase_no,
           sn: d.serial_no,
-          dd: toDate(v.inv_date || v.doc_date),
+          dd: toDate(v.doc_date ),
           ac: v.ac_code,
-          iv: invoice_no,
+          iv: userInvNo ?? invoice_no,
           am: d.amount,
           cu: d.curr_code,
           er: d.ex_rate ?? 1,
           dv: d.div_code,
+          id: toDate(v.inv_date),
           lu: req.user.loginid,
         }))
       );
@@ -1617,7 +1620,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
 
     // Insert invoice child rows
     await conn.executeMany(
-      `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
+      `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:inv_dt,:lu); END;`,
       cleanDetail.map((d: any) => ({
         cc: req.user.company_code,
         dt: h.doc_type,
@@ -1630,6 +1633,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
         cu: d.curr_code,
         er: d.ex_rate,
         dv: d.div_code,
+        inv_dt: toDate(h.inv_date), 
         lu: req.user.loginid,
       }))
     );

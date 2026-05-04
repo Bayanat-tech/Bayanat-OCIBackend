@@ -416,7 +416,7 @@ export const purchaseSchema = (
     qty: Joi.number().default(1), // Quantity (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
     party_address: Joi.string().optional().allow("", null),
-    party_phone: Joi.number().optional().allow("", null),
+    party_phone: Joi.string().optional().allow("", null),
     party_fax: Joi.string().optional().allow("", null),
     ref_doc_no: Joi.string(),
     payment_terms: Joi.string().optional().allow("", null),
@@ -743,10 +743,10 @@ export const salesSchema = (
     curr_code: Joi.string().required(), // Currency code (required)
     salesman_code: Joi.string().optional(),
     sector_code: Joi.string().optional().allow("", null),
-    address: Joi.string(),
-    phone: Joi.number().optional(),
+    address: Joi.string().optional().allow("", null),
+    phone: Joi.string().optional().allow("", null),
     party_address: Joi.string().optional().allow("", null),
-    party_phone: Joi.number().optional().allow("", null),
+    party_phone: Joi.string().optional().allow("", null),
     party_fax: Joi.string().optional().allow("", null),
     ref_doc: Joi.string(),
     payment_terms: Joi.string().optional().allow("", null),
