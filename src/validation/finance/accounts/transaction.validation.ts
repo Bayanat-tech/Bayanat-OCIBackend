@@ -748,8 +748,14 @@ export const salesSchema = (
     party_address: Joi.string().optional().allow("", null),
     party_phone: Joi.string().optional().allow("", null),
     party_fax: Joi.string().optional().allow("", null),
-    ref_doc: Joi.string(),
+    dlvr_email: Joi.string().email().optional().allow("", null),
+    dlvr_contact: Joi.string().optional().allow("", null),
+    dlvr_mobile: Joi.string().optional().allow("", null),
+    ref_doc_no: Joi.string(),
+    ref_no: Joi.string().optional().allow("", null),
     payment_terms: Joi.string().optional().allow("", null),
+    tx_compnt_1_expmt: Joi.string().optional().allow("", null),
+    tax_type: Joi.string().optional().allow("", null),
     tx_cat_code: Joi.string().optional().allow("", null), 
     tx_compntcat_code_1: Joi.string().optional().allow("", null),
     tx_compnt_perc_1: Joi.number().optional().allow("", null),
@@ -764,7 +770,7 @@ export const salesSchema = (
       }),
     tax_categoty: Joi.number().optional(),
     tax_code: Joi.number().optional().allow("", null),
-    tax_type: Joi.string().optional().allow("", null),
+    // tax_type: Joi.string().optional().allow("", null),
     ac_payee: Joi.string().when("doc_type", { // Account payee (conditional)
       is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, // If document type is cheque payment
       then: Joi.allow("", null), // Then account payee is optional

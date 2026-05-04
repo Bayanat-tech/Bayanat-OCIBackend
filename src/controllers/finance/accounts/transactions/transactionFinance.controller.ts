@@ -1111,12 +1111,18 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
     conn = await getConn(req);
 
     const result = await conn.execute(
-      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:inv_dt,:sno,:ino); END;`,
+      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:pa,:pp,:rn,:pf,:pt,:tcc,:tc,:te,:inv_dt,:sno,:ino); END;`,
       {
         cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
         dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
         er: v.ex_rate, rm: v.remarks ?? null,
         sc: v.salesman_code ?? null, se: v.sector_code ?? null,
+        pa:v.party_address ,pp: v.party_phone, rn: v.ref_no,
+        pf: v.party_fax,
+        pt: v.payment_terms,
+        tcc: v.tx_cat_code,
+        tc: v.tx_compntcat_code_1,
+        te:v.tx_compnt_1_expmt,
         lu: req.user.loginid,
         inv_dt: toDate(v.inv_date || v.doc_date),
         sno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
