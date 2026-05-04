@@ -1035,7 +1035,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     conn = await getConn(req);
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc,:te, :pno, :ino 
+      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc,:te,:ref, :pno, :ino 
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1056,6 +1056,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         tcc: v.tx_cat_code,
         tc: v.tx_compntcat_code_1,
         te:v.tx_compnt_1_expmt,
+        ref: v.ref_no,
         // inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
