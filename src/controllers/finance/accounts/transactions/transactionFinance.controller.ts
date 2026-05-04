@@ -1232,7 +1232,9 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
           tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
-          dd:  toDate(d.doc_date ?? v.doc_date), 
+          // dd:  toDate(v.doc_date), 
+          // dd: (d.doc_date ?? v.doc_date)?.toString().slice(0, 10),
+          dd: new Date(d.doc_date ?? v.doc_date).toISOString().slice(0, 10),
         }))
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
@@ -1358,7 +1360,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
       await conn.executeMany(
         `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
           :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm
+          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
         ); END;`,
         req.body.detail.map((d: any, i: number) => ({
           cc: req.user.company_code,
@@ -1381,7 +1383,9 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
           tcc: d.tx_cat_code ?? null,
           tc: d.tx_compntcat_code_1 ?? null,
           tp: d.tx_compnt_perc_1 ?? null,
-          tm: d.tx_compnt_amt_1 ?? null
+          tm: d.tx_compnt_amt_1 ?? null,
+          // dd: (d.doc_date ?? h.doc_date)?.toString().slice(0, 10),
+          dd: new Date(d.doc_date ?? h.doc_date).toISOString().slice(0, 10),
         }))
       );
     }
