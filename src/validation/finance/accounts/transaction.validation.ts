@@ -59,6 +59,7 @@ export const chequePaymentSchema = (
     ac_payee: Joi.string().when("doc_type", {
       is: Joi.valid(
         constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
+        constants.TRANSACTION_DOCUMENT_TYPE.CREDIT_NOTE,
         constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
       ),
       then: Joi.allow("", null),
