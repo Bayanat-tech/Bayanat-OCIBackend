@@ -5,6 +5,7 @@ import { deleteHrMaster, getHrMaster } from "../controllers/hr.controller";
 import hrGmRoutes from "./HR/gmHr.routes";
 import employeeHrRoutes from "./HR/employeHr.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
+import { BT_getHrMaster } from "../BT_INDIA/controllers/BT_hr.controller";
 
 // Initialize the Express router
 const router = express.Router();
@@ -20,6 +21,13 @@ router.get(
   checkUserAuthorization,
   // Call the getHrMaster controller function to handle the request
   getHrMaster
+);
+
+router.get(
+  "/bt/:masters",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  BT_getHrMaster
 );
 
 // Define a route for GM HR-related endpoints

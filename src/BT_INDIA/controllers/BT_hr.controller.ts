@@ -1,35 +1,35 @@
 // Import necessary modules and interfaces
 import { Response } from "express";
-import constants from "../helpers/constants";
-import { ISearch, RequestWithUser } from "../interfaces/common.interface";
-import { IUser } from "../interfaces/user.interface";
+import constants from "../../helpers/constants";
+import { ISearch, RequestWithUser } from "../../interfaces/common.interface";
+import { IUser } from "../../interfaces/user.interface";
 
 // Import HR-related interfaces
-import { IHrBank } from "../interfaces/Hr/hr_bank";
+import { IHrBank } from "../../interfaces/Hr/hr_bank";
 
 
 import { In, FindOptionsWhere, FindManyOptions } from "typeorm";
 
 // Import models
-import { getSearchFilterQuery } from "../helpers/functions";
-import { HrAirport } from "../models/Hr/hr_airport";
-import { HrBank } from "../models/Hr/hr_bank";
-import { Categorymaster } from "../models/Hr/hr_category";
-import { HrContract } from "../models/Hr/hr_contract";
-import { HrDepartment } from "../models/Hr/hr_department";
-import { HrDesignation } from "../models/Hr/hr_designation";
-import { HrDivision } from "../models/Hr/hr_division";
-import { HrEmpStatus } from "../models/Hr/hr_employee_status";
-import { HrGrade } from "../models/Hr/hr_grade";
-import { KpiNamemaster } from "../models/Hr/hr_kpiname";
-import { HrLabourDesignation } from "../models/Hr/hr_labour_designation";
-import { Leavetype } from "../models/Hr/hr_leavetype";
-import { OperationMaster } from "../models/Hr/hr_operation";
-import { HrPaycomponent } from "../models/Hr/hr_paycomponents";
-import { HrSection } from "../models/Hr/hr_section";
-import { HrSponsor } from "../models/Hr/hr_sponsor";
-import { HrViewEmp } from "../views/hr/hr_view_employee";
-import { oracleDb, TypeORMService } from "../database/connection";
+import { getSearchFilterQuery } from "../../helpers/functions";
+import { HrAirport } from "../../models/Hr/hr_airport";
+import { HrBank } from "../../models/Hr/hr_bank";
+import { Categorymaster } from "../../models/Hr/hr_category";
+import { HrContract } from "../../models/Hr/hr_contract";
+import { HrDepartment } from "../../models/Hr/hr_department";
+import { HrDesignation } from "../../models/Hr/hr_designation";
+import { HrDivision } from "../../models/Hr/hr_division";
+import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
+import { HrGrade } from "../../models/Hr/hr_grade";
+import { KpiNamemaster } from "../../models/Hr/hr_kpiname";
+import { HrLabourDesignation } from "../../models/Hr/hr_labour_designation";
+import { Leavetype } from "../../models/Hr/hr_leavetype";
+import { OperationMaster } from "../../models/Hr/hr_operation";
+import { HrPaycomponent } from "../../models/Hr/hr_paycomponents";
+import { HrSection } from "../../models/Hr/hr_section";
+import { HrSponsor } from "../../models/Hr/hr_sponsor";
+import { HrViewEmp } from "../../views/hr/hr_view_employee";
+import { oracleDb, TypeORMService } from "../../database/connection";
 
 async function queryEntityWithFilters(
   entityClass: any,
@@ -66,12 +66,11 @@ async function queryEntityWithFilters(
 }
 
 
-export const getHrMaster = async (
+export const BT_getHrMaster = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   //---------------- Get Data based on master name -------------
-  console.log(':masters route','Hit router for masters');
 
   try {
     // Extract parameters from the request
@@ -89,7 +88,7 @@ export const getHrMaster = async (
       : {}; // Default to an empty object if no filter is provided
     switch (masters) {
       // employeemaster case
-      case "employeemaster": {
+      case "BT_employeemaster": {
         const result = await queryEntityWithFilters(
           HrViewEmp,
           requestUser.company_code,
@@ -100,11 +99,11 @@ export const getHrMaster = async (
         totalCount = result.count;
         break;
       }
-      case "Pg_Leave_flow":
-      case "Pg_leave_flow_Rejected":
-      case "Pg_leave_flow_close":
-      case "Pg_leave_flow_cancel":
-      case "Pg_leave_flow_InProgress": {
+      case "BT_Pg_Leave_flow":
+      case "BT_Pg_leave_flow_Rejected":
+      case "BT_Pg_leave_flow_close":
+      case "BT_Pg_leave_flow_cancel":
+      case "BT_Pg_leave_flow_InProgress": {
 
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
@@ -130,7 +129,7 @@ export const getHrMaster = async (
 
 
         switch (masters) {
-          case "Pg_Leave_flow":
+          case "BT_Pg_Leave_flow":
 
             whereConditions = `
     company_code = :company_code
@@ -155,7 +154,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
                       AND LAST_ACTION <> 'CANCEL'
                       `;*/
             break;
-          case "Pg_leave_flow_Rejected":
+          case "BT_Pg_leave_flow_Rejected":
               whereConditions = `
   company_code = :company_code
   AND LAST_ACTION = 'REJECTED'
@@ -167,7 +166,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
   )`;
 
             break;
-          case "Pg_leave_flow_close":
+          case "BT_Pg_leave_flow_close":
            whereConditions = `
   company_code = :company_code
   AND FINAL_APPROVED = 'YES'
@@ -179,7 +178,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
   )`;
 
             break;
-          case "Pg_leave_flow_cancel":
+          case "BT_Pg_leave_flow_cancel":
               whereConditions = `
   company_code = :company_code
   AND LAST_ACTION = 'CANCEL'
@@ -188,8 +187,8 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         )
 `;
             break;
-         case "Pg_leave_flow_InProgress":
-          console.log('Pg_leave_flow_InProgress','Hit router for Pg_leave_flow_InProgress');
+         case "BT_Pg_leave_flow_InProgress":
+            console.log('BT_Pg_leave_flow_InProgress','Hit router for BT_Pg_leave_flow_InProgress');
     whereConditions = `
         company_code = :company_code
         AND LAST_ACTION <> 'REJECTED'
@@ -197,7 +196,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         AND LAST_ACTION <> 'CANCEL'
         AND NEXT_ACTION_BY NOT IN (
             SELECT EMPLOYEE_ID 
-            FROM VW_HR_EMPLOYEE_AWARE 
+            FROM VW_HR_EMPLOYEE 
             WHERE EMPLOYEE_ID = :loginid
         )
         AND (
@@ -267,7 +266,7 @@ console.log('fetchQuery',fetchQuery);
         return;
       }
 
-      case "Leaveflow_request": {
+      case "BT_Leaveflow_request": {
         const request_number = req.query.code as string;
 
         const whereConditions = `company_code = :company_code ${request_number ? 'AND request_number = :request_number' : ''}`;
@@ -316,7 +315,7 @@ console.log('fetchQuery',fetchQuery);
         break;
 
       // hrDepartment case
-      case "hrDepartment": {
+      case "BT_hrDepartment": {
         const result = await queryEntityWithFilters(
           HrDepartment,
           requestUser.company_code,
@@ -329,7 +328,7 @@ console.log('fetchQuery',fetchQuery);
       }
 
       // hrSection case
-      case "hrSection": {
+      case "BT_hrSection": {
         const result = await queryEntityWithFilters(
           HrSection,
           requestUser.company_code,
@@ -342,7 +341,7 @@ console.log('fetchQuery',fetchQuery);
       }
 
       // grademaster case
-      case "grademaster": {
+      case "BT_grademaster": {
         const result = await queryEntityWithFilters(
           HrGrade,
           requestUser.company_code,
@@ -355,7 +354,7 @@ console.log('fetchQuery',fetchQuery);
       }
 
       // designation case
-      case "designation": {
+      case "BT_designation": {
         const result = await queryEntityWithFilters(
           HrDesignation,
           requestUser.company_code,
@@ -366,7 +365,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "formaldesignation": {
+      case "BT_formaldesignation": {
         const result = await queryEntityWithFilters(
           HrLabourDesignation,
           requestUser.company_code,
@@ -377,7 +376,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "categorymaster": {
+      case "BT_categorymaster": {
         const result = await queryEntityWithFilters(
           Categorymaster,
           requestUser.company_code,
@@ -388,7 +387,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "section": {
+      case "BT_section": {
         const result = await queryEntityWithFilters(
           HrSection,
           requestUser.company_code,
@@ -399,7 +398,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "kpiname": {
+      case "BT_kpiname": {
         const result = await queryEntityWithFilters(
           KpiNamemaster,
           requestUser.company_code,
@@ -410,7 +409,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "kpioperation": {
+      case "BT_kpioperation": {
         const result = await queryEntityWithFilters(
           OperationMaster,
           requestUser.company_code,
@@ -421,7 +420,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "hrAirport": {
+      case "BT_hrAirport": {
         const result = await queryEntityWithFilters(
           HrAirport,
           requestUser.company_code,
@@ -432,7 +431,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "hrEmployeeStatus": {
+      case "BT_hrEmployeeStatus": {
         const result = await queryEntityWithFilters(
           HrEmpStatus,
           requestUser.company_code,
@@ -444,7 +443,7 @@ console.log('fetchQuery',fetchQuery);
         break;
       }
 
-      case "hrBank": {
+      case "BT_hrBank": {
         const result = await queryEntityWithFilters(
           HrBank,
           requestUser.company_code,
@@ -455,7 +454,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "hrDivision": {
+      case "BT_hrDivision": {
         const result = await queryEntityWithFilters(
           HrDivision,
           requestUser.company_code,
@@ -466,7 +465,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "leavetype": {
+      case "BT_leavetype": {
         const result = await queryEntityWithFilters(
           Leavetype,
           requestUser.company_code,
@@ -477,7 +476,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "paycomponent": {
+      case "BT_paycomponent": {
         const result = await queryEntityWithFilters(
           HrPaycomponent,
           requestUser.company_code,
@@ -488,7 +487,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "hrSponsor": {
+      case "BT_hrSponsor": {
         const result = await queryEntityWithFilters(
           HrSponsor,
           requestUser.company_code,
@@ -499,7 +498,7 @@ console.log('fetchQuery',fetchQuery);
         totalCount = result.count;
         break;
       }
-      case "hrContract": {
+      case "BT_hrContract": {
         const result = await queryEntityWithFilters(
           HrContract,
           requestUser.company_code,
@@ -512,7 +511,7 @@ console.log('fetchQuery',fetchQuery);
       }
 
       // bank case
-      case "bank": {
+      case "BT_bank": {
         // Get TypeORM repository
         const bankRepo = TypeORMService.getRepository(HrBank);
 
@@ -558,7 +557,7 @@ console.log('fetchQuery',fetchQuery);
 
 
 // Delete master data with optional pagination based on the `master` type.
-export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
+export const BT_deleteHrMaster = async (req: RequestWithUser, res: Response) => {
 
 
   try {

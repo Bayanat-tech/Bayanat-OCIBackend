@@ -1,26 +1,26 @@
-import axios from "axios";
-import https from "https";
+// import axios from "axios";
+// import https from "https";
 import * as oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
 import { LeaveRequestFlow } from "../../interfaces/leaveRequestFlow.interface";
 import { notifyUser } from "../../helpers/functions";
 
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+// const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-const API_BASE_URL = process.env.NET_API_BASE_URL?.trim();
-const API_KEY = process.env.NET_API_KEY?.trim();
+// const API_BASE_URL = process.env.NET_API_BASE_URL?.trim();
+// const API_KEY = process.env.NET_API_KEY?.trim();
 
-const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  httpsAgent,
-  headers: {
-    XApiKey: API_KEY,
-    "Content-Type": "application/json",
-    accept: "*/*",
-  },
-  timeout: 30000,
-  validateStatus: (status) => status < 500,
-});
+// const axiosInstance = axios.create({
+//   baseURL: API_BASE_URL,
+//   httpsAgent,
+//   headers: {
+//     XApiKey: API_KEY,
+//     "Content-Type": "application/json",
+//     accept: "*/*",
+//   },
+//   timeout: 30000,
+//   validateStatus: (status) => status < 500,
+// });
 
 // Add helper function for date handling
 function formatDate(date: Date | string | null | undefined): string | null {
@@ -90,15 +90,16 @@ getEmployeesUnder: async (supervisor_empid: string) => {
 },
 
 
-  getLeaveBalance: async (employeeId: string) => {
-    const response = await axiosInstance.get(
-      `/api/EmployeeLeave/leavebalance/${employeeId}`
-    );
-    return response.data;
-  },
+  // getLeaveBalance: async (employeeId: string) => {
+  //   const response = await axiosInstance.get(
+  //     `/api/EmployeeLeave/leavebalance/${employeeId}`
+  //   );
+  //   return response.data;
+  // },
 
 
   BTgetLeaveEntitle: async (employeeId: string) => {
+    console.log('leave register hit')
   try {
     const query = `
       SELECT * 
@@ -127,23 +128,23 @@ getEmployeesUnder: async (supervisor_empid: string) => {
 
 
 
-  getLeaveHistory: async (params: {
-    employeeId?: string;
-    leaveType?: string;
-    leaveStartDateFrom?: string;
-    leaveStartDateTo?: string;
-    leaveEndDateFrom?: string;
-    leaveEndDateTo?: string;
-    orderBy?: string;
-  }) => {
-    const response = await axiosInstance.get(
-      "/api/EmployeeLeave/leavehistory",
-      {
-        params,
-      }
-    );
-    return response.data;
-  },
+  // getLeaveHistory: async (params: {
+  //   employeeId?: string;
+  //   leaveType?: string;
+  //   leaveStartDateFrom?: string;
+  //   leaveStartDateTo?: string;
+  //   leaveEndDateFrom?: string;
+  //   leaveEndDateTo?: string;
+  //   orderBy?: string;
+  // }) => {
+  //   const response = await axiosInstance.get(
+  //     "/api/EmployeeLeave/leavehistory",
+  //     {
+  //       params,
+  //     }
+  //   );
+  //   return response.data;
+  // },
 
 
 
@@ -203,7 +204,7 @@ newValidaterequest: async(params: {
 async function getLeaveBalances(employeeId: string, leaveType: string) {
   const balanceQuery = `
     SELECT NO_OF_LEAVES_AVAILABLE 
-    FROM VW_HR_LEAVE_YEARLY_BALANCE_AWARE 
+    FROM VW_HR_LEAVE_YEARLY_BALANCE 
     WHERE EMPLOYEE_ID = :employeeId 
     AND LEAVE_TYPE = :leaveType
   `;
@@ -356,218 +357,218 @@ try {
 },
 
 
-  insertLeaveRequest: async (request: LeaveRequestFlow) => {
-    try {
-      const formattedRequest = {
-        RequestNumber: request.requestNumber || "",
-        CurrentStep: request.currentStep || "",
-        CompanyCode: request.companyCode || "",
-        EmployeeCode: request.employeeCode || "",
-        LeaveRequestDate: formatDateTime(request.leaveRequestDate),
-        TravelDate: formatDateTime(request.travelDate),
-        LeaveType: request.leaveType || "",
-        LeaveStartDate: formatDateTime(request.leaveStartDate),
-        LeaveEndDate: formatDateTime(request.leaveEndDate),
-        LeaveDays: Number(request.leaveDays) || 0,
-        LeaveReason: request.leaveReason || "",
-        DaysAdjusted: Number(request.daysAdjusted) || 0,
-        HalfDay: request.halfDay || "",
-        AirTicket: request.airTicket || "",
-        AirTicketSelf: request.airTicketSelf || "",
-        AirTicketWife: request.airTicketWife || "",
-        AirTicketChildren: Number(request.airTicketChildren) || 0,
-        RequestDate: formatDateTime(request.requestDate),
-        FlowCode: request.flowCode || "",
-        FlowLevelInitial: Number(request.flowLevelInitial) || 0,
-        FlowLevelRunning: Number(request.flowLevelRunning) || 0,
-        FlowLevelFinal: Number(request.flowLevelFinal) || 0,
-        FaUploaded: request.faUploaded || "",
-        FinalApproved: request.finalApproved === "YES" ? "YES" : "NO",
-        CreateUser: request.createUser || "",
-        CreateDate: formatDateTime(request.createDate),
-        LastUpdated: request.lastUpdated || "",
-        LastAction: request.lastAction || "",
-        HistorySerial: Number(request.historySerial) || 0,
-        CancelFlag: request.cancelFlag || "",
-        CancelUser: request.cancelUser || "",
-        CancelDate: formatDateTime(request.cancelDate),
-        CancelRemark: request.cancelRemark || "",
-        RemarksHistry: request.remarksHistry || "",
-        Remarks: request.remarks || "",
-        Description: request.description || "",
-        Comments: request.comments || "",
-        MobileAppUpdate: request.mobileAppUpdate || "N",
-        UpdatedAt: formatDateTime(request.updatedAt),
-        UpdatedBy: request.updatedBy || "",
-        CreatedBy: request.createdBy || "",
-        CreatedAt: formatDateTime(request.createdAt),
-        Hod: request.hod || "",
-        DeptHead: request.deptHead || "",
-        ImmediateSupervisor: request.immediateSupervisor || "",
-        LogNumber: Number(request.logNumber) || 0,
-        NextActionBy: request.nextActionBy || "",
-        LeaveAllowance: request.leaveAllowance || "",
-        AdvPayment: request.advPayment || "",
-        CauseType: request.causeType || "",
-        NameOfReplacement: request.nameOfReplacement || "",
-        ContactDetailsDuringLeave: request.contactDetailsDuringLeave || "",
-        DutyResumeDate: formatDateTime(request.dutyResumeDate),
-        ActualResumeDate: formatDateTime(request.actualResumeDate),
-        EmployeeName: request.employeeName || "",
-      };
+  // insertLeaveRequest: async (request: LeaveRequestFlow) => {
+  //   try {
+  //     const formattedRequest = {
+  //       RequestNumber: request.requestNumber || "",
+  //       CurrentStep: request.currentStep || "",
+  //       CompanyCode: request.companyCode || "",
+  //       EmployeeCode: request.employeeCode || "",
+  //       LeaveRequestDate: formatDateTime(request.leaveRequestDate),
+  //       TravelDate: formatDateTime(request.travelDate),
+  //       LeaveType: request.leaveType || "",
+  //       LeaveStartDate: formatDateTime(request.leaveStartDate),
+  //       LeaveEndDate: formatDateTime(request.leaveEndDate),
+  //       LeaveDays: Number(request.leaveDays) || 0,
+  //       LeaveReason: request.leaveReason || "",
+  //       DaysAdjusted: Number(request.daysAdjusted) || 0,
+  //       HalfDay: request.halfDay || "",
+  //       AirTicket: request.airTicket || "",
+  //       AirTicketSelf: request.airTicketSelf || "",
+  //       AirTicketWife: request.airTicketWife || "",
+  //       AirTicketChildren: Number(request.airTicketChildren) || 0,
+  //       RequestDate: formatDateTime(request.requestDate),
+  //       FlowCode: request.flowCode || "",
+  //       FlowLevelInitial: Number(request.flowLevelInitial) || 0,
+  //       FlowLevelRunning: Number(request.flowLevelRunning) || 0,
+  //       FlowLevelFinal: Number(request.flowLevelFinal) || 0,
+  //       FaUploaded: request.faUploaded || "",
+  //       FinalApproved: request.finalApproved === "YES" ? "YES" : "NO",
+  //       CreateUser: request.createUser || "",
+  //       CreateDate: formatDateTime(request.createDate),
+  //       LastUpdated: request.lastUpdated || "",
+  //       LastAction: request.lastAction || "",
+  //       HistorySerial: Number(request.historySerial) || 0,
+  //       CancelFlag: request.cancelFlag || "",
+  //       CancelUser: request.cancelUser || "",
+  //       CancelDate: formatDateTime(request.cancelDate),
+  //       CancelRemark: request.cancelRemark || "",
+  //       RemarksHistry: request.remarksHistry || "",
+  //       Remarks: request.remarks || "",
+  //       Description: request.description || "",
+  //       Comments: request.comments || "",
+  //       MobileAppUpdate: request.mobileAppUpdate || "N",
+  //       UpdatedAt: formatDateTime(request.updatedAt),
+  //       UpdatedBy: request.updatedBy || "",
+  //       CreatedBy: request.createdBy || "",
+  //       CreatedAt: formatDateTime(request.createdAt),
+  //       Hod: request.hod || "",
+  //       DeptHead: request.deptHead || "",
+  //       ImmediateSupervisor: request.immediateSupervisor || "",
+  //       LogNumber: Number(request.logNumber) || 0,
+  //       NextActionBy: request.nextActionBy || "",
+  //       LeaveAllowance: request.leaveAllowance || "",
+  //       AdvPayment: request.advPayment || "",
+  //       CauseType: request.causeType || "",
+  //       NameOfReplacement: request.nameOfReplacement || "",
+  //       ContactDetailsDuringLeave: request.contactDetailsDuringLeave || "",
+  //       DutyResumeDate: formatDateTime(request.dutyResumeDate),
+  //       ActualResumeDate: formatDateTime(request.actualResumeDate),
+  //       EmployeeName: request.employeeName || "",
+  //     };
 
-      console.log(
-        "Formatted request:",
-        JSON.stringify(formattedRequest, null, 2)
-      );
+  //     console.log(
+  //       "Formatted request:",
+  //       JSON.stringify(formattedRequest, null, 2)
+  //     );
 
-      if(request.finalApproved === "YES"){
-        const response = await axiosInstance.post(
-          "/api/EmployeeLeave/insertLeaveRequest",
-          formattedRequest
-        );
+  //     if(request.finalApproved === "YES"){
+  //       const response = await axiosInstance.post(
+  //         "/api/EmployeeLeave/insertLeaveRequest",
+  //         formattedRequest
+  //       );
    
 
-      console.log("API Response:", {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data,
-      });
+  //     console.log("API Response:", {
+  //       status: response.status,
+  //       statusText: response.statusText,
+  //       data: response.data,
+  //     });
 
-      if (response.status >= 400) {
-        throw new Error(
-          `API Error: ${response.status} ${
-            response.statusText
-          }\nDetails: ${JSON.stringify(response.data)}`
-        );
-      }
+  //     if (response.status >= 400) {
+  //       throw new Error(
+  //         `API Error: ${response.status} ${
+  //           response.statusText
+  //         }\nDetails: ${JSON.stringify(response.data)}`
+  //       );
+  //     }
       
 
-      return response.data;
-         }else{
-          return ;
-         }
-    } catch (error: any) {
-      console.error("Error in insertLeaveRequest:", {
-        message: error.message,
-        response: error.response?.data,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          headers: error.config?.headers,
-        },
-      });
-      throw error;
-    }
-  },
-  updateLeaveResume: async (request: LeaveResumeDatesUpdate): Promise<any> => {
-    try {
-      // Transform to match .NET API expectations
-      const payload = {
-        RequestNumber: request.requestNumber,
-        DutyResumeDate: request.dutyResumeDate,
-        ActualResumeDate: request.actualResumeDate,
-      };
+  //     return response.data;
+  //        }else{
+  //         return ;
+  //        }
+  //   } catch (error: any) {
+  //     console.error("Error in insertLeaveRequest:", {
+  //       message: error.message,
+  //       response: error.response?.data,
+  //       config: {
+  //         url: error.config?.url,
+  //         method: error.config?.method,
+  //         headers: error.config?.headers,
+  //       },
+  //     });
+  //     throw error;
+  //   }
+  // },
+  // updateLeaveResume: async (request: LeaveResumeDatesUpdate): Promise<any> => {
+  //   try {
+  //     // Transform to match .NET API expectations
+  //     const payload = {
+  //       RequestNumber: request.requestNumber,
+  //       DutyResumeDate: request.dutyResumeDate,
+  //       ActualResumeDate: request.actualResumeDate,
+  //     };
 
-      const response = await axiosInstance.patch(
-        "/api/EmployeeLeave/updateResumeDates",
-        payload
-      );
-      return response.data;
-    } catch (error: any) {
-      // Detailed logging
-      console.error("Error in updateLeaveResume:", {
-        message: error.message,
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-        requestConfig: error.config ? { url: error.config.url, method: error.config.method } : undefined,
-        payload: request,
-      });
+  //     const response = await axiosInstance.patch(
+  //       "/api/EmployeeLeave/updateResumeDates",
+  //       payload
+  //     );
+  //     return response.data;
+  //   } catch (error: any) {
+  //     // Detailed logging
+  //     console.error("Error in updateLeaveResume:", {
+  //       message: error.message,
+  //       responseStatus: error.response?.status,
+  //       responseData: error.response?.data,
+  //       requestConfig: error.config ? { url: error.config.url, method: error.config.method } : undefined,
+  //       payload: request,
+  //     });
 
-      // Build notification payload similar to other failures
-      const apiError = error?.response?.data ?? error;
-      const apiMessage =
-        (apiError && (apiError.message || apiError.error)) ||
-        error?.message ||
-        String(error);
+  //     // Build notification payload similar to other failures
+  //     const apiError = error?.response?.data ?? error;
+  //     const apiMessage =
+  //       (apiError && (apiError.message || apiError.error)) ||
+  //       error?.message ||
+  //       String(error);
 
-      const detailedErrorText =
-        typeof apiError === "string" ? apiError : JSON.stringify(apiError, null, 2);
+  //     const detailedErrorText =
+  //       typeof apiError === "string" ? apiError : JSON.stringify(apiError, null, 2);
 
-      const notifPayload = {
-        event: "HR_API_ERROR",
-        message: `Failed to call updateResumeDates for RequestNumber: ${request.requestNumber}\nError: ${apiMessage}`,
-        subject: "HR API updateResumeDates Failed",
-        request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,arun.colaco@bayanattechnology.com",
-        cc: "prem@bayanattechnology.com",
-        htmlMessage: `
-          <h3>HR API updateResumeDates Failed</h3>
-          <p><strong>Request Number:</strong> ${request.requestNumber}</p>
-          <p><strong>Error Message:</strong> ${apiMessage}</p>
-          <h4>API Response / Details</h4>
-          <pre>${detailedErrorText}</pre>
-          <h4>Payload Sent</h4>
-          <pre>${JSON.stringify(request, null, 2)}</pre>
-        `,
-      };
+  //     const notifPayload = {
+  //       event: "HR_API_ERROR",
+  //       message: `Failed to call updateResumeDates for RequestNumber: ${request.requestNumber}\nError: ${apiMessage}`,
+  //       subject: "HR API updateResumeDates Failed",
+  //       request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,arun.colaco@bayanattechnology.com",
+  //       cc: "prem@bayanattechnology.com",
+  //       htmlMessage: `
+  //         <h3>HR API updateResumeDates Failed</h3>
+  //         <p><strong>Request Number:</strong> ${request.requestNumber}</p>
+  //         <p><strong>Error Message:</strong> ${apiMessage}</p>
+  //         <h4>API Response / Details</h4>
+  //         <pre>${detailedErrorText}</pre>
+  //         <h4>Payload Sent</h4>
+  //         <pre>${JSON.stringify(request, null, 2)}</pre>
+  //       `,
+  //     };
 
-      try {
-        await notifyUser(notifPayload);
-        console.log("notifyUser sent for updateLeaveResume failure");
-      } catch (notifErr) {
-        console.error("notifyUser failed for updateLeaveResume:", notifErr);
-      }
+  //     try {
+  //       await notifyUser(notifPayload);
+  //       console.log("notifyUser sent for updateLeaveResume failure");
+  //     } catch (notifErr) {
+  //       console.error("notifyUser failed for updateLeaveResume:", notifErr);
+  //     }
 
-      // rethrow so callers remain aware of the failure
-      throw error;
-    }
-  },
-  getLeaveRequestsWithErpDoc: async (employeeCode: string) => {
-    const response = await axiosInstance.get(
-      `/api/EmployeeLeave/GET_LEAVE_REQUESTS_WITH_ERP_DOC`,
-      {
-        params: { employee_code: employeeCode },
-      }
-    );
-    return response.data;
-  },
+  //     // rethrow so callers remain aware of the failure
+  //     throw error;
+  //   }
+  // },
+  // getLeaveRequestsWithErpDoc: async (employeeCode: string) => {
+  //   const response = await axiosInstance.get(
+  //     `/api/EmployeeLeave/GET_LEAVE_REQUESTS_WITH_ERP_DOC`,
+  //     {
+  //       params: { employee_code: employeeCode },
+  //     }
+  //   );
+  //   return response.data;
+  // },
 
-  insertUploadedFileEmployee: async (data: Record<string, any>) => {
-    try {
-      // Log the payload being sent
-      console.log("Sending File Data Payload:", data);
+  // insertUploadedFileEmployee: async (data: Record<string, any>) => {
+  //   try {
+  //     // Log the payload being sent
+  //     console.log("Sending File Data Payload:", data);
 
-      // Call the .NET API
-      const response = await axiosInstance.post(
-        "/api/EmployeeLeave/INSERT_UPLOADED_FILE",
-        data
-      );
+  //     // Call the .NET API
+  //     const response = await axiosInstance.post(
+  //       "/api/EmployeeLeave/INSERT_UPLOADED_FILE",
+  //       data
+  //     );
 
-      // Log the response for debugging
-      console.log("Response from .NET API:", {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data,
-      });
+  //     // Log the response for debugging
+  //     console.log("Response from .NET API:", {
+  //       status: response.status,
+  //       statusText: response.statusText,
+  //       data: response.data,
+  //     });
 
-      return response.data;
-    } catch (error: any) {
-      // Log detailed error information
-      console.error("Error sending file data to .NET API:", {
-        url: error.config?.url,
-        method: error.config?.method,
-        requestHeaders: error.config?.headers,
-        payload: data,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        responseHeaders: error.response?.headers,
-        responseData: error.response?.data,
-        message: error.message,
-      });
+  //     return response.data;
+  //   } catch (error: any) {
+  //     // Log detailed error information
+  //     console.error("Error sending file data to .NET API:", {
+  //       url: error.config?.url,
+  //       method: error.config?.method,
+  //       requestHeaders: error.config?.headers,
+  //       payload: data,
+  //       status: error.response?.status,
+  //       statusText: error.response?.statusText,
+  //       responseHeaders: error.response?.headers,
+  //       responseData: error.response?.data,
+  //       message: error.message,
+  //     });
 
-      throw new Error(`Failed to insert uploaded file data: ${error.message}`);
-    }
-  },
+  //     throw new Error(`Failed to insert uploaded file data: ${error.message}`);
+  //   }
+  // },
 
 };
 // Helper function to ensure temp table exists

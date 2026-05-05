@@ -84,6 +84,7 @@ export const HrService = {
     );
     return response.data;
   },
+  
   getLeaveEntitle: async (employeeId: string) => {
     const response = await axiosInstance.get(
       `/api/EmployeeLeave/leaveentitle/${employeeId}`
