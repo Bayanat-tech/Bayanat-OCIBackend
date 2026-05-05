@@ -1617,6 +1617,8 @@ export const createAccountChildrenAcTreeNode = async (
     BI_PL_BS_IND,
     BI_DEPT,
     COMPANY_CODE,
+    EXP_TYPE_CODE,
+    EXP_SUBTYPE_CODE,
     CREATED_BY,
     UPDATED_BY
   )
@@ -1657,6 +1659,8 @@ export const createAccountChildrenAcTreeNode = async (
     :bi_pl_bs_ind,
     :bi_dept,
     :company_code,
+    :exp_type_code,
+    :exp_subtype_code,
     :loginid,
     :loginid
   )
@@ -1697,6 +1701,8 @@ export const createAccountChildrenAcTreeNode = async (
     bi_pl_bs_ind: data.bi_pl_bs_ind,
     bi_dept: data.bi_dept,
     company_code,
+    exp_type_code: data.exp_type_code,
+    exp_subtype_code: data.exp_subtype_code,
     loginid
   },
   { autoCommit: true }
@@ -1938,6 +1944,8 @@ export const updateAccountChildrenAcTreeNode = async (
         BI_EXP_TYPE = :bi_exp_type,
         BI_PL_BS_IND = :bi_pl_bs_ind,
         BI_DEPT = :bi_dept,
+        EXP_TYPE_CODE = :exp_type_code,
+        EXP_SUBTYPE_CODE = :exp_subtype_code,
         UPDATED_BY = :loginid
       WHERE AC_CODE = :ac_code
         AND COMPANY_CODE = :company_code
@@ -1977,6 +1985,8 @@ export const updateAccountChildrenAcTreeNode = async (
         bi_exp_type: data.bi_exp_type || null,
         bi_pl_bs_ind: data.bi_pl_bs_ind || null,
         bi_dept: data.bi_dept || null,
+        exp_type_code: data.exp_type_code || null,
+        exp_subtype_code: data.exp_subtype_code || null,
         loginid,
         ac_code,
         company_code
