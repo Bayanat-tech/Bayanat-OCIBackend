@@ -3,6 +3,7 @@ import { Response } from "express";
 import constants from "../helpers/constants";
 import oracledb from 'oracledb';
 
+import { oracleDb } from "../../src/database/connection";
 // import { QueryTypes } from "sequelize"; 
 // import { WhereOptions } from "sequelize";
 import { ISearch, RequestWithUser } from "../interfaces/common.interface";
@@ -338,8 +339,9 @@ export const executeRawSqlbody = async (req: Request, res: Response): Promise<vo
 };
 
 export const proc_build_dynamic_sql_wms = async (req: Request, res: Response): Promise<void> => {
-  let connection: any = null;
 
+  let connection: oracledb.Connection | undefined;
+ connection = await oracleDb.getConnection(); // ✅ assign first
   try {
     const {
       parameter,
