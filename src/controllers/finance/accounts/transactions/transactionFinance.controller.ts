@@ -1028,7 +1028,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     conn = await getConn(req);
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc, :te, :ref, :pno, :ino 
+      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc,:te,:ref, :pno, :ino 
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1048,8 +1048,8 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         pt: v.payment_terms,
         tcc: v.tx_cat_code,
         tc: v.tx_compntcat_code_1,
-        te: (() => { const t = expmtToChar(v.tx_compnt_1_expmt); return t == null ? null : String(t).charAt(0); })(),
-        ref: v.ref_no ?? null,
+        te:v.tx_compnt_1_expmt,
+        ref: v.ref_no,
         // inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
@@ -1214,7 +1214,9 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
           tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
-          dd:  toDate(d.doc_date ?? v.doc_date), 
+          // dd:  toDate(v.doc_date), 
+          // dd: (d.doc_date ?? v.doc_date)?.toString().slice(0, 10),
+          dd: new Date(d.doc_date ?? v.doc_date).toISOString().slice(0, 10),
         }))
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
@@ -1339,7 +1341,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       await conn.executeMany(
         `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
           :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm
+          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
         ); END;`,
         req.body.detail.map((d: any, i: number) => ({
           cc: req.user.company_code,
@@ -1362,7 +1364,9 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
           tcc: d.tx_cat_code ?? null,
           tc: d.tx_compntcat_code_1 ?? null,
           tp: d.tx_compnt_perc_1 ?? null,
-          tm: d.tx_compnt_amt_1 ?? null
+          tm: d.tx_compnt_amt_1 ?? null,
+          // dd: (d.doc_date ?? h.doc_date)?.toString().slice(0, 10),
+          dd: new Date(d.doc_date ?? h.doc_date).toISOString().slice(0, 10),
         }))
       );
     }
