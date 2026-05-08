@@ -795,8 +795,7 @@ export async function processApprovedLeaveRequests(options?: {
           event: "HR_API_ERROR",
           message: `Failed to upload file to HR .NET API for Request: ${options?.specificRequestNumber}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
           subject: "HR API File Upload Failed",
-          request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,arun.colaco@bayanattechnology.com",
-          cc: "prem@bayanattechnology.com",
+          request_users: "Rohan.Yadav@bayanattechnology.com",
           htmlMessage: `
             <h3>HR API File Upload Failed</h3>
             <p><strong>Request Number:</strong> ${options?.specificRequestNumber}</p>
