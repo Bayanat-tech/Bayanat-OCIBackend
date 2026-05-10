@@ -939,8 +939,7 @@ export async function processApprovedLeaveRequests(options?: {
           event: "HR_API_ERROR",
           message: `Failed to transfer leave request to HR .NET API.\nRequestNumber: ${request.requestNumber}\nCompanyCode: ${request.companyCode}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
           subject: "HR API Leave Transfer Failed",
-          request_users: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,arun.colaco@bayanattechnology.com",
-          cc: "prem@bayanattechnology.com",
+          request_users: "Rohan.Yadav@bayanattechnology.com",
           htmlMessage: `
             <h3>HR API Leave Transfer Failed</h3>
             <p><strong>Request Number:</strong> ${request.requestNumber}</p>
