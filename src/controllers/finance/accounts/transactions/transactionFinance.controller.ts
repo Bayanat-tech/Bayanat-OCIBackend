@@ -532,8 +532,8 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
     conn = await getConn(req);
 
     // ── Pagination ───────────────────────────────────────────────
-    const page   = Math.max(1, parseInt(req.query.page  as string) || 1);
-    const limit  = Math.max(1, parseInt(req.query.limit as string) || 10);
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit as string) || 10);
     const offset = (page - 1) * limit;
 
     // ── Base WHERE ───────────────────────────────────────────────
@@ -604,7 +604,7 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
     );
     console.log("LPO count result:", countResult);
 
-    const countRow  = countResult.rows?.[0] as { TOTAL_COUNT?: number };
+    const countRow = countResult.rows?.[0] as { TOTAL_COUNT?: number };
     const totalCount = countRow?.TOTAL_COUNT ?? 0;
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -629,15 +629,15 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
     });
 
     res.json({
-      success:     true,
+      success: true,
       data,
       pagination: {
-        total:       totalCount,
+        total: totalCount,
         total_pages: totalPages,
         page,
         limit,
-        has_next:    page < totalPages,
-        has_prev:    page > 1,
+        has_next: page < totalPages,
+        has_prev: page > 1,
       },
     });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
@@ -647,7 +647,7 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
 export const getLPOHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const { doc_no }             = req.params;
+    const { doc_no } = req.params;
     const { doc_type } = req.query;
 
     if (!doc_no || !doc_type) {
@@ -690,7 +690,7 @@ export const getLPOHeader = async (req: RequestWithUser, res: Response): Promise
 export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const { doc_no }  = req.params;
+    const { doc_no } = req.params;
     const { doc_type } = req.query;
 
     // if (!doc_no || !doc_type ) {
@@ -773,8 +773,8 @@ export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise
 
     res.json({
       success: true,
-      data:    normalize(result.rows as any[] || []),
-      count:   result.rows?.length ?? 0,
+      data: normalize(result.rows as any[] || []),
+      count: result.rows?.length ?? 0,
     });
     console.log('Fetched LPO details:', result.rows?.length ?? 0, 'rows');
 
@@ -820,10 +820,10 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
     // Normalize children.invoice entries so required fields exist for validation
     if (req.body.children && Array.isArray(req.body.children.invoice)) {
       const allowedInvoiceFields = [
-        'doc_date','ac_code','IsDeletable','serial_no','dtl_sr_no','doc_no','doc_type','div_code',
-        'company_code','sign_ind','inv_no','inv_date','due_date','chq_date','chq_bank','chq_no',
-        'inv_amt','indicator_origin','amount_origin','c_bal_amt_org','amount','lcur_amount',
-        'curr_code','ex_rate','c_curr_amt','ref_no'
+        'doc_date', 'ac_code', 'IsDeletable', 'serial_no', 'dtl_sr_no', 'doc_no', 'doc_type', 'div_code',
+        'company_code', 'sign_ind', 'inv_no', 'inv_date', 'due_date', 'chq_date', 'chq_bank', 'chq_no',
+        'inv_amt', 'indicator_origin', 'amount_origin', 'c_bal_amt_org', 'amount', 'lcur_amount',
+        'curr_code', 'ex_rate', 'c_curr_amt', 'ref_no'
       ];
       req.body.children.invoice = req.body.children.invoice.map((inv: any) => {
         const out: any = {};
@@ -872,7 +872,7 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
     // Step 1 — call header SP, get generated doc_no
     const hdrResult = await conn.execute(
       `BEGIN SP_CREATE_CHQ_HEADER(
-        :cc, :dv, :dt, :dd, :ac, :bk, :rn, :rd, :rm,
+        :cc, :dv, :dt, :dd, :ac, :bk, :rn, :rd, :rm,:pa , :pp,:pf,
         :cu, :er, :cn, :cd, :ap, :cb, :pt, :ln, :ld, :lu,
         :doc_no
       ); END;`,
@@ -881,7 +881,10 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
         dt: h.doc_type, dd: toDate(h.doc_date),
         ac: h.ac_code ?? null, bk: h.bank_ac_code ?? null,
         rn: h.ref_no ?? null, rd: toDate(h.ref_date),
-        rm: h.remarks ?? null, cu: h.curr_code ?? null,
+        rm: h.remarks ?? null, 
+        pa: h.party_address ?? null,
+        pp: h.party_phone ?? null, pf: h.party_fax ?? null,
+        cu: h.curr_code ?? null,
         er: h.ex_rate ?? null, cn: h.cheque_no ?? null,
         cd: toDate(h.cheque_date), ap: h.ac_payee ?? null,
         cb: h.cheque_bank ?? null, pt: h.payment_terms ?? null,
@@ -923,10 +926,10 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
     // Normalize children.invoice entries so required fields exist for validation
     if (req.body.children && Array.isArray(req.body.children.invoice)) {
       const allowedInvoiceFields = [
-        'doc_date','ac_code','IsDeletable','serial_no','dtl_sr_no','doc_no','doc_type','div_code',
-        'company_code','sign_ind','inv_no','inv_date','due_date','chq_date','chq_bank','chq_no',
-        'inv_amt','indicator_origin','amount_origin','c_bal_amt_org','amount','lcur_amount',
-        'curr_code','ex_rate','c_curr_amt','ref_no'
+        'doc_date', 'ac_code', 'IsDeletable', 'serial_no', 'dtl_sr_no', 'doc_no', 'doc_type', 'div_code',
+        'company_code', 'sign_ind', 'inv_no', 'inv_date', 'due_date', 'chq_date', 'chq_bank', 'chq_no',
+        'inv_amt', 'indicator_origin', 'amount_origin', 'c_bal_amt_org', 'amount', 'lcur_amount',
+        'curr_code', 'ex_rate', 'c_curr_amt', 'ref_no'
       ];
       req.body.children.invoice = req.body.children.invoice.map((inv: any) => {
         const out: any = {};
@@ -975,17 +978,18 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
     await conn.execute(
       `BEGIN SP_UPDATE_CHQ_PAYMENT_HEADER(
         :cc, :dn, :dt, :dv, :ac, :bk, :rn, :rd,
-        :rm, :cu, :er, :cn, :cd, :ca, :pt, :ln, :ld, :lu
+        :rm, :pa , :pp,:pf,:cu, :er, :cn, :cd, :ca, :pt, :ln, :ld, :lu
       ); END;`,
       {
         cc: req.user.company_code, dn: h.doc_no, dt: h.doc_type, dv: h.div_code,
         ac: h.ac_code ?? null, bk: h.bank_ac_code ?? null,
         rn: h.ref_no ?? null, rd: toDate(h.ref_date),
-        rm: h.remarks ?? null, cu: h.curr_code ?? null,
-        er: h.ex_rate ?? null, cn: h.cheque_no ?? null,
-        cd: toDate(h.cheque_date), ca: h.canceled ?? null,
-        pt: h.payment_terms ?? null, ln: h.lpo_no ?? null,
-        ld: toDate(h.lpo_date), lu: req.user.loginid,
+        rm: h.remarks ?? null, pa: h.party_address ?? null,
+        pp: h.party_phone ?? null, pf: h.party_fax ?? null,
+        cu: h.curr_code ?? null, er: h.ex_rate ?? null,
+        cn: h.cheque_no ?? null, cd: toDate(h.cheque_date),
+        ca: h.canceled ?? null, pt: h.payment_terms ?? null,
+        ln: h.lpo_no ?? null, ld: toDate(h.lpo_date), lu: req.user.loginid,
       }
     );
 
@@ -1031,7 +1035,7 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     conn = await getConn(req);
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :pf, :pt, S:rn, :lu, :tcc, :tc, :pno, :ino, :inv_dt
+      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc,:te,:ref, :pno, :ino 
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1044,13 +1048,16 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         rm: v.remarks ?? null,
         pa: v.party_address ?? null,
         pp: v.party_phone ?? null,
+        rn: v.ref_doc_no ?? null,
+        lu: req.user.loginid,
+        inv_dt: toDate(v.inv_date || v.doc_date),
         pf: v.party_fax,
         pt: v.payment_terms,
-        rn: v.ref_doc_no ?? null,
-        lu: req.user.loginid, 
         tcc: v.tx_cat_code,
         tc: v.tx_compntcat_code_1,
-        inv_dt: toDate(v.inv_date || v.doc_date), 
+        te:v.tx_compnt_1_expmt,
+        ref: v.ref_no,
+        // inv_dt: toDate(v.inv_date || v.doc_date), 
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
@@ -1060,20 +1067,24 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
     // Detail rows SP
     await spInsertDetailRows(conn, req.user.company_code, v.doc_type, purchase_no, v.detail ?? [], req.user.loginid);
     if (v.detail?.length) {
+      // ✅ Use user-provided inv_no if present, else fallback to generated
+const userInvNo = v.inv_no?.trim() || null;
+
       await conn.executeMany(
-        `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
+        `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:id,:lu); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code,
           dt: v.doc_type,
           dn: purchase_no,
           sn: d.serial_no,
-          dd: toDate(v.inv_date || v.doc_date),
+          dd: toDate(v.doc_date ),
           ac: v.ac_code,
-          iv: invoice_no,
+          iv: userInvNo ?? invoice_no,
           am: d.amount,
           cu: d.curr_code,
           er: d.ex_rate ?? 1,
           dv: d.div_code,
+          id: toDate(v.inv_date),
           lu: req.user.loginid,
         }))
       );
@@ -1105,12 +1116,18 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
     conn = await getConn(req);
 
     const result = await conn.execute(
-      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:inv_dt,:sno,:ino); END;`,
+      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:pa,:pp,:rn,:pf,:pt,:tcc,:tc,:te,:inv_dt,:sno,:ino); END;`,
       {
         cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
         dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
         er: v.ex_rate, rm: v.remarks ?? null,
         sc: v.salesman_code ?? null, se: v.sector_code ?? null,
+        pa:v.party_address ,pp: v.party_phone, rn: v.ref_no,
+        pf: v.party_fax,
+        pt: v.payment_terms,
+        tcc: v.tx_cat_code,
+        tc: v.tx_compntcat_code_1,
+        te:v.tx_compnt_1_expmt,
         lu: req.user.loginid,
         inv_dt: toDate(v.inv_date || v.doc_date),
         sno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
@@ -1167,49 +1184,49 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
     // );
 
     const result = await conn.execute(
-  `BEGIN SP_CREATE_LPO_HEADER(
+      `BEGIN SP_CREATE_LPO_HEADER(
     :cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:lu,
     :pa,:pn,:pp,:pf,:de,:di,:dm,:dc,
-    :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:dn
+    :pt,:dtm,:cp,:rn,:rd,:ar,:tcc,:tc,:pdo,:dn
   ); END;`,
-  {
-    cc: req.user.company_code,
-    dv: v.div_code,
-    dt: v.doc_type,
-    dd: toDate(v.doc_date),
-    ac: v.ac_code,
-    cu: v.curr_code,
-    er: v.ex_rate,
-    rm: v.remarks ?? null,
-    lu: req.user.loginid,  
-    pa: v.party_address,
-    pn: v.party_name,
-    pp: v.party_phone,
-    pf: v.party_fax,
-    de: v.dlvr_email,
-    di: v.delivery_to,
-    dm: v.dlvr_mobile,
-    dc: v.dlvr_contact,
-    pt: v.payment_terms,
-    dtm: v.dlvr_term,
-    cp: v.credit_period,
-    rn: v.ref_no,
-    rd: toDate(v.ref_date),   
-    ar: v.app_ref_no,
-    // pdo: v.pdo_type,          
-    tcc: v.tx_cat_code,
-    tc: v.tx_compntcat_code_1 ?? null,
+      {
+        cc: req.user.company_code,
+        dv: v.div_code,
+        dt: v.doc_type,
+        dd: toDate(v.doc_date),
+        ac: v.ac_code,
+        cu: v.curr_code,
+        er: v.ex_rate,
+        rm: v.remarks ?? null,
+        lu: req.user.loginid,
+        pa: v.party_address,
+        pn: v.party_name,
+        pp: v.party_phone,
+        pf: v.party_fax,
+        de: v.dlvr_email,
+        di: v.delivery_to,
+        dm: v.dlvr_mobile,
+        dc: v.dlvr_contact,
+        pt: v.payment_terms,
+        dtm: v.dlvr_term,
+        cp: v.credit_period,
+        rn: v.ref_no,
+        rd: toDate(v.ref_date),
+        ar: v.app_ref_no,
+        // pdo: v.pdo_type,          
+        tcc: v.tx_cat_code,
+        tc: v.tx_compntcat_code_1 ?? null,
 
-    dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
-  }
-);
+        dn: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
+      }
+    );
     console.log('SP_LPO_HEADER result:', result.outBinds);
 
     const doc_no = (result.outBinds as any).dn;
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm); END;`,
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
           sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
@@ -1220,6 +1237,9 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
           tp: d.tx_compnt_perc_1 ?? null, tm: d.tx_compnt_amt_1 ?? null,
+          // dd:  toDate(v.doc_date), 
+          // dd: (d.doc_date ?? v.doc_date)?.toString().slice(0, 10),
+          dd: new Date(d.doc_date ?? v.doc_date).toISOString().slice(0, 10),
         }))
       );
       console.log(`Inserted ${v.detail.length} LPO detail rows for document ${doc_no}`);
@@ -1233,7 +1253,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
   } finally { await closeConn(conn); }
 };
 
-export const updateLPODocument = async (req: RequestWithUser, res: Response) : Promise<void> => {
+export const updateLPODocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
 
   try {
@@ -1345,7 +1365,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
       await conn.executeMany(
         `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
           :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm
+          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
         ); END;`,
         req.body.detail.map((d: any, i: number) => ({
           cc: req.user.company_code,
@@ -1368,14 +1388,16 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
           tcc: d.tx_cat_code ?? null,
           tc: d.tx_compntcat_code_1 ?? null,
           tp: d.tx_compnt_perc_1 ?? null,
-          tm: d.tx_compnt_amt_1 ?? null
+          tm: d.tx_compnt_amt_1 ?? null,
+          // dd: (d.doc_date ?? h.doc_date)?.toString().slice(0, 10),
+          dd: new Date(d.doc_date ?? h.doc_date).toISOString().slice(0, 10),
         }))
       );
     }
 
     await conn.commit();
 
-     res.json({
+    res.json({
       success: true,
       message: 'LPO updated successfully',
       data: { doc_no }
@@ -1383,7 +1405,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response) : P
 
 
   } catch (err: any) {
-    if (conn) await conn.rollback().catch(() => {});
+    if (conn) await conn.rollback().catch(() => { });
     sendError(res, err);
   } finally {
     await closeConn(conn);
@@ -1613,7 +1635,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
 
     // Insert invoice child rows
     await conn.executeMany(
-      `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:lu); END;`,
+      `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE(:cc,:dt,:dn,:sn,:dd,:ac,:iv,:am,:cu,:er,:dv,:inv_dt,:lu); END;`,
       cleanDetail.map((d: any) => ({
         cc: req.user.company_code,
         dt: h.doc_type,
@@ -1626,6 +1648,7 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
         cu: d.curr_code,
         er: d.ex_rate,
         dv: d.div_code,
+        inv_dt: toDate(h.inv_date), 
         lu: req.user.loginid,
       }))
     );
