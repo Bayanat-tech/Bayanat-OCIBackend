@@ -104,12 +104,12 @@ export class SecmasterController {
 
       const { id, company_code, loginid, email_id } = req.body;
 
-      // Check for duplicate email (excluding current record)
+      // Check for duplicate email (excluding current record by id)
       const emailExists =
         await SecmasterService.checkEmailExistsExcludingCurrent(
           email_id,
           company_code,
-          loginid 
+          id
         );
 
       if (emailExists) {

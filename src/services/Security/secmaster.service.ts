@@ -25,8 +25,9 @@ export class SecmasterService {
     email_id: string
   ): Promise<User | null> {
     const userRepository = this.getUserRepository();
+    // Match by primary id and company_code only to avoid strict matching on loginid/email casing
     return await userRepository.findOne({
-      where: { loginid: loginid, company_code, id, email_id },
+      where: { id, company_code },
     });
   }
 
@@ -88,12 +89,26 @@ export class SecmasterService {
       updateData.SEC_PASSWD = updateData.userpass;
     }
  
+    // Prevent modification of primary key columns via update (LOGINID, EMAIL_ID, ID)
     if ("id" in updateData) {
       delete updateData.id;
     }
+    if ("loginid" in updateData) {
+      delete updateData.loginid;
+    }
+    if ("email_id" in updateData) {
+      delete updateData.email_id;
+    }
+    if ("user_id" in updateData) {
+      delete updateData.user_id;
+    }
+    if ("user_code" in updateData) {
+      delete updateData.user_code;
+    }
 
+    // Update by primary id and company_code to avoid mismatches when loginid/email are modified
     const result = await userRepository.update(
-      { loginid: loginid, company_code, id, email_id },
+      { id, company_code },
       { ...updateData }
     );
 
@@ -103,14 +118,15 @@ export class SecmasterService {
   static async checkEmailExistsExcludingCurrent(
     email_id: string,
     company_code: string,
-    excludeLoginid: string
+    excludeId: number
   ): Promise<User | null> {
     const userRepository = this.getUserRepository();
+    // Exclude current record by id to avoid false positive when user keeps same email
     return await userRepository.findOne({
       where: {
         email_id,
         company_code,
-        loginid: Not(excludeLoginid),
+        id: Not(excludeId),
       },
     });
   }
