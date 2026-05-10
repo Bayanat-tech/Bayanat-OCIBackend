@@ -178,16 +178,54 @@ async function spInsertInvoiceRows(
   login_user: string
 ) {
   if (!invoice?.length) return;
-    const flag = is_payment ? 'Y' : 'N';
-    await conn.execute(
-      `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE_AGG(:cc,:dt,:dn,:lu); END;`,
-      {
-        cc: company_code,
-        dt: doc_type,
-        dn: doc_no,
-        lu: login_user,
-      }
-    );
+
+  const flag = is_payment ? 'Y' : 'N';
+  const isPurchaseOrSales = ['PI', 'PO', 'GRN', 'SI', 'SO'].includes(doc_type.toUpperCase());
+
+  if (isPurchaseOrSales) {
+    // For PI/SI etc — AGG SP handles everything from TR_AC_DETAIL
+    // This path should not be reached since purchase/sales call their own AGG SP directly
+    return;
+  }
+
+  // Cheque payment (BP, BR, CR, CP, CN, DN) — insert each invoice row individually
+  await conn.executeMany(
+    `BEGIN SP_INSERT_INVOICE_SINGLE(
+      :company_code, :doc_type, :doc_no,
+      :serial_no, :dtl_sr_no, :doc_date,
+      :ac_code, :inv_no, :inv_date, :due_date,
+      :chq_no, :chq_date, :chq_bank,
+      :amount, :lcur_amount,
+      :curr_code, :ex_rate,
+      :div_code, :is_payment,
+      :amount_origin, :login_user
+    ); END;`,
+    invoice.map((inv: any, idx: number) => ({
+      company_code,
+      doc_type,
+      doc_no,
+      serial_no:      inv.serial_no      ?? (idx + 1),
+      dtl_sr_no:      inv.dtl_sr_no      ?? 1,
+      doc_date:       toDate(inv.doc_date)   ?? toDate(new Date().toISOString()),
+      ac_code:        inv.ac_code         ?? null,
+      inv_no:         inv.inv_no          ?? doc_no,
+      inv_date:       toDate(inv.inv_date)   ?? null,
+      due_date:       toDate(inv.due_date)   ?? null,
+      chq_no:         inv.chq_no          ?? null,
+      chq_date:       toDate(inv.chq_date)   ?? null,
+      chq_bank:       inv.chq_bank        ?? null,
+      amount:         Number(inv.amount   ?? 0),
+      lcur_amount:    Math.abs(Number(inv.lcur_amount ?? inv.amount ?? 0)),
+      curr_code:      inv.curr_code       ?? curr_code ?? null,
+      ex_rate:        Number(inv.ex_rate  ?? ex_rate ?? 1),
+      div_code:       inv.div_code        ?? div_code ?? null,
+      is_payment:     flag,
+      amount_origin:  inv.amount_origin   != null
+                        ? Number(inv.amount_origin)
+                        : Number(inv.amount ?? 0),
+      login_user,
+    }))
+  );
 }
 
 /** Calls SP_INSERT_JOB_SINGLE via executeMany — owns TR_AC_JOBDETAIL INSERT */
