@@ -109,7 +109,7 @@ export const chequePaymentSchema = (
           amount: Joi.number().required(), // Amount (required)
           sign_ind: Joi.number().valid(-1, 1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
-          tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
+          tx_compnt_1_expmt: Joi.string().optional().allow("", null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
           tx_compnt_amt_1: Joi.number().allow(null), // Transaction component 1 amount (optional)
           job_no: Joi.string().optional().allow("", null), // Job number (optional)
@@ -1375,7 +1375,7 @@ export const pettyCashSchema = (
           amount: Joi.number().required(),
           sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (1)
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
-          tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
+          tx_compnt_1_expmt: Joi.string().optional().allow("", null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
           tx_compnt_amt_1: Joi.number().allow(null), // Transaction component 1 amount (optional)
           job_no: Joi.string().optional().allow("", null), // Job number (optional)
