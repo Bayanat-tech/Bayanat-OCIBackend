@@ -1226,6 +1226,11 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         { cc: req.user.company_code, dt: v.doc_type, dn: purchase_no, lu: req.user.loginid }
       );
     }
+    // SP_AC_TXN_CONTROL issues its own COMMIT internally
+    await conn.execute(
+      `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
+      { cc: req.user.company_code, dt: v.doc_type, dn: purchase_no, lu: req.user.loginid }
+    );
 
     await conn.commit();
     res.status(201).json({
@@ -1759,7 +1764,13 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
       { cc: req.user.company_code, dt: h.doc_type, dn: h.doc_no, lu: req.user.loginid }
     );
 
-    await conn.commit();
+    // *** ADD: Recalculate 9001 control row — now correctly includes 9010 tax ***
+    await conn.execute(
+      `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
+      { cc: req.user.company_code, dt: h.doc_type, dn: h.doc_no, lu: req.user.loginid }
+    );
+
+    await conn.commit(); // no-op, kept for safety
 
     console.log(`Updated purchase document ${h.doc_type} ${h.doc_no} with ${cleanDetail.length} detail rows`);
 
