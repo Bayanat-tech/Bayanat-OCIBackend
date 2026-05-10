@@ -51,6 +51,108 @@ function expmtToChar(v: any): string | null {
 }
 
 /** Calls SP_INSERT_DETAIL_SINGLE via executeMany — owns TR_AC_DETAIL INSERT */
+// async function spInsertDetailRows(
+//   conn: oracledb.Connection,
+//   company_code: string,
+//   doc_type: string,
+//   doc_no: string,
+//   detail: any[],
+//   login_user: string
+// ) {
+//   if (!detail?.length) return;
+//   // If detail rows don't provide header_ac_code, try to read it from the header
+//   let headerAc: string | null = null;
+//   try {
+//     const hdr: any = await conn.execute(
+//       `SELECT ac_code FROM TR_AC_HEADER WHERE company_code = :cc AND doc_type = :dt AND doc_no = :dn`,
+//       { cc: company_code, dt: doc_type, dn: doc_no },
+//       { outFormat: oracledb.OUT_FORMAT_OBJECT }
+//     );
+//     const rows: any[] = hdr && hdr.rows ? hdr.rows : [];
+//     if (rows.length) headerAc = rows[0].AC_CODE ?? rows[0].ac_code ?? null;
+//   } catch (e: any) {
+//     // non-fatal — we'll fall back to whatever the client provided
+//     console.warn('Unable to fetch header ac_code for defaulting header_ac_code:', e?.message ?? e);
+//   }
+//   await conn.executeMany(
+//     `BEGIN SP_INSERT_DETAIL_SINGLE(
+//       :company_code, :doc_type, :doc_no, :serial_no, :doc_date,
+//       :ac_code, :header_ac_code, :bank_ac_code, :remarks,
+//       :amount, :sign_ind, :curr_code, :ex_rate, :lcur_amount,
+//       :pdc_ind, :cheque_no, :cheque_date, :cheque_desc, :pdc_cleared_date,
+//       :cancelled, :job_no, :recon_ind, :recon_date, :dept_code,
+//       :qty, :price, :uom, :pdc_clear_jvno,
+//       :ref_doc_type, :ref_doc_no, :ref_doc_serial_no,
+//       :div_code, :tx_cat_code,
+//       :tx_compntcat_code_1, :tx_compntcat_code_2, :tx_compntcat_code_3, :tx_compntcat_code_4,
+//       :tx_compnt_perc_1, :tx_compnt_perc_2, :tx_compnt_perc_3, :tx_compnt_perc_4,
+//       :tx_compnt_amt_1, :tx_compnt_amt_2, :tx_compnt_amt_3, :tx_compnt_amt_4,
+//       :tx_compnt_lcuramt_1, :tx_compnt_lcuramt_2, :tx_compnt_lcuramt_3, :tx_compnt_lcuramt_4,
+//       :tx_compnt_1_expmt, :tx_compnt_2_expmt, :tx_compnt_3_expmt, :tx_compnt_4_expmt,
+//       :tx_tax_filed, :tx_tax_filed_dt, :tx_tax_filed_refno, :tx_compnt_hdisc_amt_1,
+//       :login_user
+//     ); END;`,
+//     detail.map((d: any) => ({
+//       company_code, doc_type, doc_no,
+//       serial_no: d.serial_no,
+//       doc_date: toDate(d.doc_date),
+//       ac_code: d.ac_code ?? null,
+//       header_ac_code: d.header_ac_code ?? headerAc ?? null,
+//       bank_ac_code: d.bank_ac_code ?? null,
+//       remarks: d.remarks ?? null,
+//       amount: d.amount ?? 0,
+//       sign_ind: d.sign_ind ?? 1,
+//       curr_code: d.curr_code ?? null,
+//       ex_rate: d.ex_rate ?? 1,
+//       lcur_amount: d.lcur_amount ?? d.amount ?? 0,
+//       pdc_ind: d.pdc_ind ?? null,
+//       cheque_no: d.cheque_no ?? null,
+//       cheque_date: toDate(d.cheque_date),
+//       cheque_desc: d.cheque_desc ?? null,
+//       pdc_cleared_date: toDate(d.pdc_cleared_date),
+//       cancelled: d.cancelled ?? 'N',
+//       job_no: d.job_no ?? null,
+//       recon_ind: d.recon_ind ?? null,
+//       recon_date: toDate(d.recon_date),
+//       dept_code: d.dept_code ?? null,
+//       qty: d.qty ?? null,
+//       price: d.price ?? null,
+//       uom: d.uom ?? null,
+//       pdc_clear_jvno: d.pdc_clear_jvno ?? null,
+//       ref_doc_type: d.ref_doc_type ?? null,
+//       ref_doc_no: d.ref_doc_no ?? null,
+//       ref_doc_serial_no: d.ref_doc_serial_no ?? null,
+//       div_code: d.div_code ?? null,
+//       tx_cat_code: d.tx_cat_code ?? null,
+//       tx_compntcat_code_1: d.tx_compntcat_code_1 ?? null,
+//       tx_compntcat_code_2: d.tx_compntcat_code_2 ?? null,
+//       tx_compntcat_code_3: d.tx_compntcat_code_3 ?? null,
+//       tx_compntcat_code_4: d.tx_compntcat_code_4 ?? null,
+//       tx_compnt_perc_1: d.tx_compnt_perc_1 ?? null,
+//       tx_compnt_perc_2: d.tx_compnt_perc_2 ?? null,
+//       tx_compnt_perc_3: d.tx_compnt_perc_3 ?? null,
+//       tx_compnt_perc_4: d.tx_compnt_perc_4 ?? null,
+//       tx_compnt_amt_1: d.tx_compnt_amt_1 ?? null,
+//       tx_compnt_amt_2: d.tx_compnt_amt_2 ?? null,
+//       tx_compnt_amt_3: d.tx_compnt_amt_3 ?? null,
+//       tx_compnt_amt_4: d.tx_compnt_amt_4 ?? null,
+//       tx_compnt_lcuramt_1: d.tx_compnt_lcuramt_1 ?? null,
+//       tx_compnt_lcuramt_2: d.tx_compnt_lcuramt_2 ?? null,
+//       tx_compnt_lcuramt_3: d.tx_compnt_lcuramt_3 ?? null,
+//       tx_compnt_lcuramt_4: d.tx_compnt_lcuramt_4 ?? null,
+//       tx_compnt_1_expmt: d.tx_compnt_1_expmt ?? null,
+//       tx_compnt_2_expmt: d.tx_compnt_2_expmt ?? null,
+//       tx_compnt_3_expmt: d.tx_compnt_3_expmt ?? null,
+//       tx_compnt_4_expmt: d.tx_compnt_4_expmt ?? null,
+//       tx_tax_filed: d.tx_tax_filed ?? null,
+//       tx_tax_filed_dt: toDate(d.tx_tax_filed_dt),
+//       tx_tax_filed_refno: d.tx_tax_filed_refno ?? null,
+//       tx_compnt_hdisc_amt_1: d.tx_compnt_hdisc_amt_1 ?? null,
+//       login_user,
+//     }))
+//   );
+// }
+
 async function spInsertDetailRows(
   conn: oracledb.Connection,
   company_code: string,
@@ -60,7 +162,7 @@ async function spInsertDetailRows(
   login_user: string
 ) {
   if (!detail?.length) return;
-  // If detail rows don't provide header_ac_code, try to read it from the header
+
   let headerAc: string | null = null;
   try {
     const hdr: any = await conn.execute(
@@ -71,11 +173,10 @@ async function spInsertDetailRows(
     const rows: any[] = hdr && hdr.rows ? hdr.rows : [];
     if (rows.length) headerAc = rows[0].AC_CODE ?? rows[0].ac_code ?? null;
   } catch (e: any) {
-    // non-fatal — we'll fall back to whatever the client provided
-    console.warn('Unable to fetch header ac_code for defaulting header_ac_code:', e?.message ?? e);
+    console.warn('Unable to fetch header ac_code:', e?.message ?? e);
   }
-  await conn.executeMany(
-    `BEGIN SP_INSERT_DETAIL_SINGLE(
+
+  const spSql = `BEGIN SP_INSERT_DETAIL_SINGLE(
       :company_code, :doc_type, :doc_no, :serial_no, :doc_date,
       :ac_code, :header_ac_code, :bank_ac_code, :remarks,
       :amount, :sign_ind, :curr_code, :ex_rate, :lcur_amount,
@@ -91,66 +192,110 @@ async function spInsertDetailRows(
       :tx_compnt_1_expmt, :tx_compnt_2_expmt, :tx_compnt_3_expmt, :tx_compnt_4_expmt,
       :tx_tax_filed, :tx_tax_filed_dt, :tx_tax_filed_refno, :tx_compnt_hdisc_amt_1,
       :login_user
-    ); END;`,
-    detail.map((d: any) => ({
-      company_code, doc_type, doc_no,
+    ); END;`;
+
+  // Helper to build bind object for a row
+  const buildBind = (d: any) => ({
+    company_code, doc_type, doc_no,
+    serial_no: d.serial_no,
+    doc_date: toDate(d.doc_date),
+    ac_code: d.ac_code ?? null,
+    header_ac_code: d.header_ac_code ?? headerAc ?? null,
+    bank_ac_code: d.bank_ac_code ?? null,
+    remarks: d.remarks ?? null,
+    amount: d.amount ?? 0,
+    sign_ind: d.sign_ind ?? 1,
+    curr_code: d.curr_code ?? null,
+    ex_rate: d.ex_rate ?? 1,
+    lcur_amount: d.lcur_amount ?? d.amount ?? 0,
+    pdc_ind: d.pdc_ind ?? null,
+    cheque_no: d.cheque_no ?? null,
+    cheque_date: toDate(d.cheque_date),
+    cheque_desc: d.cheque_desc ?? null,
+    pdc_cleared_date: toDate(d.pdc_cleared_date),
+    cancelled: d.cancelled ?? 'N',
+    job_no: d.job_no ?? null,
+    recon_ind: d.recon_ind ?? null,
+    recon_date: toDate(d.recon_date),
+    dept_code: d.dept_code ?? null,
+    qty: d.qty ?? null,
+    price: d.price ?? null,
+    uom: d.uom ?? null,
+    pdc_clear_jvno: d.pdc_clear_jvno ?? null,
+    ref_doc_type: d.ref_doc_type ?? null,
+    ref_doc_no: d.ref_doc_no ?? null,
+    ref_doc_serial_no: d.ref_doc_serial_no ?? null,
+    div_code: d.div_code ?? null,
+    tx_cat_code: d.tx_cat_code ?? null,
+    tx_compntcat_code_1: d.tx_compntcat_code_1 ?? null,
+    tx_compntcat_code_2: d.tx_compntcat_code_2 ?? null,
+    tx_compntcat_code_3: d.tx_compntcat_code_3 ?? null,
+    tx_compntcat_code_4: d.tx_compntcat_code_4 ?? null,
+    tx_compnt_perc_1: d.tx_compnt_perc_1 ?? null,
+    tx_compnt_perc_2: d.tx_compnt_perc_2 ?? null,
+    tx_compnt_perc_3: d.tx_compnt_perc_3 ?? null,
+    tx_compnt_perc_4: d.tx_compnt_perc_4 ?? null,
+    tx_compnt_amt_1: d.tx_compnt_amt_1 ?? null,
+    tx_compnt_amt_2: d.tx_compnt_amt_2 ?? null,
+    tx_compnt_amt_3: d.tx_compnt_amt_3 ?? null,
+    tx_compnt_amt_4: d.tx_compnt_amt_4 ?? null,
+    tx_compnt_lcuramt_1: d.tx_compnt_lcuramt_1 ?? null,
+    tx_compnt_lcuramt_2: d.tx_compnt_lcuramt_2 ?? null,
+    tx_compnt_lcuramt_3: d.tx_compnt_lcuramt_3 ?? null,
+    tx_compnt_lcuramt_4: d.tx_compnt_lcuramt_4 ?? null,
+    tx_compnt_1_expmt: d.tx_compnt_1_expmt ?? null,
+    tx_compnt_2_expmt: d.tx_compnt_2_expmt ?? null,
+    tx_compnt_3_expmt: d.tx_compnt_3_expmt ?? null,
+    tx_compnt_4_expmt: d.tx_compnt_4_expmt ?? null,
+    tx_tax_filed: d.tx_tax_filed ?? null,
+    tx_tax_filed_dt: toDate(d.tx_tax_filed_dt),
+    tx_tax_filed_refno: d.tx_tax_filed_refno ?? null,
+    tx_compnt_hdisc_amt_1: d.tx_compnt_hdisc_amt_1 ?? null,
+    login_user,
+  });
+  const normalRows = detail.filter((d: any) => d.serial_no !== 9001);
+  const reverseRows = detail.filter((d: any) => d.serial_no === 9001);
+
+  // DEBUG - temporary logs to trace detail rows and insertion order
+  try {
+    console.log('=== spInsertDetailRows DEBUG ===');
+    console.log('Total detail rows:', detail.length);
+    console.log('Normal rows serial_nos:', normalRows.map((d: any) => d.serial_no));
+    console.log('Reverse rows serial_nos:', reverseRows.map((d: any) => d.serial_no));
+    console.log('Normal rows tax fields sample:', normalRows.map((d: any) => ({
       serial_no: d.serial_no,
-      doc_date: toDate(d.doc_date),
-      ac_code: d.ac_code ?? null,
-      header_ac_code: d.header_ac_code ?? headerAc ?? null,
-      bank_ac_code: d.bank_ac_code ?? null,
-      remarks: d.remarks ?? null,
-      amount: d.amount ?? 0,
-      sign_ind: d.sign_ind ?? 1,
-      curr_code: d.curr_code ?? null,
-      ex_rate: d.ex_rate ?? 1,
-      lcur_amount: d.lcur_amount ?? d.amount ?? 0,
-      pdc_ind: d.pdc_ind ?? null,
-      cheque_no: d.cheque_no ?? null,
-      cheque_date: toDate(d.cheque_date),
-      cheque_desc: d.cheque_desc ?? null,
-      pdc_cleared_date: toDate(d.pdc_cleared_date),
-      cancelled: d.cancelled ?? 'N',
-      job_no: d.job_no ?? null,
-      recon_ind: d.recon_ind ?? null,
-      recon_date: toDate(d.recon_date),
-      dept_code: d.dept_code ?? null,
-      qty: d.qty ?? null,
-      price: d.price ?? null,
-      uom: d.uom ?? null,
-      pdc_clear_jvno: d.pdc_clear_jvno ?? null,
-      ref_doc_type: d.ref_doc_type ?? null,
-      ref_doc_no: d.ref_doc_no ?? null,
-      ref_doc_serial_no: d.ref_doc_serial_no ?? null,
-      div_code: d.div_code ?? null,
-      tx_cat_code: d.tx_cat_code ?? null,
-      tx_compntcat_code_1: d.tx_compntcat_code_1 ?? null,
-      tx_compntcat_code_2: d.tx_compntcat_code_2 ?? null,
-      tx_compntcat_code_3: d.tx_compntcat_code_3 ?? null,
-      tx_compntcat_code_4: d.tx_compntcat_code_4 ?? null,
-      tx_compnt_perc_1: d.tx_compnt_perc_1 ?? null,
-      tx_compnt_perc_2: d.tx_compnt_perc_2 ?? null,
-      tx_compnt_perc_3: d.tx_compnt_perc_3 ?? null,
-      tx_compnt_perc_4: d.tx_compnt_perc_4 ?? null,
-      tx_compnt_amt_1: d.tx_compnt_amt_1 ?? null,
-      tx_compnt_amt_2: d.tx_compnt_amt_2 ?? null,
-      tx_compnt_amt_3: d.tx_compnt_amt_3 ?? null,
-      tx_compnt_amt_4: d.tx_compnt_amt_4 ?? null,
-      tx_compnt_lcuramt_1: d.tx_compnt_lcuramt_1 ?? null,
-      tx_compnt_lcuramt_2: d.tx_compnt_lcuramt_2 ?? null,
-      tx_compnt_lcuramt_3: d.tx_compnt_lcuramt_3 ?? null,
-      tx_compnt_lcuramt_4: d.tx_compnt_lcuramt_4 ?? null,
-      tx_compnt_1_expmt: d.tx_compnt_1_expmt ?? null,
-      tx_compnt_2_expmt: d.tx_compnt_2_expmt ?? null,
-      tx_compnt_3_expmt: d.tx_compnt_3_expmt ?? null,
-      tx_compnt_4_expmt: d.tx_compnt_4_expmt ?? null,
-      tx_tax_filed: d.tx_tax_filed ?? null,
-      tx_tax_filed_dt: toDate(d.tx_tax_filed_dt),
-      tx_tax_filed_refno: d.tx_tax_filed_refno ?? null,
-      tx_compnt_hdisc_amt_1: d.tx_compnt_hdisc_amt_1 ?? null,
-      login_user,
-    }))
-  );
+      tx_compnt_amt_1: d.tx_compnt_amt_1,
+      tx_compnt_perc_1: d.tx_compnt_perc_1,
+      amount: d.amount
+    })));
+    console.log('================================');
+  } catch (e) {
+    console.warn('spInsertDetailRows debug logging failed', e);
+  }
+
+  // Insert reverse (9001) rows FIRST to ensure SP updates/reverse calculations run before normal rows
+  for (const d of reverseRows) {
+    try {
+      console.log('Inserting reverse row serial_no:', d.serial_no, 'amount:', d.amount);
+      await conn.execute(spSql, buildBind(d));
+      console.log('Reverse row inserted');
+    } catch (err) {
+      console.error('Error inserting reverse row', d.serial_no, err);
+      throw err;
+    }
+  }
+
+  // Insert normal rows AFTER via executeMany (keeps performance for bulk inserts)
+  if (normalRows.length > 0) {
+    try {
+      console.log('Inserting normal rows via executeMany... count=', normalRows.length);
+      await conn.executeMany(spSql, normalRows.map(buildBind));
+      console.log('Normal rows inserted');
+    } catch (err) {
+      console.error('Error inserting normal rows via executeMany', err);
+      throw err;
+    }
+  }
 }
 
 /** Calls SP_INSERT_INVOICE_SINGLE via executeMany — owns TR_AC_INVDETAIL INSERT */
