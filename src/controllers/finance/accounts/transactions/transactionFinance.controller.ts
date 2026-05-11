@@ -828,45 +828,6 @@ export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
-
-// ── GET LPO PRINT (header + details + company) ─────────────────────────────
-export const getLPOPrint = async (req: RequestWithUser, res: Response): Promise<void> => {
-  let conn: oracledb.Connection | undefined;
-  try {
-    const { doc_no } = req.params;
-    const { doc_type } = req.query;
-    if (!doc_no || !doc_type) { res.status(400).json({ success: false, message: 'doc_no and doc_type are required' }); return; }
-    conn = await getConn(req);
-
-    // header
-    const hdr = await conn.execute(
-      `SELECT * FROM VW_AC_LPO_HEADER_DETAIL WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
-      { cc: req.user.company_code, dn: String(doc_no), dt: doc_type },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    if (!hdr.rows || hdr.rows.length === 0) { res.status(404).json({ success: false, message: 'LPO document not found' }); return; }
-    const header = normalize([hdr.rows[0] as any])[0];
-
-    // details
-    const det = await conn.execute(
-      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt FROM TR_AC_LPO_DETAIL d LEFT JOIN WMSTST.MS_ACCODES m ON m.ac_code = d.ac_code WHERE d.company_code = :cc AND d.doc_no = :dn AND d.doc_type = :dt AND NVL(d.cancelled,'N') = 'N' ORDER BY d.serial_no`,
-      { cc: req.user.company_code, dn: String(doc_no), dt: doc_type },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    const details = normalize(det.rows as any[] || []);
-
-    // company info
-    const comp = await conn.execute(
-      `SELECT * FROM MS_COMPANYINFO WHERE company_code = :cc`,
-      { cc: req.user.company_code },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    const company = (comp.rows && comp.rows[0]) ? (comp.rows[0] as any) : null;
-
-    res.json({ success: true, data: { header, details, company } });
-  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
-};
-
 export const createBulkTransactionDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
