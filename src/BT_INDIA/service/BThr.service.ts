@@ -5,6 +5,7 @@ import { LeaveRequestFlow } from "../../interfaces/leaveRequestFlow.interface";
 import { notifyUser } from "../../helpers/functions";
 import { TmpLeaveRequestFlow } from "../entities/temp_leave_flow.entity";
 import { TempLeaveFlowService } from "./templeaveflow.service";
+import { Files_dltslms } from "./Files_dlts_lms.service";
 
 // Add helper function for date handling
 function formatDate(date: Date | string | null | undefined): string | null {
@@ -503,43 +504,35 @@ updateLeaveResume: async (request: LeaveResumeDatesUpdate): Promise<any> => {
   //   return response.data;
   // },
 
-  // insertUploadedFileEmployee: async (data: Record<string, any>) => {
-  //   try {
-  //     // Log the payload being sent
-  //     console.log("Sending File Data Payload:", data);
+  insertUploadedFileEmployee: async (data: Record<string, any>) => {
+    const requiredFields = ["REQUEST_NUMBER", "SR_NO", "ORG_FILE_NAME", "AWS_FILE_LOCN", "EXTENSIONS", "USER_FILE_NAME"];
+    const missingFields = requiredFields.filter(field => !data[field] && data[field] !== 0);
 
-  //     // Call the .NET API
-  //     const response = await axiosInstance.post(
-  //       "/api/EmployeeLeave/INSERT_UPLOADED_FILE",
-  //       data
-  //     );
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+    }
 
-  //     // Log the response for debugging
-  //     console.log("Response from .NET API:", {
-  //       status: response.status,
-  //       statusText: response.statusText,
-  //       data: response.data,
-  //     });
+    try {
+      console.log("Sending File Data Payload:", data);
 
-  //     return response.data;
-  //   } catch (error: any) {
-  //     // Log detailed error information
-  //     console.error("Error sending file data to .NET API:", {
-  //       url: error.config?.url,
-  //       method: error.config?.method,
-  //       requestHeaders: error.config?.headers,
-  //       payload: data,
-  //       status: error.response?.status,
-  //       statusText: error.response?.statusText,
-  //       responseHeaders: error.response?.headers,
-  //       responseData: error.response?.data,
-  //       message: error.message,
-  //     });
+      const response = await Files_dltslms.insertFiles_dltslms(data);
 
-  //     throw new Error(`Failed to insert uploaded file data: ${error.message}`);
-  //   }
-  // },
+      console.log("Inserted file record:", response);
+
+      return response;
+    } catch (error: any) {
+      console.error("Error inserting into UPLOADED_FILES_DLTS_LMS:", {
+        payload: data,
+        message: error.message,
+      });
+
+      throw new Error(`Failed to insert uploaded file data: ${error.message}`);
+    }
+  },
+
 };
+
+
 // Helper function to ensure temp table exists
 async function ensureTempTableExists(): Promise<void> {
   const createTableQuery = `

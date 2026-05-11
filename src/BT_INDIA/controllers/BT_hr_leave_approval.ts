@@ -2,7 +2,7 @@ import oracledb from 'oracledb';
 import { oracleDb } from "../../database/connection";
 import { Request, Response } from "express";
 import constants from "../../helpers/constants";
-import { HrService } from "../../services/hr.service";
+import { HrService } from "../service/BThr.service";
 import { TLeaveApproval } from "../../interfaces/Hr/hr_leave_approval";
 import { notifyUser } from "../../helpers/functions";
 import { sendLeaveNotifications } from '../../controllers/HR/sendLeaveNotifications';
@@ -769,7 +769,7 @@ export async function processApprovedLeaveRequests(options?: {
     );
     const fileData: any[] = fileDataResult.rows || fileDataResult;
 
-    // Send file data to .NET API
+    // Send file data to service
     for (const file of fileData) {
       try {
         await HrService.insertUploadedFileEmployee(file);
@@ -793,7 +793,7 @@ export async function processApprovedLeaveRequests(options?: {
 
         const notifPayload = {
           event: "HR_API_ERROR",
-          message: `Failed to upload file to HR .NET API for Request: ${options?.specificRequestNumber}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
+          message: `Failed to upload file to HR for Request: ${options?.specificRequestNumber}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
           subject: "HR API File Upload Failed",
           request_users: "Rohan.Yadav@bayanattechnology.com",
           htmlMessage: `
@@ -937,7 +937,7 @@ export async function processApprovedLeaveRequests(options?: {
         // notify HR team about transfer failure for this request
         const notifPayload = {
           event: "HR_API_ERROR",
-          message: `Failed to transfer leave request to HR .NET API.\nRequestNumber: ${request.requestNumber}\nCompanyCode: ${request.companyCode}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
+          message: `Failed to transfer leave request to HR \nRequestNumber: ${request.requestNumber}\nCompanyCode: ${request.companyCode}\nError: ${error?.message || "Unknown error"}\n\nDetails: ${detailedErrorText}`,
           subject: "HR API Leave Transfer Failed",
           request_users: "Rohan.Yadav@bayanattechnology.com",
           htmlMessage: `
