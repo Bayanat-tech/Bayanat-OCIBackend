@@ -1283,7 +1283,7 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
         rn: v.ref_no,
         rd: toDate(v.ref_date),
         ar: v.app_ref_no,
-        // pdo: v.pdo_type,          
+        pdo: v.pdo_type,          
         tcc: v.tx_cat_code,
         tc: v.tx_compntcat_code_1 ?? null,
 

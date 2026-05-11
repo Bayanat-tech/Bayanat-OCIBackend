@@ -742,8 +742,10 @@ export const salesSchema = (
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    salesman_code: Joi.string().optional(),
+    salesman_code: Joi.string().optional().allow("", null),
+    salesman_name: Joi.string().optional().allow("", null),
     sector_code: Joi.string().optional().allow("", null),
+    sector_name: Joi.string().optional().allow("", null),
     address: Joi.string().optional().allow("", null),
     phone: Joi.string().optional().allow("", null),
     party_address: Joi.string().optional().allow("", null),
@@ -790,6 +792,7 @@ export const salesSchema = (
           ex_rate: Joi.number(), // Exchange rate
           qty: Joi.number().default(1), // Quantity (default 1)
           price: Joi.number().default(1), // Price (default 1)
+          description: Joi.string().optional().allow("", null),
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
@@ -1105,6 +1108,7 @@ export const LpoSchema = (
           ac_name: Joi.string(),
           header_ac_code: Joi.string(),
           product_code: Joi.string().optional().allow("", null),
+          description: Joi.string().optional().allow("", null),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           other_remarks: Joi.string().optional().allow("", null),
           cost_code: Joi.string().optional().allow("", null),
