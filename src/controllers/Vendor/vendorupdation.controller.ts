@@ -128,270 +128,92 @@ async function sendDataToDotNetAPI(
   transaction: any = null
 ) {
   try {
+    // =============================================
+    // PART 1: SEND ONLY FILES TO .NET API
+    // =============================================
     const fileDataResult = await oracleDb.query(
       `SELECT 
-        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME, ATTACHMENT_SR_NO
+        REQUEST_NUMBER, 
+        SR_NO, 
+        ORG_FILE_NAME, 
+        AWS_FILE_LOCN, 
+        EXTENSIONS, 
+        USER_FILE_NAME, 
+        ATTACHMENT_SR_NO
       FROM UPLOADED_FILES_DLTS_VENDOR
-      WHERE REQUEST_NUMBER = :docNo AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
+      WHERE REQUEST_NUMBER = :docNo 
+      AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
       { docNo: { val: docNo } },
       transaction
     );
     const fileData: any[] = fileDataResult.rows || fileDataResult;
 
-    // Send file data to .NET API
+    // Send each file to .NET API
+    let filesSentSuccessfully = 0;
     for (const file of fileData) {
       try {
         await VendorService.insertUploadedFile(file);
+        filesSentSuccessfully++;
+        console.log(`✅ File sent successfully: ${file.ORG_FILE_NAME} (SR_NO: ${file.SR_NO})`);
       } catch (error: any) {
-        console.error(`Failed to send file data for DOC_NO: ${docNo}`, error);
-
-        // Extract detailed error info from AxiosError
+        console.error(`❌ Failed to send file: ${file.ORG_FILE_NAME}`, error);
+        
+        // Send notification but don't stop - files are not critical for main data transfer
         const apiError = error?.response?.data ?? error;
-        const apiMessage =
-          (apiError && (apiError.message || apiError.error)) ||
-          error?.message ||
-          String(error);
+        const apiMessage = (apiError && (apiError.message || apiError.error)) || error?.message || String(error);
 
         const notifPayload = {
-          event: "VENDOR_API_ERROR",
-          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
+          event: "VENDOR_API_FILE_ERROR",
+          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nFile: ${file.ORG_FILE_NAME}\nError: ${apiMessage}`,
           subject: "Vendor API File Upload Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
+          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API File Upload Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
+            <p><strong>File Name:</strong> ${escapeHtml(file.ORG_FILE_NAME)}</p>
             <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
-            <p><strong>API Response:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
-            <p><strong>File Details:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(file, null, 2))}</pre>
           `,
         };
 
         try {
-          console.log("notifyUser payload (file upload):", notifPayload);
-          const notifResult: any = await notifyUser(notifPayload);
-          console.log("notifyUser result (file upload):", notifResult);
+          await notifyUser(notifPayload);
         } catch (notifErr) {
-          console.error("notifyUser failed (file upload):", notifErr);
+          console.error("notifyUser failed:", notifErr);
         }
-        return;
       }
     }
 
-    if (fileData.length > 0) {
+    // Update FILE_TRANSFER flag for successfully sent files
+    if (filesSentSuccessfully > 0) {
       await oracleDb.query(
         `UPDATE UPLOADED_FILES_DLTS_VENDOR
          SET FILE_TRANSFER = 'Y' 
-         WHERE REQUEST_NUMBER = :requestNumber`,
+         WHERE REQUEST_NUMBER = :requestNumber 
+         AND FILE_TRANSFER != 'Y'`,
         {
           requestNumber: { val: docNo },
         },
         transaction
       );
+      console.log(`✅ Updated FILE_TRANSFER flag for ${filesSentSuccessfully} files`);
     }
 
-    // Fetch all columns from TR_AC_LPO_HEADER
-    const headerResult = await oracleDb.query(
-      `SELECT 
-        NVL(COMPANY_CODE, '') AS COMPANY_CODE,
-        NVL(DOC_NO, '') AS DOC_NO,
-        TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DOC_DATE,
-        NVL(AC_CODE, '') AS AC_CODE,
-        NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
-        NVL(REF_NO, '') AS REF_NO,
-        TO_CHAR(REF_DATE, 'YYYY-MM-DD') AS REF_DATE,
-        NVL(REMARKS, '') AS REMARKS,
-        NVL(CURR_CODE, '') AS CURR_CODE,
-        NVL(EX_RATE, 0) AS EX_RATE,
-        NVL(CANCELED, 'N') AS CANCELED,
-        NVL(CREATE_USER, '') AS CREATE_USER,
-        NVL(EDIT_USER, '') AS EDIT_USER,
-        TO_CHAR(CREATE_DATE, 'YYYY-MM-DD') AS CREATE_DATE,
-        TO_CHAR(EDIT_DATE, 'YYYY-MM-DD') AS EDIT_DATE,
-        NVL(LAST_SERIAL_NO, 0) AS LAST_SERIAL_NO,
-        NVL(PAYMENT_TERMS, '') AS PAYMENT_TERMS,
-        NVL(CREDIT_PERIOD, 0) AS CREDIT_PERIOD,
-        TO_CHAR(DUE_DATE, 'YYYY-MM-DD') AS DUE_DATE,
-        NVL(REF_DOC_NO, '') AS REF_DOC_NO,
-        NVL(REF_DOC_TYPE, '') AS REF_DOC_TYPE,
-        NVL(PARTY_NAME, '') AS PARTY_NAME,
-        NVL(PARTY_ADDRESS, '') AS PARTY_ADDRESS,
-        NVL(PARTY_PHONE, '') AS PARTY_PHONE,
-        NVL(PARTY_FAX, '') AS PARTY_FAX,
-        NVL(INV_GENERATED, 'N') AS INV_GENERATED,
-        NVL(DELIVERY_TO, '') AS DELIVERY_TO,
-        NVL(DLVR_CONTACT, '') AS DLVR_CONTACT,
-        NVL(DLVR_EMAIL, '') AS DLVR_EMAIL,
-        NVL(DLVR_MOBILE, '') AS DLVR_MOBILE,
-        NVL(DLVR_TERM, '') AS DLVR_TERM,
-        NVL(DIV_CODE, '') AS DIV_CODE,
-        NVL(CASH_IND, 'N') AS CASH_IND,
-        NVL(APP_REF_NO, '') AS APP_REF_NO,
-        NVL(LAST_ACTION, '') AS LAST_ACTION,
-        NVL(INVOICE_NUMBER, '') AS INVOICE_NUMBER,
-        TO_CHAR(INVOICE_DATE, 'YYYY-MM-DD') AS INVOICE_DATE,
-        NVL(PDO_TYPE, '') AS PDO_TYPE,
-        NVL(REF_DOC1, '') AS REF_DOC1,
-        NVL(REF_DOC2, '') AS REF_DOC2,
-        NVL(REF_DOC3, '') AS REF_DOC3
-      FROM TR_AC_LPO_HEADER
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES'`,
-      {
-        companyCode: { val: companyCode },
-        docNo: { val: docNo },
-      },
-      transaction
-    );
-    const headerData = headerResult.rows?.[0] || headerResult[0];
+    // =============================================
+    // PART 2: CALL ORACLE PROCEDURE FOR HEADER/DETAIL
+    // =============================================
+    console.log(` Calling Oracle procedure PROC_AWARE_VMS_ENTRY for DOC_NO: ${docNo}`);
+    
+    await VendorService.callAwareVmsEntry(companyCode, docNo, 'SYSTEM');
+    
+    console.log(` Oracle procedure executed successfully for DOC_NO: ${docNo}`);
 
-    if (!headerData) {
-      console.warn(`No header data found for DOC_NO: ${docNo}`);
-      return;
-    }
-
-    // Clean header data 
-    const cleanedHeaderData = VendorService.cleanDetail(headerData);
-
-    // Fetch all columns from TR_AC_LPO_DETAIL
-    const detailResult = await oracleDb.query(
-      `SELECT 
-        NVL(ITEM_REMARK, '') AS ITEM_REMARK,
-        NVL(COMPANY_CODE, '') AS COMPANY_CODE,
-        NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
-        NVL(DOC_NO, '') AS DOC_NO,
-        NVL(SERIAL_NO, 1) AS SERIAL_NO,
-        DOC_DATE AS DOC_DATE,
-        NVL(AC_CODE, '') AS AC_CODE,
-        NVL(HEADER_AC_CODE, 'DEFAULT_HEADER') AS HEADER_AC_CODE,
-        NVL(REMARKS, '') AS REMARKS,
-        NVL(AMOUNT, 0) AS AMOUNT,
-        NVL(SIGN_IND, 0) AS SIGN_IND,
-        NVL(CURR_CODE, '') AS CURR_CODE,
-        NVL(EX_RATE, 0) AS EX_RATE,
-        NVL(LCUR_AMOUNT, 0) AS LCUR_AMOUNT,
-        NVL(CANCELLED, 'N') AS CANCELLED,
-        NVL(JOB_NO, '') AS JOB_NO,
-        NVL(DEPT_CODE, '') AS DEPT_CODE,
-        NVL(QTY, 0) AS QTY,
-        NVL(PRICE, 0) AS PRICE,
-        NVL(UOM, '') AS UOM,
-        NVL(REF_DOC_TYPE, '') AS REF_DOC_TYPE,
-        NVL(REF_DOC_NO, '') AS REF_DOC_NO,
-        NVL(PROD_CODE, '') AS PROD_CODE,
-        NVL(QTY_RCV, 0) AS QTY_RCV,
-        NVL(OTHER_REMARKS, '') AS OTHER_REMARKS,
-        NVL(AMOUNT_RCV, 0) AS AMOUNT_RCV,
-        NVL(DIV_CODE, '') AS DIV_CODE,
-        NVL(TX_CAT_CODE, '') AS TX_CAT_CODE,
-        NVL(TX_COMPNTCAT_CODE_1, '') AS TX_COMPNTCAT_CODE_1
-      FROM TR_AC_LPO_DETAIL
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
-      {
-        companyCode: { val: companyCode },
-        docNo: { val: docNo },
-      },
-      transaction
-    );
-    const detailData: any[] = detailResult.rows || detailResult;
-
-    // Clean detail data
-    const cleanedDetailData = detailData.map((detail) =>
-      VendorService.cleanDetail(detail)
-    );
-
-    // Log the payload for debugging
-    console.log("Sending Header Data:", cleanedHeaderData);
-    console.log("Sending Detail Data:", cleanedDetailData);
-
-    // Send detail rows
-    for (const detail of cleanedDetailData) {
-      try {
-        await VendorService.insertAcDetail(detail);
-      } catch (error: any) {
-        console.error(`Failed to send detail for DOC_NO: ${docNo}`, error);
-
-        // Send email notification for detail API failure
-        const apiError = error?.response?.data ?? error;
-        const apiMessage =
-          (apiError && (apiError.message || apiError.error)) ||
-          error?.message ||
-          String(error);
-
-        const notifPayload = {
-          event: "VENDOR_API_ERROR",
-          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
-          subject: "Vendor API Detail Data Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
-          cc: "prem@bayanattechnology.com",
-          htmlMessage: `
-            <h3>Vendor API Detail Data Failed</h3>
-            <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
-            <p><strong>API Response:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
-            <p><strong>Detail Data:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(detail, null, 2))}</pre>
-          `,
-        };
-
-        try {
-          console.log("notifyUser payload (detail failure):", notifPayload);
-          const notifResult: any = await notifyUser(notifPayload);
-          console.log("notifyUser result (detail failure):", notifResult);
-        } catch (notifErr) {
-          console.error("notifyUser failed (detail failure):", notifErr);
-        }
-        return;
-      }
-    }
-
-    // Send header data
-    try {
-      await VendorService.insertAcHeader(cleanedHeaderData);
-    } catch (error: any) {
-      console.error(`Failed to send header for DOC_NO: ${docNo}`, error);
-
-      const apiError = error?.response?.data ?? error;
-      const apiMessage =
-        (apiError && (apiError.message || apiError.error)) ||
-        error?.message ||
-        String(error);
-
-      const notifPayload = {
-        event: "VENDOR_API_ERROR",
-        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
-        subject: "Vendor API Header Data Failed",
-        request_user:
-          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
-        cc: "prem@bayanattechnology.com",
-        htmlMessage: `
-          <h3>Vendor API Header Data Failed</h3>
-          <p><strong>Document No:</strong> ${docNo}</p>
-          <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
-          <p><strong>API Response:</strong></p>
-          <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
-          <p><strong>Header Data:</strong></p>
-          <pre>${escapeHtml(JSON.stringify(cleanedHeaderData, null, 2))}</pre>
-        `,
-      };
-
-      try {
-        console.log("notifyUser payload (header failure):", notifPayload);
-        const notifResult: any = await notifyUser(notifPayload);
-        console.log("notifyUser result (header failure):", notifResult);
-      } catch (notifErr) {
-        console.error("notifyUser failed (header failure):", notifErr);
-      }
-      return;
-    }
-
-    // Update DATA_TRANSFER flag
+    // =============================================
+    // PART 3: UPDATE DATA_TRANSFER FLAG
+    // =============================================
     await VendorService.updateDataTransferFlag(companyCode, docNo);
-    console.log("Successfully updated data transfer flag");
+    console.log(`Successfully completed all data transfer for DOC_NO: ${docNo}`);
+    
   } catch (error) {
     console.error("Error in sendDataToDotNetAPI:", error);
     throw error;

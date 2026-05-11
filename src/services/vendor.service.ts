@@ -344,6 +344,29 @@ export class VendorService {
     }
   }
 
+  // Add this method to your VendorService class
+  static async callAwareVmsEntry(companyCode: string, docNo: string, userName: string = 'SYSTEM') {
+  try {
+    console.log(`Calling PROC_AWARE_VMS_ENTRY for Company: ${companyCode}, Doc No: ${docNo}`);
+    
+    const result = await oracleDb.query(
+      `BEGIN 
+         PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName); 
+       END;`,
+      {
+        companyCode: { val: companyCode },
+        docNo: { val: docNo },
+        userName: { val: userName },
+      }
+    );
+    
+    console.log(`PROC_AWARE_VMS_ENTRY executed successfully`);
+    return { success: true, message: "Data transferred via Oracle procedure" };
+  } catch (error: any) {
+    console.error("Error in callAwareVmsEntry:", error);
+    throw new Error(`Oracle procedure failed: ${error.message}`);
+  }
+  }
   // FIXED: Use oracleDb instead of sequelize
   static async updateDataTransferFlag(companyCode: string, docNo: string) {
     try {
