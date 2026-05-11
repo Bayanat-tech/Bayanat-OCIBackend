@@ -35,6 +35,7 @@ import {
   getDocAccounts,
   getLpoDoc,
   getLPOHeader,
+  getLPOPrint,
   getLpoDetail,
   updateLPODocument
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
@@ -85,6 +86,7 @@ router.post("/sales-document",createSalesDocument)
 //LPO Routes
 router.get("/lpo", getLpoDoc);
 router.get("/lpo/:doc_no", getLPOHeader);
+router.get("/lpo/:doc_no/print", getLPOPrint);
 router.get("/lpo/:doc_no/detail", getLpoDetail);     
 router.post("/lpo-document", createLPODocument);
 router.put("/lpo-update", updateLPODocument);
