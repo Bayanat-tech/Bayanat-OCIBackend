@@ -261,7 +261,9 @@ export const chequePaymentSchema = (
                 constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
                 constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
                 constants.TRANSACTION_DOCUMENT_TYPE.LPO,
-                constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT
+                constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT,
+                constants.TRANSACTION_DOCUMENT_TYPE.CREDIT_NOTE,
+                constants.TRANSACTION_DOCUMENT_TYPE.DEBIT_NOTE,
               )
               .required(),
             // Division code (required)
@@ -329,6 +331,8 @@ export const chequePaymentSchema = (
                 constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
                 constants.TRANSACTION_DOCUMENT_TYPE.LPO,
                 constants.TRANSACTION_DOCUMENT_TYPE.PETTY_CASH_PAYMENT,
+                constants.TRANSACTION_DOCUMENT_TYPE.CREDIT_NOTE,
+                constants.TRANSACTION_DOCUMENT_TYPE.DEBIT_NOTE
               )
               .required(),
             // Division code (required)
@@ -429,9 +433,9 @@ export const purchaseSchema = (
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
       .when("doc_type", {
-        is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT, 
-        then: Joi.allow(null, ""), 
-        otherwise: Joi.forbidden(), 
+        is: constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
+        then: Joi.allow(null, ""),
+        otherwise: Joi.forbidden(),
       }),
     tax_categoty: Joi.number().optional(),
     tax_category: Joi.string().optional().allow("", null),
@@ -480,14 +484,14 @@ export const purchaseSchema = (
                   otherwise: Joi.valid(-1) // SALES + SERVICE_INVOICE
                 }),
           tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
-          tx_compnt_1_expmt: Joi.string().optional().allow("", null), // Transaction component 1 expense (optional)
+          tx_compnt_1_expmt: Joi.string().allow(null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
           tx_compnt_amt_1: Joi.number().allow(null), // Transaction component 1 amount (optional)
           job_no: Joi.string().optional().allow("", null), // Job number (optional)
-          dept_code: Joi.string().allow("", null), // Department code (optional)
-          lcur_amount: Joi.number().allow("", null), // Local currency amount (optional)
-          tx_compnt_lcuramt_1: Joi.number().allow("", null), // Transaction component 1 local currency amount (optional)
-          tx_cat_code: Joi.string().allow("", null), // Transaction category code (optional)
+          dept_code: Joi.string().optional().allow("", null), // Department code (optional)
+          lcur_amount: Joi.number().optional().allow("", null), // Local currency amount (optional)
+          tx_compnt_lcuramt_1: Joi.number().optional().allow("", null), // Transaction component 1 local currency amount (optional)
+          tx_cat_code: Joi.string().optional().allow("", null), // Transaction category code (optional)
           div_code: Joi.string().required(), // Division code (required)
           doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).required().custom((v, h) => v == null ? v : String(v)), // Document number (required)
           doc_type: Joi.string() // Document type (required)
@@ -555,13 +559,13 @@ export const purchaseSchema = (
             //   .required(),
 
             sign_ind: Joi.number()
-             .integer()
-             .required()
-             .when('doc_type', {
-              is: constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
-              then: Joi.valid(-1),
-              otherwise: Joi.valid(1) // SALES + SERVICE_INVOICE
-            }),
+              .integer()
+              .required()
+              .when('doc_type', {
+                is: constants.TRANSACTION_DOCUMENT_TYPE.PURCHASE,
+                then: Joi.valid(-1),
+                otherwise: Joi.valid(1) // SALES + SERVICE_INVOICE
+              }),
             // Invoice number (optional)
             inv_no: Joi.string().allow("", null).allow("", null),
             // Invoice date (optional)
@@ -742,8 +746,10 @@ export const salesSchema = (
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
-    salesman_code: Joi.string().optional(),
+    salesman_code: Joi.string().optional().allow("", null),
+    salesman_name: Joi.string().optional().allow("", null),
     sector_code: Joi.string().optional().allow("", null),
+    sector_name: Joi.string().optional().allow("", null),
     address: Joi.string().optional().allow("", null),
     phone: Joi.string().optional().allow("", null),
     party_address: Joi.string().optional().allow("", null),
@@ -757,7 +763,7 @@ export const salesSchema = (
     payment_terms: Joi.string().optional().allow("", null),
     tx_compnt_1_expmt: Joi.string().optional().allow("", null),
     tax_type: Joi.string().optional().allow("", null),
-    tx_cat_code: Joi.string().optional().allow("", null), 
+    tx_cat_code: Joi.string().optional().allow("", null),
     tx_compntcat_code_1: Joi.string().optional().allow("", null),
     tx_compnt_perc_1: Joi.number().optional().allow("", null),
     tx_compnt_amt_1: Joi.number().optional().allow("", null),
@@ -790,19 +796,20 @@ export const salesSchema = (
           ex_rate: Joi.number(), // Exchange rate
           qty: Joi.number().default(1), // Quantity (default 1)
           price: Joi.number().default(1), // Price (default 1)
+          description: Joi.string().optional().allow("", null),
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
           sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
-          tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
+          tx_compntcat_code_1: Joi.string().optional().allow("", null), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().optional().allow("", null), // Transaction component 1 expense (optional)
-          tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
-          tx_compnt_amt_1: Joi.number().allow(null), // Transaction component 1 amount (optional)
+          tx_compnt_perc_1: Joi.number().optional().allow("", null), // Transaction component 1 percentage (optional)
+          tx_compnt_amt_1: Joi.number().optional().allow("", null), // Transaction component 1 amount (optional)
           job_no: Joi.string().optional().allow("", null), // Job number (optional)
-          dept_code: Joi.string().allow("", null), // Department code (optional)
-          lcur_amount: Joi.number().allow("", null), // Local currency amount (optional)
-          tx_compnt_lcuramt_1: Joi.number().allow("", null), // Transaction component 1 local currency amount (optional)
-          tx_cat_code: Joi.string().allow("", null), // Transaction category code (optional)
+          dept_code: Joi.string().optional().allow("", null), // Department code (optional)
+          lcur_amount: Joi.number().optional().allow("", null), // Local currency amount (optional)
+          tx_compnt_lcuramt_1: Joi.number().optional().allow("", null), // Transaction component 1 local currency amount (optional)
+          tx_cat_code: Joi.string().optional().allow("", null), // Transaction category code (optional)
           div_code: Joi.string().required(), // Division code (required)
           doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).required().custom((v, h) => v == null ? v : String(v)), // Document number (required)
           doc_type: Joi.string() // Document type (required)
@@ -866,7 +873,7 @@ export const salesSchema = (
             sign_ind: Joi.number()
               .integer()
               .valid(-1)
-              .valid(1,-1)
+              .valid(1, -1)
               .required(),
 
             // Invoice number (optional)
@@ -1086,7 +1093,7 @@ export const LpoSchema = (
     div_code: Joi.string().required(), // Division code (required)
     div_name: Joi.string().optional().allow('', null),
     warranty: Joi.string().optional().allow('', null),
-    ...(isBulkOperation && { company_code: userCompany }), 
+    ...(isBulkOperation && { company_code: userCompany }),
     files: Joi.array()
       .items(
         Joi.object({
@@ -1105,6 +1112,7 @@ export const LpoSchema = (
           ac_name: Joi.string(),
           header_ac_code: Joi.string(),
           product_code: Joi.string().optional().allow("", null),
+          description: Joi.string().optional().allow("", null),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           other_remarks: Joi.string().optional().allow("", null),
           cost_code: Joi.string().optional().allow("", null),
@@ -1117,15 +1125,15 @@ export const LpoSchema = (
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (optional)
-          tx_compntcat_code_1: Joi.string().allow(null, ""), // Transaction component category code 1 (optional)
+          tx_compntcat_code_1: Joi.string().optional().allow("", null), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().optional().allow("", null), // Transaction component 1 expense (optional)
-          tx_compnt_perc_1: Joi.number().allow(null), // Transaction component 1 percentage (optional)
-          tx_compnt_amt_1: Joi.number().allow(null), // Transaction component 1 amount (optional)
+          tx_compnt_perc_1: Joi.number().optional().allow("", null), // Transaction component 1 percentage (optional)
+          tx_compnt_amt_1: Joi.number().optional().allow("", null), // Transaction component 1 amount (optional)
           job_no: Joi.string().optional().allow("", null), // Job number (optional)
-          dept_code: Joi.string().allow("", null), // Department code (optional)
-          lcur_amount: Joi.number().allow("", null), // Local currency amount (optional)
-          tx_compnt_lcuramt_1: Joi.number().allow("", null), // Transaction component 1 local currency amount (optional)
-          tx_cat_code: Joi.string().allow("", null), // Transaction category code (optional)
+          dept_code: Joi.string().optional().allow("", null), // Department code (optional)
+          lcur_amount: Joi.number().optional().allow("", null), // Local currency amount (optional)
+          tx_compnt_lcuramt_1: Joi.number().optional().allow("", null), // Transaction component 1 local currency amount (optional)
+          tx_cat_code: Joi.string().optional().allow("", null), // Transaction category code (optional)
           div_code: Joi.string().required(), // Division code (required)
           doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).required().custom((v, h) => v == null ? v : String(v)), // Document number (required)
           doc_type: Joi.string() // Document type (required)
