@@ -48,6 +48,9 @@ export class User {
   @Column({ name: "CREATED_AT", type: "timestamp" })
   created_at!: Date;
 
+  @UpdateDateColumn({ name: "UPDATED_AT", type: "timestamp", nullable: true })
+  updated_at?: Date;
+
   @Column({ name: "USERPASS", type: "varchar2", length: 200 })
   userpass!: string;
 

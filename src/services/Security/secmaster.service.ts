@@ -96,9 +96,6 @@ export class SecmasterService {
     if ("loginid" in updateData) {
       delete updateData.loginid;
     }
-    if ("email_id" in updateData) {
-      delete updateData.email_id;
-    }
     if ("user_id" in updateData) {
       delete updateData.user_id;
     }
