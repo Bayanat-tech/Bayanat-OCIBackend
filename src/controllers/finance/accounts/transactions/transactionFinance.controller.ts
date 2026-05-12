@@ -980,7 +980,16 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     // Step 2 — insert all children via _SINGLE SPs, then commit
     const isPayment = ['BP', 'BR', 'CR', 'CP', 'CN', 'DN'].includes(h.doc_type);
-    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, detail, children, files);
+    const enrichedDetail = (detail ?? []).map((d: any) => ({
+      ...d,
+      cheque_no: d.cheque_no ?? h.cheque_no ?? null,
+      cheque_date: d.cheque_date ?? h.cheque_date ?? null,
+      chq_no: d.chq_no ?? d.cheque_no ?? h.cheque_no ?? null,
+      chq_date: d.chq_date ?? d.cheque_date ?? h.cheque_date ?? null,
+      cheque_desc: d.cheque_desc ?? h.remarks ?? null,
+    }));
+
+    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, enrichedDetail, children, files);
 
     console.log(`Created document ${h.doc_type} ${doc_no} with ${detail.length} detail rows, ${children.invoice?.length ?? 0} invoice rows, ${children.job?.length ?? 0} job rows and ${children.expense?.length ?? 0} expense rows`);
 
@@ -1085,9 +1094,17 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
       invoice: updatedInvoices,
     };
 
-    // Step 3 — re-insert children via _SINGLE SPs, then commit
     const isPayment = ['BP', 'BR', 'CR', 'CP', 'CN', 'DN'].includes(h.doc_type);
-    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, exRate, isPayment, req.user.loginid, detail, updatedChildren, files);
+    const enrichedDetail = (detail ?? []).map((d: any) => ({
+      ...d,
+      cheque_no: d.cheque_no ?? h.cheque_no ?? null,
+      cheque_date: d.cheque_date ?? h.cheque_date ?? null,
+      chq_no: d.chq_no ?? d.cheque_no ?? h.cheque_no ?? null,
+      chq_date: d.chq_date ?? d.cheque_date ?? h.cheque_date ?? null,
+      cheque_desc: d.cheque_desc ?? h.remarks ?? null,
+    }));
+
+    await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, exRate, isPayment, req.user.loginid, enrichedDetail, updatedChildren, files);
 
     // Step 4 — store process
     await callSpAcTxnControl(req.user.company_code, h.doc_type, h.doc_no, req.user.loginid);
