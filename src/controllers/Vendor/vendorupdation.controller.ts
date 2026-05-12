@@ -186,27 +186,73 @@ async function sendDataToDotNetAPI(
 
     // Update FILE_TRANSFER flag for successfully sent files
     if (filesSentSuccessfully > 0) {
-      await oracleDb.query(
-        `UPDATE UPLOADED_FILES_DLTS_VENDOR
-         SET FILE_TRANSFER = 'Y' 
-         WHERE REQUEST_NUMBER = :requestNumber 
-         AND FILE_TRANSFER != 'Y'`,
-        {
-          requestNumber: { val: docNo },
-        },
-        transaction
-      );
-      console.log(`✅ Updated FILE_TRANSFER flag for ${filesSentSuccessfully} files`);
+      try {
+        console.log(`Updating FILE_TRANSFER for REQUEST_NUMBER=${docNo}. Files found: ${fileData.length}`);
+        console.log(`File details:`, fileData.map(f => ({ SR_NO: f.SR_NO, ORG_FILE_NAME: f.ORG_FILE_NAME, ATTACHMENT_SR_NO: f.ATTACHMENT_SR_NO })));
+
+        const parsedDocNo = Number(docNo);
+        const requestNumberBind = !isNaN(parsedDocNo) ? { requestNumber: { val: parsedDocNo } } : { requestNumber: { val: docNo } };
+
+        const updateResult: any = await oracleDb.query(
+          `UPDATE UPLOADED_FILES_DLTS_VENDOR
+           SET FILE_TRANSFER = 'Y' 
+           WHERE REQUEST_NUMBER = :requestNumber 
+           AND NVL(FILE_TRANSFER,'N') != 'Y'`,
+          requestNumberBind,
+          transaction
+        );
+
+        const rowsAffected = updateResult?.rowsAffected ?? updateResult?.rows?.length;
+        console.log(`Updated FILE_TRANSFER flag. rowsAffected=${rowsAffected}`, updateResult);
+
+        // Verification select to show current flags
+        try {
+          const verify = await oracleDb.query(
+            `SELECT SR_NO, ORG_FILE_NAME, NVL(FILE_TRANSFER,'N') AS FILE_TRANSFER FROM UPLOADED_FILES_DLTS_VENDOR WHERE REQUEST_NUMBER = :requestNumber`,
+            requestNumberBind
+          );
+          console.log(`Verification rows for REQUEST_NUMBER=${docNo}:`, verify.rows || verify);
+        } catch (verErr) {
+          console.error('Error verifying FILE_TRANSFER rows:', verErr);
+        }
+      } catch (err) {
+        console.error('Error updating FILE_TRANSFER flags:', err);
+      }
     }
 
     // =============================================
     // PART 2: CALL ORACLE PROCEDURE FOR HEADER/DETAIL
     // =============================================
     console.log(` Calling Oracle procedure PROC_AWARE_VMS_ENTRY for DOC_NO: ${docNo}`);
-    
-    await VendorService.callAwareVmsEntry(companyCode, docNo, 'SYSTEM');
-    
-    console.log(` Oracle procedure executed successfully for DOC_NO: ${docNo}`);
+    try {
+      await VendorService.callAwareVmsEntry(companyCode, docNo, 'SYSTEM');
+      console.log(` Oracle procedure executed successfully for DOC_NO: ${docNo}`);
+    } catch (spError: any) {
+      console.error(`Oracle procedure PROC_AWARE_VMS_ENTRY failed for ${companyCode}/${docNo}:`, spError);
+
+      const apiMessage = spError?.message || String(spError);
+      const notifPayload = {
+        event: "VENDOR_SP_ERROR",
+        message: `Stored procedure PROC_AWARE_VMS_ENTRY failed for Document ${docNo} (Company: ${companyCode}). Error: ${apiMessage}`,
+        subject: "Vendor SP Transfer Failed",
+        request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        cc: "prem@bayanattechnology.com",
+        htmlMessage: `
+          <h3>Vendor SP Transfer Failed</h3>
+          <p><strong>Company:</strong> ${escapeHtml(companyCode)}</p>
+          <p><strong>Document No:</strong> ${escapeHtml(docNo)}</p>
+          <pre>${escapeHtml(apiMessage)}</pre>
+        `,
+      };
+
+      try {
+        await notifyUser(notifPayload);
+      } catch (notifErr) {
+        console.error("notifyUser failed for SP error:", notifErr);
+      }
+
+      throw spError;
+    }
 
     // =============================================
     // PART 3: UPDATE DATA_TRANSFER FLAG

@@ -46,12 +46,23 @@ export const generateToken = async (args: GenerateTokenInterface) => {
       loginid,
     },
     constants.AUTHENTICATION.APP_SECRET,
-    {
-      expiresIn: "24h",
+    {      expiresIn: "24h",
     }
   );
   return token;
 };
+
+export function escapeHtml(input: unknown): string {
+      if (input === null || input === undefined) return "";
+      const s = typeof input === "string" ? input : JSON.stringify(input);
+      const str = String(s);
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
 
 export const buildTree = (
   data: any[],
@@ -1233,6 +1244,30 @@ export const notifyUser = async (args: SendEmailInterface) => {
         subject: subject || "Vendor API Error Notification",
         text: message || "An error occurred in the Vendor API integration.",
         html: htmlMessage,
+        attachments: attachments || [],
+      };
+      break;
+
+    case "VENDOR_API_FILE_ERROR":
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_user || request_users || constants.ENV.EMAIL_USER,
+        cc: cc,
+        subject: subject || "Vendor API File Upload Failed",
+        text: message || "A file upload to the Vendor API failed.",
+        html: htmlMessage || `<pre>${escapeHtml(message)}</pre>`,
+        attachments: attachments || [],
+      };
+      break;
+
+    case "VENDOR_SP_ERROR":
+      mailOptions = {
+        from: constants.ENV.EMAIL_USER,
+        to: request_user || request_users || constants.ENV.EMAIL_USER,
+        cc: cc,
+        subject: subject || "Vendor Stored Procedure Error",
+        text: message || "Stored procedure transfer to external system failed.",
+        html: htmlMessage || `<pre>${escapeHtml(message)}</pre>`,
         attachments: attachments || [],
       };
       break;
