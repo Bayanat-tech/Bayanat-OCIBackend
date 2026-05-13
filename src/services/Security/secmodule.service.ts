@@ -57,10 +57,11 @@ export class SecModuleService {
     const repository = this.getSecModuleRepository();
 
     // Get the next serial number
-    const maxSerial = await repository
-      .createQueryBuilder("secModule")
-      .select("MAX(secModule.serial_no)", "max")
-      .getRawOne();
+    // Note: repository.createQueryBuilder is proxied to ensure tenant schema
+    // and therefore returns a Promise — await it first to get the actual
+    // QueryBuilder before chaining `select`.
+    const qb = await repository.createQueryBuilder("secModule");
+    const maxSerial = await qb.select("MAX(secModule.serial_no)", "max").getRawOne();
 
     const nextSerial = (maxSerial?.max || 0) + 1;
 
