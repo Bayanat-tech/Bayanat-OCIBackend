@@ -18,7 +18,7 @@
 import express from "express";
 
 
-import { proc_build_dynamic_ins_upd_common ,proc_build_dynamic_ins_upd_column90,procBuildCommonProcedurewmc} from "../../controllers/common/common_contoller";
+import { proc_build_dynamic_ins_upd_common ,proc_build_dynamic_ins_upd_column90,procBuildCommonProcedurewmc, proc_build_dynamic_sql_common20} from "../../controllers/common/common_contoller";
 import { proc_build_dynamic_sql_common ,proc_build_dynamic_del_common} from "../../controllers/common/common_contoller";
 
 
@@ -28,6 +28,12 @@ const router = express.Router();
 router.post(
   "/proc_build_dynamic_sql_common",
   proc_build_dynamic_sql_common
+);
+
+
+router.post(
+  "/proc_build_dynamic_sql_common20",
+  proc_build_dynamic_sql_common20
 );
 
 // INSERT / UPDATE  ✅ REQUIRED
