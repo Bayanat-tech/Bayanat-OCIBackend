@@ -62,7 +62,7 @@ import {
 import { executeRawSql } from "../../controllers/HR/rawSql_hr_controller";
 import { getRequestFlowUsers } from "../../controllers/HR/hr_leave_flow_sentback";
 import { BTgetLeaveEntitleHandler, BTvalidateLeaveHandler, getBTEmployeesHandler } from "../../BT_INDIA/controllers/BThr_net.controller";
-import { BTupsertLeaveApprovalHandler } from "../../BT_INDIA/controllers/BT_hr_leave_approval";
+import { BTupsertLeaveApprovalHandler ,saveFileHR } from "../../BT_INDIA/controllers/BT_hr_leave_approval";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -119,9 +119,9 @@ router.put("/paycomponent", updatehrpaycomponent);
 router.put("/BTupsertLeaveApprovalHandler", BTupsertLeaveApprovalHandler);
 
 // Save file route
-// router.post("/saveFile", (req, res, next) => {
-//   saveFileHR(req, res).catch(next);
-// });
+router.post("/saveFile", (req, res, next) => {
+  saveFileHR(req, res).catch(next);
+});
 router.get("/getRequestFlowUsers", getRequestFlowUsers as any );
 
 // HR .NET API routes

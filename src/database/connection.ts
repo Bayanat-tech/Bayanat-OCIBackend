@@ -48,6 +48,7 @@ export const AppDataSource = new DataSource({
   entities: [
     "src/entity/**/*.ts",
     "src/entities/**/*.ts",
+    "src/BT_INDIA/entities/*.ts"
   ],
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
