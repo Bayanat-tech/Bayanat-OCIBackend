@@ -49,6 +49,93 @@ function expmtToChar(v: any): string | null {
   if (s === '') return null;
   return s.substring(0, 1);
 }
+/**
+ * Fetch round-off GL account from MS_DOCCONFIG per company+doc_type.
+ */
+async function getRoundOffAc(
+  conn: oracledb.Connection,
+  company_code: string,
+  doc_type: string
+): Promise<string> {
+  const FALLBACK = '5030800009';
+  try {
+    const result: any = await conn.execute(
+      `SELECT ROUND_OFF_AC
+       FROM   WMSTST.MS_DOCCONFIG
+       WHERE  company_code = :cc
+         AND  doc_type     = :dt
+         AND  ROWNUM       = 1`,
+      { cc: company_code, dt: doc_type },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const rows: any[] = result?.rows ?? [];
+    return (rows.length && rows[0].ROUND_OFF_AC)
+      ? String(rows[0].ROUND_OFF_AC)
+      : FALLBACK;
+  } catch (e: any) {
+    console.warn('getRoundOffAc fallback to static:', e?.message ?? e);
+    return FALLBACK;
+  }
+}
+/**
+ * Calculate and append a round-off detail row when needed.
+ */
+function applyRoundOff(detail: any[], roundOffAc: string): any[] {
+  if (!Array.isArray(detail) || detail.length === 0) return detail;
+
+  // Skip if round-off row already exists
+  if (detail.some(d =>
+    String(d.ac_code) === roundOffAc ||
+    String(d.remarks || '').toUpperCase().includes('ROUND OFF')
+  )) {
+    return detail;
+  }
+
+  // Sum base + tax
+  const totalBase = detail.reduce((s, d) => s + Number(d.amount ?? 0), 0);
+  const totalTax  = detail.reduce((s, d) => s + Number(d.tx_compnt_amt_1 ?? 0), 0);
+  const grandTotal = totalBase + totalTax;
+
+  // Round to nearest integer
+  const rounded   = Math.round(grandTotal);
+  const roundDiff = rounded - grandTotal;
+
+  if (Math.abs(roundDiff) < 0.001) return detail;
+
+  // Dynamic serial: next after max existing
+  const maxSerial = detail.reduce((max, d) => Math.max(max, Number(d.serial_no ?? 0)), 0);
+
+  const first = detail[0] ?? {};
+  const roundRow: any = {
+    serial_no:           maxSerial + 1,
+    ac_code:             roundOffAc,
+    header_ac_code:      first.header_ac_code ?? null,
+    amount:              Math.abs(roundDiff),
+    sign_ind:            roundDiff > 0 ? 1 : -1,
+    curr_code:           first.curr_code  ?? null,
+    ex_rate:             first.ex_rate    ?? 1,
+    lcur_amount:         Math.abs(roundDiff),
+    div_code:            first.div_code   ?? null,
+    doc_date:            first.doc_date   ?? null,
+    dept_code:           first.dept_code  ?? null,
+    cheque_no:           first.cheque_no  ?? null,
+    cheque_date:         first.cheque_date ?? null,
+    cheque_desc:         first.cheque_desc ?? null,
+    remarks:             'ROUND OFF',
+    tx_compnt_amt_1:     0,
+    tx_compnt_perc_1:    0,
+    tx_compnt_lcuramt_1: 0,
+    tx_compntcat_code_1: null,
+    tx_cat_code:         null,
+    tx_compnt_1_expmt:   'N',
+  };
+
+  console.log(
+    `Round-off row: serial=${roundRow.serial_no}, ac=${roundOffAc}, diff=${roundDiff.toFixed(5)}`
+  );
+
+  return [...detail, roundRow];
+}
 
 async function spInsertDetailRows(
   conn: oracledb.Connection,
@@ -370,7 +457,9 @@ async function spInsertAllChildren(
   children: { invoice?: any[]; job?: any[]; expense?: any[] },
   files: any[]
 ) {
-  await spInsertDetailRows(conn, company_code, doc_type, doc_no, detail, login_user);
+  const roundOffAc = await getRoundOffAc(conn, company_code, doc_type);
+  const detailWithRounding = applyRoundOff(detail, roundOffAc);
+  await spInsertDetailRows(conn, company_code, doc_type, doc_no, detailWithRounding, login_user);
   await spInsertInvoiceRows(conn, company_code, doc_type, doc_no, div_code, curr_code, ex_rate, is_payment, children?.invoice ?? [], login_user);
   await spInsertJobRows(conn, company_code, doc_type, doc_no, curr_code, children?.job ?? [], login_user);
   await spInsertExpenseRows(conn, company_code, doc_type, doc_no, curr_code, children?.expense ?? [], login_user);
@@ -991,9 +1080,20 @@ export const createChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     await spInsertAllChildren(conn, req.user.company_code, h.doc_type, doc_no, h.div_code, h.curr_code, h.ex_rate, isPayment, req.user.loginid, enrichedDetail, children, files);
 
+    // Rebuild txn control row on same connection and commit
+    await conn.execute(
+      `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
+      { cc: req.user.company_code, dt: h.doc_type, dn: doc_no, lu: req.user.loginid }
+    );
+    await conn.commit();
+
     console.log(`Created document ${h.doc_type} ${doc_no} with ${detail.length} detail rows, ${children.invoice?.length ?? 0} invoice rows, ${children.job?.length ?? 0} job rows and ${children.expense?.length ?? 0} expense rows`);
 
-    res.json({ success: true, data: { data: constants.MESSAGES.CREATED_SUCCESSFULLY, doc_no, doc_type: h.doc_type } });
+    res.status(201).json({
+      success: true,
+      message: constants.MESSAGES.CREATED_SUCCESSFULLY,
+      data: { doc_no, doc_type: h.doc_type }
+    });
   } catch (err: any) {
     if (conn) try { await conn.rollback(); } catch { }
     sendError(res, err);
@@ -1106,10 +1206,18 @@ export const updateChequePaymentDocument = async (req: RequestWithUser, res: Res
 
     await spInsertAllChildren(conn, req.user.company_code, h.doc_type, h.doc_no, h.div_code, h.curr_code, exRate, isPayment, req.user.loginid, enrichedDetail, updatedChildren, files);
 
-    // Step 4 — store process
-    await callSpAcTxnControl(req.user.company_code, h.doc_type, h.doc_no, req.user.loginid);
+    // Step 4 — rebuild txn control row on same connection and commit
+    await conn.execute(
+      `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
+      { cc: req.user.company_code, dt: h.doc_type, dn: h.doc_no, lu: req.user.loginid }
+    );
+    await conn.commit();
 
-    res.json({ success: true, data: constants.MESSAGES.CREATED_SUCCESSFULLY });
+    res.json({
+      success: true,
+      message: constants.MESSAGES.UPDATED_SUCCESSFULLY,
+      data: { doc_no: h.doc_no, doc_type: h.doc_type }
+    });
   } catch (err: any) {
     if (conn) try { await conn.rollback(); } catch { }
     sendError(res, err);
@@ -1125,15 +1233,20 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
       (req.body as any).party_phone = (req.body as any).phone;
 
     delete (req.body as any).doc_no;
+
     const { error, value: v } = purchaseSchema(req.body);
     if (error) {
       res.status(400).json({ success: false, message: error.message });
       return;
     }
+
     conn = await getConn(req);
+
+    // Step 1 — create header, get generated doc_no
     const result = await conn.execute(
       `BEGIN SP_CREATE_PURCHASE_HEADER(
-      :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn, :lu, :inv_dt, :pf, :pt, :tcc, :tc,:te,:ref, :pno, :ino 
+        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm, :pa, :pp, :rn,
+        :lu, :inv_dt, :pf, :pt, :tcc, :tc, :te, :ref, :pno, :ino
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1149,58 +1262,66 @@ export const createPurchaseDocument = async (req: RequestWithUser, res: Response
         rn: v.ref_doc_no ?? null,
         lu: req.user.loginid,
         inv_dt: toDate(v.inv_date || v.doc_date),
-        pf: v.party_fax,
-        pt: v.payment_terms,
-        tcc: v.tx_cat_code,
-        tc: v.tx_compntcat_code_1,
-        te:v.tx_compnt_1_expmt,
-        ref: v.ref_no,
-        // inv_dt: toDate(v.inv_date || v.doc_date), 
+        pf: v.party_fax ?? null,
+        pt: v.payment_terms ?? null,
+        tcc: v.tx_cat_code ?? null,
+        tc: v.tx_compntcat_code_1 ?? null,
+        te: v.tx_compnt_1_expmt ?? null,
+        ref: v.ref_no ?? null,
         pno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
       }
     );
 
     const { pno: purchase_no, ino: invoice_no } = result.outBinds as any;
-    // Ensure header INV_NO is set to either user-provided inv_no, returned invoice_no, or fallback to purchase_no
-    const userInvNo = v.inv_no?.trim() || null;
+    if (!purchase_no) throw new Error('Failed to generate purchase document number');
+
+    // Step 2 — update invoice number on header if user provided one
     try {
+      const userInvNo = v.inv_no?.trim() || null;
       const invToSet = userInvNo || invoice_no || purchase_no;
       await conn.execute(
-        `UPDATE TR_AC_HEADER SET INVOICE_NUMBER = :inv WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
+        `UPDATE TR_AC_HEADER SET INVOICE_NUMBER = :inv
+         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
         { inv: invToSet, cc: req.user.company_code, dn: purchase_no, dt: v.doc_type }
       );
     } catch (uerr) {
       console.warn('Failed to update TR_AC_HEADER.INVOICE_NUMBER:', uerr);
     }
 
-    // Detail rows SP
-    await spInsertDetailRows(conn, req.user.company_code, v.doc_type, purchase_no, v.detail ?? [], req.user.loginid);
-    if (v.detail?.length) {
-      // Use user-provided inv_no if present, else fallback to generated
-    const userInvNo = v.inv_no?.trim() || null;
+    // Step 3 — insert detail rows (auto-generates 9010 tax row inside SP)
+    const purchaseRoundOffAc = await getRoundOffAc(conn, req.user.company_code, v.doc_type);
+    await spInsertDetailRows(
+      conn, req.user.company_code, v.doc_type, purchase_no,
+      applyRoundOff(v.detail ?? [], purchaseRoundOffAc), req.user.loginid
+    );
 
-      // Aggregate invoice rows in DB (group details, add tax) via single SP
+    // Step 4 — aggregate invoice rows from detail
+    if (v.detail?.length) {
       await conn.execute(
-        `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE_AGG(:cc,:dt,:dn,:lu); END;`,
+        `BEGIN SP_INSERT_PURCHASE_INVOICE_SINGLE_AGG(:cc, :dt, :dn, :lu); END;`,
         { cc: req.user.company_code, dt: v.doc_type, dn: purchase_no, lu: req.user.loginid }
       );
     }
-    // SP_AC_TXN_CONTROL issues its own COMMIT internally
+
+    // Step 5 — rebuild 9001 control row (same connection, no new conn needed)
     await conn.execute(
       `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
       { cc: req.user.company_code, dt: v.doc_type, dn: purchase_no, lu: req.user.loginid }
     );
 
     await conn.commit();
+
+    // *** Response always reached on success ***
     res.status(201).json({
       success: true,
-      message: 'Purchase and Invoice created successfully',
+      message: constants.MESSAGES.CREATED_SUCCESSFULLY,
       data: {
         purchase_doc_no: purchase_no,
-        invoice_doc_no: invoice_no
+        invoice_doc_no:  invoice_no,
       }
     });
+
   } catch (err: any) {
     if (conn) try { await conn.rollback(); } catch { }
     sendError(res, err);
@@ -1213,29 +1334,45 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
   let conn: oracledb.Connection | undefined;
   try {
     const { error, value: v } = salesSchema(req.body);
-    if (error) { res.status(400).json({ success: false, message: error.message }); return; }
+    if (error) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
 
     conn = await getConn(req);
 
-    const rawTe = v.tx_compnt_1_expmt;
-    const teNorm = expmtToChar(rawTe);
-    const teFinal = teNorm == null ? null : String(teNorm).charAt(0);
-    const teBind = teFinal == null ? null : String(teFinal).substring(0, 1);
-    console.log('createSalesDocument tx_compnt_1_expmt raw:', rawTe, 'normalized:', teNorm, 'final:', teFinal, 'bind:', teBind, 'type:', typeof teBind, 'length:', teBind ? String(teBind).length : 0);
+    const rawTe    = v.tx_compnt_1_expmt;
+    const teNorm   = expmtToChar(rawTe);
+    const teFinal  = teNorm == null ? null : String(teNorm).charAt(0);
+    const teBind   = teFinal == null ? null : String(teFinal).substring(0, 1);
+
+    // Step 1 — create header, get generated doc_no
     const result = await conn.execute(
-      `BEGIN SP_CREATE_SALES_HEADER(:cc,:dv,:dt,:dd,:ac,:cu,:er,:rm,:sc,:se,:lu,:pa,:pp,:rn,:pf,:pt,:tcc,:tc,:te,:inv_dt,:sno,:ino); END;`,
+      `BEGIN SP_CREATE_SALES_HEADER(
+        :cc, :dv, :dt, :dd, :ac, :cu, :er, :rm,
+        :sc, :se, :lu, :pa, :pp, :rn, :pf, :pt,
+        :tcc, :tc, :te, :inv_dt, :sno, :ino
+      ); END;`,
       {
-        cc: req.user.company_code, dv: v.div_code, dt: v.doc_type,
-        dd: toDate(v.doc_date), ac: v.ac_code, cu: v.curr_code,
-        er: v.ex_rate, rm: v.remarks ?? null,
-        sc: v.salesman_code ?? null, se: v.sector_code ?? null,
-        pa: v.party_address, pp: v.party_phone, rn: v.ref_no,
-        pf: v.party_fax,
-        pt: v.payment_terms,
-        tcc: v.tx_cat_code,
-        tc: v.tx_compntcat_code_1,
-        te: teBind,
-        lu: req.user.loginid,
+        cc:     req.user.company_code,
+        dv:     v.div_code,
+        dt:     v.doc_type,
+        dd:     toDate(v.doc_date),
+        ac:     v.ac_code,
+        cu:     v.curr_code,
+        er:     v.ex_rate,
+        rm:     v.remarks ?? null,
+        sc:     v.salesman_code ?? null,
+        se:     v.sector_code   ?? null,
+        lu:     req.user.loginid,
+        pa:     v.party_address ?? null,
+        pp:     v.party_phone   ?? null,
+        rn:     v.ref_no        ?? null,
+        pf:     v.party_fax     ?? null,
+        pt:     v.payment_terms ?? null,
+        tcc:    v.tx_cat_code          ?? null,
+        tc:     v.tx_compntcat_code_1  ?? null,
+        te:     teBind,
         inv_dt: toDate(v.inv_date || v.doc_date),
         sno: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
         ino: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 50 },
@@ -1243,23 +1380,47 @@ export const createSalesDocument = async (req: RequestWithUser, res: Response): 
     );
 
     const { sno: sales_no, ino: invoice_no } = result.outBinds as any;
+    if (!sales_no) throw new Error('Failed to generate sales document number');
 
-    await spInsertDetailRows(conn, req.user.company_code, v.doc_type, sales_no, v.detail ?? [], req.user.loginid);
+    // Step 2 — insert detail rows (auto-generates 9010 tax row inside SP)
+    const salesRoundOffAc = await getRoundOffAc(conn, req.user.company_code, v.doc_type);
+    await spInsertDetailRows(
+      conn, req.user.company_code, v.doc_type, sales_no,
+      applyRoundOff(v.detail ?? [], salesRoundOffAc), req.user.loginid
+    );
 
-    // Aggregate sales invoice rows in DB (group details, add tax) via single SP
+    // Step 3 — aggregate invoice rows from detail
     if (v.detail?.length) {
       await conn.execute(
-        `BEGIN SP_INSERT_SALES_INVOICE_SINGLE_AGG(:cc,:dt,:dn,:lu); END;`,
+        `BEGIN SP_INSERT_SALES_INVOICE_SINGLE_AGG(:cc, :dt, :dn, :lu); END;`,
         { cc: req.user.company_code, dt: v.doc_type, dn: sales_no, lu: req.user.loginid }
       );
     }
 
+    // Step 4 — rebuild 9001 control row (same connection)
+    await conn.execute(
+      `BEGIN SP_AC_TXN_CONTROL(:cc, :dt, :dn, :lu); END;`,
+      { cc: req.user.company_code, dt: v.doc_type, dn: sales_no, lu: req.user.loginid }
+    );
+
     await conn.commit();
-    res.status(201).json({ success: true, message: 'Sales Invoice created successfully', data: { purchase_doc_no: sales_no, invoice_doc_no: invoice_no } });
+
+    // *** Response always reached on success ***
+    res.status(201).json({
+      success: true,
+      message: constants.MESSAGES.CREATED_SUCCESSFULLY,
+      data: {
+        purchase_doc_no: sales_no,
+        invoice_doc_no:  invoice_no,
+      }
+    });
+
   } catch (err: any) {
     if (conn) try { await conn.rollback(); } catch { }
     sendError(res, err);
-  } finally { await closeConn(conn); }
+  } finally {
+    await closeConn(conn);
+  }
 };
 
 export const createLPODocument = async (req: RequestWithUser, res: Response): Promise<void> => {
@@ -1585,6 +1746,19 @@ export const deleteChildrenItem = async (req: RequestWithUser, res: Response): P
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
+export const cancelLPODocument = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { doc_no, doc_type } = req.query as any;
+    conn = await getConn(req);
+    await conn.execute(
+      `BEGIN SP_CANCEL_LPO_DOCUMENT(:cc, :dn, :dt, :lu); END;`,
+      { cc: req.user.company_code, dn: doc_no, dt: doc_type, lu: req.user.loginid }
+    );
+    res.json({ success: true, message: constants.MESSAGES.CANCELLED_SUCCESSFULLY });
+  } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
 // =============================================================================
 // STORE PROCESS SP CALLER
 // =============================================================================
@@ -1709,13 +1883,14 @@ export const updatePurchaseDocument = async (req: RequestWithUser, res: Response
 
     console.log('Cleaned detail items:', JSON.stringify(cleanDetail, null, 2));
 
-    // Insert detail rows
+    // Insert detail rows (append round-off row if needed)
+    const updateRoundOffAc = await getRoundOffAc(conn, req.user.company_code, h.doc_type);
     await spInsertDetailRows(
       conn,
       req.user.company_code,
       h.doc_type,
       h.doc_no,
-      cleanDetail,
+      applyRoundOff(cleanDetail, updateRoundOffAc),
       req.user.loginid
     );
 

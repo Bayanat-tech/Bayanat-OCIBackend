@@ -37,7 +37,8 @@ import {
   getLPOHeader,
   getLPOPrint,
   getLpoDetail,
-  updateLPODocument
+  updateLPODocument,
+  cancelLPODocument
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 // Initialize Express router
 const router = express.Router();
@@ -90,6 +91,7 @@ router.get("/lpo/:doc_no/print", getLPOPrint);
 router.get("/lpo/:doc_no/detail", getLpoDetail);     
 router.post("/lpo-document", createLPODocument);
 router.put("/lpo-update", updateLPODocument);
+router.put("/cancel_LPO", cancelLPODocument);
 
 // Export the configured router
 export default router;
