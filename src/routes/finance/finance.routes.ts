@@ -32,6 +32,8 @@ import { insUpdHrJoinRpt } from "../../controllers/HR/insUpdHrJoinRpt";
 import { insUpdHrPayCompDepend } from "../../controllers/HR/insUpdHrPayCompDepend";
 import { insUpdHrGradeComponent } from "../../controllers/HR/insUpdHrGradeComponent";
 import { proc_common_sql_finance } from "../../controllers/finance/accounts_controller";
+import { upsertHrIntEvalForm } from "../../controllers/finance/accounts/transactions/upsertHrIntEvalForm";
+import { procBulkAccountEntry } from "../../controllers/finance/accounts/transactions/procBulkAccountEntry";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -53,6 +55,13 @@ router.post(
   insUpdAcExpTypeBulk
 );
 
+// Account entry for BP/BR/CR/CP/DN/CN
+
+router.post(
+  "/procBulkAccountEntry",
+  procBulkAccountEntry);
+
+
 router.post(
   "/insDocAccodeBulk",
   insDocAccodeBulk);
@@ -60,6 +69,11 @@ router.post(
 router.post(
   "/upsertHrDocTypes",
   upsertHrDocTypes)
+
+
+  router.post(
+  "/upsertHrIntEvalForm", 
+upsertHrIntEvalForm)
 
   // hr
 router.post(
