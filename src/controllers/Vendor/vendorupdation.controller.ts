@@ -90,6 +90,7 @@ export const postLpoRequestHandler = async (
       COMPANY_CODE: defaultString(req.body.COMPANY_CODE),
       DOC_NO: defaultString(req.body.DOC_NO),
       DOC_DATE: defaultDate(req.body.DOC_DATE),
+      ACCOUNT_DATE: defaultDate(req.body.ACCOUNT_DATE),
       AC_CODE: defaultString(req.body.AC_CODE),
       REMARKS: req.body.REMARKS == null ? "" : String(req.body.REMARKS),
       LAST_ACTION: defaultString(req.body.LAST_ACTION),
@@ -385,7 +386,7 @@ async function upsertLpoRequestHeader(
   if (isNew) {
     const insertQuery = `
       INSERT INTO TR_AC_LPO_HEADER (
-        INVOICE_NUMBER, INVOICE_DATE, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, 
+        INVOICE_NUMBER, INVOICE_DATE, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, ACCOUNT_DATE, 
         AC_CODE, REF_NO, REF_DATE, REMARKS, CURR_CODE, EX_RATE, CANCELED, 
         CREATE_USER, EDIT_USER, CREATE_DATE, EDIT_DATE, LAST_SERIAL_NO, 
         PAYMENT_TERMS, CREDIT_PERIOD, DUE_DATE, REF_DOC_NO, REF_DOC_TYPE,
@@ -401,6 +402,7 @@ async function upsertLpoRequestHeader(
         :docType,
         :docNo,
         TO_DATE(:docDate, 'YYYY-MM-DD'),
+        TO_DATE(:accountDate, 'YYYY-MM-DD'),
         :acCode,
         :refNo,
         CASE WHEN :refDate IS NOT NULL THEN TO_DATE(:refDate, 'YYYY-MM-DD') ELSE NULL END,
@@ -495,16 +497,19 @@ async function upsertLpoRequestHeader(
            refdoc1: { val: defaultString(data.REF_DOC1) },
             refdoc2: { val: defaultString(data.REF_DOC2) },
              refdoc3: { val: defaultString(data.REF_DOC3) },
+             accountDate: { val: formatDateForOracle(data.ACCOUNT_DATE) },
     };
 
     await oracleDb.query(insertQuery, replacements, connection);
   } else {
     const updateQuery = `
       UPDATE TR_AC_LPO_HEADER SET 
-        ACCOUNT_DATE= :account_date,
         REF_DOC1 = :refdoc1,
         REF_DOC2 = :refdoc2,
         REF_DOC3 = :refdoc3,
+        ACCOUNT_DATE = CASE WHEN :accountDate IS NOT NULL 
+                      THEN TO_DATE(:accountDate, 'YYYY-MM-DD') 
+                      ELSE ACCOUNT_DATE END,
         INVOICE_NUMBER = :invoiceNumber, 
         INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
         LAST_ACTION = :lastAction,
@@ -524,6 +529,7 @@ async function upsertLpoRequestHeader(
          refdoc1: { val: defaultString(data.REF_DOC1) },
             refdoc2: { val: defaultString(data.REF_DOC2) },
              refdoc3: { val: defaultString(data.REF_DOC3) },
+             accountDate: { val: formatDateForOracle(data.ACCOUNT_DATE) },
       invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
       invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
       lastAction: { val: defaultString(data.LAST_ACTION) },

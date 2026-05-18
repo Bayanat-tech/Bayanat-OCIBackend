@@ -38,6 +38,7 @@ export interface HeaderTVendor {
    REF_DOC1?: string;
     REF_DOC2?: string;
      REF_DOC3?: string;
+     ACCOUNT_DATE?: string;
   DOC_DATE: string;
   AC_CODE: string;
   REF_NO: string;
