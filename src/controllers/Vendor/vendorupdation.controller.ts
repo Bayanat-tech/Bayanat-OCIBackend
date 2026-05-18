@@ -501,6 +501,7 @@ async function upsertLpoRequestHeader(
   } else {
     const updateQuery = `
       UPDATE TR_AC_LPO_HEADER SET 
+        ACCOUNT_DATE= :account_date,
         REF_DOC1 = :refdoc1,
         REF_DOC2 = :refdoc2,
         REF_DOC3 = :refdoc3,
