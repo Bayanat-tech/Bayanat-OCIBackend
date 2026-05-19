@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+import { IUser } from '../../../../interfaces/user.interface';
 
 export const procBulkAccountEntry = async (
   req: Request,
@@ -11,12 +12,13 @@ export const procBulkAccountEntry = async (
   let connection: oracledb.Connection | undefined;
 
   try {
-
+    const user = req.user as IUser;
     const header = req.body?.header;
     const details = req.body?.details || [];
-    const invoiceDetail = req.body?.invoiceDetail || [];
-    const expenseDetail = req.body?.expenseDetail || [];
-    const jobDetail = req.body?.jobDetail || [];
+    const invoiceDetail = req.body?.invoiceDetails || [];
+    console.log("invoiceDetail:", invoiceDetail);
+    const expenseDetail = req.body?.expenseDetails || [];
+    const jobDetail = req.body?.jobDetails || [];
 
     if (!header) {
 
@@ -41,7 +43,12 @@ export const procBulkAccountEntry = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
-
+    console.log("========================>", header.doc_no);
+    console.log("invoiceDetail raw:", invoiceDetail);
+    console.log("invoiceDetail length:", invoiceDetail?.length);
+    if (header.doc_no == 0) {
+      header.doc_no = '0'
+    }
     const result = await connection.execute(
       `
       BEGIN
@@ -62,9 +69,10 @@ export const procBulkAccountEntry = async (
             {
               COMPANY_CODE: header.company_code,
               DOC_TYPE: header.doc_type,
-              DOC_NO: header.doc_no || 0,
+              DOC_NO: header.doc_no || '0',
               DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,
               AC_CODE: header.ac_code,
+              AC_PAYEE: header.ac_payee,
               REMARKS: header.remarks,
               CURR_CODE: header.curr_code,
               EX_RATE: header.ex_rate,
@@ -91,7 +99,9 @@ export const procBulkAccountEntry = async (
               TX_COMPNT_1_EXPMT: header.tx_compnt_1_expmt,
               TX_TAX_FILED: header.tx_tax_filed,
               TX_COMPNT_HDISC_AMT_1: header.tx_compnt_hdisc_amt_1,
-              PDO_TYPE: "N"
+              PDO_TYPE: "N",
+              CREATED_BY: user.loginid,
+              UPDATED_BY: user.loginid
             }
           ]
         },
@@ -101,7 +111,7 @@ export const procBulkAccountEntry = async (
           val: details.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
-            DOC_NO: d.doc_no || 0,
+            DOC_NO: d.doc_no || '0',
             SERIAL_NO: d.serial_no,
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : null,
             AC_CODE: d.ac_code,
@@ -142,7 +152,7 @@ export const procBulkAccountEntry = async (
             TX_COMPNT_3_EXPMT: d.tx_compnt_3_exmpt,
             TX_COMPNT_4_EXPMT: d.tx_compnt_4_exmpt,
             TX_TAX_FILED: d.tx_tax_filed,
-            TX_COMPNT_HDISC_AMT_1: d.tx_compnt_hdisc_amt_1
+            TX_COMPNT_HDISC_AMT_1: d.tx_compnt_hdisc_amt_1,
           }))
         },
 
@@ -151,7 +161,7 @@ export const procBulkAccountEntry = async (
           val: invoiceDetail.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
-            DOC_NO: d.doc_no || 0,
+            DOC_NO: d.doc_no || '0',
             SERIAL_NO: d.serial_no,
             DTL_SR_NO: d.dtl_sr_no,
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : null,
@@ -175,7 +185,7 @@ export const procBulkAccountEntry = async (
           val: expenseDetail.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
-            DOC_NO: d.doc_no || 0,
+            DOC_NO: d.doc_no || '0',
             SERIAL_NO: d.serial_no,
             DTL_SR_NO: d.dtl_sr_no,
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : null,
@@ -196,13 +206,14 @@ export const procBulkAccountEntry = async (
           val: jobDetail.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
-            DOC_NO: d.doc_no || 0,
+            DOC_NO: d.doc_no || '0',
             SERIAL_NO: d.serial_no,
             DTL_SR_NO: d.dtl_sr_no,
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : null,
             AC_CODE: d.ac_code,
             JOB_NO: d.job_no,
             DOC_REFNO: d.doc_refno,
+            DOC_REFNO_2: d.doc_refno_2,
             AMOUNT: d.amount,
             SIGN_IND: d.sign_ind,
             LCUR_AMOUNT: d.lcur_amount,
@@ -230,7 +241,7 @@ export const procBulkAccountEntry = async (
     if (connection) {
       try {
         await connection.rollback();
-      } catch {}
+      } catch { }
     }
 
     res.status(500).json({
@@ -244,7 +255,7 @@ export const procBulkAccountEntry = async (
     if (connection) {
       try {
         await connection.close();
-      } catch {}
+      } catch { }
     }
 
   }
