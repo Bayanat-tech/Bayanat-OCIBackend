@@ -716,6 +716,7 @@ function formatResultDates(row: any): any {
     "EDIT_DATE",
     "REF_DATE",
     "DUE_DATE",
+    "ACCOUNT_DATE", 
   ];
 
   const formattedRow = { ...row };

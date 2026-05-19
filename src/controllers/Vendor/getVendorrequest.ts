@@ -57,6 +57,7 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         TO_CHAR(EDIT_DATE, 'DD-MM-YYYY') as EDIT_DATE,
         TO_CHAR(REF_DATE, 'DD-MM-YYYY') as REF_DATE,
         TO_CHAR(DUE_DATE, 'DD-MM-YYYY') as DUE_DATE,
+        TO_CHAR(ACCOUNT_DATE, 'DD-MM-YYYY') as ACCOUNT_DATE,
         AC_CODE,
         REF_NO,
         REMARKS,
@@ -167,6 +168,7 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         "EDIT_DATE",
         "REF_DATE",
         "DUE_DATE",
+        "ACCOUNT_DATE", 
       ];
       dateFields.forEach((field) => {
         if (VendorHeaderData[field]) {
