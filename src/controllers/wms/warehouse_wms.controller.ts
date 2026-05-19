@@ -24,7 +24,7 @@ export const createWarehouse = async (req: RequestWithUser, res: Response) => {
 
     const warehouse = await Warehouse.findOne({
       where: {
-        [Op.and]: [{ company_code: company_code }, { country_code: wh_code }],
+        [Op.and]: [{ company_code: company_code }, { wh_code: wh_code }],
       },
     });
 
@@ -35,14 +35,14 @@ export const createWarehouse = async (req: RequestWithUser, res: Response) => {
       });
       return;
     }
-    const createCountry = await Warehouse.create({
+    const createdWarehouse = await Warehouse.create({
       company_code,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
 
       ...req.body,
     });
-    if (!createWarehouse) {
+    if (!createdWarehouse) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: "Error while creating company" });
