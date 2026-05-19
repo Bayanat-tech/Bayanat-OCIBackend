@@ -21,12 +21,11 @@ export class SecmasterService {
   static async findByIdAndCompany(
     id: number,
     company_code: string,
-    loginid: string,
-    email_id: string
+    loginid: string
   ): Promise<User | null> {
     const userRepository = this.getUserRepository();
     return await userRepository.findOne({
-      where: { loginid: loginid, company_code, id, email_id },
+      where: { loginid, company_code, id },
     });
   }
 
@@ -77,7 +76,7 @@ export class SecmasterService {
     loginid: string,
     id: number,
     company_code: string,
-    email_id: string,
+    _email_id: string,
     updateData: any
   ): Promise<boolean> {
     const userRepository = this.getUserRepository();
@@ -91,9 +90,12 @@ export class SecmasterService {
     if ("id" in updateData) {
       delete updateData.id;
     }
+    delete updateData.loginid;
+    delete updateData.created_at;
+    delete updateData.created_by;
 
     const result = await userRepository.update(
-      { loginid: loginid, company_code, id, email_id },
+      { loginid, company_code, id },
       { ...updateData }
     );
 
