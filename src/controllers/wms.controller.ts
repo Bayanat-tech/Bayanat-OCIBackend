@@ -621,8 +621,9 @@ const filter: ISearch = req.query.filter
 case "producttype":
   {
     const where = { company_code: requestUser.company_code };
-    totalCount = await Producttype.count({ where });
-    fetchedData = await Producttype.findAll({
+    const productTypeModel = Producttype as any;
+    totalCount = await productTypeModel.count({ where });
+    fetchedData = await productTypeModel.findAll({
       where,
       ...(!!filter?.sort &&
         Object.keys(filter?.sort).length > 0 && {
@@ -1090,8 +1091,9 @@ case "group":
 case "assetgroup":
   {
     const where = { company_code: requestUser.company_code };
-    totalCount = await Assetgroup.count({ where });
-    fetchedData = await Assetgroup.findAll({
+    const assetGroupModel = Assetgroup as any;
+    totalCount = await assetGroupModel.count({ where });
+    fetchedData = await assetGroupModel.findAll({
       where,
       ...(!!filter?.sort &&
         Object.keys(filter?.sort).length > 0 && {
@@ -1639,8 +1641,9 @@ case "currency":
 case "site":
   {
     const where = { company_code: requestUser.company_code };
-    totalCount = await Site.count({ where });
-    fetchedData = await Site.findAll({
+    const siteModel = Site as any;
+    totalCount = await siteModel.count({ where });
+    fetchedData = await siteModel.findAll({
       where,
       ...(!!filter?.sort &&
         Object.keys(filter?.sort).length > 0 && {
@@ -1656,8 +1659,9 @@ case "site":
 case "warehouse":
   {
     const where = { company_code: requestUser.company_code };
-    totalCount = await Warehouse.count({ where });
-    fetchedData = await Warehouse.findAll({
+    const warehouseModel = Warehouse as any;
+    totalCount = await warehouseModel.count({ where });
+    fetchedData = await warehouseModel.findAll({
       where,
       ...(!!filter?.sort &&
         Object.keys(filter?.sort).length > 0 && {
