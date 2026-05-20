@@ -34,6 +34,7 @@ import { insUpdHrGradeComponent } from "../../controllers/HR/insUpdHrGradeCompon
 import { proc_common_sql_finance } from "../../controllers/finance/accounts_controller";
 import { upsertHrIntEvalForm } from "../../controllers/finance/accounts/transactions/upsertHrIntEvalForm";
 import { procBulkAccountEntry } from "../../controllers/finance/accounts/transactions/procBulkAccountEntry";
+import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -80,6 +81,11 @@ router.post(
   "/insUpdHrGradeComponent",
   insUpdHrGradeComponent)
    
+
+  // hr
+router.post(
+  "/upsertHrEmpEducation",
+  upsertHrEmpEducation)
 
   // hr
 router.post(
