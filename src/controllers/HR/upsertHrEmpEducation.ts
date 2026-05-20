@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import oracledb from "oracledb";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 
-import TenantManager from "../../../../database/TenantManager";
-import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+// import TenantManager from "../../../../database/TenantManager";
+// import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
 const toNumber = (val: any): number | null => {
   if (val === undefined || val === null || val === "") return null;
