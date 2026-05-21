@@ -35,6 +35,7 @@ import { proc_common_sql_finance } from "../../controllers/finance/accounts_cont
 import { upsertHrIntEvalForm } from "../../controllers/finance/accounts/transactions/upsertHrIntEvalForm";
 import { procBulkAccountEntry } from "../../controllers/finance/accounts/transactions/procBulkAccountEntry";
 import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
+import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -86,6 +87,12 @@ router.post(
 router.post(
   "/upsertHrEmpEducation",
   upsertHrEmpEducation)
+
+  // hr
+router.post(
+  "/upsertHrEmpComponents ",
+  upsertHrEmpComponents)
+
 
   // hr
 router.post(
