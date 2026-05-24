@@ -90,7 +90,7 @@ router.post(
 
   // hr
 router.post(
-  "/upsertHrEmpComponents ",
+  "/upsertHrEmpComponents",
   upsertHrEmpComponents)
 
 
