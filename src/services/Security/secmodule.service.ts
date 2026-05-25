@@ -1,5 +1,6 @@
 import { getRepository } from "../../database/connection";
 import { SecModule } from "../../entity/Security/secmodule.entity";
+import constants from "../../helpers/constants";
 
 export class SecModuleService {
   private static getSecModuleRepository() {
@@ -53,13 +54,11 @@ export class SecModuleService {
   }): Promise<SecModule> {
     const repository = this.getSecModuleRepository();
 
-    // Get the next serial number
-    const maxSerial = await repository
-      .createQueryBuilder("secModule")
-      .select("MAX(secModule.serial_no)", "max")
-      .getRawOne();
-
-    const nextSerial = (maxSerial?.max || 0) + 1;
+    const maxSerialRows = await repository.query(
+      `SELECT NVL(MAX(SERIAL_NO), 0) AS MAX_SERIAL FROM ${constants.TABLE.SEC_MODULE_DATA}`
+    );
+    const maxSerial = Array.isArray(maxSerialRows) ? maxSerialRows[0] : maxSerialRows?.rows?.[0];
+    const nextSerial = Number(maxSerial?.MAX_SERIAL ?? maxSerial?.max_serial ?? 0) + 1;
 
     const module = repository.create({
       ...moduleData,

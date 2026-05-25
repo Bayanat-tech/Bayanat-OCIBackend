@@ -9,7 +9,7 @@ import {
   exportCountry, // For exporting country data
   updateCountry, // For updating country information
 } from "../../controllers/wms/country_wms.controller";
-import { createUoc, updateUoc } from "../../controllers/wms/uoc_wms.controller";
+import { createUoc, updateUoc, deleteCountries as deleteUocs } from "../../controllers/wms/uoc_wms.controller";
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -63,6 +63,7 @@ import {
 // Import manufacture controllers
 import {
   createManufacture, // For creating manufacturer
+  deleteManufactures,
   updateManufacture, // For updating manufacturer
 } from "../../controllers/wms/manufacture_wms.controller";
 
@@ -111,18 +112,21 @@ import {
 // Import brand management controllers
 import {
   createBrand, // For creating brands
+  deleteBrands,
   updateBrand, // For updating brands
 } from "../../controllers/wms/brand_wms.controller";
 
 // Import supplier management controllers
 import {
   createSupplier, // For creating suppliers
+  deleteSuppliers,
   updateSupplier, // For updating suppliers
 } from "../../controllers/wms/supplier_wms.controller";
 
 // Import currency management controllers0
 import {
   createcurrency, // For creating currencies
+  deletecurrencys,
   updatecurrency, // For updating currencies
 } from "../../controllers/wms/currency_wms.controller";
 
@@ -153,23 +157,27 @@ import {
 // Import other WMS controllers
 import {
   createHarmonize,
+  deleteHarmonizeCodes,
   updateHarmonize,
 } from "../../controllers/wms/harmonize_wms.controller";
 import {
   createLocation,
+  deleteLocations,
   updateLocation,
 } from "../../controllers/wms/location_wms.controller";
 import {
   createMoc2,
+  deleteActivityUOCs,
   updateMoc2,
 } from "../../controllers/wms/moc2_wms.controller";
-import { createMoc, updateMoc } from "../../controllers/wms/moc_wms.controller";
-import { createUom, updateUom } from "../../controllers/wms/uom_wms.controller";
+import { createMoc, deleteMoc, updateMoc } from "../../controllers/wms/moc_wms.controller";
+import { createUom, updateUom, deleteUoms } from "../../controllers/wms/uom_wms.controller";
 // import { checkPassword } from "../../middleware/checkPassword";
 
 // Import activity related controllers
 import {
   createActivitysubgroup,
+  deleteActivitySubgroups,
   updateActivitysubgroup,
 } from "../../controllers/wms/activity_subgroup_wms.controller";
 
@@ -188,16 +196,17 @@ import {
 } from "../../controllers/wms/division_wms.controller";
 
 // Import asset group controllers
-// import {
-//   createAssetgroup,
-//   updateAssetgroup,
-// } from "../../controllers/wms/assetgroup_wms.controller";
+import {
+  createAssetgroup,
+  deleteCountries as deleteAssetgroups,
+  updateAssetgroup,
+} from "../../controllers/wms/assetgroup_wms.controller";
 
 // Import warehouse controllers
-// import {
-//   createWarehouse,
-//   updateWarehouse,
-// } from "../../controllers/wms/warehouse_wms.controller";
+import {
+  createWarehouse,
+  updateWarehouse,
+} from "../../controllers/wms/warehouse_wms.controller";
 
 // Import alert management controllers
 import {
@@ -212,6 +221,7 @@ import {
 import {
   createActivityKPI,
   createBulkActivityKPI,
+  deleteActivityKPI,
   exportActivityKPI,
   updateActivityKPI,
 } from "../../controllers/wms/activitykpi_wms.controller";
@@ -263,6 +273,10 @@ router.get(
   "/activity-kpi/export",
   exportActivityKPI as unknown as express.RequestHandler
 ); // Export KPI data
+router.post(
+  "/activity-kpi/delete",
+  deleteActivityKPI as unknown as express.RequestHandler
+); // Delete activity KPI data
 // ..\controllers\wms\producttype_wms.controller.ts
 
 // Product Type Routes - Handle product type management
@@ -298,6 +312,7 @@ router.put("/accountsetup", updateAccountsetup); // Update existing account setu
 // Manufacture Routes - Handle manufacturer management
 router.post("/manufacture", createManufacture); // Create new manufacturer
 router.put("/manufacture", updateManufacture); // Update existing manufacturer
+router.post("/manufacture/delete", deleteManufactures); // Delete manufacturer
 
 // Group Routes - Handle product group management
 router.post("/group", createGroup); // Create new product group
@@ -306,6 +321,7 @@ router.delete("/group",deleteGroups);
 // Brand Routes - Handle brand management
 router.post("/brand", createBrand); // Create new brand
 router.put("/brand", updateBrand); // Update existing brand
+router.post("/brand/delete", deleteBrands); // Delete brands
 
 // Department Routes - Handle department management
 // Department Routes - Handle department management
@@ -353,6 +369,7 @@ router.put("/location", async (req, res, next) => {
     next(err);
   }
 }); // Update existing location
+router.post("/location/delete", deleteLocations as unknown as express.RequestHandler); // Delete location
 
 // Product Routes - Handle product management
   router.post("/product", createProduct); // Create new product
@@ -384,6 +401,7 @@ router.delete(
 // Currency Routes - Handle currency management
 router.post("/currency", createcurrency); // Create new currency
 router.put("/currency", updatecurrency); // Update existing currency
+router.post("/currency/delete", deletecurrencys); // Delete currencies
 
 // Salesman Routes - Handle salesman management
 router.get("/salesman", createSalesman as unknown as express.RequestHandler); // Fetch all salesmen
@@ -397,26 +415,32 @@ router.post(
 // Supplier Routes - Handle supplier management
 router.post("/supplier", createSupplier as unknown as express.RequestHandler); // Create new supplier
 router.put("/supplier", updateSupplier as unknown as express.RequestHandler); // Update existing supplier
+router.post("/supplier/delete", deleteSuppliers as unknown as express.RequestHandler); // Delete supplier
 
 // UOM Routes - Handle unit of measurement
 router.post("/uom", createUom as unknown as express.RequestHandler); // Create new UOM
 router.put("/uom", updateUom as unknown as express.RequestHandler); // Update existing UOM
+router.post("/uom/delete", deleteUoms as unknown as express.RequestHandler); // Delete UOM
 
 // MOC Routes - Handle method of collection
 router.post("/moc", createMoc as unknown as express.RequestHandler); // Create new MOC
 router.put("/moc", updateMoc as unknown as express.RequestHandler); // Update existing MOC
+router.post("/moc/delete", deleteMoc as unknown as express.RequestHandler); // Delete MOC
 
 // MOC2 Routes - Handle secondary method of collection
 router.post("/moc2", createMoc2 as unknown as express.RequestHandler); // Create new MOC2
 router.put("/moc2", updateMoc2 as unknown as express.RequestHandler); // Update existing MOC2
+router.post("/moc2/delete", deleteActivityUOCs as unknown as express.RequestHandler); // Delete MOC2
 
 // UOC Routes - Handle unit of currency
 router.post("/uoc", createUoc as unknown as express.RequestHandler); // Create new UOC
 router.put("/uoc", updateUoc as unknown as express.RequestHandler); // Update existing UOC
+router.post("/uoc/delete", deleteUocs as unknown as express.RequestHandler); // Delete UOC
 
 // Harmonize Routes - Handle harmonization
 router.post("/harmonize", createHarmonize as unknown as express.RequestHandler); // Create new harmonization
 router.put("/harmonize", updateHarmonize as unknown as express.RequestHandler); // Update existing harmonization
+router.post("/harmonize/delete", deleteHarmonizeCodes as unknown as express.RequestHandler); // Delete harmonization
 
 // Activity Group Routes - Handle activity group management
 router.post(
@@ -490,6 +514,7 @@ router.post("/createPrincipalActivity", createPrincipalActivity); // Create new 
 // Activity Sub Group Routes - Handle activity subgroup management
 router.post("/activitysubgroup", createActivitysubgroup); // Create new activity subgroup
 router.put("/activitysubgroup", updateActivitysubgroup); // Update existing activity subgroup
+router.post("/activitysubgroup/delete", deleteActivitySubgroups); // Delete activity subgroup
 
 // Division Routes - Handle division management
 router.post("/division", CreateDivision); // Create new division
@@ -505,12 +530,13 @@ router.get("/getPort", getPorts); // Get list of ports
 
 // Asset Group Routes - Handle asset group management
 
-// router.post("/assetgroup", createAssetgroup); // Create new asset group
-// router.put("/assetgroup", updateAssetgroup); // Update existing asset group
+router.post("/assetgroup", createAssetgroup); // Create new asset group
+router.put("/assetgroup", updateAssetgroup); // Update existing asset group
+router.post("/assetgroup/delete", deleteAssetgroups); // Delete asset group
 
 // Warehouse Routes - Handle warehouse management
-// router.post("/warehouse", createWarehouse); // Create new warehouse
-// router.put("/warehouse", updateWarehouse); // Update existing warehouse
+router.post("/warehouse", createWarehouse); // Create new warehouse
+router.put("/warehouse", updateWarehouse); // Update existing warehouse
 router.post("/warehouse/bulk", createBulkLocationType); // Create multiple warehouse locations
 router.get("/warehouse/export", exportBulkLocationType); // Export warehouse data
 

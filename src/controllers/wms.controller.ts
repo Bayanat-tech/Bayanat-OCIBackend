@@ -618,38 +618,24 @@ const filter: ISearch = req.query.filter
       }
     }
     break;
-// case "producttype":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [{ company_code: requestUser.company_code }],
-//       };
+case "producttype":
+  {
+    const where = { company_code: requestUser.company_code };
+    const productTypeModel = Producttype as any;
+    totalCount = await productTypeModel.count({ where });
+    fetchedData = await productTypeModel.findAll({
+      where,
+      ...(!!filter?.sort &&
+        Object.keys(filter?.sort).length > 0 && {
+          order: [
+            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
+          ],
+        }),
+      ...paginationOptions,
+    });
+  }
 
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-
-//     // Count the total number of records
-//     totalCount = await Producttype.count({ where: outsideQuery });
-
-//     // Fetch product type data with optional pagination and sorting
-//     fetchedData = await Producttype.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort &&
-//         Object.keys(filter?.sort).length > 0 && {
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-//           ],
-//         }),
-//       ...paginationOptions,
-//     });
-//   }
-
-//   break;
+  break;
 case "alert":
   {
     // Get pagination parameters
@@ -748,6 +734,20 @@ case "port":
           filters.country_code = val;
         }
       }
+
+      // Handle transport mode search - only add if value is valid
+      const modeSearch = filter.search.find((s: any) => s.field === 'trp_mode' && s.values);
+      if (modeSearch && modeSearch.values) {
+        const val = String(modeSearch.values).trim();
+        if (val && val !== 'undefined' && val !== 'null') {
+          filters.trp_mode = val;
+        }
+      }
+    }
+
+    const globalSearch = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    if (globalSearch) {
+      filters.global_search = globalSearch;
     }
     
     console.log("Final filters:", filters); // Debug log
@@ -1088,28 +1088,23 @@ case "group":
   break;
 
 // Fetching asset group data from the Assetgroup model
-// case "assetgroup":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [{ company_code: requestUser.company_code }],
-//       };
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-//     // Count the total number of records
-//     totalCount = await Assetgroup.count({ where: outsideQuery });
-
-//           (fetchedData = await DDPrincipaljob.findAll({
-//             where: { company_code: requestUser.company_code },
-//           })) as unknown[] as IPrincipaljob[];
-//           console.log(fetchedData);
-//         }
-//         break;
+case "assetgroup":
+  {
+    const where = { company_code: requestUser.company_code };
+    const assetGroupModel = Assetgroup as any;
+    totalCount = await assetGroupModel.count({ where });
+    fetchedData = await assetGroupModel.findAll({
+      where,
+      ...(!!filter?.sort &&
+        Object.keys(filter?.sort).length > 0 && {
+          order: [
+            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
+          ],
+        }),
+      ...paginationOptions,
+    });
+  }
+  break;
     case "ddepartment": {
   let queryRunner; // declare outside try for finally block
 
@@ -1643,38 +1638,42 @@ case "currency":
   }
 
   break;
-// case "site":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [], // Initialize inside query as an empty array
-//       outsideQuery = {
-//         [Op.and]: [{ company_code: requestUser.company_code }], // Initialize outside query with company code
-//       };
+case "site":
+  {
+    const where = { company_code: requestUser.company_code };
+    const siteModel = Site as any;
+    totalCount = await siteModel.count({ where });
+    fetchedData = await siteModel.findAll({
+      where,
+      ...(!!filter?.sort &&
+        Object.keys(filter?.sort).length > 0 && {
+          order: [
+            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
+          ],
+        }),
+      ...paginationOptions,
+    });
+  }
 
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
+  break;
+case "warehouse":
+  {
+    const where = { company_code: requestUser.company_code };
+    const warehouseModel = Warehouse as any;
+    totalCount = await warehouseModel.count({ where });
+    fetchedData = await warehouseModel.findAll({
+      where,
+      ...(!!filter?.sort &&
+        Object.keys(filter?.sort).length > 0 && {
+          order: [
+            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
+          ],
+        }),
+      ...paginationOptions,
+    });
+  }
 
-//     // Count the total number of records
-//     totalCount = await Site.count({ where: outsideQuery });
-
-//     // Fetch site data with optional pagination and sorting
-//     fetchedData = await Site.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort && // Check if filter.sort is not null or undefined
-//         Object.keys(filter?.sort).length > 0 && { // Check if filter.sort has at least one key
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"], // Sort by field name in descending or ascending order
-//           ],
-//         }),
-//       ...paginationOptions, // Apply pagination options
-//     });
-//   }
-
-//   break;
+  break;
 // case "industrysector":
 //   {
 //     // Fetch industry sector data with company code and optional pagination

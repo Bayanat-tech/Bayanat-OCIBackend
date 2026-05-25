@@ -29,8 +29,9 @@ export const getSecRollFunctionAccessUser = async (
     );
 
     if (!userAccess) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        data: null,
         message: "No access found for the given user and screen.",
       });
       return;
@@ -83,9 +84,44 @@ export const createSecRollFunctionAccessUser = async (
       company_code,
     } = req.body;
 
+    const resolvedCompanyCode = company_code || req.user.company_code;
+    const existingAccess = await AccessMasterService.findUserAccess(
+      loginid,
+      Number(serial_no_or_role_id),
+      resolvedCompanyCode
+    );
+
+    if (existingAccess) {
+      await AccessMasterService.updateUserAccessWithTransaction(
+        loginid,
+        Number(serial_no_or_role_id),
+        resolvedCompanyCode,
+        {
+          snew,
+          smodify,
+          sdelete,
+          ssave,
+          ssearch,
+          ssaveas,
+          supload,
+          sundo,
+          sprint,
+          sprintsetup,
+          shelp,
+          userid: loginid,
+          company_code: resolvedCompanyCode,
+        }
+      );
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: "Functionality has been successfully updated for User.",
+      });
+      return;
+    }
+
     const createdAccess = await AccessMasterService.createUserAccess({
       loginid,
-      serial_no_or_role_id,
+      serial_no_or_role_id: Number(serial_no_or_role_id),
       snew,
       smodify,
       sdelete,
@@ -97,7 +133,8 @@ export const createSecRollFunctionAccessUser = async (
       sprint,
       sprintsetup,
       shelp,
-      company_code,
+      userid: loginid,
+      company_code: resolvedCompanyCode,
     });
 
     if (!createdAccess) {
@@ -142,8 +179,9 @@ export const getOperationalMaster = async (
     );
 
     if (operations.length === 0) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        data: [],
         message: "Module data not found",
       });
       return;
