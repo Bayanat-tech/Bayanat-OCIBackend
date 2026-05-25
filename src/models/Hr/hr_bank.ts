@@ -47,7 +47,7 @@ export class HrBank implements IHrBank {
     name: "BANK_ADDR2", 
     type: "varchar2", 
     length: 50, 
-    nullable: false 
+    nullable: true 
   })
   bank_addr2!: string;
 
@@ -56,7 +56,7 @@ export class HrBank implements IHrBank {
     name: "BANK_ADDR3", 
     type: "varchar2", 
     length: 50, 
-    nullable: false 
+    nullable: true 
   })
   bank_addr3!: string;
 

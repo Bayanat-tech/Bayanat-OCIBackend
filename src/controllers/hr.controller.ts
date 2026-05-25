@@ -83,7 +83,7 @@ export const getHrMaster = async (
     const skip = Number(page * limit - limit); // Calculate the offset for pagination
     let fetchedData: unknown[] = [], // Initialize an empty array to store fetched data
       totalCount = 0; // Initialize a variable to store the total count of data
-    const paginationOptions = limit ? { offset: skip, limit: limit } : {}; // Create pagination options based on the limit
+    const paginationOptions = limit ? { skip, take: limit } : {}; // Create pagination options based on the limit
     const filter: ISearch = req.query.filter // Extract 'filter' query parameter
       ? JSON.parse(req.query.filter) // Parse the filter query parameter as JSON
       : {}; // Default to an empty object if no filter is provided
@@ -307,12 +307,6 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         }
       }
 
-      default: {
-        res.status(400).json({ success: false, message: "Invalid request type" });
-        return;
-      }
-        break;
-
       // hrDepartment case
       case "hrDepartment": {
         const result = await queryEntityWithFilters(
@@ -454,14 +448,34 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         break;
       }
       case "hrDivision": {
-        const result = await queryEntityWithFilters(
-          HrDivision,
-          requestUser.company_code,
-          filter,
-          paginationOptions
+        const countResult = await QueryExecutor.executeRawQuery(
+          `SELECT COUNT(*) AS COUNT FROM MS_HR_DIVISION WHERE COMPANY_CODE = :company_code`,
+          { company_code: requestUser.company_code }
         );
-        fetchedData = result.data;
-        totalCount = result.count;
+        const dataResult = await QueryExecutor.executeRawQuery(
+          `SELECT
+             COMPANY_CODE AS company_code,
+             DIV_CODE AS div_code,
+             DIV_NAME AS div_name,
+             DIV_SHORT_NAME AS div_short_name,
+             DIV_ADDRESS1 AS div_address1,
+             DIV_ADDRESS2 AS div_address2,
+             DIV_ADDRESS3 AS div_address3,
+             COUNTRY_CODE AS country_code,
+             PHONE AS phone,
+             FAX AS fax,
+             EMAIL AS email,
+             NULL AS div_head_id,
+             NULL AS remarks,
+             'Y' AS status
+           FROM MS_HR_DIVISION
+           WHERE COMPANY_CODE = :company_code
+           ORDER BY DIV_CODE
+           OFFSET :skip ROWS FETCH NEXT :take ROWS ONLY`,
+          { company_code: requestUser.company_code, skip, take: limit }
+        );
+        fetchedData = dataResult.rows || [];
+        totalCount = Number(countResult.rows?.[0]?.COUNT || countResult.rows?.[0]?.count || 0);
         break;
       }
       case "leavetype": {
@@ -511,20 +525,42 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
 
       // bank case
       case "bank": {
-        // Get TypeORM repository
-        const bankRepo = TypeORMService.getRepository(HrBank);
-
-        // Fetch bank data with pagination using TypeORM
-        const [data, count] = await bankRepo.findAndCount({
-          where: { company_code: requestUser.company_code },
-          ...paginationOptions,
-        });
-
-        fetchedData = data as unknown[] as IHrBank[];
-        totalCount = count;
+        const countResult = await QueryExecutor.executeRawQuery(
+          `SELECT COUNT(*) AS COUNT FROM MS_HR_BANK WHERE COMPANY_CODE = :company_code`,
+          { company_code: requestUser.company_code }
+        );
+        const dataResult = await QueryExecutor.executeRawQuery(
+          `SELECT
+             COMPANY_CODE AS company_code,
+             BANK_CODE AS bank_code,
+             BANK_NAME AS bank_name,
+             BANK_SHORT_NAME AS bank_short_name,
+             MAIN_BANK_CODE AS main_bank_code,
+             BANK_ADDR1 AS bank_addr1,
+             BANK_ADDR2 AS bank_addr2,
+             BANK_ADDR3 AS bank_addr3,
+             COUNTRY_CODE AS country_code,
+             PHONE AS phone,
+             FAX AS fax,
+             EMAIL AS email,
+             REMARKS AS remarks,
+             COMPANY_FLAG AS company_flag,
+             COMP_ACCT_CODE AS comp_acct_code
+           FROM MS_HR_BANK
+           WHERE COMPANY_CODE = :company_code
+           ORDER BY BANK_CODE
+           OFFSET :skip ROWS FETCH NEXT :take ROWS ONLY`,
+          { company_code: requestUser.company_code, skip, take: limit }
+        );
+        fetchedData = dataResult.rows || [];
+        totalCount = Number(countResult.rows?.[0]?.COUNT || countResult.rows?.[0]?.count || 0);
       }
         break;
 
+      default: {
+        res.status(400).json({ success: false, message: "Invalid request type" });
+        return;
+      }
 
     }// Return a successful response with the fetched data
     res.status(constants.STATUS_CODES.OK).json({
@@ -535,7 +571,7 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         // Table data contains the fetched records
         tableData: fetchedData,
         // Count represents the total number of records
-        count: fetchedData?.length
+        count: totalCount
       },
     });
     return;
@@ -620,6 +656,66 @@ export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
         await repo.delete({
           company_code: requestUser.company_code,
           serial_no: In(ids)
+        });
+        break;
+      }
+
+      case "hrContract":
+      case "contract": {
+        const repo = TypeORMService.getRepository(HrContract);
+        await repo.delete({
+          company_code: requestUser.company_code,
+          contract_type: In(ids)
+        });
+        break;
+      }
+
+      case "hrSponsor":
+      case "sponsor": {
+        const repo = TypeORMService.getRepository(HrSponsor);
+        await repo.delete({
+          company_code: requestUser.company_code,
+          sponsor_code: In(ids)
+        });
+        break;
+      }
+
+      case "hrDepartment":
+      case "department": {
+        const repo = TypeORMService.getRepository(HrDepartment);
+        await repo.delete({
+          company_code: requestUser.company_code,
+          dept_code: In(ids)
+        });
+        break;
+      }
+
+      case "hrDivision":
+      case "division": {
+        const repo = TypeORMService.getRepository(HrDivision);
+        await repo.delete({
+          company_code: requestUser.company_code,
+          div_code: In(ids)
+        });
+        break;
+      }
+
+      case "hrAirport":
+      case "airport": {
+        const repo = TypeORMService.getRepository(HrAirport);
+        await repo.delete({
+          company_code: requestUser.company_code,
+          airport_code: In(ids)
+        });
+        break;
+      }
+
+      case "hrEmployeeStatus":
+      case "employeestatus": {
+        const repo = TypeORMService.getRepository(HrEmpStatus);
+        await repo.delete({
+          company_code: requestUser.company_code,
+          empstatus_code: In(ids)
         });
         break;
       }

@@ -61,6 +61,16 @@ import {
 } from "../../controllers/HR/hr_net.controller";
 import { executeRawSql } from "../../controllers/HR/rawSql_hr_controller";
 import { getRequestFlowUsers } from "../../controllers/HR/hr_leave_flow_sentback";
+import constants from "../../helpers/constants";
+import { RequestWithUser } from "../../interfaces/common.interface";
+import { TypeORMService } from "../../database/connection";
+import { HrBank } from "../../models/Hr/hr_bank";
+import { HrContract } from "../../models/Hr/hr_contract";
+import { HrSponsor } from "../../models/Hr/hr_sponsor";
+import { HrDepartment } from "../../models/Hr/hr_department";
+import { HrDivision } from "../../models/Hr/hr_division";
+import { HrAirport } from "../../models/Hr/hr_airport";
+import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -113,6 +123,21 @@ router.put("/leavetype", updatehrleavetype);
 router.post("/paycomponent", createhrpaycomponent);
 router.put("/paycomponent", updatehrpaycomponent);
 
+router.post("/bank", upsertHrSimpleMaster(HrBank, ["company_code", "bank_code"]));
+router.put("/bank", upsertHrSimpleMaster(HrBank, ["company_code", "bank_code"]));
+router.post("/contract", upsertHrSimpleMaster(HrContract, ["company_code", "contract_type"]));
+router.put("/contract", upsertHrSimpleMaster(HrContract, ["company_code", "contract_type"]));
+router.post("/sponsor", upsertHrSimpleMaster(HrSponsor, ["company_code", "sponsor_code"]));
+router.put("/sponsor", upsertHrSimpleMaster(HrSponsor, ["company_code", "sponsor_code"]));
+router.post("/department", upsertHrSimpleMaster(HrDepartment, ["company_code", "dept_code"]));
+router.put("/department", upsertHrSimpleMaster(HrDepartment, ["company_code", "dept_code"]));
+router.post("/division", upsertHrSimpleMaster(HrDivision, ["company_code", "div_code"]));
+router.put("/division", upsertHrSimpleMaster(HrDivision, ["company_code", "div_code"]));
+router.post("/airport", upsertHrSimpleMaster(HrAirport, ["company_code", "airport_code"]));
+router.put("/airport", upsertHrSimpleMaster(HrAirport, ["company_code", "airport_code"]));
+router.post("/employeestatus", upsertHrSimpleMaster(HrEmpStatus, ["company_code", "empstatus_code"]));
+router.put("/employeestatus", upsertHrSimpleMaster(HrEmpStatus, ["company_code", "empstatus_code"]));
+
 router.put("/upsertLeaveApprovalHandler", upsertLeaveApprovalHandler);
 
 // Save file route
@@ -134,3 +159,27 @@ router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
 //raw sql execution route
 router.post("/executeRawSql", executeRawSql); // Raw SQL execution route
 export default router;
+
+function upsertHrSimpleMaster(entity: any, keyFields: string[]) {
+  return async (req: RequestWithUser, res: any) => {
+    try {
+      const requestUser = req.user;
+      const repo = TypeORMService.getRepository(entity);
+      const payload = {
+        ...req.body,
+        company_code: req.body.company_code || requestUser.company_code,
+        updated_by: requestUser.loginid,
+      };
+      const where = Object.fromEntries(keyFields.map((key) => [key, payload[key]]));
+      const existing = await repo.findOne({ where });
+      if (!existing) payload.created_by = requestUser.loginid;
+      await repo.save({ ...(existing || {}), ...payload });
+      res.status(constants.STATUS_CODES.OK).json({
+        success: true,
+        message: `${entity.name} ${existing ? "updated" : "created"} successfully`,
+      });
+    } catch (error: any) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: error.message });
+    }
+  };
+}
