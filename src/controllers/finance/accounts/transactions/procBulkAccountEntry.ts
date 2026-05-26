@@ -49,6 +49,7 @@ export const procBulkAccountEntry = async (
     if (header.doc_no == 0) {
       header.doc_no = '0'
     }
+    console.log("Header doc_no after check:", header.inv_no);
     const result = await connection.execute(
       `
       BEGIN
@@ -101,7 +102,11 @@ export const procBulkAccountEntry = async (
               TX_COMPNT_HDISC_AMT_1: header.tx_compnt_hdisc_amt_1,
               PDO_TYPE: "N",
               CREATED_BY: user.loginid,
-              UPDATED_BY: user.loginid
+              UPDATED_BY: user.loginid,
+              INV_NO : header.inv_no,
+              INV_DATE : header.inv_date ? new Date(header.inv_date) : null,
+              REF_NO : header.inv_no,
+              REF_DATE : header.inv_date ? new Date(header.inv_date) : null,
             }
           ]
         },
