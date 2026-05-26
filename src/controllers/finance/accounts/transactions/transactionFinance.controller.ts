@@ -1746,6 +1746,19 @@ export const deleteChildrenItem = async (req: RequestWithUser, res: Response): P
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
+export const cancelLPODocument = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    const { doc_no, doc_type } = req.query as any;
+    conn = await getConn(req);
+    await conn.execute(
+      `BEGIN SP_CANCEL_LPO_DOCUMENT(:cc, :dn, :dt, :lu); END;`,
+      { cc: req.user.company_code, dn: doc_no, dt: doc_type, lu: req.user.loginid }
+    );
+    res.json({ success: true, message: constants.MESSAGES.CANCELLED_SUCCESSFULLY });
+  } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
 // =============================================================================
 // STORE PROCESS SP CALLER
 // =============================================================================
