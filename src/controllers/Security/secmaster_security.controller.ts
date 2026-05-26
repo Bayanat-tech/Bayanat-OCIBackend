@@ -104,28 +104,11 @@ export class SecmasterController {
 
       const { id, company_code, loginid, email_id } = req.body;
 
-      // Check for duplicate email (excluding current record)
-      const emailExists =
-        await SecmasterService.checkEmailExistsExcludingCurrent(
-          email_id,
-          company_code,
-          loginid 
-        );
-
-      if (emailExists) {
-        res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-          success: false,
-          message: "Email already exists.",
-        });
-        return;
-      }
-
       // Check if user exists
       const existingUser = await SecmasterService.findByIdAndCompany(
         id,
         company_code,
-        loginid,
-        email_id
+        loginid
       );
       if (!existingUser) {
         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -133,6 +116,24 @@ export class SecmasterController {
           message: constants.MESSAGES.SECMASTER_WMS.SECMASTER_DOES_NOT_EXISTS,
         });
         return;
+      }
+
+      // Check for duplicate email only when the email is changed.
+      if (email_id && email_id !== existingUser.email_id) {
+        const emailExists =
+          await SecmasterService.checkEmailExistsExcludingCurrent(
+            email_id,
+            company_code,
+            loginid 
+          );
+
+        if (emailExists) {
+          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+            success: false,
+            message: "Email already exists.",
+          });
+          return;
+        }
       }
 
       // Update user

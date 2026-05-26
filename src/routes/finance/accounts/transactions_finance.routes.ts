@@ -10,6 +10,7 @@ import passport from "passport";
 import { tenantMiddleware } from "../../../middleware/tenant.middleware";
 import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
 import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
+import { procBulkAccountEntry } from "../../../controllers/finance/accounts/transactions/procBulkAccountEntry";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -48,6 +49,7 @@ router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
 router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
+router.post("/account-entry/bulk", procBulkAccountEntry);
 
 
 // GET Routes - Information Retrieval

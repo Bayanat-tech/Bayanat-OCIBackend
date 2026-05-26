@@ -6,7 +6,7 @@ export class AccessUserSecRoleAccess {
   @PrimaryColumn({ name: "SERIAL_NO_OR_ROLE_ID", type: "number" })
   serial_no_or_role_id!: number;
 
-  @Column({ name: "LOGINID", type: "varchar2", length: 50 })
+  @PrimaryColumn({ name: "LOGINID", type: "varchar2", length: 50 })
   loginid!: string;
 
   @Column({ name: "SNEW", type: "varchar2", length: 5 })
@@ -42,6 +42,9 @@ export class AccessUserSecRoleAccess {
   @Column({ name: "SHELP", type: "varchar2", length: 5 })
   shelp!: string;
 
-  @Column({ name: "COMPANY_CODE", type: "varchar2", length: 10 })
+  @Column({ name: "USERID", type: "varchar2", length: 50 })
+  userid!: string;
+
+  @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 10 })
   company_code!: string;
 }

@@ -147,6 +147,7 @@ export const secrolefunctionaccessuserschema = (
     sprint: Joi.string(),
     sprintsetup: Joi.string(),
     shelp: Joi.string(),
+    userid: Joi.string().optional().allow("").allow(null),
     company_code: Joi.string(),
   });
   return secrolefunctionaccessuserschema.validate(data);

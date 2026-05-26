@@ -85,7 +85,7 @@ export const updateAssetgroup = async (req: RequestWithUser, res: Response) => {
       },
     });
 
-    if (!Assetgroup) {
+    if (!assetgroup) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.ASSETGROUP_WMS.ASSETGROUP_DOES_NOT_EXISTS,

@@ -1,14 +1,14 @@
 import * as express from "express";
 
-// import {
-//   createrolemaster,
-//   updaterolemaster,
-// } from "../../controllers/Security/rolemaster_security.controller";
+import {
+  createrolemaster,
+  updaterolemaster,
+} from "../../controllers/Security/rolemaster_security.controller";
 
-// import {
-//   createflowmaster,
-//   updateflowmaster,
-// } from "../../controllers/Security/flowmaster_security.controller";
+import {
+  createflowmaster,
+  updateflowmaster,
+} from "../../controllers/Security/flowmaster_security.controller";
 
 import { SecmasterController } from "../../controllers/Security/secmaster_security.controller";
 
@@ -68,11 +68,11 @@ import {
 
 const router = express.Router();
 
-// router.post("/rolemaster", createrolemaster);
-// router.put("/rolemaster", updaterolemaster);
+router.post("/rolemaster", createrolemaster);
+router.put("/rolemaster", updaterolemaster);
 
-// router.post("/flowmaster", createflowmaster);
-// router.put("/flowmaster", updateflowmaster);
+router.post("/flowmaster", createflowmaster);
+router.put("/flowmaster", updateflowmaster);
 
 router.post("/secmaster", SecmasterController.createsecmaster);
 router.put("/secmaster", SecmasterController.updatesecmaster);
