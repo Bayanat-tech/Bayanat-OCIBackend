@@ -679,7 +679,7 @@ export const purchaseSchema = (
               .valid(
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_PAYMENT,
                 constants.TRANSACTION_DOCUMENT_TYPE.CHEQUE_RECEIPT,
-                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT
+                constants.TRANSACTION_DOCUMENT_TYPE.CASH_RECEIPT,
               )
               .required(),
             // Division code (required)
