@@ -34,33 +34,11 @@ import { ISupplier } from "../interfaces/wms/supplier_wms.interface";
 import { ITerritory } from "../interfaces/wms/territory_wms.interface";
 import { IVessel } from "../interfaces/wms/vessel_wms.interface";
 
-// Importing models for WMS master data
-import Accountsetup from "../models/wms/accountsetup_wms.model";
-import ActivityBillingTable from "../models/wms/activity_billing_table_wms";
-import Activitysubgroup from "../models/wms/activity_subgroup.model";
-import ActivityUoc from "../models/wms/activity_uoc.model";
-import Activity from "../models/wms/activity_wms.model";
-import AirLine from "../models/wms/airline_wms.model";
-import Brand from "../models/wms/brand_wms.model";
-import Currency from "../models/wms/currency_wms.model";
 // REMOVED: import Department from "../models/wms/department_wms.model";
-import Harmonize from "../models/wms/harmonize_code.model";
-import Location from "../models/wms/location_wms.model";
-import Manufacture from "../models/wms/manufacture_wms.model";
-import partner from "../models/wms/partner_wms.model";
-import Port from "../models/wms/port_wms.model";
-import Product from "../models/wms/product_wms.model";
 // REMOVED: import Group from "../models/wms/productgroup_wms.model";
-import Salesman from "../models/wms/salesman_wms.model";
-import Site from "../models/wms/site_wms.model";
-import Storage from "../models/wms/storage_wms.model";
-import Supplier from "../models/wms/supplier_wms.model";
-import Territory from "../models/wms/territory_wms.model";
 // import Uom from "../models/wms/uom_wms.model";
 // import vessel from "../models/wms/vessel_wms.model";
 
-// --- Database sequelize import ---
-import activitygroup from "../models/wms/activitygroup_wms.model";
 // import PrincipalWmsView from "../views/wms/principal_wms.view";
 // REPLACED: import Principal from "../models/wms/principal_wms.model";
 import { PrincipalMaster } from "../entity/WMS/principal.entity";
@@ -73,15 +51,6 @@ import { IActivitysubgroup } from "../interfaces/wms/activity_subgroup_wms.inter
 import { IIndustrysector } from "../interfaces/wms/industrysector_wms.interface";
 import { CountryService } from "../services/WMS/country.service";
 // Remove ActivityKPI import from here
-import Alert from "../models/wms/alert_wms_model";
-import Assetgroup from "../models/wms/assetgroup_wms.model";
-import Division from "../models/wms/division_wms.model";
-import industrysector from "../models/wms/industrysector_wms.model";
-import LocationType from "../models/wms/locationtype_wms.model";
-import Moc from "../models/wms/moc_wms.model";
-import Producttype from "../models/wms/producttype_wms.model";
-import ShipmentDetailsInboundWms from "../models/wms/transaction/inbound/shipmantDetails_wms.model";
-import Warehouse from "../models/wms/warehouse_wms.model";
 import PackingDetailsInboundWmsView from "../views/wms/transportation/inbound/packingDetails_wms.view";
 import JobOubListingView from "../views/wms/transportation/outbound/outboundJobWms.view";
 import PickingDetailsOutboundWmsView from "../views/wms/transportation/outbound/pickingDetailsWms.view";
@@ -94,14 +63,11 @@ import {
   IDivisionjob,
   IPrincipaljob,
 } from "../interfaces/wms/principal_wms.interface";
-import JobInboundWms from "../models/wms/transaction/inbound/inboundJobWms.model";
 //import JobInboundWmsview from "../models/wms/transaction/inbound/inbounJobWms.model.view";
 
 
 import DDdivisionjob from "../views/wms/transportation/inbound/dddivisionobWms";
 import DDPrincipaljob from "../views/wms/transportation/inbound/ddprincipalJobWms";
-import TallyDetailsInboundWms from "../models/wms/transaction/inbound/tallyDetails_wms.model";
-import JobOutboundWms from "../models/wms/transaction/outbound/outboundJobWms.model"; 
 import {Categorymaster} from "../models/Hr/hr_category";
 import { ICategorymaster } from "../interfaces/Hr/hr_category_interface";
 import { Request } from 'express';
@@ -138,6 +104,8 @@ import { ensureCorrectSchemaOnQueryRunner } from "../database/TypeORMTenantInter
 import { CustomerService } from "../services/WMS/customer.service";
 import { ActivityService } from "../services/WMS/activity.service";
 import { BillingActivityService } from "../services/WMS/billing_activity.service";
+import { ProducttypeService } from "../services/WMS/producttype.service";
+import { WarehouseService } from "../services/WMS/warehouse.service";
 
 export type TGroup = {
   group_code: string;
@@ -620,21 +588,10 @@ const filter: ISearch = req.query.filter
     break;
 case "producttype":
   {
-    const where = { company_code: requestUser.company_code };
-    const productTypeModel = Producttype as any;
-    totalCount = await productTypeModel.count({ where });
-    fetchedData = await productTypeModel.findAll({
-      where,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [
-            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-          ],
-        }),
-      ...paginationOptions,
-    });
+    const productTypes = await ProducttypeService.findAll(requestUser.company_code);
+    totalCount = productTypes.length;
+    fetchedData = productTypes.slice(skip, skip + limit);
   }
-
   break;
 case "alert":
   {
@@ -1088,24 +1045,7 @@ case "group":
   break;
 
 // Fetching asset group data from the Assetgroup model
-case "assetgroup":
-  {
-    const where = { company_code: requestUser.company_code };
-    const assetGroupModel = Assetgroup as any;
-    totalCount = await assetGroupModel.count({ where });
-    fetchedData = await assetGroupModel.findAll({
-      where,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [
-            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-          ],
-        }),
-      ...paginationOptions,
-    });
-  }
-  break;
-    case "ddepartment": {
+  case "ddepartment": {
   let queryRunner; // declare outside try for finally block
 
   const sql = `
@@ -1635,42 +1575,6 @@ case "currency":
       fetchedData = [];
       totalCount = 0;
     }
-  }
-
-  break;
-case "site":
-  {
-    const where = { company_code: requestUser.company_code };
-    const siteModel = Site as any;
-    totalCount = await siteModel.count({ where });
-    fetchedData = await siteModel.findAll({
-      where,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [
-            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-          ],
-        }),
-      ...paginationOptions,
-    });
-  }
-
-  break;
-case "warehouse":
-  {
-    const where = { company_code: requestUser.company_code };
-    const warehouseModel = Warehouse as any;
-    totalCount = await warehouseModel.count({ where });
-    fetchedData = await warehouseModel.findAll({
-      where,
-      ...(!!filter?.sort &&
-        Object.keys(filter?.sort).length > 0 && {
-          order: [
-            [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-          ],
-        }),
-      ...paginationOptions,
-    });
   }
 
   break;
