@@ -4,9 +4,6 @@ import constants from "../helpers/constants";
 import oracledb from 'oracledb';
 import TenantManager from "../database/TenantManager";
 import { getCurrentTenantId } from "../middleware/tenantContext.middleware";
-
-// import { QueryTypes } from "sequelize"; 
-// import { WhereOptions } from "sequelize";
 import { ISearch, RequestWithUser } from "../interfaces/common.interface";
 import { ICostmaster } from "../interfaces/Purchaseflow/Purucahseflow.interface";
 // import {q
@@ -34,58 +31,17 @@ import { ISupplier } from "../interfaces/wms/supplier_wms.interface";
 import { ITerritory } from "../interfaces/wms/territory_wms.interface";
 import { IVessel } from "../interfaces/wms/vessel_wms.interface";
 
-// Importing models for WMS master data
-import Accountsetup from "../models/wms/accountsetup_wms.model";
-import ActivityBillingTable from "../models/wms/activity_billing_table_wms";
-import Activitysubgroup from "../models/wms/activity_subgroup.model";
-import ActivityUoc from "../models/wms/activity_uoc.model";
-import Activity from "../models/wms/activity_wms.model";
-import AirLine from "../models/wms/airline_wms.model";
-import Brand from "../models/wms/brand_wms.model";
-import Currency from "../models/wms/currency_wms.model";
-// REMOVED: import Department from "../models/wms/department_wms.model";
-import Harmonize from "../models/wms/harmonize_code.model";
-import Location from "../models/wms/location_wms.model";
-import Manufacture from "../models/wms/manufacture_wms.model";
-import partner from "../models/wms/partner_wms.model";
-import Port from "../models/wms/port_wms.model";
-import Product from "../models/wms/product_wms.model";
-// REMOVED: import Group from "../models/wms/productgroup_wms.model";
-import Salesman from "../models/wms/salesman_wms.model";
-import Site from "../models/wms/site_wms.model";
-import Storage from "../models/wms/storage_wms.model";
-import Supplier from "../models/wms/supplier_wms.model";
-import Territory from "../models/wms/territory_wms.model";
-// import Uom from "../models/wms/uom_wms.model";
-// import vessel from "../models/wms/vessel_wms.model";
-
-// --- Database sequelize import ---
-import activitygroup from "../models/wms/activitygroup_wms.model";
 // import PrincipalWmsView from "../views/wms/principal_wms.view";
-// REPLACED: import Principal from "../models/wms/principal_wms.model";
 import { PrincipalMaster } from "../entity/WMS/principal.entity";
 import { PrincipalService } from "../services/WMS/principal.service";
-
-// import { Op } from "sequelize";
-// import { sequelize } from "../database/connection";
 import { getSearchFilterQuery } from "../helpers/functions";
 import { IActivitysubgroup } from "../interfaces/wms/activity_subgroup_wms.interface";
 import { IIndustrysector } from "../interfaces/wms/industrysector_wms.interface";
 import { CountryService } from "../services/WMS/country.service";
 // Remove ActivityKPI import from here
-import Alert from "../models/wms/alert_wms_model";
-import Assetgroup from "../models/wms/assetgroup_wms.model";
-import Division from "../models/wms/division_wms.model";
-import industrysector from "../models/wms/industrysector_wms.model";
-import LocationType from "../models/wms/locationtype_wms.model";
-import Moc from "../models/wms/moc_wms.model";
-import Producttype from "../models/wms/producttype_wms.model";
-import ShipmentDetailsInboundWms from "../models/wms/transaction/inbound/shipmantDetails_wms.model";
-import Warehouse from "../models/wms/warehouse_wms.model";
 import PackingDetailsInboundWmsView from "../views/wms/transportation/inbound/packingDetails_wms.view";
 import JobOubListingView from "../views/wms/transportation/outbound/outboundJobWms.view";
 import PickingDetailsOutboundWmsView from "../views/wms/transportation/outbound/pickingDetailsWms.view";
-// import OrderDetail from "../../src/models/wms/transaction/outbound/toOrderDetail_wms.model"
 
 
 // Importing additional interfaces and models
@@ -94,14 +50,10 @@ import {
   IDivisionjob,
   IPrincipaljob,
 } from "../interfaces/wms/principal_wms.interface";
-import JobInboundWms from "../models/wms/transaction/inbound/inboundJobWms.model";
-//import JobInboundWmsview from "../models/wms/transaction/inbound/inbounJobWms.model.view";
 
 
 import DDdivisionjob from "../views/wms/transportation/inbound/dddivisionobWms";
 import DDPrincipaljob from "../views/wms/transportation/inbound/ddprincipalJobWms";
-import TallyDetailsInboundWms from "../models/wms/transaction/inbound/tallyDetails_wms.model";
-import JobOutboundWms from "../models/wms/transaction/outbound/outboundJobWms.model"; 
 import {Categorymaster} from "../models/Hr/hr_category";
 import { ICategorymaster } from "../interfaces/Hr/hr_category_interface";
 import { Request } from 'express';
@@ -138,6 +90,8 @@ import { ensureCorrectSchemaOnQueryRunner } from "../database/TypeORMTenantInter
 import { CustomerService } from "../services/WMS/customer.service";
 import { ActivityService } from "../services/WMS/activity.service";
 import { BillingActivityService } from "../services/WMS/billing_activity.service";
+import { ProducttypeService } from "../services/WMS/producttype.service";
+import { WarehouseService } from "../services/WMS/warehouse.service";
 
 export type TGroup = {
   group_code: string;
@@ -618,38 +572,13 @@ const filter: ISearch = req.query.filter
       }
     }
     break;
-// case "producttype":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [{ company_code: requestUser.company_code }],
-//       };
-
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-
-//     // Count the total number of records
-//     totalCount = await Producttype.count({ where: outsideQuery });
-
-//     // Fetch product type data with optional pagination and sorting
-//     fetchedData = await Producttype.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort &&
-//         Object.keys(filter?.sort).length > 0 && {
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-//           ],
-//         }),
-//       ...paginationOptions,
-//     });
-//   }
-
-//   break;
+case "producttype":
+  {
+    const productTypes = await ProducttypeService.findAll(requestUser.company_code);
+    totalCount = productTypes.length;
+    fetchedData = productTypes.slice(skip, skip + limit);
+  }
+  break;
 case "alert":
   {
     // Get pagination parameters
@@ -748,6 +677,20 @@ case "port":
           filters.country_code = val;
         }
       }
+
+      // Handle transport mode search - only add if value is valid
+      const modeSearch = filter.search.find((s: any) => s.field === 'trp_mode' && s.values);
+      if (modeSearch && modeSearch.values) {
+        const val = String(modeSearch.values).trim();
+        if (val && val !== 'undefined' && val !== 'null') {
+          filters.trp_mode = val;
+        }
+      }
+    }
+
+    const globalSearch = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    if (globalSearch) {
+      filters.global_search = globalSearch;
     }
     
     console.log("Final filters:", filters); // Debug log
@@ -1087,30 +1030,31 @@ case "group":
   }
   break;
 
-// Fetching asset group data from the Assetgroup model
-// case "assetgroup":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [],
-//       outsideQuery = {
-//         [Op.and]: [{ company_code: requestUser.company_code }],
-//       };
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-//     // Count the total number of records
-//     totalCount = await Assetgroup.count({ where: outsideQuery });
-
-//           (fetchedData = await DDPrincipaljob.findAll({
-//             where: { company_code: requestUser.company_code },
-//           })) as unknown[] as IPrincipaljob[];
-//           console.log(fetchedData);
-//         }
-//         break;
-    case "ddepartment": {
+// Fetching asset group data using Oracle/TypeORM, without Sequelize models.
+case "assetgroup":
+  {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+    const rows = await AppDataSource.query(
+      `SELECT
+         COMPANY_CODE AS "company_code",
+         ASSET_GROUP_CODE AS "asset_group_code",
+         ASSET_GROUP_NAME AS "asset_group_name",
+         CREATED_BY AS "created_by",
+         CREATED_AT AS "created_at",
+         UPDATED_BY AS "updated_by",
+         UPDATED_AT AS "updated_at"
+       FROM MS_AC_ASSET_GROUP
+       WHERE COMPANY_CODE = :1
+       ORDER BY ASSET_GROUP_CODE`,
+      [requestUser.company_code]
+    );
+    totalCount = rows.length;
+    fetchedData = rows.slice(skip, skip + limit);
+  }
+  break;
+  case "ddepartment": {
   let queryRunner; // declare outside try for finally block
 
   const sql = `
@@ -1643,38 +1587,50 @@ case "currency":
   }
 
   break;
-// case "site":
-//   {
-//     // Initialize inside and outside query variables
-//     let insideQuery: any = [], // Initialize inside query as an empty array
-//       outsideQuery = {
-//         [Op.and]: [{ company_code: requestUser.company_code }], // Initialize outside query with company code
-//       };
-
-//     // Apply search filter to the outside query
-//     outsideQuery = getSearchFilterQuery({
-//       insideQuery,
-//       filter: filter.search,
-//       outsideQuery,
-//     });
-
-//     // Count the total number of records
-//     totalCount = await Site.count({ where: outsideQuery });
-
-//     // Fetch site data with optional pagination and sorting
-//     fetchedData = await Site.findAll({
-//       where: outsideQuery,
-//       ...(!!filter?.sort && // Check if filter.sort is not null or undefined
-//         Object.keys(filter?.sort).length > 0 && { // Check if filter.sort has at least one key
-//           order: [
-//             [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"], // Sort by field name in descending or ascending order
-//           ],
-//         }),
-//       ...paginationOptions, // Apply pagination options
-//     });
-//   }
-
-//   break;
+case "site":
+  {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+    const rows = await AppDataSource.query(
+      `SELECT
+         SITE_CODE AS "site_code",
+         SITE_IND AS "site_ind",
+         SITE_TYPE AS "site_type",
+         SITE_NAME AS "site_name",
+         SITE_ADDR1 AS "site_addr1",
+         SITE_ADDR2 AS "site_addr2",
+         SITE_ADDR3 AS "site_addr3",
+         SITE_ADDR4 AS "site_addr4",
+         CITY AS "city",
+         COUNTRY_CODE AS "country_code",
+         CONTACT_NAME AS "contact_name",
+         TEL_NO AS "tel_no",
+         CHARGE_IND AS "charge_ind",
+         PRIN_CODE AS "prin_code",
+         GROUP_CODE AS "group_code",
+         LOC_TYPE AS "loc_type",
+         COMPANY_CODE AS "company_code",
+         CREATED_BY AS "created_by",
+         CREATED_AT AS "created_at",
+         UPDATED_BY AS "updated_by",
+         UPDATED_AT AS "updated_at"
+       FROM MS_SITE
+       WHERE COMPANY_CODE = :1
+       ORDER BY SITE_CODE`,
+      [requestUser.company_code]
+    );
+    totalCount = rows.length;
+    fetchedData = rows.slice(skip, skip + limit);
+  }
+  break;
+case "warehouse":
+  {
+    const warehouses = await WarehouseService.findByCompanyCode(requestUser.company_code);
+    totalCount = warehouses.length;
+    fetchedData = warehouses.slice(skip, skip + limit);
+  }
+  break;
 // case "industrysector":
 //   {
 //     // Fetch industry sector data with company code and optional pagination

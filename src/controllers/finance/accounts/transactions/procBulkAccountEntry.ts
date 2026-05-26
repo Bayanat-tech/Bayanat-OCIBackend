@@ -15,10 +15,10 @@ export const procBulkAccountEntry = async (
     const user = req.user as IUser;
     const header = req.body?.header;
     const details = req.body?.details || [];
-    const invoiceDetail = req.body?.invoiceDetails || [];
-    console.log("invoiceDetail:", invoiceDetail);
-    const expenseDetail = req.body?.expenseDetails || [];
-    const jobDetail = req.body?.jobDetails || [];
+    const invoiceDetail = req.body?.invoiceDetails || req.body?.invoiceDetail || [];
+    const expenseDetail = req.body?.expenseDetails || req.body?.expenseDetail || [];
+    const jobDetail = req.body?.jobDetails || req.body?.jobDetail || [];
+    const loginid = req.body?.loginid || header?.create_user || header?.edit_user;
 
     if (!header) {
 
@@ -82,8 +82,8 @@ export const procBulkAccountEntry = async (
                 ? new Date(header.cheque_date)
                 : null,
               CANCELED: header.canceled,
-              CREATE_USER: header.create_user,
-              EDIT_USER: header.edit_user,
+              CREATE_USER: header.create_user || loginid,
+              EDIT_USER: header.edit_user || loginid,
               CREATE_DATE: header.create_date
                 ? new Date(header.create_date)
                 : null,

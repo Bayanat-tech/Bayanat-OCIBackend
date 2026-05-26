@@ -10,6 +10,7 @@ import passport from "passport";
 import { tenantMiddleware } from "../../../middleware/tenant.middleware";
 import { tenantContextMiddleware } from "../../../middleware/tenantContext.middleware";
 import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
+import { procBulkAccountEntry } from "../../../controllers/finance/accounts/transactions/procBulkAccountEntry";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -37,7 +38,8 @@ import {
   getLPOHeader,
   getLPOPrint,
   getLpoDetail,
-  updateLPODocument
+  updateLPODocument,
+  cancelLPODocument
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
 // Initialize Express router
 const router = express.Router();
@@ -47,6 +49,7 @@ router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
 router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
+router.post("/account-entry/bulk", procBulkAccountEntry);
 
 
 // GET Routes - Information Retrieval
@@ -90,6 +93,7 @@ router.get("/lpo/:doc_no/print", getLPOPrint);
 router.get("/lpo/:doc_no/detail", getLpoDetail);     
 router.post("/lpo-document", createLPODocument);
 router.put("/lpo-update", updateLPODocument);
+router.put("/cancel_LPO", cancelLPODocument);
 
 // Export the configured router
 export default router;

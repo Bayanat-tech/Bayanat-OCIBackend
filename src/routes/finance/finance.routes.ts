@@ -31,8 +31,11 @@ import { insUpdHrSalaryAdvDed } from "../../controllers/HR/insUpdHrSalaryAdvDed"
 import { insUpdHrJoinRpt } from "../../controllers/HR/insUpdHrJoinRpt";
 import { insUpdHrPayCompDepend } from "../../controllers/HR/insUpdHrPayCompDepend";
 import { insUpdHrGradeComponent } from "../../controllers/HR/insUpdHrGradeComponent";
+import { proc_common_sql_finance } from "../../controllers/finance/accounts_controller";
 import { upsertHrIntEvalForm } from "../../controllers/finance/accounts/transactions/upsertHrIntEvalForm";
 import { procBulkAccountEntry } from "../../controllers/finance/accounts/transactions/procBulkAccountEntry";
+import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
+import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -79,6 +82,17 @@ router.post(
   "/insUpdHrGradeComponent",
   insUpdHrGradeComponent)
    
+
+  // hr
+router.post(
+  "/upsertHrEmpEducation",
+  upsertHrEmpEducation)
+
+  // hr
+router.post(
+  "/upsertHrEmpComponents",
+  upsertHrEmpComponents)
+
 
   // hr
 router.post(
@@ -223,6 +237,12 @@ router.use(
   checkUserAuthorization,
   // call the transactionsRoutes to handle the request
   transactionsRoutes
+);
+
+// Common procedure for finance modules
+router.post(
+  "/proc_common_sql_finance",
+  proc_common_sql_finance
 );
 
  export default router;

@@ -404,14 +404,16 @@ export const purchaseSchema = (
         constants.TRANSACTION_DOCUMENT_TYPE.SERVICE_INVOICE, // Cheque payment
       )
       .required(),
+    div_name: Joi.string().optional().allow('', null),
+    ac_name: Joi.string().optional().allow('', null),
     inv_no: Joi.string().optional().allow('', null),
     inv_date: Joi.date(),
     address: Joi.string().optional().allow("", null),
     supplier: Joi.string().optional().allow("", null),
     company_code: Joi.string().optional().allow("", null),
-    contact: Joi.string().optional().allow("", null),
+    dlvr_contact: Joi.string().optional().allow("", null),
     phone: Joi.string().optional().allow("", null),
-    mobile: Joi.string().optional().allow("", null),
+    dlvr_mobile: Joi.string().optional().allow("", null),
     fax: Joi.string().optional().allow("", null),
     ac_code: Joi.string().required(),
     doc_date: Joi.date(), // Document date
@@ -423,13 +425,14 @@ export const purchaseSchema = (
     party_address: Joi.string().optional().allow("", null),
     party_phone: Joi.string().optional().allow("", null),
     party_fax: Joi.string().optional().allow("", null),
-    ref_doc_no: Joi.string(),
+    ref_doc_no: Joi.string().optional().allow("", null),
     payment_terms: Joi.string().optional().allow("", null),
     files: Joi.array().optional().allow("", null),
     ref_no: Joi.string().optional().allow("", null),
     ref_date: Joi.date().optional().allow("", null),
     delivery_info: Joi.date().optional().allow("", null),
     delivery_term: Joi.string().optional().allow("", null),
+    dlvr_term: Joi.string().optional().allow("", null),
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
       .when("doc_type", {
@@ -455,7 +458,7 @@ export const purchaseSchema = (
     }),
     div_code: Joi.string().required(), // Division code (required)
     terms: Joi.string().optional().allow("", null),
-    email: Joi.string().email().optional().allow("", null),
+    dlvr_email: Joi.string().email().optional().allow("", null),
     app_ref_no: Joi.string().optional().allow("", null),
     fy_code: Joi.string().optional().allow("", null),
     //hse_compliance: Joi.string().optional().allow("", null),
@@ -758,7 +761,7 @@ export const salesSchema = (
     dlvr_email: Joi.string().email().optional().allow("", null),
     dlvr_contact: Joi.string().optional().allow("", null),
     dlvr_mobile: Joi.string().optional().allow("", null),
-    ref_doc_no: Joi.string(),
+    ref_doc_no: Joi.string().optional().allow("", null),
     ref_no: Joi.string().optional().allow("", null),
     payment_terms: Joi.string().optional().allow("", null),
     tx_compnt_1_expmt: Joi.string().optional().allow("", null),
@@ -768,6 +771,7 @@ export const salesSchema = (
     tx_compnt_perc_1: Joi.number().optional().allow("", null),
     tx_compnt_amt_1: Joi.number().optional().allow("", null),
     files: Joi.array().optional().allow("", null),
+    hse_compliance: Joi.any().optional().allow(null, ""),
     doc_path: Joi.array() // Files (conditional)
       .items(Joi.any())
       .when("doc_type", {
@@ -783,6 +787,8 @@ export const salesSchema = (
       then: Joi.allow("", null), // Then account payee is optional
       otherwise: Joi.forbidden(), // Otherwise account payee is forbidden
     }),
+    div_name: Joi.string().optional().allow('', null),
+    ac_name: Joi.string().optional().allow('', null),
     div_code: Joi.string().required(), // Division code (required)
     ...(isBulkOperation && { company_code: userCompany }), // Company code (conditional)
     detail: Joi.array() // Detail (required)
@@ -1093,6 +1099,12 @@ export const LpoSchema = (
     div_code: Joi.string().required(), // Division code (required)
     div_name: Joi.string().optional().allow('', null),
     warranty: Joi.string().optional().allow('', null),
+    ref_doc_no: Joi.string().optional().allow("", null),
+    mobile: Joi.string().optional().allow("", null),
+    delivery_term: Joi.string().optional().allow("", null),
+    company_code: Joi.string().optional().allow("", null),
+    hse_compliance: Joi.string().optional().allow('', null),
+    print_letter_head: Joi.boolean().optional().default(false),
     ...(isBulkOperation && { company_code: userCompany }),
     files: Joi.array()
       .items(
@@ -1113,6 +1125,7 @@ export const LpoSchema = (
           header_ac_code: Joi.string(),
           product_code: Joi.string().optional().allow("", null),
           description: Joi.string().optional().allow("", null),
+          l4_description: Joi.string().optional().allow("", null),
           remarks: Joi.string().optional().allow("", null), // Remarks (optional)
           other_remarks: Joi.string().optional().allow("", null),
           cost_code: Joi.string().optional().allow("", null),

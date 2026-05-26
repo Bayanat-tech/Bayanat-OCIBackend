@@ -122,38 +122,44 @@ export class PortService {
       return { data: [], total: 0 };
     }
 
-    let sql = `SELECT * FROM MS_PORT WHERE company_code = :company_code`;
+    const whereParts = [`company_code = :company_code`];
     const bindParams: Record<string, any> = { company_code: filters.company_code };
 
     if (filters.port_code && typeof filters.port_code === 'string' && filters.port_code.trim() !== '') {
-      sql += ` AND port_code LIKE :port_code`;
-      bindParams.port_code = `%${filters.port_code}%`;
+      whereParts.push(`UPPER(port_code) LIKE UPPER(:port_code)`);
+      bindParams.port_code = `%${filters.port_code.trim()}%`;
     }
 
     if (filters.port_name && typeof filters.port_name === 'string' && filters.port_name.trim() !== '') {
-      sql += ` AND port_name LIKE :port_name`;
-      bindParams.port_name = `%${filters.port_name}%`;
+      whereParts.push(`UPPER(port_name) LIKE UPPER(:port_name)`);
+      bindParams.port_name = `%${filters.port_name.trim()}%`;
     }
 
     if (filters.country_code && typeof filters.country_code === 'string' && filters.country_code.trim() !== '') {
-      sql += ` AND country_code = :country_code`;
-      bindParams.country_code = filters.country_code;
+      whereParts.push(`UPPER(country_code) LIKE UPPER(:country_code)`);
+      bindParams.country_code = `%${filters.country_code.trim()}%`;
     }
 
-    // Get total count
-    const countSql = `SELECT COUNT(*) as cnt FROM MS_PORT WHERE company_code = :company_code`;
-    let countParams = { company_code: filters.company_code };
-    
-    // if (filters.port_code && typeof filters.port_code === 'string' && filters.port_code.trim() !== '') {
-    //   countParams = { ...countParams, port_code: `%${filters.port_code}%` };
-    // }
-    // if (filters.port_name && typeof filters.port_name === 'string' && filters.port_name.trim() !== '') {
-    //   countParams = { ...countParams, port_name: `%${filters.port_name}%` };
-    // }
-    // if (filters.country_code && typeof filters.country_code === 'string' && filters.country_code.trim() !== '') {
-    //   countParams = { ...countParams, country_code: filters.country_code };
-    // }
+    if (filters.trp_mode && typeof filters.trp_mode === 'string' && filters.trp_mode.trim() !== '') {
+      whereParts.push(`UPPER(trp_mode) LIKE UPPER(:trp_mode)`);
+      bindParams.trp_mode = `%${filters.trp_mode.trim()}%`;
+    }
 
+    if (filters.global_search && typeof filters.global_search === 'string' && filters.global_search.trim() !== '') {
+      whereParts.push(`(
+        UPPER(port_code) LIKE UPPER(:global_search)
+        OR UPPER(port_name) LIKE UPPER(:global_search)
+        OR UPPER(country_code) LIKE UPPER(:global_search)
+        OR UPPER(trp_mode) LIKE UPPER(:global_search)
+      )`);
+      bindParams.global_search = `%${filters.global_search.trim()}%`;
+    }
+
+    const whereSql = whereParts.join(" AND ");
+    let sql = `SELECT * FROM MS_PORT WHERE ${whereSql}`;
+
+    const countParams = { ...bindParams };
+    const countSql = `SELECT COUNT(*) as cnt FROM MS_PORT WHERE ${whereSql}`;
     const total = await executeCount(countSql, countParams);
     console.log("PortService total count:", total);
 

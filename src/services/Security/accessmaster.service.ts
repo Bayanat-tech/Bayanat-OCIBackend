@@ -36,13 +36,18 @@ export class AccessMasterService {
     sprint: string;
     sprintsetup: string;
     shelp: string;
+    userid?: string;
     company_code: string;
   }): Promise<AccessUserSecRoleAccess> {
     // Ensure correct tenant schema before executing TypeORM queries
     await ensureCorrectSchema();
 
     const repository = getRepository(AccessUserSecRoleAccess);
-    const access = repository.create(accessData);
+    const access = repository.create({
+      ...accessData,
+      serial_no_or_role_id: Number(accessData.serial_no_or_role_id),
+      userid: accessData.userid || accessData.loginid,
+    });
     return await repository.save(access);
   }
 
@@ -346,9 +351,10 @@ export class AccessMasterService {
       }
 
       // Update the record
+      const { loginid: _loginid, serial_no_or_role_id: _serialNo, company_code: _companyCode, ...safeUpdateData } = updateData;
       const result = await repository.update(
         { loginid, serial_no_or_role_id, company_code },
-        updateData
+        safeUpdateData
       );
 
       await queryRunner.commitTransaction();
