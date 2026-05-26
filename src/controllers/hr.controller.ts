@@ -525,35 +525,34 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
 
       // bank case
       case "bank": {
-        const countResult = await QueryExecutor.executeRawQuery(
-          `SELECT COUNT(*) AS COUNT FROM MS_HR_BANK WHERE COMPANY_CODE = :company_code`,
-          { company_code: requestUser.company_code }
+        const bankResult = await QueryExecutor.executeRawQuery(
+          `SELECT * FROM (
+             SELECT t.*, ROW_NUMBER() OVER (ORDER BY BANK_CODE) AS rn
+             FROM MS_HR_BANK t
+             WHERE COMPANY_CODE = :company_code
+           )
+           WHERE rn > :skip AND rn <= :endRow`,
+          { company_code: requestUser.company_code, skip, endRow: skip + limit }
         );
-        const dataResult = await QueryExecutor.executeRawQuery(
-          `SELECT
-             COMPANY_CODE AS company_code,
-             BANK_CODE AS bank_code,
-             BANK_NAME AS bank_name,
-             BANK_SHORT_NAME AS bank_short_name,
-             MAIN_BANK_CODE AS main_bank_code,
-             BANK_ADDR1 AS bank_addr1,
-             BANK_ADDR2 AS bank_addr2,
-             BANK_ADDR3 AS bank_addr3,
-             COUNTRY_CODE AS country_code,
-             PHONE AS phone,
-             FAX AS fax,
-             EMAIL AS email,
-             REMARKS AS remarks,
-             COMPANY_FLAG AS company_flag,
-             COMP_ACCT_CODE AS comp_acct_code
-           FROM MS_HR_BANK
-           WHERE COMPANY_CODE = :company_code
-           ORDER BY BANK_CODE
-           OFFSET :skip ROWS FETCH NEXT :take ROWS ONLY`,
-          { company_code: requestUser.company_code, skip, take: limit }
-        );
-        fetchedData = dataResult.rows || [];
-        totalCount = Number(countResult.rows?.[0]?.COUNT || countResult.rows?.[0]?.count || 0);
+        const rows = bankResult.rows || [];
+        fetchedData = rows.map((row: any) => ({
+          company_code: valueOf(row, "COMPANY_CODE"),
+          bank_code: valueOf(row, "BANK_CODE"),
+          bank_name: valueOf(row, "BANK_NAME"),
+          bank_short_name: valueOf(row, "BANK_SHORT_NAME"),
+          main_bank_code: valueOf(row, "MAIN_BANK_CODE"),
+          bank_addr1: valueOf(row, "BANK_ADDR1"),
+          bank_addr2: valueOf(row, "BANK_ADDR2"),
+          bank_addr3: valueOf(row, "BANK_ADDR3"),
+          country_code: valueOf(row, "COUNTRY_CODE"),
+          phone: valueOf(row, "PHONE"),
+          fax: valueOf(row, "FAX"),
+          email: valueOf(row, "EMAIL"),
+          remarks: valueOf(row, "REMARKS"),
+          company_flag: valueOf(row, "COMPANY_FLAG"),
+          comp_acct_code: valueOf(row, "COMP_ACCT_CODE"),
+        }));
+        totalCount = fetchedData.length < limit && page === 1 ? fetchedData.length : skip + fetchedData.length;
       }
         break;
 
@@ -584,10 +583,14 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
       // Indicate that the operation was unsuccessful
       success: false,
       // Return a generic error message
-      message: "Error occurred while fetching data",
+      message: error?.message || "Error occurred while fetching data",
     });
   }
 };
+
+function valueOf(row: any, key: string) {
+  return row?.[key] ?? row?.[key.toLowerCase()] ?? row?.[key.toUpperCase()] ?? null;
+}
 
 
 
