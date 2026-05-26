@@ -1044,7 +1044,30 @@ case "group":
   }
   break;
 
-// Fetching asset group data from the Assetgroup model
+// Fetching asset group data using Oracle/TypeORM, without Sequelize models.
+case "assetgroup":
+  {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+    const rows = await AppDataSource.query(
+      `SELECT
+         COMPANY_CODE AS "company_code",
+         ASSET_GROUP_CODE AS "asset_group_code",
+         ASSET_GROUP_NAME AS "asset_group_name",
+         CREATED_BY AS "created_by",
+         CREATED_AT AS "created_at",
+         UPDATED_BY AS "updated_by",
+         UPDATED_AT AS "updated_at"
+       FROM MS_AC_ASSET_GROUP
+       WHERE COMPANY_CODE = :1
+       ORDER BY ASSET_GROUP_CODE`,
+      [requestUser.company_code]
+    );
+    totalCount = rows.length;
+    fetchedData = rows.slice(skip, skip + limit);
+  }
+  break;
   case "ddepartment": {
   let queryRunner; // declare outside try for finally block
 
@@ -1577,6 +1600,50 @@ case "currency":
     }
   }
 
+  break;
+case "site":
+  {
+    if (!AppDataSource.isInitialized) {
+      await TypeORMService.initialize();
+    }
+    const rows = await AppDataSource.query(
+      `SELECT
+         SITE_CODE AS "site_code",
+         SITE_IND AS "site_ind",
+         SITE_TYPE AS "site_type",
+         SITE_NAME AS "site_name",
+         SITE_ADDR1 AS "site_addr1",
+         SITE_ADDR2 AS "site_addr2",
+         SITE_ADDR3 AS "site_addr3",
+         SITE_ADDR4 AS "site_addr4",
+         CITY AS "city",
+         COUNTRY_CODE AS "country_code",
+         CONTACT_NAME AS "contact_name",
+         TEL_NO AS "tel_no",
+         CHARGE_IND AS "charge_ind",
+         PRIN_CODE AS "prin_code",
+         GROUP_CODE AS "group_code",
+         LOC_TYPE AS "loc_type",
+         COMPANY_CODE AS "company_code",
+         CREATED_BY AS "created_by",
+         CREATED_AT AS "created_at",
+         UPDATED_BY AS "updated_by",
+         UPDATED_AT AS "updated_at"
+       FROM MS_SITE
+       WHERE COMPANY_CODE = :1
+       ORDER BY SITE_CODE`,
+      [requestUser.company_code]
+    );
+    totalCount = rows.length;
+    fetchedData = rows.slice(skip, skip + limit);
+  }
+  break;
+case "warehouse":
+  {
+    const warehouses = await WarehouseService.findByCompanyCode(requestUser.company_code);
+    totalCount = warehouses.length;
+    fetchedData = warehouses.slice(skip, skip + limit);
+  }
   break;
 // case "industrysector":
 //   {
