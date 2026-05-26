@@ -4,9 +4,6 @@ import constants from "../helpers/constants";
 import oracledb from 'oracledb';
 import TenantManager from "../database/TenantManager";
 import { getCurrentTenantId } from "../middleware/tenantContext.middleware";
-
-// import { QueryTypes } from "sequelize"; 
-// import { WhereOptions } from "sequelize";
 import { ISearch, RequestWithUser } from "../interfaces/common.interface";
 import { ICostmaster } from "../interfaces/Purchaseflow/Purucahseflow.interface";
 // import {q
@@ -34,18 +31,9 @@ import { ISupplier } from "../interfaces/wms/supplier_wms.interface";
 import { ITerritory } from "../interfaces/wms/territory_wms.interface";
 import { IVessel } from "../interfaces/wms/vessel_wms.interface";
 
-// REMOVED: import Department from "../models/wms/department_wms.model";
-// REMOVED: import Group from "../models/wms/productgroup_wms.model";
-// import Uom from "../models/wms/uom_wms.model";
-// import vessel from "../models/wms/vessel_wms.model";
-
 // import PrincipalWmsView from "../views/wms/principal_wms.view";
-// REPLACED: import Principal from "../models/wms/principal_wms.model";
 import { PrincipalMaster } from "../entity/WMS/principal.entity";
 import { PrincipalService } from "../services/WMS/principal.service";
-
-// import { Op } from "sequelize";
-// import { sequelize } from "../database/connection";
 import { getSearchFilterQuery } from "../helpers/functions";
 import { IActivitysubgroup } from "../interfaces/wms/activity_subgroup_wms.interface";
 import { IIndustrysector } from "../interfaces/wms/industrysector_wms.interface";
@@ -54,7 +42,6 @@ import { CountryService } from "../services/WMS/country.service";
 import PackingDetailsInboundWmsView from "../views/wms/transportation/inbound/packingDetails_wms.view";
 import JobOubListingView from "../views/wms/transportation/outbound/outboundJobWms.view";
 import PickingDetailsOutboundWmsView from "../views/wms/transportation/outbound/pickingDetailsWms.view";
-// import OrderDetail from "../../src/models/wms/transaction/outbound/toOrderDetail_wms.model"
 
 
 // Importing additional interfaces and models
@@ -63,7 +50,6 @@ import {
   IDivisionjob,
   IPrincipaljob,
 } from "../interfaces/wms/principal_wms.interface";
-//import JobInboundWmsview from "../models/wms/transaction/inbound/inbounJobWms.model.view";
 
 
 import DDdivisionjob from "../views/wms/transportation/inbound/dddivisionobWms";
