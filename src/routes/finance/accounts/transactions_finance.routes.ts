@@ -12,6 +12,10 @@ import { tenantContextMiddleware } from "../../../middleware/tenantContext.middl
 import { insUpdTrAcJVBulk } from "../../../controllers/finance/accounts/transactions/insUpdTrAcJVBulk";
 import { procBulkAccountEntry } from "../../../controllers/finance/accounts/transactions/procBulkAccountEntry";
 import {
+  exportFinanceDocumentReportExcel,
+  getFinanceDocumentReportHtml
+} from "../../../controllers/finance/accounts/transactions/financeDocumentReport.controller";
+import {
   getChequeDetail,
   getChequePaymentDetail,
   getChequePaymentHeader,
@@ -50,6 +54,8 @@ router.use(tenantContextMiddleware);
 
 router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 router.post("/account-entry/bulk", procBulkAccountEntry);
+router.get("/report/:doc_type/:doc_no", getFinanceDocumentReportHtml);
+router.get("/report/:doc_type/:doc_no/excel", exportFinanceDocumentReportExcel);
 
 
 // GET Routes - Information Retrieval
