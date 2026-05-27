@@ -407,7 +407,7 @@ export const purchaseSchema = (
     div_name: Joi.string().optional().allow('', null),
     ac_name: Joi.string().optional().allow('', null),
     inv_no: Joi.string().optional().allow('', null),
-    inv_date: Joi.date(),
+    inv_date: Joi.date().optional().allow(null),
     address: Joi.string().optional().allow("", null),
     supplier: Joi.string().optional().allow("", null),
     company_code: Joi.string().optional().allow("", null),
@@ -422,6 +422,7 @@ export const purchaseSchema = (
     price: Joi.number().default(1), // Price (default 1)
     qty: Joi.number().default(1), // Quantity (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
+    curr_name: Joi.string().optional().allow("", null), // Currency name (optional)
     party_address: Joi.string().optional().allow("", null),
     party_phone: Joi.string().optional().allow("", null),
     party_fax: Joi.string().optional().allow("", null),
@@ -461,6 +462,14 @@ export const purchaseSchema = (
     dlvr_email: Joi.string().email().optional().allow("", null),
     app_ref_no: Joi.string().optional().allow("", null),
     fy_code: Joi.string().optional().allow("", null),
+    delivery_to: Joi.string().optional().allow("", null),
+    pdo_type: Joi.string().optional().allow("", null),
+    salesman_code: Joi.string().optional().allow("", null),
+    salesman_name: Joi.string().optional().allow("", null),
+    sector_code: Joi.string().optional().allow("", null),
+    sector_name: Joi.string().optional().allow("", null),
+    print_letter_head: Joi.boolean().optional().allow("", null),
+     //hse_compliance: Joi.string().optional().allow("", null),
     //hse_compliance: Joi.string().optional().allow("", null),
     hse_compliance: Joi.any().optional().allow(null, ""),
     ...(isBulkOperation && { company_code: userCompany }), // Company code (conditional)
@@ -749,6 +758,7 @@ export const salesSchema = (
     remarks: Joi.string().optional().allow("", null), // Remarks (optional)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
+    curr_name: Joi.string().optional().allow("", null), // Currency name (optional)
     salesman_code: Joi.string().optional().allow("", null),
     salesman_name: Joi.string().optional().allow("", null),
     sector_code: Joi.string().optional().allow("", null),
@@ -789,6 +799,7 @@ export const salesSchema = (
     }),
     div_name: Joi.string().optional().allow('', null),
     ac_name: Joi.string().optional().allow('', null),
+    company_code: Joi.string().optional().allow("", null),
     div_code: Joi.string().required(), // Division code (required)
     ...(isBulkOperation && { company_code: userCompany }), // Company code (conditional)
     detail: Joi.array() // Detail (required)
@@ -804,7 +815,7 @@ export const salesSchema = (
           price: Joi.number().default(1), // Price (default 1)
           description: Joi.string().optional().allow("", null),
           amount: Joi.number().required(), // Amount (required)
-          project: Joi.string(), // Amount (required)
+          project: Joi.string().optional().allow("", null), // Amount (required)
           ac_name: Joi.string(),
           sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().optional().allow("", null), // Transaction component category code 1 (optional)
@@ -817,6 +828,9 @@ export const salesSchema = (
           tx_compnt_lcuramt_1: Joi.number().optional().allow("", null), // Transaction component 1 local currency amount (optional)
           tx_cat_code: Joi.string().optional().allow("", null), // Transaction category code (optional)
           div_code: Joi.string().required(), // Division code (required)
+          prod_code: Joi.string().optional().allow("", null),
+          other_remarks: Joi.string().optional().allow("", null),
+          header_ac_code: Joi.string().optional().allow("", null),
           doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).required().custom((v, h) => v == null ? v : String(v)), // Document number (required)
           doc_type: Joi.string() // Document type (required)
             .valid(
@@ -1060,6 +1074,7 @@ export const LpoSchema = (
     qty: Joi.number().default(1), // Quantity (default 1)
     ex_rate: Joi.number().default(1), // Exchange rate (default 1)
     curr_code: Joi.string().required(), // Currency code (required)
+    curr_name: Joi.string().optional().allow("", null), // Currency name (optional)
     address: Joi.string().optional().allow("", null),
     phone: Joi.string().optional().allow("", null),
     contact: Joi.string().optional().allow("", null),
