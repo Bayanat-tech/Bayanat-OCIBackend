@@ -125,8 +125,8 @@ export const procBulkAccountEntry = async (
               UPDATED_BY: user.loginid,
               INV_NO : header.inv_no,
               INV_DATE : header.inv_date ? new Date(header.inv_date) : null,
-              REF_NO : header.inv_no,
-              REF_DATE : header.inv_date ? new Date(header.inv_date) : null,
+              REF_NO : header.ref_no || header.inv_no,
+              REF_DATE : header.ref_date || header.inv_date ? new Date(header.ref_date || header.inv_date) : null,
             }
           ]
         },
@@ -192,6 +192,7 @@ export const procBulkAccountEntry = async (
             DOC_DATE: d.doc_date ? new Date(d.doc_date) : null,
             AC_CODE: d.ac_code,
             INV_NO: d.inv_no,
+            INV_DATE: d.inv_date ? new Date(d.inv_date) : (header.inv_date ? new Date(header.inv_date) : null),
             AMOUNT: d.amount,
             LCUR_AMOUNT: d.lcur_amount,
             SIGN_IND: defaultInvoiceSign(d.doc_type || header.doc_type) ?? normalizeSignInd(d.sign_ind, defaultDetailSign(d.doc_type || header.doc_type)),
