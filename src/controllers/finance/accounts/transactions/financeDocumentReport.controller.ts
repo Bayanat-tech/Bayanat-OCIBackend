@@ -212,26 +212,26 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
   <style>
     @page { size: A4; margin: 8mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; color: #172033; font-family: "Segoe UI", Arial, Helvetica, sans-serif; font-size: 10.5px; line-height: 1.3; background: #eef2f7; }
+    body { margin: 0; color: #111827; font-family: "Liberation Mono", "Courier New", Consolas, monospace; font-size: 10px; line-height: 1.22; background: #eef2f7; }
     .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding: 8mm; border: 1px solid #aab7c8; }
     .top { display: grid; grid-template-columns: 1fr 54mm; gap: 12px; align-items: start; border-bottom: 1.5px solid #0b459f; padding-bottom: 7px; }
     .brand { display: grid; gap: 3px; }
-    .company { font-size: 17px; line-height: 1.1; font-weight: 800; letter-spacing: .01em; color: #0b1f3a; text-transform: uppercase; }
+    .company { font-size: 16px; line-height: 1.1; font-weight: 800; letter-spacing: 0; color: #0b1f3a; text-transform: uppercase; }
     .muted { color: #64748b; }
     .title { border: 1px solid #0b459f; border-radius: 4px; overflow: hidden; text-align: center; }
-    .title h1 { margin: 0; padding: 7px 8px; color: #fff; background: #0b459f; font-size: 14px; line-height: 1.1; text-transform: uppercase; letter-spacing: .06em; }
-    .title .pill { display: block; padding: 5px 8px; color: #0b459f; font-size: 10px; font-weight: 800; background: #f8fbff; }
+    .title h1 { margin: 0; padding: 7px 8px; color: #fff; background: #0b459f; font-size: 13px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0; }
+    .title .pill { display: block; padding: 5px 8px; color: #0b459f; font-size: 9.5px; font-weight: 800; background: #f8fbff; }
     .summary { display: grid; grid-template-columns: 1.15fr .85fr; gap: 6px; margin-top: 7px; }
     .box { border: 1px solid #b7c2d2; border-radius: 4px; overflow: hidden; }
-    .box h2 { margin: 0; padding: 5px 7px; font-size: 10px; text-transform: uppercase; letter-spacing: .10em; color: #0b459f; background: #f3f7fc; border-bottom: 1px solid #d8e0eb; }
+    .box h2 { margin: 0; padding: 5px 7px; font-size: 10px; text-transform: uppercase; letter-spacing: 0; color: #0b459f; background: #f3f7fc; border-bottom: 1px solid #d8e0eb; }
     .box-body { padding: 7px; min-height: 30mm; }
-    .party-name { font-size: 12px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .party-name { font-size: 11.5px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
     .meta { display: grid; grid-template-columns: 28mm 1fr; gap: 3px 8px; }
     .label { color: #64748b; font-weight: 700; }
     .value { color: #111827; font-weight: 700; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-    th { background: #0b459f; color: white; padding: 5px 5px; text-align: left; font-size: 9.5px; font-weight: 800; border: 1px solid #0b459f; }
-    td { border: 1px solid #cfd8e5; padding: 5px; vertical-align: top; font-size: 10px; }
+    th { background: #0b459f; color: white; padding: 5px 5px; text-align: left; font-size: 9.3px; font-weight: 800; border: 1px solid #0b459f; }
+    td { border: 1px solid #cfd8e5; padding: 4.5px 5px; vertical-align: top; font-size: 9.7px; }
     td span { display: block; color: #475569; margin-top: 1px; }
     .code { width: 22mm; color: #334155; }
     .desc { width: auto; }
@@ -244,7 +244,7 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
     .totals td { border: 0; border-bottom: 1px solid #d8e0eb; padding: 5px 7px; }
     .totals tr:last-child td { border-bottom: 0; }
     .grand { color: #fff; background: #0b459f; font-size: 12px; font-weight: 800; }
-    .section-caption { margin-top: 8px; padding: 5px 7px; border: 1px solid #cfd8e5; border-bottom: 0; color: #0b459f; font-weight: 800; letter-spacing: .10em; text-transform: uppercase; background: #f8fbff; }
+    .section-caption { margin-top: 8px; padding: 5px 7px; border: 1px solid #cfd8e5; border-bottom: 0; color: #0b459f; font-weight: 800; letter-spacing: 0; text-transform: uppercase; background: #f8fbff; }
     .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; margin-top: 23mm; }
     .line { border-top: 1px solid #64748b; padding-top: 5px; text-align: center; font-weight: 800; }
     .actions { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
