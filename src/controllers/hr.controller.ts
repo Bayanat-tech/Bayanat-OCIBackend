@@ -490,14 +490,39 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
         break;
       }
       case "paycomponent": {
-        const result = await queryEntityWithFilters(
-          HrPaycomponent,
-          requestUser.company_code,
-          filter,
-          paginationOptions
-        );
-        fetchedData = result.data;
-        totalCount = result.count;
+        const searchText = String((req.query.search as string) || "").trim().toUpperCase();
+        const binds: any = { company_code: requestUser.company_code };
+        let whereClause = "WHERE COMPANY_CODE = :company_code";
+        if (searchText) {
+          binds.search = `%${searchText}%`;
+          whereClause += ` AND (
+            UPPER(PAY_COMP_ID) LIKE :search OR
+            UPPER(PAY_COMP_DESC) LIKE :search OR
+            UPPER(REMARKS) LIKE :search
+          )`;
+        }
+
+        const countQuery = `SELECT COUNT(*) AS TOTALCOUNT FROM MS_HR_PAY_COMPONENTS ${whereClause}`;
+        const countResult = await QueryExecutor.executeRawQuery(countQuery, binds);
+        totalCount = Number((countResult.rows || countResult)[0]?.TOTALCOUNT || 0);
+
+        const fetchQuery = `
+          SELECT
+            COMPANY_CODE AS company_code,
+            PAY_COMP_ID AS pay_comp_id,
+            PAY_COMP_DESC AS pay_comp_desc,
+            REMARKS AS remarks
+          FROM MS_HR_PAY_COMPONENTS
+          ${whereClause}
+          ORDER BY PAY_COMP_ID
+          OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        `;
+        const fetchedResult = await QueryExecutor.executeRawQuery(fetchQuery, {
+          ...binds,
+          offset: skip,
+          limit,
+        });
+        fetchedData = fetchedResult.rows || fetchedResult;
         break;
       }
       case "hrSponsor": {
