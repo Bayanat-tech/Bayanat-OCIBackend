@@ -196,17 +196,13 @@ import {
 } from "../../controllers/wms/division_wms.controller";
 
 // Import asset group controllers
-import {
-  createAssetgroup,
-  deleteCountries as deleteAssetgroups,
-  updateAssetgroup,
-} from "../../controllers/wms/assetgroup_wms.controller";
+
 
 // Import warehouse controllers
-import {
-  createWarehouse,
-  updateWarehouse,
-} from "../../controllers/wms/warehouse_wms.controller";
+// import {
+//   createWarehouse,
+//   updateWarehouse,
+// } from "../../controllers/wms/warehouse_wms.controller";
 
 // Import alert management controllers
 import {
@@ -530,13 +526,13 @@ router.get("/getPort", getPorts); // Get list of ports
 
 // Asset Group Routes - Handle asset group management
 
-router.post("/assetgroup", createAssetgroup); // Create new asset group
-router.put("/assetgroup", updateAssetgroup); // Update existing asset group
-router.post("/assetgroup/delete", deleteAssetgroups); // Delete asset group
+// router.post("/assetgroup", createAssetgroup); // Create new asset group
+// router.put("/assetgroup", updateAssetgroup); // Update existing asset group
+// router.post("/assetgroup/delete", deleteAssetgroups); // Delete asset group
 
 // Warehouse Routes - Handle warehouse management
-router.post("/warehouse", createWarehouse); // Create new warehouse
-router.put("/warehouse", updateWarehouse); // Update existing warehouse
+// router.post("/warehouse", createWarehouse); // Create new warehouse
+// router.put("/warehouse", updateWarehouse); // Update existing warehouse
 router.post("/warehouse/bulk", createBulkLocationType); // Create multiple warehouse locations
 router.get("/warehouse/export", exportBulkLocationType); // Export warehouse data
 

@@ -58,23 +58,33 @@ export const getFinanceListData = async (
                 const { field_name, field_value, operator } = cond;
                 if (field_value === undefined || field_value === null || field_value === "") return;
 
-                const allowedFields = ["doc_no", "doc_type", "div_code", "fy_period", "ac_code", "ref_no"];
-                if (!allowedFields.includes(field_name)) return;
+                const columnMap: Record<string, string> = {
+                  doc_no: "doc_no",
+                  doc_type: "doc_type",
+                  div_code: "div_code",
+                  fy_period: "fy_period",
+                  ac_code: "ac_name",
+                  ac_name: "ac_name",
+                  party_name: "ac_name",
+                  ref_no: "ref_no",
+                };
+                const dbField = columnMap[field_name];
+                if (!dbField) return;
 
-                const safeParam = `${field_name.replace(/\W/g, "")}_${gi}_${ci}`;
+                const safeParam = `${dbField.replace(/\W/g, "")}_${gi}_${ci}`;
                 switch ((operator || "").toLowerCase()) {
                   case "exactmatch":
                   case "=":
-                    groupClauses.push(`UPPER(${field_name}) = UPPER(:${safeParam})`);
+                    groupClauses.push(`UPPER(TO_CHAR(${dbField})) = UPPER(:${safeParam})`);
                     binds[safeParam] = field_value;
                     break;
                   case "like":
                   case "contains":
-                    groupClauses.push(`UPPER(${field_name}) LIKE UPPER(:${safeParam})`);
+                    groupClauses.push(`UPPER(TO_CHAR(${dbField})) LIKE UPPER(:${safeParam})`);
                     binds[safeParam] = `%${field_value}%`;
                     break;
                   default:
-                    groupClauses.push(`UPPER(${field_name}) LIKE UPPER(:${safeParam})`);
+                    groupClauses.push(`UPPER(TO_CHAR(${dbField})) LIKE UPPER(:${safeParam})`);
                     binds[safeParam] = `%${field_value}%`;
                 }
               });
