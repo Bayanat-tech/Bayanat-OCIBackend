@@ -4,6 +4,26 @@ import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { IUser } from '../../../../interfaces/user.interface';
 
+const normalizeSignInd = (value: unknown, fallback = 1): 1 | -1 => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "cr" || normalized === "credit") return 1;
+    if (normalized === "dr" || normalized === "debit") return -1;
+  }
+  const numeric = Number(value);
+  if (numeric === 1 || numeric === -1) return numeric as 1 | -1;
+  return fallback === -1 ? -1 : 1;
+};
+
+const defaultDetailSign = (docType?: string): 1 | -1 =>
+  docType === "PI" || docType === "PO" ? 1 : -1;
+
+const defaultInvoiceSign = (docType?: string): 1 | -1 | undefined => {
+  if (docType === "PI" || docType === "PO") return -1;
+  if (docType === "SI" || docType === "SV") return 1;
+  return undefined;
+};
+
 export const procBulkAccountEntry = async (
   req: Request,
   res: Response
@@ -123,7 +143,7 @@ export const procBulkAccountEntry = async (
             HEADER_AC_CODE: d.header_ac_code,
             REMARKS: d.remarks,
             AMOUNT: d.amount,
-            SIGN_IND: d.sign_ind,
+            SIGN_IND: normalizeSignInd(d.sign_ind, defaultDetailSign(d.doc_type || header.doc_type)),
             CURR_CODE: d.curr_code,
             EX_RATE: d.ex_rate,
             LCUR_AMOUNT: d.lcur_amount,
@@ -174,7 +194,7 @@ export const procBulkAccountEntry = async (
             INV_NO: d.inv_no,
             AMOUNT: d.amount,
             LCUR_AMOUNT: d.lcur_amount,
-            SIGN_IND: d.sign_ind,
+            SIGN_IND: defaultInvoiceSign(d.doc_type || header.doc_type) ?? normalizeSignInd(d.sign_ind, defaultDetailSign(d.doc_type || header.doc_type)),
             CURR_CODE: d.curr_code,
             EX_RATE: d.ex_rate,
             EX_RATE_ORIGIN: d.ex_rate_origin,
@@ -199,7 +219,7 @@ export const procBulkAccountEntry = async (
             EXP_SUBTYPE_CODE: d.exp_subtype_code,
             EXP_CODE: d.exp_code,
             AMOUNT: d.amount,
-            SIGN_IND: d.sign_ind,
+            SIGN_IND: normalizeSignInd(d.sign_ind, defaultDetailSign(d.doc_type || header.doc_type)),
             CURR_CODE: d.curr_code,
             EX_RATE: d.ex_rate,
             DIV_CODE: d.div_code
@@ -220,7 +240,7 @@ export const procBulkAccountEntry = async (
             DOC_REFNO: d.doc_refno,
             DOC_REFNO_2: d.doc_refno_2,
             AMOUNT: d.amount,
-            SIGN_IND: d.sign_ind,
+            SIGN_IND: normalizeSignInd(d.sign_ind, defaultDetailSign(d.doc_type || header.doc_type)),
             LCUR_AMOUNT: d.lcur_amount,
             CURR_CODE: d.curr_code,
             EX_RATE: d.ex_rate,
