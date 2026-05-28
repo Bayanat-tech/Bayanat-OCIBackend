@@ -24,6 +24,12 @@ const defaultInvoiceSign = (docType?: string): 1 | -1 | undefined => {
   return undefined;
 };
 
+const oneChar = (value: unknown, fallback: string | null = null): string | null => {
+  const source = value ?? fallback;
+  if (source === null || source === undefined || source === "") return null;
+  return String(source).substring(0, 1);
+};
+
 export const procBulkAccountEntry = async (
   req: Request,
   res: Response
@@ -101,7 +107,7 @@ export const procBulkAccountEntry = async (
               CHEQUE_DATE: header.cheque_date
                 ? new Date(header.cheque_date)
                 : null,
-              CANCELED: header.canceled,
+              CANCELED: oneChar(header.canceled),
               CREATE_USER: header.create_user || loginid,
               EDIT_USER: header.edit_user || loginid,
               CREATE_DATE: header.create_date
@@ -111,16 +117,16 @@ export const procBulkAccountEntry = async (
                 ? new Date(header.edit_date)
                 : null,
               LAST_DTL_SERIAL_NO: header.last_dtl_serial_no,
-              AUTO_REVERSE: header.auto_reverse,
+              AUTO_REVERSE: oneChar(header.auto_reverse),
               DIV_CODE: header.div_code,
-              SYS_GEN: header.sys_gen,
+              SYS_GEN: oneChar(header.sys_gen),
               TX_COMPNTCAT_CODE_2: header.tx_compntcat_code_2,
               TX_COMPNTCAT_CODE_3: header.tx_compntcat_code_3,
               TX_COMPNTCAT_CODE_4: header.tx_compntcat_code_4,
-              TX_COMPNT_1_EXPMT: header.tx_compnt_1_expmt,
-              TX_TAX_FILED: header.tx_tax_filed,
+              TX_COMPNT_1_EXPMT: oneChar(header.tx_compnt_1_expmt),
+              TX_TAX_FILED: oneChar(header.tx_tax_filed),
               TX_COMPNT_HDISC_AMT_1: header.tx_compnt_hdisc_amt_1,
-              PDO_TYPE: header.pdo_type || "N",
+              PDO_TYPE: oneChar(header.pdo_type, "N"),
               CREATED_BY: user.loginid,
               UPDATED_BY: user.loginid,
               INV_NO: header.inv_no || header.invoice_no || null,
@@ -168,13 +174,13 @@ export const procBulkAccountEntry = async (
             CURR_CODE: d.curr_code,
             EX_RATE: d.ex_rate,
             LCUR_AMOUNT: d.lcur_amount,
-            PDC_IND: d.pdc_ind,
+            PDC_IND: oneChar(d.pdc_ind),
             CHEQUE_NO: d.cheque_no,
             CHEQUE_DATE: d.cheque_date
               ? new Date(d.cheque_date)
               : null,
-            CANCELLED: d.canceled,
-            RECON_IND: d.recon_ind,
+            CANCELLED: oneChar(d.canceled ?? d.cancelled),
+            RECON_IND: oneChar(d.recon_ind),
             DIV_CODE: d.div_code,
             TX_CAT_CODE: d.tx_cat_code,
             TX_COMPNTCAT_CODE_1: d.tx_compntcat_code_1,
@@ -193,11 +199,11 @@ export const procBulkAccountEntry = async (
             TX_COMPNT_LCURAMT_2: d.tx_compnt_lcuramt_2,
             TX_COMPNT_LCURAMT_3: d.tx_compnt_lcuramt_3,
             TX_COMPNT_LCURAMT_4: d.tx_compnt_lcuramt_4,
-            TX_COMPNT_1_EXPMT: d.tx_compnt_1_expmt,
-            TX_COMPNT_2_EXPMT: d.tx_compnt_2_exmpt,
-            TX_COMPNT_3_EXPMT: d.tx_compnt_3_exmpt,
-            TX_COMPNT_4_EXPMT: d.tx_compnt_4_exmpt,
-            TX_TAX_FILED: d.tx_tax_filed,
+            TX_COMPNT_1_EXPMT: oneChar(d.tx_compnt_1_expmt),
+            TX_COMPNT_2_EXPMT: oneChar(d.tx_compnt_2_exmpt ?? d.tx_compnt_2_expmt),
+            TX_COMPNT_3_EXPMT: oneChar(d.tx_compnt_3_exmpt ?? d.tx_compnt_3_expmt),
+            TX_COMPNT_4_EXPMT: oneChar(d.tx_compnt_4_exmpt ?? d.tx_compnt_4_expmt),
+            TX_TAX_FILED: oneChar(d.tx_tax_filed),
             TX_COMPNT_HDISC_AMT_1: d.tx_compnt_hdisc_amt_1,
           }))
         },
@@ -222,7 +228,7 @@ export const procBulkAccountEntry = async (
             EX_RATE_ORIGIN: d.ex_rate_origin,
             CURR_CODE_ORIGIN: d.curr_code_origin,
             AMOUNT_ORIGIN: d.amount_origin,
-            INDICATOR_ORIGIN: d.indicator_origin,
+            INDICATOR_ORIGIN: oneChar(d.indicator_origin),
             DIV_CODE: d.div_code
           }))
         },
