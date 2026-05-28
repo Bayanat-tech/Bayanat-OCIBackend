@@ -205,6 +205,8 @@ export const procBulkAccountEntry = async (
             TX_COMPNT_4_EXPMT: oneChar(d.tx_compnt_4_exmpt ?? d.tx_compnt_4_expmt),
             TX_TAX_FILED: oneChar(d.tx_tax_filed),
             TX_COMPNT_HDISC_AMT_1: d.tx_compnt_hdisc_amt_1,
+            QTY: d.qty,
+            PRICE: d.price,
           }))
         },
 
