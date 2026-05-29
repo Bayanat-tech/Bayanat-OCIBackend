@@ -207,6 +207,7 @@ export const procBulkAccountEntry = async (
             TX_COMPNT_HDISC_AMT_1: d.tx_compnt_hdisc_amt_1,
             QTY: d.qty,
             PRICE: d.price,
+            SIGN_CODE: d.sign_code,
           }))
         },
 
