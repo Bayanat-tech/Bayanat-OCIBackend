@@ -412,6 +412,40 @@ function styleRange(ws: XLSX.WorkSheet, row: number, startCol: number, endCol: n
   for (let col = startCol; col <= endCol; col += 1) applyStyle(ws, row, col, style);
 }
 
+function valueLength(value: unknown): number {
+  const raw = text(value).trim();
+  if (!raw) return 0;
+  return raw.split(/\r?\n/).reduce((max, part) => Math.max(max, part.length), 0);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function applyExcelLayout(ws: XLSX.WorkSheet, rows: any[][], lineStartRow: number, lineCount: number) {
+  const minWidths = [7, 16, 34, 11, 13, 15, 10, 15, 15];
+  const maxWidths = [12, 26, 58, 13, 16, 18, 12, 18, 18];
+  const computedWidths = minWidths.map((minWidth, index) => {
+    const longest = rows.reduce((max, row) => Math.max(max, valueLength(row[index])), 0);
+    return clamp(Math.ceil(longest * 1.08) + 2, minWidth, maxWidths[index]);
+  });
+
+  ws["!cols"] = computedWidths.map((wch) => ({ wch }));
+  ws["!rows"] = rows.map((row, index) => {
+    const rowNo = index + 1;
+    const longest = row.reduce((max, cell) => Math.max(max, valueLength(cell)), 0);
+    if (rowNo === 1) return { hpt: 24 };
+    if (rowNo === 11) return { hpt: 24 };
+    if (rowNo >= lineStartRow && rowNo < lineStartRow + lineCount) {
+      const descriptionLength = valueLength(row[2]);
+      return { hpt: descriptionLength > 48 ? 34 : descriptionLength > 28 ? 27 : 22 };
+    }
+    if (longest > 70) return { hpt: 36 };
+    if (longest > 42) return { hpt: 28 };
+    return { hpt: 21 };
+  });
+}
+
 function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docType: string) {
   const { company, header, details, invoiceDetails } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
@@ -497,17 +531,7 @@ function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docT
   rows.push([], ["Customer's Signature", "", "", "", "", `For ${companyName}`, "", "", ""]);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [
-    { wch: 6 },
-    { wch: 18 },
-    { wch: 34 },
-    { wch: 11 },
-    { wch: 13 },
-    { wch: 15 },
-    { wch: 10 },
-    { wch: 15 },
-    { wch: 15 },
-  ];
+  applyExcelLayout(ws, rows, 12, Math.max(visibleDetails.length, 1));
   ws["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
@@ -593,7 +617,12 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
         cells.push(`<c ${attrs} t="inlineStr"><is><t>${escapeXml(value ?? "")}</t></is></c>`);
       }
     }
-    if (cells.length) sheetData += `<row r="${r + 1}">${cells.join("")}</row>`;
+    if (cells.length) {
+      const rowInfo = (ws["!rows"] || [])[r] as { hpt?: number; hpx?: number } | undefined;
+      const rowHeight = rowInfo?.hpt || (rowInfo?.hpx ? rowInfo.hpx * 0.75 : undefined);
+      const rowAttrs = `r="${r + 1}"${rowHeight ? ` ht="${Number(rowHeight).toFixed(2)}" customHeight="1"` : ""}`;
+      sheetData += `<row ${rowAttrs}>${cells.join("")}</row>`;
+    }
   }
 
   const merges = (ws["!merges"] || [])
