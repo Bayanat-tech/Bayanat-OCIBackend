@@ -20,6 +20,7 @@ import { insUpdAcExpTypeBulk } from "../../controllers/finance/accounts/transact
 import { insUpdBTProject } from "../../controllers/finance/accounts/transactions/insUpdBTProject";
 import { upsertMsAcAsset } from "../../controllers/finance/accounts/transactions/upsertMsAcAsset";
 import { insDocAccodeBulk } from "../../controllers/finance/accounts/transactions/insDocAccodeBulk";
+import { delDocAccodeBulk } from "../../controllers/finance/accounts/transactions/delDocAccodeBulk";
 import { upsertHrDocTypes } from "../../controllers/finance/accounts/transactions/upsertHrDocTypes";
 import { insUpdMSACPLSetup } from "../../controllers/finance/accounts/transactions/insUpdMSACPLSetup";
 import { upsertSetupDoc } from "../../controllers/finance/accounts/transactions/upsertSetupDoc";
@@ -67,6 +68,10 @@ router.post(
 router.post(
   "/insDocAccodeBulk",
   insDocAccodeBulk);
+
+router.post(
+  "/delDocAccodeBulk",
+  delDocAccodeBulk);
 // hr
 router.post(
   "/upsertHrDocTypes",
