@@ -45,6 +45,12 @@ import {
   updateLPODocument,
   cancelLPODocument
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
+import { getChequeMonitoringReport } from "../../../controllers/finance/accounts/accounts-report/AccontReportCheque";
+import { getLedgerWithDetailsReport } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsreport";
+import { getLedgerWithOppositeEntryReport } from "../../../controllers/finance/accounts/accounts-report/ledgerwithoppositeentryreport";
+import { getSummaryDumpReport } from "../../../controllers/finance/accounts/accounts-report/summarydumpreport";
+import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
+import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
 // Initialize Express router
 const router = express.Router();
 
@@ -56,6 +62,15 @@ router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 router.post("/account-entry/bulk", procBulkAccountEntry);
 router.get("/report/:doc_type/:doc_no", getFinanceDocumentReportHtml);
 router.get("/report/:doc_type/:doc_no/excel", exportFinanceDocumentReportExcel);
+router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
+router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
+router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
+
+router.post('/reports/summary-dump/html', getSummaryDumpReport);
+router.post('/reports/detail-dump/html', getDetailDumpReport);
+router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
+
+
 
 
 // GET Routes - Information Retrieval
