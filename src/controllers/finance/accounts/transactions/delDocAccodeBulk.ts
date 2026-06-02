@@ -31,10 +31,10 @@ async function resolveL4Code(
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
   );
 
-  return result.rows?.[0]?.L4_CODE || "";
+  return result.rows?.[0]?.L4_CODE || accountCode;
 }
 
-export const insDocAccodeBulk = async (
+export const delDocAccodeBulk = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -62,6 +62,7 @@ export const insDocAccodeBulk = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+    let deleted = 0;
 
     for (const row of rows as DocAccodeRow[]) {
       const companyCode = String(row.company_code || "").trim();
@@ -74,48 +75,29 @@ export const insDocAccodeBulk = async (
         throw new Error("company_code, doc_id, hdr_dtl and ac_code are required for every row");
       }
 
-      if (!["H", "D"].includes(hdrDtl)) {
-        throw new Error(`Invalid hdr_dtl '${row.hdr_dtl}'. Use H or D.`);
-      }
-
       const l4Code = await resolveL4Code(connection, companyCode, accountCode);
 
-      if (!l4Code) {
-        throw new Error(`Account ${accountCode} is not available in MS_ACCODES for company ${companyCode}`);
-      }
-
-      await connection.execute(
+      const result = await connection.execute(
         `
-          MERGE INTO MS_AC_SETUP_DOC_ACCODE target
-          USING (
-            SELECT
-              :companyCode AS COMPANY_CODE,
-              :docId AS DOC_ID,
-              :hdrDtl AS HDR_DTL,
-              :l4Code AS AC_CODE,
-              :divCode AS DIV_CODE
-            FROM DUAL
-          ) src
-          ON (
-            target.COMPANY_CODE = src.COMPANY_CODE
-            AND target.DOC_ID = src.DOC_ID
-            AND target.HDR_DTL = src.HDR_DTL
-            AND target.AC_CODE = src.AC_CODE
-            AND NVL(target.DIV_CODE, 'X') = NVL(src.DIV_CODE, 'X')
-          )
-          WHEN NOT MATCHED THEN
-            INSERT (COMPANY_CODE, DOC_ID, HDR_DTL, AC_CODE, DIV_CODE)
-            VALUES (src.COMPANY_CODE, src.DOC_ID, src.HDR_DTL, src.AC_CODE, src.DIV_CODE)
+          DELETE FROM MS_AC_SETUP_DOC_ACCODE
+          WHERE COMPANY_CODE = :companyCode
+            AND DOC_ID = :docId
+            AND HDR_DTL = :hdrDtl
+            AND AC_CODE = :l4Code
+            AND NVL(DIV_CODE, 'X') = NVL(:divCode, 'X')
         `,
         { companyCode, docId, hdrDtl, l4Code, divCode }
       );
+
+      deleted += result.rowsAffected || 0;
     }
 
     await connection.commit();
 
     res.json({
       success: true,
-      message: "Document Account Codes inserted successfully"
+      message: deleted ? "Document account mapping deleted" : "No matching document account mapping found",
+      deleted
     });
   } catch (err: any) {
     console.error("Oracle Error:", err);
@@ -124,7 +106,7 @@ export const insDocAccodeBulk = async (
 
     res.status(500).json({
       success: false,
-      message: "Transaction failed",
+      message: "Delete failed",
       details: err?.message || "Unknown error"
     });
   } finally {
