@@ -769,6 +769,17 @@ export const proc_build_dynamic_sql_common20 = async (
 
     console.log("Generated SQL:", rawSql);
 
+    if (code20?.toUpperCase() === 'RAWSQL') {
+
+  res.json({
+    success: true,
+    rawSql
+  });
+
+  return;
+}
+
+
     const dataResult = await connection.execute<any[]>(
       rawSql,
       [],
