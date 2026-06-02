@@ -1122,6 +1122,7 @@ export const LpoSchema = (
     detail: Joi.array() // Detail (required)
       .items(
         Joi.object({
+          sign_code:Joi.string().optional().allow("", null),
           doc_date: Joi.date(), // Document date
           company_code: Joi.string().required(), // Company code (required)
           prod_code: Joi.string().optional().allow("", null),
