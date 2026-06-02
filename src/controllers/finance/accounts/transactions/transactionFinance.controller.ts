@@ -1665,11 +1665,24 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
 export const cancelDocument = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
+    // validate query params early to provide clearer errors
     const { doc_no, doc_type } = req.query as any;
+    // Defensive logging to help debug client request issues
+    console.info('cancelDocument called', { query: req.query, user: { loginid: req.user?.loginid, company_code: req.user?.company_code } });
+
+    if (!doc_no || !doc_type) {
+      res.status(400).json({ success: false, message: 'Missing required query parameters: doc_no and doc_type' });
+      return;
+    }
+
+    // normalize doc_no/doc_type to strings (client may send JSON-encoded values)
+    const docNo = typeof doc_no === 'string' ? doc_no : (Array.isArray(doc_no) ? doc_no[0] : String(doc_no));
+    const docType = typeof doc_type === 'string' ? doc_type : (Array.isArray(doc_type) ? doc_type[0] : String(doc_type));
+
     conn = await getConn(req);
     await conn.execute(
       `BEGIN SP_CANCEL_DOCUMENT(:cc, :dn, :dt, :lu); END;`,
-      { cc: req.user.company_code, dn: doc_no, dt: doc_type, lu: req.user.loginid }
+      { cc: req.user.company_code, dn: docNo, dt: docType, lu: req.user.loginid }
     );
     res.json({ success: true, message: constants.MESSAGES.UPDATED_SUCCESSFULLY });
   } catch (err: any) { sendError(res, err); } finally { await closeConn(conn); }
