@@ -222,7 +222,7 @@ router.post(
    "/insUpdMsProductEdiBulk",
    insUpdMsProductEdiBulk);
 
-router.post(
+router.put(
    "/upsertMsActivityBilling",
    upsertMsActivityBilling );
 

@@ -27,10 +27,10 @@ export const upsertMsPrincipal = async (
 
     const data = req.body;
 
-    if (!data?.company_code || !data?.prin_code || !data?.prin_name) {
+    if (!data?.company_code) {
       res.status(400).json({
         success: false,
-        message: "company_code, prin_code and prin_name are required"
+        message: "company_code"
       });
       return;
     }
