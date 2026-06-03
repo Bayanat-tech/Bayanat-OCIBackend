@@ -44,6 +44,8 @@ export const createPort = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    console.log("req.body after validation:", req.body);
+
     // Create port
     const createdPort = await PortService.createPort({
       ...req.body,
