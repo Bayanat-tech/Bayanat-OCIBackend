@@ -593,6 +593,9 @@ export const activitygroupSchema = (data: IActivityGroup) => {
     rpt_group_name: Joi.string().allow("", null),
     sw_flag: Joi.string().allow("", null),
     cost_group: Joi.string().allow("", null),
+
+    sort_order: Joi.number().allow(null, ""),
+
     updated_at: Joi.date().allow(null, ""),
     updated_by: Joi.string().allow(null, ""),
     created_by: Joi.string().allow(null, ""),
