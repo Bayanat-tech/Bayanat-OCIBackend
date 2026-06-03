@@ -59,6 +59,7 @@ export const getSummaryDumpReport = async (req: Request, res: Response): Promise
 
         const rawSql = (result.outBinds as any).out_sql;
         if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
+        console.log("Generated SQL for Summary Dump Report:", rawSql);
 
         const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
         const rows = (dataResult.rows as any[]).map((row) =>

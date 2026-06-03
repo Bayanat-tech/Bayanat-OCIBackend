@@ -51,6 +51,7 @@ import { getLedgerWithOppositeEntryReport } from "../../../controllers/finance/a
 import { getSummaryDumpReport } from "../../../controllers/finance/accounts/accounts-report/summarydumpreport";
 import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
 import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
+import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
 // Initialize Express router
 const router = express.Router();
 
@@ -69,6 +70,7 @@ router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryRep
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
+router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
 
 
 
