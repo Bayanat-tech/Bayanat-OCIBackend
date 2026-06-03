@@ -1123,7 +1123,7 @@ export const LocationtypeSchema = (data: ILocationType) => {
     loc_cbm: Joi.number().allow("", null),
     loc_wt: Joi.number().allow("", null),
     push_level: Joi.number().allow("", null),
-    user_id: Joi.string().required(),
+    // user_id: Joi.string().required(),
     user_dt: Joi.date().allow("", null),
     company_code: Joi.string().required(),
     loc_name: Joi.string().required(),
