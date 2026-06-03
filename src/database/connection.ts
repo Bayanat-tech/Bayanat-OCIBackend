@@ -144,10 +144,32 @@ class TypeORMService {
       "query"
     ]);
 
+    // Methods that return synchronous objects (not promises) and shouldn't be awaited
+    const syncMethods = new Set(["createQueryBuilder"]);
+
     return new Proxy(repo, {
       get(target, prop: string | symbol) {
         const value: any = Reflect.get(target, prop as any);
         if (typeof prop === "string" && typeof value === "function" && dataMethods.has(prop)) {
+          // For synchronous methods like createQueryBuilder, don't wrap with async/await
+          if (syncMethods.has(prop)) {
+            return function (...args: any[]) {
+              try {
+                // Dynamic require to avoid circular import at module load
+                const { ensureCorrectSchema } = require("./TypeORMTenantInterceptor");
+                if (ensureCorrectSchema) {
+                  // Don't await schema check for sync methods - just trigger it
+                  ensureCorrectSchema().catch((err: any) => {
+                    console.warn("ensureCorrectSchema failed:", err);
+                  });
+                }
+              } catch (err) {
+                console.warn("ensureCorrectSchema failed:", err);
+              }
+              return value.apply(target, args);
+            };
+          }
+          // For async methods, wrap with async/await
           return async function (...args: any[]) {
             try {
               // Dynamic require to avoid circular import at module load

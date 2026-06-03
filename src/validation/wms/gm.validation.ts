@@ -607,7 +607,7 @@ export const activitygroupSchema = (data: IActivityGroup) => {
 export const lineSchema = (data: ILine) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
-    line_code: Joi.string().required(),
+    line_code: Joi.string().allow(null, ""),
     line_name: Joi.string().required(),
     updated_at: Joi.date().allow(null, ""),
     updated_by: Joi.string().allow(null, ""),
