@@ -643,6 +643,7 @@ export const airlineSchema = (data: IAirLine) => {
     address: Joi.string().allow("", null),
     tel_no: Joi.string().allow("", null),
     fax_no: Joi.string().allow("", null),
+    old_airline_code: Joi.string().allow("", null),
   });
   return schema.validate(data);
 };
