@@ -1110,6 +1110,7 @@ export const LpoSchema = (
     hse_compliance: Joi.string().optional().allow('', null),
     print_letter_head: Joi.boolean().optional().default(false),
     invoice_no: Joi.string().optional().allow('', null),
+    canceled: Joi.string().optional().allow('', null),
     ...(isBulkOperation && { company_code: userCompany }),
     files: Joi.array()
       .items(
