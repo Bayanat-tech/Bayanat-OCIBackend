@@ -134,7 +134,7 @@ export const getChequeMonitoringReport = async (req: Request, res: Response): Pr
 
             // Data rows for this account
             groupRows.forEach((r) => {
-                const amt = Number(r.amount) || 0;
+                const amt = Number(r.lcur_amount) || 0;
                 groupTotal += amt;
                 tableBodyHtml += `
           <tr>

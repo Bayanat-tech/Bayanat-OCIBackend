@@ -4,131 +4,193 @@ import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
 const money = (v: any) => {
-    const n = Number(v);
-    return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-        minimumFractionDigits: 3,
-        maximumFractionDigits: 3,
-    });
+  const n = Number(v);
+  return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
 };
 
 const text = (v: any) => (v == null ? "" : String(v));
 
 const formatDateStr = (v: any) => {
-    if (!v) return "";
-    const d = new Date(v);
-    return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
 
 export const getChequeDateWiseReport = async (req: Request, res: Response): Promise<void> => {
-    let connection;
-    try {
-        const {
-            parameter, loginid,
-            code1, code2, code3, code4, code5, code6, code7, code8, code20
-        } = req.body;
+  let connection;
+  try {
+    const {
+      parameter, loginid,
+      code1, code2, code3, code4, code5, code6, code7, code8, code20
+    } = req.body;
 
-        let tenantId = getCurrentTenantId();
-        if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
-        if (!tenantId) {
-            res.status(400).json({ success: false, message: "Tenant not found" });
-            return;
-        }
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant not found" });
+      return;
+    }
 
-        connection = await TenantManager.getConnection(tenantId);
+    connection = await TenantManager.getConnection(tenantId);
 
-        const binds: any = {
-            parameter: parameter || "Account_Report_ChqDateWise",
-            loginid: loginid || "ADMIN",
-            code1: code1 || null, code2: code2 || null, code3: code3 || null,
-            code4: code4 || null, code5: code5 || null, code6: code6 || null,
-            code7: code7 || null, code8: code8 || null, code20: code20 || null,
-            out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
-        };
-        for (let i = 9; i <= 20; i++) binds[`code${i}`] = req.body[`code${i}`] || null;
-        for (let i = 1; i <= 4; i++) {
-            binds[`number${i}`] = req.body[`number${i}`] || null;
-            if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
-        }
-        binds.date1 = null; binds.date2 = null;
+    const binds: any = {
+      parameter: parameter || "Account_Report_ChqDateWise",
+      loginid: loginid || "ADMIN",
+      code1: code1 || null, code2: code2 || null, code3: code3 || null,
+      code4: code4 || null, code5: code5 || null, code6: code6 || null,
+      code7: code7 || null, code8: code8 || null, code20: code20 || null,
+      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
+    };
+    for (let i = 9; i <= 20; i++) binds[`code${i}`] = req.body[`code${i}`] || null;
+    for (let i = 1; i <= 4; i++) {
+      binds[`number${i}`] = req.body[`number${i}`] || null;
+      if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
+    }
+    binds.date1 = null; binds.date2 = null;
 
-        const result = await connection.execute(
-            `DECLARE v_sql VARCHAR2(32767); BEGIN PROC_BUILD_DYNAMIC_SQL_COMMON20(
+    const result = await connection.execute(
+      `DECLARE v_sql VARCHAR2(32767); BEGIN PROC_BUILD_DYNAMIC_SQL_COMMON20(
           :parameter, :loginid,
           :code1, :code2, :code3, :code4, :code5, :code6, :code7, :code8, :code9, :code10,
           :code11, :code12, :code13, :code14, :code15, :code16, :code17, :code18, :code19, :code20,
           :number1, :number2, :number3, :number4,
           :date1, :date2, :date3, :date4,
           v_sql); :out_sql := v_sql; END;`,
-            binds
-        );
+      binds
+    );
 
-        const rawSql = (result.outBinds as any).out_sql;
-        if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
-        console.log("Generated SQL for Cheque Date Wise Report:", rawSql);
+    const rawSql = (result.outBinds as any).out_sql;
+    if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
+    console.log("Generated SQL for Cheque Date Wise Report:", rawSql);
 
-        const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
-        const rows = (dataResult.rows as any[]).map((row) =>
-            Object.keys(row).reduce((acc: any, key) => {
-                acc[key.toLowerCase()] = row[key];
-                return acc;
-            }, {})
-        );
+    const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const rows = (dataResult.rows as any[]).map((row) =>
+      Object.keys(row).reduce((acc: any, key) => {
+        acc[key.toLowerCase()] = row[key];
+        return acc;
+      }, {})
+    );
 
-        // Group rows by ac_code + ac_name
-        const groups: Record<string, any[]> = {};
-        rows.forEach((r) => {
-            const key = `${r.ac_code}||${r.ac_name || ""}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(r);
-        });
+    // Group rows by ac_code + ac_name
+    const groups: Record<string, any[]> = {};
+    rows.forEach((r) => {
+      const key = `${r.ac_code}||${r.ac_name || ""}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
 
-        let tableBodyHtml = "";
-        let grandTotalCredit = 0;
-        let grandTotalDebit = 0;
+    let tableBodyHtml = "";
+    let grandTotalCredit = 0;
+    let grandTotalDebit = 0;
+    const formatBalance = (value: number) => {
+      return value < 0
+        ? `(${money(Math.abs(value))})`
+        : money(value);
+    };
 
-        Object.entries(groups).forEach(([key, groupRows]) => {
-            const [ac_code, ac_name] = key.split("||");
-            const opening = Number(groupRows[0]?.opening_balance) || 0;
-            let totalCredit = 0;
-            let totalDebit = 0;
+    Object.entries(groups).forEach(([key, groupRows]) => {
+      const [ac_code, ac_name] = key.split("||");
+      const opening = Number(groupRows[0]?.op_balance) || 0;
+      let totalCredit = 0;
+      let totalDebit = 0;
+      let runningBalance = opening;
 
-            // ── account header row ──
-            tableBodyHtml += `
+      // ── account header row ──
+      tableBodyHtml += `
         <tr class="group-header">
           <td><strong>${text(ac_code)}</strong></td>
           <td colspan="6"><strong>${text(ac_name)}</strong></td>
           <td class="num opening-val" colspan="2"><strong>Opening</strong></td>
-          <td class="num opening-val"><strong>${money(opening)}</strong></td>
+          <td class="num opening-val"><strong>${formatBalance(opening)}</strong></td>
         </tr>`;
 
-            groupRows.forEach((r) => {
-                const cr = Number(r.lcur_amount) * (r.sign_ind) || 0;
-                const dr = Number(r.lcur_amount) * (r.sign_ind) || 0;
-                const bal = Number(r.balance) || 0;
-                totalCredit += cr;
-                totalDebit += dr;
+      // groupRows.forEach((r) => {
+      //   const amount = Number(r.lcur_amount) || 0;
 
-                const hasTransaction = cr !== 0 || dr !== 0;
-                const crdebitDisplay = cr < 0 ? Math.abs(cr) : 0;
-                const drdebitDisplay = dr > 0 ? Math.abs(dr) : 0;
-                const formatBalance = (value: number) =>
-                    value < 0
-                        ? `(${money(Math.abs(value))})`
-                        : money(value);
+      //   // negative = credit
+      //   const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
 
-                let runningBalance = opening;
+      //   // positive = debit
+      //   const dr = r.sign_ind > 0 ? amount : 0;
 
-                groupRows.forEach((r) => {
-                    const amount =
-                        (Number(r.lcur_amount) || 0) *
-                        (Number(r.sign_ind) || 1);
+      //   totalCredit += cr;
+      //   totalDebit += dr;
 
-                    runningBalance += amount;
-                });
+      //   // running balance
+      //   runningBalance = runningBalance + dr - cr;
 
-                    // ── transaction row ──
-                    tableBodyHtml += `
-          <tr class="data-row">
+      //   const hasTransaction = cr !== 0 || dr !== 0;
+
+      //   // ── transaction row ──
+      //   tableBodyHtml += `
+      //     <tr class="data-row">
+      //       <td class="num">${text(r.salesman_code || "")}</td>
+      //       <td>${text(r.doc_type || "")}</td>
+      //       <td>${text(r.doc_no || "")}</td>
+      //       <td>${formatDateStr(r.doc_date)}</td>
+      //       <td>${text(r.chq_no || "")}</td>
+      //       <td>${formatDateStr(r.chq_date)}</td>
+      //       <td>${text(r.bank || "")}</td>
+      //       <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
+      //       <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
+      //       <td class="num">${formatBalance(runningBalance)}</td>
+      //     </tr>`;
+
+      //   // ── narration / remarks sub-row (only if there's text) ──
+      //   const narration = text(r.narration || r.remarks || r.details || "");
+      //   if (narration) {
+      //     tableBodyHtml += `
+      //     <tr class="narration-row">
+      //       <td></td>
+      //       <td colspan="9" class="narration-cell">${narration}</td>
+      //     </tr>`;
+      //   }
+      // });
+      const pdcGroups: Record<string, any[]> = {};
+
+      groupRows.forEach((r) => {
+        const pdcKey = r.pdc_ind === 'Y' ? "PDC" : "NORMAL";
+
+        if (!pdcGroups[pdcKey]) {
+          pdcGroups[pdcKey] = [];
+        }
+
+        pdcGroups[pdcKey].push(r);
+      });
+
+      Object.entries(pdcGroups).forEach(([pdcType, rows]) => {
+
+        tableBodyHtml += `
+    <tr class="sub-group-header">
+        <td colspan="10">
+            <strong>${pdcType === "PDC" ? "PDC CHEQUES" : "NORMAL CHEQUES"}</strong>
+        </td>
+    </tr>`;
+
+        rows.forEach((r) => {
+
+          const amount = Number(r.lcur_amount) || 0;
+
+          const cr = r.sign_ind < 0
+            ? Math.abs(amount)
+            : 0;
+
+          const dr = r.sign_ind > 0
+            ? amount
+            : 0;
+
+          totalCredit += cr;
+          totalDebit += dr;
+
+          runningBalance += dr - cr;
+
+          const hasTransaction = cr !== 0 || dr !== 0;
+
+          tableBodyHtml += `
+        <tr class="data-row">
             <td class="num">${text(r.salesman_code || "")}</td>
             <td>${text(r.doc_type || "")}</td>
             <td>${text(r.doc_no || "")}</td>
@@ -136,29 +198,19 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
             <td>${text(r.chq_no || "")}</td>
             <td>${formatDateStr(r.chq_date)}</td>
             <td>${text(r.bank || "")}</td>
-            <td class="num">${hasTransaction ? money(crdebitDisplay) : "0.000"}</td>
-            <td class="num">${hasTransaction ? money(drdebitDisplay) : "0.000"}</td>
-             <td class="num">${formatBalance(runningBalance)}</td>
-          </tr>`;
+            <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
+            <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
+            <td class="num">${formatBalance(runningBalance)}</td>
+        </tr>`;
+        });
+      });
 
-                    // ── narration / remarks sub-row (only if there's text) ──
-                    const narration = text(r.narration || r.remarks || r.details || "");
-                    if (narration) {
-                        tableBodyHtml += `
-          <tr class="narration-row">
-            <td></td>
-            <td colspan="9" class="narration-cell">${narration}</td>
-          </tr>`;
-                    }
-                });
+      grandTotalCredit += totalCredit;
+      grandTotalDebit += totalDebit;
 
-                grandTotalCredit += totalCredit;
-                grandTotalDebit += totalDebit;
-
-                const closing = opening + totalDebit - totalCredit;
-
-                // ── account total + closing ──
-                tableBodyHtml += `
+      const closing = runningBalance;
+      // ── account total + closing ──
+      tableBodyHtml += `
         <tr class="total-row">
           <td colspan="5"></td>
           <td colspan="2" class="num"><strong>Total :</strong></td>
@@ -168,12 +220,12 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
         </tr>
         <tr class="closing-row">
           <td colspan="7" class="num"><strong>Closing</strong></td>
-          <td colspan="3" class="num closing-val"><strong>${money(closing)}</strong></td>
+          <td colspan="3" class="num closing-val"><strong>${formatBalance(closing)}</strong></td>
         </tr>`;
-            });
+    });
 
-            // ── grand total row ──
-            tableBodyHtml += `
+    // ── grand total row ──
+    tableBodyHtml += `
       <tr class="grand-total-row">
         <td colspan="7" class="num"></td>
         <td class="num"><strong>${money(grandTotalCredit)}</strong></td>
@@ -181,7 +233,7 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
         <td></td>
       </tr>`;
 
-            const reportHtml = `
+    const reportHtml = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -237,6 +289,14 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
             border-bottom: 1px solid #333;
             font-size: 10px;
           }
+
+          .sub-group-header td {
+    background: #f2f2f2;
+    font-weight: bold;
+    border-top: 1px solid #999;
+    border-bottom: 1px solid #999;
+    padding: 6px;
+}
           .opening-val { color: #c00; }
 
           .data-row td { border-bottom: 1px solid #f0f0f0; }
@@ -346,19 +406,19 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
       </body>
       </html>`;
 
-            res.setHeader("Content-Type", "text/html");
-            res.status(200).send(reportHtml);
+    res.setHeader("Content-Type", "text/html");
+    res.status(200).send(reportHtml);
 
-        } catch (error: any) {
-            console.error("Cheque Date Wise Report Error:", error);
-            res.status(500).json({
-                success: false,
-                message: "Unable to generate report",
-                details: error.message,
-            });
-        } finally {
-            if (connection) {
-                try { await connection.close(); } catch (e) { console.error(e); }
-            }
-        }
-    };
+  } catch (error: any) {
+    console.error("Cheque Date Wise Report Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to generate report",
+      details: error.message,
+    });
+  } finally {
+    if (connection) {
+      try { await connection.close(); } catch (e) { console.error(e); }
+    }
+  }
+};
