@@ -820,6 +820,7 @@ export const getLevel3AcTreeNode = async (
       SELECT
           l3_code,
           l2_code,
+          l1_code,
           l3_description,
           company_code
       FROM MS_AC_L3
@@ -1148,10 +1149,7 @@ export const getLevel4AcTreeNode = async (
     const result = await connection.execute(
       `
       SELECT
-        L4_CODE,
-        L4_DESCRIPTION,
-        L3_CODE,
-        COMPANY_CODE
+       *
       FROM MS_AC_L4
       WHERE COMPANY_CODE = :company_code
         AND L4_CODE = :l4_code
@@ -1178,7 +1176,10 @@ export const getLevel4AcTreeNode = async (
     l4_code: row.L4_CODE,
     l3_code:row.L3_CODE,
     l4_description:row.L4_DESCRIPTION,
-    company_code:row.COMPANY_CODE
+    company_code:row.COMPANY_CODE,
+    l4_type: row.L4_TYPE,   
+    l4_bill: row.L4_BILL,   
+    l4_job: row.L4_JOB, 
     };
 
     res.status(constants.STATUS_CODES.OK).json({
@@ -1620,7 +1621,11 @@ export const createAccountChildrenAcTreeNode = async (
     EXP_TYPE_CODE,
     EXP_SUBTYPE_CODE,
     CREATED_BY,
-    UPDATED_BY
+    UPDATED_BY,
+    AC_STATUS,
+    EXP_ALLOC,
+    AC_TYPE,
+    AC_ACTIVE
   )
   VALUES (
     '',
@@ -1662,7 +1667,11 @@ export const createAccountChildrenAcTreeNode = async (
     :exp_type_code,
     :exp_subtype_code,
     :loginid,
-    :loginid
+    :loginid,
+    :ac_status,
+    :exp_alloc,
+    :ac_type,
+    :ac_active
   )
   `,
   {
@@ -1704,7 +1713,11 @@ export const createAccountChildrenAcTreeNode = async (
     company_code,
     exp_type_code: data.exp_type_code,
     exp_subtype_code: data.exp_subtype_code,
-    loginid
+    loginid,
+    ac_status: data.ac_status,
+    exp_alloc: data.exp_alloc,
+    ac_type: data.ac_type,
+    ac_active: data.ac_active
   },
   { autoCommit: true }
 );
@@ -1947,7 +1960,11 @@ export const updateAccountChildrenAcTreeNode = async (
         BI_DEPT = :bi_dept,
         EXP_TYPE_CODE = :exp_type_code,
         EXP_SUBTYPE_CODE = :exp_subtype_code,
-        UPDATED_BY = :loginid
+        UPDATED_BY = :loginid,
+        AC_STATUS = :ac_status,
+        EXP_ALLOC = :exp_alloc,
+        AC_TYPE = :ac_type,
+        AC_ACTIVE = :ac_active
       WHERE AC_CODE = :ac_code
         AND COMPANY_CODE = :company_code
       `,
@@ -1990,6 +2007,10 @@ export const updateAccountChildrenAcTreeNode = async (
         exp_type_code: data.exp_type_code || null,
         exp_subtype_code: data.exp_subtype_code || null,
         loginid,
+        ac_status: data.ac_status || 'A',
+        exp_alloc: data.exp_alloc || 'N',
+        ac_type: data.ac_type || null,
+        ac_active: data.ac_active || 'Y',
         ac_code,
         company_code
       },
