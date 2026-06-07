@@ -72,10 +72,18 @@ export const getSummaryDumpReport = async (req: Request, res: Response): Promise
         let grandTotalDebit = 0, grandTotalCredit = 0;
 
         rows.forEach((r) => {
-            const opening = Number(r.opening_balance) || 0;
-            const dr = Number(r.debit) || 0;
-            const cr = Number(r.credit) || 0;
-            const closing = Number(r.closing_balance) || 0;
+            const opening = Number(r.op_balance) || 0;
+            const amount = Number(r.lcur_amount) || 0;
+
+          const cr = r.sign_ind < 0
+            ? Math.abs(amount)
+            : 0;
+
+          const dr = r.sign_ind > 0
+            ? amount
+            : 0;
+
+            const closing = opening + dr - cr;
 
             grandTotalDebit += dr;
             grandTotalCredit += cr;

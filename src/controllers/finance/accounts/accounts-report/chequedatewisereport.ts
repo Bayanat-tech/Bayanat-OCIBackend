@@ -98,128 +98,76 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
       let totalDebit = 0;
       let runningBalance = opening;
 
-      // ── account header row ──
       tableBodyHtml += `
         <tr class="group-header">
-          <td><strong>${text(ac_code)}</strong></td>
-          <td colspan="6"><strong>${text(ac_name)}</strong></td>
-          <td class="num opening-val" colspan="2"><strong>Opening</strong></td>
-          <td class="num opening-val"><strong>${formatBalance(opening)}</strong></td>
+          <td colspan="6"><strong>Account:</strong> ${text(ac_code)} - ${text(ac_name)}</td>
+          <td class="num opening-val"><strong>Opening</strong></td>
+          <td class="num opening-val" colspan="3"><strong>${formatBalance(opening)}</strong></td>
         </tr>`;
 
-      // groupRows.forEach((r) => {
-      //   const amount = Number(r.lcur_amount) || 0;
-
-      //   // negative = credit
-      //   const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
-
-      //   // positive = debit
-      //   const dr = r.sign_ind > 0 ? amount : 0;
-
-      //   totalCredit += cr;
-      //   totalDebit += dr;
-
-      //   // running balance
-      //   runningBalance = runningBalance + dr - cr;
-
-      //   const hasTransaction = cr !== 0 || dr !== 0;
-
-      //   // ── transaction row ──
-      //   tableBodyHtml += `
-      //     <tr class="data-row">
-      //       <td class="num">${text(r.salesman_code || "")}</td>
-      //       <td>${text(r.doc_type || "")}</td>
-      //       <td>${text(r.doc_no || "")}</td>
-      //       <td>${formatDateStr(r.doc_date)}</td>
-      //       <td>${text(r.chq_no || "")}</td>
-      //       <td>${formatDateStr(r.chq_date)}</td>
-      //       <td>${text(r.bank || "")}</td>
-      //       <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
-      //       <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
-      //       <td class="num">${formatBalance(runningBalance)}</td>
-      //     </tr>`;
-
-      //   // ── narration / remarks sub-row (only if there's text) ──
-      //   const narration = text(r.narration || r.remarks || r.details || "");
-      //   if (narration) {
-      //     tableBodyHtml += `
-      //     <tr class="narration-row">
-      //       <td></td>
-      //       <td colspan="9" class="narration-cell">${narration}</td>
-      //     </tr>`;
-      //   }
-      // });
       const pdcGroups: Record<string, any[]> = {};
 
       groupRows.forEach((r) => {
         const pdcKey = r.pdc_ind === 'Y' ? "PDC" : "NORMAL";
-
         if (!pdcGroups[pdcKey]) {
           pdcGroups[pdcKey] = [];
         }
-
         pdcGroups[pdcKey].push(r);
       });
 
       Object.entries(pdcGroups).forEach(([pdcType, rows]) => {
-
         tableBodyHtml += `
-    <tr class="sub-group-header">
-        <td colspan="10">
-            <strong>${pdcType === "PDC" ? "PDC CHEQUES" : "NORMAL CHEQUES"}</strong>
-        </td>
-    </tr>`;
+        <tr class="sub-group-header">
+          <td colspan="10"><strong>${pdcType === "PDC" ? "PDC Cheques" : "Normal Cheques"}</strong></td>
+        </tr>`;
 
         rows.forEach((r) => {
-
           const amount = Number(r.lcur_amount) || 0;
-
-          const cr = r.sign_ind < 0
-            ? Math.abs(amount)
-            : 0;
-
-          const dr = r.sign_ind > 0
-            ? amount
-            : 0;
-
+          const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
+          const dr = r.sign_ind > 0 ? amount : 0;
           totalCredit += cr;
           totalDebit += dr;
-
           runningBalance += dr - cr;
-
           const hasTransaction = cr !== 0 || dr !== 0;
 
           tableBodyHtml += `
         <tr class="data-row">
-            <td class="num">${text(r.salesman_code || "")}</td>
-            <td>${text(r.doc_type || "")}</td>
-            <td>${text(r.doc_no || "")}</td>
-            <td>${formatDateStr(r.doc_date)}</td>
-            <td>${text(r.chq_no || "")}</td>
-            <td>${formatDateStr(r.chq_date)}</td>
-            <td>${text(r.bank || "")}</td>
-            <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
-            <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
-            <td class="num">${formatBalance(runningBalance)}</td>
+          <td class="num">${text(r.salesman_code || "")}</td>
+          <td>${text(r.doc_type || "")}</td>
+          <td>${text(r.doc_no || "")}</td>
+          <td>${formatDateStr(r.doc_date)}</td>
+          <td>${text(r.chq_no || "")}</td>
+          <td>${formatDateStr(r.chq_date)}</td>
+          <td>${text(r.bank || "")}</td>
+          <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
+          <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
+          <td class="num">${formatBalance(runningBalance)}</td>
         </tr>`;
+
+          const narration = text(r.narration || r.remarks || r.details || "");
+          if (narration) {
+            tableBodyHtml += `
+        <tr class="narration-row">
+          <td colspan="10" class="narration-cell">${narration}</td>
+        </tr>`;
+          }
         });
       });
 
       grandTotalCredit += totalCredit;
       grandTotalDebit += totalDebit;
-
       const closing = runningBalance;
-      // ── account total + closing ──
+
       tableBodyHtml += `
         <tr class="total-row">
-          <td colspan="5"></td>
-          <td colspan="2" class="num"><strong>Total :</strong></td>
+          <td colspan="6"></td>
+          <td class="num"><strong>Period Total</strong></td>
           <td class="num"><strong>${money(totalCredit)}</strong></td>
           <td class="num"><strong>${money(totalDebit)}</strong></td>
           <td></td>
         </tr>
         <tr class="closing-row">
-          <td colspan="7" class="num"><strong>Closing</strong></td>
+          <td colspan="7" class="num"><strong>Closing Balance</strong></td>
           <td colspan="3" class="num closing-val"><strong>${formatBalance(closing)}</strong></td>
         </tr>`;
     });
@@ -238,7 +186,7 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
       <html>
       <head>
         <meta charset="utf-8" />
-        <title>A/c Ledger - Cheque Date Wise</title>
+        <title>Cheque Date Wise Ledger</title>
         <style>
           * { box-sizing: border-box; }
           body {
@@ -271,63 +219,79 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
           table.report-table th {
             border-top: 1px solid #000;
             border-bottom: 1px solid #000;
-            padding: 6px 5px;
+            padding: 8px 6px;
             text-align: left;
-            font-size: 9px;
+            font-size: 10px;
             text-transform: uppercase;
-            background: #fff;
+            background: #f7f9fb;
+            color: #222;
           }
           table.report-table td {
-            padding: 4px 5px;
+            padding: 6px 6px;
             vertical-align: top;
+            font-size: 10px;
+            color: #333;
+          }
+          tr.data-row:nth-child(even) td {
+            background: #fcfcfc;
+          }
+          tr.data-row:hover td {
+            background: #f0f6ff;
           }
 
           /* ── row types ── */
           .group-header td {
-            padding-top: 14px;
-            padding-bottom: 4px;
+            padding: 10px 6px;
             border-bottom: 1px solid #333;
-            font-size: 10px;
+            background: #eef3f8;
+            font-size: 11px;
           }
+          .group-header td strong { color: #1f477a; }
 
           .sub-group-header td {
-    background: #f2f2f2;
-    font-weight: bold;
-    border-top: 1px solid #999;
-    border-bottom: 1px solid #999;
-    padding: 6px;
-}
+            background: #f2f2f2;
+            font-weight: bold;
+            border-top: 1px solid #b0b0b0;
+            border-bottom: 1px solid #b0b0b0;
+            padding: 8px 6px;
+            color: #333;
+          }
           .opening-val { color: #c00; }
 
-          .data-row td { border-bottom: 1px solid #f0f0f0; }
+          .data-row td { border-bottom: 1px solid #e6e7e8; }
 
           .narration-row td {
-            padding: 0 5px 5px 5px;
+            padding: 0 6px 8px 6px;
             border-bottom: 1px solid #f0f0f0;
+            background: #fafafa;
           }
           .narration-cell {
             font-size: 9px;
             color: #555;
-            padding-left: 20px;
+            padding-left: 18px;
             white-space: pre-wrap;
           }
 
           .total-row td {
             border-top: 1px solid #333;
-            padding-top: 5px;
-            padding-bottom: 3px;
+            padding-top: 8px;
+            padding-bottom: 6px;
+            font-weight: bold;
+            background: #f8f9fb;
           }
           .closing-row td {
             border-bottom: 2px solid #333;
-            padding-bottom: 8px;
+            padding-bottom: 10px;
+            font-weight: bold;
           }
-          .closing-val { color: #333; }
+          .closing-val { color: #222; }
 
           .grand-total-row td {
             border-top: 2px solid #333;
             border-bottom: 2px solid #333;
-            padding: 6px 5px;
+            padding: 10px 6px;
             font-weight: bold;
+            background: #e9edf4;
           }
 
           /* ── alignment ── */
@@ -363,10 +327,10 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
                 <td class="label">Title :</td>
                 <td><strong>A/c Ledger for the Period ${text(code5)} - ${text(code6)}</strong></td>
               </tr>
-              <tr><td class="label">Date :</td><td>${formatDateStr(new Date())}</td></tr>
+                <tr><td class="label">Date :</td><td>${formatDateStr(new Date())}</td></tr>
               <tr><td class="label">User :</td><td>${text(loginid)}</td></tr>
-              <tr><td class="label">Report :</td><td>rpt_ac_ledger_chqdatewise</td></tr>
-              <tr><td class="label">Currency :</td><td></td></tr>
+              <tr><td class="label">Report :</td><td>Cheque Date Wise Ledger</td></tr>
+              <tr><td class="label">Period :</td><td>${text(code5)} - ${text(code6)}</td></tr>
             </table>
             <div style="text-align:right;">
               <div style="font-size:16px; font-weight:bold; color:#185FA5;">AL MADINA</div>

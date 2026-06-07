@@ -4,52 +4,52 @@ import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
 const money = (v: any) => {
-    const n = Number(v);
-    return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-        minimumFractionDigits: 3,
-        maximumFractionDigits: 3,
-    });
+  const n = Number(v);
+  return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
 };
 
 const text = (v: any) => (v == null ? "" : String(v));
 
 const formatDateStr = (v: any) => {
-    if (!v) return "";
-    const d = new Date(v);
-    return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
 
 export const getDetailDumpReport = async (req: Request, res: Response): Promise<void> => {
-    let connection;
-    try {
-        const {
-            parameter, loginid,
-            code1, code2, code3, code4, code5, code6, code7, code8, code20
-        } = req.body;
+  let connection;
+  try {
+    const {
+      parameter, loginid,
+      code1, code2, code3, code4, code5, code6, code7, code8, code20
+    } = req.body;
 
-        let tenantId = getCurrentTenantId();
-        if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
-        if (!tenantId) { res.status(400).json({ success: false, message: "Tenant not found" }); return; }
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
+    if (!tenantId) { res.status(400).json({ success: false, message: "Tenant not found" }); return; }
 
-        connection = await TenantManager.getConnection(tenantId);
+    connection = await TenantManager.getConnection(tenantId);
 
-        const binds: any = {
-            parameter: parameter || "Account_Report_Detail",
-            loginid: loginid || "ADMIN",
-            code1: code1 || null, code2: code2 || null, code3: code3 || null,
-            code4: code4 || null, code5: code5 || null, code6: code6 || null,
-            code7: code7 || null, code8: code8 || null, code20: code20 || null,
-            out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
-        };
-        for (let i = 9; i <= 20; i++) binds[`code${i}`] = req.body[`code${i}`] || null;
-        for (let i = 1; i <= 4; i++) {
-            binds[`number${i}`] = req.body[`number${i}`] || null;
-            if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
-        }
-        binds.date1 = null; binds.date2 = null;
+    const binds: any = {
+      parameter: parameter || "Account_Report_Detail",
+      loginid: loginid || "ADMIN",
+      code1: code1 || null, code2: code2 || null, code3: code3 || null,
+      code4: code4 || null, code5: code5 || null, code6: code6 || null,
+      code7: code7 || null, code8: code8 || null, code20: code20 || null,
+      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
+    };
+    for (let i = 9; i <= 20; i++) binds[`code${i}`] = req.body[`code${i}`] || null;
+    for (let i = 1; i <= 4; i++) {
+      binds[`number${i}`] = req.body[`number${i}`] || null;
+      if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
+    }
+    binds.date1 = null; binds.date2 = null;
 
-        const result = await connection.execute(
-            `DECLARE v_sql VARCHAR2(32767); BEGIN PROC_BUILD_DYNAMIC_SQL_COMMON20(
+    const result = await connection.execute(
+      `DECLARE v_sql VARCHAR2(32767); BEGIN PROC_BUILD_DYNAMIC_SQL_COMMON20(
           :parameter, :loginid,
           :code1, :code2, :code3, :code4, :code5, :code6, :code7, :code8, :code9, :code10,
           :code11, :code12, :code13, :code14, :code15, :code16, :code17, :code18, :code19, :code20,
@@ -57,82 +57,179 @@ export const getDetailDumpReport = async (req: Request, res: Response): Promise<
           :date1, :date2, :date3, :date4,
           v_sql); :out_sql := v_sql; END;`, binds);
 
-        const rawSql = (result.outBinds as any).out_sql;
-        if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
+    const rawSql = (result.outBinds as any).out_sql;
+    if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
 
-        const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
-        const rows = (dataResult.rows as any[]).map((row) =>
-            Object.keys(row).reduce((acc: any, key) => { acc[key.toLowerCase()] = row[key]; return acc; }, {})
-        );
+    const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const rows = (dataResult.rows as any[]).map((row) =>
+      Object.keys(row).reduce((acc: any, key) => { acc[key.toLowerCase()] = row[key]; return acc; }, {})
+    );
 
-        // Group by ac_code + ac_name
-        const groups: Record<string, any[]> = {};
-        rows.forEach((r) => {
-            const key = `${r.ac_code}||${r.ac_name || ""}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(r);
-        });
+    // Group by ac_code + ac_name
+    const groups: Record<string, any[]> = {};
+    rows.forEach((r) => {
+      const key = `${r.ac_code}||${r.ac_name || ""}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
 
-        let tableBodyHtml = "";
-        Object.entries(groups).forEach(([key, groupRows]) => {
-            const [ac_code, ac_name] = key.split("||");
-            const opening = Number(groupRows[0]?.opening_balance) || 0;
-            let totalDebit = 0, totalCredit = 0;
+    let tableBodyHtml = "";
+    Object.entries(groups).forEach(([key, groupRows]) => {
+      const [ac_code, ac_name] = key.split("||");
+      const opening = Number(groupRows[0]?.op_balance) || 0;
+      let totalDebit = 0, totalCredit = 0;
+      let runningBalance = opening;
+      const formatBalance = (value: number) => {
+        return value < 0
+          ? `(${money(Math.abs(value))})`
+          : money(value);
+      };
 
-            tableBodyHtml += `
+      tableBodyHtml += `
         <tr class="group-header">
-          <td><strong>${text(ac_code)}</strong></td>
-          <td colspan="5"><strong>${text(ac_name)}</strong></td>
-          <td colspan="2" class="opening-label">Opening: ${money(opening)}</td>
+          <td colspan="7">${text(ac_code)} - ${text(ac_name)} | Opening Balance: ${formatBalance(opening)}</td>
         </tr>`;
 
-            groupRows.forEach((r) => {
-                const dr = Number(r.debit) || 0;
-                const cr = Number(r.credit) || 0;
-                totalDebit += dr; totalCredit += cr;
-                tableBodyHtml += `
-          <tr>
+      groupRows.forEach((r) => {
+        const amount = Number(r.lcur_amount) || 0;
+        const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
+        const dr = r.sign_ind > 0 ? amount : 0;
+        runningBalance += dr - cr;
+        const closing = runningBalance;
+        totalDebit += dr;
+        totalCredit += cr;
+
+        tableBodyHtml += `
+          <tr class="data-row">
             <td>${text(r.doc_type)}</td>
             <td>${text(r.doc_no)}</td>
             <td>${formatDateStr(r.doc_date)}</td>
-            <td colspan="2">${text(r.remarks || r.narration)}</td>
+            <td>${text(r.remarks || r.narration || '')}</td>
             <td class="num">${dr !== 0 ? money(dr) : ""}</td>
             <td class="num">${cr !== 0 ? money(cr) : ""}</td>
-            <td class="num">${money(Number(r.closing_balance) || 0)}</td>
+            <td class="num">${formatBalance(closing)}</td>
           </tr>`;
-            });
+      });
 
-            const closing = opening + totalDebit - totalCredit;
-            tableBodyHtml += `
+      const closing = runningBalance;
+      tableBodyHtml += `
         <tr class="total-row">
-          <td colspan="3"></td>
-          <td colspan="2" class="num"><strong>AC Total :</strong></td>
+          <td colspan="4" class="num"><strong>Account Total</strong></td>
           <td class="num"><strong>${money(totalDebit)}</strong></td>
           <td class="num"><strong>${money(totalCredit)}</strong></td>
-          <td class="num"><strong>${money(closing)}</strong></td>
+          <td class="num"><strong>${formatBalance(closing)}</strong></td>
         </tr>`;
-        });
+    });
 
-        const reportHtml = `
+    const reportHtml = `
       <!DOCTYPE html><html><head><meta charset="utf-8"/>
-      <title>Detail Dump Report</title>
+      <title>Detail Dump Ledger</title>
       <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 10px; color: #333; margin: 40px; background-color: #f5f5f5; }
-        .page { background: white; padding: 40px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .header-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
-        .meta-info td { padding: 2px 8px 2px 0; vertical-align: top; }
-        .label { font-weight: bold; width: 90px; color: #555; }
-        .company-name { font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 10px; }
-        table.report-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        table.report-table th { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 6px 4px; text-align: left; font-size: 9px; text-transform: uppercase; }
-        table.report-table td { padding: 4px; vertical-align: top; border-bottom: 1px solid #eee; }
-        .group-header td { padding-top: 12px; font-size: 10px; border-bottom: 1px solid #333; background: #fff; }
-        .opening-label { text-align: right; font-weight: bold; }
-        .total-row td { border-top: 1px solid #333; border-bottom: 2px solid #333; background: #fff; }
-        .num { text-align: right; font-family: 'Courier New', Courier, monospace; }
-        .footer { margin-top: 30px; text-align: center; font-weight: bold; border-top: 1px solid #000; padding-top: 8px; font-size: 10px; }
-        .powered { text-align: right; font-size: 9px; color: #999; margin-top: 5px; }
-        @media print { body { background: white; margin: 0; } .page { box-shadow: none; padding: 20px; } .no-print { display: none; } }
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-size: 10px;
+          color: #333;
+          margin: 40px;
+          background-color: #f5f5f5;
+        }
+        .page {
+          background: white;
+          padding: 40px;
+          box-shadow: 0 0 14px rgba(0,0,0,0.08);
+        }
+        .header-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 2px solid #333;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+        }
+        .meta-info td {
+          padding: 2px 8px 2px 0;
+          vertical-align: top;
+        }
+        .label {
+          font-weight: bold;
+          width: 90px;
+          color: #555;
+        }
+        .company-name {
+          font-size: 14px;
+          font-weight: bold;
+          text-align: center;
+          margin-bottom: 10px;
+          color: #185fa5;
+        }
+        table.report-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+        }
+        table.report-table th {
+          border-top: 1px solid #ccd3dc;
+          border-bottom: 1px solid #ccd3dc;
+          padding: 8px 6px;
+          text-align: left;
+          font-size: 10px;
+          text-transform: uppercase;
+          background: #f7f9fb;
+          color: #1d2d3d;
+        }
+        table.report-table td {
+          padding: 8px 6px;
+          vertical-align: top;
+          font-size: 10px;
+          border-bottom: 1px solid #ebeff2;
+        }
+        tr.data-row:nth-child(even) td {
+          background: #fbfcfd;
+        }
+        tr.data-row:hover td {
+          background: #eef5ff;
+        }
+        .group-header td {
+          padding: 12px 6px;
+          font-size: 11px;
+          border-bottom: 1px solid #333;
+          background: #eef3f8;
+          color: #1f477a;
+          font-weight: bold;
+        }
+        .opening-label {
+          text-align: right;
+          font-weight: bold;
+          color: #2d3a4a;
+        }
+        .total-row td {
+          border-top: 1px solid #333;
+          border-bottom: 2px solid #333;
+          background: #f8f9fb;
+          font-weight: bold;
+        }
+        .num {
+          text-align: right;
+          font-family: 'Courier New', Courier, monospace;
+        }
+        .footer {
+          margin-top: 30px;
+          text-align: center;
+          font-weight: bold;
+          border-top: 1px solid #000;
+          padding-top: 8px;
+          font-size: 10px;
+        }
+        .powered {
+          text-align: right;
+          font-size: 9px;
+          color: #999;
+          margin-top: 5px;
+        }
+        @media print {
+          body { background: white; margin: 0; }
+          .page { box-shadow: none; padding: 20px; }
+          .no-print { display: none; }
+        }
       </style></head><body>
       <div class="no-print" style="margin-bottom:20px;text-align:right;">
         <button onclick="window.print()" style="padding:8px 20px;cursor:pointer;">Print to PDF</button>
@@ -154,15 +251,13 @@ export const getDetailDumpReport = async (req: Request, res: Response): Promise<
         <div class="company-name">AL MADINA LOGISTICS COMPANY</div>
         <table class="report-table">
           <thead><tr>
-            <th style="width:80px;">A/c Code</th>
-            <th style="width:160px;">A/c Name</th>
-            <th style="width:70px;">Doc Type</th>
-            <th style="width:80px;">Doc No</th>
+            <th style="width:90px;">Doc Type</th>
+            <th style="width:90px;">Doc No</th>
             <th style="width:75px;">Doc Date</th>
-            <th style="width:80px;">Remarks</th>
+            <th style="width:280px;">Remarks</th>
             <th class="num" style="width:90px;">Debit</th>
             <th class="num" style="width:90px;">Credit</th>
-            <th class="num" style="width:100px;">Closing Balance</th>
+            <th class="num" style="width:110px;">Balance</th>
           </tr></thead>
           <tbody>${tableBodyHtml || '<tr><td colspan="9" style="text-align:center;padding:40px;">No records found.</td></tr>'}</tbody>
         </table>
@@ -170,13 +265,13 @@ export const getDetailDumpReport = async (req: Request, res: Response): Promise<
         <div class="powered">powered by A W A R E</div>
       </div></body></html>`;
 
-        res.setHeader("Content-Type", "text/html");
-        res.status(200).send(reportHtml);
+    res.setHeader("Content-Type", "text/html");
+    res.status(200).send(reportHtml);
 
-    } catch (error: any) {
-        console.error("Detail Dump Report Error:", error);
-        res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
-    } finally {
-        if (connection) { try { await connection.close(); } catch (e) { console.error(e); } }
-    }
+  } catch (error: any) {
+    console.error("Detail Dump Report Error:", error);
+    res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
+  } finally {
+    if (connection) { try { await connection.close(); } catch (e) { console.error(e); } }
+  }
 };

@@ -4,52 +4,52 @@ import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
 const money = (v: any) => {
-    const n = Number(v);
-    return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-        minimumFractionDigits: 3,
-        maximumFractionDigits: 3,
-    });
+  const n = Number(v);
+  return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
 };
 
 const text = (v: any) => (v == null ? "" : String(v));
 
 const formatDateStr = (v: any) => {
-    if (!v) return "";
-    const d = new Date(v);
-    return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
 
 export const getLedgerWithDetailsReport = async (req: Request, res: Response): Promise<void> => {
-    let connection;
-    try {
-        const {
-            parameter, loginid,
-            code1, code2, code3, code4, code5, code6, code7, code8, code20
-        } = req.body;
+  let connection;
+  try {
+    const {
+      parameter, loginid,
+      code1, code2, code3, code4, code5, code6, code7, code8, code20
+    } = req.body;
 
-        let tenantId = getCurrentTenantId();
-        if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
-        if (!tenantId) { res.status(400).json({ success: false, message: "Tenant not found" }); return; }
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
+    if (!tenantId) { res.status(400).json({ success: false, message: "Tenant not found" }); return; }
 
-        connection = await TenantManager.getConnection(tenantId);
+    connection = await TenantManager.getConnection(tenantId);
 
-        const binds: any = {
-            parameter: parameter || "Account_Report_Ledger_Details",
-            loginid: loginid || "ADMIN",
-            code1: code1 || null, code2: code2 || null, code3: code3 || null,
-            code4: code4 || null, code5: code5 || null, code6: code6 || null,
-            code7: code7 || null, code8: code8 || null, code20: code20 || null,
-            out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
-        };
-        for (let i = 9; i <= 20; i++) binds[`code${i}`] = req.body[`code${i}`] || null;
-        for (let i = 1; i <= 4; i++) {
-            binds[`number${i}`] = req.body[`number${i}`] || null;
-            if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
-        }
-        binds.date1 = null; binds.date2 = null;
+    const binds: any = {
+      parameter: parameter || "Account_Report_Ledger_Details",
+      loginid: loginid || "ADMIN",
+      code1: code1 || null, code2: code2 || null, code3: code3 || null,
+      code4: code4 || null, code5: code5 || null, code6: code6 || null,
+      code7: code7 || null, code8: code8 || null, code20: code20 || null,
+      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
+    };
+    for (let i = 9; i <= 20; i++) binds[`code${i}`] = req.body[`code${i}`] || null;
+    for (let i = 1; i <= 4; i++) {
+      binds[`number${i}`] = req.body[`number${i}`] || null;
+      if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
+    }
+    binds.date1 = null; binds.date2 = null;
 
-        const result = await connection.execute(
-            `DECLARE v_sql VARCHAR2(32767); BEGIN PROC_BUILD_DYNAMIC_SQL_COMMON20(
+    const result = await connection.execute(
+      `DECLARE v_sql VARCHAR2(32767); BEGIN PROC_BUILD_DYNAMIC_SQL_COMMON20(
           :parameter, :loginid,
           :code1, :code2, :code3, :code4, :code5, :code6, :code7, :code8, :code9, :code10,
           :code11, :code12, :code13, :code14, :code15, :code16, :code17, :code18, :code19, :code20,
@@ -57,31 +57,39 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
           :date1, :date2, :date3, :date4,
           v_sql); :out_sql := v_sql; END;`, binds);
 
-        const rawSql = (result.outBinds as any).out_sql;
-        if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
+    const rawSql = (result.outBinds as any).out_sql;
+    if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
+    console.log("Generated SQL for Ledger With Details Report:", rawSql);
 
-        const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
-        const rows = (dataResult.rows as any[]).map((row) =>
-            Object.keys(row).reduce((acc: any, key) => { acc[key.toLowerCase()] = row[key]; return acc; }, {})
-        );
+    const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    const rows = (dataResult.rows as any[]).map((row) =>
+      Object.keys(row).reduce((acc: any, key) => { acc[key.toLowerCase()] = row[key]; return acc; }, {})
+    );
 
-        // Group by ac_code
-        const groups: Record<string, any[]> = {};
-        rows.forEach((r) => {
-            const key = `${r.ac_code}||${r.ac_name || ""}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(r);
-        });
+    // Group by ac_code
+    const groups: Record<string, any[]> = {};
+    rows.forEach((r) => {
+      const key = `${r.ac_code}||${r.ac_name || ""}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
 
-        let tableBodyHtml = "";
-        let grandTotalDebit = 0, grandTotalCredit = 0;
+    let tableBodyHtml = "";
+    let grandTotalDebit = 0, grandTotalCredit = 0;
+     const formatBalance = (value: number) => {
+      return value < 0
+        ? `(${money(Math.abs(value))})`
+        : money(value);
+    };
 
-        Object.entries(groups).forEach(([key, groupRows]) => {
-            const [ac_code, ac_name] = key.split("||");
-            const opening = Number(groupRows[0]?.opening_balance) || 0;
-            let totalDebit = 0, totalCredit = 0;
+    Object.entries(groups).forEach(([key, groupRows]) => {
+      const [ac_code, ac_name] = key.split("||");
+      const opening = Number(groupRows[0]?.op_balance) || 0;
+      let totalCredit = 0;
+      let totalDebit = 0;
+      let runningBalance = opening;
 
-            tableBodyHtml += `
+      tableBodyHtml += `
         <tr class="group-header">
           <td><strong>${text(ac_code)}</strong></td>
           <td colspan="7"><strong>${text(ac_name)}</strong></td>
@@ -89,35 +97,67 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
           <td class="num opening-val"><strong>${money(opening)}</strong></td>
         </tr>`;
 
-            groupRows.forEach((r) => {
-                const dr = Number(r.debit) || 0;
-                const cr = Number(r.credit) || 0;
-                totalDebit += dr; totalCredit += cr;
-                tableBodyHtml += `
-          <tr>
+           const pdcGroups: Record<string, any[]> = {};
+
+      groupRows.forEach((r) => {
+        const pdcKey = r.pdc_ind === 'Y' ? "PDC" : "NORMAL";
+
+        if (!pdcGroups[pdcKey]) {
+          pdcGroups[pdcKey] = [];
+        }
+
+        pdcGroups[pdcKey].push(r);
+      });
+
+      Object.entries(pdcGroups).forEach(([pdcType, rows]) => {
+
+        tableBodyHtml += `
+    <tr class="sub-group-header">
+        <td colspan="10">
+            <strong>${pdcType === "PDC" ? "PDC CHEQUES" : "NORMAL CHEQUES"}</strong>
+        </td>
+    </tr>`;
+
+        rows.forEach((r) => {
+
+          const amount = Number(r.lcur_amount) || 0;
+
+          const cr = r.sign_ind < 0
+            ? Math.abs(amount)
+            : 0;
+
+          const dr = r.sign_ind > 0
+            ? amount
+            : 0;
+
+          totalCredit += cr;
+          totalDebit += dr;
+
+          runningBalance += dr - cr;
+
+          const hasTransaction = cr !== 0 || dr !== 0;
+
+          tableBodyHtml += `
+        <tr class="data-row">
+            <td class="num">${text(r.salesman_code || "")}</td>
             <td>${text(r.doc_type || "")}</td>
             <td>${text(r.doc_no || "")}</td>
             <td>${formatDateStr(r.doc_date)}</td>
             <td>${text(r.chq_no || "")}</td>
             <td>${formatDateStr(r.chq_date)}</td>
             <td>${text(r.bank || "")}</td>
-            <td class="num">${dr !== 0 ? money(dr) : ""}</td>
-            <td class="num">${cr !== 0 ? money(cr) : ""}</td>
-            <td class="num" colspan="2">${money(Number(r.balance) || 0)}</td>
-          </tr>
-          <tr class="sub-row">
-            <td>${text(r.salesman_code || "")}</td>
-            <td colspan="3">${text(r.salesman_name || "")}</td>
-            <td colspan="3">${text(r.ref_ac_code || "")}</td>
-            <td colspan="3">${text(r.ref_ac_name || "")}</td>
-          </tr>`;
-            });
+            <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
+            <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
+            <td class="num">${formatBalance(runningBalance)}</td>
+        </tr>`;
+        });
+      });
 
-            grandTotalDebit += totalDebit;
-            grandTotalCredit += totalCredit;
-            const closing = opening + totalDebit - totalCredit;
+      grandTotalDebit += totalDebit;
+      grandTotalCredit += totalCredit;
+      const closing = opening + totalDebit - totalCredit;
 
-            tableBodyHtml += `
+      tableBodyHtml += `
         <tr class="total-row">
           <td colspan="6" class="num"><strong>Total :</strong></td>
           <td class="num"><strong>${money(totalDebit)}</strong></td>
@@ -128,9 +168,9 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
           <td colspan="8" class="num"><strong>Closing</strong></td>
           <td class="num" colspan="2"><strong>${money(closing)}</strong></td>
         </tr>`;
-        });
+    });
 
-        tableBodyHtml += `
+    tableBodyHtml += `
       <tr class="grand-total-row">
         <td colspan="6" class="num"><strong>Grand Total :</strong></td>
         <td class="num"><strong>${money(grandTotalDebit)}</strong></td>
@@ -138,7 +178,7 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
         <td colspan="2"></td>
       </tr>`;
 
-        const reportHtml = `
+    const reportHtml = `
       <!DOCTYPE html><html><head><meta charset="utf-8"/>
       <title>Ledger With Details Report</title>
       <style>
@@ -188,8 +228,9 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
               <th style="width:70px;">Chq No.</th>
               <th style="width:70px;">Chq Date</th>
               <th style="width:80px;">Bank</th>
-              <th class="num" style="width:85px;">Debit</th>
               <th class="num" style="width:85px;">Credit</th>
+              <th class="num" style="width:85px;">Debit</th>
+              
               <th class="num" style="width:90px;">Balance</th>
             </tr>
             <tr>
@@ -203,13 +244,13 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
         <div class="powered">powered by A W A R E</div>
       </div></body></html>`;
 
-        res.setHeader("Content-Type", "text/html");
-        res.status(200).send(reportHtml);
+    res.setHeader("Content-Type", "text/html");
+    res.status(200).send(reportHtml);
 
-    } catch (error: any) {
-        console.error("Ledger With Details Report Error:", error);
-        res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
-    } finally {
-        if (connection) { try { await connection.close(); } catch (e) { console.error(e); } }
-    }
+  } catch (error: any) {
+    console.error("Ledger With Details Report Error:", error);
+    res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
+  } finally {
+    if (connection) { try { await connection.close(); } catch (e) { console.error(e); } }
+  }
 };
