@@ -45,6 +45,7 @@ import {
   updateLPODocument,
   cancelLPODocument
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
+import { exportTrialBalanceReportExcel, getTrialBalanceReportHtml } from "../../../controllers/finance/accounts/transactions/trailBalanceReport";
 // Initialize Express router
 const router = express.Router();
 
@@ -56,6 +57,8 @@ router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 router.post("/account-entry/bulk", procBulkAccountEntry);
 router.get("/report/:doc_type/:doc_no", getFinanceDocumentReportHtml);
 router.get("/report/:doc_type/:doc_no/excel", exportFinanceDocumentReportExcel);
+router.post("/report/trailbalance/:level", getTrialBalanceReportHtml);
+router.get("/report/trialbalance/excel", exportTrialBalanceReportExcel); 
 
 
 // GET Routes - Information Retrieval
