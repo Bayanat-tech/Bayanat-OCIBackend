@@ -169,79 +169,92 @@ export const getLedgerWithOppositeEntryReport = async (req: Request, res: Respon
         </tr>`;
     });
 
-    tableBodyHtml += `
-      <tr class="grand-total-row">
-        <td colspan="6" class="num"><strong>Grand Total :</strong></td>
-        <td class="num"><strong>${money(grandTotalDebit)}</strong></td>
-        <td class="num"><strong>${money(grandTotalCredit)}</strong></td>
-        <td colspan="2"></td>
-      </tr>`;
+    const reportTitle = `Ledger With Opposite Entry Report ${text(code5)} - ${text(code6)}`;
+    const generatedBy = text(loginid) || "Unknown User";
+    const reportDate = formatDateStr(new Date());
 
     const reportHtml = `
-      <!DOCTYPE html><html><head><meta charset="utf-8"/>
-      <title>Ledger With Opposite Entry Report</title>
-      <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 10px; color: #333; margin: 40px; background-color: #f5f5f5; }
-        .page { background: white; padding: 40px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .header-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
-        .meta-info td { padding: 2px 8px 2px 0; vertical-align: top; }
-        .label { font-weight: bold; width: 90px; color: #555; }
-        table.report-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        table.report-table th { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 6px 4px; text-align: left; font-size: 9px; text-transform: uppercase; }
-        table.report-table td { padding: 3px 4px; vertical-align: top; border-bottom: 1px solid #eee; }
-        .group-header td { padding-top: 12px; font-size: 10px; border-bottom: 1px solid #333; }
-        .opening-val { color: #c00; }
-        .sub-row td { font-size: 9px; color: #555; border-bottom: 1px solid #f0f0f0; }
-        .total-row td { border-top: 1px solid #333; background: #fff; }
-        .closing-row td { border-bottom: 2px solid #333; background: #fff; }
-        .grand-total-row td { border-top: 2px solid #333; border-bottom: 2px solid #333; font-size: 11px; background: #fff; }
-        .num { text-align: right; font-family: 'Courier New', Courier, monospace; }
-        .footer { margin-top: 30px; text-align: center; font-weight: bold; border-top: 1px solid #000; padding-top: 8px; }
-        .powered { text-align: right; font-size: 9px; color: #999; margin-top: 5px; }
-        @media print { body { background: white; margin: 0; } .page { box-shadow: none; padding: 20px; } .no-print { display: none; } }
-      </style></head><body>
-      <div class="no-print" style="margin-bottom:20px;text-align:right;">
-        <button onclick="window.print()" style="padding:8px 20px;cursor:pointer;">Print to PDF</button>
-      </div>
-      <div class="page">
-        <div class="header-top">
-          <table class="meta-info">
-            <tr><td class="label">Title :</td><td><strong>Summary for ${text(code5)} - ${text(code6)}</strong></td></tr>
-            <tr><td class="label">Currency :</td><td>OMR</td></tr>
-            <tr><td class="label">Date :</td><td>${formatDateStr(new Date())}</td></tr>
-            <tr><td class="label">User :</td><td>${text(loginid)}</td></tr>
-            <tr><td class="label">Report :</td><td>rpt_ac_ledger_grp1</td></tr>
-          </table>
-          <div style="text-align:right">
-            <div style="font-size:16px;font-weight:bold;color:#185FA5;">AL MADINA</div>
-            <div style="font-size:9px;letter-spacing:2px;">LOGISTICS</div>
-          </div>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>${reportTitle}</title>
+        <style>
+          :root { color-scheme: light; }
+          body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f2f4f7; color: #1f2937; }
+          .page { width: auto; max-width: 100%; margin: 24px auto; padding: 28px 32px; background: #fff; border-radius: 12px; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08); box-sizing: border-box; }
+          .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 1px solid #d1d5db; padding-bottom: 20px; margin-bottom: 24px; }
+          .meta-info { border-collapse: collapse; width: auto; }
+          .meta-info td { padding: 4px 8px; vertical-align: top; }
+          .label { font-weight: 700; width: 100px; color: #475569; white-space: nowrap; }
+          .report-title { font-size: 1rem; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
+          .brand-block { text-align: right; }
+          .brand-name { font-size: 18px; font-weight: 800; letter-spacing: 0.12em; color: #0d4d89; margin-bottom: 4px; }
+          .brand-subtitle { font-size: 0.85rem; letter-spacing: 0.18em; color: #334155; }
+          .report-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+          .report-table th, .report-table td { padding: 12px 10px; border: 1px solid #e2e8f0; word-break: break-word; white-space: normal; }
+          .report-table th { background: #f8fafc; color: #334155; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.02em; }
+          .report-table td { background: #fff; font-size: 0.88rem; }
+          .group-header td { background: #eff6ff; font-weight: 700; color: #1e3a8a; border-top: 2px solid #c7d2fe; }
+          .sub-group-header td { background: #f8fafc; font-weight: 700; color: #0f172a; }
+          .opening-val { color: #c00; }
+          .total-row td { background: #f8fafc; font-weight: 700; border-top: 2px solid #334155; }
+          .closing-row td { border-top: 1px solid #cbd5e1; background: #f8fafc; font-weight: 700; }
+          .grand-total-row td { border-top: 2px solid #334155; border-bottom: 2px solid #334155; font-size: 0.95rem; background: #f8fafc; font-weight: 700; }
+          .num { text-align: right; font-family: 'Courier New', Courier, monospace; }
+          .footer { margin-top: 30px; text-align: center; color: #475569; font-size: 0.82rem; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+          .no-print { margin-bottom: 16px; text-align: right; }
+          .button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 999px; border: none; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; transition: background-color 0.2s ease; }
+          .button:hover { background: #1d4ed8; }
+          @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="no-print">
+          <button class="button" onclick="window.print()">Print / Save PDF</button>
         </div>
-        <table class="report-table">
-          <thead>
-            <tr>
-              <th style="width:60px;">A/c Code</th>
-              <th style="width:55px;">Type</th>
-              <th style="width:70px;">Doc No.</th>
-              <th style="width:70px;">Doc Date</th>
-              <th style="width:70px;">Chq No.</th>
-              <th style="width:70px;">Chq Date</th>
-              <th style="width:80px;">Bank</th>
-              <th class="num" style="width:85px;">Credit</th>
-              <th class="num" style="width:85px;">Debit</th>
-              
-              <th class="num" style="width:90px;">Balance</th>
-            </tr>
-            <tr>
-              <th colspan="4">Salesman Code/Name</th>
-              <th colspan="6">Ref Ac Code/ Name</th>
-            </tr>
-          </thead>
-          <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:40px;">No records found.</td></tr>'}</tbody>
-        </table>
-        <div class="footer">End of Report</div>
-        <div class="powered">powered by A W A R E</div>
-      </div></body></html>`;
+        <div class="page">
+          <div class="header-top">
+            <div>
+              <div class="report-title">${reportTitle}</div>
+              <table class="meta-info">
+                <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
+                <tr><td class="label">Date</td><td>${reportDate}</td></tr>
+                <tr><td class="label">User</td><td>${generatedBy}</td></tr>
+                <tr><td class="label">Currency</td><td>OMR</td></tr>
+              </table>
+            </div>
+            <div class="brand-block">
+              <div class="brand-name">AL MADINA</div>
+              <div class="brand-subtitle">LOGISTICS</div>
+            </div>
+          </div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th style="width:60px;">A/c Code</th>
+                <th style="width:55px;">Type</th>
+                <th style="width:70px;">Doc No.</th>
+                <th style="width:70px;">Doc Date</th>
+                <th style="width:70px;">Chq No.</th>
+                <th style="width:70px;">Chq Date</th>
+                <th style="width:80px;">Bank</th>
+                <th class="num" style="width:85px;">Credit</th>
+                <th class="num" style="width:85px;">Debit</th>
+                <th class="num" style="width:90px;">Balance</th>
+              </tr>
+              <tr>
+                <th colspan="4">Salesman Code/Name</th>
+                <th colspan="6">Ref Ac Code/ Name</th>
+              </tr>
+            </thead>
+            <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:36px 0;">No records found.</td></tr>'}</tbody>
+          </table>
+          <div class="footer">Generated by ${generatedBy} • ${reportDate}</div>
+        </div>
+      </body>
+      </html>`;
 
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(reportHtml);
