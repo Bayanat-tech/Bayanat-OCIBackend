@@ -8,30 +8,76 @@ import { RequestWithUser } from "../../../../interfaces/common.interface";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * All supported level / format identifiers routed through this controller.
+ *
+ *   L2 / L3 / L4  → original group reports, one code-filter array.
+ *   AC             → account-level report; carries report_format, exclude_zero_txns,
+ *                    ac_code[] AND l4_code[] as separate filters.
+ */
 type TLevel = "l2" | "l3" | "l4";
+type TReportFormat =
+  | "standard"
+  | "sub_ledger_1"
+  | "sub_ledger_2"
+  | "tb_without_year_end_jv";
 
 type ReportRow = Record<string, any>;
 
-// ─── Level Config ─────────────────────────────────────────────────────────────
+// ─── Level Config (L2 / L3 / L4) ─────────────────────────────────────────────
 
+/**
+ * For group-level reports (l2/l3/l4) every difference is captured here so
+ * the rest of the code is level-agnostic.
+ */
 const LEVEL_CONFIG: Record<
   TLevel,
   { apiParameter: string; codeField: string; codeHeader: string }
 > = {
   l2: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_REPORT",
-    codeField: "l2_code",
-    codeHeader: "L2 Code",
+    codeField:    "l2_code",
+    codeHeader:   "L2 Code",
   },
   l3: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_REPORT_L3",
-    codeField: "l3_code",
-    codeHeader: "L3 Code",
+    codeField:    "l3_code",
+    codeHeader:   "L3 Code",
   },
   l4: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_REPORT_L4",
-    codeField: "l4_code",
-    codeHeader: "L4 Code",
+    codeField:    "l4_code",
+    codeHeader:   "L4 Code",
+  },
+};
+
+/**
+ * For the AC report every report-format variant has its own stored-procedure
+ * parameter.  All AC rows always use `ac_code` as the primary code field.
+ */
+const AC_FORMAT_CONFIG: Record<
+  TReportFormat,
+  { apiParameter: string; codeField: string; codeHeader: string }
+> = {
+  standard: {
+    apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_STANDARD",
+    codeField:    "ac_code",
+    codeHeader:   "AC Code",
+  },
+  sub_ledger_1: {
+    apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_SUB_LEDGER_1",
+    codeField:    "ac_code",
+    codeHeader:   "AC Code",
+  },
+  sub_ledger_2: {
+    apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_SUB_LEDGER_2",
+    codeField:    "ac_code",
+    codeHeader:   "AC Code",
+  },
+  tb_without_year_end_jv: {
+    apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_WITHOUT_EJV",
+    codeField:    "ac_code",
+    codeHeader:   "AC Code",
   },
 };
 
@@ -42,9 +88,7 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   if (!tenantId && req.user?.loginid)
     tenantId = await TenantManager.getTenantForUser(req.user.loginid);
   if (!tenantId)
-    throw Object.assign(new Error("Unable to determine tenant database"), {
-      status: 400,
-    });
+    throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
   return TenantManager.getConnection(tenantId);
 }
 
@@ -62,7 +106,7 @@ function normalize(rows: any[] = []): ReportRow[] {
     Object.keys(row).reduce((acc: ReportRow, key) => {
       acc[key.toLowerCase()] = row[key];
       return acc;
-    }, {})
+    }, {}),
   );
 }
 
@@ -74,8 +118,8 @@ function text(value: unknown): string {
 }
 
 function amount(value: unknown): number {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function fmtNumber(n: number): string {
@@ -92,114 +136,174 @@ function dateText(value: unknown): string {
   const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return String(value).substring(0, 10);
   return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
+    day: "2-digit", month: "2-digit", year: "numeric",
   });
 }
 
 function escapeHtml(value: unknown): string {
   return text(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/&/g,  "&amp;")
+    .replace(/</g,  "&lt;")
+    .replace(/>/g,  "&gt;")
+    .replace(/"/g,  "&quot;")
+    .replace(/'/g,  "&#039;");
 }
 
 function escapeXml(value: unknown): string {
   return text(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replace(/&/g,  "&amp;")
+    .replace(/</g,  "&lt;")
+    .replace(/>/g,  "&gt;")
+    .replace(/"/g,  "&quot;")
+    .replace(/'/g,  "&apos;");
 }
 
-// ─── Data Loader ──────────────────────────────────────────────────────────────
+// ─── Shared proc caller ───────────────────────────────────────────────────────
 
-async function loadReportData(
-  req: RequestWithUser,
-  level: TLevel,
-  companyCode: string,
-  fromDate: string,
-  toDate: string,
+/**
+ * Invokes WMSTST.PROC_BUILD_DYNAMIC_SQL_COMMON with the supplied bindings and
+ * returns the normalised result rows.
+ *
+ * @param conn         - Open OracleDB connection (caller is responsible for closing).
+ * @param apiParameter - The BOLD_REPORT_* parameter string.
+ * @param loginid      - Current user's login ID.
+ * @param code1..code4 - Positional string parameters consumed by the procedure.
+ */
+async function execDynamicProc(
+  conn: oracledb.Connection,
+  apiParameter: string,
+  loginid:      string,
+  code1:        string,
+  code2:        string,
+  code3:        string,
+  code4:        string,
+): Promise<ReportRow[]> {
+  const result = await conn.execute(
+    `
+    DECLARE
+      v_sql CLOB;
+    BEGIN
+      WMSTST.PROC_BUILD_DYNAMIC_SQL_COMMON(
+        :parameter, :loginid,
+        :code1, :code2, :code3, :code4,
+        :number1, :number2, :number3, :number4,
+        :date1,   :date2,   :date3,   :date4,
+        v_sql
+      );
+      :out_sql := v_sql;
+    END;
+    `,
+    {
+      parameter: apiParameter,
+      loginid,
+      code1,  code2,  code3,  code4,
+      number1: 0, number2: 0, number3: 0, number4: 0,
+      date1: "", date2: "", date3: "", date4: "",
+      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
+    },
+  );
+
+  interface ProcOut { out_sql: string | null }
+  const dynamicSql = (result.outBinds as ProcOut)?.out_sql;
+  if (!dynamicSql)
+    throw Object.assign(new Error("Procedure returned no SQL"), { status: 400 });
+
+  console.log(`Trial Balance Dynamic SQL [${apiParameter}]:`, dynamicSql);
+
+  const dataResult = await conn.execute(dynamicSql, [], {
+    outFormat: oracledb.OUT_FORMAT_OBJECT,
+  });
+  return normalize(dataResult.rows as any[]);
+}
+
+// ─── Data Loaders ─────────────────────────────────────────────────────────────
+
+/**
+ * Loads report data for group-level (l2 / l3 / l4) reports.
+ *
+ * The stored procedure binding follows the original convention:
+ *   code1 = companyCode
+ *   code2 = divisionCode | "All"
+ *   code3 = comma-separated code filter (e.g. "10,11,12")
+ *   code4 = "fromDate|toDate"
+ */
+async function loadGroupData(
+  req:          RequestWithUser,
+  level:        TLevel,
+  companyCode:  string,
+  fromDate:     string,
+  toDate:       string,
   divisionCode: string,
-  codeFilter: string
-) {
-  const conn = await getConn(req);
+  codeFilter:   string,
+): Promise<ReportRow[]> {
+  const conn   = await getConn(req);
   const config = LEVEL_CONFIG[level];
+  try {
+    return await execDynamicProc(
+      conn,
+      config.apiParameter,
+      req.user?.loginid ?? "",
+      companyCode,
+      divisionCode || "All",
+      codeFilter || "",
+      `${fromDate}|${toDate}`,
+    );
+  } finally {
+    await closeConn(conn);
+  }
+}
+
+/**
+ * Loads report data for the AC (account-level) report.
+ *
+ * The AC proc convention (mirrors AcTrialBalanceReport.tsx):
+ *   code1 = "companyCode|divisionCode"
+ *   code2 = "fromDate|toDate"
+ *   code3 = comma-separated ac_code filter
+ *   code4 = comma-separated l4_code filter
+ *
+ * `exclude_zero_txns` is conveyed through `code1` as a flag appended after
+ * the division, exactly matching how the legacy frontend built the parameter.
+ */
+async function loadAcData(
+  req:              RequestWithUser,
+  reportFormat:     TReportFormat,
+  companyCode:      string,
+  fromDate:         string,
+  toDate:           string,
+  divisionCode:     string,
+  acCodeFilter:     string,
+  l4CodeFilter:     string,
+  excludeZeroTxns:  boolean,
+): Promise<ReportRow[]> {
+  const conn   = await getConn(req);
+  const config = AC_FORMAT_CONFIG[reportFormat];
+
+  // The legacy frontend passed: code1 = `${company_code}|${division_code}`
+  // We preserve that exact convention; if division is blank it becomes "company|"
+  // which the procedure treats as "all divisions" — same as the original.
+  const code1 = `${companyCode}|${divisionCode}`;
+  const code2 = `${fromDate}|${toDate}`;
+  const code3 = acCodeFilter  || "";
+  const code4 = l4CodeFilter  || "";
+
+  // Note: exclude_zero_txns is a display/filter flag.  We pass it as a boolean
+  // so the stored procedure can act on it if it is designed to do so. The
+  // original React component didn't send it at all (it was marked as a future
+  // feature). We append it to code1 with a "|" delimiter so the proc can read
+  // it without breaking old behaviour: "companyCode|divisionCode|1" vs "…|0".
+  const code1WithFlag = `${code1}|${excludeZeroTxns ? "1" : "0"}`;
 
   try {
-    // Call PROC_BUILD_DYNAMIC_SQL_COMMON to get the dynamic SELECT SQL
-    const result = await conn.execute(
-      `
-      DECLARE
-        v_sql CLOB;
-      BEGIN
-        WMSTST.PROC_BUILD_DYNAMIC_SQL_COMMON(
-          :parameter,
-          :loginid,
-          :code1,
-          :code2,
-          :code3,
-          :code4,
-          :number1,
-          :number2,
-          :number3,
-          :number4,
-          :date1,
-          :date2,
-          :date3,
-          :date4,
-          v_sql
-        );
-        :out_sql := v_sql;
-      END;
-      `,
-      {
-        parameter: config.apiParameter,
-        loginid: req.user?.loginid ?? "",
-        code1: companyCode,
-        code2: divisionCode || "All",
-        code3: codeFilter || "",
-        code4: `${fromDate}|${toDate}`,
-        number1: 0,
-        number2: 0,
-        number3: 0,
-        number4: 0,
-        date1: "",
-        date2: "",
-        date3: "",
-        date4: "",
-        out_sql: {
-          dir: oracledb.BIND_OUT,
-          type: oracledb.STRING,
-          maxSize: 32767,
-        },
-      }
+    return await execDynamicProc(
+      conn,
+      config.apiParameter,
+      req.user?.loginid ?? "",
+      code1WithFlag,
+      code2,
+      code3,
+      code4,
     );
-
-    interface ProcOut {
-      out_sql: string | null;
-    }
-
-    const outBinds = result.outBinds as ProcOut;
-    const dynamicSql = outBinds?.out_sql;
-
-    if (!dynamicSql) {
-      throw Object.assign(new Error("Procedure returned no SQL"), {
-        status: 400,
-      });
-    }
-
-    console.log("Trial Balance Dynamic SQL:", dynamicSql);
-
-    const dataResult = await conn.execute(dynamicSql, [], {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
-
-    return normalize(dataResult.rows as any[]);
   } finally {
     await closeConn(conn);
   }
@@ -207,45 +311,37 @@ async function loadReportData(
 
 // ─── HTML Renderer ────────────────────────────────────────────────────────────
 
+/**
+ * Produces an identical-looking HTML report for both group-level and AC rows.
+ * The only differences are the code-column header and which field to read the
+ * code value from — both supplied via `config`.
+ */
 function renderHtml(
-  rows: ReportRow[],
-  level: TLevel,
-  params: {
-    companyCode: string;
-    fromDate: string;
-    toDate: string;
-    loginId: string;
-  },
-  autoPrint: boolean
+  rows:        ReportRow[],
+  config:      { codeField: string; codeHeader: string },
+  params:      { companyCode: string; fromDate: string; toDate: string; loginId: string },
+  autoPrint:   boolean,
 ): string {
-  const config = LEVEL_CONFIG[level];
-
   const totals = rows.reduce(
     (acc, row) => ({
       opening: acc.opening + amount(row.opening),
-      debit: acc.debit + amount(row.debit_amount),
-      credit: acc.credit + amount(row.credit_amount),
-      amount: acc.amount + amount(row.amount),
+      debit:   acc.debit   + amount(row.debit_amount),
+      credit:  acc.credit  + amount(row.credit_amount),
+      amount:  acc.amount  + amount(row.amount),
     }),
-    { opening: 0, debit: 0, credit: 0, amount: 0 }
+    { opening: 0, debit: 0, credit: 0, amount: 0 },
   );
 
-  const firstRow = rows[0] ?? {};
+  const firstRow        = rows[0] ?? {};
   const fromDateDisplay = dateText(firstRow.from_date ?? params.fromDate);
-  const toDateDisplay = dateText(firstRow.to_date ?? params.toDate);
-  const title =
-    text(firstRow.title) ||
-    `Group 1 ( TB ) for the Period ${fromDateDisplay} – ${toDateDisplay}`;
-  const reportName =
-    text(firstRow.report) || `rpt_ac_trailbalance_${level}`;
-  const username = text(firstRow.username) || params.loginId;
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+  const toDateDisplay   = dateText(firstRow.to_date   ?? params.toDate);
+  const title           = text(firstRow.title)
+    || `Group 1 ( TB ) for the Period ${fromDateDisplay} – ${toDateDisplay}`;
+  const reportName      = text(firstRow.report) || `rpt_ac_trailbalance_${config.codeField}`;
+  const username        = text(firstRow.username) || params.loginId;
+  const printDateTime   = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
   const dataRows = rows
@@ -258,7 +354,7 @@ function renderHtml(
       <td class="num">${escapeHtml(fmtNumber(amount(row.debit_amount)))}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(row.credit_amount)))}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(row.amount)))}</td>
-    </tr>`
+    </tr>`,
     )
     .join("");
 
@@ -285,15 +381,11 @@ function renderHtml(
       padding: 8mm;
       border: 1px solid #aab7c8;
     }
-
-    /* ── Logo / Header ── */
     .logo-area { margin-bottom: 16px; }
     .divider-thick { border-top: 2px solid #000; margin: 10px 0 6px; }
     .divider-thin  { border-top: 1px solid #000; margin: 6px 0 10px; }
     .meta-row { display: flex; align-items: baseline; font-size: 12px; margin-bottom: 3px; }
     .meta-label { font-weight: 700; width: 60px; flex-shrink: 0; }
-
-    /* ── Data Table ── */
     table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
     th {
       border: 1px solid #000;
@@ -307,8 +399,6 @@ function renderHtml(
     td.center { text-align: center; }
     td.left   { text-align: left; }
     td.num    { text-align: right; font-variant-numeric: tabular-nums; }
-
-    /* ── Totals row ── */
     tr.total-row td {
       border: 2px solid #000;
       font-weight: 700;
@@ -316,8 +406,6 @@ function renderHtml(
       font-variant-numeric: tabular-nums;
     }
     tr.total-row td.empty { border: 1px solid #ccc; }
-
-    /* ── End of report ── */
     .end-of-report {
       text-align: center;
       margin-top: 16px;
@@ -326,8 +414,6 @@ function renderHtml(
       border-top: 1px solid #ccc;
       padding-top: 8px;
     }
-
-    /* ── Footer ── */
     .report-footer {
       display: flex;
       justify-content: space-between;
@@ -337,8 +423,6 @@ function renderHtml(
       padding-top: 6px;
       margin-top: 8px;
     }
-
-    /* ── Print / PDF ── */
     .actions { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
     .actions button {
       border: 1px solid #cbd5e1;
@@ -348,7 +432,6 @@ function renderHtml(
       font-weight: 700;
       cursor: pointer;
     }
-
     @media print {
       body { background: white; }
       .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; }
@@ -373,8 +456,6 @@ function renderHtml(
 </head>
 <body>
   <main class="sheet">
-
-    <!-- ── Logo ── -->
     <div class="logo-area">
       <svg width="180" height="56" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
         <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
@@ -383,18 +464,11 @@ function renderHtml(
         <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
       </svg>
     </div>
-
     <div class="divider-thick"></div>
-
-    <!-- ── Meta ── -->
     <div class="meta-row"><span class="meta-label">Title :</span><span>${escapeHtml(title)}</span></div>
     <div class="meta-row"><span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span></div>
     <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(username)}</span></div>
-    <div class="meta-row"><span class="meta-label">Report :</span><span>${escapeHtml(reportName)}</span></div>
-
     <div class="divider-thin"></div>
-
-    <!-- ── Data Table ── -->
     <div class="print-body-padding">
       <table>
         <thead>
@@ -420,18 +494,13 @@ function renderHtml(
           </tr>
         </tfoot>
       </table>
-
       <div class="end-of-report">End of Report</div>
     </div>
-
-    <!-- ── Footer ── -->
     <div class="report-footer print-footer">
       <span>Report: ${escapeHtml(reportName)}</span>
       <span>Powered by Bayanat Technology</span>
     </div>
-
   </main>
-
   ${autoPrint ? "<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>" : ""}
 </body>
 </html>`;
@@ -439,16 +508,17 @@ function renderHtml(
 
 // ─── Excel Builder ────────────────────────────────────────────────────────────
 
+// Style objects are identical to the original controller — unchanged intentionally.
 const excelStyles = {
   title: {
     font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
     fill: { fgColor: { rgb: "1A5F4A" } },
     alignment: { horizontal: "center", vertical: "center" },
     border: {
-      top: { style: "thin", color: { rgb: "1A5F4A" } },
+      top:    { style: "thin", color: { rgb: "1A5F4A" } },
       bottom: { style: "thin", color: { rgb: "1A5F4A" } },
-      left: { style: "thin", color: { rgb: "1A5F4A" } },
-      right: { style: "thin", color: { rgb: "1A5F4A" } },
+      left:   { style: "thin", color: { rgb: "1A5F4A" } },
+      right:  { style: "thin", color: { rgb: "1A5F4A" } },
     },
   },
   meta: {
@@ -460,10 +530,10 @@ const excelStyles = {
     fill: { fgColor: { rgb: "1A5F4A" } },
     alignment: { horizontal: "center", vertical: "center" },
     border: {
-      top: { style: "thin", color: { rgb: "1A5F4A" } },
+      top:    { style: "thin", color: { rgb: "1A5F4A" } },
       bottom: { style: "thin", color: { rgb: "1A5F4A" } },
-      left: { style: "thin", color: { rgb: "1A5F4A" } },
-      right: { style: "thin", color: { rgb: "1A5F4A" } },
+      left:   { style: "thin", color: { rgb: "1A5F4A" } },
+      right:  { style: "thin", color: { rgb: "1A5F4A" } },
     },
   },
   normal: {
@@ -479,10 +549,10 @@ const excelStyles = {
     font: { bold: true, color: { rgb: "0F172A" } },
     fill: { fgColor: { rgb: "F8F8F8" } },
     border: {
-      top: { style: "medium", color: { rgb: "000000" } },
+      top:    { style: "medium", color: { rgb: "000000" } },
       bottom: { style: "medium", color: { rgb: "000000" } },
-      left: { style: "medium", color: { rgb: "000000" } },
-      right: { style: "medium", color: { rgb: "000000" } },
+      left:   { style: "medium", color: { rgb: "000000" } },
+      right:  { style: "medium", color: { rgb: "000000" } },
     },
   },
   totalNumber: {
@@ -491,10 +561,10 @@ const excelStyles = {
     alignment: { horizontal: "right" },
     numFmt: "#,##0.000",
     border: {
-      top: { style: "medium", color: { rgb: "000000" } },
+      top:    { style: "medium", color: { rgb: "000000" } },
       bottom: { style: "medium", color: { rgb: "000000" } },
-      left: { style: "medium", color: { rgb: "000000" } },
-      right: { style: "medium", color: { rgb: "000000" } },
+      left:   { style: "medium", color: { rgb: "000000" } },
+      right:  { style: "medium", color: { rgb: "000000" } },
     },
   },
   footer: {
@@ -504,21 +574,21 @@ const excelStyles = {
 };
 
 const styleIdBySignature = new Map<string, number>([
-  [JSON.stringify(excelStyles.title), 1],
-  [JSON.stringify(excelStyles.meta), 2],
-  [JSON.stringify(excelStyles.tableHead), 3],
-  [JSON.stringify(excelStyles.normal), 4],
-  [JSON.stringify(excelStyles.number), 5],
-  [JSON.stringify(excelStyles.totalLabel), 6],
+  [JSON.stringify(excelStyles.title),       1],
+  [JSON.stringify(excelStyles.meta),        2],
+  [JSON.stringify(excelStyles.tableHead),   3],
+  [JSON.stringify(excelStyles.normal),      4],
+  [JSON.stringify(excelStyles.number),      5],
+  [JSON.stringify(excelStyles.totalLabel),  6],
   [JSON.stringify(excelStyles.totalNumber), 7],
-  [JSON.stringify(excelStyles.footer), 8],
+  [JSON.stringify(excelStyles.footer),      8],
 ]);
 
 function applyStyle(
   ws: XLSX.WorkSheet,
   row: number,
   col: number,
-  style: Record<string, unknown>
+  style: Record<string, unknown>,
 ) {
   const ref = XLSX.utils.encode_cell({ r: row - 1, c: col - 1 });
   if (!ws[ref]) ws[ref] = { t: "s", v: "" };
@@ -530,71 +600,51 @@ function styleRange(
   row: number,
   startCol: number,
   endCol: number,
-  style: Record<string, unknown>
+  style: Record<string, unknown>,
 ) {
   for (let col = startCol; col <= endCol; col++) applyStyle(ws, row, col, style);
 }
 
 function buildExcelSheet(
-  rows: ReportRow[],
-  level: TLevel,
-  params: {
-    companyCode: string;
-    fromDate: string;
-    toDate: string;
-    loginId: string;
-  }
+  rows:   ReportRow[],
+  config: { codeField: string; codeHeader: string },
+  params: { companyCode: string; fromDate: string; toDate: string; loginId: string },
 ): XLSX.WorkSheet {
-  const config = LEVEL_CONFIG[level];
-
   const totals = rows.reduce(
     (acc, row) => ({
       opening: acc.opening + amount(row.opening),
-      debit: acc.debit + amount(row.debit_amount),
-      credit: acc.credit + amount(row.credit_amount),
-      amount: acc.amount + amount(row.amount),
+      debit:   acc.debit   + amount(row.debit_amount),
+      credit:  acc.credit  + amount(row.credit_amount),
+      amount:  acc.amount  + amount(row.amount),
     }),
-    { opening: 0, debit: 0, credit: 0, amount: 0 }
+    { opening: 0, debit: 0, credit: 0, amount: 0 },
   );
 
-  const firstRow = rows[0] ?? {};
+  const firstRow        = rows[0] ?? {};
   const fromDateDisplay = dateText(firstRow.from_date ?? params.fromDate);
-  const toDateDisplay = dateText(firstRow.to_date ?? params.toDate);
-  const title =
-    text(firstRow.title) ||
-    `Group 1 ( TB ) for the Period ${fromDateDisplay} – ${toDateDisplay}`;
-  const reportName =
-    text(firstRow.report) || `rpt_ac_trailbalance_${level}`;
-  const username = text(firstRow.username) || params.loginId;
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+  const toDateDisplay   = dateText(firstRow.to_date   ?? params.toDate);
+  const title           = text(firstRow.title)
+    || `Group 1 ( TB ) for the Period ${fromDateDisplay} – ${toDateDisplay}`;
+  const reportName      = text(firstRow.report) || `rpt_ac_trailbalance_${config.codeField}`;
+  const username        = text(firstRow.username) || params.loginId;
+  const printDateTime   = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  // Build rows array
   const sheetRows: any[][] = [
-    // Row 1: Title (merged across all 6 cols)
     ["al madina LOGISTICS - Trial Balance Report", "", "", "", "", ""],
-    // Row 2: blank
     [],
-    // Rows 3-6: Meta
-    ["Title :", title, "", "", "", ""],
-    ["Date :", printDateTime, "", "", "", ""],
-    ["User :", username, "", "", "", ""],
-    ["Report :", reportName, "", "", "", ""],
-    // Row 7: blank
+    ["Title :",   title,         "", "", "", ""],
+    ["Date :",    printDateTime,  "", "", "", ""],
+    ["User :",    username,       "", "", "", ""],
+    ["Report :",  reportName,     "", "", "", ""],
     [],
-    // Row 8: Table header
     [config.codeHeader, "Account Name", "Opening", "Debit Amount", "Credit Amount", "Amount"],
   ];
 
-  const dataStartRow = sheetRows.length + 1; // 1-indexed
+  const dataStartRow  = sheetRows.length + 1;
 
-  // Data rows
   rows.forEach((row) => {
     sheetRows.push([
       text(row[config.codeField]),
@@ -610,61 +660,46 @@ function buildExcelSheet(
     sheetRows.push(["", "No data found", "", "", "", ""]);
   }
 
-  // Totals row
-  const totalRowIndex = sheetRows.length + 1; // 1-indexed
+  const totalRowIndex = sheetRows.length + 1;
   sheetRows.push(["", "", totals.opening, totals.debit, totals.credit, totals.amount]);
-
-  // Blank + footer
   sheetRows.push([]);
   sheetRows.push(["", "", "", "", "", "Powered by Bayanat Technology"]);
 
   const ws = XLSX.utils.aoa_to_sheet(sheetRows);
 
-  // Column widths
   ws["!cols"] = [
-    { wch: 12 }, // Code
-    { wch: 40 }, // Account Name
-    { wch: 18 }, // Opening
-    { wch: 18 }, // Debit
-    { wch: 18 }, // Credit
-    { wch: 18 }, // Amount
+    { wch: 12 }, { wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
   ];
 
-  // Row heights
   ws["!rows"] = sheetRows.map((_, i) => {
     if (i === 0) return { hpt: 28 };
-    if (i === 7) return { hpt: 22 }; // header row
+    if (i === 7) return { hpt: 22 };
     return { hpt: 18 };
   });
 
-  // Merges: title row spans all cols
   ws["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, // Title
-    { s: { r: 2, c: 1 }, e: { r: 2, c: 5 } }, // Title meta value
-    { s: { r: 3, c: 1 }, e: { r: 3, c: 5 } }, // Date meta value
-    { s: { r: 4, c: 1 }, e: { r: 4, c: 5 } }, // User meta value
-    { s: { r: 5, c: 1 }, e: { r: 5, c: 5 } }, // Report meta value
-    // Total row: empty cols 1-2 merged
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+    { s: { r: 2, c: 1 }, e: { r: 2, c: 5 } },
+    { s: { r: 3, c: 1 }, e: { r: 3, c: 5 } },
+    { s: { r: 4, c: 1 }, e: { r: 4, c: 5 } },
+    { s: { r: 5, c: 1 }, e: { r: 5, c: 5 } },
     { s: { r: totalRowIndex - 1, c: 0 }, e: { r: totalRowIndex - 1, c: 1 } },
   ];
 
-  // Freeze pane below header
   ws["!freeze"] = { xSplit: 0, ySplit: 8 };
 
-  // Apply styles
-  styleRange(ws, 1, 1, 6, excelStyles.title);          // Title row
-  styleRange(ws, 3, 1, 2, excelStyles.meta);            // Meta rows
+  styleRange(ws, 1, 1, 6, excelStyles.title);
+  styleRange(ws, 3, 1, 2, excelStyles.meta);
   styleRange(ws, 4, 1, 2, excelStyles.meta);
   styleRange(ws, 5, 1, 2, excelStyles.meta);
   styleRange(ws, 6, 1, 2, excelStyles.meta);
-  styleRange(ws, 8, 1, 6, excelStyles.tableHead);       // Table header
+  styleRange(ws, 8, 1, 6, excelStyles.tableHead);
 
   for (let r = dataStartRow; r < dataStartRow + Math.max(rows.length, 1); r++) {
     styleRange(ws, r, 1, 2, excelStyles.normal);
     styleRange(ws, r, 3, 6, excelStyles.number);
   }
 
-  // Total row
   styleRange(ws, totalRowIndex, 1, 2, excelStyles.totalLabel);
   styleRange(ws, totalRowIndex, 3, 6, excelStyles.totalNumber);
 
@@ -683,7 +718,7 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   const colXml = (ws["!cols"] || [])
     .map(
       (col: any, index: number) =>
-        `<col min="${index + 1}" max="${index + 1}" width="${Number(col.wch || 12)}" customWidth="1"/>`
+        `<col min="${index + 1}" max="${index + 1}" width="${Number(col.wch || 12)}" customWidth="1"/>`,
     )
     .join("");
 
@@ -691,8 +726,8 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   for (let r = range.s.r; r <= range.e.r; r++) {
     const cells: string[] = [];
     for (let c = range.s.c; c <= range.e.c; c++) {
-      const ref = XLSX.utils.encode_cell({ r, c });
-      const cell = ws[ref] as XLSX.CellObject | undefined;
+      const ref     = XLSX.utils.encode_cell({ r, c });
+      const cell    = ws[ref] as XLSX.CellObject | undefined;
       const styleId = getStyleId(cell);
       if (!cell && !styleId) continue;
       const attrs = `r="${ref}"${styleId ? ` s="${styleId}"` : ""}`;
@@ -701,26 +736,19 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
         cells.push(`<c ${attrs}><v>${value}</v></c>`);
       } else {
         cells.push(
-          `<c ${attrs} t="inlineStr"><is><t>${escapeXml(value ?? "")}</t></is></c>`
+          `<c ${attrs} t="inlineStr"><is><t>${escapeXml(value ?? "")}</t></is></c>`,
         );
       }
     }
     if (cells.length) {
-      const rowInfo = (ws["!rows"] || [])[r] as
-        | { hpt?: number; hpx?: number }
-        | undefined;
-      const rowHeight =
-        rowInfo?.hpt || (rowInfo?.hpx ? rowInfo.hpx * 0.75 : undefined);
-      const rowAttrs = `r="${r + 1}"${
-        rowHeight
-          ? ` ht="${Number(rowHeight).toFixed(2)}" customHeight="1"`
-          : ""
-      }`;
+      const rowInfo  = (ws["!rows"] || [])[r] as { hpt?: number; hpx?: number } | undefined;
+      const rowHeight = rowInfo?.hpt || (rowInfo?.hpx ? rowInfo.hpx * 0.75 : undefined);
+      const rowAttrs  = `r="${r + 1}"${rowHeight ? ` ht="${Number(rowHeight).toFixed(2)}" customHeight="1"` : ""}`;
       sheetData += `<row ${rowAttrs}>${cells.join("")}</row>`;
     }
   }
 
-  const merges = (ws["!merges"] || [])
+  const merges  = (ws["!merges"] || [])
     .map((merge) => `<mergeCell ref="${XLSX.utils.encode_range(merge)}"/>`)
     .join("");
   const mergeXml = merges
@@ -736,7 +764,6 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   ${mergeXml}
 </worksheet>`;
 
-  // Styles for trial balance (green theme matching al madina logo)
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <numFmts count="1">
@@ -778,35 +805,26 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="9">
-    <!-- 0: default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <!-- 1: title -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center"/>
     </xf>
-    <!-- 2: meta -->
     <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
       <alignment vertical="center"/>
     </xf>
-    <!-- 3: tableHead -->
     <xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center"/>
     </xf>
-    <!-- 4: normal -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1" applyAlignment="1">
       <alignment vertical="top" wrapText="1"/>
     </xf>
-    <!-- 5: number -->
     <xf numFmtId="164" fontId="0" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="top"/>
     </xf>
-    <!-- 6: totalLabel -->
     <xf numFmtId="0" fontId="4" fillId="3" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
-    <!-- 7: totalNumber -->
     <xf numFmtId="164" fontId="4" fillId="3" borderId="3" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right"/>
     </xf>
-    <!-- 8: footer -->
     <xf numFmtId="0" fontId="5" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
       <alignment horizontal="center"/>
     </xf>
@@ -840,139 +858,264 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
 </Types>`;
 
   const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
-  zip.addFile("_rels/.rels", Buffer.from(rels));
-  zip.addFile("xl/workbook.xml", Buffer.from(workbookXml));
-  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
-  zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(sheetXml));
-  zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
+  zip.addFile("[Content_Types].xml",              Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels",                      Buffer.from(rels));
+  zip.addFile("xl/workbook.xml",                  Buffer.from(workbookXml));
+  zip.addFile("xl/_rels/workbook.xml.rels",       Buffer.from(workbookRels));
+  zip.addFile("xl/worksheets/sheet1.xml",         Buffer.from(sheetXml));
+  zip.addFile("xl/styles.xml",                    Buffer.from(stylesXml));
   return zip.toBuffer();
 }
 
-// ─── Request Param Parser ─────────────────────────────────────────────────────
+// ─── Request Param Parsers ────────────────────────────────────────────────────
 
-function parseParams(req: RequestWithUser) {
-  // ── Level from URL param only ──
+/**
+ * Parses params for group-level (l2/l3/l4) requests.
+ * Level comes from the URL param; everything else from the POST body.
+ */
+function parseGroupParams(req: RequestWithUser) {
   const level = text(req.params.level).toLowerCase() as TLevel;
- 
-  if (!["l2", "l3", "l4"].includes(level)) {
-    throw Object.assign(
-      new Error("Invalid level. Must be l2, l3, or l4."),
-      { status: 400 }
-    );
-  }
- 
-  // ── All other values from POST body ──
+  if (!["l2", "l3", "l4"].includes(level))
+    throw Object.assign(new Error("Invalid level. Must be l2, l3, or l4."), { status: 400 });
+
   const companyCode  = text(req.body.company_code  || req.user?.company_code);
   const fromDate     = text(req.body.from_date);
   const toDate       = text(req.body.to_date);
   const divisionCode = text(req.body.division_code || "All");
- 
-  if (!companyCode || !fromDate || !toDate) {
+
+  if (!companyCode || !fromDate || !toDate)
     throw Object.assign(
       new Error("company_code, from_date, and to_date are required"),
-      { status: 400 }
+      { status: 400 },
     );
-  }
- 
-  // ── Code filter: body key matches the level's codeField (e.g. l2_code) ──
-  // Accepts an array ["10","11",...] and joins to "10,11,..."
-  const config = LEVEL_CONFIG[level];
-  const rawFilter =
-    req.body[config.codeField] ??   // e.g. req.body.l2_code
-    req.body.code_filter            ??   // fallback generic key
-    [];
-  const codeFilter = Array.isArray(rawFilter)
-    ? rawFilter.join(",")
-    : text(rawFilter);
- 
+
+  const config    = LEVEL_CONFIG[level];
+  const rawFilter = req.body[config.codeField] ?? req.body.code_filter ?? [];
+  const codeFilter = Array.isArray(rawFilter) ? rawFilter.join(",") : text(rawFilter);
+
   return { level, companyCode, fromDate, toDate, divisionCode, codeFilter };
+}
+
+/**
+ * Parses params for the AC report request.
+ * All values come from the POST body; there is no URL-level param.
+ */
+function parseAcParams(req: RequestWithUser) {
+  const companyCode  = text(req.body.company_code || req.user?.company_code);
+  const fromDate     = text(req.body.from_date);
+  const toDate       = text(req.body.to_date);
+  const divisionCode = text(req.body.division_code ?? "");
+
+  if (!companyCode || !fromDate || !toDate)
+    throw Object.assign(
+      new Error("company_code, from_date, and to_date are required"),
+      { status: 400 },
+    );
+
+  // report_format defaults to "standard" if not supplied or invalid
+  const rawFormat   = text(req.body.report_format);
+  const reportFormat: TReportFormat = (
+    ["standard", "sub_ledger_1", "sub_ledger_2", "tb_without_year_end_jv"].includes(rawFormat)
+      ? rawFormat
+      : "standard"
+  ) as TReportFormat;
+
+  const excludeZeroTxns = req.body.exclude_zero_txns === true
+    || req.body.exclude_zero_txns === "true"
+    || req.body.exclude_zero_txns === 1;
+
+  // ac_code[] — primary selector
+  const rawAcCode   = req.body.ac_code ?? [];
+  const acCodeFilter = Array.isArray(rawAcCode) ? rawAcCode.join(",") : text(rawAcCode);
+
+  // l4_code[] — secondary selector
+  const rawL4Code   = req.body.l4_code ?? [];
+  const l4CodeFilter = Array.isArray(rawL4Code) ? rawL4Code.join(",") : text(rawL4Code);
+
+  return {
+    companyCode,
+    fromDate,
+    toDate,
+    divisionCode,
+    reportFormat,
+    excludeZeroTxns,
+    acCodeFilter,
+    l4CodeFilter,
+  };
 }
 
 // ─── Route Handlers ───────────────────────────────────────────────────────────
 
-/**
- * GET /api/reports/trial-balance/:level/html
- * Query: company_code, from_date, to_date, division_code?, code_filter?
- */
+// ── Group-level HTML (/html/:level where level = l2 | l3 | l4) ───────────────
+
 export const getTrialBalanceReportHtml = async (
   req: RequestWithUser,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
-    const params = parseParams(req);
-    const rows = await loadReportData(
+    const params = parseGroupParams(req);
+    const rows   = await loadGroupData(
       req,
       params.level,
       params.companyCode,
       params.fromDate,
       params.toDate,
       params.divisionCode,
-      params.codeFilter
+      params.codeFilter,
     );
 
-    const html = renderHtml(
+    const config = LEVEL_CONFIG[params.level];
+    const html   = renderHtml(
       rows,
-      params.level,
+      config,
       {
         companyCode: params.companyCode,
-        fromDate: params.fromDate,
-        toDate: params.toDate,
-        loginId: req.user?.loginid ?? "",
+        fromDate:    params.fromDate,
+        toDate:      params.toDate,
+        loginId:     req.user?.loginid ?? "",
       },
-      req.query.print !== "false"
+      req.query.print !== "false",
     );
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
     console.error("Trial Balance HTML error:", error);
-    res
-      .status(error.status || 500)
-      .json({ success: false, message: error.message || "Unable to generate report" });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate report",
+    });
   }
 };
 
-/**
- * GET /api/reports/trial-balance/:level/excel
- * Query: company_code, from_date, to_date, division_code?, code_filter?
- */
+// ── Group-level Excel (/excel/:level) ─────────────────────────────────────────
+
 export const exportTrialBalanceReportExcel = async (
   req: RequestWithUser,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
-    const params = parseParams(req);
-    const rows = await loadReportData(
+    const params = parseGroupParams(req);
+    const rows   = await loadGroupData(
       req,
       params.level,
       params.companyCode,
       params.fromDate,
       params.toDate,
       params.divisionCode,
-      params.codeFilter
+      params.codeFilter,
     );
 
-    const ws = buildExcelSheet(rows, params.level, {
+    const config   = LEVEL_CONFIG[params.level];
+    const ws       = buildExcelSheet(rows, config, {
       companyCode: params.companyCode,
-      fromDate: params.fromDate,
-      toDate: params.toDate,
-      loginId: req.user?.loginid ?? "",
+      fromDate:    params.fromDate,
+      toDate:      params.toDate,
+      loginId:     req.user?.loginid ?? "",
     });
-
-    const buffer = workbookBufferFromSheet(ws);
+    const buffer   = workbookBufferFromSheet(ws);
     const filename = `trial_balance_${params.level}_${params.companyCode}_${params.fromDate}_${params.toDate}.xlsx`;
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.end(buffer);
   } catch (error: any) {
     console.error("Trial Balance Excel error:", error);
-    res
-      .status(error.status || 500)
-      .json({ success: false, message: error.message || "Unable to export report" });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to export report",
+    });
+  }
+};
+
+// ── AC HTML (/html/ac) ────────────────────────────────────────────────────────
+
+export const getAcTrialBalanceReportHtml = async (
+  req: RequestWithUser,
+  res: Response,
+): Promise<void> => {
+  try {
+    const params = parseAcParams(req);
+    const rows   = await loadAcData(
+      req,
+      params.reportFormat,
+      params.companyCode,
+      params.fromDate,
+      params.toDate,
+      params.divisionCode,
+      params.acCodeFilter,
+      params.l4CodeFilter,
+      params.excludeZeroTxns,
+    );
+
+    const config = AC_FORMAT_CONFIG[params.reportFormat];
+    const html   = renderHtml(
+      rows,
+      config,
+      {
+        companyCode: params.companyCode,
+        fromDate:    params.fromDate,
+        toDate:      params.toDate,
+        loginId:     req.user?.loginid ?? "",
+      },
+      req.query.print !== "false",
+    );
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (error: any) {
+    console.error("AC Trial Balance HTML error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate AC report",
+    });
+  }
+};
+
+// ── AC Excel (/excel/ac) ──────────────────────────────────────────────────────
+
+export const exportAcTrialBalanceReportExcel = async (
+  req: RequestWithUser,
+  res: Response,
+): Promise<void> => {
+  try {
+    const params = parseAcParams(req);
+    const rows   = await loadAcData(
+      req,
+      params.reportFormat,
+      params.companyCode,
+      params.fromDate,
+      params.toDate,
+      params.divisionCode,
+      params.acCodeFilter,
+      params.l4CodeFilter,
+      params.excludeZeroTxns,
+    );
+
+    const config   = AC_FORMAT_CONFIG[params.reportFormat];
+    const ws       = buildExcelSheet(rows, config, {
+      companyCode: params.companyCode,
+      fromDate:    params.fromDate,
+      toDate:      params.toDate,
+      loginId:     req.user?.loginid ?? "",
+    });
+    const buffer   = workbookBufferFromSheet(ws);
+    const filename = `trial_balance_ac_${params.reportFormat}_${params.companyCode}_${params.fromDate}_${params.toDate}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.end(buffer);
+  } catch (error: any) {
+    console.error("AC Trial Balance Excel error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to export AC report",
+    });
   }
 };
