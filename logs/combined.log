@@ -73907,3 +73907,16 @@ Error: ORA-12543: TNS:destination host unreachable
 2026-03-05 15:31:02 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 13b157d4-4910-4519-b39b-118c5d49d160 
 2026-03-05 15:31:02 [[33mwarn[39m]: Auto-confirm skipped - no pending data: 99282a55-0dd9-4c1f-9d46-59630966c148 
 2026-03-05 15:31:02 [[32minfo[39m]: ✅ Auto-confirmed stale pending record: 99282a55-0dd9-4c1f-9d46-59630966c148 
+2026-06-02 12:35:17 [[32minfo[39m]: [NOTIFY] Sending email for event: COUNTRY_CREATED, to: undefined 
+2026-06-02 12:35:25 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: COUNTRY_CREATED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-06-02T07:05:25.213Z 08DEBE39A1B6CABD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-06-02T07:05:25.213Z 08DEBE39A1B6CABD]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)

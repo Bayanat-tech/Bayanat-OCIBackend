@@ -296,7 +296,7 @@ router.post("/producttype/delete", async (req: Request, res: Response) => {
 
 // Alert Routes - Handle alert management
 router.post("/alert", createAlert); // Create new alert
-router.put("/alert/:op_type/:op_code", updateAlert); // Update existing alert with params
+router.put("/alert/:op_code/:op_type", updateAlert); // Update existing alert with params
 router.post("/alert/bulk", createBulkAlerts); // Create multiple alerts
 router.get("/alert/export", exportAlert); // Export alert data
 router.post("/alert/delete", deleteAlerts); // Delete alerts

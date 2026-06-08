@@ -11,7 +11,7 @@ export const procBuildCommonProcedurewmc = async (
 
   try {
     const body = req.body;
-console.log('inside procBuildCommon 1')
+    console.log('inside procBuildCommon 1')
     if (!body?.parameter || !body?.loginid) {
       res.status(400).json({
         success: false,
@@ -19,22 +19,22 @@ console.log('inside procBuildCommon 1')
       });
       return;
     }
-console.log('inside procBuildCommon 2')
+    console.log('inside procBuildCommon 2')
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
-    } catch (e) {}
+    } catch (e) { }
     if (!tenantId && (req as any).body?.loginid) {
       tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
     }
-console.log('inside procBuildCommon 3')
+    console.log('inside procBuildCommon 3')
     if (!tenantId) {
       res.status(400).json({ success: false, message: "Tenant not found for request" });
       return;
     }
-console.log('inside procBuildCommon 4')
+    console.log('inside procBuildCommon 4')
     connection = await TenantManager.getConnection(tenantId);
-console.log('inside procBuildCommon 5')
+    console.log('inside procBuildCommon 5')
     const result = await connection.execute(
       `
       DECLARE
@@ -63,11 +63,11 @@ console.log('inside procBuildCommon 5')
         loginid: body.loginid,
 
         // STRING VALUES
-        val1s1: body.val1s1,   val1s2: body.val1s2,
-        val1s3: body.val1s3,   val1s4: body.val1s4,
-        val1s5: body.val1s5,   val1s6: body.val1s6,
-        val1s7: body.val1s7,   val1s8: body.val1s8,
-        val1s9: body.val1s9,   val1s10: body.val1s10,
+        val1s1: body.val1s1, val1s2: body.val1s2,
+        val1s3: body.val1s3, val1s4: body.val1s4,
+        val1s5: body.val1s5, val1s6: body.val1s6,
+        val1s7: body.val1s7, val1s8: body.val1s8,
+        val1s9: body.val1s9, val1s10: body.val1s10,
         val1s11: body.val1s11, val1s12: body.val1s12,
         val1s13: body.val1s13, val1s14: body.val1s14,
         val1s15: body.val1s15, val1s16: body.val1s16,
@@ -75,11 +75,11 @@ console.log('inside procBuildCommon 5')
         val1s19: body.val1s19, val1s20: body.val1s20,
 
         // NUMBER VALUES
-        val1n1: body.val1n1,   val1n2: body.val1n2,
-        val1n3: body.val1n3,   val1n4: body.val1n4,
-        val1n5: body.val1n5,   val1n6: body.val1n6,
-        val1n7: body.val1n7,   val1n8: body.val1n8,
-        val1n9: body.val1n9,   val1n10: body.val1n10,
+        val1n1: body.val1n1, val1n2: body.val1n2,
+        val1n3: body.val1n3, val1n4: body.val1n4,
+        val1n5: body.val1n5, val1n6: body.val1n6,
+        val1n7: body.val1n7, val1n8: body.val1n8,
+        val1n9: body.val1n9, val1n10: body.val1n10,
 
         out_msg: {
           dir: oracledb.BIND_OUT,
@@ -104,7 +104,7 @@ console.log('inside procBuildCommon 5')
       details: err.message
     });
   } finally {
-    if (connection) await connection.close().catch(() => {});
+    if (connection) await connection.close().catch(() => { });
   }
 };
 
@@ -139,7 +139,7 @@ export const proc_build_dynamic_del_common = async (req: Request, res: Response)
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
-    } catch (e) {}
+    } catch (e) { }
     if (!tenantId && (req as any).body?.loginid) {
       tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
     }
@@ -308,7 +308,7 @@ export const proc_build_dynamic_ins_upd_common = async (
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
-    } catch (e) {}
+    } catch (e) { }
     if (!tenantId && (req as any).body?.loginid) {
       tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
     }
@@ -463,7 +463,7 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
       date3,
       date4
     } = req.body;
-console.log('check dynamic sql',req.body);
+    console.log('check dynamic sql', req.body);
     if (!parameter) {
       res.status(400).json({ error: "Missing required parameter 'parameter'" });
       return;
@@ -472,7 +472,7 @@ console.log('check dynamic sql',req.body);
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
-    } catch (e) {}
+    } catch (e) { }
     if (!tenantId && (req as any).body?.loginid) {
       tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
     }
@@ -635,7 +635,7 @@ export const proc_build_dynamic_sql_common20 = async (
 
     try {
       tenantId = getCurrentTenantId();
-    } catch (e) {}
+    } catch (e) { }
 
     if (!tenantId && (req as any).body?.loginid) {
       tenantId = await TenantManager.getTenantForUser(
@@ -756,7 +756,10 @@ export const proc_build_dynamic_sql_common20 = async (
 
     const outBinds = result.outBinds as ProcOutBinds;
 
-    const rawSql = outBinds?.out_sql;
+    const rawSql = outBinds?.out_sql
+      ?.replace(/[\r\n]+/g, " ")
+      ?.replace(/\s+/g, " ")
+      ?.trim();
 
     if (!rawSql) {
 
@@ -771,13 +774,13 @@ export const proc_build_dynamic_sql_common20 = async (
 
     if (code20?.toUpperCase() === 'RAWSQL') {
 
-  res.json({
-    success: true,
-    rawSql
-  });
+      res.json({
+        success: true,
+        rawSql
+      });
 
-  return;
-}
+      return;
+    }
 
 
     const dataResult = await connection.execute<any[]>(
@@ -855,8 +858,8 @@ export const proc_build_dynamic_ins_upd_column90 = async (
       loginid,
 
       // INSERT / UPDATE STRING VALUES (1–90)
-      val1s1,  val1s2,  val1s3,  val1s4,  val1s5,
-      val1s6,  val1s7,  val1s8,  val1s9,  val1s10,
+      val1s1, val1s2, val1s3, val1s4, val1s5,
+      val1s6, val1s7, val1s8, val1s9, val1s10,
       val1s11, val1s12, val1s13, val1s14, val1s15,
       val1s16, val1s17, val1s18, val1s19, val1s20,
       val1s21, val1s22, val1s23, val1s24, val1s25,
@@ -891,7 +894,7 @@ export const proc_build_dynamic_ins_upd_column90 = async (
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
-    } catch (e) {}
+    } catch (e) { }
     if (!tenantId && (req as any).body?.loginid) {
       tenantId = await TenantManager.getTenantForUser((req as any).body.loginid);
     }
@@ -944,8 +947,8 @@ export const proc_build_dynamic_ins_upd_column90 = async (
         parameter,
         loginid,
 
-        val1s1,  val1s2,  val1s3,  val1s4,  val1s5,
-        val1s6,  val1s7,  val1s8,  val1s9,  val1s10,
+        val1s1, val1s2, val1s3, val1s4, val1s5,
+        val1s6, val1s7, val1s8, val1s9, val1s10,
         val1s11, val1s12, val1s13, val1s14, val1s15,
         val1s16, val1s17, val1s18, val1s19, val1s20,
         val1s21, val1s22, val1s23, val1s24, val1s25,
