@@ -54,7 +54,10 @@ import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
 import { InvdatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/InvdatewiseDetail";
 import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Invdatewisesummary";
-// Initialize Express router
+import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
+import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
+import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
+
 const router = express.Router();
 
 // Apply tenant middleware to ensure database switching
@@ -74,9 +77,14 @@ router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
 router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
 
+
+
 // ------Ageing Reports Routes------
  router.post('/reports/InvdatewiseDetail/html', InvdatewiseDetail);
- router.get('/reports/InvdatewiseSummary/html', InvdatewiseSummary);
+ router.post('/reports/InvdatewiseSummary/html', InvdatewiseSummary);
+router.post('/reports/DuedatewiseDetail/html', DuedatewiseDetail);
+router.post('/reports/DuedatewiseSummary/html', DuedatewiseSummary);
+router.post('/reports/OutstandingList/html', OutstandingList);
 
 
 
