@@ -121,7 +121,7 @@ export const getChequeMonitoringReport = async (req: Request, res: Response): Pr
             if (!groups[key]) groups[key] = [];
             groups[key].push(r);
         });
-
+        
         // 7. Construct HTML Rows
         let tableBodyHtml = "";
         Object.entries(groups).forEach(([groupName, groupRows]) => {

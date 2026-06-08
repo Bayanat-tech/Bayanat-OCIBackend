@@ -52,6 +52,8 @@ import { getSummaryDumpReport } from "../../../controllers/finance/accounts/acco
 import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
 import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
+import { InvdatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/InvdatewiseDetail";
+import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Invdatewisesummary";
 // Initialize Express router
 const router = express.Router();
 
@@ -71,6 +73,10 @@ router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
 router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
+
+// ------Ageing Reports Routes------
+ router.post('/reports/InvdatewiseDetail/html', InvdatewiseDetail);
+ router.get('/reports/InvdatewiseSummary/html', InvdatewiseSummary);
 
 
 
