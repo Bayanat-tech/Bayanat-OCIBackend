@@ -100,6 +100,7 @@ export const procBulkAccountEntry = async (
               DOC_DATE: header.doc_date ? new Date(header.doc_date) : null,
               AC_CODE: header.ac_code,
               AC_PAYEE: header.ac_payee,
+              BANK_AC_CODE: header.bank_ac_code,
               REMARKS: header.remarks,
               CURR_CODE: header.curr_code,
               EX_RATE: header.ex_rate,
