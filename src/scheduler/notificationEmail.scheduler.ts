@@ -1,5 +1,4 @@
 import cron from "node-cron";
-
 import logger from "../utils/logger";
 import TenantManager from "../database/TenantManager";
 import { notifyUser } from "../helpers/functions";

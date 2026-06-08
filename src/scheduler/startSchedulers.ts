@@ -1,4 +1,3 @@
-import { AttendanceEventScheduler } from "../services/Attendance/attendanceEventScheduler.service";
 import { startNotificationEmailScheduler } from "./notificationEmail.scheduler";
 
 export async function startSchedulers(): Promise<void> {
