@@ -593,6 +593,9 @@ export const activitygroupSchema = (data: IActivityGroup) => {
     rpt_group_name: Joi.string().allow("", null),
     sw_flag: Joi.string().allow("", null),
     cost_group: Joi.string().allow("", null),
+
+    sort_order: Joi.number().allow(null, ""),
+
     updated_at: Joi.date().allow(null, ""),
     updated_by: Joi.string().allow(null, ""),
     created_by: Joi.string().allow(null, ""),
@@ -604,7 +607,7 @@ export const activitygroupSchema = (data: IActivityGroup) => {
 export const lineSchema = (data: ILine) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
-    line_code: Joi.string().required(),
+    line_code: Joi.string().allow(null, ""),
     line_name: Joi.string().required(),
     updated_at: Joi.date().allow(null, ""),
     updated_by: Joi.string().allow(null, ""),
@@ -640,6 +643,7 @@ export const airlineSchema = (data: IAirLine) => {
     address: Joi.string().allow("", null),
     tel_no: Joi.string().allow("", null),
     fax_no: Joi.string().allow("", null),
+    old_airline_code: Joi.string().allow("", null),
   });
   return schema.validate(data);
 };
@@ -1119,7 +1123,7 @@ export const LocationtypeSchema = (data: ILocationType) => {
     loc_cbm: Joi.number().allow("", null),
     loc_wt: Joi.number().allow("", null),
     push_level: Joi.number().allow("", null),
-    user_id: Joi.string().required(),
+    // user_id: Joi.string().required(),
     user_dt: Joi.date().allow("", null),
     company_code: Joi.string().required(),
     loc_name: Joi.string().required(),

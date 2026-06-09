@@ -127,7 +127,6 @@ export class ActivityUOCService {
       company_code: string;
       charge_code: string;
       charge_type: string;
-      activity_group_code: string;
     }>
   ): Promise<boolean> {
     if (conditions.length === 0) {
@@ -137,7 +136,7 @@ export class ActivityUOCService {
     let totalDeleted = 0;
     
     for (const condition of conditions) {
-      const sql = `DELETE FROM MS_ACTIVITY_UOC WHERE company_code = :company_code AND charge_code = :charge_code AND charge_type = :charge_type AND activity_group_code = :activity_group_code`;
+      const sql = `DELETE FROM MS_ACTIVITY_UOC WHERE company_code = :company_code AND charge_code = :charge_code AND charge_type = :charge_type`;
       try {
         await executeMutation(sql, condition);
         totalDeleted++;
