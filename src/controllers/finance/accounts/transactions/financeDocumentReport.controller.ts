@@ -1,12 +1,42 @@
 import { Response } from "express";
 import oracledb from "oracledb";
 import * as XLSX from "xlsx";
+import fs from "fs";
+import path from "path";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 
 type ReportRow = Record<string, any>;
+
+const REPORT_FONT_FAMILY = '"Liberation Mono", "Courier New", Consolas, monospace';
+
+function reportFontPath(fileName: string): string {
+  const srcPath = path.join(process.cwd(), "src", "assets", "report-fonts", fileName);
+  if (fs.existsSync(srcPath)) return srcPath;
+  return path.join(process.cwd(), "build", "assets", "report-fonts", fileName);
+}
+
+function fontFace(name: string, fileName: string, weight: number, style = "normal"): string {
+  const fontPath = reportFontPath(fileName);
+  if (!fs.existsSync(fontPath)) return "";
+  const data = fs.readFileSync(fontPath).toString("base64");
+  return `
+    @font-face {
+      font-family: ${name};
+      src: url("data:font/ttf;base64,${data}") format("truetype");
+      font-weight: ${weight};
+      font-style: ${style};
+      font-display: swap;
+    }`;
+}
+
+const REPORT_FONT_FACE_CSS = [
+  fontFace('"Liberation Mono"', "CAAAAA_LiberationMono.ttf", 400),
+  fontFace('"Liberation Mono"', "AAAAAA_LiberationMono-Bold.ttf", 700),
+  fontFace('"Liberation Mono"', "BAAAAA_LiberationMono-BoldItalic.ttf", 700, "italic"),
+].join("\n");
 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
@@ -220,43 +250,44 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
   <meta charset="utf-8" />
   <title>${escapeHtml(titleFor(docType))} - ${escapeHtml(header.doc_no)}</title>
   <style>
+    ${REPORT_FONT_FACE_CSS}
     @page { size: A4; margin: 8mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; color: #111827; font-family: "Liberation Mono", "Courier New", Consolas, monospace; font-size: 10px; line-height: 1.22; background: #eef2f7; }
-    .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding: 8mm; border: 1px solid #aab7c8; }
-    .top { display: grid; grid-template-columns: 1fr 54mm; gap: 12px; align-items: start; border-bottom: 1.5px solid #0b459f; padding-bottom: 7px; }
+    body { margin: 0; color: #111; font-family: ${REPORT_FONT_FAMILY}; font-size: 10px; line-height: 1.18; background: #f4f4f4; }
+    .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding: 8mm; border: 1px solid #777; }
+    .top { display: grid; grid-template-columns: 1fr 58mm; gap: 10px; align-items: start; border-bottom: 1px solid #777; padding-bottom: 6px; }
     .brand { display: grid; gap: 3px; }
-    .company { font-size: 16px; line-height: 1.1; font-weight: 800; letter-spacing: 0; color: #0b1f3a; text-transform: uppercase; }
-    .muted { color: #64748b; }
-    .title { border: 1px solid #0b459f; border-radius: 4px; overflow: hidden; text-align: center; }
-    .title h1 { margin: 0; padding: 7px 8px; color: #fff; background: #0b459f; font-size: 13px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0; }
-    .title .pill { display: block; padding: 5px 8px; color: #0b459f; font-size: 9.5px; font-weight: 800; background: #f8fbff; }
-    .summary { display: grid; grid-template-columns: 1.15fr .85fr; gap: 6px; margin-top: 7px; }
-    .box { border: 1px solid #b7c2d2; border-radius: 4px; overflow: hidden; }
-    .box h2 { margin: 0; padding: 5px 7px; font-size: 10px; text-transform: uppercase; letter-spacing: 0; color: #0b459f; background: #f3f7fc; border-bottom: 1px solid #d8e0eb; }
-    .box-body { padding: 7px; min-height: 30mm; }
-    .party-name { font-size: 11.5px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .company { font-size: 14px; line-height: 1.08; font-weight: 800; letter-spacing: 0; color: #111; text-transform: uppercase; }
+    .muted { color: #333; }
+    .title { border: 1px solid #777; text-align: center; }
+    .title h1 { margin: 0; padding: 6px 7px; color: #111; background: #fff; font-size: 12px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0; border-bottom: 1px solid #777; }
+    .title .pill { display: block; padding: 4px 7px; color: #111; font-size: 9.5px; font-weight: 800; background: #fff; }
+    .summary { display: grid; grid-template-columns: 1.15fr .85fr; gap: 6px; margin-top: 6px; }
+    .box { border: 1px solid #999; overflow: hidden; }
+    .box h2 { margin: 0; padding: 4px 6px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0; color: #111; background: #fff; border-bottom: 1px solid #aaa; }
+    .box-body { padding: 6px; min-height: 28mm; }
+    .party-name { font-size: 10.8px; font-weight: 800; color: #111; margin-bottom: 4px; }
     .meta { display: grid; grid-template-columns: 28mm 1fr; gap: 3px 8px; }
-    .label { color: #64748b; font-weight: 700; }
-    .value { color: #111827; font-weight: 700; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-    th { background: #0b459f; color: white; padding: 5px 5px; text-align: left; font-size: 9.3px; font-weight: 800; border: 1px solid #0b459f; }
-    td { border: 1px solid #cfd8e5; padding: 4.5px 5px; vertical-align: top; font-size: 9.7px; }
-    td span { display: block; color: #475569; margin-top: 1px; }
-    .code { width: 22mm; color: #334155; }
+    .label { color: #333; font-weight: 700; }
+    .value { color: #111; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-top: 7px; table-layout: fixed; }
+    th { background: #fff; color: #111; padding: 4px 4px; text-align: left; font-size: 9px; font-weight: 800; border: 1px solid #777; }
+    td { border: 1px solid #999; padding: 4px 4px; vertical-align: top; font-size: 9.4px; }
+    td span { display: block; color: #111; margin-top: 1px; }
+    .code { width: 22mm; color: #111; }
     .desc { width: auto; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .center { text-align: center; }
     .strong { font-weight: 800; }
-    .totals-wrap { display: grid; grid-template-columns: 1fr 62mm; gap: 8px; margin-top: 7px; align-items: start; }
-    .remarks { min-height: 24mm; border: 1px solid #cfd8e5; padding: 7px; color: #334155; }
-    .totals { width: 100%; margin: 0; border: 1px solid #0b459f; }
-    .totals td { border: 0; border-bottom: 1px solid #d8e0eb; padding: 5px 7px; }
+    .totals-wrap { display: grid; grid-template-columns: 1fr 62mm; gap: 8px; margin-top: 6px; align-items: start; }
+    .remarks { min-height: 23mm; border: 1px solid #999; padding: 6px; color: #111; }
+    .totals { width: 100%; margin: 0; border: 1px solid #777; }
+    .totals td { border: 0; border-bottom: 1px solid #aaa; padding: 4px 6px; }
     .totals tr:last-child td { border-bottom: 0; }
-    .grand { color: #fff; background: #0b459f; font-size: 12px; font-weight: 800; }
-    .section-caption { margin-top: 8px; padding: 5px 7px; border: 1px solid #cfd8e5; border-bottom: 0; color: #0b459f; font-weight: 800; letter-spacing: 0; text-transform: uppercase; background: #f8fbff; }
+    .grand { color: #111; background: #fff; font-size: 11px; font-weight: 800; }
+    .section-caption { margin-top: 7px; padding: 4px 6px; border: 1px solid #777; border-bottom: 0; color: #111; font-weight: 800; letter-spacing: 0; text-transform: uppercase; background: #fff; }
     .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; margin-top: 23mm; }
-    .line { border-top: 1px solid #64748b; padding-top: 5px; text-align: center; font-weight: 800; }
+    .line { border-top: 1px solid #777; padding-top: 5px; text-align: center; font-weight: 800; }
     .actions { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
     .actions button { border: 1px solid #cbd5e1; background: white; border-radius: 8px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
     @media print { body { background: white; } .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; } .actions { display: none; } }
@@ -347,52 +378,52 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
 
 const excelStyles = {
   title: {
-    font: { bold: true, sz: 15, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "0B459F" } },
+    font: { bold: true, sz: 14, color: { rgb: "111111" } },
+    fill: { fgColor: { rgb: "FFFFFF" } },
     alignment: { horizontal: "center", vertical: "center" },
-    border: { top: { style: "thin", color: { rgb: "0B459F" } }, bottom: { style: "thin", color: { rgb: "0B459F" } }, left: { style: "thin", color: { rgb: "0B459F" } }, right: { style: "thin", color: { rgb: "0B459F" } } },
+    border: { top: { style: "thin", color: { rgb: "777777" } }, bottom: { style: "thin", color: { rgb: "777777" } }, left: { style: "thin", color: { rgb: "777777" } }, right: { style: "thin", color: { rgb: "777777" } } },
   },
   company: {
-    font: { bold: true, sz: 13, color: { rgb: "0F172A" } },
+    font: { bold: true, sz: 13, color: { rgb: "111111" } },
     alignment: { vertical: "center" },
   },
   section: {
-    font: { bold: true, color: { rgb: "0B459F" } },
-    fill: { fgColor: { rgb: "F3F7FC" } },
-    border: { top: { style: "thin", color: { rgb: "B7C2D2" } }, bottom: { style: "thin", color: { rgb: "B7C2D2" } }, left: { style: "thin", color: { rgb: "B7C2D2" } }, right: { style: "thin", color: { rgb: "B7C2D2" } } },
+    font: { bold: true, color: { rgb: "111111" } },
+    fill: { fgColor: { rgb: "FFFFFF" } },
+    border: { top: { style: "thin", color: { rgb: "999999" } }, bottom: { style: "thin", color: { rgb: "999999" } }, left: { style: "thin", color: { rgb: "999999" } }, right: { style: "thin", color: { rgb: "999999" } } },
   },
   tableHead: {
-    font: { bold: true, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "0B459F" } },
+    font: { bold: true, color: { rgb: "111111" } },
+    fill: { fgColor: { rgb: "FFFFFF" } },
     alignment: { horizontal: "center", vertical: "center" },
-    border: { top: { style: "thin", color: { rgb: "0B459F" } }, bottom: { style: "thin", color: { rgb: "0B459F" } }, left: { style: "thin", color: { rgb: "0B459F" } }, right: { style: "thin", color: { rgb: "0B459F" } } },
+    border: { top: { style: "thin", color: { rgb: "777777" } }, bottom: { style: "thin", color: { rgb: "777777" } }, left: { style: "thin", color: { rgb: "777777" } }, right: { style: "thin", color: { rgb: "777777" } } },
   },
   label: {
-    font: { bold: true, color: { rgb: "64748B" } },
+    font: { bold: true, color: { rgb: "333333" } },
     alignment: { vertical: "top" },
   },
   normal: {
     alignment: { vertical: "top", wrapText: true },
-    border: { bottom: { style: "thin", color: { rgb: "E2E8F0" } } },
+    border: { bottom: { style: "thin", color: { rgb: "999999" } } },
   },
   number: {
     alignment: { horizontal: "right", vertical: "top" },
     numFmt: "#,##0.00",
-    border: { bottom: { style: "thin", color: { rgb: "E2E8F0" } } },
+    border: { bottom: { style: "thin", color: { rgb: "999999" } } },
   },
   qty: {
     alignment: { horizontal: "right", vertical: "top" },
     numFmt: "#,##0.000",
-    border: { bottom: { style: "thin", color: { rgb: "E2E8F0" } } },
+    border: { bottom: { style: "thin", color: { rgb: "999999" } } },
   },
   totalLabel: {
-    font: { bold: true, color: { rgb: "0F172A" } },
-    fill: { fgColor: { rgb: "F8FBFF" } },
-    border: { top: { style: "thin", color: { rgb: "B7C2D2" } }, bottom: { style: "thin", color: { rgb: "B7C2D2" } } },
+    font: { bold: true, color: { rgb: "111111" } },
+    fill: { fgColor: { rgb: "FFFFFF" } },
+    border: { top: { style: "thin", color: { rgb: "999999" } }, bottom: { style: "thin", color: { rgb: "999999" } } },
   },
   grand: {
-    font: { bold: true, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "0B459F" } },
+    font: { bold: true, color: { rgb: "111111" } },
+    fill: { fgColor: { rgb: "FFFFFF" } },
     alignment: { horizontal: "right" },
     numFmt: "#,##0.00",
   },
@@ -645,27 +676,27 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
   <fonts count="7">
-    <font><sz val="10"/><name val="Arial"/></font>
-    <font><b/><sz val="15"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
-    <font><b/><sz val="13"/><color rgb="FF0F172A"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B459F"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF64748B"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Arial"/></font>
+    <font><sz val="10"/><name val="Liberation Mono"/></font>
+    <font><b/><sz val="14"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
+    <font><b/><sz val="13"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
+    <font><b/><sz val="10"/><color rgb="FF333333"/><name val="Liberation Mono"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111111"/><name val="Liberation Mono"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B459F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F7FC"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF8FBFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="4">
     <border><left/><right/><top/><bottom/><diagonal/></border>
-    <border><left style="thin"><color rgb="FF0B459F"/></left><right style="thin"><color rgb="FF0B459F"/></right><top style="thin"><color rgb="FF0B459F"/></top><bottom style="thin"><color rgb="FF0B459F"/></bottom><diagonal/></border>
-    <border><left style="thin"><color rgb="FFB7C2D2"/></left><right style="thin"><color rgb="FFB7C2D2"/></right><top style="thin"><color rgb="FFB7C2D2"/></top><bottom style="thin"><color rgb="FFB7C2D2"/></bottom><diagonal/></border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
+    <border><left style="thin"><color rgb="FF777777"/></left><right style="thin"><color rgb="FF777777"/></right><top style="thin"><color rgb="FF777777"/></top><bottom style="thin"><color rgb="FF777777"/></bottom><diagonal/></border>
+    <border><left style="thin"><color rgb="FF999999"/></left><right style="thin"><color rgb="FF999999"/></right><top style="thin"><color rgb="FF999999"/></top><bottom style="thin"><color rgb="FF999999"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FF999999"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="11">
