@@ -58,6 +58,7 @@ import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
 import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
+import { AcStatementReport } from "../../../controllers/finance/accounts/accounts-report/AC_StatementReport";
 
 const router = express.Router();
 
@@ -92,6 +93,9 @@ router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
 router.post('/reports/DuedatewiseDetail/html', DuedatewiseDetail);
 router.post('/reports/DuedatewiseSummary/html', DuedatewiseSummary);
 router.post('/reports/OutstandingList/html', OutstandingList);
+
+// -------Account Statement Report Route------
+router.post('/reports/AcStatementReport/html', AcStatementReport);  
 
 
 
