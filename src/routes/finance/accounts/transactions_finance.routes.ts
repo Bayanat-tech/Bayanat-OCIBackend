@@ -60,7 +60,8 @@ import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
 import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
-import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
+import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
+import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 
 
 const router = express.Router();
@@ -87,8 +88,13 @@ router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
 router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
-
 router.post('/reports/getProfitLossReport/html', getProfitLossReport);
+
+
+
+
+// ---------HR Reports Routes------
+router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 
 
 
