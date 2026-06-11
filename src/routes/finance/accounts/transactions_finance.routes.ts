@@ -53,13 +53,15 @@ import { getSummaryDumpReport } from "../../../controllers/finance/accounts/acco
 import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
 import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
-import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
+// import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
 // Initialize Express router
 import { InvdatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/InvdatewiseDetail";
 import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Invdatewisesummary";
 import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
 import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
+import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
+
 
 const router = express.Router();
 
