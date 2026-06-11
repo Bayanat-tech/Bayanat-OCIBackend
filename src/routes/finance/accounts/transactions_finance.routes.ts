@@ -59,6 +59,8 @@ import { DuedatewiseDetail } from "../../../controllers/finance/accounts/account
 import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
 import { AcStatementReport } from "../../../controllers/finance/accounts/accounts-report/AC_StatementReport";
+import { OutstandingDetailReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingDetailReport";
+import { OutstandingSummaryReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingSummaryReport";
 
 const router = express.Router();
 
@@ -96,6 +98,9 @@ router.post('/reports/OutstandingList/html', OutstandingList);
 
 // -------Account Statement Report Route------
 router.post('/reports/AcStatementReport/html', AcStatementReport);  
+router.post('/reports/OutstandingDetailReport/html',OutstandingDetailReport);
+router.post('/reports/OutstandingSummaryReport/html',OutstandingSummaryReport);
+
 
 
 
