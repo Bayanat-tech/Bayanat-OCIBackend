@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
 import { initializeAllConnections, TypeORMService } from "./src/database/connection";
+// import startSchedulers from "./src/scheduler/startSchedulers";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
 import passport from "passport";
 
@@ -145,6 +146,13 @@ async function startServer() {
     } catch (err) {
       console.error("Failed to initialize passport strategies:", err);
       throw err;
+    }
+    try {
+      // Start background schedulers (email sender, attendance, etc.)
+      // await startSchedulers();
+    } catch (schedErr) {
+      console.error("Failed to start schedulers:", schedErr);
+      // Non-fatal: continue running server even if schedulers fail
     }
     console.log(`Listening on port ${PORT}...`);
     app.listen(PORT, () => {

@@ -32,11 +32,20 @@ export const createAirLine = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    console.log("Creating airline with data:", {
+    ...req.body
+    });
     // Transform request data to match TypeORM entity structure
     const airlineData = {
       airlineCode: req.body.airline_code,
       companyCode: req.body.company_code,
       airlineName: req.body.airline_name,
+      airlineNo : req.body.airline_no,
+      contactPerson: req.body.contact_person,
+      telNo: req.body.tel_no,
+      email: req.body.email,
+      address: req.body.address,
+      faxNo: req.body.fax_no,
     };
 
     const createdAirline = await AirlineService.createAirline(airlineData);

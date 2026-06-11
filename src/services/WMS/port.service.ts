@@ -25,47 +25,104 @@ export class PortService {
     return await executeSingleQuery<PortMaster>(sql, { port_code, company_code });
   }
 
-  static async createPort(portData: {
-    port_name: string;
-    company_code: string;
-    created_by: string;
-    updated_by: string;
-    trp_mode?: string;
-    country_code: string;
-    port_code?: string;
-  }): Promise<PortMaster> {
-    let portCode = portData.port_code;
+  // static async createPort(portData: {
+  //   port_name: string;
+  //   company_code: string;
+  //   created_by: string;
+  //   updated_by: string;
+  //   trp_mode?: string;
+  //   country_code: string;
+  //   port_code?: string;
+  // }): Promise<PortMaster> {
+  //   let portCode = portData.port_code;
     
-    if (!portCode) {
-      // Generate port_code
-      const maxSql = `SELECT MAX(port_code) as max_code FROM MS_PORT WHERE company_code = :company_code`;
-      const maxResult = await executeQuery<any>(maxSql, { company_code: portData.company_code });
+  //   if (!portCode) {
+  //     // Generate port_code
+  //     const maxSql = `SELECT MAX(port_code) as max_code FROM MS_PORT WHERE company_code = :company_code`;
+  //     const maxResult = await executeQuery<any>(maxSql, { company_code: portData.company_code });
       
-      portCode = "P0001";
-      if (maxResult && maxResult.length > 0 && maxResult[0].max_code) {
-        const currentMax = parseInt(maxResult[0].max_code.replace("P", ""));
-        portCode = `P${(currentMax + 1).toString().padStart(4, "0")}`;
-      }
-    }
+  //     portCode = "P0001";
+  //     if (maxResult && maxResult.length > 0 && maxResult[0].max_code) {
+  //       const currentMax = parseInt(maxResult[0].max_code.replace("P", ""));
+  //       portCode = `P${(currentMax + 1).toString().padStart(4, "0")}`;
+  //     }
+  //   }
 
-    const cols = Object.keys(portData);
-    cols.push('port_code', 'created_at', 'updated_at');
+  //   const cols = Object.keys(portData);
+  //   cols.push('port_code', 'created_at', 'updated_at');
     
-    const values = cols.map((_, i) => `:val${i}`).join(", ");
-    const sql = `INSERT INTO MS_PORT (${cols.join(", ")}) VALUES (${values})`;
+  //   const values = cols.map((_, i) => `:val${i}`).join(", ");
+  //   const sql = `INSERT INTO MS_PORT (${cols.join(", ")}) VALUES (${values})`;
     
-    const bindObj: Record<string, any> = {};
-    let idx = 0;
-    for (const col of Object.keys(portData)) {
-      bindObj[`val${idx++}`] = (portData as any)[col];
+  //   const bindObj: Record<string, any> = {};
+  //   let idx = 0;
+  //   for (const col of Object.keys(portData)) {
+  //     bindObj[`val${idx++}`] = (portData as any)[col];
+  //   }
+  //   bindObj[`val${idx++}`] = portCode;
+  //   bindObj[`val${idx++}`] = new Date();
+  //   bindObj[`val${idx++}`] = new Date();
+    
+  //   await executeMutation(sql, bindObj);
+  //   return { ...portData, port_code: portCode, created_at: new Date(), updated_at: new Date() } as PortMaster;
+  // }
+static async createPort(portData: {
+  port_name: string;
+  company_code: string;
+  created_by: string;
+  updated_by: string;
+  trp_mode?: string;
+  country_code: string;
+  port_code?: string;
+}): Promise<PortMaster> {
+  
+  // Step 1: Resolve port_code
+  let portCode = portData.port_code;
+
+  if (!portCode) {
+    const maxSql = `SELECT MAX(port_code) as max_code FROM MS_PORT WHERE company_code = :company_code`;
+    const maxResult = await executeQuery<any>(maxSql, { company_code: portData.company_code });
+
+    portCode = "P0001";
+    if (maxResult && maxResult.length > 0 && maxResult[0].max_code) {
+      const currentMax = parseInt(maxResult[0].max_code.replace("P", ""));
+      portCode = `P${(currentMax + 1).toString().padStart(4, "0")}`;
     }
-    bindObj[`val${idx++}`] = portCode;
-    bindObj[`val${idx++}`] = new Date();
-    bindObj[`val${idx++}`] = new Date();
-    
-    await executeMutation(sql, bindObj);
-    return { ...portData, port_code: portCode, created_at: new Date(), updated_at: new Date() } as PortMaster;
   }
+
+  // Step 2: Build data object explicitly (no spread of portData to avoid port_code duplication)
+  const insertData: Record<string, any> = {
+    port_name:    portData.port_name,
+    company_code: portData.company_code,
+    country_code: portData.country_code,
+    trp_mode:     portData.trp_mode ?? null,
+    created_by:   portData.created_by,
+    updated_by:   portData.updated_by,
+    port_code:    portCode,
+    created_at:   new Date(),
+    updated_at:   new Date(),
+  };
+
+  // Step 3: Build columns and bind params dynamically
+  const cols = Object.keys(insertData);
+  const values = cols.map((_, i) => `:val${i}`).join(", ");
+  const sql = `INSERT INTO MS_PORT (${cols.join(", ")}) VALUES (${values})`;
+
+  const bindObj: Record<string, any> = {};
+  cols.forEach((col, i) => {
+    bindObj[`val${i}`] = insertData[col];
+  });
+
+  // Step 4: Execute
+  await executeMutation(sql, bindObj);
+
+  return {
+    ...portData,
+    port_code:  portCode,
+    created_at: insertData.created_at,
+    updated_at: insertData.updated_at,
+  } as PortMaster;
+}
 
   static async updatePort(
     port_code: string,

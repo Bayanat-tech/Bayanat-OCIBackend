@@ -45,6 +45,7 @@ import {
   updateLPODocument,
   cancelLPODocument
 } from "../../../controllers/finance/accounts/transactions/transactionFinance.controller";
+import { exportAcTrialBalanceReportExcel, exportTrialBalanceReportExcel, getAcTrialBalanceReportHtml, getTrialBalanceReportHtml } from "../../../controllers/finance/accounts/transactions/trailBalanceReport";
 import { getChequeMonitoringReport } from "../../../controllers/finance/accounts/accounts-report/AccontReportCheque";
 import { getLedgerWithDetailsReport } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsreport";
 import { getLedgerWithOppositeEntryReport } from "../../../controllers/finance/accounts/accounts-report/ledgerwithoppositeentryreport";
@@ -54,6 +55,12 @@ import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
 import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
 // Initialize Express router
+import { InvdatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/InvdatewiseDetail";
+import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Invdatewisesummary";
+import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
+import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
+import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
+
 const router = express.Router();
 
 // Apply tenant middleware to ensure database switching
@@ -64,6 +71,12 @@ router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 router.post("/account-entry/bulk", procBulkAccountEntry);
 router.get("/report/:doc_type/:doc_no", getFinanceDocumentReportHtml);
 router.get("/report/:doc_type/:doc_no/excel", exportFinanceDocumentReportExcel);
+
+router.post("/report/trialbalance/html/ac",getAcTrialBalanceReportHtml);
+router.post("/report/trialbalance/excel/ac",exportAcTrialBalanceReportExcel);
+router.post("/report/trialbalance/html/:level", getTrialBalanceReportHtml);
+router.post("/report/trialbalance/excel/:level", exportTrialBalanceReportExcel); 
+
 router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
 router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
@@ -74,6 +87,15 @@ router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
 router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
 
 router.post('/reports/getProfitLossReport/html', getProfitLossReport);
+
+
+
+// ------Ageing Reports Routes------
+ router.post('/reports/InvdatewiseDetail/html', InvdatewiseDetail);
+ router.post('/reports/InvdatewiseSummary/html', InvdatewiseSummary);
+router.post('/reports/DuedatewiseDetail/html', DuedatewiseDetail);
+router.post('/reports/DuedatewiseSummary/html', DuedatewiseSummary);
+router.post('/reports/OutstandingList/html', OutstandingList);
 
 
 

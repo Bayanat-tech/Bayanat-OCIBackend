@@ -249,17 +249,48 @@ export class SecurityMasterService {
     page: number = 1,
     limit: number = 200
   ) {
-    const whereCondition: FindOptionsWhere<AccessSecModuleData> = {
-      company_code,
-      level3: Not(IsNull()),
-    } as any;
+    await ensureCorrectSchema();
 
-    return await this.getMasterDataWithPagination<AccessSecModuleData>(
-      AccessSecModuleData,
-      whereCondition,
-      page,
-      limit
+    const repository = getRepository(SecModule);
+    const rows = await repository.find({
+      where: { company_code } as FindOptionsWhere<SecModule>,
+      order: {
+        app_code: "ASC",
+        level1: "ASC",
+        level2: "ASC",
+        level3: "ASC",
+        serial_no: "ASC",
+      } as FindOptionsOrder<SecModule>,
+    });
+
+    const level3Parents = new Set(
+      rows
+        .filter((row) => hasSecurityText(row.level3))
+        .map((row) => securityMenuKey(row.app_code, row.level1, row.level2))
     );
+    const bySerial = new Map<number, SecModule>();
+
+    rows.forEach((row) => {
+      const hasLevel3 = hasSecurityText(row.level3);
+      const isLeafLevel2 =
+        hasSecurityText(row.level2) &&
+        !hasLevel3 &&
+        !level3Parents.has(securityMenuKey(row.app_code, row.level1, row.level2));
+
+      if (hasLevel3 || isLeafLevel2) {
+        bySerial.set(Number(row.serial_no), row);
+      }
+    });
+
+    const assignableRows = Array.from(bySerial.values()).sort(
+      (left, right) => Number(left.serial_no) - Number(right.serial_no)
+    );
+    const skip = (page - 1) * limit;
+
+    return {
+      tableData: assignableRows.slice(skip, skip + limit),
+      count: assignableRows.length,
+    };
   }
 
   static async getAccessAssignUser(
@@ -490,5 +521,13 @@ export class SecurityMasterService {
 
     return fieldMap[master] || "id";
   }
+}
+
+function hasSecurityText(value: unknown): boolean {
+  return String(value ?? "").trim().length > 0;
+}
+
+function securityMenuKey(...parts: unknown[]): string {
+  return parts.map((part) => String(part ?? "").trim().toLowerCase()).join("||");
 }
 
