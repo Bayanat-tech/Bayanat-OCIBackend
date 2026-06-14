@@ -16,18 +16,22 @@ const formatDateStr = (v: any): string => {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface VisaRow {
-    employee_id:      string;
-    employee_name:    string;
-    division:         string;
-    department:       string;
-    section:          string;
-    grade:            string;
-    designation:      string;
-    sponsor:          string;
-    visa_no:          string;
-    visa_expiry_date: string;
-    days_remaining:   number;
-    status:           string;
+    employee_code: string;
+    rpt_name: string;
+    join_date: string;
+    div_name: string;
+    dept_name: string;
+    section_name: string;
+    desg_name: string;
+    grade_name: string;
+    sponsor_name: string;
+    labourcard_no: string;
+    labourcard_valid_from: string;
+    labourcard_valid_to: string;
+    visa_valid_from: string;
+    visa_valid_to: string;
+    days_remaining: number;
+    status: string;
 }
 
 // ─── Status badge style ───────────────────────────────────────────────────────
@@ -38,70 +42,9 @@ const statusStyle = (status: string): string => {
         return "background:#fef3c7;color:#92400e;border:1px solid #fde68a;";
     if (s.includes("expir"))
         return "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;";
-    if (s.includes("critical") || s.includes("urgent"))
+    if (s.includes("critical"))
         return "background:#ffedd5;color:#9a3412;border:1px solid #fdba74;";
     return "background:#dcfce7;color:#166534;border:1px solid #86efac;";
-};
-
-// ─── Build SQL directly (no procedure needed) ────────────────────────────────
-
-const buildVisaExpirySql = (p: {
-    company_code: string;
-    div_code:     string;
-    dept_code:    string;
-    section_code: string;
-    grade_code:   string;
-    desg_code:    string;
-    emp_id:       string;
-    sponsor_code: string;
-    emp_type:     string;
-    date_from:    string;
-    date_to:      string;
-}): string => {
-
-    const esc   = (v: string) => v.replace(/'/g, "''");
-    const has   = (v: string) => v && v.trim() !== "" && v.trim().toUpperCase() !== "ALL";
-
-    let sql = `
-        SELECT
-            e.EMPLOYEE_ID,
-            e.EMPLOYEE_NAME,
-            e.DIVISION,
-            e.DEPARTMENT,
-            e.SECTION,
-            e.GRADE,
-            e.DESIGNATION,
-            e.SPONSOR,
-            e.VISA_NO,
-            e.VISA_EXPIRY_DATE,
-            TRUNC(e.VISA_EXPIRY_DATE) - TRUNC(SYSDATE) AS DAYS_REMAINING,
-            CASE
-                WHEN TRUNC(e.VISA_EXPIRY_DATE) < TRUNC(SYSDATE)        THEN 'Expired'
-                WHEN TRUNC(e.VISA_EXPIRY_DATE) = TRUNC(SYSDATE)        THEN 'Expiring Today'
-                WHEN TRUNC(e.VISA_EXPIRY_DATE) <= TRUNC(SYSDATE) + 30  THEN 'Critical'
-                ELSE 'Active'
-            END AS STATUS
-        FROM HR_VISA_EXPIRY_VW e
-        WHERE e.COMPANY_CODE = '${esc(p.company_code)}'`;
-
-    if (has(p.div_code))     sql += ` AND e.DIV_CODE       = '${esc(p.div_code.trim())}'`;
-    if (has(p.dept_code))    sql += ` AND e.DEPT_CODE      = '${esc(p.dept_code.trim())}'`;
-    if (has(p.section_code)) sql += ` AND e.SECTION_CODE   = '${esc(p.section_code.trim())}'`;
-    if (has(p.grade_code))   sql += ` AND e.GRADE_CODE     = '${esc(p.grade_code.trim())}'`;
-    if (has(p.desg_code))    sql += ` AND e.DESG_CODE      = '${esc(p.desg_code.trim())}'`;
-    if (has(p.emp_id))       sql += ` AND e.EMPLOYEE_ID    = '${esc(p.emp_id.trim())}'`;
-    if (has(p.sponsor_code)) sql += ` AND e.SPONSOR_CODE   = '${esc(p.sponsor_code.trim())}'`;
-
-    if (p.emp_type === "A")  sql += ` AND e.EMPLOYEE_STATUS = 'A'`;
-
-    if (has(p.date_from))
-        sql += ` AND TRUNC(e.VISA_EXPIRY_DATE) >= TO_DATE('${esc(p.date_from.trim())}','YYYY-MM-DD')`;
-    if (has(p.date_to))
-        sql += ` AND TRUNC(e.VISA_EXPIRY_DATE) <= TO_DATE('${esc(p.date_to.trim())}','YYYY-MM-DD')`;
-
-    sql += ` ORDER BY e.VISA_EXPIRY_DATE ASC, e.EMPLOYEE_NAME ASC`;
-
-    return sql;
 };
 
 // ─── Build HTML ───────────────────────────────────────────────────────────────
@@ -109,28 +52,39 @@ const buildVisaExpirySql = (p: {
 const buildVisaExpiryHTML = (
     rows: VisaRow[],
     params: {
-        loginid:    string;
-        division:   string;
+        loginid: string;
+        division: string;
         department: string;
-        date_from:  string;
-        date_to:    string;
-        emp_type:   string;
+        date_from: string;
+        date_to: string;
+        emp_type: string;
     }
 ): string => {
+
+    const totalRecords = rows.length;
+    const totalExpired = rows.filter((r) => Number(r.days_remaining) < 0).length;
+    const totalWarn = rows.filter((r) => Number(r.days_remaining) >= 0 && Number(r.days_remaining) <= 30).length;
+    const totalOk = rows.filter((r) => Number(r.days_remaining) > 30).length;
 
     const tableBodyHtml = rows.map((r, i) => `
         <tr class="${i % 2 === 0 ? "row-even" : "row-odd"}">
             <td class="center">${i + 1}</td>
-            <td><strong>${text(r.employee_id)}</strong></td>
-            <td>${text(r.employee_name)}</td>
-            <td>${text(r.division)}</td>
-            <td>${text(r.department)}</td>
-            <td>${text(r.section)}</td>
-            <td>${text(r.grade)}</td>
-            <td>${text(r.designation)}</td>
-            <td>${text(r.sponsor)}</td>
-            <td class="center">${text(r.visa_no)}</td>
-            <td class="center">${formatDateStr(r.visa_expiry_date)}</td>
+            <td><strong>${text(r.employee_code)}</strong></td>
+            <td>${text(r.rpt_name)}</td>
+            <td class="center">${formatDateStr(r.join_date)}</td>
+            <td>${text(r.div_name)}</td>
+            <td>${text(r.dept_name)}</td>
+            <td>${text(r.section_name)}</td>
+            <td>${text(r.grade_name)}</td>
+            <td>${text(r.desg_name)}</td>
+            <td>${text(r.sponsor_name)}</td>
+            <td class="center">${text(r.labourcard_no)}</td>
+            <td class="center">${formatDateStr(r.labourcard_valid_from)}</td>
+            <td class="center">${formatDateStr(r.labourcard_valid_to)}</td>
+            <td class="center">${formatDateStr(r.visa_valid_from)}</td>
+            <td class="center ${Number(r.days_remaining) < 0 ? "neg" : Number(r.days_remaining) <= 30 ? "warn" : ""}">
+                ${formatDateStr(r.visa_valid_to)}
+            </td>
             <td class="center ${Number(r.days_remaining) < 0 ? "neg" : Number(r.days_remaining) <= 30 ? "warn" : ""}">
                 ${text(r.days_remaining)}
             </td>
@@ -142,15 +96,10 @@ const buildVisaExpiryHTML = (
         </tr>`
     ).join("") || `
         <tr>
-            <td colspan="13" style="text-align:center;padding:40px;color:#6b7280;">
+            <td colspan="17" style="text-align:center;padding:40px;color:#6b7280;">
                 No records found for the selected criteria.
             </td>
         </tr>`;
-
-    const totalRecords = rows.length;
-    const totalExpired = rows.filter((r) => Number(r.days_remaining) < 0).length;
-    const totalWarn    = rows.filter((r) => Number(r.days_remaining) >= 0 && Number(r.days_remaining) <= 30).length;
-    const totalOk      = rows.filter((r) => Number(r.days_remaining) > 30).length;
 
     return `
 <!DOCTYPE html>
@@ -191,15 +140,15 @@ const buildVisaExpiryHTML = (
     .stat-ok      { border-color: #86efac; background: #f0fdf4; }
     .stat-ok      .stat-num { color: #16a34a; }
 
-    table.report-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10.5px; }
+    table.report-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10px; }
     table.report-table th {
-      background: #185FA5; color: #fff; padding: 8px 6px;
-      text-align: left; font-size: 10px; font-weight: 600;
+      background: #185FA5; color: #fff; padding: 7px 5px;
+      text-align: left; font-size: 9px; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.04em; border: none; white-space: nowrap;
     }
     table.report-table th.center,
     table.report-table td.center { text-align: center; }
-    table.report-table td { padding: 6px 6px; vertical-align: middle; border-bottom: 0.5px solid #e5e7eb; }
+    table.report-table td { padding: 5px 5px; vertical-align: middle; border-bottom: 0.5px solid #e5e7eb; }
     .row-even td { background: #fff; }
     .row-odd  td { background: #f8fafc; }
     tr:hover  td { background: #eef4fd !important; }
@@ -211,10 +160,10 @@ const buildVisaExpiryHTML = (
       border-top: 1px solid #d1d5db; padding-top: 10px; font-size: 10px; color: #9ca3af;
     }
     .footer strong { color: #6b7280; }
-
     .no-print { margin-bottom: 16px; text-align: right; }
+
     @media print {
-      body        { background: white; margin: 0; font-size: 10px; }
+      body        { background: white; margin: 0; font-size: 9px; }
       .page       { box-shadow: none; padding: 16px; }
       .no-print   { display: none; }
       tr:hover td { background: inherit !important; }
@@ -239,7 +188,7 @@ const buildVisaExpiryHTML = (
         <div class="report-title">Visa Expiry Listing Report</div>
         <table class="meta-info">
           <tr><td class="lbl">Period :</td>     <td><strong>${formatDateStr(params.date_from)} &nbsp;&ndash;&nbsp; ${formatDateStr(params.date_to)}</strong></td></tr>
-          <tr><td class="lbl">Division :</td>   <td>${text(params.division)   || "All"}</td></tr>
+          <tr><td class="lbl">Division :</td>   <td>${text(params.division) || "All"}</td></tr>
           <tr><td class="lbl">Department :</td> <td>${text(params.department) || "All"}</td></tr>
           <tr><td class="lbl">Emp. Type :</td>  <td>${params.emp_type === "A" ? "Active Employees" : "All Employees"}</td></tr>
           <tr><td class="lbl">Printed on :</td> <td>${formatDateStr(new Date())}</td></tr>
@@ -274,19 +223,23 @@ const buildVisaExpiryHTML = (
     <table class="report-table">
       <thead>
         <tr>
-          <th class="center" style="width:36px;">#</th>
-          <th style="width:90px;">Emp. ID</th>
-          <th style="min-width:130px;">Employee Name</th>
-          <th style="width:80px;">Division</th>
-          <th style="width:100px;">Department</th>
-          <th style="width:80px;">Section</th>
-          <th style="width:70px;">Grade</th>
-          <th style="width:110px;">Designation</th>
-          <th style="width:100px;">Sponsor</th>
-          <th class="center" style="width:90px;">Visa No.</th>
-          <th class="center" style="width:90px;">Expiry Date</th>
-          <th class="center" style="width:70px;">Days Left</th>
-          <th class="center" style="width:90px;">Status</th>
+          <th class="center" style="width:30px;">#</th>
+          <th style="width:75px;">Emp. Code</th>
+          <th style="min-width:120px;">Employee Name</th>
+          <th class="center" style="width:75px;">Join Date</th>
+          <th style="width:70px;">Division</th>
+          <th style="width:90px;">Department</th>
+          <th style="width:75px;">Section</th>
+          <th style="width:65px;">Grade</th>
+          <th style="width:100px;">Designation</th>
+          <th style="width:90px;">Sponsor</th>
+          <th class="center" style="width:85px;">Labour Card No.</th>
+          <th class="center" style="width:75px;">LC From</th>
+          <th class="center" style="width:75px;">LC To</th>
+          <th class="center" style="width:75px;">Visa From</th>
+          <th class="center" style="width:75px;">Visa To</th>
+          <th class="center" style="width:60px;">Days Left</th>
+          <th class="center" style="width:80px;">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -305,26 +258,28 @@ const buildVisaExpiryHTML = (
 };
 
 // ─── Express Controller ───────────────────────────────────────────────────────
+// Uses PROC_BUILD_DYNAMIC_SQL_COMMON20 — identical pattern to P&L report
 
 export const getVisaExpiryReport = async (req: Request, res: Response): Promise<void> => {
     let connection;
     try {
         const {
+            parameter,  // "Hr_Report_VISA_EXPIRY_REPORT"
             loginid,
-            code1,  // company_code
-            code2,  // div_code
-            code3,  // dept_code
-            code4,  // section_code
-            code5,  // grade_code
-            code6,  // desg_code
-            code7,  // emp_id
-            code8,  // sponsor_code
-            code9,  // emp_type: A | ALL
-            date1,  // visa_expiry_from  (YYYY-MM-DD)
-            date2,  // visa_expiry_to    (YYYY-MM-DD)
+            code1,      // company_code
+            code2,      // div_code
+            code3,      // dept_code
+            code4,      // section_code
+            code5,      // grade_code
+            code6,      // desg_code
+            code7,      // emp_code
+            code8,      // sponsor_id
+            code9,      // emp_status ("A" | "All")
+            date1,      // visa_expiry_from (YYYY-MM-DD)
+            date2,      // visa_expiry_to   (YYYY-MM-DD)
         } = req.body;
 
-        // DB connection
+        // ── DB connection (identical to P&L) ─────────────────────────────────
         let tenantId = getCurrentTenantId();
         if (!tenantId && loginid) {
             tenantId = await TenantManager.getTenantForUser(loginid);
@@ -335,22 +290,64 @@ export const getVisaExpiryReport = async (req: Request, res: Response): Promise<
         }
         connection = await TenantManager.getConnection(tenantId);
 
-        // Build & execute SQL directly
-        const sql = buildVisaExpirySql({
-            company_code: code1 || "",
-            div_code:     code2 || "",
-            dept_code:    code3 || "",
-            section_code: code4 || "",
-            grade_code:   code5 || "",
-            desg_code:    code6 || "",
-            emp_id:       code7 || "",
-            sponsor_code: code8 || "",
-            emp_type:     code9 || "A",
-            date_from:    date1 || "",
-            date_to:      date2 || "",
-        });
+        // ── Build binds (identical pattern to P&L) ───────────────────────────
+        const binds: any = {
+            parameter: parameter || "Hr_Report_VISA_EXPIRY_REPORT",
+            loginid: loginid || "ADMIN",
+            code1: code1 || null,
+            code2: code2 || null,
+            code3: code3 || null,
+            code4: code4 || null,
+            code5: code5 || null,
+            code6: code6 || null,
+            code7: code7 || null,
+            code8: code8 || null,
+            code9: code9 || null,
+            out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
+        };
 
-        const dataResult = await connection.execute(sql, [], {
+        // Fill remaining slots to avoid Oracle binding errors (same as P&L)
+        for (let i = 10; i <= 20; i++) {
+            binds[`code${i}`] = req.body[`code${i}`] || null;
+        }
+        for (let i = 1; i <= 4; i++) {
+            binds[`number${i}`] = req.body[`number${i}`] || null;
+        }
+        binds["date1"] = date1 ? new Date(date1) : null;
+        binds["date2"] = date2 ? new Date(date2) : null;
+        binds["date3"] = req.body["date3"] || null;
+        binds["date4"] = req.body["date4"] || null;
+
+        // ── Call PROC_BUILD_DYNAMIC_SQL_COMMON20 (identical to P&L) ──────────
+        const result = await connection.execute(
+            `DECLARE
+               v_sql VARCHAR2(32767);
+             BEGIN
+               PROC_BUILD_DYNAMIC_SQL_COMMON20(
+                 :parameter, :loginid,
+                 :code1,  :code2,  :code3,  :code4,  :code5,  :code6,  :code7,  :code8,  :code9,  :code10,
+                 :code11, :code12, :code13, :code14, :code15, :code16, :code17, :code18, :code19, :code20,
+                 :number1, :number2, :number3, :number4,
+                 :date1,   :date2,   :date3,   :date4,
+                 v_sql
+               );
+               :out_sql := v_sql;
+             END;`,
+            binds
+        );
+
+        const rawSql = (result.outBinds as any).out_sql;
+        console.log("[VisaExpiryReport] Generated SQL:", rawSql);
+
+        if (!rawSql) {
+            throw new Error(
+                "PROC_BUILD_DYNAMIC_SQL_COMMON20 returned no SQL. " +
+                "Ensure the WHEN 'Hr_Report_VISA_EXPIRY_REPORT' branch exists in the procedure."
+            );
+        }
+
+        // ── Execute the generated SQL (identical to P&L) ─────────────────────
+        const dataResult = await connection.execute(rawSql, [], {
             outFormat: oracledb.OUT_FORMAT_OBJECT,
         });
 
@@ -369,13 +366,14 @@ export const getVisaExpiryReport = async (req: Request, res: Response): Promise<
             return;
         }
 
+        // ── Build & send HTML ─────────────────────────────────────────────────
         const html = buildVisaExpiryHTML(rows, {
-            loginid:    loginid || "ADMIN",
-            division:   code2   || "All",
-            department: code3   || "All",
-            date_from:  date1   || "",
-            date_to:    date2   || "",
-            emp_type:   code9   || "A",
+            loginid: loginid || "ADMIN",
+            division: code2 || "",
+            department: code3 || "",
+            date_from: date1 || "",
+            date_to: date2 || "",
+            emp_type: code9 || "A",
         });
 
         res.setHeader("Content-Type", "text/html");
