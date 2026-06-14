@@ -73,6 +73,8 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
 
         const parameter = "Account_Report_Outstanding_Detail";
 
+
+
         // ── Tenant / connection ───────────────────────────────────────────
         let tenantId = getCurrentTenantId();
         if (!tenantId && loginid) {
@@ -138,6 +140,7 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
             outFormat: oracledb.OUT_FORMAT_OBJECT,
         });
 
+        console.log("rawsql------======:", rawSql);
         const rows = (dataResult.rows as any[]).map((row) =>
             Object.keys(row).reduce((acc: any, key) => {
                 acc[key.toLowerCase()] = row[key];
