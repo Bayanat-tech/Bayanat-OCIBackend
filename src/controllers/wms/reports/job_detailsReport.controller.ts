@@ -1,5 +1,6 @@
 import { Response } from "express";
 import oracledb from "oracledb";
+const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
@@ -9,61 +10,24 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 type ReportRow = Record<string, any>;
 
 export interface TJobDetails {
-  COMPANY_CODE: string;
-  DIV_CODE: string;
-  PRIN_CODE: string;
-  JOB_NO: string;
-  JOB_DATE: string;
-  JOB_TYPE: string;
-  JOB_CLASS: string;
-  DEPT_CODE: string;
-  TRANSPORT_MODE_DESC: string;
-  TRANSPORT_MODE: string;
-  DOC_REF: string | null;
-  PORT_CODE: string | null;
-  DESCRIPTION1: string | null;
-  DESCRIPTION2: string | null;
-  PRIN_REF1: string | null;
-  PRIN_REF2: string | null;
-  REMARKS: string | null;
-  ETA: string | null;
-  ATA: string | null;
-  ETD: string | null;
-  SCHEDULE_DATE: string | null;
-  PAYMENT_TERMS: string | null;
-  CURR_CODE: string;
-  EX_RATE: number;
-  FRIEGHT_VALUE: number;
-  INSURANCE_VALUE: number;
-  CUST_CODE: string | null;
-  CONTAINER_FLAG: string | null;
-  CONTAINER: string | null;
-  CONTAINER_DATE: string | null;
-  PACKDET: string;
-  PACKDET_DATE: string | null;
-  ALLOCATED: string;
-  ALLOCATE_DATE: string | null;
-  CANCELED: string;
-  CANCEL_DATE: string | null;
-  CONFIRMED: string;
-  CONFIRM_DATE: string | null;
-  GRN_NO: string | null;
-  GRN_DATE: string | null;
-  INVOICED: string;
-  INVOICE_DATE: string | null;
-  COMPLETED: string | null;
-  COMPLETE_DATE: string | null;
-  CREATED_BY: string;
-  CREATED_AT: string;
-  EXP_JOBNO: string | null;
-  PICKED: string;
-  PICKED_DATE: string | null;
-  ORDER_DATE: string | null;
-  ORDERED: string;
-  REF_CUSTOMS: string | null;
-  REF_CUSTOMS_DATE: string | null;
-  CANCELED_BY: string | null;
-  CANCEL_REMARKS: string | null;
+  COMPANY_CODE: string; DIV_CODE: string; PRIN_CODE: string; JOB_NO: string;
+  JOB_DATE: string; JOB_TYPE: string; JOB_CLASS: string; DEPT_CODE: string;
+  TRANSPORT_MODE_DESC: string; TRANSPORT_MODE: string; DOC_REF: string | null;
+  PORT_CODE: string | null; DESCRIPTION1: string | null; DESCRIPTION2: string | null;
+  PRIN_REF1: string | null; PRIN_REF2: string | null; REMARKS: string | null;
+  ETA: string | null; ATA: string | null; ETD: string | null;
+  SCHEDULE_DATE: string | null; PAYMENT_TERMS: string | null;
+  CURR_CODE: string; EX_RATE: number; FRIEGHT_VALUE: number; INSURANCE_VALUE: number;
+  CUST_CODE: string | null; CONTAINER_FLAG: string | null; CONTAINER: string | null;
+  CONTAINER_DATE: string | null; PACKDET: string; PACKDET_DATE: string | null;
+  ALLOCATED: string; ALLOCATE_DATE: string | null; CANCELED: string;
+  CANCEL_DATE: string | null; CONFIRMED: string; CONFIRM_DATE: string | null;
+  GRN_NO: string | null; GRN_DATE: string | null; INVOICED: string;
+  INVOICE_DATE: string | null; COMPLETED: string | null; COMPLETE_DATE: string | null;
+  CREATED_BY: string; CREATED_AT: string; EXP_JOBNO: string | null;
+  PICKED: string; PICKED_DATE: string | null; ORDER_DATE: string | null;
+  ORDERED: string; REF_CUSTOMS: string | null; REF_CUSTOMS_DATE: string | null;
+  CANCELED_BY: string | null; CANCEL_REMARKS: string | null;
 }
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
@@ -106,11 +70,14 @@ function dateText(value: unknown): string {
 
 function escapeHtml(value: unknown): string {
   return text(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function escapeXml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
 function numFmt(value: unknown, decimals = 2): string {
@@ -122,16 +89,16 @@ function numFmt(value: unknown, decimals = 2): string {
   });
 }
 
-// ─── Progress columns definition ─────────────────────────────────────────────
+// ─── Progress columns ─────────────────────────────────────────────────────────
 
 const PROGRESS_COLS: { label: string; flag: string; dateKey: string }[] = [
-  { label: "Job",       flag: "",            dateKey: "job_date" },
+  { label: "Job",       flag: "",               dateKey: "job_date"       },
   { label: "Container", flag: "container_flag", dateKey: "container_date" },
-  { label: "Packdet",   flag: "packdet",     dateKey: "packdet_date" },
-  { label: "Allocate",  flag: "allocated",   dateKey: "allocate_date" },
-  { label: "Confirm",   flag: "confirmed",   dateKey: "confirm_date" },
-  { label: "Completed", flag: "completed",   dateKey: "complete_date" },
-  { label: "Invoiced",  flag: "invoiced",    dateKey: "invoice_date" },
+  { label: "Packdet",   flag: "packdet",        dateKey: "packdet_date"   },
+  { label: "Allocate",  flag: "allocated",      dateKey: "allocate_date"  },
+  { label: "Confirm",   flag: "confirmed",      dateKey: "confirm_date"   },
+  { label: "Completed", flag: "completed",      dateKey: "complete_date"  },
+  { label: "Invoiced",  flag: "invoiced",       dateKey: "invoice_date"   },
 ];
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -142,19 +109,16 @@ async function loadJobData(
   prinCode: string
 ): Promise<ReportRow> {
   const conn = await getConn(req);
-  console.log('jobNo:',jobNo,'prin_code:',prinCode,'company_Code',req.user.company_code);
   try {
     const result = await conn.execute(
       `SELECT *
        FROM VW_BOWM_JOBTXN
-       WHERE 
-       COMPANY_CODE = '${req.user.company_code}'
-       AND job_no       = :job_no
-         AND prin_code    = :prin_code`,
+       WHERE COMPANY_CODE = '${req.user.company_code}'
+         AND job_no    = :job_no
+         AND prin_code = :prin_code`,
       { job_no: jobNo, prin_code: prinCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
     const rows = normalize(result.rows as any[]);
     if (!rows.length)
       throw Object.assign(new Error("Job not found"), { status: 404 });
@@ -173,22 +137,17 @@ function renderHtml(
   autoPrint: boolean
 ): string {
   const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
+    day: "2-digit", month: "short", year: "numeric",
   });
 
-  // ── Progress table rows ──
   const progressCells = PROGRESS_COLS.map((col) => {
     const dateVal = dateText(d[col.dateKey]);
-    const isDone = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
-    return `
-      <td class="prog-cell${isDone ? " done" : ""}">
-        <span class="prog-date">${isDone ? escapeHtml(dateVal) : ""}</span>
-      </td>`;
+    const isDone  = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
+    return `<td class="prog-cell${isDone ? " done" : ""}">
+      <span class="prog-date">${isDone ? escapeHtml(dateVal) : ""}</span>
+    </td>`;
   }).join("");
 
-  // ── Field helper (macro-expanded inline) ──
   const field = (label: string, value: unknown) => `
     <div class="field-row">
       <span class="f-label">${escapeHtml(label)}</span>
@@ -199,285 +158,99 @@ function renderHtml(
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>${escapeHtml(reportTitle)} – ${escapeHtml(d.job_no)}</title>
+  <title>${escapeHtml(reportTitle)} - ${escapeHtml(d.job_no)}</title>
   <style>
-    /* ── Reset & base ──────────────────────────────── */
     @page { size: A4; margin: 10mm 12mm; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 13px;
-      color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    /* ── Sheet ─────────────────────────────────────── */
-    .sheet {
-      width: 210mm;
-      min-height: 297mm;
-      margin: 0 auto;
-      background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-    }
-
-    /* ── Header bar ────────────────────────────────── */
-    .rpt-header {
-      background: #1e1b4b;
-      color: #fff;
-      text-align: center;
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.10em;
-      padding: 10px 16px;
-      text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-
-    /* ── Meta row ──────────────────────────────────── */
-    .rpt-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 2px 10px;
-      border-bottom: 2px solid #1e1b4b;
-      font-size: 10.5px;
-      color: #4b5563;
-      margin-bottom: 14px;
-    }
+    body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 13px; color: #111827;
+           background: #eef1f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff;
+             padding: 10mm 12mm; border: 1px solid #c4cdd9; }
+    .rpt-header { background: #1e1b4b; color: #fff; text-align: center; font-size: 15px;
+                  font-weight: 700; letter-spacing: .10em; padding: 10px 16px;
+                  text-transform: uppercase; border-radius: 3px 3px 0 0; }
+    .rpt-meta { display: flex; justify-content: space-between; align-items: center;
+                padding: 8px 2px 10px; border-bottom: 2px solid #1e1b4b;
+                font-size: 10.5px; color: #4b5563; margin-bottom: 14px; }
     .rpt-meta strong { color: #111827; font-weight: 600; }
-    .meta-badge {
-      padding: 2px 12px;
-      border-radius: 10px;
-      font-size: 9.5px;
-      font-weight: 700;
-      background: #ede9fe;
-      color: #4c1d95;
-      letter-spacing: 0.04em;
-    }
-    .meta-badge.cancelled {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    /* ── Section label ─────────────────────────────── */
-    .section-label {
-      font-size: 9.5px;
-      font-weight: 700;
-      color: #1e1b4b;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 7px;
-      padding-bottom: 4px;
-      border-bottom: 1.5px solid #1e1b4b;
-    }
-
-    /* ── Field rows ────────────────────────────────── */
-    .field-row {
-      display: flex;
-      align-items: baseline;
-      padding: 3.5px 0;
-      border-bottom: 1px solid #f1f5f9;
-    }
+    .section-label { font-size: 9.5px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
+                     letter-spacing: .08em; margin-bottom: 7px; padding-bottom: 4px;
+                     border-bottom: 1.5px solid #1e1b4b; }
+    .field-row { display: flex; align-items: baseline; padding: 3.5px 0;
+                 border-bottom: 1px solid #f1f5f9; }
     .field-row:last-child { border-bottom: none; }
-    .f-label {
-      font-size: 10px;
-      color: #6b7280;
-      min-width: 128px;
-      padding-right: 8px;
-      text-align: right;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .f-value {
-      font-size: 11px;
-      font-weight: 600;
-      color: #111827;
-    }
+    .f-label { font-size: 10px; color: #6b7280; min-width: 128px; padding-right: 8px;
+               text-align: right; white-space: nowrap; flex-shrink: 0; }
+    .f-value { font-size: 11px; font-weight: 600; color: #111827; }
     .nil { font-weight: 400; color: #9ca3af; }
-
-    /* ── Two-column grid ───────────────────────────── */
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0 32px;
-      margin-bottom: 14px;
-    }
-
-    /* ── Box (shaded panel) ────────────────────────── */
-    .box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 4px;
-      padding: 10px 14px;
-      margin-bottom: 14px;
-    }
-    .box-title {
-      font-size: 10px;
-      font-weight: 700;
-      color: #1e1b4b;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-bottom: 8px;
-      padding-bottom: 5px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .box-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0 24px;
-    }
-
-    /* ── Progress table ────────────────────────────── */
-    .progress-title {
-      font-size: 10px;
-      font-weight: 700;
-      color: #1e1b4b;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin: 14px 0 8px;
-      padding-bottom: 4px;
-      border-bottom: 2px solid #1e1b4b;
-    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
+    .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
+           padding: 10px 14px; margin-bottom: 14px; }
+    .box-title { font-size: 10px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
+                 letter-spacing: .07em; margin-bottom: 8px; padding-bottom: 5px;
+                 border-bottom: 1px solid #e2e8f0; }
+    .progress-title { font-size: 10px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
+                      letter-spacing: .08em; margin: 14px 0 8px; padding-bottom: 4px;
+                      border-bottom: 2px solid #1e1b4b; }
     table { width: 100%; border-collapse: collapse; }
-    thead th {
-      background: #1e1b4b;
-      color: #fff;
-      padding: 7px 8px;
-      font-size: 9.5px;
-      font-weight: 700;
-      text-align: center;
-      border: 1px solid #312e81;
-    }
-    .prog-cell {
-      border: 1px solid #d1d5db;
-      padding: 7px 8px;
-      text-align: center;
-      background: #fff;
-    }
-    .prog-cell.done {
-      background: #f0fdf4;
-    }
-    .prog-check {
-      display: block;
-      font-size: 13px;
-      color: #16a34a;
-      line-height: 1;
-      margin-bottom: 3px;
-    }
-    .prog-date {
-      display: block;
-      font-size: 9.5px;
-      color: #374151;
-    }
+    thead th { background: #1e1b4b; color: #fff; padding: 7px 8px; font-size: 9.5px;
+               font-weight: 700; text-align: center; border: 1px solid #312e81; }
+    .prog-cell { border: 1px solid #d1d5db; padding: 7px 8px; text-align: center; background: #fff; }
+    .prog-cell.done { background: #f0fdf4; }
+    .prog-date { display: block; font-size: 9.5px; color: #374151; }
     .prog-cell:not(.done) .prog-date { color: #9ca3af; }
-
-    /* ── Footer ─────────────────────────────────────── */
-    .rpt-footer {
-      margin-top: 14px;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 7px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 9px;
-      color: #9ca3af;
-    }
+    .rpt-footer { margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 7px;
+                  display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; }
     .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
-
-    /* ── Print toolbar (screen only) ───────────────── */
-    .toolbar {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      display: flex;
-      gap: 8px;
-      z-index: 10;
-    }
-    .toolbar button {
-      border: 1px solid #d1d5db;
-      border-radius: 7px;
-      padding: 8px 16px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-    }
-    .btn-print { background: #fff; color: #111827; }
-    .btn-print:hover { background: #f3f4f6; }
-    .btn-pdf   { background: #1e1b4b; color: #fff; border-color: #1e1b4b; }
-    .btn-pdf:hover { background: #312e81; }
-
     @media print {
       body { background: #fff; }
       .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      .toolbar { display: none; }
     }
   </style>
 </head>
 <body>
-
-  <div class="toolbar">
-    <button class="btn-print" onclick="window.print()">🖨 Print</button>
-    <button class="btn-pdf" onclick="
-      var w = window.open('', '_blank');
-      w.document.write(document.documentElement.outerHTML);
-      w.document.close();
-      setTimeout(function(){ w.print(); }, 500);
-    ">⬇ Save as PDF</button>
-  </div>
-
   <main class="sheet">
-
-    <!-- ── Header bar ── -->
     <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-
-    <!-- ── Meta row ── -->
     <div class="rpt-meta">
       <span>Print Date:&nbsp;<strong>${escapeHtml(printDate)}</strong></span>
       <span>Print User:&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
     </div>
 
-    <!-- ── Job Information ── -->
     <div class="section-label">Job Information</div>
     <div class="two-col">
       <div>
-        ${field("Job No",          d.job_no)}
-        ${field("Job Date",        dateText(d.job_date))}
-        ${field("Department",      d.dept_code)}
-        ${field("Transport Mode",  d.transport_mode_desc || d.transport_mode)}
-        ${field("Document Ref",    d.doc_ref)}
-        ${field("Principal",       d.prin_code)}
+        ${field("Job No",         d.job_no)}
+        ${field("Job Date",       dateText(d.job_date))}
+        ${field("Department",     d.dept_code)}
+        ${field("Transport Mode", d.transport_mode_desc || d.transport_mode)}
+        ${field("Document Ref",   d.doc_ref)}
+        ${field("Principal",      d.prin_code)}
       </div>
       <div>
-        ${field("Cancel Date",     dateText(d.cancel_date))}
-        ${field("Cancelled By",    d.canceled_by)}
-        ${field("Created By",      d.created_by)}
+        ${field("Cancel Date",  dateText(d.cancel_date))}
+        ${field("Cancelled By", d.canceled_by)}
+        ${field("Created By",   d.created_by)}
       </div>
     </div>
 
-    <!-- ── References & Remarks ── -->
     <div class="section-label">References &amp; Remarks</div>
     <div class="box" style="margin-bottom:14px;">
-      ${field("Description",    d.description1)}
-      ${field("Description 2",  d.description2)}
-      ${field("Principal Ref",  d.prin_ref1)}
-      ${field("Other Ref",      d.prin_ref2)}
-      ${field("Remarks",        d.remarks)}
+      ${field("Description",   d.description1)}
+      ${field("Description 2", d.description2)}
+      ${field("Principal Ref", d.prin_ref1)}
+      ${field("Other Ref",     d.prin_ref2)}
+      ${field("Remarks",       d.remarks)}
     </div>
 
-    <!-- ── FIRS Details (two shaded panels) ── -->
     <div class="section-label">FIRS Details</div>
-    <div class="box-grid" style="gap:16px; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr;">
+    <div style="gap:16px; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr;">
       <div class="box" style="margin-bottom:0;">
         <div class="box-title">Logistics</div>
-        ${field("Port Code",      d.port_code)}
-        ${field("ETA",            dateText(d.eta))}
-        ${field("ATA",            dateText(d.ata))}
-        ${field("ETD",            dateText(d.etd))}
-        ${field("Schedule Date",  dateText(d.schedule_date))}
+        ${field("Port Code",     d.port_code)}
+        ${field("ETA",           dateText(d.eta))}
+        ${field("ATA",           dateText(d.ata))}
+        ${field("ETD",           dateText(d.etd))}
+        ${field("Schedule Date", dateText(d.schedule_date))}
       </div>
       <div class="box" style="margin-bottom:0;">
         <div class="box-title">Financial</div>
@@ -489,76 +262,356 @@ function renderHtml(
       </div>
     </div>
 
-    <!-- ── Job Progress ── -->
     <div class="progress-title">Job Progress</div>
     <table>
       <thead>
-        <tr>
-          ${PROGRESS_COLS.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("")}
-        </tr>
+        <tr>${PROGRESS_COLS.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>
       </thead>
-      <tbody>
-        <tr>${progressCells}</tr>
-      </tbody>
+      <tbody><tr>${progressCells}</tr></tbody>
     </table>
 
-    <!-- ── Footer ── -->
     <div class="rpt-footer">
       <span>Object: <code>${escapeHtml(d.company_code)}-${escapeHtml(d.job_no)}</code></span>
       <span>Powered by Bayanat Technology</span>
     </div>
-
   </main>
-
-  ${autoPrint
-    ? `<script>window.addEventListener("load", () => setTimeout(() => window.print(), 300));</script>`
-    : ""}
+  <script>
+    // Print button in the Dialog toolbar fires this via postMessage
+    window.addEventListener("message", (e) => {
+      if (e.data === "print") window.print();
+    });
+    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
+  </script>
 </body>
 </html>`;
 }
 
-// ─── Route handler ────────────────────────────────────────────────────────────
+// ─── Excel builder ────────────────────────────────────────────────────────────
+// Uses AdmZip (already in the project) — same pattern as the finance report sample.
+// STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
+
+const STYLE_ID = {
+  default:         0,
+  header:          1,  // white text, dark-indigo bg, centered
+  sectionTitle:    2,  // indigo text, lavender bg, bottom border
+  label:           3,  // gray bold, right-aligned
+  value:           4,  // dark bold, wrapping
+  progressDone:    5,  // green-tint bg, centered
+  progressPending: 6,  // white bg, gray text, centered
+} as const;
+
+type StyleKey = keyof typeof STYLE_ID;
+
+interface XlCell { v: unknown; s: number }
+
+function xc(v: unknown, style: StyleKey): XlCell {
+  return { v, s: STYLE_ID[style] };
+}
+
+function buildExcelBuffer(d: ReportRow): Buffer {
+  // Layout: 7 cols (A-G)
+  //   A = left label   B = left value   C = spacer
+  //   D = right label  E = right value  F,G = unused
+  // Progress rows use all 7 cols (one per PROGRESS_COL).
+  // null inside a row = cell is part of a merge (will be emitted as <mergeCell>).
+
+  const NCOLS = 7;
+  const skip  = null; // shorthand for a merged/empty cell slot
+
+  type Row = (XlCell | null)[];
+  const rows: Row[] = [];
+
+  // ── Row 1: title banner ───────────────────────────────────────────────────
+  rows.push([xc(`WMS Job Details Report — Job ${text(d.job_no)}`, "header"), skip, skip, skip, skip, skip, skip]);
+
+  // blank row
+  rows.push(Array(NCOLS).fill(skip));
+
+  // ── Job Information ───────────────────────────────────────────────────────
+  rows.push([xc("JOB INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
+
+  const leftInfo: [string, unknown][] = [
+    ["Job No",         d.job_no],
+    ["Job Date",       dateText(d.job_date)],
+    ["Department",     d.dept_code],
+    ["Transport Mode", d.transport_mode_desc || d.transport_mode],
+    ["Document Ref",   d.doc_ref],
+    ["Principal",      d.prin_code],
+  ];
+  const rightInfo: [string, unknown][] = [
+    ["Cancel Date",  dateText(d.cancel_date)],
+    ["Cancelled By", d.canceled_by],
+    ["Created By",   d.created_by],
+  ];
+  for (let i = 0; i < Math.max(leftInfo.length, rightInfo.length); i++) {
+    const [ll, lv] = leftInfo[i]  ?? ["", ""];
+    const [rl, rv] = rightInfo[i] ?? ["", ""];
+    rows.push([xc(ll, "label"), xc(lv, "value"), xc("", "default"), xc(rl, "label"), xc(rv, "value"), skip, skip]);
+  }
+
+  rows.push(Array(NCOLS).fill(skip));
+
+  // ── References & Remarks ──────────────────────────────────────────────────
+  rows.push([xc("REFERENCES & REMARKS", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
+  for (const [label, val] of [
+    ["Description",   d.description1],
+    ["Description 2", d.description2],
+    ["Principal Ref", d.prin_ref1],
+    ["Other Ref",     d.prin_ref2],
+    ["Remarks",       d.remarks],
+  ] as [string, unknown][]) {
+    rows.push([xc(label, "label"), xc(val, "value"), skip, skip, skip, skip, skip]);
+  }
+
+  rows.push(Array(NCOLS).fill(skip));
+
+  // ── FIRS Details ──────────────────────────────────────────────────────────
+  rows.push([xc("FIRS DETAILS", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
+  rows.push([xc("Logistics", "sectionTitle"), skip, xc("", "default"), xc("Financial", "sectionTitle"), skip, skip, skip]);
+
+  const logistics: [string, unknown][] = [
+    ["Port Code",     d.port_code],
+    ["ETA",           dateText(d.eta)],
+    ["ATA",           dateText(d.ata)],
+    ["ETD",           dateText(d.etd)],
+    ["Schedule Date", dateText(d.schedule_date)],
+  ];
+  const financial: [string, unknown][] = [
+    ["Payment Terms",   d.payment_terms],
+    ["Currency",        d.curr_code],
+    ["Exchange Rate",   numFmt(d.ex_rate, 4)],
+    ["Freight Value",   numFmt(d.frieght_value)],
+    ["Insurance Value", numFmt(d.insurance_value)],
+  ];
+  for (let i = 0; i < 5; i++) {
+    const [ll, lv] = logistics[i] ?? ["", ""];
+    const [rl, rv] = financial[i] ?? ["", ""];
+    rows.push([xc(ll, "label"), xc(lv, "value"), xc("", "default"), xc(rl, "label"), xc(rv, "value"), skip, skip]);
+  }
+
+  rows.push(Array(NCOLS).fill(skip));
+
+  // ── Job Progress ──────────────────────────────────────────────────────────
+  rows.push([xc("JOB PROGRESS", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
+
+  // Header row — 7 cols, one per progress col
+  rows.push(PROGRESS_COLS.map((col) => xc(col.label, "header")));
+
+  // Dates row
+  rows.push(PROGRESS_COLS.map((col) => {
+    const isDone = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
+    return xc(isDone ? dateText(d[col.dateKey]) : "—", isDone ? "progressDone" : "progressPending");
+  }));
+
+  // Status row
+  rows.push(PROGRESS_COLS.map((col) => {
+    const isDone = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
+    return xc(isDone ? "Done" : "Pending", isDone ? "progressDone" : "progressPending");
+  }));
+
+  // ── Build sheet XML ───────────────────────────────────────────────────────
+  const COL_WIDTHS = [18, 30, 3, 18, 30, 2, 2];
+
+  const colXml = COL_WIDTHS
+    .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
+    .join("");
+
+  // Collect merge ranges: a run of nulls following a non-null cell = merge
+  const merges: string[] = [];
+  rows.forEach((row, ri) => {
+    const rn = ri + 1;
+    let spanStart = -1;
+    row.forEach((cell, ci) => {
+      if (cell !== null && spanStart === -1) {
+        spanStart = ci;
+      } else if (cell === null && spanStart !== -1) {
+        // extend through trailing nulls
+        let end = ci;
+        while (end + 1 < row.length && row[end + 1] === null) end++;
+        if (end > spanStart) {
+          merges.push(
+            `${String.fromCharCode(65 + spanStart)}${rn}:${String.fromCharCode(65 + end)}${rn}`
+          );
+        }
+        spanStart = -1;
+        // skip to end of null run (forEach will increment past it)
+      } else if (cell !== null) {
+        spanStart = ci;
+      }
+    });
+  });
+
+  let sheetDataXml = "";
+  rows.forEach((row, ri) => {
+    const rn  = ri + 1;
+    const ht  = rn === 1 ? ` ht="22" customHeight="1"` : "";
+    let rowXml = `<row r="${rn}"${ht}>`;
+    row.forEach((cell, ci) => {
+      if (cell === null) return;
+      const ref = `${String.fromCharCode(65 + ci)}${rn}`;
+      if (typeof cell.v === "number") {
+        rowXml += `<c r="${ref}" s="${cell.s}"><v>${cell.v}</v></c>`;
+      } else {
+        rowXml += `<c r="${ref}" s="${cell.s}" t="inlineStr"><is><t>${escapeXml(cell.v ?? "")}</t></is></c>`;
+      }
+    });
+    rowXml += `</row>`;
+    sheetDataXml += rowXml;
+  });
+
+  const mergeXml = merges.length
+    ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>`
+    : "";
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${colXml}</cols>
+  <sheetData>${sheetDataXml}</sheetData>
+  ${mergeXml}
+</worksheet>`;
+
+  // ── Styles XML — order must match STYLE_ID above ──────────────────────────
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="5">
+    <font><sz val="10"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF1E1B4B"/><name val="Calibri"/></font>
+    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="6">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1E1B4B"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="4">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FF312E81"/></left><right style="thin"><color rgb="FF312E81"/></right>
+      <top style="thin"><color rgb="FF312E81"/></top><bottom style="thin"><color rgb="FF312E81"/></bottom>
+      <diagonal/>
+    </border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFC7D2FE"/></bottom><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
+      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="7">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="4" borderId="3" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="5" borderId="3" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+  </cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Job Details" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  // AdmZip — same pattern as the finance report sample
+  const zip = new AdmZip();
+  zip.addFile("[Content_Types].xml",        Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels",                Buffer.from(rels));
+  zip.addFile("xl/workbook.xml",            Buffer.from(workbookXml));
+  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
+  zip.addFile("xl/worksheets/sheet1.xml",   Buffer.from(sheetXml));
+  zip.addFile("xl/styles.xml",              Buffer.from(stylesXml));
+  return zip.toBuffer();
+}
+
+// ─── Route handlers ───────────────────────────────────────────────────────────
 
 /**
- * GET /api/wms/reports/job-details/:job_no
+ * GET /api/wms/inbound/reports/job-details/:job_no
  *
- * Query params (all optional if defaults are acceptable):
- *   company_code   – falls back to req.user.company_code or "BSG"
- *   prin_code      – required if not in params
- *   title          – report title shown in header (default: "WMS Job Details Report")
- *   print          – "true" | "false"  (auto-triggers browser print dialog)
- *
- * Opens a self-contained, print-ready HTML page in the browser.
- * The user clicks "Print" or "Save as PDF" to download/print.
+ * Returns self-contained HTML for the Dialog iframe.
+ * The embedded <script> listens for postMessage("print") from the Dialog toolbar
+ * so Print/PDF are handled natively without a new tab.
  */
 export const getWmsJobDetailsReportHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo = text(req.params.job_no || req.query.job_no);
-    // const companyCode =
-    //   text(req.query.company_code) || text(req.user?.company_code) || "BSG";
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "WMS Job Details Report";
-    const autoPrint = req.query.print !== "false";
+    const autoPrint   = req.query.print === "true";
 
     if (!jobNo || !prinCode) {
-      res.status(400).json({
-        success: false,
-        message: "job_no and prin_code are required",
-      });
+      res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
-
-    const jobData = await loadJobData(req, jobNo , prinCode);
-
+    const jobData = await loadJobData(req, jobNo, prinCode);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(renderHtml(jobData, reportTitle, text(req.user?.loginid), autoPrint));
   } catch (error: any) {
-    console.error("WMS Job Details Report error:", error);
-    res
-      .status(error.status || 500)
-      .json({ success: false, message: error.message || "Unable to generate report" });
+    console.error("WMS Job Details HTML error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+  }
+};
+
+/**
+ * GET /api/wms/inbound/reports/job-details/:job_no/excel
+ *
+ * Streams a styled .xlsx using AdmZip — fast, no third-party spreadsheet library.
+ * Uses res.end() (not res.send()) to avoid Express double-encoding the binary buffer.
+ */
+export const getWmsJobDetailsReportExcel = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const jobNo    = text(req.params.job_no || req.query.job_no);
+    const prinCode = text(req.query.prin_code || req.params.prin_code);
+
+    if (!jobNo || !prinCode) {
+      res.status(400).json({ success: false, message: "job_no and prin_code are required" });
+      return;
+    }
+    const jobData = await loadJobData(req, jobNo, prinCode);
+    const buffer  = buildExcelBuffer(jobData);
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="Job_${jobNo}_Details.xlsx"`);
+    res.end(buffer); // res.end() matches the sample — prevents Express buffer re-encoding
+  } catch (error: any) {
+    console.error("WMS Job Details Excel error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
   }
 };

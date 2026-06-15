@@ -81,7 +81,9 @@ import { insUpdTsStnDetailEdiBulk } from "../../../controllers/StockTransfer/ins
 import { upsertMsPrincipal } from "../../../controllers/wms/transaction/inbound/upsertMsPrincipal";
 import { upsertMsActivityBilling } from "../../../controllers/wms/transaction/inbound/upsertMsActivityBilling";
 import { upsertMsProduct } from "../../../controllers/wms/transaction/inbound/upsertMsProduct";
-import { getWmsJobDetailsReportHtml } from "../../../controllers/wms/reports/job_detailsReport.controller";
+import { getWmsJobDetailsReportExcel, getWmsJobDetailsReportHtml } from "../../../controllers/wms/reports/job_detailsReport.controller";
+import { getTallyPutawayReportExcel, getTallyPutawayReportHtml } from "../../../controllers/wms/reports/Putawayreport.controller";
+import { getGrnReportExcel, getGrnReportHtml } from "../../../controllers/wms/reports/GrnReport.controller";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -317,6 +319,17 @@ router.get(
   // getReports
 );
 
+//job details report route
 router.get("/reports/job-details/:job_no", getWmsJobDetailsReportHtml);
+// router.get("/reports/job-details/:job_no/pdf",    getWmsJobDetailsReportPdf);
+router.get("/reports/job-details/:job_no/excel",  getWmsJobDetailsReportExcel);
+
+//putaway report route
+router.get("/reports/tally-putaway/:job_no", getTallyPutawayReportHtml)
+router.get("/reports/tally-putaway/:job_no/excel",getTallyPutawayReportExcel)
+
+//Grn report route
+router.get("/reports/Grn-report/:job_no", getGrnReportHtml)
+router.get("/reports/Grn-report/:job_no/excel",getGrnReportExcel)
 
 export default router;
