@@ -62,6 +62,7 @@ import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
 import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
 import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
+import { getDNSummaryReport } from "../../../controllers/wms/reports/Dnsummaryreport";
 
 
 const router = express.Router();
@@ -95,6 +96,14 @@ router.post('/reports/getProfitLossReport/html', getProfitLossReport);
 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
+
+
+
+
+
+// WMS REPORTS ROUTES
+
+router.post('/reports/getDNSummaryReport/html', getDNSummaryReport);
 
 
 
