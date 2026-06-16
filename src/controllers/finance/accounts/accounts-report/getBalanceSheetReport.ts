@@ -38,7 +38,7 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
     connection = await TenantManager.getConnection(tenantId);
 
     const binds: any = {
-      parameter: parameter || "Account_Balance_Sheet",
+      parameter: parameter || "BALANCE_SHEET_REPORT_MAIN",
       loginid: loginid || "ADMIN",
       code1: code1 || null, code2: code2 || null, code3: code3 || null,
       code4: code4 || null, code5: code5 || null, code6: code6 || null,
@@ -71,10 +71,8 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
     );
 
     // ── Aggregate by H_NAME (heading) then BL_CODE/BL_NAME (line item) ──
-    // BL_TYPE: 'D' = Debit side (Assets), 'C' = Credit side (Liabilities + Equity)
-
     type LineItem = { bl_code: string; bl_name: string; amount: number };
-    type HeadingGroup = { h_code: string; h_name: string; bl_type: string; total: number; items: LineItem[] };
+    type HeadingGroup = { h_code: string; h_name: string; total: number; items: LineItem[] };
 
     const headingMap = new Map<string, HeadingGroup>();
 
@@ -86,7 +84,6 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
         headingMap.set(hKey, {
           h_code: text(r.h_code),
           h_name: text(r.h_name),
-          bl_type: text(r.bl_type),
           total: 0,
           items: [],
         });
@@ -107,30 +104,39 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
     const headings = Array.from(headingMap.values());
 
     // ── Classify headings into report sections ──
-    // Section ordering is based on H_CODE convention used by VW_BALANCE_SHEET_RPT:
-    //   D-type (Debit) headings => Assets
-    //   C-type (Credit) headings => Liabilities & Owners Equity
-    // "Current" vs "Non Current" / "Owners Equity" classification is derived from H_NAME.
+    // H_NAME drives Current vs Non Current vs Equity classification.
+    // H_CODE's leading digit drives Assets (1x) vs Liabilities (2x) vs Equity (3x).
+    // Adjust the digit-mapping below if your H_CODE numbering convention differs.
 
     const isCurrent = (hName: string) => /current/i.test(hName) && !/non.?current/i.test(hName);
     const isNonCurrent = (hName: string) => /non.?current/i.test(hName);
     const isEquity = (hName: string) => /equity/i.test(hName);
 
-    const nonCurrentAssets = headings.filter((h) => h.bl_type === "D" && isNonCurrent(h.h_name));
-    const currentAssets = headings.filter((h) => h.bl_type === "D" && isCurrent(h.h_name) && !isEquity(h.h_name));
-    const nonCurrentLiabilities = headings.filter((h) => h.bl_type === "C" && isNonCurrent(h.h_name) && !isEquity(h.h_name));
-    const currentLiabilities = headings.filter((h) => h.bl_type === "C" && isCurrent(h.h_name) && !isEquity(h.h_name));
+    const hCodeFirstDigit = (hCode: string) => hCode?.charAt(0);
+
+    const isAssetSection = (h: HeadingGroup) =>
+      !isEquity(h.h_name) && hCodeFirstDigit(h.h_code) === "1";
+
+    const isLiabilitySection = (h: HeadingGroup) =>
+      !isEquity(h.h_name) && hCodeFirstDigit(h.h_code) === "2";
+
+    const nonCurrentAssets = headings.filter((h) => isAssetSection(h) && isNonCurrent(h.h_name));
+    const currentAssets = headings.filter((h) => isAssetSection(h) && isCurrent(h.h_name));
+    const nonCurrentLiabilities = headings.filter((h) => isLiabilitySection(h) && isNonCurrent(h.h_name));
+    const currentLiabilities = headings.filter((h) => isLiabilitySection(h) && isCurrent(h.h_name));
     const ownersEquity = headings.filter((h) => isEquity(h.h_name));
 
-    // Anything that doesn't match the above patterns falls back based on bl_type
+    // Fallback for anything unclassified by the above patterns
     const classified = new Set([
       ...nonCurrentAssets, ...currentAssets,
       ...nonCurrentLiabilities, ...currentLiabilities, ...ownersEquity,
     ]);
     headings.forEach((h) => {
       if (classified.has(h)) return;
-      if (h.bl_type === "D") currentAssets.push(h);
-      else currentLiabilities.push(h);
+      const digit = hCodeFirstDigit(h.h_code);
+      if (digit === "1") currentAssets.push(h);
+      else if (digit === "2") currentLiabilities.push(h);
+      else ownersEquity.push(h);
     });
 
     const sum = (arr: HeadingGroup[]) => arr.reduce((s, h) => s + h.total, 0);
@@ -166,7 +172,9 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
       </tr>
       ${renderLineItems(heading)}`;
 
-    const renderSection = (title: string, headings: HeadingGroup[], total: number) => `
+    const renderSection = (title: string, headings: HeadingGroup[], total: number) => {
+      if (headings.length === 0) return "";
+      return `
       <tr class="section-header">
         <td colspan="2"><strong>${title}</strong></td>
       </tr>
@@ -175,6 +183,7 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
         <td><strong>TOTAL ${title.toUpperCase()}</strong></td>
         <td class="num"><strong>${formatBalance(total)}</strong></td>
       </tr>`;
+    };
 
     const tableBodyHtml = `
       ${renderSection("Non Current Assets", nonCurrentAssets, totalNonCurrentAssets)}
@@ -204,7 +213,8 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
     `;
 
     const asOnDate = formatDateStr(code5 || new Date());
-    const reportTitle = `Balance Sheet as on ${asOnDate}`;
+    const divisionLabel = (code2 && code2 !== "All") ? ` (Division : ${text(code2)})` : "";
+    const reportTitle = `Balance Sheet as on ${asOnDate}${divisionLabel}`;
     const generatedBy = text(loginid) || "Unknown User";
     const reportDate = formatDateStr(new Date());
 
