@@ -44,7 +44,6 @@ axiosInstance.interceptors.request.use(
 
 axiosInstance.interceptors.response.use(
   (response) => {
-    // Log response details including URL and body for easier debugging of 404s
     console.log("Response URL:", response.config?.url);
     console.log("Response Full URL:", `${response.config?.baseURL || ""}${response.config?.url || ""}`);
     console.log("Response Headers:", response.headers);
