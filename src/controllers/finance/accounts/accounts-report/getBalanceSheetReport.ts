@@ -70,7 +70,6 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
       Object.keys(row).reduce((acc: any, key) => { acc[key.toLowerCase()] = row[key]; return acc; }, {})
     );
 
-    // ── Aggregate by H_NAME (heading) then BL_CODE/BL_NAME (line item) ──
     // ── Aggregate by H_CODE/H_NAME (heading) then BL_CODE/BL_NAME (line item) ──
     type LineItem = { bl_code: string; bl_name: string; amount: number };
     type HeadingGroup = { h_code: string; h_name: string; total: number; items: LineItem[] };
