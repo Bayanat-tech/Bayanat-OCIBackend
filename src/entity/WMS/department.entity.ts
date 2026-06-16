@@ -1,7 +1,7 @@
 import { Entity, PrimaryColumn, Column } from "typeorm";
 import constants from "../../helpers/constants";
 
-@Entity(constants.TABLE.MS_HR_DEPARTMENT)
+@Entity(constants.TABLE.MS_DEPARTMENT)
 export class DepartmentMaster {
 
   @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 5 })
