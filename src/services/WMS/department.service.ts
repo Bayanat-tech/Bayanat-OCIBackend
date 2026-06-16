@@ -1,3 +1,4 @@
+import { FindManyOptions } from "typeorm";
 import { getRepository } from "../../database/connection";
 import { DepartmentMaster } from "../../entity/WMS/department.entity";
 
@@ -6,17 +7,15 @@ export class DepartmentService {
     return getRepository(DepartmentMaster);
   }
 
-  // Check for duplicate department by code and name
+  // Check for duplicate department by the actual unique key (company_code + dept_code)
   static async findDuplicate(params: {
     company_code: string;
-    div_code: string;
     dept_code: string;
   }): Promise<DepartmentMaster | null> {
     const repository = this.getDepartmentRepository();
     return await repository.findOne({
       where: {
         company_code: params.company_code,
-        div_code: params.div_code,
         dept_code: params.dept_code,
       },
     });
@@ -28,9 +27,9 @@ export class DepartmentService {
       const repository = this.getDepartmentRepository();
       return await repository.find();
     } catch (error: any) {
-      // Handle case where MS_HR_DEPARTMENT table doesn't exist in tenant schema
+      // Handle case where MS_DEPARTMENT table doesn't exist in tenant schema
       if (error.code === 'ORA-00942' || error.driverError?.code === 'ORA-00942') {
-        console.warn('[DepartmentService.findAll] ⚠️  MS_HR_DEPARTMENT table not available in this tenant schema');
+        console.warn('[DepartmentService.findAll] ⚠️  MS_DEPARTMENT table not available in this tenant schema');
         return []; // Return empty array gracefully
       }
       // Re-throw other errors
@@ -50,79 +49,92 @@ export class DepartmentService {
   }
 
   // Create new department
-    static async createDepartment(deptData: {
-      company_code: string;
-      div_code: string;
-      dept_code: string;  
-      dept_name: string;
-      dept_short_name?: string;
-      dept_addr1?: string;
-      dept_addr2?: string;
-      dept_addr3?: string;
-      phone?: string;
-      fax?: string;
-      email?: string;
-      dept_head_id?: string;
-      remarks?: string;
-      status: string;
-      user_id?: string;
-      user_dt?: Date;
-      enterprice_code: string;
-    }): Promise<DepartmentMaster> {
-      const repository = this.getDepartmentRepository();
-      
-      // Create the department object with proper TypeScript types
-      const departmentData: Partial<DepartmentMaster> = {
-        company_code: deptData.company_code,
-        div_code: deptData.div_code,
-        dept_code: deptData.dept_code,
-        dept_name: deptData.dept_name,
-        status: deptData.status,
-        enterprice_code: deptData.enterprice_code,
-        user_id: deptData.user_id,
-        user_dt: deptData.user_dt,
-      };
-      
-      // Add optional fields only if they have values (not empty strings)
-      if (deptData.dept_short_name && deptData.dept_short_name.trim() !== '') {
-        departmentData.dept_short_name = deptData.dept_short_name;
-      }
-      
-      if (deptData.dept_addr1 && deptData.dept_addr1.trim() !== '') {
-        departmentData.dept_addr1 = deptData.dept_addr1;
-      }
-      
-      if (deptData.dept_addr2 && deptData.dept_addr2.trim() !== '') {
-        departmentData.dept_addr2 = deptData.dept_addr2;
-      }
-      
-      if (deptData.dept_addr3 && deptData.dept_addr3.trim() !== '') {
-        departmentData.dept_addr3 = deptData.dept_addr3;
-      }
-      
-      if (deptData.phone && deptData.phone.trim() !== '') {
-        departmentData.phone = deptData.phone;
-      }
-      
-      if (deptData.fax && deptData.fax.trim() !== '') {
-        departmentData.fax = deptData.fax;
-      }
-      
-      if (deptData.email && deptData.email.trim() !== '') {
-        departmentData.email = deptData.email;
-      }
-      
-      if (deptData.dept_head_id && deptData.dept_head_id.trim() !== '') {
-        departmentData.dept_head_id = deptData.dept_head_id;
-      }
-      
-      if (deptData.remarks && deptData.remarks.trim() !== '') {
-        departmentData.remarks = deptData.remarks;
-      }
-      
-      const department = repository.create(departmentData as DepartmentMaster);
-      return await repository.save(department);
+  static async createDepartment(deptData: {
+    company_code: string;
+    dept_code: string;
+    dept_name?: string;
+    inv_flag?: string;
+    user_dt?: Date;
+    user_id?: string;
+    jobno_seq?: number;
+    invno_seq?: number;
+    operation_type?: string;
+    div_code?: string;
+    ac_div_code?: string;
+    inv_prefix?: string;
+    wms_inv_prefix?: string;
+    trspt_inv_prefix?: string;
+    jobno_seq_inb?: string;
+    jobno_seq_oub?: string;
+  }): Promise<DepartmentMaster> {
+    const repository = this.getDepartmentRepository();
+
+    // Required fields (PK)
+    const departmentData: Partial<DepartmentMaster> = {
+      company_code: deptData.company_code,
+      dept_code: deptData.dept_code,
+    };
+
+    // Add optional fields only if they have values (not empty strings)
+    if (deptData.dept_name && deptData.dept_name.trim() !== '') {
+      departmentData.dept_name = deptData.dept_name;
     }
+
+    if (deptData.inv_flag && deptData.inv_flag.trim() !== '') {
+      departmentData.inv_flag = deptData.inv_flag;
+    }
+
+    if (deptData.user_dt) {
+      departmentData.user_dt = deptData.user_dt;
+    }
+
+    if (deptData.user_id && deptData.user_id.trim() !== '') {
+      departmentData.user_id = deptData.user_id;
+    }
+
+    if (deptData.jobno_seq !== undefined) {
+      departmentData.jobno_seq = deptData.jobno_seq;
+    }
+
+    if (deptData.invno_seq !== undefined) {
+      departmentData.invno_seq = deptData.invno_seq;
+    }
+
+    if (deptData.operation_type && deptData.operation_type.trim() !== '') {
+      departmentData.operation_type = deptData.operation_type;
+    }
+
+    if (deptData.div_code && deptData.div_code.trim() !== '') {
+      departmentData.div_code = deptData.div_code;
+    }
+
+    if (deptData.ac_div_code && deptData.ac_div_code.trim() !== '') {
+      departmentData.ac_div_code = deptData.ac_div_code;
+    }
+
+    if (deptData.inv_prefix && deptData.inv_prefix.trim() !== '') {
+      departmentData.inv_prefix = deptData.inv_prefix;
+    }
+
+    if (deptData.wms_inv_prefix && deptData.wms_inv_prefix.trim() !== '') {
+      departmentData.wms_inv_prefix = deptData.wms_inv_prefix;
+    }
+
+    if (deptData.trspt_inv_prefix && deptData.trspt_inv_prefix.trim() !== '') {
+      departmentData.trspt_inv_prefix = deptData.trspt_inv_prefix;
+    }
+
+    if (deptData.jobno_seq_inb && deptData.jobno_seq_inb.trim() !== '') {
+      departmentData.jobno_seq_inb = deptData.jobno_seq_inb;
+    }
+
+    if (deptData.jobno_seq_oub && deptData.jobno_seq_oub.trim() !== '') {
+      departmentData.jobno_seq_oub = deptData.jobno_seq_oub;
+    }
+
+    const department = repository.create(departmentData as DepartmentMaster);
+    return await repository.save(department);
+  }
 
   // Update existing department
   static async updateDepartment(
@@ -152,11 +164,27 @@ export class DepartmentService {
   }
 
   // Check if department exists
-  static async checkDepartmentExists(dept_code: string): Promise<boolean> {
+  static async checkDepartmentExists(
+    dept_code: string,
+    company_code: string
+  ): Promise<boolean> {
     const repository = this.getDepartmentRepository();
     const count = await repository.count({
-      where: { dept_code },
+      where: { dept_code, company_code },
     });
     return count > 0;
   }
+
+  static async findAndCount(options: FindManyOptions<DepartmentMaster>): Promise<[DepartmentMaster[], number]> {
+  try {
+    const repository = this.getDepartmentRepository();
+    return await repository.findAndCount(options);
+  } catch (error: any) {
+    if (error.code === 'ORA-00942' || error.driverError?.code === 'ORA-00942') {
+      console.warn('[DepartmentService.findAndCount] ⚠️  MS_DEPARTMENT table not available in this tenant schema');
+      return [[], 0];
+    }
+    throw error;
+  }
+}
 }
