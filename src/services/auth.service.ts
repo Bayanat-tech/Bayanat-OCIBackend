@@ -12,7 +12,7 @@ interface ExternalApiUser {
   TYPE?: string;
   EMPLOYEE_ID?: string;
 }
-
+ 
 export class AuthService {
   private static getUserRepository() {
     return getRepository(User);
@@ -77,7 +77,8 @@ export class AuthService {
   static async createUserFromExternal(
     apiUser: ExternalApiUser,
     password: string,
-    hashedPassword: string
+    hashedPassword: string,
+    companyCode: string = "BSG"
   ): Promise<User> {
     const userRepository = this.getUserRepository();
 
@@ -96,7 +97,7 @@ export class AuthService {
       appType === "VENDOR" ? apiUser.USER_ID : apiUser.EMPLOYEE_ID || "";
 
     const newUser = new User();
-    newUser.company_code = "BSG";
+    newUser.company_code = companyCode;
     newUser.email_id = syntheticEmail; 
     newUser.loginid = apiUser.USER_ID;
     newUser.username = apiUser.NAME;
@@ -132,7 +133,7 @@ export class AuthService {
     `;
 
       const params = {
-        company_code: "BSG",
+        company_code: companyCode,
         loginid: apiUser.USER_ID,
         role_id: roleId,
         snew: "Y",

@@ -33,7 +33,10 @@ axiosInstance.interceptors.request.use(
       config.headers["XApiKey"] = API_KEY;
     }
 
+    // Log headers and full request info for debugging
+    const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
     console.log("Final Request Headers:", config.headers);
+    console.log("Final Request:", (config.method || "GET").toUpperCase(), fullUrl, "params:", config.params, "data:", config.data);
     return config;
   },
   (error) => Promise.reject(error)
@@ -41,8 +44,12 @@ axiosInstance.interceptors.request.use(
 
 axiosInstance.interceptors.response.use(
   (response) => {
+    // Log response details including URL and body for easier debugging of 404s
+    console.log("Response URL:", response.config?.url);
+    console.log("Response Full URL:", `${response.config?.baseURL || ""}${response.config?.url || ""}`);
     console.log("Response Headers:", response.headers);
     console.log("Response Status:", response.status);
+    console.log("Response Data:", response.data);
     return response;
   },
   (error) => {
@@ -389,12 +396,14 @@ export class VendorService {
 
   static async checkAccountEmployee(userId: string) {
     try {
-      const response = await axiosInstance.get(
-        "/VENDOR_SYSTEM_/checkAccountEmployee",
-        {
-          params: { p_userid: userId },
-        }
-      );
+      // Ensure '/api' path segment is included if baseURL doesn't contain it
+      const endpoint = API_BASE_URL && API_BASE_URL.includes("/api/")
+        ? "/VENDOR_SYSTEM_/checkAccountEmployee"
+        : "/api/VENDOR_SYSTEM_/checkAccountEmployee";
+
+      const response = await axiosInstance.get(endpoint, {
+        params: { p_userid: userId },
+      });
       return response.data;
     } catch (error: any) {
       console.error("Error in checkAccountEmployee:", error.message);
@@ -405,6 +414,31 @@ export class VendorService {
       }
       throw new Error(
         `Failed to fetch account employee info: ${error.message}`
+      );
+    }
+  }
+
+  // Jasra-specific check (used for JASRA employees)
+  static async checkJasraAccountEmployee(userId: string) {
+    try {
+      // Ensure '/api' path segment is included if baseURL doesn't contain it
+      const endpoint = API_BASE_URL && API_BASE_URL.includes("/api/")
+        ? "/JasraDb/jasra/checkJasraAccountEmployee"
+        : "/api/JasraDb/jasra/checkJasraAccountEmployee";
+
+      const response = await axiosInstance.get(endpoint, {
+        params: { p_userid: userId },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Error in checkJasraAccountEmployee:", error.message);
+      if (error.response?.status === 401) {
+        throw new Error(
+          "Unauthorized access to Jasra external system. Please check API credentials."
+        );
+      }
+      throw new Error(
+        `Failed to fetch Jasra account employee info: ${error.message}`
       );
     }
   }

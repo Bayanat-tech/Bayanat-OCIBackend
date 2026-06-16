@@ -6,7 +6,7 @@ import {
   generateToken,
   notifyUser,
 } from "../helpers/functions";
-import { loginSchema } from "../validation/auth.validation";
+import { loginSchema } from "../validation/auth.validation"; 
 import { StructuredResult } from "../interfaces/auth.interface";
 import { RequestWithUser } from "../interfaces/common.interface";
 import { AuthService } from "../services/auth.service";
@@ -30,7 +30,17 @@ export const login = async (req: Request, res: Response) => {
 
     if (!user) {
       try {
-        const apiResponse = await VendorService.checkAccountEmployee(email);
+        let apiResponse;
+        // If login starts with 'J' or 'j' use Jasra-specific endpoint
+        const isJasraLogin =
+          typeof email === 'string' && email.length > 0 &&
+          email[0].toUpperCase() === 'J';
+
+        if (isJasraLogin) {
+          apiResponse = await VendorService.checkJasraAccountEmployee(email);
+        } else {
+          apiResponse = await VendorService.checkAccountEmployee(email);
+        }
 
         if (Array.isArray(apiResponse) && apiResponse.length > 0) {
           const apiUser = apiResponse[0];
@@ -47,10 +57,14 @@ export const login = async (req: Request, res: Response) => {
           }
 
           const hashedPassword = await AuthService.hashPassword(password);
+          // For Jasra users set company code to 'JASRA' (case-insensitive)
+          const companyCodeToUse = isJasraLogin ? 'JASRA' : 'BSG';
+
           user = await AuthService.createUserFromExternal(
             apiUser,
             password,
-            hashedPassword
+            hashedPassword,
+            companyCodeToUse
           );
         } else {
           res.status(constants.STATUS_CODES.NOT_FOUND).json({
