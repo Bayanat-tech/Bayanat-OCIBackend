@@ -1,370 +1,826 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import oracledb from "oracledb";
-import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
+const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const text = (v: any): string => (v == null ? "" : String(v));
-
-const formatDateStr = (v: any): string => {
-    if (!v) return "";
-    const d = new Date(v);
-    return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
-};
+import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
+import { RequestWithUser } from "../../../interfaces/common.interface";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface DNSummaryRow {
-    principal_confirm_date: string | null;
-    job_no: string;
-    customer: string;
-    container_no: string;
-    qty: number;
-    volume: number;
-    dn_no: string;
-    dn_date: string | null;
-    prin_code: string;
-    group_code: string;
-    group_name: string;
-    prod_code: string;
-    prod_name: string;
-    txn_type: string;
+type ReportRow = Record<string, any>;
+
+interface ProdSection {
+  prodCode:    string;
+  prodName:    string;
+  rows:        ReportRow[];
+  totalQty:    number;
+  totalVolume: number;
 }
 
-// ─── Group-by helpers ─────────────────────────────────────────────────────────
-
-interface GroupedCustomer {
-    customer: string;
-    job_no: string;
-    rows: DNSummaryRow[];
-    totalQty: number;
-    totalVolume: number;
+interface GroupSection {
+  groupName:   string;
+  prods:       ProdSection[];
+  totalQty:    number;
+  totalVolume: number;
 }
 
-interface GroupedPrincipal {
-    prin_code: string;
-    customers: GroupedCustomer[];
-    totalQty: number;
-    totalVolume: number;
+interface PrinSection {
+  prinCode:    string;
+  prinName:    string;
+  groups:      GroupSection[];
+  totalQty:    number;
+  totalVolume: number;
 }
 
-const groupRows = (rows: DNSummaryRow[]): GroupedPrincipal[] => {
-    const principalMap = new Map<string, GroupedPrincipal>();
+// ─── DB helpers ───────────────────────────────────────────────────────────────
 
-    for (const row of rows) {
-        if (!principalMap.has(row.prin_code)) {
-            principalMap.set(row.prin_code, { prin_code: row.prin_code, customers: [], totalQty: 0, totalVolume: 0 });
-        }
-        const principal = principalMap.get(row.prin_code)!;
+async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
+  let tenantId = getCurrentTenantId();
+  if (!tenantId && req.user?.loginid)
+    tenantId = await TenantManager.getTenantForUser(req.user.loginid);
+  if (!tenantId)
+    throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
+  return TenantManager.getConnection(tenantId);
+}
 
-        const custKey = `${row.customer}||${row.job_no}`;
-        let customer = principal.customers.find((c) => `${c.customer}||${c.job_no}` === custKey);
-        if (!customer) {
-            customer = { customer: row.customer, job_no: row.job_no, rows: [], totalQty: 0, totalVolume: 0 };
-            principal.customers.push(customer);
-        }
+async function closeConn(conn?: oracledb.Connection) {
+  if (conn) try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
+}
 
-        customer.rows.push(row);
-        customer.totalQty += Number(row.qty) || 0;
-        customer.totalVolume += Number(row.volume) || 0;
-        principal.totalQty += Number(row.qty) || 0;
-        principal.totalVolume += Number(row.volume) || 0;
+function normalize(rows: any[] = []): ReportRow[] {
+  return rows.map((row) =>
+    Object.keys(row).reduce((acc: ReportRow, key) => {
+      acc[key.toLowerCase()] = row[key];
+      return acc;
+    }, {})
+  );
+}
+
+// ─── Formatting helpers ───────────────────────────────────────────────────────
+
+function text(value: unknown): string {
+  if (value == null) return "";
+  return String(value);
+}
+
+function dateText(value: unknown): string {
+  if (!value) return "—";
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function escapeHtml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function escapeXml(value: unknown): string {
+  return text(value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+}
+
+function numFmt(value: unknown, decimals = 0): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+// ─── Data loader ──────────────────────────────────────────────────────────────
+
+async function loadDnData(
+  req: RequestWithUser,
+  params: {
+    loginid?:   string;
+    prinCode?:  string;
+    groupCode?: string;
+    prodCode?:  string;
+  } = {}
+): Promise<ReportRow[]> {
+  const conn = await getConn(req);
+  try {
+    const binds: Record<string, any> = {
+      parameter: "WMS_Stock_DN_Summary_Report",
+      loginid:   params.loginid || text(req.user?.loginid) || "ADMIN",
+
+      code1:  null,
+      code2:  params.prinCode  || null,
+      code3:  params.groupCode || null,
+      code4:  params.prodCode  || null,
+      code5:  null, code6: null, code7: null, code8: null, code9: null,
+
+      ...Object.fromEntries(
+        Array.from({ length: 11 }, (_, i) => [`code${i + 10}`, null])
+      ),
+
+      number1: null, number2: null, number3: null, number4: null,
+      date1:   null, date2:   null, date3:   null, date4:   null,
+
+      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
+    };
+
+    const procResult = await conn.execute(
+      `DECLARE
+         v_sql VARCHAR2(32767);
+       BEGIN
+         PROC_BUILD_DYNAMIC_SQL_COMMON20(
+           :parameter, :loginid,
+           :code1,  :code2,  :code3,  :code4,  :code5,  :code6,  :code7,  :code8,  :code9,  :code10,
+           :code11, :code12, :code13, :code14, :code15, :code16, :code17, :code18, :code19, :code20,
+           :number1, :number2, :number3, :number4,
+           :date1,   :date2,   :date3,   :date4,
+           v_sql
+         );
+         :out_sql := v_sql;
+       END;`,
+      binds
+    );
+
+    const rawSql = (procResult.outBinds as any).out_sql as string | null;
+    console.log("[DnSummaryReport] Generated SQL:", rawSql);
+
+    if (!rawSql) {
+      throw new Error(
+        "PROC_BUILD_DYNAMIC_SQL_COMMON20 returned no SQL. " +
+        "Ensure the WHEN 'WMS_Stock_DN_Summary_Report' branch exists in the procedure."
+      );
     }
 
-    return Array.from(principalMap.values());
-};
+    const dataResult = await conn.execute(rawSql, [], {
+      outFormat: oracledb.OUT_FORMAT_OBJECT,
+    });
 
-// ─── Build HTML ───────────────────────────────────────────────────────────────
+    return normalize(dataResult.rows as any[]);
+  } finally {
+    await closeConn(conn);
+  }
+}
 
-const buildDNSummaryHTML = (
-    rows: DNSummaryRow[],
-    params: {
-        loginid: string;
-        prin_code: string;
-        group_code: string;
-        prod_codes: string;
-    }
-): string => {
-    const grandTotalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    const grandTotalVolume = rows.reduce((s, r) => s + (Number(r.volume) || 0), 0);
-    const grouped = groupRows(rows);
+// ─── Grouping ─────────────────────────────────────────────────────────────────
 
-    const tableBodyHtml = grouped.map((principal) =>
-        principal.customers.map((cust, ci) =>
-            cust.rows.map((r, ri) => `
-                <tr class="${ri % 2 === 0 ? "row-even" : "row-odd"}">
-                    ${ri === 0 && ci === 0 ? `<td rowspan="${cust.rows.length}" class="prin-cell">${text(principal.prin_code)}</td>` : ""}
-                    ${ri === 0 ? `<td rowspan="${cust.rows.length}" style="vertical-align:top;padding-top:6px;">${text(r.principal_confirm_date ? formatDateStr(r.principal_confirm_date) : "")}</td>` : ""}
-                    ${ri === 0 ? `<td rowspan="${cust.rows.length}" style="vertical-align:top;padding-top:6px;">${text(r.job_no)}</td>` : ""}
-                    ${ri === 0 ? `<td rowspan="${cust.rows.length}" style="vertical-align:top;padding-top:6px;font-weight:500;">${text(cust.customer)}</td>` : ""}
-                    <td>${text(r.dn_no)}</td>
-                    <td class="center">${r.dn_date ? formatDateStr(r.dn_date) : ""}</td>
-                    <td>${text(r.container_no)}</td>
-                    <td class="right">${text(r.qty)}</td>
-                    <td class="right">${text(r.volume)}</td>
-                </tr>`
-            ).join("")
-            + `<tr class="subtotal-row">
-                <td colspan="5" style="text-align:right;font-size:10px;color:#6b7280;padding-right:8px;">
-                    Total For ${text(cust.customer)} :
-                </td>
-                <td class="right subtotal">${cust.totalQty}</td>
-                <td class="right subtotal">${cust.totalVolume}</td>
-               </tr>`
-        ).join("")
-        + `<tr class="principal-total-row">
-            <td colspan="8" style="text-align:right;font-size:10px;color:#374151;padding-right:8px;">
-                Total For ${text(principal.prin_code)} :
-            </td>
-            <td class="right" style="font-weight:700;color:#185FA5;">${principal.totalQty}</td>
-            <td class="right" style="font-weight:700;color:#185FA5;">${principal.totalVolume}</td>
-           </tr>`
-    ).join("") || `
-        <tr>
-            <td colspan="9" style="text-align:center;padding:40px;color:#6b7280;">
-                No records found for the selected criteria.
-            </td>
+function groupRows(rows: ReportRow[]): PrinSection[] {
+  const prinMap: Record<string, {
+    prinCode: string; prinName: string;
+    groups: Record<string, {
+      groupName: string;
+      prods: Record<string, {
+        prodCode: string; prodName: string;
+        rows: ReportRow[]; totalQty: number; totalVolume: number;
+      }>;
+      totalQty: number; totalVolume: number;
+    }>;
+    totalQty: number; totalVolume: number;
+  }> = {};
+
+  for (const r of rows) {
+    const prinKey  = text(r.prin_code)  || "—";
+    const groupKey = text(r.group_name) || "Ungrouped";
+    const prodKey  = text(r.prod_code)  || "—";
+    const qty      = parseFloat(String(r.qty ?? r.quantity ?? r.qty_puom)) || 0;
+    const volume   = parseFloat(String(r.volume)) || 0;
+
+    if (!prinMap[prinKey])
+      prinMap[prinKey] = { prinCode: text(r.prin_code), prinName: text(r.prin_name), groups: {}, totalQty: 0, totalVolume: 0 };
+    const ps = prinMap[prinKey];
+    ps.totalQty += qty; ps.totalVolume += volume;
+
+    if (!ps.groups[groupKey])
+      ps.groups[groupKey] = { groupName: groupKey, prods: {}, totalQty: 0, totalVolume: 0 };
+    const gs = ps.groups[groupKey];
+    gs.totalQty += qty; gs.totalVolume += volume;
+
+    if (!gs.prods[prodKey])
+      gs.prods[prodKey] = { prodCode: text(r.prod_code), prodName: text(r.prod_name), rows: [], totalQty: 0, totalVolume: 0 };
+    const prd = gs.prods[prodKey];
+    prd.rows.push(r); prd.totalQty += qty; prd.totalVolume += volume;
+  }
+
+  return Object.values(prinMap).map((p) => ({
+    ...p,
+    groups: Object.values(p.groups).map((g) => ({ ...g, prods: Object.values(g.prods) })),
+  }));
+}
+
+// ─── HTML renderer ────────────────────────────────────────────────────────────
+
+function renderHtml(
+  prins:       PrinSection[],
+  reportTitle: string,
+  loginId:     string,
+  autoPrint:   boolean
+): string {
+  const printDate = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+
+  const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
+  const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
+
+  let bodyRows = "";
+
+  for (const ps of prins) {
+    bodyRows += `
+      <tr class="prin-row">
+        <td colspan="9">${escapeHtml(ps.prinCode)}${ps.prinName ? ` | ${escapeHtml(ps.prinName)}` : ""}</td>
+      </tr>`;
+
+    for (const gs of ps.groups) {
+      bodyRows += `
+        <tr class="group-row">
+          <td colspan="9">Group : ${escapeHtml(gs.groupName)}</td>
         </tr>`;
 
-    return `
-<!DOCTYPE html>
-<html>
+      for (const prd of gs.prods) {
+        bodyRows += `
+          <tr class="prod-row">
+            <td colspan="9">${escapeHtml(prd.prodCode)}${prd.prodName ? ` | ${escapeHtml(prd.prodName)}` : ""}</td>
+          </tr>`;
+
+        for (const dr of prd.rows) {
+          const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
+          const volume = parseFloat(String(dr.volume)) || 0;
+          bodyRows += `
+            <tr class="data-row">
+              <td>${escapeHtml(dr.dn_no || "—")}</td>
+              <td>${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>
+              <td>${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>
+              <td>${escapeHtml(dr.job_no || "—")}</td>
+              <td>${escapeHtml(dr.customer || dr.cust_code || "—")}</td>
+              <td>${escapeHtml(dr.container_no || "—")}</td>
+              <td>${escapeHtml(dr.txn_type || "—")}</td>
+              <td class="num">${escapeHtml(numFmt(qty))}</td>
+              <td class="num">${escapeHtml(numFmt(volume, 3))}</td>
+            </tr>`;
+        }
+
+        bodyRows += `
+          <tr class="prod-total">
+            <td colspan="7">Total For ${escapeHtml(prd.prodCode)}${prd.prodName ? ` | ${escapeHtml(prd.prodName)}` : ""}</td>
+            <td class="num">${escapeHtml(numFmt(prd.totalQty))}</td>
+            <td class="num">${escapeHtml(numFmt(prd.totalVolume, 3))}</td>
+          </tr>`;
+      }
+
+      bodyRows += `
+        <tr class="group-total">
+          <td colspan="7">Total For ${escapeHtml(gs.groupName)}</td>
+          <td class="num">${escapeHtml(numFmt(gs.totalQty))}</td>
+          <td class="num">${escapeHtml(numFmt(gs.totalVolume, 3))}</td>
+        </tr>`;
+    }
+
+    bodyRows += `
+      <tr class="prin-total">
+        <td colspan="7">Total For ${escapeHtml(ps.prinCode)}${ps.prinName ? ` | ${escapeHtml(ps.prinName)}` : ""}</td>
+        <td class="num">${escapeHtml(numFmt(ps.totalQty))}</td>
+        <td class="num">${escapeHtml(numFmt(ps.totalVolume, 3))}</td>
+      </tr>`;
+  }
+
+  const grandRow = `
+    <tr class="grand-total">
+      <td colspan="7">Grand Total</td>
+      <td class="num">${escapeHtml(numFmt(grandQty))}</td>
+      <td class="num">${escapeHtml(numFmt(grandVolume, 3))}</td>
+    </tr>`;
+
+  return `<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>DN Summary Report</title>
+  <meta charset="utf-8"/>
+  <title>${escapeHtml(reportTitle)}</title>
   <style>
-    * { box-sizing: border-box; }
+    @page { size: A4 landscape; margin: 10mm 12mm; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 11px; color: #333; margin: 30px; background-color: #f5f5f5;
+      font-family: "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 12px; color: #111827;
+      background: #eef1f6;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
-    .page {
-      background: white; padding: 36px 40px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1); min-height: 297mm;
-    }
-    .header-top {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      border-bottom: 2px solid #185FA5; padding-bottom: 14px; margin-bottom: 18px;
-    }
-    .meta-info td { padding: 2px 10px 2px 0; vertical-align: top; }
-    .lbl          { font-weight: 600; width: 110px; color: #555; }
-    .brand-name   { font-size: 20px; font-weight: 700; color: #185FA5; letter-spacing: 0.02em; }
-    .brand-sub    { font-size: 9px; letter-spacing: 3px; color: #888; margin-top: 2px; }
-    .report-title { font-size: 14px; font-weight: 700; color: #185FA5; margin-bottom: 6px; }
 
-    table.report-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 10px; }
-    table.report-table th {
-      background: #185FA5; color: #fff; padding: 7px 5px;
-      text-align: left; font-size: 9px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.04em; border: none; white-space: nowrap;
+    /* ── Action bar (screen only) ── */
+    .action-bar {
+      display: flex; gap: 10px; justify-content: flex-end; align-items: center;
+      padding: 10px 20px; background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
     }
-    table.report-table th.center,
-    table.report-table td.center { text-align: center; }
-    table.report-table th.right,
-    table.report-table td.right  { text-align: right; }
-    table.report-table td { padding: 5px 5px; vertical-align: middle; border-bottom: 0.5px solid #e5e7eb; }
-    .row-even td { background: #fff; }
-    .row-odd  td { background: #f8fafc; }
-    tr:hover  td { background: #eef4fd !important; }
-    .prin-cell { font-weight: 700; color: #185FA5; vertical-align: top; padding-top: 6px; }
-    .subtotal-row td { background: #f0f7ff !important; }
-    .subtotal { font-weight: 600; color: #374151; }
-    .principal-total-row td { background: #e0edfa !important; border-top: 1px solid #185FA5; }
-
-    .footer {
-      margin-top: 32px; display: flex; justify-content: space-between;
-      border-top: 1px solid #d1d5db; padding-top: 10px; font-size: 10px; color: #9ca3af;
+    .action-bar-title {
+      flex: 1; font-size: 13px; font-weight: 700;
+      color: #1e3a5f; letter-spacing: .04em; text-transform: uppercase;
     }
-    .footer strong { color: #6b7280; }
-    .no-print { margin-bottom: 16px; text-align: right; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 18px; border: none; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:hover  { opacity: .88; }
+    .btn:active { transform: scale(.97); }
+    .btn-print  { background: #1e3a5f; color: #fff; }
+    .btn-excel  { background: #1a7f4b; color: #fff; }
 
+    /* ── Sheet ── */
+    .sheet {
+      width: 277mm; min-height: 190mm;
+      margin: 18px auto; background: #fff;
+      padding: 10mm 12mm;
+      border: 1px solid #c4cdd9;
+      border-radius: 4px;
+    }
+    .rpt-header {
+      background: #1e3a5f; color: #fff; text-align: center;
+      font-size: 14px; font-weight: 700; letter-spacing: .08em;
+      padding: 10px 16px; text-transform: uppercase;
+      border-radius: 3px 3px 0 0;
+    }
+    .rpt-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 2px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 10px;
+      font-size: 10px; color: #4b5563;
+    }
+    .rpt-meta strong { color: #111827; font-weight: 600; }
+
+    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    col.c0 { width: 8%;  } col.c1 { width: 9%;  } col.c2 { width: 9%;  }
+    col.c3 { width: 13%; } col.c4 { width: 11%; } col.c5 { width: 13%; }
+    col.c6 { width: 9%;  } col.c7 { width: 14%; } col.c8 { width: 14%; }
+
+    thead tr.th-main th {
+      background: #1e3a5f; color: #fff; font-weight: 700;
+      font-size: 10px; padding: 7px 10px; text-align: center;
+      border-right: 1px solid rgba(255,255,255,0.15);
+    }
+    thead tr.th-main th:last-child { border-right: none; }
+    thead tr.th-main th.left { text-align: left; }
+    thead tr.th-main th.num  { text-align: right; }
+
+    tr.prin-row td {
+      background: #1e3a5f; color: #fff; font-weight: 700;
+      font-size: 11px; padding: 5px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    tr.group-row td {
+      background: #dce4ef; color: #1e3a5f; font-weight: 700;
+      font-size: 11px; padding: 4px 10px 4px 20px;
+      border-bottom: 1px solid #c8d4e4;
+    }
+    tr.prod-row td {
+      background: #fef3c7; color: #92400e; font-weight: 700;
+      font-size: 10px; padding: 3px 10px 3px 32px;
+      border-bottom: 1px solid #fde68a;
+    }
+    tbody tr.data-row td {
+      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
+      color: #374151; font-size: 11px;
+      white-space: normal; word-wrap: break-word; vertical-align: top;
+    }
+    tbody tr.data-row td:first-child { padding-left: 40px; }
+    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
+
+    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+    tr.prod-total td {
+      background: #fde68a; padding: 3px 10px; font-size: 10px;
+      font-weight: 700; color: #78350f; white-space: nowrap;
+    }
+    tr.group-total td {
+      background: #c8d4e4; padding: 4px 10px; font-size: 11px;
+      font-weight: 700; color: #1e3a5f; white-space: nowrap;
+    }
+    tr.prin-total td {
+      background: #a8b8d0; padding: 5px 10px; font-size: 11px;
+      font-weight: 700; color: #0f2040; white-space: nowrap;
+    }
+    tr.grand-total td {
+      background: #1e3a5f; color: #fff; font-weight: 700;
+      font-size: 12px; padding: 8px 10px;
+      border-top: 2px solid #162d4a;
+    }
+
+    .rpt-footer {
+      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
+      display: flex; justify-content: space-between;
+      font-size: 9px; color: #9ca3af;
+    }
+    .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
+
+    /* ── Print overrides ── */
     @media print {
-      body        { background: white; margin: 0; font-size: 9px; }
-      .page       { box-shadow: none; padding: 16px; }
-      .no-print   { display: none; }
-      tr:hover td { background: inherit !important; }
+      body        { background: #fff; }
+      .action-bar { display: none; }
+      .sheet      { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
       thead       { display: table-header-group; }
+      tr.prin-row, tr.group-row, tr.prod-row          { break-after: avoid; page-break-after: avoid; }
+      tr.prod-total, tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
     }
   </style>
 </head>
 <body>
 
-  <div class="no-print">
-    <button onclick="window.print()"
-      style="padding:7px 20px;cursor:pointer;background:#185FA5;color:#fff;border:none;border-radius:6px;font-size:12px;">
-      🖨 Print / Save as PDF
-    </button>
+  <!-- ── Action bar — hidden on print ── -->
+  <div class="action-bar">
+    <span class="action-bar-title">${escapeHtml(reportTitle)}</span>
+    <button class="btn btn-print" onclick="window.print()">🖨&nbsp; Print / PDF</button>
+    <button class="btn btn-excel" onclick="exportExcel()">📊&nbsp; Export Excel</button>
   </div>
 
-  <div class="page">
-
-    <div class="header-top">
-      <div>
-        <div class="report-title">Delivery Note Report (Summary)</div>
-        <table class="meta-info">
-          <tr><td class="lbl">Print Date :</td>  <td><strong>${formatDateStr(new Date())}</strong></td></tr>
-          <tr><td class="lbl">Principal :</td>   <td>${text(params.prin_code) || "All"}</td></tr>
-          <tr><td class="lbl">Group :</td>        <td>${text(params.group_code) || "All"}</td></tr>
-          <tr><td class="lbl">Products :</td>     <td>${text(params.prod_codes) || "All"}</td></tr>
-          <tr><td class="lbl">User :</td>         <td>${text(params.loginid)}</td></tr>
-        </table>
-      </div>
-      <div style="text-align:right;">
-        <div class="brand-name">AL MADINA</div>
-        <div class="brand-sub">LOGISTICS</div>
-      </div>
+  <div class="sheet">
+    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
+    <div class="rpt-meta">
+      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;
+            Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
+      <span>Page 1 of 1</span>
     </div>
 
-    <table class="report-table">
+    <table class="rpt-table" id="dnTable">
+      <colgroup>
+        <col class="c0"/><col class="c1"/><col class="c2"/>
+        <col class="c3"/><col class="c4"/><col class="c5"/>
+        <col class="c6"/><col class="c7"/><col class="c8"/>
+      </colgroup>
       <thead>
-        <tr>
-          <th style="width:55px;">Principal</th>
-          <th style="width:70px;">Confirm Date</th>
-          <th style="width:80px;">Job No</th>
-          <th style="min-width:110px;">Customer</th>
-          <th style="width:70px;">DN No</th>
-          <th class="center" style="width:75px;">DN Date</th>
-          <th style="width:110px;">Container No</th>
-          <th class="right" style="width:55px;">Qty</th>
-          <th class="right" style="width:60px;">Volume</th>
+        <tr class="th-main">
+          <th class="left">DN No</th>
+          <th>DN Date</th>
+          <th>Confirm Date</th>
+          <th class="left">Job No</th>
+          <th class="left">Customer</th>
+          <th class="left">Container No</th>
+          <th class="left">Txn Type</th>
+          <th class="num">Qty</th>
+          <th class="num">Volume</th>
         </tr>
       </thead>
       <tbody>
-        ${tableBodyHtml}
+        ${bodyRows}
+        ${grandRow}
       </tbody>
     </table>
 
-    <div class="footer">
-      <div>
-        <strong>Grand Total:</strong>
-        &nbsp; Qty: <strong>${grandTotalQty}</strong>
-        &nbsp;&nbsp; Volume: <strong>${grandTotalVolume}</strong>
-      </div>
-      <div>End of Report &nbsp;|&nbsp; Printed: ${formatDateStr(new Date())}</div>
+    <div class="rpt-footer">
+      <span>Report Name : <code>Delivery Note Summary</code></span>
+      <span>Powered by Bayanat Technology</span>
     </div>
-
   </div>
+
+  <script>
+    /* PostMessage print trigger (iframe usage) */
+    window.addEventListener("message", (e) => { if (e.data === "print") window.print(); });
+
+    /* Auto-print on load */
+    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
+
+    /* Export to Excel (CSV with BOM — opens natively in Excel) */
+    function exportExcel() {
+      const table = document.getElementById("dnTable");
+      const rows  = Array.from(table.querySelectorAll("tr"));
+      const lines = rows.map(row =>
+        Array.from(row.querySelectorAll("th, td"))
+          .map(cell => '"' + cell.innerText.replace(/"/g, '""') + '"')
+          .join(",")
+      );
+      const csv  = "\uFEFF" + lines.join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = "DN_Summary_Report.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
 </body>
 </html>`;
+}
+
+// ─── Excel builder ────────────────────────────────────────────────────────────
+// (unchanged from original — kept in full)
+
+const STYLE_ID = {
+  default:       0,
+  header:        1,
+  sectionPrin:   2,
+  sectionGroup:  3,
+  sectionProd:   4,
+  value:         5,
+  totalProd:     6,
+  totalGroup:    7,
+  totalPrin:     8,
+  totalGrand:    9,
+  numValue:      10,
+  numTotalProd:  11,
+  numTotalGroup: 12,
+  numTotalPrin:  13,
+  numGrand:      14,
+} as const;
+
+type StyleKey = keyof typeof STYLE_ID;
+interface XlCell { v: unknown; s: number }
+function xc(v: unknown, style: StyleKey): XlCell { return { v, s: STYLE_ID[style] }; }
+
+function buildExcelBuffer(prins: PrinSection[]): Buffer {
+  const NCOLS = 9;
+  type Row = (XlCell | null)[];
+  const skip = null;
+  const rows: Row[] = [];
+
+  rows.push([xc("Delivery Note Report (Summary)", "header"), ...Array(NCOLS - 1).fill(skip)]);
+  rows.push(Array(NCOLS).fill(skip));
+  rows.push([
+    xc("DN No",        "header"), xc("DN Date",      "header"), xc("Confirm Date", "header"),
+    xc("Job No",       "header"), xc("Customer",      "header"), xc("Container No", "header"),
+    xc("Txn Type",     "header"), xc("Qty",           "header"), xc("Volume",       "header"),
+  ]);
+
+  for (const ps of prins) {
+    rows.push([xc(`${ps.prinCode}${ps.prinName ? " | " + ps.prinName : ""}`, "sectionPrin"), ...Array(NCOLS - 1).fill(skip)]);
+
+    for (const gs of ps.groups) {
+      rows.push([xc(`Group : ${gs.groupName}`, "sectionGroup"), ...Array(NCOLS - 1).fill(skip)]);
+
+      for (const prd of gs.prods) {
+        rows.push([xc(`${prd.prodCode}${prd.prodName ? " | " + prd.prodName : ""}`, "sectionProd"), ...Array(NCOLS - 1).fill(skip)]);
+
+        for (const dr of prd.rows) {
+          const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
+          const volume = parseFloat(String(dr.volume)) || 0;
+          rows.push([
+            xc(text(dr.dn_no)                                          || "—", "value"),
+            xc(dateText(dr.dn_date ?? dr.receipt_date),                        "value"),
+            xc(dateText(dr.principal_confirm_date ?? dr.confirm_date),         "value"),
+            xc(text(dr.job_no)                                         || "—", "value"),
+            xc(text(dr.customer ?? dr.cust_code)                       || "—", "value"),
+            xc(text(dr.container_no)                                   || "—", "value"),
+            xc(text(dr.txn_type)                                       || "—", "value"),
+            xc(numFmt(qty),                                                    "numValue"),
+            xc(numFmt(volume, 3),                                              "numValue"),
+          ]);
+        }
+
+        rows.push([
+          xc(`Total For ${prd.prodCode}${prd.prodName ? " | " + prd.prodName : ""}`, "totalProd"),
+          skip, skip, skip, skip, skip, xc("", "totalProd"),
+          xc(numFmt(prd.totalQty), "numTotalProd"), xc(numFmt(prd.totalVolume, 3), "numTotalProd"),
+        ]);
+      }
+
+      rows.push([
+        xc(`Total For ${gs.groupName}`, "totalGroup"),
+        skip, skip, skip, skip, skip, xc("", "totalGroup"),
+        xc(numFmt(gs.totalQty), "numTotalGroup"), xc(numFmt(gs.totalVolume, 3), "numTotalGroup"),
+      ]);
+    }
+
+    rows.push([
+      xc(`Total For ${ps.prinCode}${ps.prinName ? " | " + ps.prinName : ""}`, "totalPrin"),
+      skip, skip, skip, skip, skip, xc("", "totalPrin"),
+      xc(numFmt(ps.totalQty), "numTotalPrin"), xc(numFmt(ps.totalVolume, 3), "numTotalPrin"),
+    ]);
+  }
+
+  const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
+  const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
+  rows.push([
+    xc("Grand Total", "totalGrand"),
+    skip, skip, skip, skip, skip, xc("", "totalGrand"),
+    xc(numFmt(grandQty), "numGrand"), xc(numFmt(grandVolume, 3), "numGrand"),
+  ]);
+
+  const COL_WIDTHS = [12, 14, 14, 18, 16, 16, 12, 14, 14];
+  const colXml = COL_WIDTHS.map((w, i) => `<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+
+  const merges: string[] = [];
+  rows.forEach((row, ri) => {
+    const rn = ri + 1;
+    let spanStart = -1;
+    row.forEach((cell, ci) => {
+      if (cell !== null && spanStart === -1) { spanStart = ci; }
+      else if (cell === null && spanStart !== -1) {
+        let end = ci;
+        while (end + 1 < row.length && row[end + 1] === null) end++;
+        if (end > spanStart)
+          merges.push(`${String.fromCharCode(65 + spanStart)}${rn}:${String.fromCharCode(65 + end)}${rn}`);
+        spanStart = -1;
+      } else if (cell !== null) { spanStart = ci; }
+    });
+  });
+
+  let sheetDataXml = "";
+  rows.forEach((row, ri) => {
+    const rn = ri + 1;
+    const ht = rn === 1 ? ` ht="22" customHeight="1"` : "";
+    let rowXml = `<row r="${rn}"${ht}>`;
+    row.forEach((cell, ci) => {
+      if (cell === null) return;
+      const ref = `${String.fromCharCode(65 + ci)}${rn}`;
+      if (typeof cell.v === "number")
+        rowXml += `<c r="${ref}" s="${cell.s}"><v>${cell.v}</v></c>`;
+      else
+        rowXml += `<c r="${ref}" s="${cell.s}" t="inlineStr"><is><t>${escapeXml(cell.v ?? "")}</t></is></c>`;
+    });
+    rowXml += `</row>`;
+    sheetDataXml += rowXml;
+  });
+
+  const mergeXml = merges.length
+    ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>`
+    : "";
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${colXml}</cols>
+  <sheetData>${sheetDataXml}</sheetData>
+  ${mergeXml}
+</worksheet>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="8">
+    <font><sz val="10"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF92400E"/><name val="Calibri"/></font>
+    <font><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F2040"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="7">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFDCE4EF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFC8D4E4"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFDE68A"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="3">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
+      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <diagonal/>
+    </border>
+    <border>
+      <left style="thin"><color rgb="FF1E3A5F"/></left><right style="thin"><color rgb="FF1E3A5F"/></right>
+      <top style="thin"><color rgb="FF1E3A5F"/></top><bottom style="thin"><color rgb="FF1E3A5F"/></bottom>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="15">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1" indent="6"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="7" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="7" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+  </cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="DN Summary" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml"          ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const zip = new AdmZip();
+  zip.addFile("[Content_Types].xml",        Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels",                Buffer.from(rels));
+  zip.addFile("xl/workbook.xml",            Buffer.from(workbookXml));
+  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
+  zip.addFile("xl/worksheets/sheet1.xml",   Buffer.from(sheetXml));
+  zip.addFile("xl/styles.xml",              Buffer.from(stylesXml));
+  return zip.toBuffer();
+}
+
+// ─── Route helpers ────────────────────────────────────────────────────────────
+
+function extractParams(req: RequestWithUser) {
+  const src = { ...req.query, ...req.body };
+  return {
+    loginid:   text(req.user?.loginid),
+    prinCode:  text(src.code2) || undefined,
+    groupCode: text(src.code3) || undefined,
+    prodCode:  text(src.code4) || undefined,
+  };
+}
+
+// ─── Route handlers ───────────────────────────────────────────────────────────
+
+export const getDnSummaryReportHtml = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const reportTitle = text(req.query.title) || "Delivery Note Report (Summary)";
+    const autoPrint   = req.query.print === "true";
+    const params      = extractParams(req);
+
+    const rows = await loadDnData(req, params);
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+      return;
+    }
+
+    const prins = groupRows(rows);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint));
+  } catch (error: any) {
+    console.error("DN Summary HTML error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+  }
 };
 
-// ─── Express Controller ───────────────────────────────────────────────────────
+export const getDnSummaryReportPdf = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const params = extractParams(req);
+    const rows   = await loadDnData(req, params);
 
-export const getDNSummaryReport = async (req: Request, res: Response): Promise<void> => {
-    let connection;
-    try {
-        const {
-            parameter,   // "WMS_Stock_DN_Summary_Report"
-            loginid,
-            code1,       // company_code
-            code2,       // prin_code  (single, optional)
-            code3,       // group_code (single, optional)
-            code4,       // prod_codes (comma-separated list, optional)
-        } = req.body;
-
-        // ── Tenant resolution ─────────────────────────────────────────────────
-        let tenantId = getCurrentTenantId();
-        if (!tenantId && loginid) {
-            tenantId = await TenantManager.getTenantForUser(loginid);
-        }
-        if (!tenantId) {
-            res.status(400).json({ success: false, message: "Tenant not found" });
-            return;
-        }
-        connection = await TenantManager.getConnection(tenantId);
-
-        // ── Build the product IN-list for SQL ─────────────────────────────────
-        //
-        //  code4 arrives as "PROD1,PROD2,PROD3" (or empty = all products).
-        //  We build a safe SQL fragment.  Because we own the source (our own
-        //  validated lookup values) we just quote-wrap each item; alternatively
-        //  bind them via a nested table if your OracleDB version supports it.
-        //
-        const prodCodes: string[] = code4
-            ? String(code4).split(",").map((p: string) => p.trim()).filter(Boolean)
-            : [];
-
-        const prodInClause =
-            prodCodes.length > 0
-                ? `AND PROD_CODE IN (${prodCodes.map((p) => `'${p.replace(/'/g, "''")}'`).join(",")})`
-                : "";
-
-        const prinWhereClause = code2 ? `AND PRIN_CODE = '${String(code2).replace(/'/g, "''")}' ` : "";
-        const groupWhereClause = code3 ? `AND GROUP_CODE = '${String(code3).replace(/'/g, "''")}' ` : "";
-
-        // ── Core query against VW_BOWM_STK_TRANS ─────────────────────────────
-        //
-        //  Mirrors the requirement:
-        //    SELECT * FROM VW_BOWM_STK_TRANS
-        //    WHERE TXN_TYPE NOT IN ('IMP')
-        //      AND PRIN_CODE IN (@prin_code)   -- replaced by dynamic clause
-        //
-        const sql = `
-            SELECT
-                 PRIN_CODE,
-                CONFIRM_DATE   AS PRINCIPAL_CONFIRM_DATE,
-                JOB_NO,
-                CUST_CODE      AS CUSTOMER,
-                CONTAINER_NO,
-                QUANTITY       AS QTY,
-                VOLUME,
-                DN_NO,
-                JOB_DATE       AS DN_DATE,
-                GROUP_CODE,
-                GROUP_NAME,
-                PROD_CODE,
-                PROD_NAME,
-                TXN_TYPE
-            FROM VW_BOWM_STK_TRANS
-            WHERE TXN_TYPE NOT IN ('IMP')
-              ${prinWhereClause}
-              ${groupWhereClause}
-              ${prodInClause}
-            ORDER BY PRIN_CODE, CUSTOMER, JOB_NO, DN_NO
-        `;
-
-        console.log("[DNSummaryReport] Executing SQL:", sql);
-
-        const dataResult = await connection.execute(sql, [], {
-            outFormat: oracledb.OUT_FORMAT_OBJECT,
-        });
-
-        const rows: DNSummaryRow[] = ((dataResult.rows as any[]) || []).map((row) =>
-            Object.keys(row).reduce((acc: any, key) => {
-                acc[key.toLowerCase()] = row[key];
-                return acc;
-            }, {})
-        );
-
-        if (!rows.length) {
-            res.status(200).json({
-                success: false,
-                message: "No data found for the selected criteria.",
-            });
-            return;
-        }
-
-        const html = buildDNSummaryHTML(rows, {
-            loginid: loginid || "ADMIN",
-            prin_code: code2 || "",
-            group_code: code3 || "",
-            prod_codes: prodCodes.join(", "),
-        });
-
-        res.setHeader("Content-Type", "text/html");
-        res.status(200).send(html);
-
-    } catch (error: any) {
-        console.error("DN Summary Report Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Unable to generate report",
-            details: error.message,
-        });
-    } finally {
-        if (connection) {
-            try { await connection.close(); } catch (e) { console.error(e); }
-        }
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+      return;
     }
+
+    const prins = groupRows(rows);
+    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Content-Disposition", `inline; filename="DN_Summary.pdf"`);
+    res.send(html);
+  } catch (error: any) {
+    console.error("DN Summary PDF error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
+  }
+};
+
+export const getDnSummaryReportExcel = async (
+  req: RequestWithUser,
+  res: Response
+): Promise<void> => {
+  try {
+    const params = extractParams(req);
+    const rows   = await loadDnData(req, params);
+
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+      return;
+    }
+
+    const prins  = groupRows(rows);
+    const buffer = buildExcelBuffer(prins);
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="DN_Summary.xlsx"`);
+    res.end(buffer);
+  } catch (error: any) {
+    console.error("DN Summary Excel error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
+  }
 };
