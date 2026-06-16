@@ -71,6 +71,7 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
     );
 
     // ── Aggregate by H_NAME (heading) then BL_CODE/BL_NAME (line item) ──
+    // ── Aggregate by H_CODE/H_NAME (heading) then BL_CODE/BL_NAME (line item) ──
     type LineItem = { bl_code: string; bl_name: string; amount: number };
     type HeadingGroup = { h_code: string; h_name: string; total: number; items: LineItem[] };
 
@@ -103,37 +104,28 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
 
     const headings = Array.from(headingMap.values());
 
-    // ── Classify headings into report sections ──
-    // H_NAME drives Current vs Non Current vs Equity classification.
-    // H_CODE's leading digit drives Assets (1x) vs Liabilities (2x) vs Equity (3x).
-    // Adjust the digit-mapping below if your H_CODE numbering convention differs.
+    // ── Classify headings using H_CODE directly ──
+    // 11 = Non Current Assets
+    // 12 = Current Assets
+    // 21 = Non Current Liabilities
+    // 22 = Current Liabilities
+    // 3x = Owners Equity
+    // Fallback: leading digit 1 = Assets, 2 = Liabilities, other = Equity
 
-    const isCurrent = (hName: string) => /current/i.test(hName) && !/non.?current/i.test(hName);
-    const isNonCurrent = (hName: string) => /non.?current/i.test(hName);
-    const isEquity = (hName: string) => /equity/i.test(hName);
+    const nonCurrentAssets      = headings.filter((h) => h.h_code.startsWith("11"));
+    const currentAssets         = headings.filter((h) => h.h_code.startsWith("12"));
+    const nonCurrentLiabilities = headings.filter((h) => h.h_code.startsWith("21"));
+    const currentLiabilities    = headings.filter((h) => h.h_code.startsWith("22"));
+    const ownersEquity          = headings.filter((h) => h.h_code.startsWith("3"));
 
-    const hCodeFirstDigit = (hCode: string) => hCode?.charAt(0);
-
-    const isAssetSection = (h: HeadingGroup) =>
-      !isEquity(h.h_name) && hCodeFirstDigit(h.h_code) === "1";
-
-    const isLiabilitySection = (h: HeadingGroup) =>
-      !isEquity(h.h_name) && hCodeFirstDigit(h.h_code) === "2";
-
-    const nonCurrentAssets = headings.filter((h) => isAssetSection(h) && isNonCurrent(h.h_name));
-    const currentAssets = headings.filter((h) => isAssetSection(h) && isCurrent(h.h_name));
-    const nonCurrentLiabilities = headings.filter((h) => isLiabilitySection(h) && isNonCurrent(h.h_name));
-    const currentLiabilities = headings.filter((h) => isLiabilitySection(h) && isCurrent(h.h_name));
-    const ownersEquity = headings.filter((h) => isEquity(h.h_name));
-
-    // Fallback for anything unclassified by the above patterns
+    // Fallback for anything not matched above
     const classified = new Set([
       ...nonCurrentAssets, ...currentAssets,
       ...nonCurrentLiabilities, ...currentLiabilities, ...ownersEquity,
     ]);
     headings.forEach((h) => {
       if (classified.has(h)) return;
-      const digit = hCodeFirstDigit(h.h_code);
+      const digit = h.h_code.charAt(0);
       if (digit === "1") currentAssets.push(h);
       else if (digit === "2") currentLiabilities.push(h);
       else ownersEquity.push(h);
@@ -141,28 +133,26 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
 
     const sum = (arr: HeadingGroup[]) => arr.reduce((s, h) => s + h.total, 0);
 
-    const totalNonCurrentAssets = sum(nonCurrentAssets);
-    const totalCurrentAssets = sum(currentAssets);
-    const totalAssets = totalNonCurrentAssets + totalCurrentAssets;
+    const totalNonCurrentAssets      = sum(nonCurrentAssets);
+    const totalCurrentAssets         = sum(currentAssets);
+    const totalAssets                = totalNonCurrentAssets + totalCurrentAssets;
 
     const totalNonCurrentLiabilities = sum(nonCurrentLiabilities);
-    const totalCurrentLiabilities = sum(currentLiabilities);
-    const totalLiabilities = totalNonCurrentLiabilities + totalCurrentLiabilities;
+    const totalCurrentLiabilities    = sum(currentLiabilities);
+    const totalLiabilities           = totalNonCurrentLiabilities + totalCurrentLiabilities;
 
-    const netAssets = totalAssets - totalLiabilities;
+    const netAssets         = totalAssets - totalLiabilities;
     const totalOwnersEquity = sum(ownersEquity);
 
     // ── Render helpers ──
 
     const renderLineItems = (heading: HeadingGroup) =>
       heading.items
-        .map(
-          (item) => `
+        .map((item) => `
         <tr class="data-row">
           <td>${text(item.bl_name)}</td>
           <td class="num">${formatBalance(item.amount)}</td>
-        </tr>`
-        )
+        </tr>`)
         .join("");
 
     const renderHeadingGroup = (heading: HeadingGroup) => `
@@ -172,13 +162,16 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
       </tr>
       ${renderLineItems(heading)}`;
 
-    const renderSection = (title: string, headings: HeadingGroup[], total: number) => {
-      if (headings.length === 0) return "";
+    // Always renders section even when empty — shows "No entries" and 0.000 total
+    const renderSection = (title: string, sectionHeadings: HeadingGroup[], total: number) => {
       return `
       <tr class="section-header">
         <td colspan="2"><strong>${title}</strong></td>
       </tr>
-      ${headings.map(renderHeadingGroup).join("")}
+      ${sectionHeadings.length === 0
+        ? `<tr class="data-row"><td colspan="2" style="padding-left:28px;color:#9ca3af;font-style:italic;">No entries</td></tr>`
+        : sectionHeadings.map(renderHeadingGroup).join("")
+      }
       <tr class="total-row">
         <td><strong>TOTAL ${title.toUpperCase()}</strong></td>
         <td class="num"><strong>${formatBalance(total)}</strong></td>
@@ -264,15 +257,15 @@ export const getBalanceSheetReport = async (req: Request, res: Response): Promis
             <div>
               <div class="report-title">${reportTitle}</div>
               <table class="meta-info">
-                <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
+                <tr><td class="label">Title</td><td>${reportTitle}</td></tr>
                 <tr><td class="label">Date</td><td>${reportDate}</td></tr>
                 <tr><td class="label">User</td><td>${generatedBy}</td></tr>
-                <tr><td class="label">Currency</td><td>OMR</td></tr>
+                <tr><td class="label">Report</td><td>rpt_balance_sheet</td></tr>
               </table>
             </div>
             <div class="brand-block">
               <div class="brand-name">AL MADINA</div>
-              <div class="brand-subtitle">LOGISTICS</div>
+              <div class="brand-subtitle">LOGISTICS COMPANY</div>
             </div>
           </div>
           <table class="report-table">
