@@ -74020,3 +74020,5 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
 2026-06-09 11:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-06-09 11:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
 2026-06-09 11:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-06-16 16:03:58 [[33mwarn[39m]: Unhandled event type: DEPARTMENT_CREATED 
+2026-06-16 16:35:28 [[33mwarn[39m]: Unhandled event type: DEPARTMENT_CREATED 

@@ -78,7 +78,7 @@ import {DepartmentService} from "../services/WMS/department.service" // Add Depa
 import { LocationService } from "../services/WMS/location.service"; // Add LocationService import
 import { SalesmanService } from "../services/WMS/salesman.service"; // Add this import
 import { PartnerService } from "../services/WMS/partner.service";
-import { In } from "typeorm"; // Add this import for the In operator
+import { In, Like } from "typeorm"; // Add this import for the In operator
 import { MocService } from "../services/WMS/moc.service"; // Add MocService import
 import { UomService } from "../services/WMS/uom.service"; // Add UomService import
 import { ActivityGroupService } from "../services/WMS/activitygroup.service"; // Add ActivityGroupService import
@@ -1219,80 +1219,55 @@ case "brand":
   break;
 
 // Fetching department data from the Department model
-case "department":
-  {
-    // Get pagination parameters
-    const page = Number(req.query.page) || 1;
-    const pageLimit = Number(req.query.limit) || 100;
-    
-    // Prepare filters - match entity property names
-    const filters: any = { company_code: requestUser.company_code };
-    
-    // Apply search filter if present
-    if (filter.search && Array.isArray(filter.search) && filter.search.length > 0) {
-      // Handle department name search
-      const nameSearch = filter.search.find((s: any) => s.field === 'dept_name' && s.values);
-      if (nameSearch) {
-        filters.dept_name = nameSearch.values;
-      }
-      
-      // Handle department code search
-      const codeSearch = filter.search.find((s: any) => s.field === 'dept_code' && s.values);
-      if (codeSearch) {
-        filters.dept_code = codeSearch.values;
-      }
+case "department": {
+  const page = Number(req.query.page) || 1;
+  const pageLimit = Number(req.query.limit) || 100;
+
+  // Build where clause directly for the service
+  const where: Partial<any> & Record<string, any> = {
+    company_code: requestUser.company_code,
+  };
+
+  if (filter.search && Array.isArray(filter.search)) {
+    const nameSearch = filter.search.find(
+      (s: any) => s.field === "dept_name" && s.values
+    );
+    if (nameSearch) {
+      where.dept_name = Like(`%${nameSearch.values}%`);
     }
-    
-    try {
-      // Get all departments from service
-      const allDepartments = await DepartmentService.findAll();
-      
-      // Filter departments based on company code and search criteria
-      let filteredDepartments = allDepartments.filter(dept => {
-        // Check company code match
-        if (dept.company_code !== requestUser.company_code) {
-          return false;
-        }
-        
-        // Apply name filter if it exists
-        if (filters.dept_name && dept.dept_name && !dept.dept_name.includes(filters.dept_name)) {
-          return false;
-        }
-        
-        // Apply code filter if it exists
-        if (filters.dept_code && !dept.dept_code.includes(filters.dept_code)) {
-          return false;
-        }
-        
-        return true;
-      });
-      
-      // Apply sorting if requested
-      if (filter?.sort && Object.keys(filter.sort).length > 0) {
-        const { field_name, desc } = filter.sort;
-        filteredDepartments.sort((a: any, b: any) => {
-          if (desc) {
-            return a[field_name] < b[field_name] ? 1 : -1;
-          } else {
-            return a[field_name] > b[field_name] ? 1 : -1;
-          }
-        });
-      }
-      
-      // Get total count before pagination
-      totalCount = filteredDepartments.length;
-      
-      // Apply pagination
-      const startIndex = (page - 1) * pageLimit;
-      const endIndex = startIndex + pageLimit;
-      fetchedData = filteredDepartments.slice(startIndex, endIndex);
-    } catch (error) {
-      console.error("Error fetching departments:", error);
-      fetchedData = [];
-      totalCount = 0;
+
+    const codeSearch = filter.search.find(
+      (s: any) => s.field === "dept_code" && s.values
+    );
+    if (codeSearch) {
+      where.dept_code = Like(`%${codeSearch.values}%`);
     }
   }
+
+  // Build order clause
+  const order: Record<string, "ASC" | "DESC"> = {};
+  if (filter?.sort && filter.sort.field_name) {
+    order[filter.sort.field_name] = filter.sort.desc ? "DESC" : "ASC";
+  }
+
+  try {
+    const [data, count] = await DepartmentService.findAndCount({
+      where,
+      order,
+      skip: (page - 1) * pageLimit,
+      take: pageLimit,
+    });
+
+    fetchedData = data;
+    totalCount = count;
+  } catch (error) {
+    console.error("Error fetching departments:", error);
+    fetchedData = [];
+    totalCount = 0;
+  }
+
   break;
+}
 
 // Fetching supplier data from the Supplier model
 case "supplier":
