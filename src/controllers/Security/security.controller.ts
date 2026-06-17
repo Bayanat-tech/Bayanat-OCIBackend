@@ -120,7 +120,7 @@ export const getSecMaster = async (
         result = await SecurityMasterService.getSerialNo(
           requestUser.company_code,
           page,
-          200
+          limit
         );
         break;
 
