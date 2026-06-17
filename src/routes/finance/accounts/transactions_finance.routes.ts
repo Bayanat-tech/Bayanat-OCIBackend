@@ -61,9 +61,9 @@ import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
 import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
-import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
 import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
+import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
 
 
 const router = express.Router();
