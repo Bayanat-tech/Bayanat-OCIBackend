@@ -64,7 +64,7 @@ function text(value: unknown): string {
 }
 
 function dateText(value: unknown): string {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -84,7 +84,7 @@ function escapeXml(value: unknown): string {
 
 function numFmt(value: unknown, decimals = 0): string {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "\u2014";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -178,9 +178,9 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
   }> = {};
 
   for (const r of rows) {
-    const prinKey  = text(r.prin_code)  || "—";
+    const prinKey  = text(r.prin_code)  || "\u2014";
     const groupKey = text(r.group_name) || "Ungrouped";
-    const prodKey  = text(r.prod_code)  || "—";
+    const prodKey  = text(r.prod_code)  || "\u2014";
     const qty      = parseFloat(String(r.qty ?? r.quantity ?? r.qty_puom)) || 0;
     const volume   = parseFloat(String(r.volume)) || 0;
 
@@ -209,10 +209,12 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
 // ─── HTML renderer ────────────────────────────────────────────────────────────
 
 function renderHtml(
-  prins:       PrinSection[],
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
+  prins:         PrinSection[],
+  reportTitle:   string,
+  loginId:       string,
+  autoPrint:     boolean,
+  excelEndpoint: string,
+  excelParams:   Record<string, string>
 ): string {
   const printDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
@@ -221,73 +223,79 @@ function renderHtml(
   const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
 
+  const autoPrintScript = autoPrint
+    ? "window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 300); });"
+    : "";
+
+  // Build hidden form inputs from excelParams
+  const hiddenInputs = Object.entries(excelParams)
+    .map(([k, v]) => `<input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(v)}" />`)
+    .join("\n    ");
+
   let bodyRows = "";
 
   for (const ps of prins) {
-    bodyRows += `
-      <tr class="prin-row">
-        <td colspan="9">${escapeHtml(ps.prinCode)}${ps.prinName ? ` | ${escapeHtml(ps.prinName)}` : ""}</td>
-      </tr>`;
+    bodyRows += "<tr class=\"prin-row\"><td colspan=\"8\">" +
+      escapeHtml(ps.prinCode) + (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") +
+      "</td></tr>";
 
     for (const gs of ps.groups) {
-      bodyRows += `
-        <tr class="group-row">
-          <td colspan="9">Group : ${escapeHtml(gs.groupName)}</td>
-        </tr>`;
+      bodyRows += "<tr class=\"group-row\"><td colspan=\"8\">Group : " +
+        escapeHtml(gs.groupName) + "</td></tr>";
 
       for (const prd of gs.prods) {
-        bodyRows += `
-          <tr class="prod-row">
-            <td colspan="9">${escapeHtml(prd.prodCode)}${prd.prodName ? ` | ${escapeHtml(prd.prodName)}` : ""}</td>
-          </tr>`;
+        bodyRows += "<tr class=\"prod-row\"><td colspan=\"8\">" +
+          escapeHtml(prd.prodCode) + (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") +
+          "</td></tr>";
 
         for (const dr of prd.rows) {
           const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
           const volume = parseFloat(String(dr.volume)) || 0;
-          bodyRows += `
-            <tr class="data-row">
-              <td>${escapeHtml(dr.dn_no || "—")}</td>
-              <td>${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>
-              <td>${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>
-              <td>${escapeHtml(dr.job_no || "—")}</td>
-              <td>${escapeHtml(dr.customer || dr.cust_code || "—")}</td>
-              <td>${escapeHtml(dr.container_no || "—")}</td>
-              <td>${escapeHtml(dr.txn_type || "—")}</td>
-              <td class="num">${escapeHtml(numFmt(qty))}</td>
-              <td class="num">${escapeHtml(numFmt(volume, 3))}</td>
-            </tr>`;
+          bodyRows +=
+            "<tr class=\"data-row\">" +
+            "<td>" + escapeHtml(dr.dn_no || "\u2014") + "</td>" +
+            "<td>" + escapeHtml(dateText(dr.dn_date ?? dr.receipt_date)) + "</td>" +
+            "<td>" + escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date)) + "</td>" +
+            "<td>" + escapeHtml(dr.job_no || "\u2014") + "</td>" +
+            "<td>" + escapeHtml(dr.customer || dr.cust_code || "\u2014") + "</td>" +
+            "<td>" + escapeHtml(dr.container_no || "\u2014") + "</td>" +
+            "<td class=\"num\">" + escapeHtml(numFmt(qty)) + "</td>" +
+            "<td class=\"num\">" + escapeHtml(numFmt(volume, 3)) + "</td>" +
+            "</tr>";
         }
 
-        bodyRows += `
-          <tr class="prod-total">
-            <td colspan="7">Total For ${escapeHtml(prd.prodCode)}${prd.prodName ? ` | ${escapeHtml(prd.prodName)}` : ""}</td>
-            <td class="num">${escapeHtml(numFmt(prd.totalQty))}</td>
-            <td class="num">${escapeHtml(numFmt(prd.totalVolume, 3))}</td>
-          </tr>`;
+        bodyRows +=
+          "<tr class=\"prod-total\">" +
+          "<td colspan=\"6\">Total For " + escapeHtml(prd.prodCode) +
+          (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") + "</td>" +
+          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalQty)) + "</td>" +
+          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalVolume, 3)) + "</td>" +
+          "</tr>";
       }
 
-      bodyRows += `
-        <tr class="group-total">
-          <td colspan="7">Total For ${escapeHtml(gs.groupName)}</td>
-          <td class="num">${escapeHtml(numFmt(gs.totalQty))}</td>
-          <td class="num">${escapeHtml(numFmt(gs.totalVolume, 3))}</td>
-        </tr>`;
+      bodyRows +=
+        "<tr class=\"group-total\">" +
+        "<td colspan=\"6\">Total For " + escapeHtml(gs.groupName) + "</td>" +
+        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalQty)) + "</td>" +
+        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalVolume, 3)) + "</td>" +
+        "</tr>";
     }
 
-    bodyRows += `
-      <tr class="prin-total">
-        <td colspan="7">Total For ${escapeHtml(ps.prinCode)}${ps.prinName ? ` | ${escapeHtml(ps.prinName)}` : ""}</td>
-        <td class="num">${escapeHtml(numFmt(ps.totalQty))}</td>
-        <td class="num">${escapeHtml(numFmt(ps.totalVolume, 3))}</td>
-      </tr>`;
+    bodyRows +=
+      "<tr class=\"prin-total\">" +
+      "<td colspan=\"6\">Total For " + escapeHtml(ps.prinCode) +
+      (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") + "</td>" +
+      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalQty)) + "</td>" +
+      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalVolume, 3)) + "</td>" +
+      "</tr>";
   }
 
-  const grandRow = `
-    <tr class="grand-total">
-      <td colspan="7">Grand Total</td>
-      <td class="num">${escapeHtml(numFmt(grandQty))}</td>
-      <td class="num">${escapeHtml(numFmt(grandVolume, 3))}</td>
-    </tr>`;
+  const grandRow =
+    "<tr class=\"grand-total\">" +
+    "<td colspan=\"6\">Grand Total</td>" +
+    "<td class=\"num\">" + escapeHtml(numFmt(grandQty)) + "</td>" +
+    "<td class=\"num\">" + escapeHtml(numFmt(grandVolume, 3)) + "</td>" +
+    "</tr>";
 
   return `<!doctype html>
 <html lang="en">
@@ -304,8 +312,6 @@ function renderHtml(
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-
-    /* ── Action bar (screen only) ── */
     .action-bar {
       display: flex; gap: 10px; justify-content: flex-end; align-items: center;
       padding: 10px 20px; background: #fff;
@@ -327,8 +333,6 @@ function renderHtml(
     .btn:active { transform: scale(.97); }
     .btn-print  { background: #1e3a5f; color: #fff; }
     .btn-excel  { background: #1a7f4b; color: #fff; }
-
-    /* ── Sheet ── */
     .sheet {
       width: 277mm; min-height: 190mm;
       margin: 18px auto; background: #fff;
@@ -350,12 +354,10 @@ function renderHtml(
       font-size: 10px; color: #4b5563;
     }
     .rpt-meta strong { color: #111827; font-weight: 600; }
-
     table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    col.c0 { width: 8%;  } col.c1 { width: 9%;  } col.c2 { width: 9%;  }
-    col.c3 { width: 13%; } col.c4 { width: 11%; } col.c5 { width: 13%; }
-    col.c6 { width: 9%;  } col.c7 { width: 14%; } col.c8 { width: 14%; }
-
+    col.c0 { width: 9%;  } col.c1 { width: 10%; } col.c2 { width: 10%; }
+    col.c3 { width: 14%; } col.c4 { width: 13%; } col.c5 { width: 15%; }
+    col.c6 { width: 15%; } col.c7 { width: 14%; }
     thead tr.th-main th {
       background: #1e3a5f; color: #fff; font-weight: 700;
       font-size: 10px; padding: 7px 10px; text-align: center;
@@ -364,7 +366,6 @@ function renderHtml(
     thead tr.th-main th:last-child { border-right: none; }
     thead tr.th-main th.left { text-align: left; }
     thead tr.th-main th.num  { text-align: right; }
-
     tr.prin-row td {
       background: #1e3a5f; color: #fff; font-weight: 700;
       font-size: 11px; padding: 5px 10px;
@@ -387,9 +388,7 @@ function renderHtml(
     }
     tbody tr.data-row td:first-child { padding-left: 40px; }
     tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-
     td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-
     tr.prod-total td {
       background: #fde68a; padding: 3px 10px; font-size: 10px;
       font-weight: 700; color: #78350f; white-space: nowrap;
@@ -407,33 +406,34 @@ function renderHtml(
       font-size: 12px; padding: 8px 10px;
       border-top: 2px solid #162d4a;
     }
-
     .rpt-footer {
       margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
       display: flex; justify-content: space-between;
       font-size: 9px; color: #9ca3af;
     }
     .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
-
-    /* ── Print overrides ── */
     @media print {
       body        { background: #fff; }
       .action-bar { display: none; }
       .sheet      { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
       thead       { display: table-header-group; }
-      tr.prin-row, tr.group-row, tr.prod-row          { break-after: avoid; page-break-after: avoid; }
+      tr.prin-row, tr.group-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
       tr.prod-total, tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ── Action bar — hidden on print ── -->
   <div class="action-bar">
     <span class="action-bar-title">${escapeHtml(reportTitle)}</span>
-    <button class="btn btn-print" onclick="window.print()">🖨&nbsp; Print / PDF</button>
-    <button class="btn btn-excel" onclick="exportExcel()">📊&nbsp; Export Excel</button>
+    <button class="btn btn-print" id="btnPrint">&#128424;&nbsp; Print / PDF</button>
+    <button class="btn btn-excel" id="btnExcel">&#128202;&nbsp; Export Excel</button>
   </div>
+
+  <!-- Hidden form: submits a real POST to the /excel endpoint, browser handles the download -->
+  <form id="excelForm" method="POST" action="${escapeHtml(excelEndpoint)}" style="display:none">
+    ${hiddenInputs}
+  </form>
 
   <div class="sheet">
     <div class="rpt-header">${escapeHtml(reportTitle)}</div>
@@ -447,7 +447,7 @@ function renderHtml(
       <colgroup>
         <col class="c0"/><col class="c1"/><col class="c2"/>
         <col class="c3"/><col class="c4"/><col class="c5"/>
-        <col class="c6"/><col class="c7"/><col class="c8"/>
+        <col class="c6"/><col class="c7"/>
       </colgroup>
       <thead>
         <tr class="th-main">
@@ -457,7 +457,6 @@ function renderHtml(
           <th class="left">Job No</th>
           <th class="left">Customer</th>
           <th class="left">Container No</th>
-          <th class="left">Txn Type</th>
           <th class="num">Qty</th>
           <th class="num">Volume</th>
         </tr>
@@ -475,29 +474,22 @@ function renderHtml(
   </div>
 
   <script>
-    /* PostMessage print trigger (iframe usage) */
-    window.addEventListener("message", (e) => { if (e.data === "print") window.print(); });
+    window.addEventListener("message", function(e) {
+      if (e.data === "print") window.print();
+      if (e.data === "excel") exportExcel();
+    });
 
-    /* Auto-print on load */
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
+    ${autoPrintScript}
 
-    /* Export to Excel (CSV with BOM — opens natively in Excel) */
+    document.addEventListener("DOMContentLoaded", function() {
+      var btnPrint = document.getElementById("btnPrint");
+      var btnExcel = document.getElementById("btnExcel");
+      if (btnPrint) btnPrint.addEventListener("click", function() { window.print(); });
+      if (btnExcel) btnExcel.addEventListener("click", exportExcel);
+    });
+
     function exportExcel() {
-      const table = document.getElementById("dnTable");
-      const rows  = Array.from(table.querySelectorAll("tr"));
-      const lines = rows.map(row =>
-        Array.from(row.querySelectorAll("th, td"))
-          .map(cell => '"' + cell.innerText.replace(/"/g, '""') + '"')
-          .join(",")
-      );
-      const csv  = "\uFEFF" + lines.join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = "DN_Summary_Report.csv";
-      a.click();
-      URL.revokeObjectURL(url);
+     
     }
   </script>
 </body>
@@ -505,7 +497,6 @@ function renderHtml(
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// (unchanged from original — kept in full)
 
 const STYLE_ID = {
   default:       0,
@@ -530,7 +521,7 @@ interface XlCell { v: unknown; s: number }
 function xc(v: unknown, style: StyleKey): XlCell { return { v, s: STYLE_ID[style] }; }
 
 function buildExcelBuffer(prins: PrinSection[]): Buffer {
-  const NCOLS = 9;
+  const NCOLS = 8;
   type Row = (XlCell | null)[];
   const skip = null;
   const rows: Row[] = [];
@@ -538,54 +529,56 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
   rows.push([xc("Delivery Note Report (Summary)", "header"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
   rows.push([
-    xc("DN No",        "header"), xc("DN Date",      "header"), xc("Confirm Date", "header"),
-    xc("Job No",       "header"), xc("Customer",      "header"), xc("Container No", "header"),
-    xc("Txn Type",     "header"), xc("Qty",           "header"), xc("Volume",       "header"),
+    xc("DN No",       "header"), xc("DN Date",      "header"), xc("Confirm Date", "header"),
+    xc("Job No",      "header"), xc("Customer",     "header"), xc("Container No", "header"),
+    xc("Qty",         "header"), xc("Volume",       "header"),
   ]);
 
   for (const ps of prins) {
-    rows.push([xc(`${ps.prinCode}${ps.prinName ? " | " + ps.prinName : ""}`, "sectionPrin"), ...Array(NCOLS - 1).fill(skip)]);
+    rows.push([xc(ps.prinCode + (ps.prinName ? " | " + ps.prinName : ""), "sectionPrin"), ...Array(NCOLS - 1).fill(skip)]);
 
     for (const gs of ps.groups) {
-      rows.push([xc(`Group : ${gs.groupName}`, "sectionGroup"), ...Array(NCOLS - 1).fill(skip)]);
+      rows.push([xc("Group : " + gs.groupName, "sectionGroup"), ...Array(NCOLS - 1).fill(skip)]);
 
       for (const prd of gs.prods) {
-        rows.push([xc(`${prd.prodCode}${prd.prodName ? " | " + prd.prodName : ""}`, "sectionProd"), ...Array(NCOLS - 1).fill(skip)]);
+        rows.push([xc(prd.prodCode + (prd.prodName ? " | " + prd.prodName : ""), "sectionProd"), ...Array(NCOLS - 1).fill(skip)]);
 
         for (const dr of prd.rows) {
           const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
           const volume = parseFloat(String(dr.volume)) || 0;
           rows.push([
-            xc(text(dr.dn_no)                                          || "—", "value"),
-            xc(dateText(dr.dn_date ?? dr.receipt_date),                        "value"),
-            xc(dateText(dr.principal_confirm_date ?? dr.confirm_date),         "value"),
-            xc(text(dr.job_no)                                         || "—", "value"),
-            xc(text(dr.customer ?? dr.cust_code)                       || "—", "value"),
-            xc(text(dr.container_no)                                   || "—", "value"),
-            xc(text(dr.txn_type)                                       || "—", "value"),
-            xc(numFmt(qty),                                                    "numValue"),
-            xc(numFmt(volume, 3),                                              "numValue"),
+            xc(text(dr.dn_no)                                        || "\u2014", "value"),
+            xc(dateText(dr.dn_date ?? dr.receipt_date),                           "value"),
+            xc(dateText(dr.principal_confirm_date ?? dr.confirm_date),            "value"),
+            xc(text(dr.job_no)                                       || "\u2014", "value"),
+            xc(text(dr.customer ?? dr.cust_code)                     || "\u2014", "value"),
+            xc(text(dr.container_no)                                 || "\u2014", "value"),
+            xc(numFmt(qty),                                                       "numValue"),
+            xc(numFmt(volume, 3),                                                 "numValue"),
           ]);
         }
 
         rows.push([
-          xc(`Total For ${prd.prodCode}${prd.prodName ? " | " + prd.prodName : ""}`, "totalProd"),
-          skip, skip, skip, skip, skip, xc("", "totalProd"),
-          xc(numFmt(prd.totalQty), "numTotalProd"), xc(numFmt(prd.totalVolume, 3), "numTotalProd"),
+          xc("Total For " + prd.prodCode + (prd.prodName ? " | " + prd.prodName : ""), "totalProd"),
+          skip, skip, skip, skip, skip,
+          xc(numFmt(prd.totalQty), "numTotalProd"),
+          xc(numFmt(prd.totalVolume, 3), "numTotalProd"),
         ]);
       }
 
       rows.push([
-        xc(`Total For ${gs.groupName}`, "totalGroup"),
-        skip, skip, skip, skip, skip, xc("", "totalGroup"),
-        xc(numFmt(gs.totalQty), "numTotalGroup"), xc(numFmt(gs.totalVolume, 3), "numTotalGroup"),
+        xc("Total For " + gs.groupName, "totalGroup"),
+        skip, skip, skip, skip, skip,
+        xc(numFmt(gs.totalQty), "numTotalGroup"),
+        xc(numFmt(gs.totalVolume, 3), "numTotalGroup"),
       ]);
     }
 
     rows.push([
-      xc(`Total For ${ps.prinCode}${ps.prinName ? " | " + ps.prinName : ""}`, "totalPrin"),
-      skip, skip, skip, skip, skip, xc("", "totalPrin"),
-      xc(numFmt(ps.totalQty), "numTotalPrin"), xc(numFmt(ps.totalVolume, 3), "numTotalPrin"),
+      xc("Total For " + ps.prinCode + (ps.prinName ? " | " + ps.prinName : ""), "totalPrin"),
+      skip, skip, skip, skip, skip,
+      xc(numFmt(ps.totalQty), "numTotalPrin"),
+      xc(numFmt(ps.totalVolume, 3), "numTotalPrin"),
     ]);
   }
 
@@ -593,58 +586,69 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
   rows.push([
     xc("Grand Total", "totalGrand"),
-    skip, skip, skip, skip, skip, xc("", "totalGrand"),
-    xc(numFmt(grandQty), "numGrand"), xc(numFmt(grandVolume, 3), "numGrand"),
+    skip, skip, skip, skip, skip,
+    xc(numFmt(grandQty), "numGrand"),
+    xc(numFmt(grandVolume, 3), "numGrand"),
   ]);
 
-  const COL_WIDTHS = [12, 14, 14, 18, 16, 16, 12, 14, 14];
-  const colXml = COL_WIDTHS.map((w, i) => `<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+  const COL_WIDTHS = [12, 14, 14, 18, 16, 16, 14, 14];
+  const colXml = COL_WIDTHS.map((w, i) =>
+    "<col min=\"" + (i + 1) + "\" max=\"" + (i + 1) + "\" width=\"" + w + "\" customWidth=\"1\"/>"
+  ).join("");
 
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
-    let spanStart = -1;
-    row.forEach((cell, ci) => {
-      if (cell !== null && spanStart === -1) { spanStart = ci; }
-      else if (cell === null && spanStart !== -1) {
-        let end = ci;
-        while (end + 1 < row.length && row[end + 1] === null) end++;
-        if (end > spanStart)
-          merges.push(`${String.fromCharCode(65 + spanStart)}${rn}:${String.fromCharCode(65 + end)}${rn}`);
-        spanStart = -1;
-      } else if (cell !== null) { spanStart = ci; }
-    });
+    let ci = 0;
+    while (ci < row.length) {
+      if (row[ci] !== null) {
+        let end = ci + 1;
+        while (end < row.length && row[end] === null) end++;
+        if (end - 1 > ci) {
+          const startCol = String.fromCharCode(65 + ci);
+          const endCol   = String.fromCharCode(65 + end - 1);
+          merges.push(startCol + rn + ":" + endCol + rn);
+        }
+        ci = end;
+      } else {
+        ci++;
+      }
+    }
   });
 
   let sheetDataXml = "";
   rows.forEach((row, ri) => {
     const rn = ri + 1;
-    const ht = rn === 1 ? ` ht="22" customHeight="1"` : "";
-    let rowXml = `<row r="${rn}"${ht}>`;
+    const ht = rn === 1 ? " ht=\"22\" customHeight=\"1\"" : "";
+    let rowXml = "<row r=\"" + rn + "\"" + ht + ">";
     row.forEach((cell, ci) => {
       if (cell === null) return;
-      const ref = `${String.fromCharCode(65 + ci)}${rn}`;
-      if (typeof cell.v === "number")
-        rowXml += `<c r="${ref}" s="${cell.s}"><v>${cell.v}</v></c>`;
-      else
-        rowXml += `<c r="${ref}" s="${cell.s}" t="inlineStr"><is><t>${escapeXml(cell.v ?? "")}</t></is></c>`;
+      const ref = String.fromCharCode(65 + ci) + rn;
+      if (typeof cell.v === "number") {
+        rowXml += "<c r=\"" + ref + "\" s=\"" + cell.s + "\"><v>" + cell.v + "</v></c>";
+      } else {
+        rowXml += "<c r=\"" + ref + "\" s=\"" + cell.s + "\" t=\"inlineStr\"><is><t>" +
+          escapeXml(cell.v ?? "") + "</t></is></c>";
+      }
     });
-    rowXml += `</row>`;
+    rowXml += "</row>";
     sheetDataXml += rowXml;
   });
 
   const mergeXml = merges.length
-    ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>`
+    ? "<mergeCells count=\"" + merges.length + "\">" +
+      merges.map((m) => "<mergeCell ref=\"" + m + "\"/>").join("") +
+      "</mergeCells>"
     : "";
 
-  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheetFormatPr defaultRowHeight="15"/>
-  <cols>${colXml}</cols>
-  <sheetData>${sheetDataXml}</sheetData>
-  ${mergeXml}
-</worksheet>`;
+  const sheetXml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+    "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+    "<sheetFormatPr defaultRowHeight=\"15\"/>" +
+    "<cols>" + colXml + "</cols>" +
+    "<sheetData>" + sheetDataXml + "</sheetData>" +
+    mergeXml +
+    "</worksheet>";
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -749,6 +753,20 @@ function extractParams(req: RequestWithUser) {
   };
 }
 
+function extractExcelParams(params: ReturnType<typeof extractParams>): Record<string, string> {
+  const p: Record<string, string> = {};
+  if (params.prinCode)  p.code2 = params.prinCode;
+  if (params.groupCode) p.code3 = params.groupCode;
+  if (params.prodCode)  p.code4 = params.prodCode;
+  return p;
+}
+
+function resolveExcelEndpoint(req: RequestWithUser): string {
+  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "http";
+  const host  = (req.headers["x-forwarded-host"] as string)  || req.headers.host || "localhost";
+  return `${proto}://${host}/api/finance/transactions/reports/getDnSummaryReport/excel`;
+}
+
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
 export const getDnSummaryReportHtml = async (
@@ -756,9 +774,11 @@ export const getDnSummaryReportHtml = async (
   res: Response
 ): Promise<void> => {
   try {
-    const reportTitle = text(req.query.title) || "Delivery Note Report (Summary)";
-    const autoPrint   = req.query.print === "true";
-    const params      = extractParams(req);
+    const reportTitle   = text(req.query.title as string) || "Delivery Note Report (Summary)";
+    const autoPrint     = req.query.print === "true";
+    const params        = extractParams(req);
+    const excelEndpoint = resolveExcelEndpoint(req);
+    const excelParams   = extractExcelParams(params);
 
     const rows = await loadDnData(req, params);
     if (!rows.length) {
@@ -768,7 +788,7 @@ export const getDnSummaryReportHtml = async (
 
     const prins = groupRows(rows);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint));
+    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint, excelEndpoint, excelParams));
   } catch (error: any) {
     console.error("DN Summary HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -780,8 +800,10 @@ export const getDnSummaryReportPdf = async (
   res: Response
 ): Promise<void> => {
   try {
-    const params = extractParams(req);
-    const rows   = await loadDnData(req, params);
+    const params        = extractParams(req);
+    const excelEndpoint = resolveExcelEndpoint(req);
+    const excelParams   = extractExcelParams(params);
+    const rows          = await loadDnData(req, params);
 
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
@@ -789,10 +811,10 @@ export const getDnSummaryReportPdf = async (
     }
 
     const prins = groupRows(rows);
-    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true);
+    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true, excelEndpoint, excelParams);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Content-Disposition", `inline; filename="DN_Summary.pdf"`);
+    res.setHeader("Content-Disposition", "inline; filename=\"DN_Summary.pdf\"");
     res.send(html);
   } catch (error: any) {
     console.error("DN Summary PDF error:", error);
@@ -817,7 +839,7 @@ export const getDnSummaryReportExcel = async (
     const buffer = buildExcelBuffer(prins);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="DN_Summary.xlsx"`);
+    res.setHeader("Content-Disposition", "attachment; filename=\"DN_Summary.xlsx\"");
     res.end(buffer);
   } catch (error: any) {
     console.error("DN Summary Excel error:", error);
