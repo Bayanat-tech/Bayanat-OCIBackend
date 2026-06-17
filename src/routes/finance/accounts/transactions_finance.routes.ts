@@ -63,7 +63,7 @@ import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
 import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
 import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
-import { getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
+import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
 
 
 const router = express.Router();
@@ -106,6 +106,7 @@ router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 // WMS REPORTS ROUTES
 
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
+router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
 
 
 

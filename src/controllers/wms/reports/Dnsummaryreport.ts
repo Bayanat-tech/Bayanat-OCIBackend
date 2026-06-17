@@ -98,8 +98,10 @@ async function loadDnData(
   params: {
     loginid?:   string;
     prinCode?:  string;
-    groupCode?: string;
-    prodCode?:  string;
+    // groupCode?: string;
+    // prodCode?:  string;
+    fromdate? : string;
+    todate?   : string;
   } = {}
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
@@ -110,8 +112,8 @@ async function loadDnData(
 
       code1:  null,
       code2:  params.prinCode  || null,
-      code3:  params.groupCode || null,
-      code4:  params.prodCode  || null,
+      code3:  params.fromdate || null,
+      code4:  params.todate   || null,
       code5:  null, code6: null, code7: null, code8: null, code9: null,
 
       ...Object.fromEntries(
@@ -207,14 +209,14 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
 }
 
 // ─── HTML renderer ────────────────────────────────────────────────────────────
+// NOTE: No action-bar rendered here — Print & Excel buttons live on the React
+//       parent page and communicate with this iframe via postMessage / API call.
 
 function renderHtml(
-  prins:         PrinSection[],
-  reportTitle:   string,
-  loginId:       string,
-  autoPrint:     boolean,
-  excelEndpoint: string,
-  excelParams:   Record<string, string>
+  prins:       PrinSection[],
+  reportTitle: string,
+  loginId:     string,
+  autoPrint:   boolean
 ): string {
   const printDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
@@ -226,11 +228,6 @@ function renderHtml(
   const autoPrintScript = autoPrint
     ? "window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 300); });"
     : "";
-
-  // Build hidden form inputs from excelParams
-  const hiddenInputs = Object.entries(excelParams)
-    .map(([k, v]) => `<input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(v)}" />`)
-    .join("\n    ");
 
   let bodyRows = "";
 
@@ -312,27 +309,6 @@ function renderHtml(
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .action-bar {
-      display: flex; gap: 10px; justify-content: flex-end; align-items: center;
-      padding: 10px 20px; background: #fff;
-      border-bottom: 1px solid #e2e8f0;
-      position: sticky; top: 0; z-index: 10;
-      box-shadow: 0 1px 4px rgba(0,0,0,.08);
-    }
-    .action-bar-title {
-      flex: 1; font-size: 13px; font-weight: 700;
-      color: #1e3a5f; letter-spacing: .04em; text-transform: uppercase;
-    }
-    .btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 18px; border: none; border-radius: 6px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      transition: opacity .15s, transform .1s;
-    }
-    .btn:hover  { opacity: .88; }
-    .btn:active { transform: scale(.97); }
-    .btn-print  { background: #1e3a5f; color: #fff; }
-    .btn-excel  { background: #1a7f4b; color: #fff; }
     .sheet {
       width: 277mm; min-height: 190mm;
       margin: 18px auto; background: #fff;
@@ -413,27 +389,15 @@ function renderHtml(
     }
     .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
     @media print {
-      body        { background: #fff; }
-      .action-bar { display: none; }
-      .sheet      { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
-      thead       { display: table-header-group; }
+      body   { background: #fff; }
+      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
+      thead  { display: table-header-group; }
       tr.prin-row, tr.group-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
       tr.prod-total, tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
     }
   </style>
 </head>
 <body>
-
-  <div class="action-bar">
-    <span class="action-bar-title">${escapeHtml(reportTitle)}</span>
-    <button class="btn btn-print" id="btnPrint">&#128424;&nbsp; Print / PDF</button>
-    <button class="btn btn-excel" id="btnExcel">&#128202;&nbsp; Export Excel</button>
-  </div>
-
-  <!-- Hidden form: submits a real POST to the /excel endpoint, browser handles the download -->
-  <form id="excelForm" method="POST" action="${escapeHtml(excelEndpoint)}" style="display:none">
-    ${hiddenInputs}
-  </form>
 
   <div class="sheet">
     <div class="rpt-header">${escapeHtml(reportTitle)}</div>
@@ -474,23 +438,12 @@ function renderHtml(
   </div>
 
   <script>
+    // Listen for print trigger from parent React page via postMessage
     window.addEventListener("message", function(e) {
       if (e.data === "print") window.print();
-      if (e.data === "excel") exportExcel();
     });
 
     ${autoPrintScript}
-
-    document.addEventListener("DOMContentLoaded", function() {
-      var btnPrint = document.getElementById("btnPrint");
-      var btnExcel = document.getElementById("btnExcel");
-      if (btnPrint) btnPrint.addEventListener("click", function() { window.print(); });
-      if (btnExcel) btnExcel.addEventListener("click", exportExcel);
-    });
-
-    function exportExcel() {
-     
-    }
   </script>
 </body>
 </html>`;
@@ -753,20 +706,6 @@ function extractParams(req: RequestWithUser) {
   };
 }
 
-function extractExcelParams(params: ReturnType<typeof extractParams>): Record<string, string> {
-  const p: Record<string, string> = {};
-  if (params.prinCode)  p.code2 = params.prinCode;
-  if (params.groupCode) p.code3 = params.groupCode;
-  if (params.prodCode)  p.code4 = params.prodCode;
-  return p;
-}
-
-function resolveExcelEndpoint(req: RequestWithUser): string {
-  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "http";
-  const host  = (req.headers["x-forwarded-host"] as string)  || req.headers.host || "localhost";
-  return `${proto}://${host}/api/finance/transactions/reports/getDnSummaryReport/excel`;
-}
-
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
 export const getDnSummaryReportHtml = async (
@@ -774,11 +713,9 @@ export const getDnSummaryReportHtml = async (
   res: Response
 ): Promise<void> => {
   try {
-    const reportTitle   = text(req.query.title as string) || "Delivery Note Report (Summary)";
-    const autoPrint     = req.query.print === "true";
-    const params        = extractParams(req);
-    const excelEndpoint = resolveExcelEndpoint(req);
-    const excelParams   = extractExcelParams(params);
+    const reportTitle = text(req.query.title as string) || "Delivery Note Report (Summary)";
+    const autoPrint   = req.query.print === "true";
+    const params      = extractParams(req);
 
     const rows = await loadDnData(req, params);
     if (!rows.length) {
@@ -788,7 +725,7 @@ export const getDnSummaryReportHtml = async (
 
     const prins = groupRows(rows);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint, excelEndpoint, excelParams));
+    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint));
   } catch (error: any) {
     console.error("DN Summary HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -800,10 +737,8 @@ export const getDnSummaryReportPdf = async (
   res: Response
 ): Promise<void> => {
   try {
-    const params        = extractParams(req);
-    const excelEndpoint = resolveExcelEndpoint(req);
-    const excelParams   = extractExcelParams(params);
-    const rows          = await loadDnData(req, params);
+    const params = extractParams(req);
+    const rows   = await loadDnData(req, params);
 
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
@@ -811,7 +746,7 @@ export const getDnSummaryReportPdf = async (
     }
 
     const prins = groupRows(rows);
-    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true, excelEndpoint, excelParams);
+    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", "inline; filename=\"DN_Summary.pdf\"");
