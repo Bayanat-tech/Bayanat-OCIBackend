@@ -36,6 +36,29 @@ export const getLeaveEntitleHandler = async (req: Request, res: Response) => {
   }
 };
 
+
+export const leaveDaysCntHandler = async (req: Request, res: Response) => {
+  try {
+    const {
+      leaveStartDate,
+      leaveEndDate,
+      leaveType,
+      companycode
+    } = req.query;
+
+    const data = await HrService.LeaveDaysCount({
+      leaveStartDate: leaveStartDate as string,
+      leaveEndDate: leaveEndDate as string,
+      leaveType: leaveType as string,
+      companycode: companycode as string
+    });
+
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const getLeaveHistoryHandler = async (req: Request, res: Response) => {
   try {
     const {

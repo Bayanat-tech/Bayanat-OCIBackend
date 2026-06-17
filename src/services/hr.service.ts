@@ -1,5 +1,6 @@
 import axios from "axios";
 import https from "https";
+import * as oracledb from "oracledb";
 import { LeaveRequestFlow } from "../interfaces/leaveRequestFlow.interface";
 import { oracleDb } from "../database/connection";
 import { RequestWithUser } from "../interfaces/common.interface";
@@ -109,8 +110,65 @@ export const HrService = {
   },
 
 
+ LeaveDaysCount: async (params: {
+    leaveStartDate: string;
+    leaveEndDate: string;
+    leaveType: string;
+    companycode: string;
+  }) => {
+    const { leaveStartDate, leaveEndDate , leaveType , companycode} = params;
 
+    const query = `
+    DECLARE
+     v_leave_days NUMBER;
+     BEGIN
+        v_leave_days := FUN_CALC_LEAVE_DAYS(
+          TO_DATE(:leaveStartDate, 'DD-MM-YYYY'),
+          TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
+          :p_leaveType,
+          :p_companycode
+        );
+      :p_leave_days := v_leave_days;
+      END;
+    `;
+    
+    const bindParams = {
+      leaveStartDate: leaveStartDate,
+      leaveEndDate: leaveEndDate,
+      p_leaveType: leaveType,
+      p_companycode: companycode,
+      p_leave_days: {
+        dir: oracledb.BIND_OUT,
+        type: oracledb.NUMBER,
+      },
+    };
 
+    try {
+      const result = await oracleDb.query(query, bindParams);
+      const leaveDays = (result.outBinds as any).p_leave_days;
+
+      return {
+        success: true,
+        leaveStartDate: leaveStartDate,
+        leaveEndDate: leaveEndDate,
+        leaveDays: leaveDays,
+        leaveType: leaveType,
+        company_code: companycode,
+        message: "Leave days calculated successfully",
+      };
+    }catch (error: string | any) {
+      console.error("Error calculating leave days:", error);
+      return {
+        success: false,
+        leaveStartDate: leaveStartDate,
+        leaveEndDate: leaveEndDate,
+        leaveDays: null,
+        company_code: companycode,
+        leaveType: leaveType,
+        message: "Failed to calculate leave days",
+      };
+    }
+  },
 
 
 newValidaterequest: async(params: {
@@ -244,8 +302,6 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
 },
 
 
-
-
   validateLeave: async (params: {
     companyCode: string;
     employeeId: string;
@@ -264,10 +320,6 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
     );
     return response.data;
   },
-
-
-
-
 
 
 
@@ -375,6 +427,8 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
       throw error;
     }
   },
+
+  
   updateLeaveResume: async (request: LeaveResumeDatesUpdate): Promise<any> => {
     try {
       // Transform to match .NET API expectations
@@ -437,6 +491,8 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
       throw error;
     }
   },
+
+
   getLeaveRequestsWithErpDoc: async (employeeCode: string) => {
     const response = await axiosInstance.get(
       `/api/EmployeeLeave/GET_LEAVE_REQUESTS_WITH_ERP_DOC`,
@@ -447,6 +503,7 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
     return response.data;
   },
 
+  
   insertUploadedFileEmployee: async (data: Record<string, any>) => {
     try {
       // Log the payload being sent
