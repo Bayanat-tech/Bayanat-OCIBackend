@@ -25,7 +25,6 @@ export const createDepartment = async (req: RequestWithUser, res: Response) => {
     // Check if department already exists using composite key
     const existingDepartment = await DepartmentService.findDuplicate({
       company_code: company_code || requestUser.company_code,
-      div_code: div_code || '01',
       dept_code,
     });
 

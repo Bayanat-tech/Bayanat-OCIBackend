@@ -37,6 +37,7 @@ import { upsertHrIntEvalForm } from "../../controllers/finance/accounts/transact
 import { procBulkAccountEntry } from "../../controllers/finance/accounts/transactions/procBulkAccountEntry";
 import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
 import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
+import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -77,7 +78,12 @@ router.post(
   "/upsertHrDocTypes",
   upsertHrDocTypes)
 
+  // hr
+router.post(
+  "/upsertSecDivUser",
+  upsertSecDivUser)
 
+   
   router.post(
   "/upsertHrIntEvalForm", 
 upsertHrIntEvalForm)

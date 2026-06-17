@@ -15,6 +15,7 @@ import {
   exportFinanceDocumentReportExcel,
   getFinanceDocumentReportHtml
 } from "../../../controllers/finance/accounts/transactions/financeDocumentReport.controller";
+import { getBalanceSheetReport } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -61,6 +62,9 @@ import { OutstandingList } from "../../../controllers/finance/accounts/accounts-
 import { AcStatementReport } from "../../../controllers/finance/accounts/accounts-report/AC_StatementReport";
 import { OutstandingDetailReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingDetailReport";
 import { OutstandingSummaryReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingSummaryReport";
+import { getTaxInvoiceReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledger";
+import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledger";
+import { getJobListingReport } from "../../../controllers/finance/accounts/accounts-report/wms/joblistingreport";
 
 const router = express.Router();
 
@@ -81,6 +85,7 @@ router.post("/report/trialbalance/excel/:level", exportTrialBalanceReportExcel);
 router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
 router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
+router.post('/reports/balance-sheet/html', getBalanceSheetReport);
 
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
@@ -88,6 +93,10 @@ router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
 router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
 
 
+router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
+router.post('/reports/tax-vat-out-ledger-summary/html', getTaxInvoiceSummaryReport);
+
+router.post('/reports/wms-joblisting/html', getJobListingReport);
 
 // ------Ageing Reports Routes------
  router.post('/reports/InvdatewiseDetail/html', InvdatewiseDetail);

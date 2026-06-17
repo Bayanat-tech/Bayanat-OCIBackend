@@ -71135,3 +71135,119 @@ Error: write EPIPE
     at console.value (node:internal/console/constructor:298:16)
     at console.log (node:internal/console/constructor:384:26)
     at Function.initialize (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:62:15)
+2026-06-14 16:55:47 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-14 17:34:04 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-14 18:24:16 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-14 18:25:01 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-14 18:27:53 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-14 18:49:19 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-16 15:55:43 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/department_wms.controller.ts[0m:[93m28[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'div_code' does not exist in type '{ company_code: string; dept_code: string; }'.
+
+[7m28[0m       div_code: div_code || '01',
+[7m  [0m [91m      ~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/department_wms.controller.ts[0m:[93m28[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'div_code' does not exist in type '{ company_code: string; dept_code: string; }'.
+
+[7m28[0m       div_code: div_code || '01',
+[7m  [0m [91m      ~~~~~~~~[0m
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/department_wms.controller.ts[0m:[93m28[0m:[93m7[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'div_code' does not exist in type '{ company_code: string; dept_code: string; }'.
+
+[7m28[0m       div_code: div_code || '01',
+[7m  [0m [91m      ~~~~~~~~[0m
+
+    at createTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
