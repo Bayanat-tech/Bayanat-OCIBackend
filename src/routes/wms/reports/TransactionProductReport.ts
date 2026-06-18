@@ -63,13 +63,41 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
          */
 
         const {
-            loginid,
-            code1, code2, code3, code4,
-            code5, code6, code7, code8,
-            code9, code10, code11, code12,
-            code13, code14, code15, code16, code17,
-            date1, date2, date3, date4,
-        } = req.body;
+    loginid,
+
+    code1,
+    code2,
+    code3,
+    code4,
+    code5,
+    code6,
+    code7,
+    code8,
+    code9,
+    code10,
+    code11,
+    code12,
+    code13,
+    code14,
+    code15,
+    code16,
+    code17,
+    code18,
+    code19,
+    code20,
+
+    number1,
+    number2,
+    number3,
+    number4,
+
+    date1,
+    date2,
+    date3,
+    date4,
+
+    groupedOn  
+} = req.body;
 
         const parameter = "WMS_Stock_TRANSACTION_PRODUCT_REPORT";
 
@@ -86,33 +114,49 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
 
         // ── Binds ─────────────────────────────────────────────────────────
         const binds: any = {
-            parameter,
-            loginid: loginid || "ADMIN",
-            code1:  code1  || null,
-            code2:  code2  || null,
-            code3:  code3  || "",
-            code4:  code4  || "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ",
-            code5:  code5  || "",
-            code6:  code6  || "ZZZZZ",
-            code7:  code7  || "",
-            code8:  code8  || "ZZZZZZZZZZZZZZZ",
-            code9:  code9  || "",
-            code10: code10 || "ZZZZZ",
-            code11: code11 || "",
-            code12: code12 || "ZZZZZZZZZZZZZZZZZZZZ",
-            code13: code13 || "",
-            code14: code14 || "ZZZZZZZZZZZZZZZZZZZZ",
-            code15: code15 || "All",
-            code16: code16 || "All",
-            code17: code17 || "ZZZZZZZZZZZZZZZZZZZZ",
-            code18: null, code19: null, code20: null,
-            number1: null, number2: null, number3: null, number4: null,
-            date1: date1 && date1 !== "" ? date1 : null,
-            date2: date2 && date2 !== "" ? date2 : null,
-            date3: date3 || null,
-            date4: date4 || null,
-            out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
-        };
+  parameter,
+  loginid: loginid || "ADMIN",
+
+  code1: code1 || null,
+  code2: code2 || null,
+  code3: code3 || null,
+  code4: code4 || null,
+  code5: code5 || null,
+  code6: code6 || null,
+  code7: code7 || null,
+  code8: code8 || null,
+  code9: code9 || null,
+  code10: code10 || null,
+  code11: code11 || null,
+  code12: code12 || null,
+  code13: code13 || null,
+  code14: code14 || null,
+
+  // 🔥 IMPORTANT: always bind even if not used
+  code15: null, // MODEL_NUMBER not used
+  code16: null, // PALLET_ID from
+  code17: null, // PALLET_ID to
+
+  code18: null,
+  code19: null,
+  code20: null,
+
+  number1: null,
+  number2: null,
+  number3: null,
+  number4: null,
+
+  date1: date1 || null,
+  date2: date2 || null,
+  date3: date3 || null,
+  date4: date4 || null,
+
+  out_sql: {
+    dir: oracledb.BIND_OUT,
+    type: oracledb.STRING,
+    maxSize: 32767,
+  },
+};
 
         // ── Execute procedure → dynamic SQL ───────────────────────────────
         const result = await connection.execute(
