@@ -61,7 +61,9 @@ import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
 import { getTaxInvoiceReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledger";
 import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledger";
-import { getJobListingReport, exportJobListingReportExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
+import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
+import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
+
 
 const router = express.Router();
 
@@ -93,9 +95,8 @@ router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
 router.post('/reports/tax-vat-out-ledger-summary/html', getTaxInvoiceSummaryReport);
 
-router.post('/reports/wms-joblisting/excel', exportJobListingReportExcel);
 router.post('/reports/wms-joblisting/html', getJobListingReport);
-
+router.post('/reports/wms-joblisting', exportJobListingExcel);
 
 // ------Ageing Reports Routes------
  router.post('/reports/InvdatewiseDetail/html', InvdatewiseDetail);
