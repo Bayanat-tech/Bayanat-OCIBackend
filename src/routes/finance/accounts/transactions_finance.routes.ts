@@ -63,8 +63,9 @@ import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
 import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
-import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
 import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
+import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
+import { getPnlDrilldownL2, getPnlDrilldownL2Excel, getPnlDrilldownL3, getPnlDrilldownL3Excel } from "../../../controllers/finance/accounts/accounts-report/ProfitlossSublevel";
 
 
 const router = express.Router();
@@ -102,14 +103,19 @@ router.post('/reports/balance-sheet/html', getBalanceSheetReport);
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
-router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
-
-router.post('/reports/getProfitLossReport/html', getProfitLossReportHtml);
-router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
+router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport)
 
 
-
-
+// ── Profit & Loss ─────────────────────────────────────────────────────────────
+router.post("/reports/profitloss/html",  getProfitLossReportHtml);
+router.post("/reports/profitloss/excel", getProfitLossReportExcel);  
+ 
+// P&L drilldowns (own endpoints — separate from Trial Balance drilldowns)
+router.post("/reports/profitloss/drilldown/l2",         getPnlDrilldownL2);
+router.post("/reports/profitloss/drilldown/l2/excel",   getPnlDrilldownL2Excel);
+router.post("/reports/profitloss/drilldown/l3",         getPnlDrilldownL3);
+router.post("/reports/profitloss/drilldown/l3/excel",   getPnlDrilldownL3Excel);
+ 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 
