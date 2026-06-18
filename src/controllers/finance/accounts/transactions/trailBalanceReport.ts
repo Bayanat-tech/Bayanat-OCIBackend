@@ -8,13 +8,6 @@ import { RequestWithUser } from "../../../../interfaces/common.interface";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/**
- * All supported level / format identifiers routed through this controller.
- *
- *   L2 / L3 / L4  → original group reports, one code-filter array.
- *   AC             → account-level report; carries report_format, exclude_zero_txns,
- *                    ac_code[] AND l4_code[] as separate filters.
- */
 type TLevel = "l2" | "l3" | "l4";
 type TReportFormat =
   | "standard"
@@ -22,62 +15,63 @@ type TReportFormat =
   | "sub_ledger_2"
   | "tb_without_year_end_jv";
 
+type DrillLevel = "l3" | "l4" | "ac" | "detail" | null;
+
 type ReportRow = Record<string, any>;
 
 // ─── Level Config (L2 / L3 / L4) ─────────────────────────────────────────────
 
-/**
- * For group-level reports (l2/l3/l4) every difference is captured here so
- * the rest of the code is level-agnostic.
- */
 const LEVEL_CONFIG: Record<
   TLevel,
-  { apiParameter: string; codeField: string; codeHeader: string }
+  { apiParameter: string; codeField: string; codeHeader: string; drillLevel: DrillLevel }
 > = {
   l2: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_REPORT",
     codeField:    "l2_code",
     codeHeader:   "L2 Code",
+    drillLevel:   "l3",
   },
   l3: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_REPORT_L3",
     codeField:    "l3_code",
     codeHeader:   "L3 Code",
+    drillLevel:   "l4",
   },
   l4: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_REPORT_L4",
     codeField:    "l4_code",
     codeHeader:   "L4 Code",
+    drillLevel:   "ac",
   },
 };
 
-/**
- * For the AC report every report-format variant has its own stored-procedure
- * parameter.  All AC rows always use `ac_code` as the primary code field.
- */
 const AC_FORMAT_CONFIG: Record<
   TReportFormat,
-  { apiParameter: string; codeField: string; codeHeader: string }
+  { apiParameter: string; codeField: string; codeHeader: string; drillLevel: DrillLevel }
 > = {
   standard: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_STANDARD",
     codeField:    "ac_code",
     codeHeader:   "AC Code",
+    drillLevel:   "detail",
   },
   sub_ledger_1: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_SUB_LEDGER_1",
     codeField:    "ac_code",
     codeHeader:   "AC Code",
+    drillLevel:   "detail",
   },
   sub_ledger_2: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_SUB_LEDGER_2",
     codeField:    "ac_code",
     codeHeader:   "AC Code",
+    drillLevel:   "detail",
   },
   tb_without_year_end_jv: {
     apiParameter: "BOLD_REPORT_TRAIL_STATEMENT_AC_REPORT_WITHOUT_EJV",
     codeField:    "ac_code",
     codeHeader:   "AC Code",
+    drillLevel:   "detail",
   },
 };
 
@@ -158,17 +152,12 @@ function escapeXml(value: unknown): string {
     .replace(/'/g,  "&apos;");
 }
 
+function escapeJs(value: unknown): string {
+  return JSON.stringify(text(value));
+}
+
 // ─── Shared proc caller ───────────────────────────────────────────────────────
 
-/**
- * Invokes WMSTST.PROC_BUILD_DYNAMIC_SQL_COMMON with the supplied bindings and
- * returns the normalised result rows.
- *
- * @param conn         - Open OracleDB connection (caller is responsible for closing).
- * @param apiParameter - The BOLD_REPORT_* parameter string.
- * @param loginid      - Current user's login ID.
- * @param code1..code4 - Positional string parameters consumed by the procedure.
- */
 async function execDynamicProc(
   conn: oracledb.Connection,
   apiParameter: string,
@@ -209,7 +198,7 @@ async function execDynamicProc(
     throw Object.assign(new Error("Procedure returned no SQL"), { status: 400 });
 
   console.log(`Trial Balance Dynamic SQL [${apiParameter}]:`, dynamicSql);
-
+  
   const dataResult = await conn.execute(dynamicSql, [], {
     outFormat: oracledb.OUT_FORMAT_OBJECT,
   });
@@ -218,15 +207,6 @@ async function execDynamicProc(
 
 // ─── Data Loaders ─────────────────────────────────────────────────────────────
 
-/**
- * Loads report data for group-level (l2 / l3 / l4) reports.
- *
- * The stored procedure binding follows the original convention:
- *   code1 = companyCode
- *   code2 = divisionCode | "All"
- *   code3 = comma-separated code filter (e.g. "10,11,12")
- *   code4 = "fromDate|toDate"
- */
 async function loadGroupData(
   req:          RequestWithUser,
   level:        TLevel,
@@ -253,18 +233,6 @@ async function loadGroupData(
   }
 }
 
-/**
- * Loads report data for the AC (account-level) report.
- *
- * The AC proc convention (mirrors AcTrialBalanceReport.tsx):
- *   code1 = "companyCode|divisionCode"
- *   code2 = "fromDate|toDate"
- *   code3 = comma-separated ac_code filter
- *   code4 = comma-separated l4_code filter
- *
- * `exclude_zero_txns` is conveyed through `code1` as a flag appended after
- * the division, exactly matching how the legacy frontend built the parameter.
- */
 async function loadAcData(
   req:              RequestWithUser,
   reportFormat:     TReportFormat,
@@ -279,19 +247,11 @@ async function loadAcData(
   const conn   = await getConn(req);
   const config = AC_FORMAT_CONFIG[reportFormat];
 
-  // The legacy frontend passed: code1 = `${company_code}|${division_code}`
-  // We preserve that exact convention; if division is blank it becomes "company|"
-  // which the procedure treats as "all divisions" — same as the original.
   const code1 = `${companyCode}|${divisionCode}`;
   const code2 = `${fromDate}|${toDate}`;
   const code3 = acCodeFilter  || "";
   const code4 = l4CodeFilter  || "";
 
-  // Note: exclude_zero_txns is a display/filter flag.  We pass it as a boolean
-  // so the stored procedure can act on it if it is designed to do so. The
-  // original React component didn't send it at all (it was marked as a future
-  // feature). We append it to code1 with a "|" delimiter so the proc can read
-  // it without breaking old behaviour: "companyCode|divisionCode|1" vs "…|0".
   const code1WithFlag = `${code1}|${excludeZeroTxns ? "1" : "0"}`;
 
   try {
@@ -311,15 +271,10 @@ async function loadAcData(
 
 // ─── HTML Renderer ────────────────────────────────────────────────────────────
 
-/**
- * Produces an identical-looking HTML report for both group-level and AC rows.
- * The only differences are the code-column header and which field to read the
- * code value from — both supplied via `config`.
- */
 function renderHtml(
   rows:        ReportRow[],
-  config:      { codeField: string; codeHeader: string },
-  params:      { companyCode: string; fromDate: string; toDate: string; loginId: string },
+  config:      { codeField: string; codeHeader: string; drillLevel: DrillLevel },
+  params:      { companyCode: string; fromDate: string; toDate: string; loginId: string; divisionCode?: string },
   autoPrint:   boolean,
 ): string {
   const totals = rows.reduce(
@@ -344,10 +299,18 @@ function renderHtml(
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
+  // Map drill level to the field name used in the postMessage payload
+  const CODE_FIELD_MAP: Record<string, string> = {
+    l3:     "l2_code",
+    l4:     "l3_code",
+    ac:     "l4_code",
+    detail: "ac_code",
+  };
+
   const dataRows = rows
     .map(
       (row) => `
-    <tr>
+    <tr data-code="${escapeHtml(row[config.codeField])}">
       <td class="center">${escapeHtml(row[config.codeField])}</td>
       <td class="left">${escapeHtml(row.ac_name)}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(row.opening)))}</td>
@@ -357,6 +320,51 @@ function renderHtml(
     </tr>`,
     )
     .join("");
+
+  // Drill-down script — only injected when there is a next level
+  const drillScript = config.drillLevel ? `
+  <script>
+    (function () {
+      var DRILL_LEVEL   = ${escapeJs(config.drillLevel)};
+      var COMPANY_CODE  = ${escapeJs(params.companyCode)};
+      var FROM_DATE     = ${escapeJs(params.fromDate)};
+      var TO_DATE       = ${escapeJs(params.toDate)};
+      var DIVISION_CODE = ${escapeJs(params.divisionCode ?? "")};
+      var CODE_FIELD    = ${escapeJs(CODE_FIELD_MAP[config.drillLevel] ?? config.codeField)};
+
+      document.querySelectorAll("tbody tr[data-code]").forEach(function (tr) {
+        tr.style.cursor = "pointer";
+        tr.addEventListener("mouseenter", function () { tr.style.background = "#f0f9f5"; });
+        tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
+        tr.addEventListener("click", function () {
+          var code = tr.getAttribute("data-code");
+          window.parent.postMessage({
+            type:          "DRILL_DOWN",
+            drillLevel:    DRILL_LEVEL,
+            company_code:  COMPANY_CODE,
+            from_date:     FROM_DATE,
+            to_date:       TO_DATE,
+            division_code: DIVISION_CODE,
+            code:          code,
+            codeField:     CODE_FIELD,
+          }, "*");
+        });
+      });
+    })();
+  </script>` : "";
+
+  const drillHint = config.drillLevel ? `
+    <div style="
+      font-size:10px; color:#1a5f4a; background:#f0f9f5;
+      border:1px solid #a7d7c5; border-radius:4px;
+      padding:4px 10px; margin-bottom:8px;
+      display:inline-flex; align-items:center; gap:6px;
+    ">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      Click any row to drill down
+    </div>` : "";
 
   return `<!doctype html>
 <html>
@@ -436,6 +444,7 @@ function renderHtml(
       body { background: white; }
       .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; }
       .actions { display: none; }
+      .drill-hint { display: none !important; }
       thead { display: table-header-group; }
       tfoot { display: table-footer-group; }
       tbody tr { page-break-inside: avoid; }
@@ -470,6 +479,7 @@ function renderHtml(
     <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(username)}</span></div>
     <div class="divider-thin"></div>
     <div class="print-body-padding">
+      ${drillHint}
       <table>
         <thead>
           <tr>
@@ -501,14 +511,13 @@ function renderHtml(
       <span>Powered by Bayanat Technology</span>
     </div>
   </main>
-  ${autoPrint ? "<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>" : ""}
+  ${drillScript}
 </body>
 </html>`;
 }
 
 // ─── Excel Builder ────────────────────────────────────────────────────────────
 
-// Style objects are identical to the original controller — unchanged intentionally.
 const excelStyles = {
   title: {
     font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
@@ -869,10 +878,6 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
 
 // ─── Request Param Parsers ────────────────────────────────────────────────────
 
-/**
- * Parses params for group-level (l2/l3/l4) requests.
- * Level comes from the URL param; everything else from the POST body.
- */
 function parseGroupParams(req: RequestWithUser) {
   const level = text(req.params.level).toLowerCase() as TLevel;
   if (!["l2", "l3", "l4"].includes(level))
@@ -896,10 +901,6 @@ function parseGroupParams(req: RequestWithUser) {
   return { level, companyCode, fromDate, toDate, divisionCode, codeFilter };
 }
 
-/**
- * Parses params for the AC report request.
- * All values come from the POST body; there is no URL-level param.
- */
 function parseAcParams(req: RequestWithUser) {
   const companyCode  = text(req.body.company_code || req.user?.company_code);
   const fromDate     = text(req.body.from_date);
@@ -912,7 +913,6 @@ function parseAcParams(req: RequestWithUser) {
       { status: 400 },
     );
 
-  // report_format defaults to "standard" if not supplied or invalid
   const rawFormat   = text(req.body.report_format);
   const reportFormat: TReportFormat = (
     ["standard", "sub_ledger_1", "sub_ledger_2", "tb_without_year_end_jv"].includes(rawFormat)
@@ -924,11 +924,9 @@ function parseAcParams(req: RequestWithUser) {
     || req.body.exclude_zero_txns === "true"
     || req.body.exclude_zero_txns === 1;
 
-  // ac_code[] — primary selector
   const rawAcCode   = req.body.ac_code ?? [];
   const acCodeFilter = Array.isArray(rawAcCode) ? rawAcCode.join(",") : text(rawAcCode);
 
-  // l4_code[] — secondary selector
   const rawL4Code   = req.body.l4_code ?? [];
   const l4CodeFilter = Array.isArray(rawL4Code) ? rawL4Code.join(",") : text(rawL4Code);
 
@@ -945,8 +943,6 @@ function parseAcParams(req: RequestWithUser) {
 }
 
 // ─── Route Handlers ───────────────────────────────────────────────────────────
-
-// ── Group-level HTML (/html/:level where level = l2 | l3 | l4) ───────────────
 
 export const getTrialBalanceReportHtml = async (
   req: RequestWithUser,
@@ -969,10 +965,11 @@ export const getTrialBalanceReportHtml = async (
       rows,
       config,
       {
-        companyCode: params.companyCode,
-        fromDate:    params.fromDate,
-        toDate:      params.toDate,
-        loginId:     req.user?.loginid ?? "",
+        companyCode:  params.companyCode,
+        fromDate:     params.fromDate,
+        toDate:       params.toDate,
+        loginId:      req.user?.loginid ?? "",
+        divisionCode: params.divisionCode,
       },
       req.query.print !== "false",
     );
@@ -987,8 +984,6 @@ export const getTrialBalanceReportHtml = async (
     });
   }
 };
-
-// ── Group-level Excel (/excel/:level) ─────────────────────────────────────────
 
 export const exportTrialBalanceReportExcel = async (
   req: RequestWithUser,
@@ -1031,8 +1026,6 @@ export const exportTrialBalanceReportExcel = async (
   }
 };
 
-// ── AC HTML (/html/ac) ────────────────────────────────────────────────────────
-
 export const getAcTrialBalanceReportHtml = async (
   req: RequestWithUser,
   res: Response,
@@ -1056,10 +1049,11 @@ export const getAcTrialBalanceReportHtml = async (
       rows,
       config,
       {
-        companyCode: params.companyCode,
-        fromDate:    params.fromDate,
-        toDate:      params.toDate,
-        loginId:     req.user?.loginid ?? "",
+        companyCode:  params.companyCode,
+        fromDate:     params.fromDate,
+        toDate:       params.toDate,
+        loginId:      req.user?.loginid ?? "",
+        divisionCode: params.divisionCode,
       },
       req.query.print !== "false",
     );
@@ -1074,8 +1068,6 @@ export const getAcTrialBalanceReportHtml = async (
     });
   }
 };
-
-// ── AC Excel (/excel/ac) ──────────────────────────────────────────────────────
 
 export const exportAcTrialBalanceReportExcel = async (
   req: RequestWithUser,
