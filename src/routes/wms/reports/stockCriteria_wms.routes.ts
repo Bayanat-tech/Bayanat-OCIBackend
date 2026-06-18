@@ -4,7 +4,8 @@ import passport from "passport"; // Importing Passport for authentication.
 // import { getStockDetailsReport } from "../../../controllers/wms/reports/stockCriteria/stock_details.controller"; // Importing the controller for handling stock details report requests.
 // import { getSummaryStockReport } from "../../../controllers/wms/reports/stockCriteria/summary_stock.controller"; // Importing the controller for handling summary stock report requests.
 // import { getAgeingStockReport } from "../../../controllers/wms/reports/stockCriteria/ageing_stock.controller"; // Importing the controller for handling ageing stock report requests.
-const router = express.Router(); // Creating a new router instance.
+const 
+router = express.Router(); // Creating a new router instance.
 
 // ----------- stock details report ------------
 // Route to get stock details report

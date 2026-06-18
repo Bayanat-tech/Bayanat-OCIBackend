@@ -54,6 +54,8 @@ import { getSummaryDumpReport } from "../../../controllers/finance/accounts/acco
 import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
 import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
+// import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/ProfitLossReport";
+// Initialize Express router
 import { InvdatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/InvdatewiseDetail";
 import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Invdatewisesummary";
 import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
@@ -64,8 +66,13 @@ import { OutstandingDetailReport } from "../../../controllers/finance/accounts/a
 import { OutstandingSummaryReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingSummaryReport";
 import { getTaxInvoiceReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledger";
 import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledger";
-import { getJobListingReport } from "../../../controllers/finance/accounts/accounts-report/wms/joblistingreport";
 import { getTransactionProductReport } from "../../wms/reports/TransactionProductReport";
+import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
+import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
+import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
+import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
+import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
+
 
 const router = express.Router();
 
@@ -93,6 +100,24 @@ router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
 router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
 
+router.post('/reports/getProfitLossReport/html', getProfitLossReportHtml);
+router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
+
+
+
+
+// ---------HR Reports Routes------
+router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
+
+
+
+
+
+// WMS REPORTS ROUTES
+
+router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
+router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
+
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
 router.post('/reports/tax-vat-out-ledger-summary/html', getTaxInvoiceSummaryReport);
@@ -104,6 +129,7 @@ router.post('/reports/wms-joblisting/html', getJobListingReport);
 router.post('/reports/wms-TransactionProductReport/html', getTransactionProductReport);
 router.post('/reports/wms-TransactionProductReport/excel', getTransactionProductReport);
 
+router.post('/reports/wms-joblisting', exportJobListingExcel);
 
 // ------Ageing Reports Routes------
  router.post('/reports/InvdatewiseDetail/html', InvdatewiseDetail);
