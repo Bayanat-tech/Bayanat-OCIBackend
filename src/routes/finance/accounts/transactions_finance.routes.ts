@@ -64,6 +64,7 @@ import { OutstandingList } from "../../../controllers/finance/accounts/accounts-
 import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
 import { getProfitLossReport } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
+import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
 
 
 const router = express.Router();
@@ -81,6 +82,17 @@ router.post("/report/trialbalance/html/ac",getAcTrialBalanceReportHtml);
 router.post("/report/trialbalance/excel/ac",exportAcTrialBalanceReportExcel);
 router.post("/report/trialbalance/html/:level", getTrialBalanceReportHtml);
 router.post("/report/trialbalance/excel/:level", exportTrialBalanceReportExcel); 
+
+router.post("/report/trialbalance/drilldown/l2",     getDrilldownL2);
+router.post("/report/trialbalance/drilldown/l3",     getDrilldownL3);
+router.post("/report/trialbalance/drilldown/l4",     getDrilldownL4);
+router.post("/report/trialbalance/drilldown/ac",     getDrilldownAc);
+router.post("/report/trialbalance/drilldown/detail", getDrilldownDetail);
+router.post("/report/trialbalance/drilldown/l2/excel",     getDrilldownL2Excel);
+router.post("/report/trialbalance/drilldown/l3/excel",     getDrilldownL3Excel);
+router.post("/report/trialbalance/drilldown/l4/excel",     getDrilldownL4Excel);
+router.post("/report/trialbalance/drilldown/ac/excel",     getDrilldownAcExcel);
+router.post("/report/trialbalance/drilldown/detail/excel", getDrilldownDetailExcel);
 
 router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
 router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
