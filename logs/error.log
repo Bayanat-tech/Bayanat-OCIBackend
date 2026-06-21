@@ -71251,103 +71251,83 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.load (node:internal/modules/cjs/loader:1465:32)
     at Function._load (node:internal/modules/cjs/loader:1282:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
-2026-06-18 18:17:11 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m796[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colA_width'.
+2026-06-17 16:12:45 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\BT_OCI\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\BT_OCI\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\BT_OCI\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\BT_OCI\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-17 16:23:02 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\BT_OCI\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\BT_OCI\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\BT_OCI\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\BT_OCI\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-17 16:32:53 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\BT_OCI\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\BT_OCI\Bayanat-OCIBackend\index.ts:158:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\BT_OCI\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\BT_OCI\Bayanat-OCIBackend\index.ts:158:9)
+2026-06-18 15:21:39 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/accounts-report/ProfitlossSublevel.ts[0m:[93m614[0m:[93m13[0m - [91merror[0m[90m TS2345: [0mArgument of type 'ReportRow' is not assignable to parameter of type '{ opening: number; debit: number; credit: number; amount: number; }'.
+  Type 'ReportRow' is missing the following properties from type '{ opening: number; debit: number; credit: number; amount: number; }': opening, debit, credit, amount
 
-[7m796[0m     <col min="1" max="1" width="${colA_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m797[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colB_width'.
-
-[7m797[0m     <col min="2" max="2" width="${colB_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-
-TSError: ⨯ Unable to compile TypeScript:
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m796[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colA_width'.
-
-[7m796[0m     <col min="1" max="1" width="${colA_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m797[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colB_width'.
-
-[7m797[0m     <col min="2" max="2" width="${colB_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-
-    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
-    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
-    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
-    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
-    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
-    at node:internal/modules/cjs/loader:1839:10
-    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
-    at Module.load (node:internal/modules/cjs/loader:1441:32)
-    at Function._load (node:internal/modules/cjs/loader:1263:12)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
-TSError: ⨯ Unable to compile TypeScript:
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m796[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colA_width'.
-
-[7m796[0m     <col min="1" max="1" width="${colA_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m797[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colB_width'.
-
-[7m797[0m     <col min="2" max="2" width="${colB_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-
-    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
-    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
-    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
-    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
-    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
-    at node:internal/modules/cjs/loader:1839:10
-    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
-    at Module.load (node:internal/modules/cjs/loader:1441:32)
-    at Function._load (node:internal/modules/cjs/loader:1263:12)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
-2026-06-21 10:49:28 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m796[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colA_width'.
-
-[7m796[0m     <col min="1" max="1" width="${colA_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m797[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colB_width'.
-
-[7m797[0m     <col min="2" max="2" width="${colB_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
+[7m614[0m             totals,
+[7m   [0m [91m            ~~~~~~[0m
 
 TSError: ⨯ Unable to compile TypeScript:
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m796[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colA_width'.
+[96msrc/controllers/finance/accounts/accounts-report/ProfitlossSublevel.ts[0m:[93m614[0m:[93m13[0m - [91merror[0m[90m TS2345: [0mArgument of type 'ReportRow' is not assignable to parameter of type '{ opening: number; debit: number; credit: number; amount: number; }'.
+  Type 'ReportRow' is missing the following properties from type '{ opening: number; debit: number; credit: number; amount: number; }': opening, debit, credit, amount
 
-[7m796[0m     <col min="1" max="1" width="${colA_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m797[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colB_width'.
+[7m614[0m             totals,
+[7m   [0m [91m            ~~~~~~[0m
 
-[7m797[0m     <col min="2" max="2" width="${colB_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-
-    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
-    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
-    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
-    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
-    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
-    at node:internal/modules/cjs/loader:1839:10
-    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
-    at Module.load (node:internal/modules/cjs/loader:1441:32)
-    at Function._load (node:internal/modules/cjs/loader:1263:12)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+    at createTSError (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
 TSError: ⨯ Unable to compile TypeScript:
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m796[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colA_width'.
+[96msrc/controllers/finance/accounts/accounts-report/ProfitlossSublevel.ts[0m:[93m614[0m:[93m13[0m - [91merror[0m[90m TS2345: [0mArgument of type 'ReportRow' is not assignable to parameter of type '{ opening: number; debit: number; credit: number; amount: number; }'.
+  Type 'ReportRow' is missing the following properties from type '{ opening: number; debit: number; credit: number; amount: number; }': opening, debit, credit, amount
 
-[7m796[0m     <col min="1" max="1" width="${colA_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-[96msrc/controllers/finance/accounts/accounts-report/getBalanceSheetReport.ts[0m:[93m797[0m:[93m35[0m - [91merror[0m[90m TS2304: [0mCannot find name 'colB_width'.
+[7m614[0m             totals,
+[7m   [0m [91m            ~~~~~~[0m
 
-[7m797[0m     <col min="2" max="2" width="${colB_width}" customWidth="1"/>
-[7m   [0m [91m                                  ~~~~~~~~~~[0m
-
-    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
-    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
-    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
-    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
-    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
-    at node:internal/modules/cjs/loader:1839:10
-    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
-    at Module.load (node:internal/modules/cjs/loader:1441:32)
-    at Function._load (node:internal/modules/cjs/loader:1263:12)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at createTSError (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (C:\BT_OCI\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
