@@ -61,7 +61,6 @@ import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
 import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
-import { getTaxInvoiceReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledger";
 import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledger";
 import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
 import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
@@ -70,6 +69,10 @@ import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../contro
 import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
 import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
 import { getPnlDrilldownL2, getPnlDrilldownL2Excel, getPnlDrilldownL3, getPnlDrilldownL3Excel } from "../../../controllers/finance/accounts/accounts-report/ProfitlossSublevel";
+import { exportTaxInvoiceExcel, getTaxInvoiceExcelReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledgerexcel";
+import { exportTaxInvoiceSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledgerexcel";
+import { exportChequeDateWiseExcel } from "../../../controllers/finance/accounts/accounts-report/chequedatewiseexcel";
+import { exportAccountPayeeWiseExcel } from "../../../controllers/finance/accounts/accounts-report/aaccountpayeewiseexcel";
 
 
 const router = express.Router();
@@ -122,12 +125,15 @@ router.post("/reports/profitloss/drilldown/l2/excel",   getPnlDrilldownL2Excel);
 router.post("/reports/profitloss/drilldown/l3",         getPnlDrilldownL3);
 router.post("/reports/profitloss/drilldown/l3/excel",   getPnlDrilldownL3Excel);
  
+router.post('/reports/account-payee-wise/excel', exportAccountPayeeWiseExcel);
+router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
+router.post('/reports/cheque-date-wise/excel', exportChequeDateWiseExcel);
+
+router.post('/reports/getProfitLossReport/html', getProfitLossReportHtml);
+router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
+
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
-
-
-
-
 
 // WMS REPORTS ROUTES
 
@@ -135,8 +141,10 @@ router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
 
 
-router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
+router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceExcelReport);
+router.post('/reports/tax-vat-out-ledger/excel', exportTaxInvoiceExcel);
 router.post('/reports/tax-vat-out-ledger-summary/html', getTaxInvoiceSummaryReport);
+router.post('/reports/tax-vat-out-ledger-summary/excel', exportTaxInvoiceSummaryExcel);
 
 router.post('/reports/wms-joblisting/html', getJobListingReport);
 router.post('/reports/wms-joblisting', exportJobListingExcel);

@@ -27,8 +27,19 @@ const excelStyles = {
         border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } },
     },
     company: {
-        font: { bold: true, sz: 13, color: { rgb: "111111" } },
-        alignment: { vertical: "center" },
+        font: {
+            bold: true,
+            sz: 18,
+            color: { rgb: "FFFFFF" }
+        },
+        fill: {
+            patternType: "solid",
+            fgColor: { rgb: "0D4D89" }
+        },
+        alignment: {
+            horizontal: "center",
+            vertical: "center"
+        }
     },
     section: {
         font: { bold: true, color: { rgb: "111111" } },
@@ -36,10 +47,23 @@ const excelStyles = {
         border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } },
     },
     tableHead: {
-        font: { bold: true, color: { rgb: "111111" } },
-        fill: { fgColor: { rgb: "FFFFFF" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } },
+        font: {
+            bold: true,
+            color: { rgb: "FFFFFF" }
+        },
+        fill: {
+            fgColor: { rgb: "0D4D89" }
+        },
+        alignment: {
+            horizontal: "center",
+            vertical: "center"
+        },
+        border: {
+            top: { style: "thin" },
+            bottom: { style: "thin" },
+            left: { style: "thin" },
+            right: { style: "thin" }
+        }
     },
     normal: {
         alignment: { vertical: "top", wrapText: true },
@@ -75,10 +99,11 @@ const styleIdBySignature = new Map<string, number>([
 
 function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
     const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
+
     const getStyleId = (cell: any) => {
         const style = cell?.s;
         if (!style) return 0;
-        return styleIdBySignature.get(JSON.stringify(style)) || 0;
+        return styleIdBySignature.get(JSON.stringify(style)) ?? 0;
     };
 
     let sheetData = "";
@@ -99,16 +124,133 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
         sheetData += `<row r="${r + 1}">${cells}</row>`;
     }
 
-    const merges = (ws["!merges"] || []).map(m => `<mergeCell ref="${XLSX.utils.encode_range(m)}"/>`).join("");
-    
+    const merges = (ws["!merges"] || [])
+        .map(m => `<mergeCell ref="${XLSX.utils.encode_range(m)}"/>`)
+        .join("");
+
+    const colDefs = (ws["!cols"] || [])
+        .map((c: any, i: number) => `<col min="${i + 1}" max="${i + 1}" width="${c.wch || 12}" customWidth="1"/>`)
+        .join("");
+
+    // ── STYLES XML ───────────────────────────────────────────────────────────
+    const stylesXml = `<?xml version="1.0" encoding="UTF-8"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+
+  <!-- FONTS  (index matches xf fontId) -->
+  <fonts count="6">
+    <font><sz val="11"/><name val="Calibri"/></font>                                         <!-- 0 default -->
+    <font><b/><sz val="14"/><color rgb="FF111111"/><name val="Calibri"/></font>              <!-- 1 title -->
+    <font><b/><sz val="18"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>              <!-- 2 company -->
+    <font><b/><sz val="11"/><color rgb="FF111111"/><name val="Calibri"/></font>              <!-- 3 section -->
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>              <!-- 4 tableHead -->
+    <font><sz val="11"/><color rgb="FF111111"/><name val="Calibri"/></font>                  <!-- 5 normal/number -->
+  </fonts>
+
+  <!-- FILLS  (0=none,1=gray125 are mandatory) -->
+  <fills count="5">
+    <fill><patternFill patternType="none"/></fill>                                            <!-- 0 -->
+    <fill><patternFill patternType="gray125"/></fill>                                         <!-- 1 -->
+    <fill><patternFill patternType="none"/></fill>                                            <!-- 2 white (title/section) -->
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0D4D89"/></patternFill></fill>     <!-- 3 blue (company/tableHead) -->
+    <fill><patternFill patternType="none"/></fill>                                            <!-- 4 normal -->
+  </fills>
+
+  <!-- BORDERS -->
+  <borders count="4">
+    <border><left/><right/><top/><bottom/><diagonal/></border>                               <!-- 0 none -->
+    <border>                                                                                  <!-- 1 all-thin (title/section/tableHead) -->
+      <left style="thin"/><right style="thin"/>
+      <top style="thin"/><bottom style="thin"/>
+    </border>
+    <border><bottom style="thin"><color rgb="FF999999"/></bottom></border>                    <!-- 2 normal -->
+    <border><bottom style="thin"><color rgb="FF999999"/></bottom></border>                    <!-- 3 number -->
+  </borders>
+
+  <!-- NUM FMTS -->
+  <numFmts count="1">
+    <numFmt numFmtId="164" formatCode="#,##0.00"/>
+  </numFmts>
+
+  <!-- CELL XFS  (s="N" in sheet XML references index N here) -->
+  <cellXfs count="8">
+    <!-- 0 default -->
+    <xf numFmtId="0"  fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <!-- 1 title -->
+    <xf numFmtId="0"  fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment horizontal="center" vertical="center"/>
+    </xf>
+    <!-- 2 company -->
+    <xf numFmtId="0"  fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+      <alignment horizontal="center" vertical="center"/>
+    </xf>
+    <!-- 3 section -->
+    <xf numFmtId="0"  fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <!-- 4 tableHead -->
+    <xf numFmtId="0"  fontId="4" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment horizontal="center" vertical="center"/>
+    </xf>
+    <!-- 5 (unused slot, keep indices aligned) -->
+    <xf numFmtId="0"  fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <!-- 6 normal -->
+    <xf numFmtId="0"  fontId="5" fillId="4" borderId="2" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
+      <alignment vertical="top" wrapText="1"/>
+    </xf>
+    <!-- 7 number -->
+    <xf numFmtId="164" fontId="5" fillId="4" borderId="3" xfId="0" applyFont="1" applyBorder="1" applyNumberFormat="1" applyAlignment="1">
+      <alignment horizontal="right" vertical="top"/>
+    </xf>
+  </cellXfs>
+
+</styleSheet>`;
+
     const zip = new AdmZip();
-    zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${(ws["!cols"] || []).map((c: any, i: number) => `<col min="${i + 1}" max="${i + 1}" width="${c.wch || 12}" customWidth="1"/>`).join("")}</cols><sheetData>${sheetData}</sheetData><mergeCells>${merges}</mergeCells></worksheet>`));
-    
-    // Add Minimal required files for XLSX (Standard Boilerplate)
-    zip.addFile("[Content_Types].xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`));
-    zip.addFile("_rels/.rels", Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`));
-    zip.addFile("xl/workbook.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Job Listing" sheetId="1" r:id="rId1"/></sheets></workbook>`));
-    zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`));
+
+    zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+        `<sheetViews><sheetView workbookViewId="0">` +
+        `<pane ySplit="5" topLeftCell="A6" activePane="bottomLeft" state="frozen"/>` +
+        `</sheetView></sheetViews>` +
+        `<cols>${colDefs}</cols>` +
+        `<sheetData>${sheetData}</sheetData>` +
+        `<mergeCells>${merges}</mergeCells>` +
+        `</worksheet>`
+    ));
+
+    zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
+
+    zip.addFile("[Content_Types].xml", Buffer.from(
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+        `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+        `<Default Extension="xml" ContentType="application/xml"/>` +
+        `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+        `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+        `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+        `</Types>`
+    ));
+
+    zip.addFile("_rels/.rels", Buffer.from(
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+        `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+        `</Relationships>`
+    ));
+
+    zip.addFile("xl/workbook.xml", Buffer.from(
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+        `<sheets><sheet name="Job Listing" sheetId="1" r:id="rId1"/></sheets>` +
+        `</workbook>`
+    ));
+
+    zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+        `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
+        `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+        `</Relationships>`
+    ));
 
     return zip.toBuffer();
 }
@@ -120,7 +262,7 @@ export const exportJobListingExcel = async (req: Request, res: Response): Promis
         const { parameter, loginid, ...codes } = req.body;
         let tenantId = getCurrentTenantId() || await TenantManager.getTenantForUser(loginid);
         if (!tenantId) { res.status(400).json({ message: "TenantId required" }); return; }
-        
+
         connection = await TenantManager.getConnection(tenantId);
         const binds: any = { parameter, loginid, ...codes, out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 } };
         // Fill missing codes
@@ -133,13 +275,46 @@ export const exportJobListingExcel = async (req: Request, res: Response): Promis
 
         // Build AOA (Array of Arrays)
         const aoa: any[][] = [
-            ["AL MADINA LOGISTICS SERVICES COMPANY", "", "", "", "", ""],
-            ["Transaction Report - Job Listing", "", "", "", "REPORT", ""],
-            [`Date: ${formatDate(new Date())}`, "", `User: ${loginid}`, "", "", ""],
-            [],
-            ["SN", "Dept", "Type", "Job No", "Principal", "Class", "Job Date", "Conf Date", "GRN/DN", "GRN Date", "Inv No", "Inv Date", "Amount", "User", "Conf", "Inv"]
-        ];
+            [
+                "AL MADINA LOGISTICS SERVICES COMPANY",
+                "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""
+            ],
 
+            [
+                "Transaction Report - Job Listing",
+                "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""
+            ],
+
+            [
+                `Date : ${formatDate(new Date())}`,
+                "", "", "", "", "", "", "",
+                "",
+                "",
+                `User : ${loginid}`,
+                "", "", "", "", ""
+            ],
+
+            [],
+
+            [
+                "SN",
+                "Department",
+                "Job Type",
+                "Job No",
+                "Principal",
+                "Job Class",
+                "Job Date",
+                "Confirm Date",
+                "GRN/DN",
+                "GRN Date",
+                "Invoice No",
+                "Invoice Date",
+                "Bill Amount",
+                "User",
+                "Confirmed",
+                "Invoiced"
+            ]
+        ];
         rows.forEach((r, i) => {
             aoa.push([
                 i + 1, text(r.DEPT_NAME), text(r.JOB_TYPE), text(r.JOB_NO), text(r.PRIN_NAME), text(r.JOB_CLASS),
@@ -149,17 +324,80 @@ export const exportJobListingExcel = async (req: Request, res: Response): Promis
         });
 
         const ws = XLSX.utils.aoa_to_sheet(aoa);
-        ws["!cols"] = [{ wch: 5 }, { wch: 15 }, { wch: 10 }, { wch: 12 }, { wch: 25 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 6 }, { wch: 6 }];
-        ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }];
+        ws["!cols"] = [
+
+            { wch: 6 },   // SN
+            { wch: 18 },  // Department
+            { wch: 15 },  // Type
+            { wch: 15 },  // Job No
+            { wch: 30 },  // Principal
+            { wch: 15 },  // Class
+            { wch: 14 },  // Job Date
+            { wch: 14 },  // Confirm
+            { wch: 14 },  // GRN
+            { wch: 14 },  // GRN Date
+            { wch: 15 },  // Invoice
+            { wch: 14 },  // Invoice Date
+            { wch: 15 },  // Amount
+            { wch: 12 },  // User
+            { wch: 12 },  // Confirmed
+            { wch: 12 }   // Invoiced
+
+        ];
+        ws["!merges"] = [
+
+            // Company Name
+            {
+                s: { r: 0, c: 0 },
+                e: { r: 0, c: 15 }
+            },
+
+            // Report Title
+            {
+                s: { r: 1, c: 0 },
+                e: { r: 1, c: 15 }
+            },
+
+            // Date
+            {
+                s: { r: 2, c: 0 },
+                e: { r: 2, c: 7 }
+            },
+
+            // User
+            {
+                s: { r: 2, c: 10 },
+                e: { r: 2, c: 15 }
+            }
+
+        ];
 
         // Apply Reference Styles
         applyStyle(ws, 1, 1, excelStyles.company);
-        styleRange(ws, 2, 5, 6, excelStyles.title);
+        // Company Name
+        styleRange(ws, 1, 1, 16, excelStyles.company);
+
+        // Report Title
+        styleRange(ws, 2, 1, 16, excelStyles.title);
+
+        // Date
+        styleRange(ws, 3, 1, 8, excelStyles.section);
+
+        // User
+        styleRange(ws, 3, 11, 16, excelStyles.section);
+
+        // Table Header
         styleRange(ws, 5, 1, 16, excelStyles.tableHead);
+
+        // Data
         for (let i = 6; i <= aoa.length; i++) {
+
             styleRange(ws, i, 1, 12, excelStyles.normal);
+
             applyStyle(ws, i, 13, excelStyles.number);
+
             styleRange(ws, i, 14, 16, excelStyles.normal);
+
         }
 
         const buffer = workbookBufferFromSheet(ws);
