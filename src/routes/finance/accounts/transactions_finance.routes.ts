@@ -51,6 +51,7 @@ import { getChequeMonitoringReport } from "../../../controllers/finance/accounts
 import { getLedgerWithDetailsReport } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsreport";
 import { getLedgerWithOppositeEntryReport } from "../../../controllers/finance/accounts/accounts-report/ledgerwithoppositeentryreport";
 import { getSummaryDumpReport } from "../../../controllers/finance/accounts/accounts-report/summarydumpreport";
+import { getBalanceSheetDrilldownAc, getBalanceSheetDrilldownAcExcel, getBalanceSheetDrilldownDetail, getBalanceSheetDrilldownDetailExcel } from "../../../controllers/finance/accounts/accounts-report/balanceSheetDrilldown.controller";
 import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
 import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
@@ -100,6 +101,10 @@ router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryRep
 router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
 router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
 router.post('/reports/getBalanceSheetReport/excel', exportBalanceSheetReportExcel);
+router.post('/report/balancesheet/drilldown/ac', getBalanceSheetDrilldownAc);
+router.post('/report/balancesheet/drilldown/ac/excel', getBalanceSheetDrilldownAcExcel);
+router.post('/report/balancesheet/drilldown/detail', getBalanceSheetDrilldownDetail);
+router.post('/report/balancesheet/drilldown/detail/excel', getBalanceSheetDrilldownDetailExcel);
 
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
