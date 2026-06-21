@@ -109,6 +109,8 @@ router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryRep
 router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
 router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
 router.post('/reports/getBalanceSheetReport/excel', exportBalanceSheetReportExcel);
+router.post('/report/balancesheet/html', getBalanceSheetReportHtml);
+router.post('/report/balancesheet/excel', exportBalanceSheetReportExcel);
 router.post('/report/balancesheet/drilldown/ac', getBalanceSheetDrilldownAc);
 router.post('/report/balancesheet/drilldown/ac/excel', getBalanceSheetDrilldownAcExcel);
 router.post('/report/balancesheet/drilldown/detail', getBalanceSheetDrilldownDetail);
