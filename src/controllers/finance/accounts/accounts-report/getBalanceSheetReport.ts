@@ -510,6 +510,24 @@ function renderHtml(
       border-top: 1px solid #ccc;
       padding-top: 8px;
     }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+      gap: 10px;
+    }
+    .button {
+      background: #1a5f4a;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .button:hover {
+      background: #144737;
+    }
     .report-footer {
       display: flex;
       justify-content: space-between;
@@ -554,6 +572,9 @@ function renderHtml(
     <div class="meta-row"><span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span></div>
     <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(params.loginid)}</span></div>
     <div class="divider-thin"></div>
+    <div class="actions">
+      <button class="button" onclick="window.print()">🖨 Print / Save PDF</button>
+    </div>
     <div class="drill-hint">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
