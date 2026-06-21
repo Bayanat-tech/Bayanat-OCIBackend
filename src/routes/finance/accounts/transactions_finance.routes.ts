@@ -15,7 +15,7 @@ import {
   exportFinanceDocumentReportExcel,
   getFinanceDocumentReportHtml
 } from "../../../controllers/finance/accounts/transactions/financeDocumentReport.controller";
-import { getBalanceSheetReport } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
+import { exportBalanceSheetReportExcel, getBalanceSheetReportHtml } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -98,7 +98,9 @@ router.post("/report/trialbalance/drilldown/detail/excel", getDrilldownDetailExc
 router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
 router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
-router.post('/reports/balance-sheet/html', getBalanceSheetReport);
+router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
+router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
+router.post('/reports/getBalanceSheetReport/excel', exportBalanceSheetReportExcel);
 
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
