@@ -62,6 +62,7 @@ import {
 } from "../../controllers/HR/hr_net.controller";
 import { executeRawSql } from "../../controllers/HR/rawSql_hr_controller";
 import { getRequestFlowUsers } from "../../controllers/HR/hr_leave_flow_sentback";
+import { getJSEmployeesHandler } from "../../jasra/controllers/JS_hr_net.controller";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -131,9 +132,10 @@ router.get("/validateleave", newvalidateLeaveHandler);
 router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
 router.get('/leaveDaysCount',leaveDaysCntHandler);
 
-// Exporting the router
-
 //raw sql execution route
 router.post("/executeRawSql", executeRawSql); // Raw SQL execution route\
+
+//HR JASRA routes
+router.get("/jsemployees", getJSEmployeesHandler);
 
 export default router;

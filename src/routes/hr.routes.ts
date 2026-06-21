@@ -64,5 +64,14 @@ router.post(
   deleteHrMaster
 );
 
+//JASRA routes 
+router.get(
+  "/JASRA/:masters",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getHrMaster
+);
+
+
 // Export the router as the default module
 export default router;

@@ -48,6 +48,7 @@ export const AppDataSource = new DataSource({
   entities: [
     "src/entity/**/*.ts",
     "src/entities/**/*.ts",
+    "src/jasra/entities/*.ts",
   ],
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
