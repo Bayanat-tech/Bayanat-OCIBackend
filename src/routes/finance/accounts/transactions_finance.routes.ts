@@ -15,7 +15,7 @@ import {
   exportFinanceDocumentReportExcel,
   getFinanceDocumentReportHtml
 } from "../../../controllers/finance/accounts/transactions/financeDocumentReport.controller";
-import { getBalanceSheetReport } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
+import { exportBalanceSheetReportExcel, getBalanceSheetReportHtml } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -67,7 +67,9 @@ import { getJobListingReport } from "../../../controllers/wms/reports/stockCrite
 import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
 import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
+import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
 import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
+import { getPnlDrilldownL2, getPnlDrilldownL2Excel, getPnlDrilldownL3, getPnlDrilldownL3Excel } from "../../../controllers/finance/accounts/accounts-report/ProfitlossSublevel";
 
 
 const router = express.Router();
@@ -86,22 +88,40 @@ router.post("/report/trialbalance/excel/ac",exportAcTrialBalanceReportExcel);
 router.post("/report/trialbalance/html/:level", getTrialBalanceReportHtml);
 router.post("/report/trialbalance/excel/:level", exportTrialBalanceReportExcel); 
 
+router.post("/report/trialbalance/drilldown/l2",     getDrilldownL2);
+router.post("/report/trialbalance/drilldown/l3",     getDrilldownL3);
+router.post("/report/trialbalance/drilldown/l4",     getDrilldownL4);
+router.post("/report/trialbalance/drilldown/ac",     getDrilldownAc);
+router.post("/report/trialbalance/drilldown/detail", getDrilldownDetail);
+router.post("/report/trialbalance/drilldown/l2/excel",     getDrilldownL2Excel);
+router.post("/report/trialbalance/drilldown/l3/excel",     getDrilldownL3Excel);
+router.post("/report/trialbalance/drilldown/l4/excel",     getDrilldownL4Excel);
+router.post("/report/trialbalance/drilldown/ac/excel",     getDrilldownAcExcel);
+router.post("/report/trialbalance/drilldown/detail/excel", getDrilldownDetailExcel);
+
 router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
 router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
-router.post('/reports/balance-sheet/html', getBalanceSheetReport);
+router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
+router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
+router.post('/reports/getBalanceSheetReport/excel', exportBalanceSheetReportExcel);
 
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
 router.post('/reports/account-payee-wise/html', getAccountPayeeWiseReport);
-router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport);
-
-router.post('/reports/getProfitLossReport/html', getProfitLossReportHtml);
-router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
+router.post('/reports/cheque-date-wise/html', getChequeDateWiseReport)
 
 
-
-
+// ── Profit & Loss ─────────────────────────────────────────────────────────────
+router.post("/reports/profitloss/html",  getProfitLossReportHtml);
+router.post("/reports/profitloss/excel", getProfitLossReportExcel);  
+ 
+// P&L drilldowns (own endpoints — separate from Trial Balance drilldowns)
+router.post("/reports/profitloss/drilldown/l2",         getPnlDrilldownL2);
+router.post("/reports/profitloss/drilldown/l2/excel",   getPnlDrilldownL2Excel);
+router.post("/reports/profitloss/drilldown/l3",         getPnlDrilldownL3);
+router.post("/reports/profitloss/drilldown/l3/excel",   getPnlDrilldownL3Excel);
+ 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 
