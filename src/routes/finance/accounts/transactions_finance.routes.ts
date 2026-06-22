@@ -65,7 +65,6 @@ import { OutstandingList } from "../../../controllers/finance/accounts/accounts-
 import { AcStatementReport } from "../../../controllers/finance/accounts/accounts-report/AC_StatementReport";
 import { OutstandingDetailReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingDetailReport";
 import { OutstandingSummaryReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingSummaryReport";
-import { getTaxInvoiceReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledger";
 import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledger";
 import { getTransactionProductReport } from "../../wms/reports/TransactionProductReport";
 import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
@@ -79,6 +78,8 @@ import { exportTaxInvoiceExcel, getTaxInvoiceExcelReport } from "../../../contro
 import { exportTaxInvoiceSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledgerexcel";
 import { exportChequeDateWiseExcel } from "../../../controllers/finance/accounts/accounts-report/chequedatewiseexcel";
 import { exportAccountPayeeWiseExcel } from "../../../controllers/finance/accounts/accounts-report/aaccountpayeewiseexcel";
+import { exportTransactionProductExcel } from "../../wms/reports/TransactionProductExcel";
+import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, exportInvSummaryExcel, exportOutstandingListExcel } from "../../../controllers/finance/accounts/accounts-report/PeriodwiseExcel";
 
 
 const router = express.Router();
@@ -163,7 +164,7 @@ router.post('/reports/tax-vat-out-ledger-summary/excel', exportTaxInvoiceSummary
 // -----------------------------WMS Reports Routes----------------------
 router.post('/reports/wms-joblisting/html', getJobListingReport);
 router.post('/reports/wms-TransactionProductReport/html', getTransactionProductReport);
-router.post('/reports/wms-TransactionProductReport/excel', getTransactionProductReport);
+router.post('/reports/wms-exportTransactionProductExcel/excel', exportTransactionProductExcel);
 
 router.post('/reports/wms-joblisting', exportJobListingExcel);
 
@@ -173,7 +174,12 @@ router.post('/reports/wms-joblisting', exportJobListingExcel);
 router.post('/reports/DuedatewiseDetail/html', DuedatewiseDetail);
 router.post('/reports/DuedatewiseSummary/html', DuedatewiseSummary);
 router.post('/reports/OutstandingList/html', OutstandingList);
-
+// -----excel For Ageing-----
+router.post("/reports/InvdatewiseDetail/excel",   exportInvDetailExcel);
+router.post("/reports/InvdatewiseSummary/excel",  exportInvSummaryExcel);
+router.post("/reports/DuedatewiseDetail/excel",   exportDueDetailExcel);
+router.post("/reports/DuedatewiseSummary/excel",  exportDueSummaryExcel);
+router.post("/reports/OutstandingList/excel",     exportOutstandingListExcel);
 // -------Account Statement Report Route------
 router.post('/reports/AcStatementReport/html', AcStatementReport);  
 router.post('/reports/OutstandingDetailReport/html',OutstandingDetailReport);

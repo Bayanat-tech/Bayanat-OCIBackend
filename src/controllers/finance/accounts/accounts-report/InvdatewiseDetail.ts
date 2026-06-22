@@ -141,6 +141,12 @@ export const InvdatewiseDetail = async (req: Request, res: Response): Promise<vo
             }, {})
         );
 
+        const formatBalance = (value: number) => {
+      return value < 0
+        ? `(${money(Math.abs(value))})`
+        : money(value);
+    };
+
         // ─── Age bucket labels (header row uses fixed SQL buckets) ─────────
         // SQL has 7 buckets: <=30, 30-60, 60-90, 90-120, 120-160, 160-200, >200
         // (matching age_30, age_60, age_90, age_120, age_160, age_200, age_above)
@@ -253,16 +259,16 @@ export const InvdatewiseDetail = async (req: Request, res: Response): Promise<vo
                     <tr class="detail-row">
                       <td style="padding-left:18px;">${text(r.inv_no)}</td>
                       <td class="num">${formatDateStr(r.inv_date)}</td>
-                      <td class="num">${money(orgAmt)}</td>
-                      <td class="num">${money(unalloc)}</td>
-                      <td class="num">${money(a30)}</td>
-                      <td class="num">${money(a60)}</td>
-                      <td class="num">${money(a90)}</td>
-                      <td class="num">${money(a120)}</td>
-                      <td class="num">${money(a160)}</td>
-                      <td class="num">${money(a200)}</td>
-                      <td class="num">${money(aAbove)}</td>
-                      <td class="num">${money(rowTotal)}</td>
+                      <td class="num">${formatBalance(orgAmt)}</td>
+                      <td class="num">${formatBalance(unalloc)}</td>
+                      <td class="num">${formatBalance(a30)}</td>
+                      <td class="num">${formatBalance(a60)}</td>
+                      <td class="num">${formatBalance(a90)}</td>
+                      <td class="num">${formatBalance(a120)}</td>
+                      <td class="num">${formatBalance(a160)}</td>
+                      <td class="num">${formatBalance(a200)}</td>
+                      <td class="num">${formatBalance(aAbove)}</td>
+                      <td class="num">${formatBalance(rowTotal)}</td>
                       <td style="font-size:10px;color:#666;">${text(r.salesman_name)}</td>
                     </tr>`;
                 });
@@ -272,16 +278,16 @@ export const InvdatewiseDetail = async (req: Request, res: Response): Promise<vo
                 <tr class="ac-total-row">
                   <td><strong>Total for ${ac.ac_name}</strong></td>
                   <td></td>
-                  <td class="num"><strong>${money(acOrgAmt)}</strong></td>
-                  <td class="num"><strong>${money(acUnalloc)}</strong></td>
-                  <td class="num"><strong>${money(ac30)}</strong></td>
-                  <td class="num"><strong>${money(ac60)}</strong></td>
-                  <td class="num"><strong>${money(ac90)}</strong></td>
-                  <td class="num"><strong>${money(ac120)}</strong></td>
-                  <td class="num"><strong>${money(ac160)}</strong></td>
-                  <td class="num"><strong>${money(ac200)}</strong></td>
-                  <td class="num"><strong>${money(acAbove)}</strong></td>
-                  <td class="num"><strong>${money(acTotal)}</strong></td>
+                  <td class="num"><strong>${formatBalance(acOrgAmt)}</strong></td>
+                  <td class="num"><strong>${formatBalance(acUnalloc)}</strong></td>
+                  <td class="num"><strong>${formatBalance(ac30)}</strong></td>
+                  <td class="num"><strong>${formatBalance(ac60)}</strong></td>
+                  <td class="num"><strong>${formatBalance(ac90)}</strong></td>
+                  <td class="num"><strong>${formatBalance(ac120)}</strong></td>
+                  <td class="num"><strong>${formatBalance(ac160)}</strong></td>
+                  <td class="num"><strong>${formatBalance(ac200)}</strong></td>
+                  <td class="num"><strong>${formatBalance(acAbove)}</strong></td>
+                  <td class="num"><strong>${formatBalance(acTotal)}</strong></td>
                   <td></td>
                 </tr>`;
 
@@ -296,16 +302,16 @@ export const InvdatewiseDetail = async (req: Request, res: Response): Promise<vo
             <tr class="l4-total-row">
               <td><strong>Total for ${l4.l4_description}</strong></td>
               <td></td>
-              <td class="num"><strong>${money(l4OrgAmt)}</strong></td>
-              <td class="num"><strong>${money(l4Unalloc)}</strong></td>
-              <td class="num"><strong>${money(l430)}</strong></td>
-              <td class="num"><strong>${money(l460)}</strong></td>
-              <td class="num"><strong>${money(l490)}</strong></td>
-              <td class="num"><strong>${money(l4120)}</strong></td>
-              <td class="num"><strong>${money(l4160)}</strong></td>
-              <td class="num"><strong>${money(l4200)}</strong></td>
-              <td class="num"><strong>${money(l4Above)}</strong></td>
-              <td class="num"><strong>${money(l4Total)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4OrgAmt)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4Unalloc)}</strong></td>
+              <td class="num"><strong>${formatBalance(l430)}</strong></td>
+              <td class="num"><strong>${formatBalance(l460)}</strong></td>
+              <td class="num"><strong>${formatBalance(l490)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4120)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4160)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4200)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4Above)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4Total)}</strong></td>
               <td></td>
             </tr>
             <tr><td colspan="13" style="height:10px;border:none;"></td></tr>`;
@@ -321,16 +327,16 @@ export const InvdatewiseDetail = async (req: Request, res: Response): Promise<vo
         <tr class="grand-total-row">
           <td><strong>Grand Total :</strong></td>
           <td></td>
-          <td class="num"><strong>${money(grandOrgAmt)}</strong></td>
-          <td class="num"><strong>${money(grandUnalloc)}</strong></td>
-          <td class="num"><strong>${money(grand30)}</strong></td>
-          <td class="num"><strong>${money(grand60)}</strong></td>
-          <td class="num"><strong>${money(grand90)}</strong></td>
-          <td class="num"><strong>${money(grand120)}</strong></td>
-          <td class="num"><strong>${money(grand160)}</strong></td>
-          <td class="num"><strong>${money(grand200)}</strong></td>
-          <td class="num"><strong>${money(grandAbove)}</strong></td>
-          <td class="num"><strong>${money(grandTotal)}</strong></td>
+          <td class="num"><strong>${formatBalance(grandOrgAmt)}</strong></td>
+          <td class="num"><strong>${formatBalance(grandUnalloc)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand30)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand60)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand90)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand120)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand160)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand200)}</strong></td>
+          <td class="num"><strong>${formatBalance(grandAbove)}</strong></td>
+          <td class="num"><strong>${formatBalance(grandTotal)}</strong></td>
           <td></td>
         </tr>`;
 

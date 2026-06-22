@@ -12,7 +12,7 @@ import stocktransferWmsRouter from "./wms/transaction/stocktransfer_wms.routes";
 import stockAdjustmentRouter from "./StockAdjustment/stockAdjustment.routes";
 import commonRouter from "./../routes/wms/common.routes";
 //import jobOutboundRouter from "./wms/transaction/outbound_wms.routes";
-import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; // ✅ CORRECT
+import jobOutboundRouter from "./wms/transaction/outbound_wms.routes"; 
 import {
   getAllReports,
   getAllOutboundReports,

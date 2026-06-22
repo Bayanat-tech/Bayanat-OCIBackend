@@ -77,6 +77,12 @@ export const DuedatewiseSummary = async (req: Request, res: Response): Promise<v
             Object.keys(row).reduce((acc: any, key) => { acc[key.toLowerCase()] = row[key]; return acc; }, {})
         );
 
+        const formatBalance = (value: number) => {
+      return value < 0
+        ? `(${money(Math.abs(value))})`
+        : money(value);
+    };
+
         const ageLabels = ["Below 30", "30 - 60", "60 - 90", "90 - 120", "120 - 160", "160 - 200", "Above 200"];
 
         // Group by l4_code → 1 row per ac_code (summary)
@@ -129,17 +135,17 @@ export const DuedatewiseSummary = async (req: Request, res: Response): Promise<v
                   </td>
                   <td>${text(r.salesman_name)}</td>
                   <td>${text(r.dept_code)}</td>
-                  <td class="num">${money(r.credit_amount)}</td>
-                  <td class="num">${text(r.credit_period)}</td>
-                  <td class="num">${money(unalloc)}</td>
-                  <td class="num">${money(a30)}</td>
-                  <td class="num">${money(a60)}</td>
-                  <td class="num">${money(a90)}</td>
-                  <td class="num">${money(a120)}</td>
-                  <td class="num">${money(a160)}</td>
-                  <td class="num">${money(a200)}</td>
-                  <td class="num">${money(aAbove)}</td>
-                  <td class="num">${money(rowTotal)}</td>
+                  <td class="num">${formatBalance(r.credit_amount)}</td>
+                  <td class="num">${formatBalance(r.credit_period)}</td>
+                  <td class="num">${formatBalance(unalloc)}</td>
+                  <td class="num">${formatBalance(a30)}</td>
+                  <td class="num">${formatBalance(a60)}</td>
+                  <td class="num">${formatBalance(a90)}</td>
+                  <td class="num">${formatBalance(a120)}</td>
+                  <td class="num">${formatBalance(a160)}</td>
+                  <td class="num">${formatBalance(a200)}</td>
+                  <td class="num">${formatBalance(aAbove)}</td>
+                  <td class="num">${formatBalance(rowTotal)}</td>
                 </tr>`;
             });
 
@@ -147,15 +153,15 @@ export const DuedatewiseSummary = async (req: Request, res: Response): Promise<v
             tableBodyHtml += `
             <tr class="l4-total-row">
               <td colspan="5"><strong>Total for ${l4.l4_description}</strong></td>
-              <td class="num"><strong>${money(l4Unalloc)}</strong></td>
-              <td class="num"><strong>${money(l430)}</strong></td>
-              <td class="num"><strong>${money(l460)}</strong></td>
-              <td class="num"><strong>${money(l490)}</strong></td>
-              <td class="num"><strong>${money(l4120)}</strong></td>
-              <td class="num"><strong>${money(l4160)}</strong></td>
-              <td class="num"><strong>${money(l4200)}</strong></td>
-              <td class="num"><strong>${money(l4Above)}</strong></td>
-              <td class="num"><strong>${money(l4Total)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4Unalloc)}</strong></td>
+              <td class="num"><strong>${formatBalance(l430)}</strong></td>
+              <td class="num"><strong>${formatBalance(l460)}</strong></td>
+              <td class="num"><strong>${formatBalance(l490)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4120)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4160)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4200)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4Above)}</strong></td>
+              <td class="num"><strong>${formatBalance(l4Total)}</strong></td>
             </tr>
             <tr><td colspan="14" style="height:8px;border:none;"></td></tr>`;
 
@@ -169,15 +175,15 @@ export const DuedatewiseSummary = async (req: Request, res: Response): Promise<v
         tableBodyHtml += `
         <tr class="grand-total-row">
           <td colspan="5"><strong>Grand Total :</strong></td>
-          <td class="num"><strong>${money(grandUnalloc)}</strong></td>
-          <td class="num"><strong>${money(grand30)}</strong></td>
-          <td class="num"><strong>${money(grand60)}</strong></td>
-          <td class="num"><strong>${money(grand90)}</strong></td>
-          <td class="num"><strong>${money(grand120)}</strong></td>
-          <td class="num"><strong>${money(grand160)}</strong></td>
-          <td class="num"><strong>${money(grand200)}</strong></td>
-          <td class="num"><strong>${money(grandAbove)}</strong></td>
-          <td class="num"><strong>${money(grandTotal)}</strong></td>
+          <td class="num"><strong>${formatBalance(grandUnalloc)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand30)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand60)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand90)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand120)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand160)}</strong></td>
+          <td class="num"><strong>${formatBalance(grand200)}</strong></td>
+          <td class="num"><strong>${formatBalance(grandAbove)}</strong></td>
+          <td class="num"><strong>${formatBalance(grandTotal)}</strong></td>
         </tr>`;
 
         const ageHeaderCells = ageLabels
