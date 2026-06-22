@@ -110,13 +110,13 @@ const PAGE_CSS = `
   @page { size: A4 landscape; margin: 10mm; }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: Arial, sans-serif; font-size: 11px; color: #111827;
-    background: #eef2f7;
+    font-family: Arial, sans-serif; font-size: 11px; color: #000;
+    background: #fff;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .sheet {
     min-width: 260mm; margin: 14px auto; background: #fff;
-    padding: 8mm 10mm; border: 1px solid #aab7c8; border-radius: 4px;
+    padding: 8mm 10mm; border: 1px solid #000; border-radius: 0;
   }
   .logo-area { margin-bottom: 10px; }
   .divider-thick { border-top: 2px solid #000; margin: 7px 0 4px; }
@@ -127,56 +127,57 @@ const PAGE_CSS = `
   }
   .meta-label { font-weight: 700; white-space: nowrap; }
   .drill-hint {
-    font-size: 10px; color: #1a5f4a; background: #f0f9f5;
-    border: 1px solid #a7d7c5; border-radius: 4px;
+    font-size: 10px; color: #000; background: #fff;
+    border: 1px solid #000; border-radius: 0;
     padding: 4px 10px; margin-bottom: 8px;
     display: inline-flex; align-items: center; gap: 6px;
   }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
   th {
     border: 1px solid #000; padding: 4px 8px;
-    font-weight: 700; background: #1a5f4a; color: #fff;
+    font-weight: 700; background: #fff; color: #000;
   }
   th.left  { text-align: left; }
   th.right { text-align: right; }
   th.center { text-align: center; }
-  td { border: 1px solid #ccc; padding: 3px 8px; vertical-align: top; }
+  td { border: 1px solid #000; padding: 3px 8px; vertical-align: top; }
   td.center { text-align: center; }
   td.left   { text-align: left; }
   td.num    { text-align: right; font-variant-numeric: tabular-nums; font-family: "Courier New", monospace; }
   td.code   { font-family: monospace; font-size: 10px; }
   td.bold   { font-weight: 700; }
   tr.ac-header td {
-    background: #f0f9f5; font-weight: 700; color: #1a5f4a;
-    border-top: 2px solid #1a5f4a; border-bottom: 1px solid #a7d7c5;
+    background: #fff; font-weight: 700; color: #000;
+    border-top: 2px solid #000; border-bottom: 1px solid #000;
     padding: 4px 8px;
   }
   tr.subtotal-row td {
-    background: #e0f2eb; font-weight: 700;
-    border-top: 1px solid #a7d7c5;
+    background: #fff; font-weight: 700;
+    border-top: 1px solid #000;
   }
   tr.closing-row td {
-    background: #a7d7c5; font-weight: 700;
-    border-top: 1px solid #1a5f4a;
+    background: #fff; font-weight: 700;
+    border-top: 1px solid #000;
   }
   tr.grand-total-row td {
-    background: #1a5f4a; color: #fff; font-weight: 700;
-    font-size: 12px; border-top: 2px solid #0d3d2c;
+    background: #fff; color: #000; font-weight: 700;
+    font-size: 12px; border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
   }
   tr.total-row td {
-    border: 2px solid #000; font-weight: 700; background: #a7d7c5;
+    border: 2px solid #000; font-weight: 700; background: #fff;
   }
-  tr.total-row td.empty { border: 1px solid #ccc; background: #fff; }
-  tr.data-row:hover td { background: #f0f9f5; cursor: pointer; }
-  .balance-neg { color: #c0392b; }
+  tr.total-row td.empty { border: 1px solid #000; background: #fff; }
+  tr.data-row:hover td { background: #f5f5f5; cursor: pointer; }
+  .balance-neg { color: #000; font-weight: 700; }
   .end-of-report {
     text-align: center; margin-top: 10px; margin-bottom: 4px;
-    font-size: 10px; border-top: 1px solid #ccc; padding-top: 5px; color: #666;
+    font-size: 10px; border-top: 1px solid #000; padding-top: 5px; color: #000;
   }
   .report-footer {
     display: flex; justify-content: space-between;
-    font-size: 10px; color: #9ca3af;
-    border-top: 1px solid #e2e8f0; padding-top: 4px; margin-top: 4px;
+    font-size: 10px; color: #000;
+    border-top: 1px solid #000; padding-top: 4px; margin-top: 4px;
   }
   @media print {
     body { background: #fff; }
@@ -189,12 +190,12 @@ const PAGE_CSS = `
 `;
 
 const LOGO_SVG = `
-  <svg width="160" height="50" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
-    <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
-    <text x="16" y="46" font-family="Arial" font-size="26" font-weight="700" fill="#d4a017">al madina المدينة</text>
-    <text x="16" y="72" font-family="Arial" font-size="15" font-weight="400" fill="#d4a017" letter-spacing="4">LOGISTICS اللوجستية</text>
-    <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
-  </svg>`;
+ <svg width="160" height="50" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
+        <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
+        <text x="16" y="46" font-family="Arial" font-size="26" font-weight="700" fill="#d4a017">al madina المدينة</text>
+        <text x="16" y="72" font-family="Arial" font-size="15" font-weight="400" fill="#d4a017" letter-spacing="4">LOGISTICS اللوجستية</text>
+        <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
+      </svg>`;
 
 function buildPage(opts: {
   title: string;
@@ -268,27 +269,25 @@ const SUMMARY_STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes
   <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
   <fonts count="5">
     <font><sz val="10"/><name val="Arial"/></font>
-    <font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="13"/><color rgb="FF000000"/><name val="Arial"/></font>
     <font><b/><sz val="10"/><color rgb="FF000000"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF000000"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF000000"/><name val="Arial"/></font>
   </fonts>
-  <fills count="4">
+  <fills count="2">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1A5F4A"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF8F8F8"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="4">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF1A5F4A"/></left>
-      <right style="thin"><color rgb="FF1A5F4A"/></right>
-      <top style="thin"><color rgb="FF1A5F4A"/></top>
-      <bottom style="thin"><color rgb="FF1A5F4A"/></bottom>
+      <left style="thin"><color rgb="FF000000"/></left>
+      <right style="thin"><color rgb="FF000000"/></right>
+      <top style="thin"><color rgb="FF000000"/></top>
+      <bottom style="thin"><color rgb="FF000000"/></bottom>
       <diagonal/>
     </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
     <border>
       <left style="medium"><color rgb="FF000000"/></left>
       <right style="medium"><color rgb="FF000000"/></right>
@@ -300,13 +299,13 @@ const SUMMARY_STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="8">
     <xf numFmtId="0"   fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0"   fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0"   fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0"   fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0"   fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0"   fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0"   fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
     <xf numFmtId="164" fontId="0" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0"   fontId="4" fillId="3" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
-    <xf numFmtId="164" fontId="4" fillId="3" borderId="3" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
+    <xf numFmtId="0"   fontId="4" fillId="0" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="164" fontId="4" fillId="0" borderId="3" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -439,7 +438,7 @@ export const getPnlDrilldownL2 = async (
         <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
         <td class="num bold">${escapeHtml(fmtNumber(amount(r.closing_amount)))}</td>
       </tr>`
-    ).join("") || `<tr><td colspan="5" class="center" style="color:#666;padding:20px">No data found</td></tr>`;
+    ).join("") || `<tr><td colspan="5" class="center" style="color:#000;padding:20px">No data found</td></tr>`;
 
     const tableHtml = `
       <table>
@@ -715,7 +714,7 @@ export const getPnlDrilldownL3 = async (
         <td class="num">${credit > 0 ? escapeHtml(fmtNumber(credit)) : ""}</td>
         <td class="num${balClass}">${escapeHtml(fmtNumber(runBalance))}</td>
       </tr>`;
-    }).join("") || `<tr><td colspan="10" class="center" style="color:#666;padding:20px">No transactions found</td></tr>`;
+    }).join("") || `<tr><td colspan="10" class="center" style="color:#000;padding:20px">No transactions found</td></tr>`;
 
     const closing = runBalance;
 
