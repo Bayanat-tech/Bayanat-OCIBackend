@@ -39,11 +39,7 @@ function normalize(rows: any[] = []): ReportRow[] {
 }
 
 // ─── Field mapping layer ──────────────────────────────────────────────────────
-//
-// Maps VW_BOWM_STK_LEDGER column names to stable internal field names used
-// throughout the rest of this file, matching the same contract as the
-// Stock Detail report.
-//
+
 function mapRow(row: ReportRow): ReportRow {
   let brandCode = row.brand_code;
   let brandName = row.brand_name;
@@ -59,15 +55,24 @@ function mapRow(row: ReportRow): ReportRow {
 
   return {
     ...row,
-    qty_in_stock:    row.qty_stock   ?? row.qty_in_stock,
-    qty_available:   row.qty_avl     ?? row.qty_available,
+    qty_rcvd:        row.qty_rcvd,
+    qty_in_stock:    row.qty_stock    ?? row.qty_in_stock,
+    qty_available:   row.qty_avl      ?? row.qty_available,
     qty_picked:      row.qty_picked,
-    prod_group_code: row.group_code  ?? row.prod_group_code,
-    prod_group_name: row.group_name  ?? row.prod_group_name,
-    primary_uom:     row.p_uom       ?? row.primary_uom,
-    leat_uom:        row.l_uom       ?? row.leat_uom,
+    pqty_stock:      row.pqty_stock,
+    lqty_stock:      row.lqty_stock,
+    pqty_picked:     row.pqty_picked,
+    lqty_picked:     row.lqty_picked,
+    pqty_avl:        row.pqty_avl,
+    lqty_avl:        row.lqty_avl,
+    prod_group_code: row.group_code   ?? row.prod_group_code,
+    prod_group_name: row.group_name   ?? row.prod_group_name,
+    primary_uom:     row.p_uom        ?? row.primary_uom,
+    leat_uom:        row.l_uom        ?? row.leat_uom,
     brand_code:      brandCode,
     brand_name:      brandName,
+    upp:             row.upp,
+    volume:          row.volume,
   };
 }
 
@@ -110,6 +115,17 @@ function escapeXml(value: unknown): string {
     .replace(/'/g, "&apos;");
 }
 
+// ─── Stock Qty in L Units formula ─────────────────────────────────────────────
+// (Qty Picked Primary * UPP) + Qty Picked Leat
+
+function calcStockQtyLUnits(row: ReportRow): number {
+  return num(row.pqty_picked) * num(row.upp) + num(row.lqty_picked);
+}
+
+function calcStockQtyLUnitsTotals(rows: ReportRow[]): number {
+  return rows.reduce((sum, r) => sum + calcStockQtyLUnits(r), 0);
+}
+
 // ─── Request Param Parser ────────────────────────────────────────────────────
 
 function parseParams(req: RequestWithUser) {
@@ -131,10 +147,6 @@ function parseParams(req: RequestWithUser) {
 }
 
 // ─── Data Loader ─────────────────────────────────────────────────────────────
-//
-// Stock Summary aggregates qty_in_stock / qty_available / qty_picked per
-// product (and site/location when groupBy = "site_location"). Batch, lot,
-// job, mfg date, etc. are intentionally excluded — summary-level only.
 
 async function loadStockData(req: RequestWithUser): Promise<ReportRow[]> {
   const params = parseParams(req);
@@ -159,10 +171,19 @@ async function loadStockData(req: RequestWithUser): Promise<ReportRow[]> {
         PROD_NAME,
         P_UOM,
         L_UOM,
+        UPP,
+        VOLUME,
         ${isGroupedBySite ? "SITE_CODE, LOCATION_CODE," : ""}
+        SUM(QTY_RCVD)     AS QTY_RCVD,
         SUM(QTY_STOCK)    AS QTY_STOCK,
         SUM(QTY_AVL)      AS QTY_AVL,
-        SUM(QTY_PICKED)   AS QTY_PICKED
+        SUM(QTY_PICKED)   AS QTY_PICKED,
+        SUM(PQTY_STOCK)   AS PQTY_STOCK,
+        SUM(LQTY_STOCK)   AS LQTY_STOCK,
+        SUM(PQTY_PICKED)  AS PQTY_PICKED,
+        SUM(LQTY_PICKED)  AS LQTY_PICKED,
+        SUM(PQTY_AVL)     AS PQTY_AVL,
+        SUM(LQTY_AVL)     AS LQTY_AVL
       FROM VW_BOWM_STK_LEDGER
       WHERE ('All' IN (${prinBinds.join(",")}) OR PRIN_CODE IN (${prinBinds.join(",")}))
         AND ('All' IN (${prodBinds.join(",")}) OR PROD_CODE IN (${prodBinds.join(",")}))
@@ -176,7 +197,8 @@ async function loadStockData(req: RequestWithUser): Promise<ReportRow[]> {
         BRAND_CODE, BRAND_NAME,
         GROUP_CODE, GROUP_NAME,
         PROD_CODE, PROD_NAME,
-        P_UOM, L_UOM
+        P_UOM, L_UOM,
+        UPP, VOLUME
         ${isGroupedBySite ? ", SITE_CODE, LOCATION_CODE" : ""}
       ORDER BY PRIN_CODE, BRAND_CODE, PROD_CODE
         ${isGroupedBySite ? ", SITE_CODE, LOCATION_CODE" : ""}
@@ -211,29 +233,38 @@ function groupRowsBy(rows: ReportRow[], keyFn: (r: ReportRow) => string): Map<st
   return map;
 }
 
-function sumQtyInStock(rows: ReportRow[]): number {
-  return rows.reduce((acc, r) => acc + num(r.qty_in_stock), 0);
+interface QtyTotals {
+  rcvd: number;
+  stock: number; avail: number; picked: number;
+  pstock: number; lstock: number;
+  ppicked: number; lpicked: number;
+  pavl: number; lavl: number;
+  stockQtyLUnits: number;
 }
 
-function sumQty(rows: ReportRow[]): { stock: number; avail: number; picked: number } {
-  let stock = 0, avail = 0, picked = 0;
+function sumQty(rows: ReportRow[]): QtyTotals {
+  let rcvd = 0, stock = 0, avail = 0, picked = 0;
+  let pstock = 0, lstock = 0, ppicked = 0, lpicked = 0, pavl = 0, lavl = 0;
   rows.forEach((r) => {
-    stock  += num(r.qty_in_stock);
-    avail  += num(r.qty_available);
-    picked += num(r.qty_picked);
+    rcvd    += num(r.qty_rcvd);
+    stock   += num(r.qty_in_stock);
+    avail   += num(r.qty_available);
+    picked  += num(r.qty_picked);
+    pstock  += num(r.pqty_stock);
+    lstock  += num(r.lqty_stock);
+    ppicked += num(r.pqty_picked);
+    lpicked += num(r.lqty_picked);
+    pavl    += num(r.pqty_avl);
+    lavl    += num(r.lqty_avl);
   });
-  return { stock, avail, picked };
+  return {
+    rcvd, stock, avail, picked,
+    pstock, lstock, ppicked, lpicked, pavl, lavl,
+    stockQtyLUnits: calcStockQtyLUnitsTotals(rows),
+  };
 }
 
 // ─── Column Spec ─────────────────────────────────────────────────────────────
-//
-// Extra leading columns per groupBy — mirrors Stock Detail's getColSpec exactly.
-//
-//   group_brand       → Product Group
-//   principal_product → Product Group, Brand
-//   product_group     → Brand
-//   site_location     → Product Group, Brand  (Site/Location shown as group headers)
-//   "" (none)         → (no extras)
 
 interface ColSpec {
   extraHeaders: string[];
@@ -275,11 +306,30 @@ function getColSpec(groupBy: TGroupBy): ColSpec {
   }
 }
 
-// Fixed columns (non-extra):
-//   Product Code | Product Name | Primary UOM | Leat UOM | Qty in Stock | Qty Available | Qty Picked
-//   = 4 text cols + 3 qty cols = 7 total fixed
-//   When site_location the Site column is a group header, not a data column → same 7
-const FIXED_COL_COUNT = 7;
+// ─── Column layout ────────────────────────────────────────────────────────────
+//
+// Fixed columns (after extras):
+//   [0] Product Code
+//   [1] Product Name
+//   [2] Primary UOM
+//   [3] Leat UOM
+//   [4] UPP
+//   [5] Volume
+//   [6] Site          (omitted when groupBy === "site_location")
+//   [7] Qty Rcvd
+//   --- Qty in Stock (parent) ---
+//   [8]  Primary
+//   [9]  Leat
+//   [10] Total
+//   --- Qty Available (parent) ---
+//   [11] Primary
+//   [12] Leat
+//   [13] Total
+//   --- Qty Picked (parent) ---
+//   [14] Primary
+//   [15] Leat
+//   [16] Total
+//   [17] Stock Qty in L Units   ← NEW
 
 // ─── HTML Renderer ────────────────────────────────────────────────────────────
 
@@ -289,25 +339,47 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  const colSpec         = getColSpec(groupBy);
-  const includeSiteCol  = groupBy !== "site_location";
-  // When site_location is active the Site column is omitted from data rows
-  // (it's shown as a group header). All other modes keep it.
-  const effectiveFixedCols = includeSiteCol ? FIXED_COL_COUNT + 1 : FIXED_COL_COUNT;
-  const totalCols           = effectiveFixedCols + colSpec.extraColCount;
-  // labelColspan = everything before the 3 trailing qty columns
-  const labelColspan        = (includeSiteCol ? 5 : 4) + colSpec.extraColCount;
+  const colSpec        = getColSpec(groupBy);
+  const includeSiteCol = groupBy !== "site_location";
 
-  let grandInStock = 0, grandAvail = 0, grandPicked = 0;
+  const textLeafs      = 6 + (includeSiteCol ? 1 : 0);
+  // +1 for the new Stock Qty in L Units column
+  const totalLeafs     = colSpec.extraColCount + textLeafs + 1 /* rcvd */ + 9 /* 3×3 qty sub */ + 1 /* stock qty l units */;
+  const labelColspan   = colSpec.extraColCount + textLeafs;
 
-  // ── One summary row per product (no batch sub-rows)
+  // Grand totals accumulators
+  let grandRcvd = 0;
+  let grandStock = 0, grandAvail = 0, grandPicked = 0;
+  let grandPStock = 0, grandLStock = 0;
+  let grandPPicked = 0, grandLPicked = 0;
+  let grandPAvl = 0, grandLAvl = 0;
+  let grandStockQtyLUnits = 0;
+
+  // ── Single product data row
   const renderProductRow = (row: ReportRow): string => {
+    const rcvd    = num(row.qty_rcvd);
     const inStock = num(row.qty_in_stock);
     const avail   = num(row.qty_available);
     const picked  = num(row.qty_picked);
-    grandInStock += inStock;
-    grandAvail   += avail;
-    grandPicked  += picked;
+    const pstock  = num(row.pqty_stock);
+    const lstock  = num(row.lqty_stock);
+    const ppicked = num(row.pqty_picked);
+    const lpicked = num(row.lqty_picked);
+    const pavl    = num(row.pqty_avl);
+    const lavl    = num(row.lqty_avl);
+    const stockQtyL = calcStockQtyLUnits(row);
+
+    grandRcvd           += rcvd;
+    grandStock          += inStock;
+    grandAvail          += avail;
+    grandPicked         += picked;
+    grandPStock         += pstock;
+    grandLStock         += lstock;
+    grandPPicked        += ppicked;
+    grandLPicked        += lpicked;
+    grandPAvl           += pavl;
+    grandLAvl           += lavl;
+    grandStockQtyLUnits += stockQtyL;
 
     const extraCells = colSpec.extraCellsHtml(row)
       .map((v) => `<td>${escapeHtml(v)}</td>`)
@@ -321,37 +393,59 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
         <td>${escapeHtml(row.prod_name)}</td>
         <td class="center">${escapeHtml(row.primary_uom)}</td>
         <td class="center">${escapeHtml(row.leat_uom)}</td>
+        <td class="num">${fmtNumber(num(row.upp))}</td>
+        <td class="num">${fmtNumber(num(row.volume))}</td>
         ${siteCell}
+        <td class="num">${fmtNumber(rcvd)}</td>
+        <td class="num">${fmtNumber(pstock)}</td>
+        <td class="num">${fmtNumber(lstock)}</td>
         <td class="num">${fmtNumber(inStock)}</td>
+        <td class="num">${fmtNumber(pavl)}</td>
+        <td class="num">${fmtNumber(lavl)}</td>
         <td class="num">${fmtNumber(avail)}</td>
+        <td class="num">${fmtNumber(ppicked)}</td>
+        <td class="num">${fmtNumber(lpicked)}</td>
         <td class="num">${fmtNumber(picked)}</td>
+        <td class="num stock-qty-l">${fmtNumber(stockQtyL)}</td>
       </tr>`;
   };
 
-  // ── Product block: header row + single data row + Product Total
+  // ── Subtotal cells for qty block (rcvd + 3×3 sub-qty + stock qty l units)
+  const qtySubtotalCells = (q: QtyTotals): string => `
+    <td class="num">${fmtNumber(q.rcvd)}</td>
+    <td class="num">${fmtNumber(q.pstock)}</td>
+    <td class="num">${fmtNumber(q.lstock)}</td>
+    <td class="num">${fmtNumber(q.stock)}</td>
+    <td class="num">${fmtNumber(q.pavl)}</td>
+    <td class="num">${fmtNumber(q.lavl)}</td>
+    <td class="num">${fmtNumber(q.avail)}</td>
+    <td class="num">${fmtNumber(q.ppicked)}</td>
+    <td class="num">${fmtNumber(q.lpicked)}</td>
+    <td class="num">${fmtNumber(q.picked)}</td>
+    <td class="num stock-qty-l">${fmtNumber(q.stockQtyLUnits)}</td>`;
+
+  // ── Product block
   const renderProductBlock = (prodRows: ReportRow[]): string => {
     if (!prodRows.length) return "";
-    const first    = prodRows[0];
-    const pQty     = sumQty(prodRows);
+    const first = prodRows[0];
+    const pQty  = sumQty(prodRows);
 
     const lines = prodRows.map(renderProductRow).join("");
 
     return `
       <tr class="product-header">
-        <td colspan="${totalCols}">
+        <td colspan="${totalLeafs}">
           Product : ${escapeHtml(first.prod_code)} | ${escapeHtml(first.prod_name)}
           &nbsp;&nbsp;&nbsp;
-          <span class="uom">Primary Unit of Measurement : ${escapeHtml(first.primary_uom)}</span>
+          <span class="uom">Primary UOM : ${escapeHtml(first.primary_uom)}</span>
           &nbsp;&nbsp;&nbsp;
-          <span class="uom">Leat Unit of Measurement : ${escapeHtml(first.leat_uom)}</span>
+          <span class="uom">Leat UOM : ${escapeHtml(first.leat_uom)}</span>
         </td>
       </tr>
       ${lines}
       <tr class="subtotal-row">
-        <td colspan="${labelColspan}">Product Total :</td>
-        <td class="num">${fmtNumber(pQty.stock)}</td>
-        <td class="num">${fmtNumber(pQty.avail)}</td>
-        <td class="num">${fmtNumber(pQty.picked)}</td>
+        <td class="subtotal-label" colspan="${labelColspan}">Product Total :</td>
+        ${qtySubtotalCells(pQty)}
       </tr>`;
   };
 
@@ -360,138 +454,88 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
 
   const byPrin = groupRowsBy(rows, (r) => text(r.prin_code));
 
-  let bodyHtml             = "";
-  let extraHeaderRow2Cells = "";
-  if (colSpec.extraColCount > 0) {
-    extraHeaderRow2Cells = Array(colSpec.extraColCount).fill("<th></th>").join("");
-  }
+  let bodyHtml = "";
 
   byPrin.forEach((prinRows, prinCode) => {
-    const prinName  = text(prinRows[0]?.prin_name);
-    const prinQty   = sumQty(prinRows);
+    const prinName = text(prinRows[0]?.prin_name);
+    const prinQty  = sumQty(prinRows);
 
     bodyHtml += `
       <tr class="principal-header">
-        <td colspan="${totalCols}">Principal : ${escapeHtml(prinCode)} | ${escapeHtml(prinName)}</td>
+        <td colspan="${totalLeafs}">Principal : ${escapeHtml(prinCode)} | ${escapeHtml(prinName)}</td>
       </tr>`;
 
     if (groupBy === "group_brand") {
-      // Principal → Brand → Product
       const byBrand = groupRowsBy(prinRows, (r) => text(r.brand_code));
       byBrand.forEach((brandRows, brandCode) => {
         const brandName = text(brandRows[0]?.brand_name);
         const brandQty  = sumQty(brandRows);
-
         bodyHtml += `
           <tr class="group-header">
-            <td colspan="${totalCols}">Brand : ${escapeHtml(brandCode)} | ${escapeHtml(brandName)}</td>
+            <td colspan="${totalLeafs}">Brand : ${escapeHtml(brandCode)} | ${escapeHtml(brandName)}</td>
           </tr>`;
-
-        byProductCode(brandRows).forEach((prodRows) => {
-          bodyHtml += renderProductBlock(prodRows);
-        });
-
-        bodyHtml += `
-          <tr class="group-total-row">
-            <td colspan="${labelColspan}">Brand Total :</td>
-            <td class="num">${fmtNumber(brandQty.stock)}</td>
-            <td class="num">${fmtNumber(brandQty.avail)}</td>
-            <td class="num">${fmtNumber(brandQty.picked)}</td>
-          </tr>`;
+        byProductCode(brandRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
+        bodyHtml += `<tr class="group-total-row"><td class="subtotal-label" colspan="${labelColspan}">Brand Total :</td>${qtySubtotalCells(brandQty)}</tr>`;
       });
 
     } else if (groupBy === "principal_product") {
-      // Principal → Product (flat)
-      byProductCode(prinRows).forEach((prodRows) => {
-        bodyHtml += renderProductBlock(prodRows);
-      });
+      byProductCode(prinRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
 
     } else if (groupBy === "product_group") {
-      // Principal → Product Group → Product
       const byGroup = groupRowsBy(prinRows, (r) => text(r.prod_group_code));
       byGroup.forEach((grpRows, grpCode) => {
         const grpName = text(grpRows[0]?.prod_group_name);
         const grpQty  = sumQty(grpRows);
-
         bodyHtml += `
           <tr class="group-header">
-            <td colspan="${totalCols}">Product Group : ${escapeHtml(grpCode)} | ${escapeHtml(grpName)}</td>
+            <td colspan="${totalLeafs}">Product Group : ${escapeHtml(grpCode)} | ${escapeHtml(grpName)}</td>
           </tr>`;
-
-        byProductCode(grpRows).forEach((prodRows) => {
-          bodyHtml += renderProductBlock(prodRows);
-        });
-
-        bodyHtml += `
-          <tr class="group-total-row">
-            <td colspan="${labelColspan}">Product Group Total :</td>
-            <td class="num">${fmtNumber(grpQty.stock)}</td>
-            <td class="num">${fmtNumber(grpQty.avail)}</td>
-            <td class="num">${fmtNumber(grpQty.picked)}</td>
-          </tr>`;
+        byProductCode(grpRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
+        bodyHtml += `<tr class="group-total-row"><td class="subtotal-label" colspan="${labelColspan}">Product Group Total :</td>${qtySubtotalCells(grpQty)}</tr>`;
       });
 
     } else if (groupBy === "site_location") {
-      // Principal → Site → Location → Product
       const bySite = groupRowsBy(prinRows, (r) => text(r.site_code));
       bySite.forEach((siteRows, siteCode) => {
         const siteQty = sumQty(siteRows);
-
         bodyHtml += `
           <tr class="site-header">
-            <td colspan="${totalCols}">Site : ${escapeHtml(siteCode)}</td>
+            <td colspan="${totalLeafs}">Site : ${escapeHtml(siteCode)}</td>
           </tr>`;
-
         const byLoc = groupRowsBy(siteRows, (r) => text(r.location_code));
         byLoc.forEach((locRows, locationCode) => {
           const locQty = sumQty(locRows);
-
           bodyHtml += `
             <tr class="location-header">
-              <td colspan="${totalCols}">Site : ${escapeHtml(siteCode)} | Location : ${escapeHtml(locationCode)}</td>
+              <td colspan="${totalLeafs}">Site : ${escapeHtml(siteCode)} | Location : ${escapeHtml(locationCode)}</td>
             </tr>`;
-
-          byProductCode(locRows).forEach((prodRows) => {
-            bodyHtml += renderProductBlock(prodRows);
-          });
-
-          bodyHtml += `
-            <tr class="group-total-row">
-              <td colspan="${labelColspan}">Site &amp; Location Total :</td>
-              <td class="num">${fmtNumber(locQty.stock)}</td>
-              <td class="num">${fmtNumber(locQty.avail)}</td>
-              <td class="num">${fmtNumber(locQty.picked)}</td>
-            </tr>`;
+          byProductCode(locRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
+          bodyHtml += `<tr class="group-total-row"><td class="subtotal-label" colspan="${labelColspan}">Site &amp; Location Total :</td>${qtySubtotalCells(locQty)}</tr>`;
         });
-
-        bodyHtml += `
-          <tr class="site-total-row">
-            <td colspan="${labelColspan}">Site Total :</td>
-            <td class="num">${fmtNumber(siteQty.stock)}</td>
-            <td class="num">${fmtNumber(siteQty.avail)}</td>
-            <td class="num">${fmtNumber(siteQty.picked)}</td>
-          </tr>`;
+        bodyHtml += `<tr class="site-total-row"><td class="subtotal-label" colspan="${labelColspan}">Site Total :</td>${qtySubtotalCells(siteQty)}</tr>`;
       });
 
     } else {
-      // No grouping — flat list under principal
-      byProductCode(prinRows).forEach((prodRows) => {
-        bodyHtml += renderProductBlock(prodRows);
-      });
+      byProductCode(prinRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
     }
 
-    bodyHtml += `
-      <tr class="principal-total-row">
-        <td colspan="${labelColspan}">Principal Total :</td>
-        <td class="num">${fmtNumber(prinQty.stock)}</td>
-        <td class="num">${fmtNumber(prinQty.avail)}</td>
-        <td class="num">${fmtNumber(prinQty.picked)}</td>
-      </tr>`;
+    bodyHtml += `<tr class="principal-total-row"><td class="subtotal-label" colspan="${labelColspan}">Principal Total :</td>${qtySubtotalCells(prinQty)}</tr>`;
   });
 
-  const grandTotalLabel   = groupBy === "site_location" ? "Total :" : "Grand Total :";
-  const siteHeaderCell    = includeSiteCol ? "<th>Site</th>" : "";
-  const extraHeaderCells  = colSpec.extraHeaders.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
+  const grandTotalLabel = groupBy === "site_location" ? "Total :" : "Grand Total :";
+  const grandQty: QtyTotals = {
+    rcvd: grandRcvd, stock: grandStock, avail: grandAvail, picked: grandPicked,
+    pstock: grandPStock, lstock: grandLStock,
+    ppicked: grandPPicked, lpicked: grandLPicked,
+    pavl: grandPAvl, lavl: grandLAvl,
+    stockQtyLUnits: grandStockQtyLUnits,
+  };
+
+  // ── Build header row 1 (parent groups) and row 2 (leaf labels)
+  const extraHeaderCells1 = colSpec.extraHeaders
+    .map((h) => `<th rowspan="2">${escapeHtml(h)}</th>`)
+    .join("");
+  const siteHeaderCell1   = includeSiteCol ? `<th rowspan="2">Site</th>` : "";
 
   return `<!doctype html>
 <html>
@@ -518,7 +562,7 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
       margin: 0 auto;
       background: #fff;
       padding: 10px 12px;
-      overflow-x: hidden;
+      overflow-x: auto;
     }
     .report-title {
       text-align: center;
@@ -528,6 +572,7 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
       margin-bottom: 5px;
       color: #fafcfeff;
       background: #1d4ed8;
+      padding: 4px 0;
     }
     .report-meta {
       display: flex;
@@ -543,14 +588,35 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
       table-layout: auto;
     }
     th {
-      background: #fff;
-      border: 1px solid #1d4ed8;
-      padding: 2px 3px;
+      background: #1d4ed8;
+      border: 1px solid #1e3a8a;
+      padding: 3px 3px;
       text-align: center;
       font-weight: 700;
       white-space: normal;
       word-break: break-word;
-      color: #1e3a8a;
+      color: #ffffff;
+    }
+    /* Sub-group parent headers */
+    th.parent-qty {
+      background: #1e40af;
+      border-bottom: 2px solid #93c5fd;
+    }
+    /* Sub-column leaf headers */
+    th.sub-qty {
+      background: #2563eb;
+      font-size: 7px;
+    }
+    th.sub-total {
+      background: #1d4ed8;
+      font-size: 7px;
+      font-style: italic;
+    }
+    /* Stock Qty in L Units header */
+    th.stock-qty-l-hdr {
+      background: #0f3460;
+      font-size: 7px;
+      font-weight: 700;
     }
     td {
       border: 1px solid #cbd5e1;
@@ -560,6 +626,13 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
     }
     td.num    { text-align: right; font-variant-numeric: tabular-nums; }
     td.center { text-align: center; }
+    td.subtotal-label { text-align: right; font-weight: 700; padding-right: 6px; }
+    /* Stock Qty in L Units data cell highlight */
+    td.stock-qty-l {
+      background: #e0e7ff !important;
+      font-weight: 700;
+      color: #1e3a8a;
+    }
 
     tr.principal-header td {
       background: #1d4ed8;
@@ -653,27 +726,42 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
   </div>
   <table>
     <thead>
+      <!-- Row 1: parent-level headers -->
       <tr>
-        ${extraHeaderCells}
-        <th>Product Code</th>
-        <th>Product Name</th>
-        <th>Primary UOM</th>
-        <th>Leat UOM</th>
-        ${siteHeaderCell}
-        <th>Qty in Stock</th>
-        <th>Qty Available</th>
-        <th>Qty Picked</th>
+        ${extraHeaderCells1}
+        <th rowspan="2">Product Code</th>
+        <th rowspan="2">Product Name</th>
+        <th rowspan="2">Primary UOM</th>
+        <th rowspan="2">Leat UOM</th>
+        <th rowspan="2">UPP</th>
+        <th rowspan="2">Volume</th>
+        ${siteHeaderCell1}
+        <th rowspan="2">Qty Rcvd</th>
+        <th colspan="3" class="parent-qty">Qty in Stock</th>
+        <th colspan="3" class="parent-qty">Qty Available</th>
+        <th colspan="3" class="parent-qty">Qty Picked</th>
+        <th rowspan="2" class="stock-qty-l-hdr">Stock Qty in L Units</th>
+      </tr>
+      <!-- Row 2: sub-column leaf headers -->
+      <tr>
+        <th class="sub-qty">Primary</th>
+        <th class="sub-qty">Leat</th>
+        <th class="sub-total">Total</th>
+        <th class="sub-qty">Primary</th>
+        <th class="sub-qty">Leat</th>
+        <th class="sub-total">Total</th>
+        <th class="sub-qty">Primary</th>
+        <th class="sub-qty">Leat</th>
+        <th class="sub-total">Total</th>
       </tr>
     </thead>
     <tbody>
-      ${bodyHtml || `<tr><td colspan="${totalCols}" style="text-align:center;color:#666;padding:20px">No data found</td></tr>`}
+      ${bodyHtml || `<tr><td colspan="${totalLeafs}" style="text-align:center;color:#666;padding:20px">No data found</td></tr>`}
     </tbody>
     <tfoot>
       <tr class="grand-total-row">
-        <td colspan="${labelColspan}">${grandTotalLabel}</td>
-        <td class="num">${fmtNumber(grandInStock)}</td>
-        <td class="num">${fmtNumber(grandAvail)}</td>
-        <td class="num">${fmtNumber(grandPicked)}</td>
+        <td class="subtotal-label" colspan="${labelColspan}">${grandTotalLabel}</td>
+        ${qtySubtotalCells(grandQty)}
       </tr>
     </tfoot>
   </table>
@@ -695,6 +783,10 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   });
 
   const BLUE     = "FF1D4ED8";
+  const BLUE2    = "FF1E40AF";
+  const BLUE3    = "FF2563EB";
+  const DARKBLUE = "FF0F3460";  // for Stock Qty in L Units header
+  const INDIGO   = "FFE0E7FF";  // for Stock Qty in L Units data cells
   const WHITE    = "FFFFFFFF";
   const LBLUE    = "FFDBEAFE";
   const LBLUE2   = "FFEFF6FF";
@@ -717,6 +809,42 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
       border: {
         top:    borderThin(BLUE), bottom: borderThin(BLUE),
         left:   borderThin(BLUE), right:  borderThin(BLUE),
+      },
+    },
+    headerParentQty: {
+      font:      { bold: true, sz: 9, color: { rgb: WHITE } },
+      fill:      { fgColor: { rgb: BLUE2 } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top:    borderThin(BLUE2), bottom: borderThin("FF93C5FD"),
+        left:   borderThin(BLUE2), right:  borderThin(BLUE2),
+      },
+    },
+    headerSubQty: {
+      font:      { bold: true, sz: 8, color: { rgb: WHITE } },
+      fill:      { fgColor: { rgb: BLUE3 } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top:    borderThin(BLUE3), bottom: borderThin(BLUE3),
+        left:   borderThin(BLUE3), right:  borderThin(BLUE3),
+      },
+    },
+    headerSubTotal: {
+      font:      { bold: true, sz: 8, italic: true, color: { rgb: WHITE } },
+      fill:      { fgColor: { rgb: BLUE } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top:    borderThin(BLUE), bottom: borderThin(BLUE),
+        left:   borderThin(BLUE), right:  borderThin(BLUE),
+      },
+    },
+    headerStockQtyL: {
+      font:      { bold: true, sz: 8, color: { rgb: WHITE } },
+      fill:      { fgColor: { rgb: DARKBLUE } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top:    borderThin(DARKBLUE), bottom: borderThin(DARKBLUE),
+        left:   borderThin(DARKBLUE), right:  borderThin(DARKBLUE),
       },
     },
     principal: {
@@ -746,6 +874,13 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
       numFmt:    "#,##0",
       border:    { bottom: borderThin("FFE2E8F0") },
     },
+    dataStockQtyL: {
+      font:      { bold: true, sz: 9, color: { rgb: "FF1E3A8A" } },
+      fill:      { fgColor: { rgb: INDIGO } },
+      alignment: { horizontal: "right", vertical: "top" },
+      numFmt:    "#,##0",
+      border:    { bottom: borderThin("FFE2E8F0") },
+    },
     subtotal: {
       font:   { bold: true, sz: 9 },
       fill:   { fgColor: { rgb: YELLOW } },
@@ -758,14 +893,28 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
       numFmt:    "#,##0",
       border:    { top: borderThin("FF999999") },
     },
+    subtotalStockQtyL: {
+      font:      { bold: true, sz: 9, color: { rgb: "FF1E3A8A" } },
+      fill:      { fgColor: { rgb: INDIGO } },
+      alignment: { horizontal: "right" },
+      numFmt:    "#,##0",
+      border:    { top: borderThin("FF999999") },
+    },
     groupTotal: {
       font:   { bold: true, sz: 9 },
-      fill:   { fgColor: { rgb: "FFDBEAFE" } },
+      fill:   { fgColor: { rgb: LBLUE } },
       border: { top: borderThin("FF2563EB") },
     },
     groupTotalNum: {
       font:      { bold: true, sz: 9 },
-      fill:      { fgColor: { rgb: "FFDBEAFE" } },
+      fill:      { fgColor: { rgb: LBLUE } },
+      alignment: { horizontal: "right" },
+      numFmt:    "#,##0",
+      border:    { top: borderThin("FF2563EB") },
+    },
+    groupTotalStockQtyL: {
+      font:      { bold: true, sz: 9, color: { rgb: "FF1E3A8A" } },
+      fill:      { fgColor: { rgb: INDIGO } },
       alignment: { horizontal: "right" },
       numFmt:    "#,##0",
       border:    { top: borderThin("FF2563EB") },
@@ -782,6 +931,13 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
       numFmt:    "#,##0",
       border:    { top: borderThin("FF1D4ED8") },
     },
+    siteTotalStockQtyL: {
+      font:      { bold: true, sz: 9, color: { rgb: "FF1E3A8A" } },
+      fill:      { fgColor: { rgb: INDIGO } },
+      alignment: { horizontal: "right" },
+      numFmt:    "#,##0",
+      border:    { top: borderThin("FF1D4ED8") },
+    },
     grandTotal: {
       font:      { bold: true, sz: 10, color: { rgb: WHITE } },
       fill:      { fgColor: { rgb: BLUE } },
@@ -792,17 +948,35 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
       font: { bold: true, sz: 10, color: { rgb: WHITE } },
       fill: { fgColor: { rgb: BLUE } },
     },
+    grandTotalStockQtyL: {
+      font:      { bold: true, sz: 10, color: { rgb: WHITE } },
+      fill:      { fgColor: { rgb: DARKBLUE } },
+      alignment: { horizontal: "right" },
+      numFmt:    "#,##0",
+    },
   };
 
   const colSpec        = getColSpec(groupBy);
   const includeSiteCol = groupBy !== "site_location";
-  // Columns: [extras...] | Prod Code | Prod Name | Primary UOM | Leat UOM | [Site?] | Stock | Avail | Picked
-  const FIXED    = includeSiteCol ? 8 : 7;   // 4 text + 1 site + 3 qty  OR  4 text + 3 qty
-  const COL_COUNT      = colSpec.extraColCount + FIXED;
-  const extraColOffset = colSpec.extraColCount;
-  // labelColspan: everything before the 3 qty columns
-  const labelColspan   = extraColOffset + (includeSiteCol ? 5 : 4);
-  const qtyStart       = labelColspan;
+
+  const TEXT_FIXED = 6 + (includeSiteCol ? 1 : 0);
+  // +1 for Stock Qty in L Units
+  const COL_COUNT  = colSpec.extraColCount + TEXT_FIXED + 1 /* rcvd */ + 9 /* qty subs */ + 1 /* stock qty l */;
+  const E          = colSpec.extraColCount;
+
+  const idxRcvd       = E + TEXT_FIXED;
+  const idxPStock     = idxRcvd + 1;
+  const idxLStock     = idxRcvd + 2;
+  const idxTStock     = idxRcvd + 3;
+  const idxPAvl       = idxRcvd + 4;
+  const idxLAvl       = idxRcvd + 5;
+  const idxTAvl       = idxRcvd + 6;
+  const idxPPicked    = idxRcvd + 7;
+  const idxLPicked    = idxRcvd + 8;
+  const idxTPicked    = idxRcvd + 9;
+  const idxStockQtyL  = idxRcvd + 10;  // ← NEW
+
+  const labelColspan = E + TEXT_FIXED;
 
   const sheetData: any[][]                    = [];
   const merges: XLSX.Range[]                  = [];
@@ -836,161 +1010,209 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   // ── Blank spacer
   addRow(Array(COL_COUNT).fill(""), {});
 
-  // ── Header row
-  const headers = [
-    ...colSpec.extraHeaders,
-    "Product Code", "Product Name", "Primary UOM", "Leat UOM",
-    ...(includeSiteCol ? ["Site"] : []),
-    "Qty in Stock", "Qty Available", "Qty Picked",
-  ];
-  const hRow = sheetData.length;
-  addRow(headers, Object.fromEntries(headers.map((_, i) => [i, styles.header])));
+  // ── Header row 1
+  const h1Row = sheetData.length;
+  const h1Cells = Array(COL_COUNT).fill("");
+  const h1Styles: Record<number, any> = {};
 
-  // ── Helper: section header row (full-width merge)
+  colSpec.extraHeaders.forEach((h, i) => {
+    h1Cells[i] = h;
+    h1Styles[i] = styles.header;
+  });
+  const fixedLabels = [
+    "Product Code", "Product Name", "Primary UOM", "Leat UOM", "UPP", "Volume",
+    ...(includeSiteCol ? ["Site"] : []),
+    "Qty Rcvd",
+  ];
+  fixedLabels.forEach((lbl, i) => {
+    h1Cells[E + i] = lbl;
+    h1Styles[E + i] = styles.header;
+  });
+  h1Cells[idxPStock]   = "Qty in Stock";
+  h1Cells[idxPAvl]     = "Qty Available";
+  h1Cells[idxPPicked]  = "Qty Picked";
+  h1Cells[idxStockQtyL] = "Stock Qty in L Units";
+  h1Styles[idxPStock]   = styles.headerParentQty;
+  h1Styles[idxPAvl]     = styles.headerParentQty;
+  h1Styles[idxPPicked]  = styles.headerParentQty;
+  h1Styles[idxStockQtyL] = styles.headerStockQtyL;
+
+  addRow(h1Cells, h1Styles);
+
+  // ── Header row 2
+  const h2Row = sheetData.length;
+  const h2Cells  = Array(COL_COUNT).fill("");
+  const h2Styles: Record<number, any> = {};
+
+  const subLabels: Array<{ idx: number; label: string; isTotal: boolean }> = [
+    { idx: idxPStock,  label: "Primary", isTotal: false },
+    { idx: idxLStock,  label: "Leat",    isTotal: false },
+    { idx: idxTStock,  label: "Total",   isTotal: true  },
+    { idx: idxPAvl,    label: "Primary", isTotal: false },
+    { idx: idxLAvl,    label: "Leat",    isTotal: false },
+    { idx: idxTAvl,    label: "Total",   isTotal: true  },
+    { idx: idxPPicked, label: "Primary", isTotal: false },
+    { idx: idxLPicked, label: "Leat",    isTotal: false },
+    { idx: idxTPicked, label: "Total",   isTotal: true  },
+  ];
+  subLabels.forEach(({ idx, label, isTotal }) => {
+    h2Cells[idx]  = label;
+    h2Styles[idx] = isTotal ? styles.headerSubTotal : styles.headerSubQty;
+  });
+  addRow(h2Cells, h2Styles);
+
+  // Row-span single header merges (h1Row spans 2 rows) — includes Stock Qty in L Units
+  for (let c = 0; c < E + TEXT_FIXED + 1 /* rcvd */; c++) {
+    merges.push({ s: { r: h1Row, c }, e: { r: h2Row, c } });
+  }
+  // Stock Qty in L Units also spans 2 rows
+  merges.push({ s: { r: h1Row, c: idxStockQtyL }, e: { r: h2Row, c: idxStockQtyL } });
+
+  // Parent qty group headers span 3 cols each
+  merges.push({ s: { r: h1Row, c: idxPStock  }, e: { r: h1Row, c: idxTStock  } });
+  merges.push({ s: { r: h1Row, c: idxPAvl    }, e: { r: h1Row, c: idxTAvl    } });
+  merges.push({ s: { r: h1Row, c: idxPPicked }, e: { r: h1Row, c: idxTPicked } });
+
+  // ── Section / total row helpers
+
   const addSectionRow = (label: string, style: any) => {
     const r = sheetData.length;
     addRow([label, ...Array(COL_COUNT - 1).fill("")], allStyle(style));
     merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 1 } });
   };
 
-  // ── Helper: total row (label spans to qty start, then 3 qty cells)
   const addTotalRow = (
     label: string,
-    qty: { stock: number; avail: number; picked: number },
+    q: QtyTotals,
     labelStyle: any,
     numStyle: any,
+    stockQtyLStyle: any,
   ) => {
     const r     = sheetData.length;
     const cells = Array(COL_COUNT).fill("");
-    cells[0]           = label;
-    cells[qtyStart]     = qty.stock;
-    cells[qtyStart + 1] = qty.avail;
-    cells[qtyStart + 2] = qty.picked;
+    cells[0]             = label;
+    cells[idxRcvd]       = q.rcvd;
+    cells[idxPStock]     = q.pstock;
+    cells[idxLStock]     = q.lstock;
+    cells[idxTStock]     = q.stock;
+    cells[idxPAvl]       = q.pavl;
+    cells[idxLAvl]       = q.lavl;
+    cells[idxTAvl]       = q.avail;
+    cells[idxPPicked]    = q.ppicked;
+    cells[idxLPicked]    = q.lpicked;
+    cells[idxTPicked]    = q.picked;
+    cells[idxStockQtyL]  = q.stockQtyLUnits;
+
     const styleMap: Record<number, any> = {};
-    for (let i = 0; i < qtyStart; i++) styleMap[i] = labelStyle;
-    styleMap[qtyStart]     = numStyle;
-    styleMap[qtyStart + 1] = numStyle;
-    styleMap[qtyStart + 2] = numStyle;
+    for (let i = 0; i < labelColspan; i++) styleMap[i] = labelStyle;
+    [idxRcvd, idxPStock, idxLStock, idxTStock, idxPAvl, idxLAvl, idxTAvl, idxPPicked, idxLPicked, idxTPicked]
+      .forEach((idx) => { styleMap[idx] = numStyle; });
+    styleMap[idxStockQtyL] = stockQtyLStyle;
+
     addRow(cells, styleMap);
-    if (qtyStart > 1) merges.push({ s: { r, c: 0 }, e: { r, c: qtyStart - 1 } });
+    if (labelColspan > 1) merges.push({ s: { r, c: 0 }, e: { r, c: labelColspan - 1 } });
   };
 
-  // ── Helper: product data row
+  // ── Product data row helper
   const addProductRow = (row: ReportRow) => {
-    const inStock = num(row.qty_in_stock);
-    const avail   = num(row.qty_available);
-    const picked  = num(row.qty_picked);
     const extras  = colSpec.extraCellsHtml(row);
     const siteVal = includeSiteCol ? [text(row.site_code)] : [];
     const cells   = [
       ...extras,
       text(row.prod_code), text(row.prod_name), text(row.primary_uom), text(row.leat_uom),
+      num(row.upp), num(row.volume),
       ...siteVal,
-      inStock, avail, picked,
+      num(row.qty_rcvd),
+      num(row.pqty_stock), num(row.lqty_stock), num(row.qty_in_stock),
+      num(row.pqty_avl),   num(row.lqty_avl),   num(row.qty_available),
+      num(row.pqty_picked),num(row.lqty_picked), num(row.qty_picked),
+      calcStockQtyLUnits(row),
     ];
     const styleMap: Record<number, any> = {};
-    for (let i = 0; i < qtyStart; i++) styleMap[i] = styles.data;
-    styleMap[qtyStart]     = styles.dataNum;
-    styleMap[qtyStart + 1] = styles.dataNum;
-    styleMap[qtyStart + 2] = styles.dataNum;
+    for (let i = 0; i < labelColspan; i++) styleMap[i] = styles.data;
+    [idxRcvd, idxPStock, idxLStock, idxTStock, idxPAvl, idxLAvl, idxTAvl, idxPPicked, idxLPicked, idxTPicked]
+      .forEach((idx) => { styleMap[idx] = styles.dataNum; });
+    styleMap[idxStockQtyL] = styles.dataStockQtyL;
     addRow(cells, styleMap);
   };
 
-  // ── Helper: product block (header + data row + Product Total)
+  // ── Product block helper
   const renderProductXl = (prodRows: ReportRow[]) => {
     if (!prodRows.length) return;
     const first = prodRows[0];
     const pQty  = sumQty(prodRows);
-
-    const pHRow    = sheetData.length;
-    const prodLabel = `Product : ${first.prod_code} | ${first.prod_name}   Primary UOM: ${first.primary_uom}   Leat UOM: ${first.leat_uom}`;
+    const pHRow = sheetData.length;
     addRow(
-      [prodLabel, ...Array(COL_COUNT - 1).fill("")],
+      [`Product : ${first.prod_code} | ${first.prod_name}   Primary UOM: ${first.primary_uom}   Leat UOM: ${first.leat_uom}`,
+        ...Array(COL_COUNT - 1).fill("")],
       allStyle(styles.product),
     );
     merges.push({ s: { r: pHRow, c: 0 }, e: { r: pHRow, c: COL_COUNT - 1 } });
-
     prodRows.forEach(addProductRow);
-
-    addTotalRow("Product Total :", pQty, styles.subtotal, styles.subtotalNum);
+    addTotalRow("Product Total :", pQty, styles.subtotal, styles.subtotalNum, styles.subtotalStockQtyL);
   };
 
-  // ── Build data by principal
+  // ── Build data sections
   const byPrincipal = groupRowsBy(rows, (r) => text(r.prin_code));
+  const byProdCode  = (g: ReportRow[]) => Array.from(groupRowsBy(g, (r) => text(r.prod_code)).values());
 
   byPrincipal.forEach((prinRows, prinCode) => {
-    const prinName  = text(prinRows[0]?.prin_name);
-    const prinQty   = sumQty(prinRows);
-
-    const prRow = sheetData.length;
+    const prinName = text(prinRows[0]?.prin_name);
+    const prinQty  = sumQty(prinRows);
+    const prRow    = sheetData.length;
     addRow(
       [`Principal : ${prinCode} | ${prinName}`, ...Array(COL_COUNT - 1).fill("")],
       allStyle(styles.principal),
     );
     merges.push({ s: { r: prRow, c: 0 }, e: { r: prRow, c: COL_COUNT - 1 } });
 
-    const byProductCode = (group: ReportRow[]) =>
-      Array.from(groupRowsBy(group, (r) => text(r.prod_code)).values());
-
     if (groupBy === "group_brand") {
-      const byBrand = groupRowsBy(prinRows, (r) => text(r.brand_code));
-      byBrand.forEach((brandRows, brandCode) => {
+      groupRowsBy(prinRows, (r) => text(r.brand_code)).forEach((brandRows, brandCode) => {
         const brandName = text(brandRows[0]?.brand_name);
         addSectionRow(`Brand : ${brandCode} | ${brandName}`, styles.group);
-        byProductCode(brandRows).forEach(renderProductXl);
-        addTotalRow("Brand Total :", sumQty(brandRows), styles.groupTotal, styles.groupTotalNum);
+        byProdCode(brandRows).forEach(renderProductXl);
+        addTotalRow("Brand Total :", sumQty(brandRows), styles.groupTotal, styles.groupTotalNum, styles.groupTotalStockQtyL);
       });
-
     } else if (groupBy === "principal_product") {
-      byProductCode(prinRows).forEach(renderProductXl);
-
+      byProdCode(prinRows).forEach(renderProductXl);
     } else if (groupBy === "product_group") {
-      const byGroup = groupRowsBy(prinRows, (r) => text(r.prod_group_code));
-      byGroup.forEach((grpRows, grpCode) => {
+      groupRowsBy(prinRows, (r) => text(r.prod_group_code)).forEach((grpRows, grpCode) => {
         const grpName = text(grpRows[0]?.prod_group_name);
         addSectionRow(`Product Group : ${grpCode} | ${grpName}`, styles.group);
-        byProductCode(grpRows).forEach(renderProductXl);
-        addTotalRow("Product Group Total :", sumQty(grpRows), styles.groupTotal, styles.groupTotalNum);
+        byProdCode(grpRows).forEach(renderProductXl);
+        addTotalRow("Product Group Total :", sumQty(grpRows), styles.groupTotal, styles.groupTotalNum, styles.groupTotalStockQtyL);
       });
-
     } else if (groupBy === "site_location") {
-      const bySite = groupRowsBy(prinRows, (r) => text(r.site_code));
-      bySite.forEach((siteRows, siteCode) => {
+      groupRowsBy(prinRows, (r) => text(r.site_code)).forEach((siteRows, siteCode) => {
         addSectionRow(`Site : ${siteCode}`, styles.group);
-
-        const byLoc = groupRowsBy(siteRows, (r) => text(r.location_code));
-        byLoc.forEach((locRows, locationCode) => {
+        groupRowsBy(siteRows, (r) => text(r.location_code)).forEach((locRows, locationCode) => {
           const locRow = sheetData.length;
           addRow(
             [`Site : ${siteCode} | Location : ${locationCode}`, ...Array(COL_COUNT - 1).fill("")],
             allStyle(styles.location),
           );
           merges.push({ s: { r: locRow, c: 0 }, e: { r: locRow, c: COL_COUNT - 1 } });
-
-          byProductCode(locRows).forEach(renderProductXl);
-          addTotalRow("Site & Location Total :", sumQty(locRows), styles.groupTotal, styles.groupTotalNum);
+          byProdCode(locRows).forEach(renderProductXl);
+          addTotalRow("Site & Location Total :", sumQty(locRows), styles.groupTotal, styles.groupTotalNum, styles.groupTotalStockQtyL);
         });
-
-        addTotalRow("Site Total :", sumQty(siteRows), styles.siteTotal, styles.siteTotalNum);
+        addTotalRow("Site Total :", sumQty(siteRows), styles.siteTotal, styles.siteTotalNum, styles.siteTotalStockQtyL);
       });
-
     } else {
-      byProductCode(prinRows).forEach(renderProductXl);
+      byProdCode(prinRows).forEach(renderProductXl);
     }
 
-    // Principal Total — styled as grand total blue bar
-    const ptRow = sheetData.length;
-    addTotalRow("Principal Total :", prinQty, styles.grandTotalLabel, styles.grandTotal);
-    // Re-apply grand total styling to entire principal total row
+    // Principal total
+    addTotalRow("Principal Total :", prinQty, styles.grandTotalLabel, styles.grandTotal, styles.grandTotalStockQtyL);
     const lastIdx = sheetData.length - 1;
-    for (let i = 0; i < qtyStart; i++)   rowStyles[lastIdx][i] = styles.grandTotalLabel;
-    for (let i = qtyStart; i < COL_COUNT; i++) rowStyles[lastIdx][i] = styles.grandTotal;
+    for (let i = 0; i < COL_COUNT; i++) {
+      if (i === idxStockQtyL) rowStyles[lastIdx][i] = styles.grandTotalStockQtyL;
+      else rowStyles[lastIdx][i] = i < labelColspan ? styles.grandTotalLabel : styles.grandTotal;
+    }
   });
 
   // ── Grand Total
   const grandLabel = groupBy === "site_location" ? "Total :" : "Grand Total :";
-  const grandQty   = sumQty(rows);
-  addTotalRow(grandLabel, grandQty, styles.grandTotalLabel, styles.grandTotal);
+  addTotalRow(grandLabel, sumQty(rows), styles.grandTotalLabel, styles.grandTotal, styles.grandTotalStockQtyL);
 
   // ── Footer
   addRow(
@@ -998,20 +1220,24 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     { [COL_COUNT - 1]: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } } } },
   );
 
-  // ── Build worksheet via SheetJS AOA then hand-write styled XML
-  const ws        = XLSX.utils.aoa_to_sheet(sheetData);
-  ws["!merges"]   = merges;
-  ws["!cols"]     = Array.from({ length: COL_COUNT }, (_, i) => {
-    if (i < extraColOffset)     return { wch: 16 };
-    if (i === extraColOffset)   return { wch: 14 }; // Product Code
-    if (i === extraColOffset+1) return { wch: 28 }; // Product Name
-    if (i === extraColOffset+2) return { wch: 11 }; // Primary UOM
-    if (i === extraColOffset+3) return { wch: 11 }; // Leat UOM
-    return { wch: 14 };
+  // ── Build worksheet
+  const ws      = XLSX.utils.aoa_to_sheet(sheetData);
+  ws["!merges"] = merges;
+  ws["!cols"]   = Array.from({ length: COL_COUNT }, (_, i) => {
+    const base = i - E;
+    if (i < E)      return { wch: 16 };
+    if (base === 0)  return { wch: 14 };
+    if (base === 1)  return { wch: 30 };
+    if (base === 2)  return { wch: 10 };
+    if (base === 3)  return { wch: 10 };
+    if (base === 4)  return { wch: 10 };
+    if (base === 5)  return { wch: 10 };
+    if (i === idxStockQtyL) return { wch: 16 };
+    return { wch: 12 };
   });
-  ws["!rows"] = sheetData.map((_, i) => ({ hpt: i === 0 ? 24 : 14 }));
+  ws["!rows"] = sheetData.map((_, i) => ({ hpt: i === 0 ? 24 : i <= 3 ? 18 : 14 }));
 
-  // ── Style registration (identical engine to Stock Detail) ────────────────
+  // ── Style engine
 
   interface FontDef   { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef   { color?: string; }
@@ -1019,7 +1245,7 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   interface XfDef     { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean; }
 
   const fonts:   FontDef[]   = [{}];
-  const fills:   FillDef[]   = [{}, {}];   // 0/1 reserved per OOXML
+  const fills:   FillDef[]   = [{}, {}];
   const borders: BorderDef[] = [{}];
   const numFmts: Array<{ id: number; code: string }> = [];
   const cellXfs: XfDef[]     = [{ fontId: 0, fillId: 0, borderId: 0, numFmtId: 0 }];
@@ -1030,63 +1256,41 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     const def: FontDef = { bold: !!f?.bold, italic: !!f?.italic, sz: f?.sz ?? 9, color: f?.color?.rgb };
     const key = `font:${JSON.stringify(def)}`;
     if (sigCache.has(key)) return sigCache.get(key)!;
-    fonts.push(def);
-    const idx = fonts.length - 1;
-    sigCache.set(key, idx);
-    return idx;
+    fonts.push(def); const idx = fonts.length - 1; sigCache.set(key, idx); return idx;
   };
-
   const registerFill = (f: any): number => {
     if (!f?.fgColor?.rgb) return 0;
     const def: FillDef = { color: f.fgColor.rgb };
     const key = `fill:${JSON.stringify(def)}`;
     if (sigCache.has(key)) return sigCache.get(key)!;
-    fills.push(def);
-    const idx = fills.length - 1;
-    sigCache.set(key, idx);
-    return idx;
+    fills.push(def); const idx = fills.length - 1; sigCache.set(key, idx); return idx;
   };
-
   const registerBorder = (b: any): number => {
     if (!b) return 0;
     const def: BorderDef = {
-      top:    b.top?.color?.rgb,
-      bottom: b.bottom?.color?.rgb,
-      left:   b.left?.color?.rgb,
-      right:  b.right?.color?.rgb,
+      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb,
+      left: b.left?.color?.rgb, right: b.right?.color?.rgb,
     };
     if (!def.top && !def.bottom && !def.left && !def.right) return 0;
     const key = `border:${JSON.stringify(def)}`;
     if (sigCache.has(key)) return sigCache.get(key)!;
-    borders.push(def);
-    const idx = borders.length - 1;
-    sigCache.set(key, idx);
-    return idx;
+    borders.push(def); const idx = borders.length - 1; sigCache.set(key, idx); return idx;
   };
-
   const registerNumFmt = (code?: string): number => {
     if (!code) return 0;
     const existing = numFmts.find((n) => n.code === code);
     if (existing) return existing.id;
-    const id = nextCustomNumFmtId++;
-    numFmts.push({ id, code });
-    return id;
+    const id = nextCustomNumFmtId++; numFmts.push({ id, code }); return id;
   };
-
   const registerXf = (styleObj: any): number => {
     if (!styleObj) return 0;
-    const fontId   = registerFont(styleObj.font);
-    const fillId   = registerFill(styleObj.fill);
-    const borderId = registerBorder(styleObj.border);
-    const numFmtId = registerNumFmt(styleObj.numFmt);
-    const align    = styleObj.alignment?.horizontal;
-    const wrap     = !!styleObj.alignment?.wrapText;
+    const fontId = registerFont(styleObj.font), fillId = registerFill(styleObj.fill);
+    const borderId = registerBorder(styleObj.border), numFmtId = registerNumFmt(styleObj.numFmt);
+    const align = styleObj.alignment?.horizontal, wrap = !!styleObj.alignment?.wrapText;
     const key = `xf:${JSON.stringify({ fontId, fillId, borderId, numFmtId, align, wrap })}`;
     if (sigCache.has(key)) return sigCache.get(key)!;
     cellXfs.push({ fontId, fillId, borderId, numFmtId, align, wrap });
-    const idx = cellXfs.length - 1;
-    sigCache.set(key, idx);
-    return idx;
+    const idx = cellXfs.length - 1; sigCache.set(key, idx); return idx;
   };
 
   const cellStyleIndex = new Map<string, number>();
@@ -1097,7 +1301,7 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     });
   });
 
-  // ── Sheet XML with s="N" on every styled cell
+  // ── Sheet XML
   const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
   let sheetXmlData = "";
   for (let r2 = range.s.r; r2 <= range.e.r; r2++) {
@@ -1219,12 +1423,12 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
 </Types>`;
 
   const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml",           Buffer.from(contentTypes));
-  zip.addFile("_rels/.rels",                   Buffer.from(rels));
-  zip.addFile("xl/workbook.xml",               Buffer.from(workbookXml));
-  zip.addFile("xl/_rels/workbook.xml.rels",    Buffer.from(workbookRels));
-  zip.addFile("xl/styles.xml",                 Buffer.from(stylesXml));
-  zip.addFile("xl/worksheets/sheet1.xml",      Buffer.from(sheetXml));
+  zip.addFile("[Content_Types].xml",        Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels",                Buffer.from(rels));
+  zip.addFile("xl/workbook.xml",            Buffer.from(workbookXml));
+  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
+  zip.addFile("xl/styles.xml",              Buffer.from(stylesXml));
+  zip.addFile("xl/worksheets/sheet1.xml",   Buffer.from(sheetXml));
   return zip.toBuffer();
 }
 
@@ -1238,7 +1442,6 @@ export const getStockSummaryReportHtml = async (
     const params = parseParams(req);
     const rows   = await loadStockData(req);
     const html   = renderHtml(rows, params.groupBy, req.user?.loginid ?? "");
-
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
@@ -1259,11 +1462,7 @@ export const exportStockSummaryReportExcel = async (
     const rows     = await loadStockData(req);
     const buffer   = buildExcelBuffer(rows, params.groupBy, req.user?.loginid ?? "");
     const filename = `stock_summary_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.end(buffer);
   } catch (error: any) {
