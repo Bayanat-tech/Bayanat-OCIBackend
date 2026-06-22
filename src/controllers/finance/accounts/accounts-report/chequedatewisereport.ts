@@ -181,7 +181,7 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
         <td></td>
       </tr>`;
 
-    const reportTitle = `Cheque Date Wise Report ${text(code5)} - ${text(code6)}`;
+    const reportTitle = `Ledger Basic Report ${text(code5)} - ${text(code6)}`;
     const generatedBy = text(loginid) || "Unknown User";
     const reportDate = formatDateStr(new Date());
 

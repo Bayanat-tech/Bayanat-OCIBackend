@@ -74,7 +74,7 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
       groups[key].push(r);
     });
 
-    const reportTitle = `Account Payee Wise Report ${text(code5)} - ${text(code6)}`;
+    const reportTitle = `Ledger Basic Report ${text(code5)} - ${text(code6)}`;
     const generatedBy = text(loginid) || "Unknown User";
     const reportDate = formatDateStr(new Date());
 

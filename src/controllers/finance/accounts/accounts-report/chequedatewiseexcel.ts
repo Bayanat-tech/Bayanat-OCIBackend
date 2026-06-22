@@ -222,7 +222,7 @@ function buildChequeDateWiseExcelBuffer(
           xc(text(r.bank          || ""), "normal"),
           xc(hasTransaction ? cr  : 0,    "numData"),
           xc(hasTransaction ? dr  : 0,    "numData"),
-          xc(runningBalance,              "numData"),
+          xc(formatBalance(runningBalance), "numData"),
         ]);
 
         // Narration row
@@ -592,7 +592,7 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
         <td></td>
       </tr>`;
 
-    const reportTitle = `Cheque Date Wise Report ${text(code5)} - ${text(code6)}`;
+    const reportTitle = `Ledger Basic Report ${code5} - ${code6}`;
     const generatedBy = text(loginid) || "Unknown User";
     const reportDate  = formatDateStr(new Date());
 
