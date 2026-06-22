@@ -13,7 +13,17 @@ export const getRequestFlowUsers = async (
     // const { loginid1 } = requestUser;
     const { doc_id } = req.query;
     const { loginId } = req.query;
-    const CEO_CODE = "00001";
+
+    const dynamic_Ceoid =`SELECT d.LEAVE_FINAL_APPROVER
+            FROM MS_HR_DEPARTMENT d
+            JOIN MS_HR_EMPLOYEE e
+              ON d.DIV_CODE = e.DIV_CODE
+             AND d.DEPT_CODE = e.DEPT_CODE
+            WHERE e.EMPLOYEE_ID = ${loginId}`
+            
+    const ceoResult = await oracleDb.query(dynamic_Ceoid);
+    const CEO_CODE = ceoResult.rows?.[0]?.LEAVE_FINAL_APPROVER || "00001";
+
     const leaveInfoQuery = `
       SELECT LEAVE_TYPE, LEAVE_DAYS
       FROM VW_HR_LEAVE_REQUEST_FLOW

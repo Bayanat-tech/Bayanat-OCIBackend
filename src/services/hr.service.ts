@@ -6,6 +6,7 @@ import { RequestWithUser } from "../interfaces/common.interface";
 import { IUser } from "../interfaces/user.interface";
 import constants from "../helpers/constants";
 import { notifyUser } from "../helpers/functions";
+import * as oracledb from "oracledb";
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -108,10 +109,70 @@ export const HrService = {
     return response.data;
   },
 
+LeaveDaysCount: async (params: {
+    leaveStartDate: string;
+    leaveEndDate: string;
+    leaveType: string;
+    company_code: string;
+    employee_code: string;
+  }) => {
+    const { leaveStartDate, leaveEndDate , leaveType , company_code , employee_code} = params;
 
+    const query = `
+    DECLARE
+     v_leave_days NUMBER;
+     BEGIN
+        v_leave_days := FUN_CALC_LEAVE_DAYS(
+          TO_DATE(:leaveStartDate, 'DD-MM-YYYY'),
+          TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
+          :p_leaveType,
+          :p_company_code,
+          :p_employee_code
+        );
+      :p_leave_days := v_leave_days;
+      END;
+    `;
+    
+    const bindParams = {
+      leaveStartDate: leaveStartDate,
+      leaveEndDate: leaveEndDate,
+      p_leaveType: leaveType,
+      p_company_code: company_code,
+      p_employee_code: employee_code,
+      p_leave_days: {
+        dir: oracledb.BIND_OUT,
+        type: oracledb.NUMBER,
+      },
+    };
 
+    try {
+      const result = await oracleDb.query(query, bindParams);
+      const leaveDays = (result.outBinds as any).p_leave_days;
 
-
+      return {
+        success: true,
+        leaveStartDate: leaveStartDate,
+        leaveEndDate: leaveEndDate,
+        company_code: company_code,
+        employee_code: employee_code,
+        leaveDays: leaveDays,
+        leaveType: leaveType,
+        message: "Leave days calculated successfully",
+      };
+    }catch (error: string | any) {
+      console.error("Error calculating leave days:", error);
+      return {
+        success: false,
+        leaveStartDate: leaveStartDate,
+        leaveEndDate: leaveEndDate,
+        company_code: company_code,
+        employee_code: employee_code,
+        leaveDays: null,
+        leaveType: leaveType,
+        message: "Failed to calculate leave days",
+      };
+    }
+  },
 
 newValidaterequest: async(params: {
   leaveStartDate: string;
