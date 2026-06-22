@@ -159,17 +159,6 @@ async function loadReportData(req: RequestWithUser, docType: string, docNo: stri
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const invoiceResult = await conn.execute(
-      `SELECT *
-       FROM TR_AC_INVDETAIL
-       WHERE company_code = :company_code
-         AND doc_type = :doc_type
-         AND doc_no = :doc_no
-       ORDER BY serial_no, dtl_sr_no`,
-      { company_code: companyCode, doc_type: docType, doc_no: docNo },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
     let company: ReportRow = { company_code: companyCode };
     try {
       const companyResult = await conn.execute(
@@ -188,7 +177,7 @@ async function loadReportData(req: RequestWithUser, docType: string, docNo: stri
       company,
       header,
       details: normalize(detailResult.rows as any[]),
-      invoiceDetails: normalize(invoiceResult.rows as any[]),
+      invoiceDetails: [],
     };
   } finally {
     await closeConn(conn);
@@ -196,7 +185,7 @@ async function loadReportData(req: RequestWithUser, docType: string, docNo: stri
 }
 
 function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: string, autoPrint: boolean) {
-  const { company, header, details, invoiceDetails } = data;
+  const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
   const subtotal = visibleDetails.reduce((sum, row) => sum + amount(row.amount), 0);
   const taxTotal = visibleDetails.reduce((sum, row) => sum + amount(row.tx_compnt_amt_1), 0);
@@ -234,16 +223,6 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
       </tr>`;
   }).join("");
 
-  const paymentRows = invoiceDetails.map((row) => `
-    <tr>
-      <td>${escapeHtml(row.inv_no || header.ref_no || header.cheque_no)}</td>
-      <td>${escapeHtml(header.cheque_bank || "")}</td>
-      <td>${escapeHtml(header.ac_code || "")}</td>
-      <td>${escapeHtml(header.cheque_no || "")}</td>
-      <td>${escapeHtml(dateText(header.cheque_date || row.inv_date || row.doc_date))}</td>
-      <td class="num">${money(row.amount || total)}</td>
-    </tr>`).join("");
-
   return `<!doctype html>
 <html>
 <head>
@@ -271,7 +250,7 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
     .label { color: #333; font-weight: 700; }
     .value { color: #111; font-weight: 700; }
     table { width: 100%; border-collapse: collapse; margin-top: 7px; table-layout: fixed; }
-    th { background: #fff; color: #111; padding: 4px 4px; text-align: left; font-size: 9px; font-weight: 800; border: 1px solid #777; }
+    th { background: #f5f7fa; color: #111; padding: 4px 4px; text-align: left; font-size: 9px; font-weight: 800; border: 1px solid #888; }
     td { border: 1px solid #999; padding: 4px 4px; vertical-align: top; font-size: 9.4px; }
     td span { display: block; color: #111; margin-top: 1px; }
     .code { width: 22mm; color: #111; }
@@ -285,7 +264,7 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
     .totals td { border: 0; border-bottom: 1px solid #aaa; padding: 4px 6px; }
     .totals tr:last-child td { border-bottom: 0; }
     .grand { color: #111; background: #fff; font-size: 11px; font-weight: 800; }
-    .section-caption { margin-top: 7px; padding: 4px 6px; border: 1px solid #777; border-bottom: 0; color: #111; font-weight: 800; letter-spacing: 0; text-transform: uppercase; background: #fff; }
+    .section-caption { margin-top: 7px; padding: 4px 6px; border: 1px solid #888; border-bottom: 0; color: #111; font-weight: 800; letter-spacing: 0; text-transform: uppercase; background: #f5f7fa; }
     .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; margin-top: 23mm; }
     .line { border-top: 1px solid #777; padding-top: 5px; text-align: center; font-weight: 800; }
     .actions { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
@@ -357,14 +336,6 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
         <tr><td class="grand">Grand Total ${escapeHtml(currency)}</td><td class="num grand">${money(total)}</td></tr>
       </table>
     </section>
-
-    ${isPayment(docType) || paymentRows ? `
-      <div class="section-caption">Payment / Allocation Details</div>
-      <table>
-        <thead><tr><th>PDC No.</th><th>Bank Name</th><th>A/c No.</th><th>Cheque No.</th><th>Cheque Date</th><th class="num">Amount (${escapeHtml(currency)})</th></tr></thead>
-        <tbody>${paymentRows || `<tr><td colspan="6" class="center muted">No payment allocation found</td></tr>`}</tbody>
-      </table>
-    ` : ""}
 
     <section class="sign">
       <div class="line">Customer's Signature</div>
@@ -478,7 +449,7 @@ function applyExcelLayout(ws: XLSX.WorkSheet, rows: any[][], lineStartRow: numbe
 }
 
 function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docType: string) {
-  const { company, header, details, invoiceDetails } = data;
+  const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
   const subtotal = visibleDetails.reduce((sum, row) => sum + amount(row.amount), 0);
   const taxTotal = visibleDetails.reduce((sum, row) => sum + amount(row.tx_compnt_amt_1), 0);
@@ -534,31 +505,6 @@ function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docT
     ["", "", "", "", "", `Grand Total ${currency}`, "", "", total],
   );
 
-  if (isPayment(docType) || invoiceDetails.length) {
-    rows.push(
-      [],
-      ["PAYMENT / ALLOCATION DETAILS", "", "", "", "", "", "", "", ""],
-      ["PDC No.", "Bank Name", "A/c No.", "Cheque No.", "Cheque Date", `Amount (${currency})`, "", "", ""],
-    );
-    if (invoiceDetails.length) {
-      invoiceDetails.forEach((row) => {
-        rows.push([
-          row.inv_no || header.ref_no || header.cheque_no,
-          header.cheque_bank || "",
-          header.ac_code || "",
-          header.cheque_no || "",
-          dateText(header.cheque_date || row.inv_date || row.doc_date),
-          amount(row.amount || total),
-          "",
-          "",
-          "",
-        ]);
-      });
-    } else {
-      rows.push(["No payment allocation found", "", "", "", "", "", "", "", ""]);
-    }
-  }
-
   rows.push([], ["Customer's Signature", "", "", "", "", `For ${companyName}`, "", "", ""]);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -595,13 +541,6 @@ function buildReportSheet(data: Awaited<ReturnType<typeof loadReportData>>, docT
   applyStyle(ws, totalsStart + 1, 9, excelStyles.number);
   styleRange(ws, totalsStart + 2, 6, 8, excelStyles.grand);
   applyStyle(ws, totalsStart + 2, 9, excelStyles.grand);
-
-  const allocationHeaderRow = rows.findIndex((row) => row[0] === "PAYMENT / ALLOCATION DETAILS") + 1;
-  if (allocationHeaderRow > 0) {
-    ws["!merges"].push({ s: { r: allocationHeaderRow - 1, c: 0 }, e: { r: allocationHeaderRow - 1, c: 8 } });
-    styleRange(ws, allocationHeaderRow, 1, 9, excelStyles.section);
-    styleRange(ws, allocationHeaderRow + 1, 1, 6, excelStyles.tableHead);
-  }
 
   return ws;
 }
