@@ -38,6 +38,8 @@ import { procBulkAccountEntry } from "../../controllers/finance/accounts/transac
 import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
 import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
 import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
+import { upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
+import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -57,6 +59,16 @@ router.post(
 router.post(
   "/insUpdAcExpTypeBulk",
   insUpdAcExpTypeBulk
+);
+
+router.post(
+  "/upsertAcMasterDocsDet",
+  upsertAcMasterDocsDet
+);
+
+router.post(
+  "/upsertVendorActivity",
+  upsertVendorActivity
 );
 
 // Account entry for BP/BR/CR/CP/DN/CN
