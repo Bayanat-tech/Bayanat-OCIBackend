@@ -85,6 +85,7 @@ import { getWmsJobDetailsReportExcel, getWmsJobDetailsReportHtml } from "../../.
 import { getTallyPutawayReportExcel, getTallyPutawayReportHtml } from "../../../controllers/wms/reports/Putawayreport.controller";
 import { getGrnReportExcel, getGrnReportHtml } from "../../../controllers/wms/reports/GrnReport.controller";
 import { getTallyReportExcel, getTallyReportHtml } from "../../../controllers/wms/reports/TallReport.controller";
+import { getStockSummaryReportHtml, exportStockSummaryReportExcel } from "../../../controllers/wms/reports/StockSummaryReport.controller";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -337,5 +338,8 @@ router.get("/reports/Grn-report/:job_no/excel",getGrnReportExcel)
 router.get("/reports/Tally-report/:job_no", getTallyReportHtml)
 router.get("/reports/Tally-report/:job_no/excel",getTallyReportExcel)
 
+// Stock Summary report routes
+router.post("/reports/stocksummary/html", getStockSummaryReportHtml);
+router.post("/reports/stocksummary/excel", exportStockSummaryReportExcel);
 
 export default router;

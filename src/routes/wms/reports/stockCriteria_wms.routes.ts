@@ -1,10 +1,40 @@
 import * as express from "express"; // Importing the Express framework for building web applications.
 import { checkUserAuthorization } from "../../../middleware/checkUserAthorization"; // Importing middleware to check user authorization.
 import passport from "passport"; // Importing Passport for authentication.
+import { exportStockDetailReportExcel, getStockDetailReportHtml } from "../../../controllers/wms/reports/stockDetailReportController";
+import { getStockSummaryReportHtml, exportStockSummaryReportExcel } from "../../../controllers/wms/reports/StockSummaryReport.controller";
 // import { getStockDetailsReport } from "../../../controllers/wms/reports/stockCriteria/stock_details.controller"; // Importing the controller for handling stock details report requests.
 // import { getSummaryStockReport } from "../../../controllers/wms/reports/stockCriteria/summary_stock.controller"; // Importing the controller for handling summary stock report requests.
 // import { getAgeingStockReport } from "../../../controllers/wms/reports/stockCriteria/ageing_stock.controller"; // Importing the controller for handling ageing stock report requests.
-const router = express.Router(); // Creating a new router instance.
+const 
+router = express.Router(); // Creating a new router instance.
+
+router.post(
+  "/stockdetails/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getStockDetailReportHtml
+);
+router.post(
+  "/stockdetails/excel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  exportStockDetailReportExcel
+);
+
+router.post(
+  "/stocksummary/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getStockSummaryReportHtml
+);
+
+router.post(
+  "/stocksummary/excel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  exportStockSummaryReportExcel
+);
 
 // ----------- stock details report ------------
 // Route to get stock details report

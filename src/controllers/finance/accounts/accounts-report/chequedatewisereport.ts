@@ -186,93 +186,237 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
     const reportDate = formatDateStr(new Date());
 
     const reportHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>${reportTitle}</title>
-        <style>
-          :root { color-scheme: light; }
-          body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f2f4f7; color: #1f2937; }
-          .page { width: auto; max-width: 100%; margin: 24px auto; padding: 28px 32px; background: #fff; border-radius: 12px; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08); box-sizing: border-box; }
-          .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 1px solid #d1d5db; padding-bottom: 20px; margin-bottom: 24px; }
-          .meta-info { border-collapse: collapse; width: auto; }
-          .meta-info td { padding: 4px 8px; vertical-align: top; }
-          .label { font-weight: 700; width: 100px; color: #475569; white-space: nowrap; }
-          .report-title { font-size: 1rem; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
-          .brand-block { text-align: right; }
-          .brand-name { font-size: 18px; font-weight: 800; letter-spacing: 0.12em; color: #0d4d89; margin-bottom: 4px; }
-          .brand-subtitle { font-size: 0.85rem; letter-spacing: 0.18em; color: #334155; }
-          .report-table { width: 100%; border-collapse: collapse; table-layout: auto; }
-          .report-table th, .report-table td { padding: 12px 10px; border: 1px solid #e2e8f0; word-break: break-word; white-space: normal; }
-          .report-table th { background: #f8fafc; color: #334155; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.02em; }
-          .report-table td { background: #fff; font-size: 0.88rem; }
-          .group-header td { background: #eff6ff; font-weight: 700; color: #1e3a8a; border-top: 2px solid #c7d2fe; }
-          .sub-group-header td { background: #f8fafc; font-weight: 700; color: #0f172a; }
-          .opening-val { color: #c00; }
-          .data-row td { border-bottom: 1px solid #e6e7e8; }
-          .narration-row td { padding: 0 6px 8px 6px; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
-          .narration-cell { font-size: 9px; color: #555; padding-left: 18px; white-space: pre-wrap; }
-          .total-row td { border-top: 1px solid #333; padding-top: 8px; padding-bottom: 6px; font-weight: bold; background: #f8f9fb; }
-          .closing-row td { border-bottom: 2px solid #333; padding-bottom: 10px; font-weight: bold; }
-          .closing-val { color: #222; }
-          .grand-total-row td { border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 10px 6px; font-weight: bold; background: #e9edf4; }
-          .num { text-align: right; font-family: 'Courier New', Courier, monospace; }
-          .footer { margin-top: 30px; text-align: center; color: #475569; font-size: 0.82rem; padding-top: 10px; border-top: 1px solid #e2e8f0; }
-          .no-print { margin-bottom: 16px; text-align: right; }
-          .button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 999px; border: none; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; transition: background-color 0.2s ease; }
-          .button:hover { background: #1d4ed8; }
-          @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } .no-print { display: none; } }
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${reportTitle}</title>
+<style>
+/* ── replace only the header-related styles ── */
+:root { color-scheme: light; }
+
+body {
+    margin: 0;
+    padding: 10px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #e5e7eb;
+    color: #1f2937;
+}
+
+.page {
+    width: 277mm;
+    max-width: 277mm;
+    min-height: 190mm;
+    margin: 10px auto;
+    padding: 12px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    box-sizing: border-box;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    border-bottom: 2px solid #0d4d89;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+}
+
+.report-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.meta-info {
+    border-collapse: collapse;
+}
+
+.meta-info td {
+    padding: 1px 6px;
+    vertical-align: top;
+    font-size: 11px;
+}
+
+.label {
+    font-weight: 700;
+    width: 70px;
+    color: #475569;
+    white-space: nowrap;
+}
+
+.brand-block {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.brand-name {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #0d4d89;
+    white-space: nowrap;
+}
+
+.brand-subtitle {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.report-table th,
+.report-table td {
+    border: 1px solid #cfd8e3;
+    padding: 5px 6px;
+    font-size: 11px;
+    vertical-align: top;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.report-table th {
+    background: #0d4d89;
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+}
+
+.report-table th:nth-child(1), .report-table td:nth-child(1) { width: 20%; }
+.report-table th:nth-child(2), .report-table td:nth-child(2) { width: 20%; }
+.report-table th:nth-child(3), .report-table td:nth-child(3) { width: 20%; }
+.report-table th:nth-child(4), .report-table td:nth-child(4) { width: 20%; }
+.report-table th:nth-child(5), .report-table td:nth-child(5) { width: 20%; }
+.report-table th:nth-child(6), .report-table td:nth-child(6) { width: 20%; }
+.report-table th:nth-child(7), .report-table td:nth-child(7) { width: 20%; }
+.report-table th:nth-child(8), .report-table td:nth-child(8) { width: 20%; }
+.report-table th:nth-child(9), .report-table td:nth-child(9) { width: 20%; }
+.report-table th:nth-child(10), .report-table td:nth-child(10) { width: 20%; }
+
+.group-header td {
+    background: #eff6ff;
+    font-weight: 700;
+    color: #1e3a8a;
+}
+
+.sub-group-header td {
+    background: #f8fafc;
+    font-weight: 700;
+    color: #374151;
+}
+
+.opening-val { color: #c00; }
+.total-row td { background: #f1f5f9; font-weight: 700; }
+.closing-row td { background: #f1f5f9; font-weight: 700; }
+.grand-total-row td { background: #e2e8f0; font-weight: 700; }
+
+.num {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+}
+
+.footer {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 10px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 5px;
+    color: #64748b;
+}
+
+.no-print { margin-bottom: 10px; text-align: right; }
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: none;
+    background: #0d4d89;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.button:hover { background: #1d4ed8; }
+
+ @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } .no-print { display: none; } }
         </style>
-      </head>
-      <body>
-        <div class="no-print">
-          <button class="button" onclick="window.print()">Print / Save PDF</button>
-        </div>
-        <div class="page">
-          <div class="header-top">
-            <div>
-              <div class="report-title">${reportTitle}</div>
-              <table class="meta-info">
-                <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
-                <tr><td class="label">Date</td><td>${reportDate}</td></tr>
-                <tr><td class="label">User</td><td>${generatedBy}</td></tr>
-                <tr><td class="label">Currency</td><td>OMR</td></tr>
-              </table>
-            </div>
-            <div class="brand-block">
-              <div class="brand-name">AL MADINA</div>
-              <div class="brand-subtitle">LOGISTICS</div>
-            </div>
-          </div>
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th style="width:55px;">A/c Code</th>
-                <th style="width:30px;">Type</th>
-                <th style="width:80px;">Doc No.</th>
-                <th style="width:70px;">Doc Date</th>
-                <th style="width:70px;">Chq No.</th>
-                <th style="width:70px;">Chq Date</th>
-                <th style="width:70px;">Bank</th>
-                <th class="num" style="width:90px;">Credit</th>
-                <th class="num" style="width:90px;">Debit</th>
-                <th class="num" style="width:95px;">Balance</th>
-              </tr>
-            </thead>
-            <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:36px 0;">No records found for the selected criteria.</td></tr>'}</tbody>
+</style>
+  </head>
+  <body>
+    <div class="no-print">
+      <button class="button" onclick="window.print()">🖨 Print / Save PDF</button>
+    </div>
+
+    <div class="page">
+      <div class="header-top">
+        <div class="header-left">
+          <div class="report-title">${reportTitle}</div>
+          <table class="meta-info">
+            <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
+            <tr><td class="label">Date</td><td>${reportDate}</td></tr>
+            <tr><td class="label">User</td><td>${generatedBy}</td></tr>
+            <tr><td class="label">Currency</td><td>OMR</td></tr>
           </table>
-          <div class="footer">Generated by ${generatedBy} • ${reportDate}</div>
         </div>
-      </body>
-      </html>`;
+        <div class="brand-block">
+          <div class="brand-name">AL MADINA</div>
+          <div class="brand-subtitle">LOGISTICS</div>
+        </div>
+      </div>
+
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>A/c Code</th>
+            <th>Type</th>
+            <th>Doc No.</th>
+            <th>Doc Date</th>
+            <th>Chq No.</th>
+            <th>Chq Date</th>
+            <th>Bank</th>
+            <th class="num">Credit</th>
+            <th class="num">Debit</th>
+            <th class="num">Balance</th>
+          </tr>
+        </thead>
+        <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:36px 0;">No records found for the selected criteria.</td></tr>'}</tbody>
+      </table>
+
+      <div class="footer">Generated by ${generatedBy} • ${reportDate}</div>
+    </div>
+  </body>
+  </html>
+`;
 
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(reportHtml);
 
-    res.setHeader("Content-Type", "text/html");
-    res.status(200).send(reportHtml);
 
   } catch (error: any) {
     console.error("Cheque Date Wise Report Error:", error);

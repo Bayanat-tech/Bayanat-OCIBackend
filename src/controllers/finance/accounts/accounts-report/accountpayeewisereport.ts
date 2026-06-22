@@ -59,6 +59,7 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
 
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
+    console.log("Generated SQL:", rawSql);
 
     const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const rows = (dataResult.rows as any[]).map((row) =>
@@ -180,21 +181,16 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
       </tr>`;
 
     const reportHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>${reportTitle}</title>
-    <style>
-:root {
-    color-scheme: light;
-}
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${reportTitle}</title>
+<style>
+/* ── replace only the header-related styles ── */
+:root { color-scheme: light; }
 
-@page {
-    size: A4 portrait;
-    margin: 8mm;
-}
 
 body {
     margin: 0;
@@ -218,10 +214,27 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 8px;
-    border-bottom: 1px solid #d1d5db;
-    padding-bottom: 8px;
-    margin-bottom: 10px;
+    gap: 16px;
+    border-bottom: 2px solid #0d4d89;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+}
+
+.report-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .meta-info {
@@ -229,63 +242,72 @@ body {
 }
 
 .meta-info td {
-    padding: 2px 6px;
+    padding: 1px 6px;
     vertical-align: top;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .label {
     font-weight: 700;
-    width: 90px;
+    width: 70px;
     color: #475569;
     white-space: nowrap;
 }
 
-.report-title {
-    font-size: 16px;
-    font-weight: 800;
-    color: #0f172a;
-    margin-bottom: 4px;
-}
-
 .brand-block {
     text-align: right;
+    flex-shrink: 0;
 }
 
 .brand-name {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 800;
     letter-spacing: 0.12em;
     color: #0d4d89;
+    white-space: nowrap;
 }
 
 .brand-subtitle {
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 0.12em;
     color: #334155;
+    white-space: nowrap;
 }
 
 .report-table {
     width: 100%;
     border-collapse: collapse;
-    table-layout: auto;
+    table-layout: fixed;
 }
 
 .report-table th,
 .report-table td {
+    border: 1px solid #cfd8e3;
     padding: 5px 6px;
-    border: 1px solid #e2e8f0;
     font-size: 11px;
-    word-break: break-word;
+    vertical-align: top;
     white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .report-table th {
-    background: #f8fafc;
-    color: #334155;
-    font-weight: 700;
-    text-transform: uppercase;
+    background: #0d4d89;
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
 }
+
+.report-table th:nth-child(1), .report-table td:nth-child(1) { width: 20%; }
+.report-table th:nth-child(2), .report-table td:nth-child(2) { width: 20%; }
+.report-table th:nth-child(3), .report-table td:nth-child(3) { width: 20%; }
+.report-table th:nth-child(4), .report-table td:nth-child(4) { width: 20%; }
+.report-table th:nth-child(5), .report-table td:nth-child(5) { width: 20%; }
+.report-table th:nth-child(6), .report-table td:nth-child(6) { width: 20%; }
+.report-table th:nth-child(7), .report-table td:nth-child(7) { width: 20%; }
+.report-table th:nth-child(8), .report-table td:nth-child(8) { width: 20%; }
+.report-table th:nth-child(9), .report-table td:nth-child(9) { width: 20%; }
+.report-table th:nth-child(10), .report-table td:nth-child(10) { width: 20%; }
 
 .group-header td {
     background: #eff6ff;
@@ -296,26 +318,13 @@ body {
 .sub-group-header td {
     background: #f8fafc;
     font-weight: 700;
+    color: #374151;
 }
 
-.opening-val {
-    color: #c00;
-}
-
-.total-row td {
-    background: #f8fafc;
-    font-weight: 700;
-}
-
-.closing-row td {
-    background: #f8fafc;
-    font-weight: 700;
-}
-
-.grand-total-row td {
-    background: #f8fafc;
-    font-weight: 700;
-}
+.opening-val { color: #c00; }
+.total-row td { background: #f1f5f9; font-weight: 700; }
+.closing-row td { background: #f1f5f9; font-weight: 700; }
+.grand-total-row td { background: #e2e8f0; font-weight: 700; }
 
 .num {
     text-align: right;
@@ -325,133 +334,88 @@ body {
 .footer {
     margin-top: 12px;
     text-align: center;
-    font-size: 11px;
+    font-size: 10px;
     border-top: 1px solid #e2e8f0;
     padding-top: 5px;
+    color: #64748b;
 }
 
-.no-print {
-    margin-bottom: 10px;
-    text-align: right;
-}
+.no-print { margin-bottom: 10px; text-align: right; }
 
 .button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 16px;
+    padding: 8px 20px;
     border-radius: 999px;
     border: none;
-    background: #2563eb;
+    background: #0d4d89;
     color: white;
     font-weight: 700;
     cursor: pointer;
+    font-size: 13px;
 }
 
-.button:hover {
-    background: #1d4ed8;
-}
+.button:hover { background: #1d4ed8; }
 
 @media print {
-
-    body {
-        background: white;
-        min-width: 0;
-    }
-
-    .page {
-        width: auto !important;
-        max-width: 100% !important;
-        margin: 0;
-        padding: 5mm;
-        box-shadow: none;
-        border-radius: 0;
-    }
-
-    .no-print {
-        display: none;
-    }
-
-    thead {
-        display: table-header-group;
-    }
-
-    tfoot {
-        display: table-footer-group;
-    }
-
-    table {
-        table-layout: auto;
-        page-break-inside: auto;
-    }
-
-    .report-table th,
-    .report-table td {
-        word-break: break-word;
-        white-space: normal;
-    }
-
-    tr {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-
-    .group-header,
-    .sub-group-header,
-    .total-row,
-    .closing-row,
-    .grand-total-row {
-        page-break-inside: avoid;
-        break-inside: avoid;
+    body { background: white; }
+    .page { margin: 0; padding: 5mm; box-shadow: none; border-radius: 0; }
+    .no-print { display: none; }
+    thead { display: table-header-group; }
+    tfoot { display: table-footer-group; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
+    .group-header, .sub-group-header, .total-row, .closing-row, .grand-total-row {
+        page-break-inside: avoid; break-inside: avoid;
     }
 }
 </style>
-      </head>
-      <body>
-        <div class="no-print">
-          <button class="button" onclick="window.print()">Print / Save PDF</button>
-        </div>
+  </head>
+  <body>
+    <div class="no-print">
+      <button class="button" onclick="window.print()">🖨 Print / Save PDF</button>
+    </div>
 
-        <div class="page">
-          <div class="header-top">
-            <div>
-              <div class="report-title">${reportTitle}</div>
-              <table class="meta-info">
-                <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
-                <tr><td class="label">Date</td><td>${reportDate}</td></tr>
-                <tr><td class="label">User</td><td>${generatedBy}</td></tr>
-                <tr><td class="label">Currency</td><td>OMR</td></tr>
-              </table>
-            </div>
-            <div class="brand-block">
-              <div class="brand-name">AL MADINA</div>
-              <div class="brand-subtitle">LOGISTICS</div>
-            </div>
-          </div>
-
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th>A/c Code</th>
-                <th>Type</th>
-                <th>Doc No.</th>
-                <th>Doc Date</th>
-                <th>Chq No.</th>
-                <th>Chq Date</th>
-                <th>Bank</th>
-                <th class="num">Credit</th>
-                <th class="num">Debit</th>
-                <th class="num">Balance</th>
-              </tr>
-            </thead>
-            <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:36px 0;">No records found for the selected criteria.</td></tr>'}</tbody>
+    <div class="page">
+      <div class="header-top">
+        <div class="header-left">
+          <div class="report-title">${reportTitle}</div>
+          <table class="meta-info">
+            <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
+            <tr><td class="label">Date</td><td>${reportDate}</td></tr>
+            <tr><td class="label">User</td><td>${generatedBy}</td></tr>
+            <tr><td class="label">Currency</td><td>OMR</td></tr>
           </table>
-
-          <div class="footer">Generated by ${generatedBy} • ${reportDate}</div>
         </div>
-      </body>
-      </html>
-    `;
+        <div class="brand-block">
+          <div class="brand-name">AL MADINA</div>
+          <div class="brand-subtitle">LOGISTICS</div>
+        </div>
+      </div>
+
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>A/c Code</th>
+            <th>Type</th>
+            <th>Doc No.</th>
+            <th>Doc Date</th>
+            <th>Chq No.</th>
+            <th>Chq Date</th>
+            <th>Bank</th>
+            <th class="num">Credit</th>
+            <th class="num">Debit</th>
+            <th class="num">Balance</th>
+          </tr>
+        </thead>
+        <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:36px 0;">No records found for the selected criteria.</td></tr>'}</tbody>
+      </table>
+
+      <div class="footer">Generated by ${generatedBy} • ${reportDate}</div>
+    </div>
+  </body>
+  </html>
+`;
 
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(reportHtml);

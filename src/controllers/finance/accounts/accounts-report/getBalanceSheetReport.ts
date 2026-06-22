@@ -117,6 +117,10 @@ function escapeXml(value: unknown): string {
     .replace(/'/g,  "&apos;");
 }
 
+function escapeJs(value: unknown): string {
+  return JSON.stringify(text(value));
+}
+
 // ─── Request Param Parser ─────────────────────────────────────────────────────
 
 function parseParams(req: Request) {
@@ -332,7 +336,7 @@ function renderHtml(
 
   const renderLineItems = (heading: HeadingGroup): string =>
     heading.items.map((item) => `
-      <tr class="data-row">
+      <tr class="data-row" data-code="${escapeHtml(item.bl_code)}">
         <td>${escapeHtml(item.bl_name)}</td>
         <td class="num">${escapeHtml(fmtNumber(item.amount))}</td>
       </tr>`).join("");
@@ -380,6 +384,32 @@ function renderHtml(
       <td class="num"><strong>${escapeHtml(fmtNumber(totalOwnersEquity))}</strong></td>
     </tr>`;
 
+  const drillScript = `
+  <script>
+    (function () {
+      var COMPANY_CODE  = ${escapeJs(params.companyCode)};
+      var AS_ON_DATE    = ${escapeJs(params.asOnDate)};
+      var DIVISION_CODE = ${escapeJs(params.divisionCode)};
+
+      document.querySelectorAll("tbody tr[data-code]").forEach(function (tr) {
+        tr.addEventListener("mouseenter", function () { tr.style.background = "#f0f9f5"; });
+        tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
+        tr.addEventListener("click", function () {
+          var code = tr.getAttribute("data-code");
+          window.parent.postMessage({
+            type:          "DRILL_DOWN",
+            drillLevel:    "ac",
+            company_code:  COMPANY_CODE,
+            as_on_date:    AS_ON_DATE,
+            division_code: DIVISION_CODE,
+            code:          code,
+            codeField:     "bl_code",
+          }, "*");
+        });
+      });
+    })();
+  </script>`;
+
   return `<!doctype html>
 <html>
 <head>
@@ -408,6 +438,12 @@ function renderHtml(
     .divider-thin  { border-top: 1px solid #000; margin: 6px 0 10px; }
     .meta-row { display: flex; align-items: baseline; font-size: 12px; margin-bottom: 3px; }
     .meta-label { font-weight: 700; width: 60px; flex-shrink: 0; }
+    .drill-hint {
+      font-size: 10px; color: #1a5f4a; background: #f0f9f5;
+      border: 1px solid #a7d7c5; border-radius: 4px;
+      padding: 4px 10px; margin-bottom: 8px;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
     table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
     th {
       border: 1px solid #000;
@@ -437,6 +473,7 @@ function renderHtml(
       padding-left: 14px;
       text-decoration: underline;
     }
+    tbody tr[data-code] { cursor: pointer; }
     tr.data-row td { padding-left: 28px; }
     tr.total-row td {
       font-weight: 700;
@@ -472,6 +509,24 @@ function renderHtml(
       font-size: 12px;
       border-top: 1px solid #ccc;
       padding-top: 8px;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+      gap: 10px;
+    }
+    .button {
+      background: #1a5f4a;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .button:hover {
+      background: #144737;
     }
     .report-footer {
       display: flex;
@@ -517,6 +572,15 @@ function renderHtml(
     <div class="meta-row"><span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span></div>
     <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(params.loginid)}</span></div>
     <div class="divider-thin"></div>
+    <div class="actions">
+      <button class="button" onclick="window.print()">🖨 Print / Save PDF</button>
+    </div>
+    <div class="drill-hint">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      Click any line item to drill down
+    </div>
     <table>
       <thead>
         <tr>
@@ -534,6 +598,7 @@ function renderHtml(
       <span>Powered by Bayanat Technology</span>
     </div>
   </main>
+  ${drillScript}
 </body>
 </html>`;
 }
