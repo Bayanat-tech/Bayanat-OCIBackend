@@ -570,7 +570,7 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
   <title>Stock Detail Report</title>
   <style>
     @media print {
-      @page { size: A3 landscape; margin: 8mm; }
+      @page { size: A4 landscape; margin: 8mm; }
     }
     * { box-sizing: border-box; }
     html, body {
