@@ -80,6 +80,8 @@ import { exportChequeDateWiseExcel } from "../../../controllers/finance/accounts
 import { exportAccountPayeeWiseExcel } from "../../../controllers/finance/accounts/accounts-report/aaccountpayeewiseexcel";
 import { exportTransactionProductExcel } from "../../wms/reports/TransactionProductExcel";
 import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, exportInvSummaryExcel, exportOutstandingListExcel } from "../../../controllers/finance/accounts/accounts-report/PeriodwiseExcel";
+import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
+import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
 
 
 const router = express.Router();
@@ -184,7 +186,10 @@ router.post("/reports/OutstandingList/excel",     exportOutstandingListExcel);
 router.post('/reports/AcStatementReport/html', AcStatementReport);  
 router.post('/reports/OutstandingDetailReport/html',OutstandingDetailReport);
 router.post('/reports/OutstandingSummaryReport/html',OutstandingSummaryReport);
-
+// ------excel For Account Statement Report------
+router.post("/reports/AcStatement/excel", exportAcStatementExcel);
+router.post("/reports/OutstandingDetail/excel",  exportOutstandingDetailExcel);
+router.post("/reports/OutstandingSummary/excel", exportOutstandingSummaryExcel);
 
 
 
