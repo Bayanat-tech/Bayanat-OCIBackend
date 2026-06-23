@@ -7,7 +7,43 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ReportRow = Record<string, any>; 
+type ReportRow = Record<string, any>;
+
+interface DetailLine {
+  mfg_date: unknown;
+  lot_no:   unknown;
+  exp_date: unknown;
+  quantity: unknown;
+  qty_puom: unknown;
+  p_uom:    unknown;
+  qty_luom: unknown;
+  l_uom:    unknown;
+  volume:   unknown;
+  net_wt:   unknown;
+}
+
+interface GroupTotals {
+  quantity: number;
+  puom: Record<string, number>;   // QTY_PUOM bucketed by P_UOM
+  luom: Record<string, number>;   // QTY_LUOM bucketed by L_UOM
+  volume: number;
+  netWt: number;
+}
+
+interface ProductGroup {
+  prodCode: string;
+  prodName: string;
+  lines: DetailLine[];
+  totals: GroupTotals;
+}
+
+interface SiteOrderGroup {
+  locationCode: string;
+  siteCode: string;
+  orderNo: string;
+  stockQty: string;
+  products: ProductGroup[];
+}
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -71,49 +107,107 @@ function numFmt(value: unknown, decimals = 3): string {
   });
 }
 
-/**
- * Format quantity cell:
- * Always show: QTY_PUOM P_UOM
- * Conditionally append: / QTY_LUOM L_UOM  (only when qty_luom != 0 and not null)
- */
-function fmtQtyCell(
-  qtyPuom: number, pUom: string,
-  qtyLuom: number | null, lUom: string
-): string {
-  let s = `${numFmt(qtyPuom)} ${pUom}`.trim();
-  if (qtyLuom !== null && qtyLuom !== 0 && lUom)
-    s += ` , ${numFmt(qtyLuom)} ${lUom}`;
-  return s;
-}
-
 // ─── Totals accumulator ───────────────────────────────────────────────────────
 
-interface QtyTotals {
-  puom: Record<string, number>;  // keyed by P_UOM
-  luom: Record<string, number>;  // keyed by L_UOM (only when qty > 0)
+function emptyGroupTotals(): GroupTotals {
+  return { quantity: 0, puom: {}, luom: {}, volume: 0, netWt: 0 };
 }
 
-function emptyTotals(): QtyTotals { return { puom: {}, luom: {} }; }
+function addToGroupTotals(t: GroupTotals, row: ReportRow): void {
+  const qty   = parseFloat(String(row.quantity)) || 0;
+  const pUom  = text(row.p_uom);
+  const lUom  = text(row.l_uom);
+  const qtyP  = parseFloat(String(row.qty_puom)) || 0;
+  const qtyL  = parseFloat(String(row.qty_luom)) || 0;
+  const vol   = parseFloat(String(row.volume))   || 0;
+  const netWt = parseFloat(String(row.net_wt))   || 0;
 
-function addToTotals(t: QtyTotals, row: ReportRow): void {
-  const pUom    = text(row.p_uom);
-  const lUom    = text(row.l_uom);
-  const qtyP    = parseFloat(String(row.qty_puom)) || 0;
-  const qtyL    = parseFloat(String(row.qty_luom)) || 0;
+  t.quantity += qty;
   if (pUom) t.puom[pUom] = (t.puom[pUom] ?? 0) + qtyP;
-  if (lUom && qtyL !== 0) t.luom[lUom] = (t.luom[lUom] ?? 0) + qtyL;
+  if (lUom) t.luom[lUom] = (t.luom[lUom] ?? 0) + qtyL;
+  t.volume += vol;
+  t.netWt  += netWt;
 }
 
-function fmtTotals(t: QtyTotals): string {
-  const puomParts = Object.entries(t.puom).map(([u, v]) => `${numFmt(v)} ${u}`).join(" / ");
-  const luomParts = Object.entries(t.luom).map(([u, v]) => `${numFmt(v)} ${u}`).join(" / ");
-  if (!puomParts) return "—";
-  return luomParts ? `${puomParts} , ${luomParts}` : puomParts;
+function mergeGroupTotals(into: GroupTotals, from: GroupTotals): void {
+  into.quantity += from.quantity;
+  into.volume   += from.volume;
+  into.netWt    += from.netWt;
+  for (const [u, v] of Object.entries(from.puom)) into.puom[u] = (into.puom[u] ?? 0) + v;
+  for (const [u, v] of Object.entries(from.luom)) into.luom[u] = (into.luom[u] ?? 0) + v;
+}
+
+function fmtBucket(dict: Record<string, number>): string {
+  const parts = Object.entries(dict).map(([u, v]) => `${numFmt(v)} ${u}`.trim());
+  return parts.length ? parts.join(" / ") : "—";
+}
+
+// ─── Grouping ─────────────────────────────────────────────────────────────────
+
+function buildGroups(rows: ReportRow[]): SiteOrderGroup[] {
+  const groups: SiteOrderGroup[] = [];
+  const groupIndex   = new Map<string, SiteOrderGroup>();
+  const productIndex = new Map<string, ProductGroup>();
+
+  for (const r of rows) {
+    const locationCode = text(r.location_code);
+    const siteCode      = text(r.site_code);
+    const orderNo       = text(r.order_no);
+    const groupKey       = `${locationCode}|${siteCode}|${orderNo}`;
+
+    let grp = groupIndex.get(groupKey);
+    if (!grp) {
+      grp = {
+        locationCode,
+        siteCode,
+        orderNo,
+        stockQty: text(r.qty_puom),
+        products: [],
+      };
+      groupIndex.set(groupKey, grp);
+      groups.push(grp);
+    }
+
+    const prodCode = text(r.prod_code);
+    const prodKey  = `${groupKey}::${prodCode}`;
+    let prod = productIndex.get(prodKey);
+    if (!prod) {
+      prod = {
+        prodCode,
+        prodName: text(r.prod_name),
+        lines: [],
+        totals: emptyGroupTotals(),
+      };
+      productIndex.set(prodKey, prod);
+      grp.products.push(prod);
+    }
+
+    prod.lines.push({
+      mfg_date: r.mfg_date,
+      lot_no:   r.lot_no,
+      exp_date: r.exp_date,
+      quantity: r.quantity,
+      qty_puom: r.qty_puom,
+      p_uom:    r.p_uom,
+      qty_luom: r.qty_luom,
+      l_uom:    r.l_uom,
+      volume:   r.volume,
+      net_wt:   r.net_wt,
+    });
+    addToGroupTotals(prod.totals, r);
+  }
+
+  return groups;
+}
+
+function computeGrandTotals(groups: SiteOrderGroup[]): GroupTotals {
+  const grand = emptyGroupTotals();
+  for (const g of groups) for (const p of g.products) mergeGroupTotals(grand, p.totals);
+  return grand;
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
-
-async function loadDnData(
+async function loadPickListData(
   req: RequestWithUser,
   jobNo: string,
   prinCode: string
@@ -122,18 +216,16 @@ async function loadDnData(
   try {
     const result = await conn.execute(
       `SELECT
-        CUST_CODE, CUST_NAME, CUST_REF, ORDER_NO,
-        VEH_TEMP, GOODS_TEMP,
-        JOB_NO, DN_NO, DN_DATE,
-        LOAD_START, LOAD_END,
+        JOB_NO, JOB_DATE, PRIN_CODE, PRIN_NAME,
+        LOCATION_CODE, SITE_CODE, ORDER_NO,
         PROD_CODE, PROD_NAME,
-        BATCH_NO, EXP_DATE_CLEAN,
-        QTY_PUOM, QTY_LUOM, P_UOM, L_UOM,
+        MFG_DATE, LOT_NO, EXP_DATE,
+        QUANTITY, QTY_PUOM, P_UOM, QTY_LUOM, L_UOM,
         VOLUME, NET_WT
-       FROM VW_BOWM_OUBDN
+       FROM VW_BOWM_PICKLST
        WHERE JOB_NO    = :job_no
          AND PRIN_CODE = :prin_code
-       ORDER BY PROD_CODE`,
+       ORDER BY LOCATION_CODE, SITE_CODE, ORDER_NO, PROD_CODE, MFG_DATE, LOT_NO`,
       { job_no: jobNo, prin_code: prinCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -147,6 +239,7 @@ async function loadDnData(
 
 function renderHtml(
   rows:        ReportRow[],
+  groups:      SiteOrderGroup[],
   jobNo:       string,
   prinCode:    string,
   reportTitle: string,
@@ -157,47 +250,8 @@ function renderHtml(
     day: "2-digit", month: "short", year: "numeric",
   });
 
-  const h = rows[0] || {};   // header fields come from first row
-
-  // ── Totals ────────────────────────────────────────────────────────────────
-  const totals   = emptyTotals();
-  let   totVol   = 0;
-  let   totNetWt = 0;
-  for (const r of rows) {
-    addToTotals(totals, r);
-    totVol   += parseFloat(String(r.volume))  || 0;
-    totNetWt += parseFloat(String(r.net_wt))  || 0;
-  }
-
-  // ── Table body rows ───────────────────────────────────────────────────────
-  let bodyRows = "";
-  for (const r of rows) {
-    const qtyP   = parseFloat(String(r.qty_puom)) || 0;
-    const qtyL   = r.qty_luom != null && String(r.qty_luom).trim() !== ""
-                     ? parseFloat(String(r.qty_luom)) : null;
-    const pUom   = text(r.p_uom);
-    const lUom   = text(r.l_uom);
-    const qtyStr = fmtQtyCell(qtyP, pUom, qtyL, lUom);
-
-    bodyRows += `
-      <tr class="data-row">
-        <td class="td-prod"><span class="prod-code">${escapeHtml(r.prod_code || "—")}</span> ${escapeHtml(r.prod_name || "")}</td>
-        <td>${escapeHtml(r.batch_no || "—")}</td>
-        <td>${escapeHtml(dateText(r.exp_date_clean))}</td>
-        <td class="num">${escapeHtml(qtyStr)}</td>
-        <td class="num">${r.volume  != null && r.volume  !== "" ? escapeHtml(numFmt(r.volume,  3)) : "—"}</td>
-        <td class="num">${r.net_wt  != null && r.net_wt  !== "" ? escapeHtml(numFmt(r.net_wt,  3)) : "—"}</td>
-      </tr>`;
-  }
-
-  // ── Total row ─────────────────────────────────────────────────────────────
-  const totalRow = `
-    <tr class="total-row">
-      <td colspan="3" class="total-label">Total</td>
-      <td class="num">${escapeHtml(fmtTotals(totals))}</td>
-      <td class="num">${escapeHtml(numFmt(totVol,   3))}</td>
-      <td class="num">${escapeHtml(numFmt(totNetWt, 3))}</td>
-    </tr>`;
+  const h = rows[0] || {};   // job-level header fields come from first row
+  const grand = computeGrandTotals(groups);
 
   // ── Helper: render one header field ──────────────────────────────────────
   const hf = (label: string, val: unknown) => {
@@ -209,6 +263,58 @@ function renderHtml(
         <span class="hdr-value${v ? "" : " nil"}">${v ? escapeHtml(v) : ""}</span>
       </div>`;
   };
+
+  // ── Helper: render one detail line ──────────────────────────────────────
+  const renderLine = (l: DetailLine) => `
+      <tr class="data-row">
+        <td>${escapeHtml(dateText(l.mfg_date))}</td>
+        <td>${escapeHtml(l.lot_no || "—")}</td>
+        <td>${escapeHtml(dateText(l.exp_date))}</td>
+        <td class="num">${escapeHtml(numFmt(l.quantity))}</td>
+        <td class="num">${escapeHtml(numFmt(l.qty_puom))} ${escapeHtml(l.p_uom)}</td>
+        <td class="num">${escapeHtml(numFmt(l.qty_luom))} ${escapeHtml(l.l_uom)}</td>
+        <td class="num">${l.volume != null && l.volume !== "" ? escapeHtml(numFmt(l.volume)) : "—"}</td>
+        <td class="num">${l.net_wt != null && l.net_wt !== "" ? escapeHtml(numFmt(l.net_wt)) : "—"}</td>
+      </tr>`;
+
+  // ── Helper: render a subtotal / grand-total row ──────────────────────────
+  const renderTotalRow = (label: string, t: GroupTotals, cls: string) => `
+      <tr class="${cls}">
+        <td colspan="3" class="total-label">${escapeHtml(label)}</td>
+        <td class="num">${escapeHtml(numFmt(t.quantity))}</td>
+        <td class="num">${escapeHtml(fmtBucket(t.puom))}</td>
+        <td class="num">${escapeHtml(fmtBucket(t.luom))}</td>
+        <td class="num">${escapeHtml(numFmt(t.volume))}</td>
+        <td class="num">${escapeHtml(numFmt(t.netWt))}</td>
+      </tr>`;
+
+  // ── Body: groups -> products -> lines -> subtotal ───────────────────────
+  let bodyRows = "";
+  for (const g of groups) {
+    const siteLabel = [g.siteCode, g.locationCode].filter(Boolean).join(" ");
+    bodyRows += `
+      <tr class="grp-row">
+        <td colspan="8">
+          <span class="grp-field"><span class="grp-label">Site</span><span class="grp-sep">:</span><span class="grp-value">${escapeHtml(siteLabel || "—")}</span></span>
+          <span class="grp-field"><span class="grp-label">Order No</span><span class="grp-sep">:</span><span class="grp-value">${escapeHtml(g.orderNo || "—")}</span></span>
+          <span class="grp-field"><span class="grp-label">Stock Qty</span><span class="grp-sep">:</span><span class="grp-value">${escapeHtml(g.stockQty || "—")}</span></span>
+          <span class="grp-field"><span class="grp-label">Pick Qty</span><span class="grp-sep">:</span><span class="grp-dots"></span></span>
+        </td>
+      </tr>`;
+
+    for (const p of g.products) {
+      bodyRows += `
+      <tr class="prod-row">
+        <td colspan="8"><span class="prod-code">${escapeHtml(p.prodCode || "—")}</span> ${escapeHtml(p.prodName || "")}</td>
+      </tr>`;
+
+      for (const line of p.lines) bodyRows += renderLine(line);
+
+      bodyRows += renderTotalRow("Sub Total", p.totals, "sub-row");
+    }
+  }
+
+  bodyRows += renderTotalRow("Grand Total", grand, "grand-row");
 
   return `<!doctype html>
 <html lang="en">
@@ -279,48 +385,76 @@ function renderHtml(
       width: 100%; border-collapse: collapse; table-layout: fixed;
     }
 
-    col.c-prod  { width: 38%; }
-    col.c-batch { width: 12%; }
-    col.c-exp   { width: 12%; }
-    col.c-qty   { width: 20%; }
-    col.c-vol   { width: 9%;  }
-    col.c-wt    { width: 9%;  }
+    col.c-mfg   { width: 11%; }
+    col.c-lot   { width: 9%;  }
+    col.c-exp   { width: 11%; }
+    col.c-qty   { width: 9%;  }
+    col.c-puom  { width: 16%; }
+    col.c-luom  { width: 16%; }
+    col.c-vol   { width: 14%; }
+    col.c-wt    { width: 14%; }
 
     thead th {
       background: #1e3a5f; color: #fff;
-      font-size: 10px; font-weight: 700;
-      padding: 7px 10px;
+      font-size: 9.5px; font-weight: 700;
+      padding: 7px 8px;
       border-right: 1px solid rgba(255,255,255,0.15);
       text-align: center;
       white-space: nowrap;
     }
-    thead th:first-child { text-align: left; }
-    thead th:last-child  { border-right: none; }
+    thead th:last-child { border-right: none; }
 
     tbody tr.data-row td {
-      padding: 5px 10px;
+      padding: 4px 8px;
       border-bottom: 1px solid #e5e7eb;
       color: #374151;
-      font-size: 11px;
+      font-size: 10.5px;
       vertical-align: top;
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    .td-prod { line-height: 1.5; }
-    .prod-code { font-weight: 700; color: #1e3a5f; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
-    tr.total-row td {
+    /* ── Site / order group header row ── */
+    tr.grp-row td {
       background: #1e3a5f; color: #fff;
-      font-weight: 700; font-size: 11px;
-      padding: 7px 10px;
+      font-weight: 700; font-size: 10.5px;
+      padding: 6px 8px;
       border-top: 2px solid #162d4a;
     }
-    tr.total-row .total-label {
-      text-align: right; letter-spacing: .04em;
+    .grp-field { margin-right: 22px; }
+    .grp-label { color: #cbd5e1; font-weight: 600; margin-right: 4px; }
+    .grp-sep   { color: #93a5bd; margin-right: 6px; }
+    .grp-value { color: #fff; }
+    .grp-dots  {
+      display: inline-block; min-width: 70px;
+      border-bottom: 1px dotted #93a5bd; height: 1px; vertical-align: middle;
     }
-    tr.total-row td.num { text-align: right; }
+
+    /* ── Product sub-header row ── */
+    tr.prod-row td {
+      background: #dbe4ee; color: #1e3a5f;
+      font-weight: 700; font-size: 10.5px;
+      padding: 5px 8px;
+      border-bottom: 1px solid #c4cdd9;
+    }
+    .prod-code { font-weight: 700; }
+
+    /* ── Subtotal / grand total rows ── */
+    tr.sub-row td {
+      background: #f3f4f6; color: #1e3a5f;
+      font-weight: 700; font-size: 10.5px;
+      padding: 5px 8px;
+      border-top: 1px solid #c4cdd9;
+      border-bottom: 1px solid #c4cdd9;
+    }
+    tr.grand-row td {
+      background: #1e3a5f; color: #fff;
+      font-weight: 700; font-size: 11px;
+      padding: 8px 8px;
+      border-top: 2px solid #162d4a;
+    }
+    .total-label { text-align: right; letter-spacing: .04em; }
 
     /* ── Signature block ── */
     .sig-block {
@@ -331,21 +465,8 @@ function renderHtml(
     }
     .sig-col  { display: flex; flex-direction: column; gap: 10px; }
     .sig-line { display: flex; align-items: flex-end; gap: 8px; font-size: 10.5px; color: #374151; line-height: 1.8; }
-    .sig-label { white-space: nowrap; min-width: 120px; }
+    .sig-label { white-space: nowrap; min-width: 110px; }
     .sig-dots  { flex: 1; border-bottom: 1px dotted #9ca3af; margin-bottom: 2px; min-width: 40px; }
-
-    /* ── Legal notice ── */
-    .legal-notice {
-      margin-top: 14px;
-      padding: 7px 10px;
-      border: 1px solid #e2e8f0;
-      background: #f9fafb;
-      font-size: 9.5px;
-      font-style: italic;
-      color: #6b7280;
-      text-align: center;
-      line-height: 1.6;
-    }
 
     /* ── Footer ── */
     .rpt-footer {
@@ -359,9 +480,9 @@ function renderHtml(
       body { background: #fff; }
       .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
       thead { display: table-header-group; }
-      tr.total-row { break-before: avoid; page-break-before: avoid; }
-      .sig-block   { break-before: avoid; page-break-before: avoid; }
-      .legal-notice{ break-before: avoid; page-break-before: avoid; }
+      tr.grp-row { break-before: avoid; page-break-before: avoid; break-after: avoid; }
+      tr.prod-row { break-after: avoid; page-break-after: avoid; }
+      .sig-block { break-before: avoid; page-break-before: avoid; }
     }
   </style>
 </head>
@@ -374,28 +495,21 @@ function renderHtml(
   <!-- ── Print meta ── -->
   <div class="rpt-meta">
     <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-    <span>Page 1 of 1</span>
   </div>
 
   <!-- ── Document header (flat label : value, no box) ── -->
   <div class="doc-header">
 
     <div class="hdr-col">
-      ${hf("Customer Code",  h.cust_code)}
-      ${hf("Customer Name",  h.cust_name)}
-      ${hf("Customer Ref",   h.cust_ref)}
-      ${hf("Order No",       h.order_no)}
-      ${hf("Truck Temp",     h.veh_temp)}
-      ${hf("Goods Temp",     h.goods_temp)}
+      ${hf("Job No",     h.job_no || jobNo)}
+      ${hf("Job Date",   dateText(h.job_date))}
+      ${hf("Principal",  [text(h.prin_code) || prinCode, text(h.prin_name)].filter(Boolean).join(" | "))}
     </div>
 
     <div class="hdr-col">
-      ${hf("Job No",         h.job_no   || jobNo)}
-      ${hf("DN No",          h.dn_no  || "" )}
-      ${hf("DN Date",        dateText(h.dn_date))}
-      ${hf("Shift",          "")}
-      ${hf("Load Start",     h.load_start)}
-      ${hf("Load End",       h.load_end)}
+      ${hf("Stuffing Start",     "")}
+      ${hf("Stuffing End",       "")}
+      ${hf("Total Time Taken",  "")}
     </div>
 
   </div><!-- /doc-header -->
@@ -403,45 +517,36 @@ function renderHtml(
   <!-- ── Line items table ── -->
   <table class="rpt-table">
     <colgroup>
-      <col class="c-prod"/> <col class="c-batch"/>
+      <col class="c-mfg"/>  <col class="c-lot"/>
       <col class="c-exp"/>  <col class="c-qty"/>
+      <col class="c-puom"/> <col class="c-luom"/>
       <col class="c-vol"/>  <col class="c-wt"/>
     </colgroup>
     <thead>
       <tr>
-        <th>Product</th>
-        <th>Batch No</th>
+        <th>Mfg. Date</th>
+        <th>Lot No</th>
         <th>Exp Date</th>
         <th>Quantity</th>
+        <th>Primary UOM</th>
+        <th>Least UOM</th>
         <th>Volume</th>
-        <th>Weight</th>
+        <th>Net Weight</th>
       </tr>
     </thead>
     <tbody>
       ${bodyRows}
-      ${totalRow}
     </tbody>
   </table>
 
   <!-- ── Signature block ── -->
   <div class="sig-block">
     <div class="sig-col">
-      <div class="sig-line"><span class="sig-label">DN Issued By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
-      <div class="sig-line"><span class="sig-label">Vehicle Number</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
-      <div class="sig-line"><span class="sig-label">Picking By</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
-      <div class="sig-line"><span class="sig-label">Supervisor Sign</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
+      <div class="sig-line"><span class="sig-label">Picked By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
     </div>
     <div class="sig-col">
-      <div class="sig-line"><span class="sig-label">Driver (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
-      <div class="sig-line"><span class="sig-label">Driver ID</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
-      <div class="sig-line"><span class="sig-label">Loading By</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
-      <div class="sig-line"><span class="sig-label">Team Leader Sign</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
+      <div class="sig-line"><span class="sig-label">Checked By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
     </div>
-  </div>
-
-  <!-- ── Legal notice ── -->
-  <div class="legal-notice">
-    THE PRODUCTS MENTIONED IN THIS DELIVERY NOTE HAS BEEN RECEIVED IN GOOD CONDITION AND AS PER DETAILS MENTIONED ABOVE
   </div>
 
   <!-- ── Footer ── -->
@@ -473,7 +578,10 @@ const STYLE_ID = {
   numCell:      6,   // right-aligned data cell
   totalLabel:   7,   // dark blue bg, white, right-aligned
   totalNum:     8,   // dark blue bg, white, right-aligned, numeric
-  sectionMeta:  9,   // light grey bg for doc-info rows
+  groupHeader:  9,   // medium blue bg, white bold – site/order group row
+  prodHeader:   10,  // light blue bg, navy bold – product row
+  subLabel:     11,  // light grey bg, navy bold, right-aligned – subtotal label
+  subNum:       12,  // light grey bg, navy bold, right-aligned – subtotal numeric
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -485,39 +593,37 @@ function xc(v: unknown, style: StyleKey): XlCell {
 
 function buildExcelBuffer(
   rows:     ReportRow[],
+  groups:   SiteOrderGroup[],
   jobNo:    string,
   prinCode: string
 ): Buffer {
-  const NCOLS = 6;
+  const NCOLS = 8;
   type Row    = (XlCell | null)[];
   const skip  = null;
   const xlRows: Row[] = [];
 
   const h = rows[0] || {};
+  const grand = computeGrandTotals(groups);
 
   // ── Title ────────────────────────────────────────────────────────────────
-  xlRows.push([xc(`Delivery Note — Job ${jobNo} / Principal ${prinCode}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
+  xlRows.push([xc(`Outbound Pick List — Job ${jobNo} / Principal ${prinCode}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
   xlRows.push(Array(NCOLS).fill(skip));
 
   // ── Doc-info block: two logical columns, each label+value pair ───────────
   const metaRows: [string, unknown, string, unknown][] = [
-    ["Customer Code", h.cust_code,  "Job No",      h.job_no    || jobNo],
-    ["Customer Name", h.cust_name,  "DN No",       h.dn_no],
-    ["Customer Ref",  h.cust_ref,   "DN Date",     dateText(h.dn_date)],
-    ["Order No",      h.order_no,   "Shift",       ""],
-    ["Truck Temp",    h.veh_temp,   "Load Start",  h.load_start],
-    ["Goods Temp",    h.goods_temp, "Load End",    h.load_end],
+    ["Job No",        h.job_no || jobNo,        "Stuffing Start",    ""],
+    ["Job Date",      dateText(h.job_date),      "Stuffing End",      ""],
+    ["Principal",     [text(h.prin_code) || prinCode, text(h.prin_name)].filter(Boolean).join(" | "), "Total Time Taken", ""],
   ];
 
-  // Each doc-info row uses columns A(label) B(value) | D(label) E(value); C & F blank
   for (const [lbl1, val1, lbl2, val2] of metaRows) {
     xlRows.push([
-      xc(lbl1,          "label"),
-      xc(text(val1),    "value"),
-      skip,
-      xc(lbl2,          "label"),
-      xc(text(val2),    "value"),
-      skip,
+      xc(lbl1,       "label"),
+      xc(text(val1), "value"),
+      skip, skip,
+      xc(lbl2,       "label"),
+      xc(text(val2), "value"),
+      skip, skip,
     ]);
   }
 
@@ -525,55 +631,61 @@ function buildExcelBuffer(
 
   // ── Column headers ────────────────────────────────────────────────────────
   xlRows.push([
-    xc("Product",   "hdrLeft"),
-    xc("Batch No",  "header"),
-    xc("Exp Date",  "header"),
-    xc("Quantity",  "header"),
-    xc("Volume",    "header"),
-    xc("Weight",    "header"),
+    xc("Mfg. Date",    "hdrLeft"),
+    xc("Lot No",       "header"),
+    xc("Exp Date",     "header"),
+    xc("Quantity",     "header"),
+    xc("Primary UOM",  "header"),
+    xc("Least UOM",    "header"),
+    xc("Volume",       "header"),
+    xc("Net Weight",   "header"),
   ]);
 
-  // ── Data rows ─────────────────────────────────────────────────────────────
-  const totals   = emptyTotals();
-  let   totVol   = 0;
-  let   totNetWt = 0;
+  // ── Helper: a subtotal / grand-total row ─────────────────────────────────
+  const totalRowCells = (label: string, t: GroupTotals, lblStyle: StyleKey, numStyle: StyleKey): Row => [
+    xc(label, lblStyle), skip, skip,
+    xc(numFmt(t.quantity),  numStyle),
+    xc(fmtBucket(t.puom),   numStyle),
+    xc(fmtBucket(t.luom),   numStyle),
+    xc(numFmt(t.volume),    numStyle),
+    xc(numFmt(t.netWt),     numStyle),
+  ];
 
-  for (const r of rows) {
-    const qtyP   = parseFloat(String(r.qty_puom)) || 0;
-    const qtyL   = r.qty_luom != null && String(r.qty_luom).trim() !== ""
-                     ? parseFloat(String(r.qty_luom)) : null;
-    const pUom   = text(r.p_uom);
-    const lUom   = text(r.l_uom);
-    const qtyStr = fmtQtyCell(qtyP, pUom, qtyL, lUom);
-    const vol    = parseFloat(String(r.volume))  || 0;
-    const netWt  = parseFloat(String(r.net_wt))  || 0;
-
-    addToTotals(totals, r);
-    totVol   += vol;
-    totNetWt += netWt;
-
+  // ── Body: groups -> products -> lines -> subtotal ───────────────────────
+  for (const g of groups) {
+    const siteLabel = [g.siteCode, g.locationCode].filter(Boolean).join(" ");
     xlRows.push([
-      xc(`${text(r.prod_code)} ${text(r.prod_name)}`.trim(), "dataCell"),
-      xc(text(r.batch_no) || "—",                            "dataCell"),
-      xc(dateText(r.exp_date_clean),                         "dataCell"),
-      xc(qtyStr,                                             "numCell"),
-      xc(vol   !== 0 ? numFmt(vol,   3) : "—",              "numCell"),
-      xc(netWt  !== 0 ? numFmt(netWt, 3) : "—",             "numCell"),
+      xc(`Site : ${siteLabel || "—"}    Order No : ${g.orderNo || "—"}    Stock Qty : ${g.stockQty || "—"}    Pick Qty :`, "groupHeader"),
+      ...Array(NCOLS - 1).fill(skip),
     ]);
+
+    for (const p of g.products) {
+      xlRows.push([
+        xc(`${text(p.prodCode)} | ${text(p.prodName)}`.trim(), "prodHeader"),
+        ...Array(NCOLS - 1).fill(skip),
+      ]);
+
+      for (const line of p.lines) {
+        xlRows.push([
+          xc(dateText(line.mfg_date),                                   "dataCell"),
+          xc(text(line.lot_no) || "—",                                  "dataCell"),
+          xc(dateText(line.exp_date),                                   "dataCell"),
+          xc(numFmt(line.quantity),                                     "numCell"),
+          xc(`${numFmt(line.qty_puom)} ${text(line.p_uom)}`.trim(),     "numCell"),
+          xc(`${numFmt(line.qty_luom)} ${text(line.l_uom)}`.trim(),     "numCell"),
+          xc(line.volume != null && line.volume !== "" ? numFmt(line.volume) : "—", "numCell"),
+          xc(line.net_wt != null && line.net_wt !== "" ? numFmt(line.net_wt) : "—", "numCell"),
+        ]);
+      }
+
+      xlRows.push(totalRowCells("Sub Total", p.totals, "subLabel", "subNum"));
+    }
   }
 
-  // ── Total row ─────────────────────────────────────────────────────────────
-  xlRows.push([
-    xc("Total", "totalLabel"),
-    skip,
-    skip,
-    xc(fmtTotals(totals),    "totalNum"),
-    xc(numFmt(totVol,   3),  "totalNum"),
-    xc(numFmt(totNetWt, 3),  "totalNum"),
-  ]);
+  xlRows.push(totalRowCells("Grand Total", grand, "totalLabel", "totalNum"));
 
   // ── Build XML ─────────────────────────────────────────────────────────────
-  const COL_WIDTHS = [42, 16, 14, 28, 12, 12];
+  const COL_WIDTHS = [13, 11, 13, 11, 16, 16, 12, 12];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
@@ -629,18 +741,21 @@ function buildExcelBuffer(
   // ── Styles ────────────────────────────────────────────────────────────────
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="5">
+  <fonts count="6">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
-  <fills count="4">
+  <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF3F5E82"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFDBE4EE"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
@@ -660,7 +775,7 @@ function buildExcelBuffer(
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="10">
+  <cellXfs count="13">
     <!-- 0: default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <!-- 1: header – dark bg, white bold, centre -->
@@ -695,9 +810,21 @@ function buildExcelBuffer(
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center" wrapText="1"/>
     </xf>
-    <!-- 9: sectionMeta – light grey bg -->
-    <xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
-      <alignment vertical="center"/>
+    <!-- 9: groupHeader – medium blue bg, white bold -->
+    <xf numFmtId="0" fontId="5" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+      <alignment horizontal="left" vertical="center"/>
+    </xf>
+    <!-- 10: prodHeader – light blue bg, navy bold -->
+    <xf numFmtId="0" fontId="2" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+      <alignment horizontal="left" vertical="center"/>
+    </xf>
+    <!-- 11: subLabel – light grey bg, navy bold, right-aligned -->
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+      <alignment horizontal="right" vertical="center"/>
+    </xf>
+    <!-- 12: subNum – light grey bg, navy bold, right-aligned -->
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
+      <alignment horizontal="right" vertical="center" wrapText="1"/>
     </xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
@@ -706,7 +833,7 @@ function buildExcelBuffer(
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="Delivery Note" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="Outbound Pick List" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -754,14 +881,14 @@ function colLetter(index: number): string {
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-export const getDnReportHtml = async (
+export const getPickListHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
     const jobNo       = text(req.params.job_no   || req.query.job_no);
     const prinCode    = text(req.params.prin_code || req.query.prin_code);
-    const reportTitle = text(req.query.title)     || "Delivery Note";
+    const reportTitle = text(req.query.title)     || "Outbound Pick List";
     const autoPrint   = req.query.print === "true";
 
     if (!jobNo || !prinCode) {
@@ -769,16 +896,17 @@ export const getDnReportHtml = async (
       return;
     }
 
-    const rows = await loadDnData(req, jobNo, prinCode);
+    const rows   = await loadPickListData(req, jobNo, prinCode);
+    const groups = buildGroups(rows);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(rows, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(renderHtml(rows, groups, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint));
   } catch (error: any) {
-    console.error("DN HTML error:", error);
+    console.error("Pick List HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
 
-export const getDnReportPdf = async (
+export const getPickListPdf = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
@@ -791,19 +919,20 @@ export const getDnReportPdf = async (
       return;
     }
 
-    const rows = await loadDnData(req, jobNo, prinCode);
-    const html = renderHtml(rows, jobNo, prinCode, "Delivery Note", text(req.user?.loginid), true);
+    const rows   = await loadPickListData(req, jobNo, prinCode);
+    const groups = buildGroups(rows);
+    const html   = renderHtml(rows, groups, jobNo, prinCode, "Outbound Pick List", text(req.user?.loginid), true);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Content-Disposition", `inline; filename="DN_${jobNo}_${prinCode}.pdf"`);
+    res.setHeader("Content-Disposition", `inline; filename="PICKLIST_${jobNo}_${prinCode}.pdf"`);
     res.send(html);
   } catch (error: any) {
-    console.error("DN PDF error:", error);
+    console.error("Pick List PDF error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
   }
 };
 
-export const getDnReportExcel = async (
+export const getPickListExcel = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
@@ -816,14 +945,15 @@ export const getDnReportExcel = async (
       return;
     }
 
-    const rows   = await loadDnData(req, jobNo, prinCode);
-    const buffer = buildExcelBuffer(rows, jobNo, prinCode);
+    const rows   = await loadPickListData(req, jobNo, prinCode);
+    const groups = buildGroups(rows);
+    const buffer = buildExcelBuffer(rows, groups, jobNo, prinCode);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="DN_${jobNo}_${prinCode}.xlsx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="PICKLIST_${jobNo}_${prinCode}.xlsx"`);
     res.end(buffer);
   } catch (error: any) {
-    console.error("DN Excel error:", error);
+    console.error("Pick List Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
   }
 };
