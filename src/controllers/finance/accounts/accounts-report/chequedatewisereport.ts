@@ -121,7 +121,7 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
           <td colspan="10"><strong>${pdcType === "PDC" ? "PDC Cheques" : "Normal Cheques"}</strong></td>
         </tr>`;
 
-        rows.forEach((r) => {
+        groupRows.forEach((r) => {
           const amount = Number(r.lcur_amount) || 0;
           const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
           const dr = r.sign_ind > 0 ? amount : 0;
@@ -129,28 +129,26 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
           totalDebit += dr;
           runningBalance += dr - cr;
           const hasTransaction = cr !== 0 || dr !== 0;
+          const narration = text(r.narration || r.remarks || r.details || "");
 
           tableBodyHtml += `
-        <tr class="data-row">
-          <td class="num">${text(r.salesman_code || "")}</td>
-          <td>${text(r.doc_type || "")}</td>
-          <td>${text(r.doc_no || "")}</td>
-          <td>${formatDateStr(r.doc_date)}</td>
-          <td>${text(r.chq_no || "")}</td>
-          <td>${formatDateStr(r.chq_date)}</td>
-          <td>${text(r.bank || "")}</td>
-          <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
-          <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
-          <td class="num">${formatBalance(runningBalance)}</td>
-        </tr>`;
-
-          const narration = text(r.narration || r.remarks || r.details || "");
-          if (narration) {
-            tableBodyHtml += `
-        <tr class="narration-row">
-          <td colspan="10" class="narration-cell">${narration}</td>
-        </tr>`;
-          }
+<tr class="data-row">
+  <td>${text(r.doc_type || "")}</td>
+  <td>${text(r.doc_no || "")}</td>
+  <td>${formatDateStr(r.doc_date)}</td>
+  <td>${text(r.cheque_no || "")}</td>
+  <td>${formatDateStr(r.cheque_date)}</td>
+  <td>${text(r.bank || "")}</td>
+  <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
+  <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
+  <td class="num">${formatBalance(runningBalance)}</td>
+</tr>
+${narration ? `
+<tr class="narration-row">
+  <td colspan="10" style="border-top:none; padding-top:0; text-align:center; font-style:italic; color:#475569; font-size:10px; padding-bottom:4px;">
+    ${narration}
+  </td>
+</tr>` : ""}`;
         });
       });
 
@@ -225,7 +223,13 @@ body {
     padding-bottom: 10px;
     margin-bottom: 12px;
 }
+.data-row td {
+  border-bottom: none !important;
+}
 
+.narration-row td {
+  border-top: none !important;
+}
 .header-left {
     display: flex;
     flex-direction: column;
@@ -304,7 +308,7 @@ body {
     text-align: center;
 }
 
-.report-table th:nth-child(1), .report-table td:nth-child(1) { width: 20%; }
+.report-table th:nth-child(1), .report-table td:nth-child(1) { width: 6%; }
 .report-table th:nth-child(2), .report-table td:nth-child(2) { width: 20%; }
 .report-table th:nth-child(3), .report-table td:nth-child(3) { width: 20%; }
 .report-table th:nth-child(4), .report-table td:nth-child(4) { width: 20%; }
@@ -335,6 +339,19 @@ body {
 .num {
     text-align: right;
     font-family: 'Courier New', monospace;
+}
+
+.narration-cell {
+    display: block;
+    text-align: center;
+    font-style: italic;
+    color: #475569;
+    margin-top: 4px;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    padding: 4px 6px;
+    font-size: 10px;
 }
 
 .footer {
@@ -393,7 +410,6 @@ body {
       <table class="report-table">
         <thead>
           <tr>
-            <th>A/c Code</th>
             <th>Type</th>
             <th>Doc No.</th>
             <th>Doc Date</th>
