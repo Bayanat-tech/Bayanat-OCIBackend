@@ -2186,6 +2186,36 @@ export const saveFile = async (
 };
 
 
+// Get AcTree Detail- Activity
+export const getVendorActivities = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let connection;
+  try {
+    const { ac_code } = req.query;
+    const { company_code } = req.user;       
+    
+    const tenantId = getCurrentTenantId();
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant context not found" });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
+    const result = await connection.execute(
+      `SELECT SRNO, ACT_CODE, ACT_DESC, USER_ID, USER_DT
+       FROM MS_AC_VENDOR_ACTVY
+       WHERE COMPANY_CODE = :company_code AND AC_CODE = :ac_code
+       ORDER BY SRNO`,
+      { company_code, ac_code },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  } finally {
+    if (connection) await connection.close().catch(() => {});
+  }
+};
+
 // //----------------delete----------
 
 // Delete Operations
