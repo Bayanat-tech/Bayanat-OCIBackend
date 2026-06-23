@@ -395,10 +395,9 @@ export class VendorService {
 
   static async checkAccountEmployee(userId: string) {
     try {
-      // Ensure '/api' path segment is included if baseURL doesn't contain it
       const endpoint = API_BASE_URL && API_BASE_URL.includes("/api/")
-        ? "/VENDOR_SYSTEM_/checkAccountEmployee"
-        : "/api/VENDOR_SYSTEM_/checkAccountEmployee";
+        ? "/api/VENDOR_SYSTEM_/checkAccountEmployee"
+        : "/VENDOR_SYSTEM_/checkAccountEmployee";
 
       const response = await axiosInstance.get(endpoint, {
         params: { p_userid: userId },
