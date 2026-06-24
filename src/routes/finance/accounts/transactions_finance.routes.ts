@@ -62,7 +62,11 @@ import { InvdatewiseSummary } from "../../../controllers/finance/accounts/accoun
 import { DuedatewiseDetail } from "../../../controllers/finance/accounts/accounts-report/Duedatewisedetail";
 import { DuedatewiseSummary } from "../../../controllers/finance/accounts/accounts-report/Duedatewisesummary";
 import { OutstandingList } from "../../../controllers/finance/accounts/accounts-report/Outstandinglist";
+import { AcStatementReport } from "../../../controllers/finance/accounts/accounts-report/AC_StatementReport";
+import { OutstandingDetailReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingDetailReport";
+import { OutstandingSummaryReport } from "../../../controllers/finance/accounts/accounts-report/OutstandingSummaryReport";
 import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledger";
+import { getTransactionProductReport } from "../../wms/reports/TransactionProductReport";
 import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
 import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
 import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
@@ -75,6 +79,10 @@ import { exportTaxInvoiceSummaryExcel } from "../../../controllers/finance/accou
 import { exportChequeDateWiseExcel } from "../../../controllers/finance/accounts/accounts-report/chequedatewiseexcel";
 import { exportAccountPayeeWiseExcel } from "../../../controllers/finance/accounts/accounts-report/aaccountpayeewiseexcel";
 import { getTaxInvoiceReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledger";
+import { exportTransactionProductExcel } from "../../wms/reports/TransactionProductExcel";
+import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, exportInvSummaryExcel, exportOutstandingListExcel } from "../../../controllers/finance/accounts/accounts-report/PeriodwiseExcel";
+import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
+import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
 
 
 const router = express.Router();
@@ -154,7 +162,13 @@ router.post('/reports/tax-vat-out-ledger/excel', exportTaxInvoiceExcel);
 router.post('/reports/tax-vat-out-ledger-summary/html', getTaxInvoiceSummaryReport);
 router.post('/reports/tax-vat-out-ledger-summary/excel', exportTaxInvoiceSummaryExcel);
 
+
+
+// -----------------------------WMS Reports Routes----------------------
 router.post('/reports/wms-joblisting/html', getJobListingReport);
+router.post('/reports/wms-TransactionProductReport/html', getTransactionProductReport);
+router.post('/reports/wms-exportTransactionProductExcel/excel', exportTransactionProductExcel);
+
 router.post('/reports/wms-joblisting', exportJobListingExcel);
 
 // ------Ageing Reports Routes------
@@ -163,6 +177,20 @@ router.post('/reports/wms-joblisting', exportJobListingExcel);
 router.post('/reports/DuedatewiseDetail/html', DuedatewiseDetail);
 router.post('/reports/DuedatewiseSummary/html', DuedatewiseSummary);
 router.post('/reports/OutstandingList/html', OutstandingList);
+// -----excel For Ageing-----
+router.post("/reports/InvdatewiseDetail/excel",   exportInvDetailExcel);
+router.post("/reports/InvdatewiseSummary/excel",  exportInvSummaryExcel);
+router.post("/reports/DuedatewiseDetail/excel",   exportDueDetailExcel);
+router.post("/reports/DuedatewiseSummary/excel",  exportDueSummaryExcel);
+router.post("/reports/OutstandingList/excel",     exportOutstandingListExcel);
+// -------Account Statement Report Route------
+router.post('/reports/AcStatementReport/html', AcStatementReport);  
+router.post('/reports/OutstandingDetailReport/html',OutstandingDetailReport);
+router.post('/reports/OutstandingSummaryReport/html',OutstandingSummaryReport);
+// ------excel For Account Statement Report------
+router.post("/reports/AcStatement/excel", exportAcStatementExcel);
+router.post("/reports/OutstandingDetail/excel",  exportOutstandingDetailExcel);
+router.post("/reports/OutstandingSummary/excel", exportOutstandingSummaryExcel);
 
 
 
