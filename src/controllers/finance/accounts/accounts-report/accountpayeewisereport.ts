@@ -134,13 +134,7 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
     <td class="num" style="color:#b45309">${money(dr)}</td>
     <td class="num" style="color:#b45309">${money(cr)}</td>
     <td class="num">${formatBalance(runningBalance)}</td>
-  </tr>
-// ${narration ? `
-// <tr class="data-row">
-//   <td colspan="9" style="border-top:none; text-align:center; font-style:italic; color:#475569; font-size:10px; padding:0 5px 4px;">
-//     ${narration}
-//   </td>
-// </tr>`: ""}`;
+  </tr>`;
         });
       });
 
