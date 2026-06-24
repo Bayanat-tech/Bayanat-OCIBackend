@@ -83,6 +83,7 @@ import { exportTransactionProductExcel } from "../../wms/reports/TransactionProd
 import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, exportInvSummaryExcel, exportOutstandingListExcel } from "../../../controllers/finance/accounts/accounts-report/PeriodwiseExcel";
 import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
 import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
+import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsexcels";
 
 
 const router = express.Router();
@@ -114,6 +115,7 @@ router.post("/report/trialbalance/drilldown/detail/excel", getDrilldownDetailExc
 
 router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
 router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
+router.post('/reports/ledger-with-details/excel', exportLedgerWithDetailsExcel);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
 router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
 router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
