@@ -37,7 +37,8 @@ export const comparePassword = async (args: ComparePasswordInterface) => {
 
 // Function to generate a JSON Web Token (JWT)
 export const generateToken = async (args: GenerateTokenInterface) => {
-  const { username, email_id, loginid } = args;
+  const { username, email_id, loginid, tenant_id } = args;
+  const payload = { username, email_id, loginid, tenant_id };
 
   const token = jsonwebtoken.sign(
     {

@@ -3,7 +3,6 @@ import { getRepository } from "../database/connection";
 import { User } from "../entity/User";
 import { QueryExecutor } from "../database/QueryExecutor";
 import { oracleDb } from "../database/connection";
-import { TenantManager } from "../database/TenantManager";
 
 export class AuthService {
   private static getUserRepository() {

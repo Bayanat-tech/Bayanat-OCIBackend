@@ -6,6 +6,8 @@ export interface GenerateTokenInterface {
   username: string;
   loginid: string;
   email_id: string;
+  tenant_id?:string;
+
 }
 export interface RowData {
   COMPANY_CODE: string;

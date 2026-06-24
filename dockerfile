@@ -1,33 +1,36 @@
 # FROM node:latest
 FROM node:20-bookworm-slim
 
-ARG PORT=3500
-ARG FRONTEND_URL
-ARG BACKEND_URL
-ARG APP_SECRET
-ARG ORACLE_USER
-ARG ORACLE_PASSWORD
-ARG ORACLE_CONNECTION_STRING
-
-ENV PORT=3500\
-    FRONTEND_URL=${FRONTEND_URL}\
-    BACKEND_URL=${BACKEND_URL}\
-    APP_SECRET=${APP_SECRET}\
-    ORACLE_USER=${ORACLE_USER}\
-    ORACLE_PASSWORD=${ORACLE_PASSWORD}\
-    ORACLE_CONNECTION_STRING=${ORACLE_CONNECTION_STRING}
-
 WORKDIR /app
 
 COPY package.json .
+
+RUN npm install --no audit --no-fund
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends unzip libaio1 libnsl2 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY oracle/instantclient-basic-linux.x64-19.31.0.0.0dbru.zip /tmp/instantclient.zip
+RUN mkdir -p /opt/oracle \
+ && unzip -q /tmp/instantclient.zip -d /opt/oracle \
+    && rm /tmp/instantclient.zip \
+    && echo /opt/oracle/instantclient_19_31 > /etc/ld.so.conf.d/oracle-instantclient.conf \
+    && ldconfig
+
+    
+ENV ORACLE_INSTANT_CLIENT_PATH=/opt/oracle/instantclient_19_31
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_19_31
 
 RUN npm install
 
 COPY . .
 
+RUN rm -rf build tsconfig.tsbuildinfo 
+
 RUN npm run build
 
-EXPOSE $PORT
+EXPOSE 3500
 
 CMD [ "npm","run","start:prod" ]
 
