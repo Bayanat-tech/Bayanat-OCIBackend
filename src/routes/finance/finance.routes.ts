@@ -40,6 +40,7 @@ import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponent
 import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
 import { upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
 import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
+import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -54,6 +55,11 @@ router.post(
 router.post(
   "/upsertBudget",
   upsertBudget
+);
+
+router.post(
+  "/upsertPLSetup",
+  upsertPLSetup
 );
 
 router.post(
