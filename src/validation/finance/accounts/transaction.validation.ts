@@ -808,7 +808,7 @@ export const salesSchema = (
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
           ac_name: Joi.string(),
-          sign_ind: Joi.number().valid(-1).allow(null), // Sign indicator (optional)
+          sign_ind: Joi.number().valid(-1,1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().optional().allow("", null), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().optional().allow("", null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().optional().allow("", null), // Transaction component 1 percentage (optional)
@@ -1144,7 +1144,7 @@ export const LpoSchema = (
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
           project: Joi.string(), // Amount (required)
-          sign_ind: Joi.number().valid(1).allow(null), // Sign indicator (optional)
+          sign_ind: Joi.number().valid(1,-1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().optional().allow("", null), // Transaction component category code 1 (optional)
           tx_compnt_1_expmt: Joi.string().optional().allow("", null), // Transaction component 1 expense (optional)
           tx_compnt_perc_1: Joi.number().optional().allow("", null), // Transaction component 1 percentage (optional)
