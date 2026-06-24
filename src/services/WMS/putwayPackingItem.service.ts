@@ -87,7 +87,7 @@ export class PutwayPackingItemService {
   }
 
   /**
-   * CALL STORED PROCEDURE (HANDLES COMMIT)
+   * CALL STORED PROCEDURE (HANDLES COMMITS / ROLLBACK)
    */
   async callPutawayStoredProcedure(
     companyCode: string,
