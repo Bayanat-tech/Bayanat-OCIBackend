@@ -9,6 +9,25 @@ import { notifyUser } from "../../../src/helpers/functions";
 import TenantManager from "./../../../src/database/TenantManager";
 import { getCurrentTenantId } from "./../../../src/middleware/tenantContext.middleware";
 
+function resolveTenantCompanyCode(req: Request, provided?: unknown): string {
+  const requestUser = (req as any).user;
+  const tokenCompanyCode = defaultString(
+    requestUser?.company_code || requestUser?.COMPANY_CODE
+  );
+  const providedCompanyCode = defaultString(provided);
+
+  if (tokenCompanyCode) {
+    if (providedCompanyCode && providedCompanyCode !== tokenCompanyCode) {
+      throw new Error(
+        "Requested company_code does not match authenticated tenant company."
+      );
+    }
+    return tokenCompanyCode;
+  }
+
+  return providedCompanyCode;
+}
+
 function formatDateForOracle(date: unknown): string | null {
   if (!date) return null;
 
@@ -85,12 +104,19 @@ export const postLpoRequestHandler = async (
   req: Request<LpoParams>,
   res: Response
 ): Promise<void> => {
-  const { company_code, doc_no } = req.params;
-
   try {
+    const companyCode = resolveTenantCompanyCode(
+      req,
+      req.body.COMPANY_CODE || req.body.company_code || req.params.company_code
+    );
+    if (!companyCode) {
+      res.status(400).json({ success: false, message: "company_code is required" });
+      return;
+    }
+
     const sanitizedData: TVendorMain = {
       ...req.body,
-      COMPANY_CODE: defaultString(req.body.COMPANY_CODE),
+      COMPANY_CODE: companyCode,
       DOC_NO: defaultString(req.body.DOC_NO),
       DOC_DATE: defaultDate(req.body.DOC_DATE),
       AC_CODE: defaultString(req.body.AC_CODE),
@@ -965,7 +991,12 @@ export const getAccountsList = async (
 ): Promise<void> => {
   try {
     const { company_code, ac_code } = req.query as Record<string, string>;
-    const accounts = await VendorService.getAccountsList(company_code, ac_code);
+    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
+    if (!tenantCompanyCode) {
+      res.status(400).json({ success: false, message: "company_code is required" });
+      return;
+    }
+    const accounts = await VendorService.getAccountsList(tenantCompanyCode, ac_code);
     res.status(200).json({ success: true, data: accounts });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -990,8 +1021,13 @@ export const getPendingLPOList = async (
 ): Promise<void> => {
   const { company_code, ac_code } = req.query as Record<string, string>;
   try {
+    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
+    if (!tenantCompanyCode || !ac_code) {
+      res.status(400).json({ success: false, message: "company_code and ac_code are required" });
+      return;
+    }
     const lpoList = await VendorService.getPendingLPOList(
-      company_code,
+      tenantCompanyCode,
       ac_code
     );
     res.status(200).json({ success: true, data: lpoList });
@@ -1009,8 +1045,13 @@ export const getPendingLPODetail = async (
     string
   >;
   try {
+    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
+    if (!tenantCompanyCode || !ac_code || !doc_no) {
+      res.status(400).json({ success: false, message: "company_code, ac_code and doc_no are required" });
+      return;
+    }
     const lpoDetail = await VendorService.getPendingLPODetail(
-      company_code,
+      tenantCompanyCode,
       ac_code,
       doc_no
     );
@@ -1065,8 +1106,13 @@ export const getPartyAccountStatement = async (
     req.query as Record<string, string>;
 
   try {
+    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
+    if (!tenantCompanyCode || !ac_code) {
+      res.status(400).json({ success: false, message: "company_code and ac_code are required" });
+      return;
+    }
     const data = await VendorService.getPartyAccountStatement(
-      company_code,
+      tenantCompanyCode,
       ac_code,
       doc_date_from,
       doc_date_to
@@ -1085,7 +1131,12 @@ export const getPartyOutstanding = async (
   const { company_code, ac_code } = req.query as Record<string, string>;
 
   try {
-    const data = await VendorService.getPartyOutstanding(company_code, ac_code);
+    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
+    if (!tenantCompanyCode || !ac_code) {
+      res.status(400).json({ success: false, message: "company_code and ac_code are required" });
+      return;
+    }
+    const data = await VendorService.getPartyOutstanding(tenantCompanyCode, ac_code);
     res.status(200).json({ success: true, data });
   } catch (err: any) {
     console.error("Error in getPartyOutstanding:", err.message);
@@ -1243,8 +1294,13 @@ export const getInvoiceStatusHandler = async (
     req.query as Record<string, string>;
 
   try {
+    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
+    if (!tenantCompanyCode || !ac_code || !po_date_from || !po_date_to) {
+      res.status(400).json({ success: false, message: "company_code, ac_code, po_date_from and po_date_to are required" });
+      return;
+    }
     const data = await VendorService.getInvoiceStatus(
-      company_code,
+      tenantCompanyCode,
       ac_code,
       po_date_from,
       po_date_to
@@ -1310,8 +1366,16 @@ export const getTmpAcHeaderWithErpDocNoHandler = async (
 
 export const updateLpoStatusHandler = async (req: Request, res: Response): Promise<void> => {
   const { doc_no, company_code, flow_level, remarks, action } = req.body;
+  let tenantCompanyCode = "";
 
-  if (!doc_no || !company_code || typeof flow_level !== "number" || !remarks || !action) {
+  try {
+    tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
+  } catch (error: any) {
+    res.status(403).json({ success: false, message: error.message });
+    return;
+  }
+
+  if (!doc_no || !tenantCompanyCode || typeof flow_level !== "number" || !remarks || !action) {
     res.status(400).json({
       success: false,
       message: "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
@@ -1327,7 +1391,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
   try {
     const existingResult = await QueryExecutor.executeRawQuery(
       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
-      { doc_no: { val: doc_no }, company_code: { val: company_code } }
+      { doc_no: { val: doc_no }, company_code: { val: tenantCompanyCode } }
     );
     const existing = existingResult.rows?.[0] || existingResult[0];
     if (!existing) {
@@ -1354,7 +1418,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
       remarks: { val: remarks },   
       action: { val: action },
       doc_no: { val: doc_no },
-      company_code: { val: company_code },
+      company_code: { val: tenantCompanyCode },
     });
 
     // ✅ Send emails now
@@ -1362,7 +1426,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
       {
         action,
         docNo: doc_no,
-        companyCode: company_code,
+        companyCode: tenantCompanyCode,
         flowLevel: flow_level,
       }
     );
