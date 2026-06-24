@@ -115,6 +115,8 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
           totalDebit += dr;
           totalCredit += cr;
           runningBalance += dr - cr;
+          const narration = text(r.narration || r.remarks || r.details || "").trim();
+          const wrappedNarration = narration.match(/.{1,80}(\s|$)/g)?.join("<br/>") || narration;
 
           tableBodyHtml += `
         <tr class="data-row">
@@ -127,7 +129,18 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
           <td class="num" style="color:#b45309">${money(dr)}</td>
           <td class="num" style="color:#b45309">${money(cr)}</td>
           <td class="num">${formatBalance(runningBalance)}</td>
-        </tr>`;
+          ${narration ? `
+          <tr class="data-row">
+          <td colspan="9"
+    style="
+      text-align:center;
+      white-space:normal;
+      mso-wrap-style:wrap;
+       border-top: none !important;
+    ">
+  ${wrappedNarration}
+</td>
+                      </tr>`: ""}`;
 
           if (r.salesman_code || r.salesman_name || r.ref_ac_code || r.ref_ac_name) {
             tableBodyHtml += `
@@ -213,6 +226,12 @@ export const getLedgerWithDetailsReport = async (req: Request, res: Response): P
       min-width: 150px;
       text-align: center;
     }
+            .data-row td {
+  border-bottom: none !important;
+}
+.narration-row td {
+  border-top: none !important;
+}
     .logo-arabic { font-size: 12px; font-weight: 700; color: #f0c040; direction: rtl; }
     .logo-name   { font-size: 18px; font-weight: 800; color: #f0c040; letter-spacing: 0.04em; }
     .logo-sub    { font-size: 9px;  letter-spacing: 0.18em; color: #cce0f5; margin-top: 2px; }
