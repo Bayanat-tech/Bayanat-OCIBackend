@@ -232,10 +232,6 @@ export const proc_build_dynamic_sql_common20 = async (
 };
 
 
-
-
-
-
 export const procBuildCommonProcedurewmc = async (
   req: Request,
   res: Response
