@@ -1,5 +1,4 @@
-import { Request, Response } from "express";
-import { oracleDb } from "./../../../src/database/connection";
+import { Response } from "express";
 import { QueryExecutor } from "../../database/QueryExecutor";
 import constants from "../../../src/helpers/constants";
 import { RequestWithUser } from "../../../src/interfaces/common.interface";
@@ -21,7 +20,16 @@ function formatOracleDate(date: any): string | null {
 export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
+    const companyCode = String(requestUser?.company_code || "").trim();
     console.log("inside getVendorrequest");
+
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code is required in authenticated tenant context",
+      });
+      return;
+    }
 
     const { doc_no } = req.params;
     console.log("doc_no (raw):", doc_no);
@@ -91,7 +99,7 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         REF_DOC2,
         REF_DOC3
       FROM TR_AC_LPO_HEADER
-      WHERE COMPANY_CODE = 'BSG' 
+      WHERE COMPANY_CODE = :companyCode
         AND DOC_NO = :new_doc_no
               AND ROWNUM = 1
     `;
@@ -129,20 +137,20 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         TX_CAT_CODE,
         TX_COMPNTCAT_CODE_1
       FROM VW_TR_AC_LPO_DETAIL
-      WHERE COMPANY_CODE = 'BSG'
+      WHERE COMPANY_CODE = :companyCode
         AND DOC_NO = :new_doc_no
            ORDER BY SERIAL_NO
     `;
 
     // Execute header query
-const headerResult = await QueryExecutor.execMaybe(queryHeader, { new_doc_no });
+const headerResult = await QueryExecutor.execMaybe(queryHeader, { new_doc_no, companyCode });
 
     console.log("Header query result:", headerResult);
 
     const VendorHeaderData = headerResult.rows?.[0] || headerResult[0];
 
     // Execute details query
-    const detailResult = await QueryExecutor.execMaybe(queryDetail, { new_doc_no });
+    const detailResult = await QueryExecutor.execMaybe(queryDetail, { new_doc_no, companyCode });
     const VendorDetailData = detailResult.rows || detailResult;
 
     if (!VendorHeaderData) {
