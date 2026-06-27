@@ -8,7 +8,7 @@ export class SchedulerService {
       // Get unsent header records - Remove QueryTypes
       const unsentHeaders = await oracleDb.query(
         `
-        SELECT * FROM TR_AC_LPO_HEADER 
+        SELECT * FROM VMS_FLOW_HDR 
         WHERE LAST_ACTION = 'SUBMITTED' 
         AND DATA_TRANSFER = 'N'
       `
@@ -31,7 +31,7 @@ export class SchedulerService {
           // Get and send related detail records
           const details = await oracleDb.query(
             `
-            SELECT * FROM TR_AC_LPO_DETAIL 
+            SELECT * FROM VMS_FLOW_DTL 
             WHERE COMPANY_CODE = :companyCode 
             AND DOC_NO = :docNo
           `,

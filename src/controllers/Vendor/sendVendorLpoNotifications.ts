@@ -22,7 +22,7 @@ async function getApproverListsFromFixedView(connection: any): Promise<EmailInfo
 
 async function getVendorEmailByDocNo(docNo: string, connection: any): Promise<string | null> {
   const acCodeRes = await oracleDb.query(
-    `SELECT AC_CODE FROM TR_AC_LPO_HEADER WHERE DOC_NO = :docNo`,
+    `SELECT AC_CODE FROM VMS_FLOW_HDR WHERE DOC_NO = :docNo`,
     { docNo: { val: docNo } },
     connection
   );
@@ -51,7 +51,7 @@ export async function sendVendorLpoNotifications(
     `SELECT FLOW_LEVEL, LAST_ACTION, FINAL_APPROVED, 
             NVL(SENDBACK_HISTORY,'No reason provided.') AS SENDBACK_HISTORY,
             NVL(REJECT_HISTORY,'No reason provided.') AS REJECT_HISTORY
-     FROM TR_AC_LPO_HEADER
+     FROM VMS_FLOW_HDR
      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
     { companyCode: { val: companyCode }, docNo: { val: docNo } },
     connection

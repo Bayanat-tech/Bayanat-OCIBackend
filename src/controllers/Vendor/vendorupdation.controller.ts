@@ -320,7 +320,7 @@ async function upsertLpoRequest(data: TVendorMain) {
     // Fetch the latest FINAL_APPROVED from the database
     const result: any = await oracleDb.query(
       `SELECT FINAL_APPROVED
-       FROM TR_AC_LPO_HEADER 
+       FROM VMS_FLOW_HDR 
        WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
       {
         companyCode: { val: data.COMPANY_CODE },
@@ -368,7 +368,7 @@ async function upsertLpoRequestHeader(
 
   const rowsResult = await oracleDb.query(
     `SELECT COUNT(*) as cnt 
-     FROM TR_AC_LPO_HEADER 
+     FROM VMS_FLOW_HDR 
      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo `,
     {
       companyCode: { val: company_code },
@@ -385,7 +385,7 @@ async function upsertLpoRequestHeader(
 
   if (isNew) {
     const insertQuery = `
-      INSERT INTO TR_AC_LPO_HEADER (
+      INSERT INTO VMS_FLOW_HDR (
         INVOICE_NUMBER, INVOICE_DATE, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, ACCOUNT_DATE, 
         AC_CODE, REF_NO, REF_DATE, REMARKS, CURR_CODE, EX_RATE, CANCELED, 
         CREATE_USER, EDIT_USER, CREATE_DATE, EDIT_DATE, LAST_SERIAL_NO, 
@@ -503,7 +503,7 @@ async function upsertLpoRequestHeader(
     await oracleDb.query(insertQuery, replacements, connection);
   } else {
     const updateQuery = `
-      UPDATE TR_AC_LPO_HEADER SET 
+      UPDATE VMS_FLOW_HDR SET 
         REF_DOC1 = :refdoc1,
         REF_DOC2 = :refdoc2,
         REF_DOC3 = :refdoc3,
@@ -566,7 +566,7 @@ async function upsertLpoRequestDetails(
   console.log("inside detail companyCode:", companyCode);
 
   await oracleDb.query(
-    `DELETE FROM TR_AC_LPO_DETAIL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND HEADER_AC_CODE = :headerAcCode`,
+    `DELETE FROM VMS_FLOW_DTL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND HEADER_AC_CODE = :headerAcCode`,
     {
       companyCode: { val: companyCode },
       docNo: { val: key_doc_no },
@@ -588,7 +588,7 @@ async function upsertLpoRequestDetails(
     }*/
 
     const insertQuery = `
-    INSERT INTO TR_AC_LPO_DETAIL (ITEM_REMARK,
+    INSERT INTO VMS_FLOW_DTL (ITEM_REMARK,
       SERIAL_NO, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, AC_CODE,
       HEADER_AC_CODE, REMARKS, AMOUNT, SIGN_IND, CURR_CODE,
       EX_RATE, LCUR_AMOUNT, CANCELLED, JOB_NO, DEPT_CODE, QTY,
@@ -1241,7 +1241,7 @@ export async function processSubmittedRecords(
       // Fetch all submitted records
       records = await oracleDb.query(
         `SELECT COMPANY_CODE, DOC_NO 
-         FROM TR_AC_LPO_HEADER 
+         FROM VMS_FLOW_HDR 
          WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y'
          FETCH FIRST 1 ROWS ONLY`
       );
@@ -1320,7 +1320,7 @@ export const getTmpAcHeaderWithErpDocNoHandler = async (
 //   try {
 //     // Check if record exists
 //     const existingResult = await oracleDb.query(
-//       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
+//       "SELECT DOC_NO FROM VMS_FLOW_HDR WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
 //       {
 //         doc_no: { val: doc_no },
 //         company_code: { val: company_code },
@@ -1341,7 +1341,7 @@ export const getTmpAcHeaderWithErpDocNoHandler = async (
 //       action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
 
 //     const query = `
-//       UPDATE TR_AC_LPO_HEADER
+//       UPDATE VMS_FLOW_HDR
 //       SET
 //         FLOW_LEVEL = :flow_level,
 //         ${historyField} = COALESCE(${historyField}, '') || ' | ' || :remarks,
@@ -1391,7 +1391,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
 
   try {
     const existingResult = await oracleDb.query(
-      "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
+      "SELECT DOC_NO FROM VMS_FLOW_HDR WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
       { doc_no: { val: doc_no }, company_code: { val: company_code } }
     );
     const existing = existingResult.rows?.[0] || existingResult[0];
@@ -1404,7 +1404,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
 
     // Optional: add separator only when existing value is non-empty
     const query = `
-      UPDATE TR_AC_LPO_HEADER
+      UPDATE VMS_FLOW_HDR
          SET FLOW_LEVEL = :flow_level,
              ${historyField} = CASE
                WHEN NVL(TRIM(${historyField}), '') = '' THEN :remarks
