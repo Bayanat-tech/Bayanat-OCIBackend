@@ -4,6 +4,48 @@ import { DataSource, Repository, EntityTarget, ObjectLiteral } from "typeorm";
 import constants from "../helpers/constants";
 import { TenantManager } from "../database/TenantManager";
 
+// Add these imports at the top of connection.ts, after the existing imports
+import { HrAirport } from "../models/Hr/hr_airport";
+import { HrBank } from "../models/Hr/hr_bank";
+import { Categorymaster } from "../models/Hr/hr_category";
+import { HrContract } from "../models/Hr/hr_contract";
+import { HrDepartment } from "../models/Hr/hr_department";
+import { HrDesignation } from "../models/Hr/hr_designation";
+import { HrDivision } from "../models/Hr/hr_division";
+import { HrEmpStatus } from "../models/Hr/hr_employee_status";
+import { HrGrade } from "../models/Hr/hr_grade";
+import { KpiNamemaster } from "../models/Hr/hr_kpiname";
+import { HrLabourDesignation } from "../models/Hr/hr_labour_designation";
+import { Leavetype } from "../models/Hr/hr_leavetype";
+import { OperationMaster } from "../models/Hr/hr_operation";
+import { HrPaycomponent } from "../models/Hr/hr_paycomponents";
+import { HrSection } from "../models/Hr/hr_section";
+import { HrSponsor } from "../models/Hr/hr_sponsor";
+import { HrViewEmp } from "../views/hr/hr_view_employee";
+import {
+  AccessRoleAppAccess,
+  AccessSecModuleData,
+  AccessSecOperation,
+  AccessUserSecMaster,
+  AccessUserSecRoleAccess,
+  Company,
+  FlowMaster,
+  MSCompanyUserAssign,
+  MSHRDivisionMaster,
+  MSPSProjectMaster,
+  MSProjectUserAssign,
+  MsPsUserRoleMapping,
+  MsRole,
+  QueryMaster,
+  ReportMaster,
+  RoleMaster,
+  SecLogin,
+  SecLoginRoleAccess,
+  SecLoginUserDivision,
+  SecModule,
+  User,
+} from "../entity/Security";
+
 // ==================== ORACLE CLIENT INIT ====================
 // TEMP EMERGENCY: allow skipping Oracle thick client init using FORCE_THIN_ORACLE=1
 if (process.env.FORCE_THIN_ORACLE === "1") {
@@ -52,9 +94,45 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: true,
   entities: [
-    "src/entity/**/*.ts",
-    "src/entities/**/*.ts",
-  ],
+  HrAirport,
+  HrBank,
+  Categorymaster,
+  HrContract,
+  HrDepartment,
+  HrDesignation,
+  HrDivision,
+  HrEmpStatus,
+  HrGrade,
+  KpiNamemaster,
+  HrLabourDesignation,
+  Leavetype,
+  OperationMaster,
+  HrPaycomponent,
+  HrSection,
+  HrSponsor,
+  HrViewEmp,
+  AccessRoleAppAccess,
+  AccessSecModuleData,
+  AccessSecOperation,
+  AccessUserSecMaster,
+  AccessUserSecRoleAccess,
+  Company,
+  FlowMaster,
+  MSCompanyUserAssign,
+  MSHRDivisionMaster,
+  MSPSProjectMaster,
+  MSProjectUserAssign,
+  MsPsUserRoleMapping,
+  MsRole,
+  QueryMaster,
+  ReportMaster,
+  RoleMaster,
+  SecLogin,
+  SecLoginRoleAccess,
+  SecLoginUserDivision,
+  SecModule,
+  User,
+],
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
   extra: {

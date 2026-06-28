@@ -288,7 +288,11 @@ export class TenantAdminService {
     await oracleDb.query(
       `INSERT INTO ${ROOT_SCHEMA}.USER_TENANT_MAPPING (LOGINID, TENANT_ID, IS_DEFAULT, CREATED_DATE)
        VALUES (:loginid, :tenantId, :isDefault, SYSDATE)`,
-      binds
+      {
+        loginid: binds.loginid,
+        tenantId: binds.tenantId,
+        isDefault: binds.isDefault,
+      }
     );
     return { mode: "created" };
   }

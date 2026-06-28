@@ -14,8 +14,6 @@ export interface IHrDepartment {
   remarks: string;
   status: string;
   enterprice_code: string;
-  updated_at?: Date;
-  updated_by: string;
-  created_by: string;
-  created_at?: Date;
+  user_id: string;
+  user_dt: string;
 }
