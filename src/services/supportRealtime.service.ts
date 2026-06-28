@@ -1,0 +1,92 @@
+import http from "http";
+import jwt from "jsonwebtoken";
+import { Server } from "socket.io";
+import constants from "../helpers/constants";
+
+type SocketUser = {
+  loginid: string;
+  username?: string;
+  company_code?: string;
+  tenantId?: string;
+  isSupportAdmin: boolean;
+};
+
+let ioServer: Server | null = null;
+
+export function isSupportAdminUser(user: any) {
+  const loginid = String(user?.loginid || user?.LOGINID || "").toUpperCase();
+  const username = String(user?.username || user?.USERNAME || "").toUpperCase();
+  return loginid === "ADMIN" || loginid === "BTADMIN" || loginid === "SUPERADMIN" || username === "ADMIN" || loginid.includes("ADMIN");
+}
+
+export function resolveSupportRole(user: any, requestedRole: string) {
+  return requestedRole.toLowerCase() === "admin" && isSupportAdminUser(user) ? "admin" : "user";
+}
+
+export function initSupportRealtime(server: http.Server) {
+  ioServer = new Server(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+    },
+    path: "/socket.io",
+  });
+
+  ioServer.use((socket, next) => {
+    try {
+      const token =
+        String(socket.handshake.auth?.token || "") ||
+        String(socket.handshake.headers.authorization || "").replace(/^Bearer\s+/i, "");
+      if (!token) return next(new Error("Missing token"));
+
+      const payload: any = jwt.verify(token, constants.AUTHENTICATION.APP_SECRET || process.env.APP_SECRET || "BAYANAT");
+      const user: SocketUser = {
+        loginid: String(payload.loginid || ""),
+        username: payload.username,
+        company_code: payload.company_code,
+        tenantId: payload.tenantId,
+        isSupportAdmin: isSupportAdminUser(payload),
+      };
+      if (!user.loginid) return next(new Error("Invalid token"));
+      socket.data.user = user;
+      next();
+    } catch {
+      next(new Error("Invalid token"));
+    }
+  });
+
+  ioServer.on("connection", (socket) => {
+    const user = socket.data.user as SocketUser;
+    socket.join(userRoom(user.loginid));
+    if (user.isSupportAdmin) socket.join(adminRoom());
+
+    socket.emit("support:ready", {
+      loginid: user.loginid,
+      role: user.isSupportAdmin ? "admin" : "user",
+    });
+  });
+
+  return ioServer;
+}
+
+export function emitSupportPresenceChanged() {
+  ioServer?.to(adminRoom()).emit("support:presence-changed");
+}
+
+export function emitSupportTicketChanged(ticket: { requesterLoginid?: string; assignedTo?: string | null; ticketId?: number }) {
+  ioServer?.to(adminRoom()).emit("support:tickets-changed", { ticketId: ticket.ticketId });
+  if (ticket.requesterLoginid) {
+    ioServer?.to(userRoom(ticket.requesterLoginid)).emit("support:tickets-changed", { ticketId: ticket.ticketId });
+  }
+  if (ticket.assignedTo) {
+    ioServer?.to(userRoom(ticket.assignedTo)).emit("support:tickets-changed", { ticketId: ticket.ticketId });
+  }
+}
+
+function adminRoom() {
+  return "support:admins";
+}
+
+function userRoom(loginid: string) {
+  return `support:user:${String(loginid || "").toUpperCase()}`;
+}

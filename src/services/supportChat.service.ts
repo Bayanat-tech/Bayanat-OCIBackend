@@ -1,4 +1,5 @@
 import { oracleDb } from "../database/connection";
+import { emitSupportPresenceChanged, emitSupportTicketChanged, resolveSupportRole } from "./supportRealtime.service";
 
 const ROOT_SCHEMA = "CUSTOMERS";
 
@@ -7,21 +8,6 @@ type UserContext = {
   username?: string;
   company_code?: string;
   tenantId?: string;
-};
-
-type TicketInput = {
-  subject?: string;
-  message?: string;
-  module?: string;
-  page_url?: string;
-  priority?: string;
-  assigned_to?: string;
-  attachments?: AttachmentInput[];
-};
-
-type MessageInput = {
-  message?: string;
-  attachments?: AttachmentInput[];
 };
 
 type AttachmentInput = {
@@ -91,27 +77,23 @@ export class SupportChatService {
         USERNAME VARCHAR2(400),
         COMPANY_CODE VARCHAR2(20),
         TENANT_ID VARCHAR2(50),
-        LAST_SEEN_AT DATE DEFAULT SYSDATE
+        LAST_SEEN_AT VARCHAR2(30)
       )`
     );
-    await ensureDateColumn("SUPPORT_PRESENCE", "LAST_SEEN_AT");
     initialized = true;
   }
 
   static async heartbeat(user: UserContext) {
     await this.ensureSchema();
     const loginid = getLoginId(user);
-    const nowSql = await getPresenceNowSql();
-    const existing = await fetchOne(
-      `SELECT LOGINID FROM ${ROOT_SCHEMA}.SUPPORT_PRESENCE WHERE LOGINID = :loginid`,
-      { loginid }
-    );
+    const nowSql = await presenceNowSql();
     const binds = {
       loginid,
       username: getUserName(user),
       companyCode: user.company_code || "",
       tenantId: user.tenantId || "",
     };
+    const existing = await fetchOne(`SELECT LOGINID FROM ${ROOT_SCHEMA}.SUPPORT_PRESENCE WHERE LOGINID = :loginid`, { loginid });
     if (existing) {
       await oracleDb.query(
         `UPDATE ${ROOT_SCHEMA}.SUPPORT_PRESENCE
@@ -130,55 +112,41 @@ export class SupportChatService {
         binds
       );
     }
+    emitSupportPresenceChanged();
     return { loginid, online: true };
   }
 
   static async getActiveUsers() {
     await this.ensureSchema();
-    const seen = await getPresenceLastSeenSql();
+    const seen = lastSeenSql();
     const result = await oracleDb.query(
       `SELECT LOGINID, USERNAME, COMPANY_CODE, TENANT_ID,
-              ${seen.displayExpr} AS LAST_SEEN_AT,
-              CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS IS_ONLINE
+              TO_CHAR(${seen}, 'YYYY-MM-DD HH24:MI:SS') AS LAST_SEEN_AT,
+              CASE WHEN ${seen} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS IS_ONLINE
          FROM ${ROOT_SCHEMA}.SUPPORT_PRESENCE
-        ORDER BY CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
-                 ${seen.dateExpr} DESC`
+        ORDER BY CASE WHEN ${seen} >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
+                 ${seen} DESC`
     );
-    return await normalizeRows(result.rows || []);
+    return normalizeRows(result.rows || []);
   }
 
-  static async getDirectory() {
-    await this.ensureSchema();
-    const seen = await getPresenceLastSeenSql("P");
-    const result = await oracleDb.query(
-      `SELECT U.LOGINID, U.USERNAME, U.EMAIL_ID, U.COMPANY_CODE,
-              NVL(P.TENANT_ID, '') AS TENANT_ID,
-              ${seen.displayExpr} AS LAST_SEEN_AT,
-              CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS IS_ONLINE
-         FROM ${ROOT_SCHEMA}.SEC_LOGINTEST U
-         LEFT JOIN ${ROOT_SCHEMA}.SUPPORT_PRESENCE P ON P.LOGINID = U.LOGINID
-        WHERE NVL(U.ACTIVE_FLAG, 'Y') = 'Y'
-        ORDER BY CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
-                 U.LOGINID`
-    );
-    return await normalizeRows(result.rows || []);
-  }
-
-  static async getTickets(user: UserContext, role = "user") {
+  static async getTickets(user: UserContext, requestedRole = "user") {
     await this.ensureSchema();
     const loginid = getLoginId(user);
-    const isAdmin = role.toLowerCase() === "admin";
-    const binds: Record<string, any> = {};
+    const role = resolveSupportRole(user, requestedRole);
+    const isAdmin = role === "admin";
+    const binds: Record<string, any> = { viewerLoginid: loginid };
     const where = isAdmin ? "" : "WHERE T.REQUESTER_LOGINID = :loginid OR T.ASSIGNED_TO = :loginid";
     if (!isAdmin) binds.loginid = loginid;
-    const seen = await getPresenceLastSeenSql("P");
+    const seen = lastSeenSql("P");
     const result = await oracleDb.query(
       `SELECT T.TICKET_ID, T.COMPANY_CODE, T.TENANT_ID, T.REQUESTER_LOGINID, T.REQUESTER_NAME,
               T.ASSIGNED_TO, T.SUBJECT, T.MODULE_NAME, T.PAGE_URL, T.STATUS, T.PRIORITY,
-              T.LAST_MESSAGE, TO_CHAR(T.LAST_MESSAGE_AT, 'YYYY-MM-DD HH24:MI:SS') AS LAST_MESSAGE_AT,
+              DBMS_LOB.SUBSTR(T.LAST_MESSAGE, 4000, 1) AS LAST_MESSAGE,
+              TO_CHAR(T.LAST_MESSAGE_AT, 'YYYY-MM-DD HH24:MI:SS') AS LAST_MESSAGE_AT,
               TO_CHAR(T.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
-              ${seen.displayExpr} AS REQUESTER_LAST_SEEN_AT,
-              CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS REQUESTER_IS_ONLINE,
+              TO_CHAR(${seen}, 'YYYY-MM-DD HH24:MI:SS') AS REQUESTER_LAST_SEEN_AT,
+              CASE WHEN ${seen} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS REQUESTER_IS_ONLINE,
               (SELECT COUNT(*) FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE M
                 WHERE M.TICKET_ID = T.TICKET_ID
                   AND M.SENDER_LOGINID <> :viewerLoginid
@@ -187,49 +155,53 @@ export class SupportChatService {
          LEFT JOIN ${ROOT_SCHEMA}.SUPPORT_PRESENCE P ON P.LOGINID = T.REQUESTER_LOGINID
          ${where}
         ORDER BY T.LAST_MESSAGE_AT DESC`,
-      { ...binds, viewerLoginid: loginid }
+      binds
     );
-    return await normalizeRows(result.rows || []);
+    return normalizeRows(result.rows || []);
   }
 
-  static async getMessages(ticketId: number, user: UserContext, role = "user") {
+  static async getMessages(ticketId: number, user: UserContext, requestedRole = "user") {
     await this.ensureSchema();
-    await this.assertTicketAccess(ticketId, user, role);
-    const messages = await oracleDb.query(
-      `SELECT MESSAGE_ID, TICKET_ID, SENDER_LOGINID, SENDER_NAME, SENDER_ROLE,
-              MESSAGE_TEXT, HAS_ATTACHMENTS, TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
-         FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE
-        WHERE TICKET_ID = :ticketId
-        ORDER BY MESSAGE_ID`,
-      { ticketId }
-    );
-    const attachments = await oracleDb.query(
-      `SELECT ATTACHMENT_ID, TICKET_ID, MESSAGE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE, DATA_URL,
-              TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
-         FROM ${ROOT_SCHEMA}.SUPPORT_ATTACHMENT
-        WHERE TICKET_ID = :ticketId
-        ORDER BY ATTACHMENT_ID`,
-      { ticketId }
-    );
-    const messageRows = await normalizeRows(messages.rows || []);
-    const attachmentRows = await normalizeRows(attachments.rows || []);
-    const byMessage = new Map<number, any[]>();
-    for (const item of attachmentRows) {
-      const key = Number(item.MESSAGE_ID);
-      byMessage.set(key, [...(byMessage.get(key) || []), item]);
+    await this.assertTicketAccess(ticketId, user, requestedRole);
+    const connection = await oracleDb.getConnection();
+    try {
+      const messages = await oracleDb.query(
+        `SELECT MESSAGE_ID, TICKET_ID, SENDER_LOGINID, SENDER_NAME, SENDER_ROLE,
+                MESSAGE_TEXT, HAS_ATTACHMENTS, TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+           FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE
+          WHERE TICKET_ID = :ticketId
+          ORDER BY MESSAGE_ID`,
+        { ticketId },
+        connection
+      );
+      const attachments = await oracleDb.query(
+        `SELECT ATTACHMENT_ID, TICKET_ID, MESSAGE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE, DATA_URL,
+                TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+           FROM ${ROOT_SCHEMA}.SUPPORT_ATTACHMENT
+          WHERE TICKET_ID = :ticketId
+          ORDER BY ATTACHMENT_ID`,
+        { ticketId },
+        connection
+      );
+      const messageRows = await normalizeRows(messages.rows || []);
+      const attachmentRows = await normalizeRows(attachments.rows || []);
+      const byMessage = new Map<number, any[]>();
+      for (const item of attachmentRows) {
+        const key = Number(item.MESSAGE_ID);
+        byMessage.set(key, [...(byMessage.get(key) || []), item]);
+      }
+      return messageRows.map((message: any) => ({ ...message, attachments: byMessage.get(Number(message.MESSAGE_ID)) || [] }));
+    } finally {
+      await connection.close();
     }
-    return messageRows.map((message: any) => ({
-      ...message,
-      attachments: byMessage.get(Number(message.MESSAGE_ID)) || [],
-    }));
   }
 
-  static async createTicket(input: TicketInput, user: UserContext) {
+  static async createTicket(input: any, user: UserContext) {
     await this.ensureSchema();
     const loginid = getLoginId(user);
     const message = cleanText(input.message);
     const subject = cleanText(input.subject) || message.slice(0, 80) || "Support request";
-    const ticketResult = await oracleDb.query(
+    const result = await oracleDb.query(
       `INSERT INTO ${ROOT_SCHEMA}.SUPPORT_TICKET
         (COMPANY_CODE, TENANT_ID, REQUESTER_LOGINID, REQUESTER_NAME, ASSIGNED_TO,
          SUBJECT, MODULE_NAME, PAGE_URL, STATUS, PRIORITY, LAST_MESSAGE, LAST_MESSAGE_AT,
@@ -253,16 +225,18 @@ export class SupportChatService {
         ticketId: { dir: (require("oracledb") as any).BIND_OUT, type: (require("oracledb") as any).NUMBER },
       }
     );
-    const ticketId = Number(ticketResult.outBinds?.ticketId?.[0] || ticketResult.outBinds?.ticketId);
+    const ticketId = Number(result.outBinds?.ticketId?.[0] || result.outBinds?.ticketId);
     const messageId = await this.insertMessage(ticketId, message, input.attachments || [], user, "USER");
+    emitSupportTicketChanged({ requesterLoginid: loginid, assignedTo: cleanText(input.assigned_to), ticketId });
     return { ticketId, messageId };
   }
 
-  static async addMessage(ticketId: number, input: MessageInput, user: UserContext, role = "user") {
+  static async addMessage(ticketId: number, input: any, user: UserContext, requestedRole = "user") {
     await this.ensureSchema();
-    await this.assertTicketAccess(ticketId, user, role);
+    const ticket = await this.assertTicketAccess(ticketId, user, requestedRole);
+    const role = resolveSupportRole(user, requestedRole);
     const message = cleanText(input.message);
-    const messageId = await this.insertMessage(ticketId, message, input.attachments || [], user, role.toUpperCase() === "ADMIN" ? "ADMIN" : "USER");
+    const messageId = await this.insertMessage(ticketId, message, input.attachments || [], user, role === "admin" ? "ADMIN" : "USER");
     await oracleDb.query(
       `UPDATE ${ROOT_SCHEMA}.SUPPORT_TICKET
           SET LAST_MESSAGE = :message,
@@ -272,12 +246,13 @@ export class SupportChatService {
         WHERE TICKET_ID = :ticketId`,
       { message, ticketId }
     );
+    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: ticket.ASSIGNED_TO, ticketId });
     return { ticketId, messageId };
   }
 
-  static async updateTicket(ticketId: number, input: any, user: UserContext, role = "user") {
+  static async updateTicket(ticketId: number, input: any, user: UserContext, requestedRole = "user") {
     await this.ensureSchema();
-    await this.assertTicketAccess(ticketId, user, role);
+    const ticket = await this.assertTicketAccess(ticketId, user, requestedRole);
     const status = cleanText(input.status).toUpperCase();
     const assignedTo = cleanText(input.assigned_to);
     const priority = cleanText(input.priority).toUpperCase();
@@ -289,13 +264,9 @@ export class SupportChatService {
               UPDATED_AT = SYSDATE,
               CLOSED_AT = CASE WHEN :statusValue = 'CLOSED' THEN SYSDATE ELSE CLOSED_AT END
         WHERE TICKET_ID = :ticketId`,
-      {
-        ticketId,
-        statusValue: status || null,
-        assignedTo: assignedTo || null,
-        priority: priority || null,
-      }
+      { ticketId, statusValue: status || null, assignedTo: assignedTo || null, priority: priority || null }
     );
+    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: assignedTo || ticket.ASSIGNED_TO, ticketId });
     return { ticketId };
   }
 
@@ -311,6 +282,20 @@ export class SupportChatService {
       { ticketId, loginid }
     );
     return { ticketId };
+  }
+
+  private static async assertTicketAccess(ticketId: number, user: UserContext, requestedRole = "user") {
+    const loginid = getLoginId(user);
+    const role = resolveSupportRole(user, requestedRole);
+    const row = await fetchOne(
+      `SELECT TICKET_ID, REQUESTER_LOGINID, ASSIGNED_TO
+         FROM ${ROOT_SCHEMA}.SUPPORT_TICKET
+        WHERE TICKET_ID = :ticketId
+          ${role === "admin" ? "" : "AND (REQUESTER_LOGINID = :loginid OR ASSIGNED_TO = :loginid)"}`,
+      role === "admin" ? { ticketId } : { ticketId, loginid }
+    );
+    if (!row) throw new Error("Support ticket not found or not accessible");
+    return row;
   }
 
   private static async insertMessage(ticketId: number, message: string, attachments: AttachmentInput[], user: UserContext, senderRole: string) {
@@ -347,101 +332,15 @@ export class SupportChatService {
     }
     return messageId;
   }
-
-  private static async assertTicketAccess(ticketId: number, user: UserContext, role = "user") {
-    const isAdmin = role.toLowerCase() === "admin";
-    if (isAdmin) return;
-    const row = await fetchOne(
-      `SELECT TICKET_ID FROM ${ROOT_SCHEMA}.SUPPORT_TICKET
-        WHERE TICKET_ID = :ticketId
-          AND (REQUESTER_LOGINID = :loginid OR ASSIGNED_TO = :loginid)`,
-      { ticketId, loginid: getLoginId(user) }
-    );
-    if (!row) throw new Error("Support ticket not found or not accessible");
-  }
 }
 
 async function createTableIfMissing(tableName: string, ddl: string) {
-  const existing = await fetchOne(
-    `SELECT TABLE_NAME
-       FROM ALL_TABLES
-      WHERE OWNER = :owner
-        AND TABLE_NAME = :tableName`,
+  const exists = await fetchOne(
+    `SELECT TABLE_NAME FROM ALL_TABLES WHERE OWNER = :owner AND TABLE_NAME = :tableName`,
     { owner: ROOT_SCHEMA, tableName }
   );
-  if (existing) return;
-
-  try {
-    await oracleDb.query(ddl);
-  } catch (error: any) {
-    if (error?.errorNum === 955 || String(error?.message || "").includes("ORA-00955")) return;
-    throw error;
-  }
-}
-
-async function ensureDateColumn(tableName: string, columnName: string) {
-  const column = await fetchOne(
-    `SELECT DATA_TYPE
-       FROM ALL_TAB_COLUMNS
-      WHERE OWNER = :owner
-        AND TABLE_NAME = :tableName
-        AND COLUMN_NAME = :columnName`,
-    { owner: ROOT_SCHEMA, tableName, columnName }
-  );
-  const dataType = String(column?.DATA_TYPE || "").toUpperCase();
-  if (!dataType || dataType === "DATE" || dataType.startsWith("TIMESTAMP")) return;
-
-  const tempColumn = `${columnName}_DT`;
-  const tempExists = await fetchOne(
-    `SELECT DATA_TYPE
-       FROM ALL_TAB_COLUMNS
-      WHERE OWNER = :owner
-        AND TABLE_NAME = :tableName
-        AND COLUMN_NAME = :tempColumn`,
-    { owner: ROOT_SCHEMA, tableName, tempColumn }
-  );
-  if (!tempExists) {
-    await oracleDb.query(`ALTER TABLE ${ROOT_SCHEMA}.${tableName} ADD ${tempColumn} DATE DEFAULT SYSDATE`);
-  }
-  await oracleDb.query(`UPDATE ${ROOT_SCHEMA}.${tableName} SET ${tempColumn} = SYSDATE WHERE ${tempColumn} IS NULL`);
-  await oracleDb.query(`ALTER TABLE ${ROOT_SCHEMA}.${tableName} DROP COLUMN ${columnName}`);
-  await oracleDb.query(`ALTER TABLE ${ROOT_SCHEMA}.${tableName} RENAME COLUMN ${tempColumn} TO ${columnName}`);
-}
-
-async function getPresenceNowSql() {
-  const dataType = await getColumnDataType("SUPPORT_PRESENCE", "LAST_SEEN_AT");
-  if (dataType === "DATE" || dataType.startsWith("TIMESTAMP")) return "SYSDATE";
-  return "TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS')";
-}
-
-async function getPresenceLastSeenSql(alias?: string) {
-  const columnRef = `${alias ? `${alias}.` : ""}LAST_SEEN_AT`;
-  const textExpr = `TRIM(TO_CHAR(${columnRef}))`;
-  const dateExpr = `CASE
-      WHEN ${columnRef} IS NULL THEN NULL
-      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$') THEN TO_DATE(${textExpr}, 'YYYY-MM-DD HH24:MI:SS')
-      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') THEN TO_DATE(${textExpr}, 'YYYY-MM-DD')
-      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}-[[:alpha:]]{3}-[0-9]{2}$') THEN TO_DATE(${textExpr}, 'DD-MON-RR', 'NLS_DATE_LANGUAGE=English')
-      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}-[[:alpha:]]{3}-[0-9]{4}$') THEN TO_DATE(${textExpr}, 'DD-MON-YYYY', 'NLS_DATE_LANGUAGE=English')
-      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}/[0-9]{2}/[0-9]{4}$') THEN TO_DATE(${textExpr}, 'DD/MM/YYYY')
-      ELSE NULL
-    END`;
-  return {
-    dateExpr,
-    displayExpr: `TO_CHAR(${dateExpr}, 'YYYY-MM-DD HH24:MI:SS')`,
-  };
-}
-
-async function getColumnDataType(tableName: string, columnName: string) {
-  const column = await fetchOne(
-    `SELECT DATA_TYPE
-       FROM ALL_TAB_COLUMNS
-      WHERE OWNER = :owner
-        AND TABLE_NAME = :tableName
-        AND COLUMN_NAME = :columnName`,
-    { owner: ROOT_SCHEMA, tableName, columnName }
-  );
-  return String(column?.DATA_TYPE || "").toUpperCase();
+  if (exists) return;
+  await oracleDb.query(ddl);
 }
 
 async function fetchOne(sql: string, binds: Record<string, any>) {
@@ -449,8 +348,39 @@ async function fetchOne(sql: string, binds: Record<string, any>) {
   return result.rows?.[0] || null;
 }
 
+function lastSeenSql(alias?: string) {
+  const columnRef = `${alias ? `${alias}.` : ""}LAST_SEEN_AT`;
+  const textExpr = `TRIM(TO_CHAR(${columnRef}))`;
+  return `CASE
+    WHEN ${columnRef} IS NULL THEN NULL
+    WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$') THEN TO_DATE(${textExpr}, 'YYYY-MM-DD HH24:MI:SS')
+    WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') THEN TO_DATE(${textExpr}, 'YYYY-MM-DD')
+    WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}-[[:alpha:]]{3}-[0-9]{2}$') THEN TO_DATE(${textExpr}, 'DD-MON-RR', 'NLS_DATE_LANGUAGE=English')
+    WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}/[0-9]{2}/[0-9]{4}$') THEN TO_DATE(${textExpr}, 'DD/MM/YYYY')
+    ELSE NULL
+  END`;
+}
+
+async function presenceNowSql() {
+  const dataType = await getColumnDataType("SUPPORT_PRESENCE", "LAST_SEEN_AT");
+  if (dataType === "DATE" || dataType.startsWith("TIMESTAMP")) return "SYSDATE";
+  return "TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS')";
+}
+
+async function getColumnDataType(tableName: string, columnName: string) {
+  const row = await fetchOne(
+    `SELECT DATA_TYPE
+       FROM ALL_TAB_COLUMNS
+      WHERE OWNER = :owner
+        AND TABLE_NAME = :tableName
+        AND COLUMN_NAME = :columnName`,
+    { owner: ROOT_SCHEMA, tableName, columnName }
+  );
+  return String(row?.DATA_TYPE || "").toUpperCase();
+}
+
 function getLoginId(user: UserContext) {
-  return cleanText(user.loginid || (user as any).LOGINID || "UNKNOWN");
+  return cleanText(user.loginid || (user as any).LOGINID || "UNKNOWN").toUpperCase();
 }
 
 function getUserName(user: UserContext) {
@@ -469,9 +399,7 @@ async function normalizeRows(rows: any[]) {
 async function normalizeRow(row: any) {
   const next: any = { ...row };
   for (const [key, value] of Object.entries(next)) {
-    if (isLob(value)) {
-      next[key] = await lobToString(value);
-    }
+    if (isLob(value)) next[key] = await lobToString(value);
   }
   return next;
 }

@@ -27,15 +27,6 @@ export const getSupportActiveUsers = async (_req: AuthedRequest, res: Response) 
   }
 };
 
-export const getSupportDirectory = async (_req: AuthedRequest, res: Response) => {
-  try {
-    const data = await SupportChatService.getDirectory();
-    res.json({ success: true, data });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message || "Unable to load users" });
-  }
-};
-
 export const getSupportTickets = async (req: AuthedRequest, res: Response) => {
   try {
     const data = await SupportChatService.getTickets(req.user || {}, roleFrom(req));

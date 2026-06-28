@@ -5,7 +5,6 @@ import {
   addSupportMessage,
   createSupportTicket,
   getSupportActiveUsers,
-  getSupportDirectory,
   getSupportMessages,
   getSupportTickets,
   markSupportRead,
@@ -19,7 +18,6 @@ router.use(passport.authenticate("jwt", { session: false }), tenantContextMiddle
 
 router.post("/heartbeat", supportHeartbeat);
 router.get("/active-users", getSupportActiveUsers);
-router.get("/directory", getSupportDirectory);
 router.get("/tickets", getSupportTickets);
 router.post("/tickets", createSupportTicket);
 router.get("/tickets/:ticketId/messages", getSupportMessages);
