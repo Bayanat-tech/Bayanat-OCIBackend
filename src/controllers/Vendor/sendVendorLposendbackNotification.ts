@@ -76,7 +76,7 @@ async function getHistories(companyCode: string, docNo: string, connection?: any
 async function getMaxFlowLevel(docNo: string, connection?: any): Promise<number> {
   const result = await oracleDb.query(
     `SELECT MAX(FLOW_LEVEL) AS MAX_FLOW_LEVEL
-       FROM TR_AC_LPO_HEADER_HISTORY
+       FROM VMS_FLOW_HDR_HISTORY
       WHERE DOC_NO = :docNo`,
     { docNo: { val: docNo } },
     connection
