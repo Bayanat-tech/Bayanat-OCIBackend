@@ -40,6 +40,7 @@ import boldReportsRoutes from "./src/routes/boldreports.routes";
 import pamsRoutes from "./src/routes/pams.routes";
 
 import almsRoutes from "./src/routes/alms.routes";
+import supportRoutes from "./src/routes/support.routes";
 
 //----------------routes-------------
 
@@ -79,6 +80,8 @@ app.use("/api/alms/", almsRoutes);
 app.use("/api/wms", wmsRoutes);
 
 app.use("/api/user", editLangrouter);
+
+app.use("/api/support", supportRoutes);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
