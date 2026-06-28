@@ -5,8 +5,6 @@ export interface IHrLabourDesignation {
   labour_desg_short_name: string;
   remarks: string;
   status: string;
-  updated_at?: Date;
-  updated_by?: string;
-  created_at?: Date;
-  created_by?: string;
+  user_id: string;
+  user_dt: string;
 }

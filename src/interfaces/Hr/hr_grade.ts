@@ -12,10 +12,10 @@ export interface IHrGrade {
   dep_med_entitlement: string;
   remarks: string;
   status: string;
+  user_id: string;
+  user_dt: string;
   type: string;
   grade_status: string;
-  updated_at?: Date;
-  updated_by?: string;
-  created_by?: string;
-  created_at?: Date;
+  main_grade_code: string;
+  def_grade_code: string;
 }

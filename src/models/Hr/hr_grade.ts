@@ -1,108 +1,63 @@
-// Import necessary modules from TypeORM
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, PrimaryColumn, Column } from "typeorm";
 import constants from "../../helpers/constants";
 import { IHrGrade } from "../../interfaces/Hr/hr_grade";
 
-// Define the HrGrade entity
 @Entity(constants.TABLE.MS_HR_GRADE)
 export class HrGrade implements IHrGrade {
-  // Company code attribute (composite primary key)
-  @PrimaryColumn({ type: "varchar2", name: "COMPANY_CODE", length: 5, nullable: false })
+  @PrimaryColumn({ name: "COMPANY_CODE", type: "varchar2", length: 5, nullable: false })
   company_code!: string;
 
-  // Grade code attribute (composite primary key)
-  @PrimaryColumn({ type: "varchar2", name: "GRADE_CODE", length: 5, nullable: false })
+  @PrimaryColumn({ name: "GRADE_CODE", type: "varchar2", length: 5, nullable: false })
   grade_code!: string;
 
-  // Grade name attribute
-  @Column({ type: "varchar2", name: "GRADE_NAME", length: 50, nullable: true })
+  @Column({ name: "GRADE_NAME", type: "varchar2", length: 50, nullable: true })
   grade_name!: string;
 
-  // Grade short name attribute
-  @Column({ type: "varchar2", name: "GRADE_SHORT_NAME", length: 10, nullable: true })
+  @Column({ name: "GRADE_SHORT_NAME", type: "varchar2", length: 10, nullable: true })
   grade_short_name!: string;
 
-  // OT eligibility attribute
-  @Column({ type: "varchar2", name: "OT_ELIGIBILITY", length: 1, nullable: true })
+  @Column({ name: "OT_ELIGIBILITY", type: "varchar2", length: 1, nullable: true })
   ot_eligibility!: string;
 
-  // Airfare entitlement attribute
-  @Column({ 
-    type: "number", 
-    name: "AIRFARE_ENTITLEMENT", 
-    precision: 10, 
-    scale: 2, 
-    nullable: true 
-  })
+  @Column({ name: "AIRFARE_ENTITLEMENT", type: "number", precision: 10, scale: 2, nullable: true })
   airfare_entitlement!: string;
 
-  // Spouse airfare entitlement attribute
-  @Column({ 
-    type: "number", 
-    name: "SPOUSE_AF_ENTITLEMENT", 
-    precision: 10, 
-    scale: 2, 
-    nullable: true 
-  })
+  @Column({ name: "SPOUSE_AF_ENTITLEMENT", type: "number", precision: 10, scale: 2, nullable: true })
   spouse_af_entitlement!: string;
 
-  // Dependent airfare entitlement attribute
-  @Column({ 
-    type: "number", 
-    name: "DEP_AF_ENTITLEMENT", 
-    precision: 10, 
-    scale: 2, 
-    nullable: true 
-  })
+  @Column({ name: "DEP_AF_ENTITLEMENT", type: "number", precision: 10, scale: 2, nullable: true })
   dep_af_entitlement!: string;
 
-  // Medical entitlement attribute
-  @Column({ 
-    type: "number", 
-    name: "MEDICAL_ENTITLEMENT", 
-    precision: 10, 
-    scale: 2, 
-    nullable: true 
-  })
+  @Column({ name: "MEDICAL_ENTITLEMENT", type: "number", precision: 10, scale: 2, nullable: true })
   medical_entitlement!: string;
 
-  // Spouse medical entitlement attribute
-  @Column({ type: "varchar2", name: "SPOUSE_MED_ENTITLEMENT", length: 10, nullable: true })
+  @Column({ name: "SPOUSE_MED_ENTITLEMENT", type: "varchar2", length: 10, nullable: true })
   spouse_med_entitlement!: string;
 
-  // Dependent medical entitlement attribute
-  @Column({ type: "varchar2", name: "DEP_MED_ENTITLEMENT", length: 10, nullable: true })
+  @Column({ name: "DEP_MED_ENTITLEMENT", type: "varchar2", length: 10, nullable: true })
   dep_med_entitlement!: string;
 
-  // Remarks attribute
-  @Column({ type: "varchar2", name: "REMARKS", length: 100, nullable: true })
+  @Column({ name: "REMARKS", type: "varchar2", length: 100, nullable: true })
   remarks!: string;
 
-  // Status attribute
-  @Column({ type: "varchar2", name: "STATUS", length: 1, nullable: true })
+  @Column({ name: "STATUS", type: "varchar2", length: 1, nullable: true })
   status!: string;
 
-  // Type attribute
-  @Column({ type: "varchar2", name: "TYPE", length: 10, nullable: true })
+  @Column({ name: "USER_ID", type: "varchar2", length: 20, nullable: true })
+  user_id!: string;
+
+  @Column({ name: "USER_DT", type: "varchar2", length: 20, nullable: true })
+  user_dt!: string;
+
+  @Column({ name: "TYPE", type: "varchar2", length: 10, nullable: true })
   type!: string;
 
-  // Grade status attribute
-  @Column({ type: "varchar2", name: "GRADE_STATUS", length: 10, nullable: true })
+  @Column({ name: "GRADE_STATUS", type: "varchar2", length: 10, nullable: true })
   grade_status!: string;
 
-  // Updated by attribute
-  @Column({ type: "varchar2", name: "UPDATED_BY", length: 255, nullable: true })
-  updated_by!: string;
+  @Column({ name: "MAIN_GRADE_CODE", type: "varchar2", length: 10, nullable: true })
+  main_grade_code!: string;
 
-  // Created by attribute
-  @Column({ type: "varchar2", name: "CREATED_BY", length: 255, nullable: true })
-  created_by!: string;
-
-  // Created at attribute (automatically managed)
-  @CreateDateColumn({ name: "CREATED_AT", type: "timestamp", nullable: true })
-  created_at!: Date;
-
-  // Updated at attribute (automatically managed)
-  @UpdateDateColumn({ name: "UPDATED_AT", type: "timestamp", nullable: true })
-  updated_at!: Date;
+  @Column({ name: "DEF_GRADE_CODE", type: "varchar2", length: 10, nullable: true })
+  def_grade_code!: string;
 }
