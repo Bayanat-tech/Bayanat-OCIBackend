@@ -121,16 +121,17 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         REF_DOC_TYPE,
         REF_DOC_NO,
         PROD_CODE,
-        PDO_TYPE,
+        NULL AS PDO_TYPE,
         QTY_RCV,
         OTHER_REMARKS,
         AMOUNT_RCV,
         DIV_CODE,
         TX_CAT_CODE,
         TX_COMPNTCAT_CODE_1
-      FROM VW_VMS_FLOW_DTL
+      FROM VMS_FLOW_DTL
       WHERE COMPANY_CODE = 'BSG'
         AND DOC_NO = :new_doc_no
+        AND HEADER_AC_CODE = :ac_code
            ORDER BY SERIAL_NO
     `;
 
@@ -146,7 +147,8 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
 
     // Execute details query
     const detailResult = await oracleDb.query(queryDetail, {
-      new_doc_no
+      new_doc_no,
+      ac_code
 
     });
     const VendorDetailData = detailResult.rows || detailResult;
