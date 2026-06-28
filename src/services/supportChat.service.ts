@@ -94,12 +94,14 @@ export class SupportChatService {
         LAST_SEEN_AT DATE DEFAULT SYSDATE
       )`
     );
+    await ensureDateColumn("SUPPORT_PRESENCE", "LAST_SEEN_AT");
     initialized = true;
   }
 
   static async heartbeat(user: UserContext) {
     await this.ensureSchema();
     const loginid = getLoginId(user);
+    const nowSql = await getPresenceNowSql();
     const existing = await fetchOne(
       `SELECT LOGINID FROM ${ROOT_SCHEMA}.SUPPORT_PRESENCE WHERE LOGINID = :loginid`,
       { loginid }
@@ -116,7 +118,7 @@ export class SupportChatService {
             SET USERNAME = :username,
                 COMPANY_CODE = :companyCode,
                 TENANT_ID = :tenantId,
-                LAST_SEEN_AT = SYSDATE
+                LAST_SEEN_AT = ${nowSql}
           WHERE LOGINID = :loginid`,
         binds
       );
@@ -124,7 +126,7 @@ export class SupportChatService {
       await oracleDb.query(
         `INSERT INTO ${ROOT_SCHEMA}.SUPPORT_PRESENCE
           (LOGINID, USERNAME, COMPANY_CODE, TENANT_ID, LAST_SEEN_AT)
-         VALUES (:loginid, :username, :companyCode, :tenantId, SYSDATE)`,
+         VALUES (:loginid, :username, :companyCode, :tenantId, ${nowSql})`,
         binds
       );
     }
@@ -133,28 +135,30 @@ export class SupportChatService {
 
   static async getActiveUsers() {
     await this.ensureSchema();
+    const seen = await getPresenceLastSeenSql();
     const result = await oracleDb.query(
       `SELECT LOGINID, USERNAME, COMPANY_CODE, TENANT_ID,
-              TO_CHAR(LAST_SEEN_AT, 'YYYY-MM-DD HH24:MI:SS') AS LAST_SEEN_AT,
-              CASE WHEN LAST_SEEN_AT >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS IS_ONLINE
+              ${seen.displayExpr} AS LAST_SEEN_AT,
+              CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS IS_ONLINE
          FROM ${ROOT_SCHEMA}.SUPPORT_PRESENCE
-        ORDER BY CASE WHEN LAST_SEEN_AT >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
-                 LAST_SEEN_AT DESC`
+        ORDER BY CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
+                 ${seen.dateExpr} DESC`
     );
     return await normalizeRows(result.rows || []);
   }
 
   static async getDirectory() {
     await this.ensureSchema();
+    const seen = await getPresenceLastSeenSql("P");
     const result = await oracleDb.query(
       `SELECT U.LOGINID, U.USERNAME, U.EMAIL_ID, U.COMPANY_CODE,
               NVL(P.TENANT_ID, '') AS TENANT_ID,
-              TO_CHAR(P.LAST_SEEN_AT, 'YYYY-MM-DD HH24:MI:SS') AS LAST_SEEN_AT,
-              CASE WHEN P.LAST_SEEN_AT >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS IS_ONLINE
+              ${seen.displayExpr} AS LAST_SEEN_AT,
+              CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS IS_ONLINE
          FROM ${ROOT_SCHEMA}.SEC_LOGINTEST U
          LEFT JOIN ${ROOT_SCHEMA}.SUPPORT_PRESENCE P ON P.LOGINID = U.LOGINID
         WHERE NVL(U.ACTIVE_FLAG, 'Y') = 'Y'
-        ORDER BY CASE WHEN P.LAST_SEEN_AT >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
+        ORDER BY CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
                  U.LOGINID`
     );
     return await normalizeRows(result.rows || []);
@@ -167,13 +171,14 @@ export class SupportChatService {
     const binds: Record<string, any> = {};
     const where = isAdmin ? "" : "WHERE T.REQUESTER_LOGINID = :loginid OR T.ASSIGNED_TO = :loginid";
     if (!isAdmin) binds.loginid = loginid;
+    const seen = await getPresenceLastSeenSql("P");
     const result = await oracleDb.query(
       `SELECT T.TICKET_ID, T.COMPANY_CODE, T.TENANT_ID, T.REQUESTER_LOGINID, T.REQUESTER_NAME,
               T.ASSIGNED_TO, T.SUBJECT, T.MODULE_NAME, T.PAGE_URL, T.STATUS, T.PRIORITY,
               T.LAST_MESSAGE, TO_CHAR(T.LAST_MESSAGE_AT, 'YYYY-MM-DD HH24:MI:SS') AS LAST_MESSAGE_AT,
               TO_CHAR(T.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
-              TO_CHAR(P.LAST_SEEN_AT, 'YYYY-MM-DD HH24:MI:SS') AS REQUESTER_LAST_SEEN_AT,
-              CASE WHEN P.LAST_SEEN_AT >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS REQUESTER_IS_ONLINE,
+              ${seen.displayExpr} AS REQUESTER_LAST_SEEN_AT,
+              CASE WHEN ${seen.dateExpr} >= SYSDATE - (5 / 1440) THEN 'Y' ELSE 'N' END AS REQUESTER_IS_ONLINE,
               (SELECT COUNT(*) FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE M
                 WHERE M.TICKET_ID = T.TICKET_ID
                   AND M.SENDER_LOGINID <> :viewerLoginid
@@ -357,12 +362,86 @@ export class SupportChatService {
 }
 
 async function createTableIfMissing(tableName: string, ddl: string) {
+  const existing = await fetchOne(
+    `SELECT TABLE_NAME
+       FROM ALL_TABLES
+      WHERE OWNER = :owner
+        AND TABLE_NAME = :tableName`,
+    { owner: ROOT_SCHEMA, tableName }
+  );
+  if (existing) return;
+
   try {
     await oracleDb.query(ddl);
   } catch (error: any) {
     if (error?.errorNum === 955 || String(error?.message || "").includes("ORA-00955")) return;
     throw error;
   }
+}
+
+async function ensureDateColumn(tableName: string, columnName: string) {
+  const column = await fetchOne(
+    `SELECT DATA_TYPE
+       FROM ALL_TAB_COLUMNS
+      WHERE OWNER = :owner
+        AND TABLE_NAME = :tableName
+        AND COLUMN_NAME = :columnName`,
+    { owner: ROOT_SCHEMA, tableName, columnName }
+  );
+  const dataType = String(column?.DATA_TYPE || "").toUpperCase();
+  if (!dataType || dataType === "DATE" || dataType.startsWith("TIMESTAMP")) return;
+
+  const tempColumn = `${columnName}_DT`;
+  const tempExists = await fetchOne(
+    `SELECT DATA_TYPE
+       FROM ALL_TAB_COLUMNS
+      WHERE OWNER = :owner
+        AND TABLE_NAME = :tableName
+        AND COLUMN_NAME = :tempColumn`,
+    { owner: ROOT_SCHEMA, tableName, tempColumn }
+  );
+  if (!tempExists) {
+    await oracleDb.query(`ALTER TABLE ${ROOT_SCHEMA}.${tableName} ADD ${tempColumn} DATE DEFAULT SYSDATE`);
+  }
+  await oracleDb.query(`UPDATE ${ROOT_SCHEMA}.${tableName} SET ${tempColumn} = SYSDATE WHERE ${tempColumn} IS NULL`);
+  await oracleDb.query(`ALTER TABLE ${ROOT_SCHEMA}.${tableName} DROP COLUMN ${columnName}`);
+  await oracleDb.query(`ALTER TABLE ${ROOT_SCHEMA}.${tableName} RENAME COLUMN ${tempColumn} TO ${columnName}`);
+}
+
+async function getPresenceNowSql() {
+  const dataType = await getColumnDataType("SUPPORT_PRESENCE", "LAST_SEEN_AT");
+  if (dataType === "DATE" || dataType.startsWith("TIMESTAMP")) return "SYSDATE";
+  return "TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS')";
+}
+
+async function getPresenceLastSeenSql(alias?: string) {
+  const columnRef = `${alias ? `${alias}.` : ""}LAST_SEEN_AT`;
+  const textExpr = `TRIM(TO_CHAR(${columnRef}))`;
+  const dateExpr = `CASE
+      WHEN ${columnRef} IS NULL THEN NULL
+      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$') THEN TO_DATE(${textExpr}, 'YYYY-MM-DD HH24:MI:SS')
+      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') THEN TO_DATE(${textExpr}, 'YYYY-MM-DD')
+      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}-[[:alpha:]]{3}-[0-9]{2}$') THEN TO_DATE(${textExpr}, 'DD-MON-RR', 'NLS_DATE_LANGUAGE=English')
+      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}-[[:alpha:]]{3}-[0-9]{4}$') THEN TO_DATE(${textExpr}, 'DD-MON-YYYY', 'NLS_DATE_LANGUAGE=English')
+      WHEN REGEXP_LIKE(${textExpr}, '^[0-9]{2}/[0-9]{2}/[0-9]{4}$') THEN TO_DATE(${textExpr}, 'DD/MM/YYYY')
+      ELSE NULL
+    END`;
+  return {
+    dateExpr,
+    displayExpr: `TO_CHAR(${dateExpr}, 'YYYY-MM-DD HH24:MI:SS')`,
+  };
+}
+
+async function getColumnDataType(tableName: string, columnName: string) {
+  const column = await fetchOne(
+    `SELECT DATA_TYPE
+       FROM ALL_TAB_COLUMNS
+      WHERE OWNER = :owner
+        AND TABLE_NAME = :tableName
+        AND COLUMN_NAME = :columnName`,
+    { owner: ROOT_SCHEMA, tableName, columnName }
+  );
+  return String(column?.DATA_TYPE || "").toUpperCase();
 }
 
 async function fetchOne(sql: string, binds: Record<string, any>) {
