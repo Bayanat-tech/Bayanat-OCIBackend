@@ -45,6 +45,16 @@ import {
   SecModule,
   User,
 } from "../entity/Security";
+import { TsStn } from "../entity/WMS/TsStn.entity";
+import { TsStndetail } from "../entity/WMS/TsStndetail.entity";
+import { TaAdjDetail } from "../entity/WMS/taAdjDetail.entity";
+import {TaAdjHeader} from "../entity/WMS/taAdjHeader.entity";
+import {InboundJobWms} from "../entities/wms/transaction/inbound/InboundJobWms.entity"
+import { JobOutboundWms } from "../models/wms/transaction/outbound/JobOutboundWms.entity";
+import { TiContainer } from "../entities/wms/transaction/inbound/TiContainer.entity";
+import { PackingDetailsInboundWms } from "../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity";
+import { Product } from "../entity/WMS/product.entity";
+import { TiPackdet } from "../entity/WMS/TiPackdet";
 
 // ==================== ORACLE CLIENT INIT ====================
 // TEMP EMERGENCY: allow skipping Oracle thick client init using FORCE_THIN_ORACLE=1
@@ -132,7 +142,18 @@ export const AppDataSource = new DataSource({
   SecLoginUserDivision,
   SecModule,
   User,
+  TsStn, 
+  TsStndetail,
+  TaAdjDetail,
+  TaAdjHeader,
+  InboundJobWms,
+  JobOutboundWms,
+  TiContainer,
+  PackingDetailsInboundWms,
+  TiPackdet,
+  Product
 ],
+
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
   extra: {
