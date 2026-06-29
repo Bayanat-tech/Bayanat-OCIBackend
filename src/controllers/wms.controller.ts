@@ -778,8 +778,6 @@ case "product":
   }
   break;
   
-
-// Fetching account setup data from the AcSetupService
 case "accountsetup":
   {
     // Get pagination parameters
@@ -910,14 +908,6 @@ case "manufacturer":
   }
   break;
 
-// Fetching category data from the Manufacture model for dropdown
-// case "ddcategory": {
-//   (fetchedData = await Categorymaster.findAll({
-//     where: { company_code: requestUser.company_code },
-//     ...paginationOptions,
-//   })) as unknown[] as ICategorymaster[];
-// }
-// break;
   
 // Fetching group data using GroupService
 case "ddgroup": {
@@ -963,9 +953,6 @@ case "ddgroup": {
 break;
 
 
-
-
-  
 case "group":
   {
     // Get pagination parameters
@@ -2781,19 +2768,6 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
           }
         }
         break;
-
-      // Delete alert data
-      // case "alert":
-      //   {
-      //     // Destroy alert data with company code and op code
-      //     await Alert.destroy({
-      //       where: {
-      //         company_code: requestUser.company_code,
-      //         op_code: ids,
-      //       },
-      //     });
-      //   }
-      //   break;
 
       // Delete department data
       case "department":
