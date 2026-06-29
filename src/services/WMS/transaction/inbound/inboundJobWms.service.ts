@@ -1,4 +1,4 @@
-import { getRepository } from "../../../../database/connection";
+import { getRepository, AppDataSource } from "../../../../database/connection";
 // import { InboundJobWms } from "../../../../models/wms/transaction/inbound/InboundJobWms.entity";
 import {InboundJobWms} from "../../../../entities/wms/transaction/inbound/InboundJobWms.entity"
 import { PackingDetailsInboundWms } from "../../../../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity";
@@ -9,7 +9,7 @@ import {TiTallyDetail} from "../../../../entity/WMS/TiTallyDetail.entity"
 export class InboundJobWmsService {
   async getTallyProductData(prin_code: string, job_no: string, container_no: string) {
     try {
-      const repository = getRepository(PackingDetailsInboundWms);
+      const repository = AppDataSource.getRepository(PackingDetailsInboundWms);
       
       // Build where conditions
       const whereConditions: any = {

@@ -12,7 +12,7 @@ import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { PackingDetailsService } from "../../../../services/WMS/transaction/inbound/packingDetails.service"; // ADD THIS
 import { ProductService } from "../../../../services/WMS/product.service"; // ADD THIS
-import { PackingDetailsInboundWms } from "../../../../entities/wms/transportation/inbound/PackingDetailsInboundWms.entity"; // ADD THIS
+import { PackingDetailsInboundWms } from "../../../../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity"; // ADD THIS
 import { InboundJobWmsService } from "../../../../services/WMS/transaction/inbound/inboundJobWms.service";
 import oracledb from "oracledb";
 import { oracleDb } from "../../../../database/connection";
