@@ -67,6 +67,7 @@ export const getFinanceListData = async (
                   ac_name: "ac_name",
                   party_name: "ac_name",
                   ref_no: "ref_no",
+                  ac_payee: "ac_name",
                 };
                 const dbField = columnMap[field_name];
                 if (!dbField) return;

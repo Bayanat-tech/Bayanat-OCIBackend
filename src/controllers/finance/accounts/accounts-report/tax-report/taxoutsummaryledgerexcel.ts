@@ -161,9 +161,9 @@ function buildTaxSummaryExcelBuffer(rows: any[], loginid: string, parameter: str
     tableRows.push([
       xc(text(r.ac_code), "normal"),
       xc(text(r.ac_name), "normal"),
-      xc(invAmount,       "numData"),
-      xc(taxableInvAmt,   "numData"),
-      xc(taxAmount,       "numData"),
+      xc(formatBalance(invAmount),       "numData"),
+      xc(formatBalance(taxableInvAmt),   "numData"),
+      xc(formatBalance(taxAmount),       "numData"),
     ]);
   });
 
@@ -171,9 +171,9 @@ function buildTaxSummaryExcelBuffer(rows: any[], loginid: string, parameter: str
   tableRows.push([
     xc("TOTAL", "company"),
     skip,
-    xc(totalInvAmount,     "numData"),
-    xc(totalTaxableInvAmt, "numData"),
-    xc(totalTaxAmount,     "numData"),
+    xc(formatBalance(totalInvAmount),     "numData"),
+    xc(formatBalance(totalTaxableInvAmt), "numData"),
+    xc(formatBalance(totalTaxAmount),     "numData"),
   ]);
 
   // ── Build merges ────────────────────────────────────────────────────────────

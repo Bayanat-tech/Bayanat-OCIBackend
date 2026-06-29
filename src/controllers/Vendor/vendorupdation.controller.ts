@@ -931,7 +931,7 @@ export const executeRawSql = async (
   res: Response
 ): Promise<void> => {
   try {
-    let rawSql: string = req.body?.raw_sql || req.query?.sql;
+    let rawSql: string = req.body?.raw_sql || req.body?.sql || req.query?.sql;
 
     if (!rawSql || typeof rawSql !== "string") {
       res.status(400).json({ error: "Missing or invalid raw SQL string" });

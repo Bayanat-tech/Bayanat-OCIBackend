@@ -3,6 +3,7 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import constants from "../../helpers/constants";
 import { SecurityMasterService } from "./../../services/Security/securitymaster.service";
+import { TenantAdminService } from "../../services/Security/tenantAdmin.service";
 
 export const getSecMaster = async (
   req: RequestWithUser,
@@ -173,6 +174,30 @@ export const getSecMaster = async (
         );
         break;
 
+      case "tenant_user":
+        result = await TenantAdminService.getTenantUsers({
+          page,
+          limit,
+          searchFilter: filter.search,
+        });
+        break;
+
+      case "tenant_registry":
+        result = await TenantAdminService.getTenantRegistry({
+          page,
+          limit,
+          searchFilter: filter.search,
+        });
+        break;
+
+      case "tenant_mapping":
+        result = await TenantAdminService.getTenantMappings({
+          page,
+          limit,
+          searchFilter: filter.search,
+        });
+        break;
+
       default:
         res.status(constants.STATUS_CODES.BAD_REQUEST).json({
           success: false,
@@ -211,11 +236,25 @@ export const deleteSecMaster = async (
       return;
     }
 
-    const isDeleted = await SecurityMasterService.deleteMasterRecords(
-      master,
-      requestUser.company_code,
-      ids
-    );
+    let isDeleted = false;
+    switch (master) {
+      case "tenant_user":
+        isDeleted = await TenantAdminService.deleteTenantUsers(ids);
+        break;
+      case "tenant_registry":
+        isDeleted = await TenantAdminService.deleteTenantRegistry(ids);
+        break;
+      case "tenant_mapping":
+        isDeleted = await TenantAdminService.deleteTenantMappings(ids);
+        break;
+      default:
+        isDeleted = await SecurityMasterService.deleteMasterRecords(
+          master,
+          requestUser.company_code,
+          ids
+        );
+        break;
+    }
 
     if (!isDeleted) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
