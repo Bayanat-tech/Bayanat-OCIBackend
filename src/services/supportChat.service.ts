@@ -1,4 +1,5 @@
 import { oracleDb } from "../database/connection";
+import { uploadSupportAttachmentToS3 } from "./ociUpload.service";
 import { emitSupportPresenceChanged, emitSupportTicketChanged, resolveSupportRole } from "./supportRealtime.service";
 
 const ROOT_SCHEMA = "CUSTOMERS";
@@ -66,10 +67,14 @@ export class SupportChatService {
         FILE_NAME VARCHAR2(300),
         FILE_TYPE VARCHAR2(120),
         FILE_SIZE NUMBER,
+        OBJECT_KEY VARCHAR2(1000),
+        FILE_URL VARCHAR2(2000),
         DATA_URL CLOB,
         CREATED_AT DATE DEFAULT SYSDATE
       )`
     );
+    await addColumnIfMissing("SUPPORT_ATTACHMENT", "OBJECT_KEY", "VARCHAR2(1000)");
+    await addColumnIfMissing("SUPPORT_ATTACHMENT", "FILE_URL", "VARCHAR2(2000)");
     await createTableIfMissing(
       "SUPPORT_PRESENCE",
       `CREATE TABLE ${ROOT_SCHEMA}.SUPPORT_PRESENCE (
@@ -175,7 +180,8 @@ export class SupportChatService {
         connection
       );
       const attachments = await oracleDb.query(
-        `SELECT ATTACHMENT_ID, TICKET_ID, MESSAGE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE, DATA_URL,
+        `SELECT ATTACHMENT_ID, TICKET_ID, MESSAGE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE,
+                DATA_URL, FILE_URL, OBJECT_KEY,
                 TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
            FROM ${ROOT_SCHEMA}.SUPPORT_ATTACHMENT
           WHERE TICKET_ID = :ticketId
@@ -316,17 +322,20 @@ export class SupportChatService {
     );
     const messageId = Number(result.outBinds?.messageId?.[0] || result.outBinds?.messageId);
     for (const attachment of attachments.slice(0, 5)) {
+      const stored = await storeAttachmentInObjectStorage(attachment, ticketId, messageId, user);
       await oracleDb.query(
         `INSERT INTO ${ROOT_SCHEMA}.SUPPORT_ATTACHMENT
-          (TICKET_ID, MESSAGE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE, DATA_URL, CREATED_AT)
-         VALUES (:ticketId, :messageId, :fileName, :fileType, :fileSize, :dataUrl, SYSDATE)`,
+          (TICKET_ID, MESSAGE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE, OBJECT_KEY, FILE_URL, DATA_URL, CREATED_AT)
+         VALUES (:ticketId, :messageId, :fileName, :fileType, :fileSize, :objectKey, :fileUrl, :dataUrl, SYSDATE)`,
         {
           ticketId,
           messageId,
-          fileName: cleanText(attachment.file_name).slice(0, 300),
-          fileType: cleanText(attachment.file_type).slice(0, 120),
-          fileSize: Number(attachment.file_size) || 0,
-          dataUrl: cleanText(attachment.data_url),
+          fileName: stored.fileName,
+          fileType: stored.fileType,
+          fileSize: stored.fileSize,
+          objectKey: stored.objectKey,
+          fileUrl: stored.fileUrl,
+          dataUrl: stored.dataUrlFallback,
         }
       );
     }
@@ -341,6 +350,73 @@ async function createTableIfMissing(tableName: string, ddl: string) {
   );
   if (exists) return;
   await oracleDb.query(ddl);
+}
+
+async function storeAttachmentInObjectStorage(attachment: AttachmentInput, ticketId: number, messageId: number, user: UserContext) {
+  const fileName = cleanFileName(attachment.file_name || `attachment-${Date.now()}.bin`).slice(0, 300);
+  const fileType = cleanText(attachment.file_type).slice(0, 120) || "application/octet-stream";
+  const parsed = parseDataUrl(cleanText(attachment.data_url), fileType);
+  if (!parsed) {
+    return {
+      fileName,
+      fileType,
+      fileSize: Number(attachment.file_size) || 0,
+      objectKey: null,
+      fileUrl: cleanText(attachment.data_url) || null,
+      dataUrlFallback: null,
+    };
+  }
+
+  const safeTenant = safeObjectSegment(user.tenantId || user.company_code || "tenant");
+  const safeLogin = safeObjectSegment(getLoginId(user));
+  const objectKey = [
+    "support-chat",
+    safeTenant,
+    String(ticketId),
+    String(messageId),
+    `${Date.now()}-${safeLogin}-${fileName}`,
+  ].join("/");
+  const fileUrl = await uploadSupportAttachmentToS3(parsed.buffer, objectKey, parsed.contentType);
+
+  return {
+    fileName,
+    fileType: parsed.contentType,
+    fileSize: parsed.buffer.length,
+    objectKey,
+    fileUrl,
+    dataUrlFallback: null,
+  };
+}
+
+function parseDataUrl(dataUrl: string, fallbackType: string) {
+  const match = dataUrl.match(/^data:([^;,]+)?(?:;[^,]*)?;base64,(.*)$/);
+  if (!match) return null;
+  return {
+    contentType: match[1] || fallbackType || "application/octet-stream",
+    buffer: Buffer.from(match[2], "base64"),
+  };
+}
+
+function cleanFileName(value: string) {
+  const cleaned = cleanText(value).replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim();
+  return cleaned || `attachment-${Date.now()}.bin`;
+}
+
+function safeObjectSegment(value: string) {
+  return cleanText(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+async function addColumnIfMissing(tableName: string, columnName: string, definition: string) {
+  const exists = await fetchOne(
+    `SELECT COLUMN_NAME
+       FROM ALL_TAB_COLUMNS
+      WHERE OWNER = :owner
+        AND TABLE_NAME = :tableName
+        AND COLUMN_NAME = :columnName`,
+    { owner: ROOT_SCHEMA, tableName, columnName }
+  );
+  if (exists) return;
+  await oracleDb.query(`ALTER TABLE ${ROOT_SCHEMA}.${tableName} ADD (${columnName} ${definition})`);
 }
 
 async function fetchOne(sql: string, binds: Record<string, any>) {

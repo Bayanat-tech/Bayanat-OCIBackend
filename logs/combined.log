@@ -74124,3 +74124,6 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
 2026-06-28 20:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-06-28 20:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
 2026-06-28 20:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-06-29 16:24:10 [[32minfo[39m]: Support attachment uploaded to OCI Object Storage: support-chat/WMSTST_TENANT/9/19/1782730449463-PREM-a.png 
+2026-06-29 16:38:02 [[32minfo[39m]: Support attachment uploaded to OCI Object Storage: support-chat/WMSTST_TENANT/9/23/1782731282148-PREM-Linux_Command.pdf 
+2026-06-29 16:57:49 [[32minfo[39m]: Support attachment uploaded to OCI Object Storage: support-chat/WMSTST_TENANT/11/25/1782732469299-ADMIN-a.png 
