@@ -11,9 +11,8 @@ import * as fastCsv from "fast-csv";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { ShipmentDetailsService } from "../../../../services/WMS/transaction/inbound/shipmentDetails.service";
-import { AppDataSource } from "../../../../database/connection"; 
 
-const shipmentService = new ShipmentDetailsService(AppDataSource);
+const shipmentService = new ShipmentDetailsService();
 
 export const getAllShipmentDetails = async (
   req: RequestWithUser,

@@ -1,11 +1,12 @@
 import { getRepository } from "../../../../database/connection";
-import { PackingDetailsInboundWms } from "../../../../entities/wms/transportation/inbound/PackingDetailsInboundWms.entity";
+import { PackingDetailsInboundWms } from "../../../../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity"
 import { IPackingDetails } from "../../../../interfaces/wms/transaction/inbound/packingDetails_wms.interface";
 import { FindManyOptions, FindOneOptions } from "typeorm";
+import { AppDataSource } from "../../../../database/connection";
 
 export class PackingDetailsService {
   private static getPackingDetailsRepository() {
-    return getRepository(PackingDetailsInboundWms);
+    return AppDataSource.getRepository(PackingDetailsInboundWms);
   }
 
   // Find a single packing detail by composite key
