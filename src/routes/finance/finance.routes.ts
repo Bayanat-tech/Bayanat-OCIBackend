@@ -43,6 +43,7 @@ import { upsertVendorActivity } from "../../controllers/finance/accounts/transac
 import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
 import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
 import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
+import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIncrement";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -137,6 +138,11 @@ router.post(
 router.post(
   "/insUpdGradeSalaryIncrement",
   insUpdGradeSalaryIncrement)
+
+  router.post(
+  "/insUpdEmpSalaryIncrement ",
+  insUpdEmpSalaryIncrement )
+
   // hr
 router.post(
   "/insUpdHrPayCompDepend",

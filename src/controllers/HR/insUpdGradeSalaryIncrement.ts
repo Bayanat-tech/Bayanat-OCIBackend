@@ -1,3 +1,5 @@
+
+
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../src/database/TenantManager";
@@ -8,124 +10,123 @@ export const insUpdGradeSalaryIncrement = async (
   res: Response
 ): Promise<void> => {
 
-let connection: oracledb.Connection | undefined;
+  let connection: oracledb.Connection | undefined;
 
-try {
+  try {
 
-    const data=req.body;
+    const data = req.body;
 
-    const tenantId=getCurrentTenantId();
+    const tenantId = getCurrentTenantId();
 
-    if(!tenantId){
-        res.status(400).json({
-            success:false,
-            message:"Tenant not found"
-        });
-        return;
+    if (!tenantId) {
+      res.status(400).json({
+        success: false,
+        message: "Tenant not found"
+      });
+      return;
     }
 
-    connection=await TenantManager.getConnection(
-        tenantId
-    );
+    connection = await TenantManager.getConnection(tenantId);
 
     await connection.execute(
-    `
-    BEGIN
+      `
+      BEGIN
         PROC_INS_UPD_GRADE_SAL_INCREMENT(
-            :p_data
+          :p_data
         );
-    END;
-    `,
-    {
-        p_data:{
-            type:"HR_GRADE_SAL_INC_OBJ",
-            val:{
+      END;
+      `,
+      {
+        p_data: {
+          type: "HR_GRADE_SAL_INC_TAB",   // 👈 CHANGED TO COLLECTION TYPE
+          val: data.map((item: any) => ({
 
-                COMPANY_CODE:data.company_code,
-                GRADE_CODE:data.grade_code,
-                PAY_COMP_ID:data.pay_comp_id,
-                OLD_GRADE_AMT:data.old_grade_amt,
-                PERC_INCREMENT:data.perc_increment,
-                AMT_INCREMENT:data.amt_increment,
+            COMPANY_CODE: item.company_code,
+            GRADE_CODE: item.grade_code,
+            PAY_COMP_ID: item.pay_comp_id,
 
-                INCREMENTED_BY:data.incremented_by,
+            OLD_GRADE_AMT: item.old_grade_amt,
+            PERC_INCREMENT: item.perc_increment,
+            AMT_INCREMENT: item.amt_increment,
 
-                INCREMENTED_ON:data.incremented_on
-                ? new Date(data.incremented_on)
-                :null,
+            INCREMENTED_BY: item.incremented_by,
 
-                APPROVED_BY:data.approved_by,
+            INCREMENTED_ON: item.incremented_on
+              ? new Date(item.incremented_on)
+              : null,
 
-                APPROVED_ON:data.approved_on
-                ? new Date(data.approved_on)
-                :null,
+            APPROVED_BY: item.approved_by,
 
-                ARREARS_FLAG:data.arrears_flag,
-                ARREARS_AMT:data.arrears_amt,
+            APPROVED_ON: item.approved_on
+              ? new Date(item.approved_on)
+              : null,
 
-                EFFECTIVE_DATE:data.effective_date
-                ? new Date(data.effective_date)
-                :null,
+            ARREARS_FLAG: item.arrears_flag,
+            ARREARS_AMT: item.arrears_amt,
 
-                ACTUAL_EFFECTIVE_DATE:data.actual_effective_date
-                ? new Date(data.actual_effective_date)
-                :null,
+            EFFECTIVE_DATE: item.effective_date
+              ? new Date(item.effective_date)
+              : null,
 
-                USER_ID:data.user_id,
+            ACTUAL_EFFECTIVE_DATE: item.actual_effective_date
+              ? new Date(item.actual_effective_date)
+              : null,
 
-                USER_DT:data.user_dt
-                ? new Date(data.user_dt)
-                :null,
+            USER_ID: item.user_id,
 
-                VERIFIED_BY:data.verified_by,
+            USER_DT: item.user_dt
+              ? new Date(item.user_dt)
+              : null,
 
-                VERIFIED_ON:data.verified_on
-                ? new Date(data.verified_on)
-                :null,
+            VERIFIED_BY: item.verified_by,
 
-                STATUS:data.status,
-                REMARKS:data.remarks,
-                APPROVAL_STATUS:data.approval_status,
-                POSTED:data.posted,
-                ARREARS_PERCENT:data.arrears_percent,
-                POSTED_TO_EMP_INCR:data.posted_to_emp_incr,
+            VERIFIED_ON: item.verified_on
+              ? new Date(item.verified_on)
+              : null,
 
-                SLNO:data.slno,
+            STATUS: item.status,
+            REMARKS: item.remarks,
+            APPROVAL_STATUS: item.approval_status,
+            POSTED: item.posted,
 
-                INCREMENT_TYPE:data.increment_type
-            }
+            ARREARS_PERCENT: item.arrears_percent,
+            POSTED_TO_EMP_INCR: item.posted_to_emp_incr,
+
+            SLNO: item.slno,
+
+            INCREMENT_TYPE: item.increment_type
+
+          }))
         }
-    },
-    {
-        autoCommit:false
-    });
+      },
+      {
+        autoCommit: false
+      }
+    );
 
     await connection.commit();
 
     res.status(200).json({
-        success:true,
-        message:"Salary Increment saved successfully"
+      success: true,
+      message: "Grade Salary Increment saved successfully"
     });
 
-}
-catch(error:any){
+  } catch (error: any) {
 
-    if(connection){
-        await connection.rollback();
+    if (connection) {
+      await connection.rollback();
     }
 
     res.status(500).json({
-        success:false,
-        message:error.message
+      success: false,
+      message: error.message
     });
 
-}
-finally{
+  } finally {
 
-    if(connection){
-        await connection.close();
+    if (connection) {
+      await connection.close();
     }
 
-}
-
+  }
 };
