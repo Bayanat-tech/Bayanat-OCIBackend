@@ -43,7 +43,6 @@ import pamsRoutes from "./src/routes/pams.routes";
 import supportRoutes from "./src/routes/support.routes";
 
 import almsRoutes from "./src/routes/alms.routes";
-import supportRoutes from "./src/routes/support.routes";
 
 //----------------routes-------------
 
