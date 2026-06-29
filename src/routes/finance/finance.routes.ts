@@ -41,6 +41,7 @@ import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
 import { upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
 import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
 import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
+import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -51,6 +52,14 @@ router.post(
   "/insUpdChqDepositBulk",
   insUpdChqDepositBulk
 );
+
+
+
+router.post(
+  "/insUpdEmpLeaveencashment",
+  insUpdEmpLeaveencashment
+);
+
 
 router.post(
   "/upsertBudget",

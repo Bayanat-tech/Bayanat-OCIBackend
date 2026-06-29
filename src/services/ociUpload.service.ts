@@ -244,6 +244,28 @@ export const uploadFile = async (
   }
 }
 
+export const uploadSupportAttachmentToS3 = async (
+  buffer: Buffer,
+  key: string,
+  contentType: string
+): Promise<string> => {
+  const objectParams: UploadToS3ObjectInterface = {
+    Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType || "application/octet-stream",
+  };
+
+  try {
+    await s3Client.send(new PutObjectCommand(objectParams));
+    logger.info(`Support attachment uploaded to OCI Object Storage: ${key}`);
+    return constants.OCI_S3_COMPATIBILITY.getObjectUrl(key);
+  } catch (error) {
+    logger.error("Support attachment OCI upload failed", error);
+    throw new Error("Failed to upload support attachment to OCI Object Storage");
+  }
+};
+
 export const uploadEmployeeFace = async (
   buffer: Buffer,
   employeeId: string,
