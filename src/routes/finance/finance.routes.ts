@@ -140,7 +140,7 @@ router.post(
   insUpdGradeSalaryIncrement)
 
   router.post(
-  "/insUpdEmpSalaryIncrement ",
+  "/insUpdEmpSalaryIncrement",
   insUpdEmpSalaryIncrement )
 
   // hr
