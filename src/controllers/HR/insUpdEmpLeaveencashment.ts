@@ -60,7 +60,7 @@ export const insUpdEmpLeaveencashment = async (
     await connection.execute(
       `
       BEGIN
-        WMSTST.PROC_INS_UPD_HR_EMP_LEAVE(
+        PROC_INS_UPD_HR_EMP_LEAVE(
             :p_header,
             :p_details
         );
