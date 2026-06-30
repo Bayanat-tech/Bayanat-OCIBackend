@@ -2,7 +2,7 @@ FROM node:20-bookworm-slim
 
 ENV ORACLE_INSTANT_CLIENT_PATH=/opt/oracle/instantclient_19_31 \
     LD_LIBRARY_PATH=/opt/oracle/instantclient_19_31 \
-    PORT=3500
+    PORT=8001
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN mkdir -p /opt/oracle \
 
 COPY package.json yarn.lock ./
 
-RUN yarn install --frozen-lockfile --non-interactive
+RUN yarn install
 
 COPY . .
 
@@ -29,6 +29,6 @@ RUN yarn build && yarn cache clean
 
 ENV NODE_ENV=production
 
-EXPOSE 3500
+EXPOSE 8001
 
 CMD ["yarn", "start:prod"]
