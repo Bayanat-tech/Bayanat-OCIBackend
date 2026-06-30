@@ -38,10 +38,12 @@ import { procBulkAccountEntry } from "../../controllers/finance/accounts/transac
 import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
 import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
 import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
-import { upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
+import { deleteAcMasterDocsDet, getAcMasterDocsDet, upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
 import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
 import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
 import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
+import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
+import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIncrement";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -79,6 +81,16 @@ router.post(
 router.post(
   "/upsertAcMasterDocsDet",
   upsertAcMasterDocsDet
+);
+
+router.get(
+  "/acMasterDocsDet/:ac_code",
+  getAcMasterDocsDet
+);
+
+router.delete(
+  "/acMasterDocsDet/:ac_code/:srno",
+  deleteAcMasterDocsDet
 );
 
 router.post(
@@ -131,6 +143,15 @@ router.post(
   "/upsertHrEmpComponents",
   upsertHrEmpComponents)
 
+  //hr 
+
+router.post(
+  "/insUpdGradeSalaryIncrement",
+  insUpdGradeSalaryIncrement)
+
+  router.post(
+  "/insUpdEmpSalaryIncrement ",
+  insUpdEmpSalaryIncrement )
 
   // hr
 router.post(
