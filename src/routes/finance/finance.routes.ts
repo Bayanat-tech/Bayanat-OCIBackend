@@ -39,7 +39,7 @@ import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation"
 import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
 import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
 import { deleteAcMasterDocsDet, getAcMasterDocsDet, upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
-import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
+import { deleteVendorActivity, upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
 import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
 import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
 import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
@@ -96,6 +96,11 @@ router.delete(
 router.post(
   "/upsertVendorActivity",
   upsertVendorActivity
+);
+
+router.delete(
+  "/vendorActivity/:ac_code/:srno",
+  deleteVendorActivity
 );
 
 // Account entry for BP/BR/CR/CP/DN/CN
