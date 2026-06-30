@@ -55,8 +55,7 @@ import { TiContainer } from "../entities/wms/transaction/inbound/TiContainer.ent
 import { PackingDetailsInboundWms } from "../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity";
 import { Product } from "../entity/WMS/product.entity";
 import { TiPackdet } from "../entity/WMS/TiPackdet";
-
-// ==================== ORACLE CLIENT INIT ====================
+import { TiTallyDetail } from "../entity/WMS/TiTallyDetail.entity";
 // TEMP EMERGENCY: allow skipping Oracle thick client init using FORCE_THIN_ORACLE=1
 if (process.env.FORCE_THIN_ORACLE === "1") {
   console.warn("FORCE_THIN_ORACLE=1 set — skipping oracledb.initOracleClient() (using thin mode)");
@@ -151,7 +150,8 @@ export const AppDataSource = new DataSource({
   TiContainer,
   PackingDetailsInboundWms,
   TiPackdet,
-  Product
+  Product,
+  TiTallyDetail
 ],
 
   migrations: ["src/migration/**/*.ts"],
