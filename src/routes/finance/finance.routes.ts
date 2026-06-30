@@ -42,6 +42,8 @@ import { upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transa
 import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
 import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
 import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
+import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
+import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIncrement";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -131,6 +133,15 @@ router.post(
   "/upsertHrEmpComponents",
   upsertHrEmpComponents)
 
+  //hr 
+
+router.post(
+  "/insUpdGradeSalaryIncrement",
+  insUpdGradeSalaryIncrement)
+
+  router.post(
+  "/insUpdEmpSalaryIncrement ",
+  insUpdEmpSalaryIncrement )
 
   // hr
 router.post(
