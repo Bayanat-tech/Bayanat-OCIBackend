@@ -25,12 +25,8 @@ ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_19_31
 RUN npm install
 
 COPY . .
-
 RUN rm -rf build tsconfig.tsbuildinfo 
-
-RUN npm run build
-
-EXPOSE 3500
+EXPOSE 8001
 
 CMD [ "npm","run","start:prod" ]
 
