@@ -22,6 +22,12 @@ import { HrPaycomponent } from "../models/Hr/hr_paycomponents";
 import { HrSection } from "../models/Hr/hr_section";
 import { HrSponsor } from "../models/Hr/hr_sponsor";
 import { HrViewEmp } from "../views/hr/hr_view_employee";
+import { Account } from "../models/finance/accounts/masters/account_finance.entity";
+import { AccountBlSetup } from "../models/finance/accounts/masters/account_finance_bl.entity";
+import { AccountPlSetup } from "../models/finance/accounts/masters/account_finance_pl.entity";
+import { AccountLevelTwo } from "../models/finance/accounts/masters/account_level_two.entity";
+import { AccountLevelThree } from "../models/finance/accounts/masters/account_level_three.entity";
+import { AccountLevelFour } from "../models/finance/accounts/masters/account_level_four.entity";
 import {
   AccessRoleAppAccess,
   AccessSecModuleData,
@@ -53,8 +59,46 @@ import {InboundJobWms} from "../entities/wms/transaction/inbound/InboundJobWms.e
 import { JobOutboundWms } from "../models/wms/transaction/outbound/JobOutboundWms.entity";
 import { TiContainer } from "../entities/wms/transaction/inbound/TiContainer.entity";
 import { PackingDetailsInboundWms } from "../entity/WMS/transaction/inbound/PackingDetailsInboundWms.entity";
+import { TtBatch } from "../entity/WMS/transaction/inbound/TtBatch.entity";
 import { Product } from "../entity/WMS/product.entity";
 import { TiPackdet } from "../entity/WMS/TiPackdet";
+import { AcSetup } from "../entity/WMS/acsetup.entity";
+import { Activity } from "../entity/WMS/activity.entity";
+import { ActivityGroupMaster } from "../entity/WMS/activitygroup.entity";
+import { ActivityKpi } from "../entity/WMS/activitykpi.entity";
+import { ActivitySubgroup } from "../entity/WMS/activity_subgroup.entity";
+import { Airline } from "../entity/WMS/airline.entity";
+import { Alert } from "../entity/WMS/alert.entity";
+import { BillingActivity } from "../entity/WMS/billing_activity.entity";
+import { Brand } from "../entity/WMS/brand.entity";
+import { ConfirmInboundjob } from "../entity/WMS/confirmInboundjob.entity";
+import { CountryMaster } from "../entity/WMS/country.entity";
+import { CurrencyMaster } from "../entity/WMS/currency.entity";
+import { CustomerMaster } from "../entity/WMS/Customer.entity";
+import { DepartmentMaster } from "../entity/WMS/department.entity";
+import { Division } from "../entity/WMS/division.entity";
+import { ProductGroup } from "../entity/WMS/group.entity";
+import { Harmonize } from "../entity/WMS/harmonize.entity";
+import { LineMaster } from "../entity/WMS/line.entity";
+import { LocationMaster } from "../entity/WMS/location.entity";
+import { LocationType } from "../entity/WMS/locationtype.entity";
+import { Manufacturer } from "../entity/WMS/manufacturer.entity";
+import { MocMaster } from "../entity/WMS/moc.entity";
+import { BrokerMaster } from "../entity/WMS/partner.entity";
+import { PortMaster } from "../entity/WMS/port.entity";
+import { PrincipalMaster } from "../entity/WMS/principal.entity";
+import { PrincipalContactDetl } from "../entity/WMS/principalcontactdetl.entity";
+import { UploadedFilesDlts } from "../entity/WMS/principalfile.entity";
+import { ProducttypeMaster } from "../entity/WMS/producttype.entity";
+import { ProductEDI } from "../entity/WMS/product_edi.entity";
+import { SalesmanMaster } from "../entity/WMS/salesman.entity";
+import { MntStorageHdr } from "../entity/WMS/storage.entity";
+import { SupplierMaster } from "../entity/WMS/suppliermaster.entity";
+import { TiTallyDetail } from "../entity/WMS/TiTallyDetail.entity";
+import { ActivityUOC } from "../entity/WMS/uoc.entity";
+import { UomMaster } from "../entity/WMS/uom.entity";
+import { Vessel } from "../entity/WMS/vessel.entity";
+import { Warehouse } from "../entity/WMS/Warehouse.entity";
 import { TiTallyDetail } from "../entity/WMS/TiTallyDetail.entity";
 // TEMP EMERGENCY: allow skipping Oracle thick client init using FORCE_THIN_ORACLE=1
 if (process.env.FORCE_THIN_ORACLE === "1") {
@@ -120,6 +164,12 @@ export const AppDataSource = new DataSource({
   HrSection,
   HrSponsor,
   HrViewEmp,
+  Account,
+  AccountBlSetup,
+  AccountPlSetup,
+  AccountLevelTwo,
+  AccountLevelThree,
+  AccountLevelFour,
   AccessRoleAppAccess,
   AccessSecModuleData,
   AccessSecOperation,
@@ -149,9 +199,47 @@ export const AppDataSource = new DataSource({
   JobOutboundWms,
   TiContainer,
   PackingDetailsInboundWms,
+  TtBatch,
   TiPackdet,
   Product,
-  TiTallyDetail
+  TiTallyDetail,
+  AcSetup,
+  Activity,
+  ActivityGroupMaster,
+  ActivityKpi,
+  ActivitySubgroup,
+  Airline,
+  Alert,
+  BillingActivity,
+  Brand,
+  ConfirmInboundjob,
+  CountryMaster,
+  CurrencyMaster,
+  CustomerMaster,
+  DepartmentMaster,
+  Division,
+  ProductGroup,
+  Harmonize,
+  LineMaster,
+  LocationMaster,
+  LocationType,
+  Manufacturer,
+  MocMaster,
+  BrokerMaster,
+  PortMaster,
+  PrincipalMaster,
+  PrincipalContactDetl,
+  UploadedFilesDlts,
+  ProducttypeMaster,
+  ProductEDI,
+  SalesmanMaster,
+  MntStorageHdr,
+  SupplierMaster,
+  TiTallyDetail,
+  ActivityUOC,
+  UomMaster,
+  Vessel,
+  Warehouse
 ],
 
   migrations: ["src/migration/**/*.ts"],
