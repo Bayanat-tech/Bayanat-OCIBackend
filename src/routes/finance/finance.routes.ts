@@ -38,8 +38,8 @@ import { procBulkAccountEntry } from "../../controllers/finance/accounts/transac
 import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
 import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
 import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
-import { upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
-import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
+import { deleteAcMasterDocsDet, getAcMasterDocsDet, upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
+import { deleteVendorActivity, upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
 import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
 import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
 import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
@@ -83,9 +83,24 @@ router.post(
   upsertAcMasterDocsDet
 );
 
+router.get(
+  "/acMasterDocsDet/:ac_code",
+  getAcMasterDocsDet
+);
+
+router.delete(
+  "/acMasterDocsDet/:ac_code/:srno",
+  deleteAcMasterDocsDet
+);
+
 router.post(
   "/upsertVendorActivity",
   upsertVendorActivity
+);
+
+router.delete(
+  "/vendorActivity/:ac_code/:srno",
+  deleteVendorActivity
 );
 
 // Account entry for BP/BR/CR/CP/DN/CN
