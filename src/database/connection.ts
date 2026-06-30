@@ -94,7 +94,6 @@ import { ProductEDI } from "../entity/WMS/product_edi.entity";
 import { SalesmanMaster } from "../entity/WMS/salesman.entity";
 import { MntStorageHdr } from "../entity/WMS/storage.entity";
 import { SupplierMaster } from "../entity/WMS/suppliermaster.entity";
-import { TiTallyDetail } from "../entity/WMS/TiTallyDetail.entity";
 import { ActivityUOC } from "../entity/WMS/uoc.entity";
 import { UomMaster } from "../entity/WMS/uom.entity";
 import { Vessel } from "../entity/WMS/vessel.entity";
