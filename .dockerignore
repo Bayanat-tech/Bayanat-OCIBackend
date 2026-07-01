@@ -1,0 +1,14 @@
+node_modules
+build
+dist
+.git
+.env
+*.log
+logs
+coverage
+tsconfig.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
