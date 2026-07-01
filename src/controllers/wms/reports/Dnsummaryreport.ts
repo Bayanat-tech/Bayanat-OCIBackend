@@ -118,7 +118,7 @@ async function loadDnData(
       parameter: "WMS_Stock_DN_Summary_Report",
       loginid:   params.loginid || text(req.user?.loginid) || "ADMIN",
 
-      code1:  null,
+      code1:  req.body.code1 || null,
       code2:  normalizeFilter(params.prinCode),
       code3:  normalizeFilter(params.fromdate),
       code4:  normalizeFilter(params.todate),
@@ -729,6 +729,8 @@ export const getDnSummaryReportHtml = async (
     const reportTitle = text(req.query.title as string) || "Delivery Note Report (Summary)";
     const autoPrint   = req.query.print === "true";
     const params      = extractParams(req);
+    console.log("DN Summary HTML params:", params);
+    console.log("DN summary req", req.body)
 
     const rows = await loadDnData(req, params);
     if (!rows.length) {
