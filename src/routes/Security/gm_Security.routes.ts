@@ -64,6 +64,11 @@ import {
   createquerymaster,
   updatequerymaster,
 } from "../../controllers/Security/querymaster.controller";
+import {
+  upsertTenantMapping,
+  upsertTenantRegistry,
+  upsertTenantUser,
+} from "../../controllers/Security/tenantadmin_security.controller";
 //-------------Accessrolesecroleapp----------------------
 
 const router = express.Router();
@@ -121,5 +126,14 @@ router.patch("/reportmaster/modify", modifyreportmaster);
 //DYNAMIC QUERY
 router.post("/query_master", createquerymaster);
 router.put("/query_master", updatequerymaster);
+
+router.post("/tenant-user", upsertTenantUser);
+router.put("/tenant-user", upsertTenantUser);
+
+router.post("/tenant-registry", upsertTenantRegistry);
+router.put("/tenant-registry", upsertTenantRegistry);
+
+router.post("/tenant-mapping", upsertTenantMapping);
+router.put("/tenant-mapping", upsertTenantMapping);
 
 export default router;

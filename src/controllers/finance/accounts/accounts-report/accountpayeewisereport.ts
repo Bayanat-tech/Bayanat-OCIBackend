@@ -74,17 +74,16 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
       groups[key].push(r);
     });
 
-    const reportTitle = `Account Payee Wise Report ${text(code5)} - ${text(code6)}`;
+    const reportTitle = `Ledger Basic Report ${text(code5)} - ${text(code6)}`;
     const generatedBy = text(loginid) || "Unknown User";
     const reportDate = formatDateStr(new Date());
+    
+    const formatBalance = (value: number) =>
+      value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
+    
     let tableBodyHtml = "";
     let grandTotalDebit = 0, grandTotalCredit = 0;
-    const formatBalance = (value: number) => {
-      return value < 0
-        ? `(${money(Math.abs(value))})`
-        : money(value);
-    };
 
     Object.entries(groups).forEach(([key, groupRows]) => {
       const [ac_code, ac_name] = key.split("||");
@@ -92,66 +91,50 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
       let totalDebit = 0, totalCredit = 0;
       let runningBalance = opening;
 
+      // group header
       tableBodyHtml += `
-        <tr class="group-header">
-          <td colspan="8"><strong>Account: ${text(ac_code)} - ${text(ac_name)}</strong></td>
-          <td class="num opening-val"><strong>Opening</strong></td>
-          <td class="num opening-val"><strong>${money(opening)}</strong></td>
+        <tr class="grp-hdr">
+          <td colspan="6"><strong>${text(ac_code)}</strong>&nbsp;&nbsp;${text(ac_name)}</td>
+          <td class="opening-label" style="text-align:right"><strong>Opening</strong></td>
+          <td class="num opening-val" colspan="2"><strong>${formatBalance(opening)}</strong></td>
         </tr>`;
 
+      // split PDC / NORMAL
       const pdcGroups: Record<string, any[]> = {};
-
       groupRows.forEach((r) => {
-        const pdcKey = r.pdc_ind === 'Y' ? "PDC" : "NORMAL";
-
-        if (!pdcGroups[pdcKey]) {
-          pdcGroups[pdcKey] = [];
-        }
-
-        pdcGroups[pdcKey].push(r);
+        const k = r.pdc_ind === "Y" ? "PDC" : "NORMAL";
+        if (!pdcGroups[k]) pdcGroups[k] = [];
+        pdcGroups[k].push(r);
       });
 
-      Object.entries(pdcGroups).forEach(([pdcType, rows]) => {
-
+      Object.entries(pdcGroups).forEach(([pdcType, pdcRows]) => {
         tableBodyHtml += `
-    <tr class="sub-group-header">
-        <td colspan="10">
-            <strong>${pdcType === "PDC" ? "PDC CHEQUES" : "NORMAL CHEQUES"}</strong>
-        </td>
-    </tr>`;
+          <tr class="sub-grp-hdr">
+            <td colspan="9"><strong>${pdcType === "PDC" ? "PDC CHEQUES" : "NORMAL CHEQUES"}</strong></td>
+          </tr>`;
 
-        rows.forEach((r) => {
-
+        pdcRows.forEach((r) => {
           const amount = Number(r.lcur_amount) || 0;
-
-          const cr = r.sign_ind < 0
-            ? Math.abs(amount)
-            : 0;
-
-          const dr = r.sign_ind > 0
-            ? amount
-            : 0;
-
-          totalCredit += cr;
+          const dr = r.sign_ind > 0 ? amount : 0;
+          const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
           totalDebit += dr;
-
+          totalCredit += cr;
           runningBalance += dr - cr;
 
-          const hasTransaction = cr !== 0 || dr !== 0;
+          const narration = text(r.narration || r.remarks || r.details || "").trim();
 
           tableBodyHtml += `
-        <tr class="data-row">
-            <td class="num">${text(r.salesman_code || "")}</td>
-            <td>${text(r.doc_type || "")}</td>
-            <td>${text(r.doc_no || "")}</td>
-            <td>${formatDateStr(r.doc_date)}</td>
-            <td>${text(r.chq_no || "")}</td>
-            <td>${formatDateStr(r.chq_date)}</td>
-            <td>${text(r.bank || "")}</td>
-            <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
-            <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
-            <td class="num">${formatBalance(runningBalance)}</td>
-        </tr>`;
+  <tr class="data-row">
+    <td>${text(r.doc_type || "")}</td>
+    <td>${text(r.doc_no || "")}</td>
+    <td>${formatDateStr(r.doc_date)}</td>
+    <td>${text(r.cheque_no || "")}</td>
+    <td>${formatDateStr(r.cheque_date)}</td>
+    <td>${text(r.bank || "")}</td>
+    <td class="num" style="color:#b45309">${money(dr)}</td>
+    <td class="num" style="color:#b45309">${money(cr)}</td>
+    <td class="num">${formatBalance(runningBalance)}</td>
+  </tr>`;
         });
       });
 
@@ -161,262 +144,241 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
 
       tableBodyHtml += `
         <tr class="total-row">
-          <td colspan="6" class="num"><strong>Total :</strong></td>
-          <td class="num"><strong>${money(totalDebit)}</strong></td>
+          <td colspan="5" style="text-align:right"><strong>Total :</strong></td>
+          <td class="num" colspan="2"><strong>${money(totalDebit)}</strong></td>
           <td class="num"><strong>${money(totalCredit)}</strong></td>
-          <td colspan="2"></td>
+          <td></td>
         </tr>
         <tr class="closing-row">
-          <td colspan="8" class="num"><strong>Closing</strong></td>
-          <td class="num" colspan="2"><strong>${money(closing)}</strong></td>
+          <td colspan="7" style="text-align:right"><strong>Closing</strong></td>
+          <td class="num" colspan="2"><strong>${formatBalance(closing)}</strong></td>
         </tr>`;
     });
 
     tableBodyHtml += `
-      <tr class="grand-total-row">
-        <td colspan="6" class="num"><strong>Grand Total :</strong></td>
-        <td class="num"><strong>${money(grandTotalDebit)}</strong></td>
-        <td class="num"><strong>${money(grandTotalCredit)}</strong></td>
-        <td colspan="2"></td>
+      <tr class="grand-row">
+        <td colspan="5" style="text-align:right"><strong>Grand Total :</strong></td>
+        <td class="num" colspan="2"><strong>${formatBalance(grandTotalDebit)}</strong></td>
+        <td class="num"><strong>${formatBalance(grandTotalCredit)}</strong></td>
+        <td></td>
       </tr>`;
-
     const reportHtml = `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${reportTitle}</title>
-<style>
-/* ── replace only the header-related styles ── */
-:root { color-scheme: light; }
-
-
-body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f2f4f7;
-    color: #1f2937;
-}
-
-.page {
-    width: auto;
-    max-width: 100%;
-    margin: 10px auto;
-    padding: 12px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-    box-sizing: border-box;
-}
-
-.header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-    border-bottom: 2px solid #0d4d89;
-    padding-bottom: 10px;
-    margin-bottom: 12px;
-}
-
-.header-left {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-    flex: 1;
-}
-
-.report-title {
-    font-size: 15px;
-    font-weight: 800;
-    color: #0f172a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.meta-info {
-    border-collapse: collapse;
-}
-
-.meta-info td {
-    padding: 1px 6px;
-    vertical-align: top;
-    font-size: 11px;
-}
-
-.label {
-    font-weight: 700;
-    width: 70px;
-    color: #475569;
-    white-space: nowrap;
-}
-
-.brand-block {
-    text-align: right;
-    flex-shrink: 0;
-}
-
-.brand-name {
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    color: #0d4d89;
-    white-space: nowrap;
-}
-
-.brand-subtitle {
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    color: #334155;
-    white-space: nowrap;
-}
-
-.report-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-}
-
-.report-table th,
-.report-table td {
-    border: 1px solid #cfd8e3;
-    padding: 5px 6px;
-    font-size: 11px;
-    vertical-align: top;
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: break-word;
-}
-
-.report-table th {
-    background: #0d4d89;
-    color: #fff;
-    font-weight: 600;
-    text-align: center;
-}
-
-.report-table th:nth-child(1), .report-table td:nth-child(1) { width: 20%; }
-.report-table th:nth-child(2), .report-table td:nth-child(2) { width: 20%; }
-.report-table th:nth-child(3), .report-table td:nth-child(3) { width: 20%; }
-.report-table th:nth-child(4), .report-table td:nth-child(4) { width: 20%; }
-.report-table th:nth-child(5), .report-table td:nth-child(5) { width: 20%; }
-.report-table th:nth-child(6), .report-table td:nth-child(6) { width: 20%; }
-.report-table th:nth-child(7), .report-table td:nth-child(7) { width: 20%; }
-.report-table th:nth-child(8), .report-table td:nth-child(8) { width: 20%; }
-.report-table th:nth-child(9), .report-table td:nth-child(9) { width: 20%; }
-.report-table th:nth-child(10), .report-table td:nth-child(10) { width: 20%; }
-
-.group-header td {
-    background: #eff6ff;
-    font-weight: 700;
-    color: #1e3a8a;
-}
-
-.sub-group-header td {
-    background: #f8fafc;
-    font-weight: 700;
-    color: #374151;
-}
-
-.opening-val { color: #c00; }
-.total-row td { background: #f1f5f9; font-weight: 700; }
-.closing-row td { background: #f1f5f9; font-weight: 700; }
-.grand-total-row td { background: #e2e8f0; font-weight: 700; }
-
-.num {
-    text-align: right;
-    font-family: 'Courier New', monospace;
-}
-
-.footer {
-    margin-top: 12px;
-    text-align: center;
-    font-size: 10px;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 5px;
-    color: #64748b;
-}
-
-.no-print { margin-bottom: 10px; text-align: right; }
-
-.button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 20px;
-    border-radius: 999px;
-    border: none;
-    background: #0d4d89;
-    color: white;
-    font-weight: 700;
-    cursor: pointer;
-    font-size: 13px;
-}
-
-.button:hover { background: #1d4ed8; }
-
-@media print {
-    body { background: white; }
-    .page { margin: 0; padding: 5mm; box-shadow: none; border-radius: 0; }
-    .no-print { display: none; }
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    tr { page-break-inside: avoid; break-inside: avoid; }
-    .group-header, .sub-group-header, .total-row, .closing-row, .grand-total-row {
-        page-break-inside: avoid; break-inside: avoid;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>${reportTitle}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      background: #e5e7eb;
+      color: #111;
+      padding: 10px;
     }
-}
-</style>
-  </head>
-  <body>
-    <div class="no-print">
-      <button class="button" onclick="window.print()">🖨 Print / Save PDF</button>
+    .page {
+      width: 277mm;
+      max-width: 277mm;
+      margin: 10px auto;
+      background: #fff;
+      padding: 14px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    /* header */
+    .header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      border-bottom: 2.5px solid #b8860b;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .logo-block {
+      background: #1a5276;
+      padding: 8px 14px;
+      border-radius: 4px;
+      min-width: 150px;
+      text-align: center;
+    }
+    .logo-arabic { font-size: 12px; font-weight: 700; color: #f0c040; direction: rtl; }
+    .logo-name   { font-size: 18px; font-weight: 800; color: #f0c040; letter-spacing: 0.04em; }
+    .logo-sub    { font-size: 9px; letter-spacing: 0.18em; color: #cce0f5; margin-top: 2px; }
+
+    .meta-block { flex: 1; }
+    .meta-block table { border-collapse: collapse; }
+    .meta-block td { padding: 1.5px 6px; font-size: 11px; vertical-align: top; }
+    .meta-block .lbl { font-weight: 700; color: #333; width: 72px; }
+
+    .page-info { font-size: 10px; color: #555; white-space: nowrap; text-align: right; }
+
+    /* table */
+    table.rt {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 10.5px;
+    }
+    table.rt th {
+      background: #1a5276;
+      color: #fff;
+      font-weight: 600;
+      padding: 5px;
+      border: 1px solid #2471a3;
+      text-align: center;
+    }
+    table.rt td {
+      border: 1px solid #d5d8dc;
+      padding: 3px 5px;
+      vertical-align: top;
+    }
+
+    /* sub-header row */
+    tr.sub-hdr th {
+      background: #d6e4f0;
+      color: #1a3c6e;
+      font-size: 10px;
+      font-weight: 600;
+      border-top: none;
+      text-align: center;
+    }
+
+    /* group header */
+    tr.grp-hdr td {
+      background: #eaf2fb;
+      font-weight: 700;
+      color: #1a3c6e;
+      border-top: 2px solid #2471a3;
+      padding: 5px;
+    }
+    .opening-label { color: #c00; font-weight: 700; }
+    .opening-val   { color: #c00; font-weight: 700; font-family: 'Courier New', monospace; }
+
+    /* PDC/NORMAL */
+    tr.sub-grp-hdr td {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #374151;
+      padding: 3px 5px;
+      border-top: 1px solid #cbd5e1;
+    }
+
+    tr.data-row td { background: #fff; }
+    tr.narr-row td {
+      border-top: none;
+      font-style: italic;
+      color: #555;
+      font-size: 10px;
+      background: #fff;
+    }
+
+    tr.total-row td {
+      background: #eaf0fb;
+      font-weight: 700;
+      border-top: 1.5px solid #2471a3;
+    }
+    tr.closing-row td {
+      background: #eaf0fb;
+      font-weight: 700;
+    }
+    tr.grand-row td {
+      background: #d4e6f1;
+      font-weight: 700;
+      border-top: 2px solid #1a5276;
+    }
+
+    .num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
+
+    /* 9 cols */
+    table.rt col.c1 { width: 6%;  }
+    table.rt col.c2 { width: 11%; }
+    table.rt col.c3 { width: 9%;  }
+    table.rt col.c4 { width: 10%; }
+    table.rt col.c5 { width: 9%;  }
+    table.rt col.c6 { width: 14%; }
+    table.rt col.c7 { width: 11%; }
+    table.rt col.c8 { width: 11%; }
+    table.rt col.c9 { width: 12%; }
+
+    .footer {
+      margin-top: 12px;
+      padding-top: 6px;
+      border-top: 1px solid #d5d8dc;
+      font-size: 10px;
+      color: #777;
+      text-align: center;
+    }
+    .no-print { margin-bottom: 10px; text-align: right; }
+    .btn {
+      padding: 7px 20px; background: #1a5276; color: #fff;
+      border: none; border-radius: 4px; font-size: 12px;
+      font-weight: 700; cursor: pointer;
+    }
+    .btn:hover { background: #154360; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .page { box-shadow: none; margin: 0; border-radius: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="btn" onclick="window.print()">Print / Save PDF</button>
+</div>
+
+<div class="page">
+  <div class="header">
+    <div class="logo-block">
+      <div class="logo-arabic">المدينة اللوجستية</div>
+      <div class="logo-name">al madina</div>
+      <div class="logo-sub">L O G I S T I C S</div>
     </div>
-
-    <div class="page">
-      <div class="header-top">
-        <div class="header-left">
-          <div class="report-title">${reportTitle}</div>
-          <table class="meta-info">
-            <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
-            <tr><td class="label">Date</td><td>${reportDate}</td></tr>
-            <tr><td class="label">User</td><td>${generatedBy}</td></tr>
-            <tr><td class="label">Currency</td><td>OMR</td></tr>
-          </table>
-        </div>
-        <div class="brand-block">
-          <div class="brand-name">AL MADINA</div>
-          <div class="brand-subtitle">LOGISTICS</div>
-        </div>
-      </div>
-
-      <table class="report-table">
-        <thead>
-          <tr>
-            <th>A/c Code</th>
-            <th>Type</th>
-            <th>Doc No.</th>
-            <th>Doc Date</th>
-            <th>Chq No.</th>
-            <th>Chq Date</th>
-            <th>Bank</th>
-            <th class="num">Credit</th>
-            <th class="num">Debit</th>
-            <th class="num">Balance</th>
-          </tr>
-        </thead>
-        <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:36px 0;">No records found for the selected criteria.</td></tr>'}</tbody>
+    <div class="meta-block">
+      <table>
+        <tr><td class="lbl">Title :</td><td>${reportTitle}</td></tr>
+        <tr><td class="lbl">Date :</td><td>${reportDate}</td></tr>
+        <tr><td class="lbl">User :</td><td>${generatedBy}</td></tr>
+        <tr><td class="lbl">Report :</td><td>${text(parameter)}</td></tr>
+        <tr><td class="lbl">Currency :</td><td>OMR</td></tr>
       </table>
-
-      <div class="footer">Generated by ${generatedBy} • ${reportDate}</div>
     </div>
-  </body>
-  </html>
-`;
+    <div class="page-info">Page 1 of 1</div>
+  </div>
 
+  <table class="rt">
+    <colgroup>
+      <col class="c1"/><col class="c2"/><col class="c3"/>
+      <col class="c4"/><col class="c5"/><col class="c6"/>
+      <col class="c7"/><col class="c8"/><col class="c9"/>
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Doc No.</th>
+        <th>Doc Date</th>
+        <th>Chq No.</th>
+        <th>Chq Date</th>
+        <th>Bank</th>
+        <th class="num">Debit</th>
+        <th class="num">Credit</th>
+        <th class="num">Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tableBodyHtml || '<tr><td colspan="9" style="text-align:center;padding:36px 0;color:#888;">No records found.</td></tr>'}
+    </tbody>
+  </table>
+
+  <div class="footer">Generated by ${generatedBy} &bull; ${reportDate}</div>
+</div>
+
+</body>
+</html>`;
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(reportHtml);
 

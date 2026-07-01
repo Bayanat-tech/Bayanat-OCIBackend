@@ -91,17 +91,25 @@ function numFmt(value: unknown, decimals = 0): string {
   });
 }
 
+// Normalizes an incoming filter value to what the SQL-builder proc expects:
+// undefined / "" / "all" (any case) all collapse to the literal "All" string,
+// which is what the proc's `UPPER(TRIM(P_CODEx)) <> 'ALL'` checks skip on.
+// Any other non-empty string passes through trimmed.
+function normalizeFilter(value: unknown): string {
+  const v = text(value).trim();
+  if (!v || v.toUpperCase() === "ALL") return "All";
+  return v;
+}
+
 // ─── Data loader ──────────────────────────────────────────────────────────────
 
 async function loadDnData(
   req: RequestWithUser,
   params: {
-    loginid?:   string;
-    prinCode?:  string;
-    // groupCode?: string;
-    // prodCode?:  string;
-    fromdate? : string;
-    todate?   : string;
+    loginid?:  string;
+    prinCode?: string;   // "All" or a specific PRIN_CODE
+    fromdate?: string;   // "All" or "DD/MM/YYYY"
+    todate?:   string;   // "All" or "DD/MM/YYYY"
   } = {}
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
@@ -111,9 +119,9 @@ async function loadDnData(
       loginid:   params.loginid || text(req.user?.loginid) || "ADMIN",
 
       code1:  null,
-      code2:  params.prinCode  || null,
-      code3:  params.fromdate || null,
-      code4:  params.todate   || null,
+      code2:  normalizeFilter(params.prinCode),
+      code3:  normalizeFilter(params.fromdate),
+      code4:  normalizeFilter(params.todate),
       code5:  null, code6: null, code7: null, code8: null, code9: null,
 
       ...Object.fromEntries(
@@ -696,13 +704,18 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
 
 // ─── Route helpers ────────────────────────────────────────────────────────────
 
+// Pulls filter params from query (GET) or body (POST). Every field defaults
+// to "All" so a request with no filters at all — i.e. the very first load
+// when the page mounts — asks the SQL-builder proc for the entire dataset.
+// The proc already treats the literal "All" (case-insensitive) as "skip this
+// filter," so this is the single source of truth for that contract.
 function extractParams(req: RequestWithUser) {
   const src = { ...req.query, ...req.body };
   return {
-    loginid:   text(req.user?.loginid),
-    prinCode:  text(src.code2) || undefined,
-    groupCode: text(src.code3) || undefined,
-    prodCode:  text(src.code4) || undefined,
+    loginid:  text(req.user?.loginid),
+    prinCode: normalizeFilter(src.code2),
+    fromdate: normalizeFilter(src.code3),
+    todate:   normalizeFilter(src.code4),
   };
 }
 

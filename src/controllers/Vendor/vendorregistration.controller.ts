@@ -18,10 +18,20 @@ export const createVendor = async (
         .json({ success: false, message: error.message });
       return;
     }
-    const { VENDOR_CODE, VENDOR_NAME, COMPANY_CODE } = req.body;
+    const tenantCompanyCode = String(
+      requestUser?.company_code || req.body.COMPANY_CODE || req.body.company_code || ""
+    ).trim();
+    const { VENDOR_CODE, VENDOR_NAME } = req.body;
+
+    if (!tenantCompanyCode) {
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: "company_code is required" });
+      return;
+    }
 
     const existingVendor = await VendorService.findByCompanyAndVendorCode(
-      COMPANY_CODE ?? "",
+      tenantCompanyCode,
       VENDOR_CODE ?? ""
     );
 
@@ -34,6 +44,7 @@ export const createVendor = async (
 
     await VendorService.createVendor({
       ...req.body,
+      COMPANY_CODE: tenantCompanyCode,
       SECLOGINID: requestUser.loginid,
     });
 
@@ -65,11 +76,21 @@ export const updateVendor = async (
       return;
     }
 
-    const { company_code, vendor_code } = req.body;
+    const tenantCompanyCode = String(
+      requestUser?.company_code || req.body.COMPANY_CODE || req.body.company_code || ""
+    ).trim();
+    const vendor_code = req.body.vendor_code || req.body.VENDOR_CODE;
+
+    if (!tenantCompanyCode || !vendor_code) {
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: "company_code and vendor_code are required" });
+      return;
+    }
 
     // Check if vendor exists
     const vendorData = await VendorService.findByCompanyAndVendorCode(
-      company_code,
+      tenantCompanyCode,
       vendor_code
     );
 
@@ -83,9 +104,9 @@ export const updateVendor = async (
 
     // Update vendor
     const updateResult = await VendorService.updateVendor(
-      company_code,
+      tenantCompanyCode,
       vendor_code,
-      { ...req.body, SECLOGINID: requestUser.loginid }
+      { ...req.body, COMPANY_CODE: tenantCompanyCode, SECLOGINID: requestUser.loginid }
     );
 
     if (!updateResult.affected) {

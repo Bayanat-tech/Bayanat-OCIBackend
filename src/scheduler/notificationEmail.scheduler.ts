@@ -34,7 +34,7 @@ function formatMailHtml(title: string, body: string, row: any) {
   const safeTitle = escapeHtml(title || "Notification");
   const safeBody = escapeHtml(body || "");
   const txn = row?.TXN_NO ? escapeHtml(row.TXN_NO) : "";
-  const appUrl = process.env.FRONTEND_URL || "#";
+  const appUrl = "https://qa-app.bayanattechnology.com";
 
   return `
   <!doctype html>

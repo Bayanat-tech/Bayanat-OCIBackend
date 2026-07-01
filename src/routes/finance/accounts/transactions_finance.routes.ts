@@ -74,14 +74,16 @@ import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../contro
 import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
 import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
 import { getPnlDrilldownL2, getPnlDrilldownL2Excel, getPnlDrilldownL3, getPnlDrilldownL3Excel } from "../../../controllers/finance/accounts/accounts-report/ProfitlossSublevel";
-import { exportTaxInvoiceExcel, getTaxInvoiceExcelReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledgerexcel";
+import { exportTaxInvoiceExcel } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledgerexcel";
 import { exportTaxInvoiceSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutsummaryledgerexcel";
 import { exportChequeDateWiseExcel } from "../../../controllers/finance/accounts/accounts-report/chequedatewiseexcel";
 import { exportAccountPayeeWiseExcel } from "../../../controllers/finance/accounts/accounts-report/aaccountpayeewiseexcel";
+import { getTaxInvoiceReport } from "../../../controllers/finance/accounts/accounts-report/tax-report/taxoutledger";
 import { exportTransactionProductExcel } from "../../wms/reports/TransactionProductExcel";
 import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, exportInvSummaryExcel, exportOutstandingListExcel } from "../../../controllers/finance/accounts/accounts-report/PeriodwiseExcel";
 import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
 import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
+import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsexcels";
 
 
 const router = express.Router();
@@ -113,6 +115,7 @@ router.post("/report/trialbalance/drilldown/detail/excel", getDrilldownDetailExc
 
 router.post('/reports/cheque-monitoring/html', getChequeMonitoringReport);
 router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
+router.post('/reports/ledger-with-details/excel', exportLedgerWithDetailsExcel);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
 router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
 router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
@@ -156,7 +159,7 @@ router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
 
 
-router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceExcelReport);
+router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
 router.post('/reports/tax-vat-out-ledger/excel', exportTaxInvoiceExcel);
 router.post('/reports/tax-vat-out-ledger-summary/html', getTaxInvoiceSummaryReport);
 router.post('/reports/tax-vat-out-ledger-summary/excel', exportTaxInvoiceSummaryExcel);

@@ -183,7 +183,7 @@ function buildAccountPayeeExcelBuffer(
       xc(`Account: ${text(ac_code)} - ${text(ac_name)}`, "groupHeader"),
       ...Array(7).fill(skip),
       xc("Opening",  "groupHeader"),
-      xc(opening,    "numTotal"),
+      xc(formatBalance(opening),    "numTotal"),
     ]);
 
     // ── PDC / Normal sub-groups ────────────────────────────────────────────
@@ -218,9 +218,9 @@ function buildAccountPayeeExcelBuffer(
           xc(text(r.chq_no        || ""), "normal"),
           xc(formatDateStr(r.chq_date),   "normal"),
           xc(text(r.bank          || ""), "normal"),
-          xc(hasTransaction ? cr  : 0,    "numData"),
-          xc(hasTransaction ? dr  : 0,    "numData"),
-          xc(runningBalance,              "numData"),
+          xc(hasTransaction ? formatBalance(cr)  : formatBalance(0),    "numData"),
+          xc(hasTransaction ? formatBalance(dr)  : formatBalance(0),    "numData"),
+          xc(formatBalance(runningBalance), "numData"),
         ]);
       });
     });
@@ -243,7 +243,7 @@ function buildAccountPayeeExcelBuffer(
     tableRows.push([
       ...Array(7).fill(skip),
       xc("Closing", "totalRow"),
-      xc(closing,   "numTotal"),
+      xc(formatBalance(closing),   "numTotal"),
       skip,
     ]);
   });
@@ -253,8 +253,8 @@ function buildAccountPayeeExcelBuffer(
     ...Array(5).fill(skip),
     xc("Grand Total :", "grandTotal"),
     skip,
-    xc(grandTotalDebit,  "numGrand"),
-    xc(grandTotalCredit, "numGrand"),
+    xc(formatBalance(grandTotalDebit),  "numGrand"),
+    xc(formatBalance(grandTotalCredit), "numGrand"),
     skip,
   ]);
 
@@ -480,7 +480,7 @@ export const getAccountPayeeWiseReport = async (req: Request, res: Response): Pr
       groups[key].push(r);
     });
 
-    const reportTitle = `Account Payee Wise Report ${text(code5)} - ${text(code6)}`;
+    const reportTitle = `Ledger Basic Report ${text(code5)} - ${text(code6)}`;
     const generatedBy = text(loginid) || "Unknown User";
     const reportDate  = formatDateStr(new Date());
 

@@ -85,7 +85,7 @@ static async findAllWithPrincipalName(): Promise<(TsStn & { prin_name: string })
 
   // Create new STN record
   static async createStn(stnData: Partial<TsStn>): Promise<TsStn> {
-    const repository = this.getTsStnRepository();
+  const repository = AppDataSource.getRepository(TsStn);
     const stn = repository.create(stnData);
     return await repository.save(stn);
   }

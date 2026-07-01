@@ -189,10 +189,10 @@ function buildTaxInvoiceExcelBuffer(rows: any[], loginid: string, parameter: str
       xc(text(r.territory),            "normal"),
       xc(text(r.tax_code),             "normal"),
       xc(text(r.tax_code_name),        "normal"),
-      xc(invAmount,                    "numData"),
-      xc(taxableInvAmt,                "numData"),
-      xc(totInvAmount,                 "numData"),
-      xc(taxAmount,                    "numData"),
+      xc(formatBalance(invAmount),                    "numData"),
+      xc(formatBalance(taxableInvAmt),                "numData"),
+      xc(formatBalance(totInvAmount),                 "numData"),
+      xc(formatBalance(taxAmount),                    "numData"),
       xc(text(r.origin_destination),   "normal"),
     ]);
   });
@@ -201,10 +201,10 @@ function buildTaxInvoiceExcelBuffer(rows: any[], loginid: string, parameter: str
   tableRows.push([
     xc("TOTAL",          "company"),
     ...Array(11).fill(skip),
-    xc(totalInvAmount,     "numData"),
-    xc(totalTaxableInvAmt, "numData"),
-    xc(totalTotInvAmount,  "numData"),
-    xc(totalTaxAmount,     "numData"),
+    xc(formatBalance(totalInvAmount),     "numData"),
+    xc(formatBalance(totalTaxableInvAmt), "numData"),
+    xc(formatBalance(totalTotInvAmount),  "numData"),
+    xc(formatBalance(totalTaxAmount),     "numData"),
     skip,
   ]);
 

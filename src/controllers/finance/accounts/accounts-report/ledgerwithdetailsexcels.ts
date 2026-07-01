@@ -5,7 +5,6 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const money = (v: any) => {
   const n = Number(v);
   return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
@@ -33,10 +32,7 @@ function escapeXml(value: unknown): string {
 
 // ─── Shared DB fetch ──────────────────────────────────────────────────────────
 async function fetchRows(req: Request) {
-  const {
-    parameter, loginid,
-    code1, code2, code3, code4, code5, code6, code7, code8, code20,
-  } = req.body;
+  const { parameter, loginid, code1, code2, code3, code4, code5, code6, code7, code8, code20 } = req.body;
 
   let tenantId = getCurrentTenantId();
   if (!tenantId && loginid) tenantId = await TenantManager.getTenantForUser(loginid);
@@ -45,7 +41,7 @@ async function fetchRows(req: Request) {
   const connection = await TenantManager.getConnection(tenantId);
   try {
     const binds: any = {
-      parameter: parameter || "Account_Report_ChqDateWise",
+      parameter: parameter || "Account_Report_Ledger_Details",
       loginid: loginid || "ADMIN",
       code1: code1 || null, code2: code2 || null, code3: code3 || null,
       code4: code4 || null, code5: code5 || null, code6: code6 || null,
@@ -73,7 +69,7 @@ async function fetchRows(req: Request) {
 
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("The procedure did not return a valid SQL query.");
-    console.log("Generated SQL for Cheque Date Wise Report:", rawSql);
+    console.log("Generated SQL for Ledger With Details Report:", rawSql);
 
     const dataResult = await connection.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return {
@@ -93,27 +89,27 @@ async function fetchRows(req: Request) {
 
 // ─── Excel Style IDs ──────────────────────────────────────────────────────────
 const STYLE_ID = {
-  default:      0,
-  company:      1,
-  title:        2,
-  section:      3,
-  tableHead:    4,
-  normal:       5,
-  numData:      6,
-  groupHeader:  7,
-  subGroup:     8,
-  totalRow:     9,
-  numTotal:     10,
-  grandTotal:   11,
-  numGrand:     12,
-  narration:    13,
+  default:     0,
+  company:     1,
+  title:       2,
+  section:     3,
+  tableHead:   4,
+  normal:      5,
+  numData:     6,
+  groupHeader: 7,
+  subGroup:    8,
+  totalRow:    9,
+  numTotal:    10,
+  grandTotal:  11,
+  numGrand:    12,
+  narration:   13,
 } as const;
 type StyleKey = keyof typeof STYLE_ID;
 interface XlCell { v: unknown; s: number }
 function xc(v: unknown, style: StyleKey): XlCell { return { v, s: STYLE_ID[style] }; }
 
 // ─── Excel Buffer Builder ─────────────────────────────────────────────────────
-function buildChequeDateWiseExcelBuffer(
+function buildLedgerWithDetailsExcelBuffer(
   rows: any[],
   loginid: string,
   parameter: string,
@@ -122,7 +118,7 @@ function buildChequeDateWiseExcelBuffer(
 ): Buffer {
   type Row = (XlCell | null)[];
   const skip = null;
-  const NCOLS = 10;
+  const NCOLS = 9;
 
   const tableRows: Row[] = [];
 
@@ -130,15 +126,14 @@ function buildChequeDateWiseExcelBuffer(
   tableRows.push([xc("AL MADINA LOGISTICS SERVICES COMPANY", "company"), ...Array(NCOLS - 1).fill(skip)]);
 
   // Row 2 — Report Title
-  tableRows.push([xc(`Cheque Date Wise Report ${code5} - ${code6}`, "title"), ...Array(NCOLS - 1).fill(skip)]);
+  tableRows.push([xc(`Ledger With Details Report ${code5} - ${code6}`, "title"), ...Array(NCOLS - 1).fill(skip)]);
 
   // Row 3 — Date | User
   tableRows.push([
     xc(`Date : ${formatDateStr(new Date())}`, "section"),
     ...Array(3).fill(skip),
-    skip,
     xc(`User : ${loginid}`, "section"),
-    ...Array(4).fill(skip),
+    ...Array(3).fill(skip),
   ]);
 
   // Row 4 — Parameter
@@ -149,19 +144,18 @@ function buildChequeDateWiseExcelBuffer(
 
   // Row 6 — Table Header
   tableRows.push([
-    xc("A/c Code",  "tableHead"),
     xc("Type",      "tableHead"),
     xc("Doc No.",   "tableHead"),
     xc("Doc Date",  "tableHead"),
     xc("Chq No.",   "tableHead"),
     xc("Chq Date",  "tableHead"),
     xc("Bank",      "tableHead"),
-    xc("Credit",    "tableHead"),
     xc("Debit",     "tableHead"),
+    xc("Credit",    "tableHead"),
     xc("Balance",   "tableHead"),
   ]);
 
-  // ── Group by ac_code + ac_name ───────────────────────────────────────────
+  // ── Group by ac_code + ac_name ────────────────────────────────────────────
   const groups: Record<string, any[]> = {};
   rows.forEach((r) => {
     const key = `${r.ac_code}||${r.ac_name || ""}`;
@@ -169,64 +163,61 @@ function buildChequeDateWiseExcelBuffer(
     groups[key].push(r);
   });
 
-  let grandTotalCredit = 0;
   let grandTotalDebit  = 0;
+  let grandTotalCredit = 0;
 
   Object.entries(groups).forEach(([key, groupRows]) => {
     const [ac_code, ac_name] = key.split("||");
     const opening = Number(groupRows[0]?.op_balance) || 0;
-    let totalCredit    = 0;
     let totalDebit     = 0;
+    let totalCredit    = 0;
     let runningBalance = opening;
 
-    // ── Account header row ─────────────────────────────────────────────────
+    // Account header row
     tableRows.push([
-      xc(`Account: ${text(ac_code)} - ${text(ac_name)}`, "groupHeader"),
-      ...Array(6).fill(skip),
-      xc("Opening",           "groupHeader"),
-      xc(opening,             "numTotal"),
+      xc(`${text(ac_code)}  ${text(ac_name)}`, "groupHeader"),
+      ...Array(5).fill(skip),
+      xc("Opening",  "groupHeader"),
+      xc(opening,    "numTotal"),
       skip,
     ]);
 
-    // ── PDC / Normal sub-groups ────────────────────────────────────────────
+    // PDC / Normal sub-groups
     const pdcGroups: Record<string, any[]> = {};
     groupRows.forEach((r) => {
-      const pdcKey = r.pdc_ind === "Y" ? "PDC" : "NORMAL";
-      if (!pdcGroups[pdcKey]) pdcGroups[pdcKey] = [];
-      pdcGroups[pdcKey].push(r);
+      const k = r.pdc_ind === "Y" ? "PDC" : "NORMAL";
+      if (!pdcGroups[k]) pdcGroups[k] = [];
+      pdcGroups[k].push(r);
     });
 
     Object.entries(pdcGroups).forEach(([pdcType, pdcRows]) => {
-      // Sub-group header
       tableRows.push([
-        xc(pdcType === "PDC" ? "PDC Cheques" : "Normal Cheques", "subGroup"),
+        xc(pdcType === "PDC" ? "PDC CHEQUES" : "NORMAL CHEQUES", "subGroup"),
         ...Array(NCOLS - 1).fill(skip),
       ]);
 
       pdcRows.forEach((r) => {
         const amount = Number(r.lcur_amount) || 0;
-        const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
         const dr = r.sign_ind > 0 ? amount : 0;
-        totalCredit    += cr;
+        const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
         totalDebit     += dr;
+        totalCredit    += cr;
         runningBalance += dr - cr;
-        const hasTransaction = cr !== 0 || dr !== 0;
 
         tableRows.push([
-          xc(text(r.salesman_code || ""), "normal"),
-          xc(text(r.doc_type      || ""), "normal"),
-          xc(text(r.doc_no        || ""), "normal"),
-          xc(formatDateStr(r.doc_date),   "normal"),
-          xc(text(r.chq_no        || ""), "normal"),
-          xc(formatDateStr(r.chq_date),   "normal"),
-          xc(text(r.bank          || ""), "normal"),
-          xc(hasTransaction ? cr  : 0,    "numData"),
-          xc(hasTransaction ? dr  : 0,    "numData"),
+          xc(text(r.doc_type    || ""), "normal"),
+          xc(text(r.doc_no      || ""), "normal"),
+          xc(formatDateStr(r.doc_date), "normal"),
+          xc(text(r.cheque_no   || ""), "normal"),
+          xc(formatDateStr(r.cheque_date), "normal"),
+          xc(text(r.bank        || ""), "normal"),
+          xc(dr,                         "numData"),
+          xc(cr,                         "numData"),
           xc(formatBalance(runningBalance), "numData"),
         ]);
 
         // Narration row
-        const narration = text(r.narration || r.remarks || r.details || "");
+        const narration = text(r.narration || r.remarks || r.details || "").trim();
         if (narration) {
           tableRows.push([
             xc(narration, "narration"),
@@ -236,38 +227,40 @@ function buildChequeDateWiseExcelBuffer(
       });
     });
 
-    grandTotalCredit += totalCredit;
     grandTotalDebit  += totalDebit;
-    const closing = runningBalance;
+    grandTotalCredit += totalCredit;
+    const closing = opening + totalDebit - totalCredit;
 
-    // ── Period total row ───────────────────────────────────────────────────
+    // Total row
     tableRows.push([
-      ...Array(6).fill(skip),
-      xc("Period Total", "totalRow"),
-      xc(totalCredit,    "numTotal"),
-      xc(totalDebit,     "numTotal"),
+      ...Array(4).fill(skip),
+      xc("Total :",       "totalRow"),
+      skip,
+      xc(totalDebit,      "numTotal"),
+      xc(totalCredit,     "numTotal"),
       skip,
     ]);
 
-    // ── Closing balance row ────────────────────────────────────────────────
+    // Closing row
     tableRows.push([
       ...Array(6).fill(skip),
-      xc("Closing Balance", "totalRow"),
-      xc(closing,           "numTotal"),
-      ...Array(2).fill(skip),
+      xc("Closing",           "totalRow"),
+      xc(formatBalance(closing), "numTotal"),
+      skip,
     ]);
   });
 
-  // ── Grand total row ────────────────────────────────────────────────────────
+  // Grand total row
   tableRows.push([
-    ...Array(6).fill(skip),
-    xc("Grand Total", "grandTotal"),
-    xc(grandTotalCredit, "numGrand"),
-    xc(grandTotalDebit,  "numGrand"),
+    ...Array(4).fill(skip),
+    xc("Grand Total :",       "grandTotal"),
+    skip,
+    xc(grandTotalDebit,       "numGrand"),
+    xc(grandTotalCredit,      "numGrand"),
     skip,
   ]);
 
-  // ── Build merges ────────────────────────────────────────────────────────────
+  // ── Build merges ──────────────────────────────────────────────────────────
   const merges: string[] = [];
   tableRows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -289,8 +282,8 @@ function buildChequeDateWiseExcelBuffer(
     }
   });
 
-  // ── Build sheet XML ──────────────────────────────────────────────────────────
-  const COL_WIDTHS = [16, 8, 14, 12, 14, 12, 20, 14, 14, 14];
+  // ── Sheet XML ─────────────────────────────────────────────────────────────
+  const COL_WIDTHS = [8, 14, 12, 14, 12, 20, 14, 14, 14];
   const colXml = COL_WIDTHS.map((w, i) =>
     `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`
   ).join("");
@@ -334,11 +327,7 @@ function buildChequeDateWiseExcelBuffer(
     mergeXml +
     `</worksheet>`;
 
-  // ── Styles XML ───────────────────────────────────────────────────────────────
-  // Fonts:
-  //  0=default  1=company white bold 18  2=title dark bold 14  3=section dark bold 11
-  //  4=tableHead white bold 11  5=normal  6=numData  7=groupHeader blue bold
-  //  8=subGroup dark bold  9=totalRow dark bold  10=grandTotal white bold
+  // ── Styles XML ────────────────────────────────────────────────────────────
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="11">
@@ -386,60 +375,20 @@ function buildChequeDateWiseExcelBuffer(
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="14">
-    <!-- 0: default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <!-- 1: company (blue bg, white bold 18, centered) -->
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center"/>
-    </xf>
-    <!-- 2: title (white bg, dark bold 14, centered) -->
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center"/>
-    </xf>
-    <!-- 3: section (white bg, dark bold 11) -->
-    <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center"/>
-    </xf>
-    <!-- 4: tableHead (blue bg, white bold 11, centered, wrap) -->
-    <xf numFmtId="0" fontId="4" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center" wrapText="1"/>
-    </xf>
-    <!-- 5: normal data -->
-    <xf numFmtId="0" fontId="5" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="top" wrapText="1"/>
-    </xf>
-    <!-- 6: numData (right-align, #,##0.000) -->
-    <xf numFmtId="164" fontId="6" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyNumberFormat="1">
-      <alignment horizontal="right" vertical="top"/>
-    </xf>
-    <!-- 7: groupHeader (light blue bg, blue bold) -->
-    <xf numFmtId="0" fontId="7" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center"/>
-    </xf>
-    <!-- 8: subGroup (light gray bg, dark bold) -->
-    <xf numFmtId="0" fontId="8" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center" indent="1"/>
-    </xf>
-    <!-- 9: totalRow label (light bg, dark bold) -->
-    <xf numFmtId="0" fontId="9" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="right" vertical="center"/>
-    </xf>
-    <!-- 10: numTotal (right-align, #,##0.000, total style) -->
-    <xf numFmtId="164" fontId="9" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyNumberFormat="1">
-      <alignment horizontal="right" vertical="center"/>
-    </xf>
-    <!-- 11: grandTotal label (darker bg, dark bold, right) -->
-    <xf numFmtId="0" fontId="10" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="right" vertical="center"/>
-    </xf>
-    <!-- 12: numGrand (right-align, #,##0.000, grand total style) -->
-    <xf numFmtId="164" fontId="10" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyNumberFormat="1">
-      <alignment horizontal="right" vertical="center"/>
-    </xf>
-    <!-- 13: narration (italic, indented) -->
-    <xf numFmtId="0" fontId="5" fillId="6" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="top" wrapText="1" indent="2"/>
-    </xf>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="164" fontId="6" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyNumberFormat="1"><alignment horizontal="right" vertical="top"/></xf>
+    <xf numFmtId="0" fontId="7" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="8" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="1"/></xf>
+    <xf numFmtId="0" fontId="9" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="9" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyNumberFormat="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="10" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="10" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1" applyNumberFormat="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="6" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1" indent="2"/></xf>
   </cellXfs>
   <numFmts count="1">
     <numFmt numFmtId="164" formatCode="#,##0.000"/>
@@ -451,7 +400,7 @@ function buildChequeDateWiseExcelBuffer(
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"` +
     ` xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-    `<sheets><sheet name="Cheque Date Wise" sheetId="1" r:id="rId1"/></sheets>` +
+    `<sheets><sheet name="Ledger With Details" sheetId="1" r:id="rId1"/></sheets>` +
     `</workbook>`;
 
   const workbookRels =
@@ -488,7 +437,7 @@ function buildChequeDateWiseExcelBuffer(
 }
 
 // ─── HTML Controller ──────────────────────────────────────────────────────────
-export const getChequeDateWiseReport = async (req: Request, res: Response): Promise<void> => {
+export const getLedgerWithDetailsReport = async (req: Request, res: Response): Promise<void> => {
   let connection;
   try {
     const { parameter, loginid, code5, code6 } = req.body;
@@ -502,97 +451,95 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
       groups[key].push(r);
     });
 
+    const formatBalance = (value: number) =>
+      value < 0 ? `(${money(Math.abs(value))})` : money(value);
+
     let tableBodyHtml = "";
-    let grandTotalCredit = 0;
-    let grandTotalDebit  = 0;
+    let grandTotalDebit = 0, grandTotalCredit = 0;
 
     Object.entries(groups).forEach(([key, groupRows]) => {
       const [ac_code, ac_name] = key.split("||");
       const opening = Number(groupRows[0]?.op_balance) || 0;
-      let totalCredit    = 0;
-      let totalDebit     = 0;
+      let totalDebit = 0, totalCredit = 0;
       let runningBalance = opening;
 
       tableBodyHtml += `
-        <tr class="group-header">
-          <td colspan="6"><strong>Account:</strong> ${text(ac_code)} - ${text(ac_name)}</td>
-          <td class="num opening-val"><strong>Opening</strong></td>
-          <td class="num opening-val" colspan="3"><strong>${formatBalance(opening)}</strong></td>
+        <tr class="grp-hdr">
+          <td colspan="6"><strong>${text(ac_code)}</strong>&nbsp;&nbsp;${text(ac_name)}</td>
+          <td class="opening-label" style="text-align:right"><strong>Opening</strong></td>
+          <td class="num opening-val" colspan="2"><strong>${formatBalance(opening)}</strong></td>
         </tr>`;
 
       const pdcGroups: Record<string, any[]> = {};
       groupRows.forEach((r) => {
-        const pdcKey = r.pdc_ind === "Y" ? "PDC" : "NORMAL";
-        if (!pdcGroups[pdcKey]) pdcGroups[pdcKey] = [];
-        pdcGroups[pdcKey].push(r);
+        const k = r.pdc_ind === "Y" ? "PDC" : "NORMAL";
+        if (!pdcGroups[k]) pdcGroups[k] = [];
+        pdcGroups[k].push(r);
       });
 
       Object.entries(pdcGroups).forEach(([pdcType, pdcRows]) => {
         tableBodyHtml += `
-        <tr class="sub-group-header">
-          <td colspan="10"><strong>${pdcType === "PDC" ? "PDC Cheques" : "Normal Cheques"}</strong></td>
-        </tr>`;
+          <tr class="sub-grp-hdr">
+            <td colspan="9"><strong>${pdcType === "PDC" ? "PDC CHEQUES" : "NORMAL CHEQUES"}</strong></td>
+          </tr>`;
 
         pdcRows.forEach((r) => {
           const amount = Number(r.lcur_amount) || 0;
-          const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
           const dr = r.sign_ind > 0 ? amount : 0;
-          totalCredit    += cr;
-          totalDebit     += dr;
+          const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
+          totalDebit   += dr;
+          totalCredit  += cr;
           runningBalance += dr - cr;
-          const hasTransaction = cr !== 0 || dr !== 0;
+
+          const narration = text(r.narration || r.remarks || r.details || "").trim();
 
           tableBodyHtml += `
-        <tr class="data-row">
-          <td class="num">${text(r.salesman_code || "")}</td>
-          <td>${text(r.doc_type || "")}</td>
-          <td>${text(r.doc_no   || "")}</td>
-          <td>${formatDateStr(r.doc_date)}</td>
-          <td>${text(r.chq_no   || "")}</td>
-          <td>${formatDateStr(r.chq_date)}</td>
-          <td>${text(r.bank     || "")}</td>
-          <td class="num">${hasTransaction ? money(cr) : "0.000"}</td>
-          <td class="num">${hasTransaction ? money(dr) : "0.000"}</td>
-          <td class="num">${formatBalance(runningBalance)}</td>
-        </tr>`;
-
-          const narration = text(r.narration || r.remarks || r.details || "");
-          if (narration) {
-            tableBodyHtml += `
-        <tr class="narration-row">
-          <td colspan="10" class="narration-cell">${narration}</td>
-        </tr>`;
-          }
+            <tr class="data-row">
+              <td>${text(r.doc_type || "")}</td>
+              <td>${text(r.doc_no || "")}</td>
+              <td>${formatDateStr(r.doc_date)}</td>
+              <td>${text(r.cheque_no || "")}</td>
+              <td>${formatDateStr(r.cheque_date)}</td>
+              <td>${text(r.bank || "")}</td>
+              <td class="num" style="color:#b45309">${money(dr)}</td>
+              <td class="num" style="color:#b45309">${money(cr)}</td>
+              <td class="num">${formatBalance(runningBalance)}</td>
+            </tr>
+            ${narration ? `
+            <tr class="data-row">
+              <td colspan="9" style="border-top:none; text-align:center; font-style:italic; color:#475569; font-size:10px; padding:0 5px 4px;">
+                ${narration}
+              </td>
+            </tr>` : ""}`;
         });
       });
 
-      grandTotalCredit += totalCredit;
       grandTotalDebit  += totalDebit;
-      const closing = runningBalance;
+      grandTotalCredit += totalCredit;
+      const closing = opening + totalDebit - totalCredit;
 
       tableBodyHtml += `
         <tr class="total-row">
-          <td colspan="6"></td>
-          <td class="num"><strong>Period Total</strong></td>
+          <td colspan="5" style="text-align:right"><strong>Total :</strong></td>
+          <td class="num" colspan="2"><strong>${money(totalDebit)}</strong></td>
           <td class="num"><strong>${money(totalCredit)}</strong></td>
-          <td class="num"><strong>${money(totalDebit)}</strong></td>
           <td></td>
         </tr>
         <tr class="closing-row">
-          <td colspan="7" class="num"><strong>Closing Balance</strong></td>
-          <td colspan="3" class="num closing-val"><strong>${formatBalance(closing)}</strong></td>
+          <td colspan="7" style="text-align:right"><strong>Closing</strong></td>
+          <td class="num" colspan="2"><strong>${formatBalance(closing)}</strong></td>
         </tr>`;
     });
 
     tableBodyHtml += `
-      <tr class="grand-total-row">
-        <td colspan="7" class="num"></td>
-        <td class="num"><strong>${money(grandTotalCredit)}</strong></td>
-        <td class="num"><strong>${money(grandTotalDebit)}</strong></td>
+      <tr class="grand-row">
+        <td colspan="5" style="text-align:right"><strong>Grand Total :</strong></td>
+        <td class="num" colspan="2"><strong>${formatBalance(grandTotalDebit)}</strong></td>
+        <td class="num"><strong>${formatBalance(grandTotalCredit)}</strong></td>
         <td></td>
       </tr>`;
 
-    const reportTitle = `Ledger Basic Report ${code5} - ${code6}`;
+    const reportTitle = `Ledger With Details Report ${text(code5)} - ${text(code6)}`;
     const generatedBy = text(loginid) || "Unknown User";
     const reportDate  = formatDateStr(new Date());
 
@@ -600,90 +547,87 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
   <title>${reportTitle}</title>
   <style>
-    :root { color-scheme: light; }
-    body { margin: 0; padding: 10px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #e5e7eb; color: #1f2937; }
-    .page { width: 277mm; max-width: 277mm; min-height: 190mm; margin: 10px auto; padding: 12px; background: #fff; border-radius: 8px; box-shadow: 0 8px 20px rgba(15,23,42,0.08); box-sizing: border-box; }
-    .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid #0d4d89; padding-bottom: 10px; margin-bottom: 12px; }
-    .header-left { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
-    .report-title { font-size: 15px; font-weight: 800; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .meta-info { border-collapse: collapse; }
-    .meta-info td { padding: 1px 6px; vertical-align: top; font-size: 11px; }
-    .label { font-weight: 700; width: 70px; color: #475569; white-space: nowrap; }
-    .brand-block { text-align: right; flex-shrink: 0; }
-    .brand-name { font-size: 20px; font-weight: 800; letter-spacing: 0.12em; color: #0d4d89; white-space: nowrap; }
-    .brand-subtitle { font-size: 11px; letter-spacing: 0.12em; color: #334155; white-space: nowrap; }
-    .report-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .report-table th, .report-table td { border: 1px solid #cfd8e3; padding: 5px 6px; font-size: 11px; vertical-align: top; white-space: normal; word-break: break-word; overflow-wrap: break-word; }
-    .report-table th { background: #0d4d89; color: #fff; font-weight: 600; text-align: center; }
-    .report-table th:nth-child(1), .report-table td:nth-child(1)   { width: 10%; }
-    .report-table th:nth-child(2), .report-table td:nth-child(2)   { width: 6%;  }
-    .report-table th:nth-child(3), .report-table td:nth-child(3)   { width: 12%; }
-    .report-table th:nth-child(4), .report-table td:nth-child(4)   { width: 9%;  }
-    .report-table th:nth-child(5), .report-table td:nth-child(5)   { width: 10%; }
-    .report-table th:nth-child(6), .report-table td:nth-child(6)   { width: 9%;  }
-    .report-table th:nth-child(7), .report-table td:nth-child(7)   { width: 16%; }
-    .report-table th:nth-child(8), .report-table td:nth-child(8)   { width: 10%; }
-    .report-table th:nth-child(9), .report-table td:nth-child(9)   { width: 10%; }
-    .report-table th:nth-child(10), .report-table td:nth-child(10) { width: 10%; }
-    .group-header td { background: #eff6ff; font-weight: 700; color: #1e3a8a; }
-    .sub-group-header td { background: #f8fafc; font-weight: 700; color: #374151; }
-    .opening-val { color: #c00; }
-    .total-row td { background: #f1f5f9; font-weight: 700; }
-    .closing-row td { background: #f1f5f9; font-weight: 700; }
-    .closing-val { color: #0d4d89; }
-    .grand-total-row td { background: #e2e8f0; font-weight: 700; }
-    .num { text-align: right; font-family: 'Courier New', monospace; }
-    .narration-cell { font-size: 10px; color: #64748b; font-style: italic; background: #f8fafc; padding-left: 20px !important; }
-    .footer { margin-top: 12px; text-align: center; font-size: 10px; border-top: 1px solid #e2e8f0; padding-top: 5px; color: #64748b; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; background: #e5e7eb; color: #111; padding: 10px; }
+    .page { width: 277mm; max-width: 277mm; margin: 10px auto; background: #fff; padding: 14px 16px; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .header { display: flex; align-items: flex-start; gap: 16px; border-bottom: 2.5px solid #b8860b; padding-bottom: 10px; margin-bottom: 12px; }
+    .logo-block { background: #1a5276; padding: 8px 14px; border-radius: 4px; min-width: 150px; text-align: center; }
+    .logo-arabic { font-size: 12px; font-weight: 700; color: #f0c040; direction: rtl; }
+    .logo-name   { font-size: 18px; font-weight: 800; color: #f0c040; letter-spacing: 0.04em; }
+    .logo-sub    { font-size: 9px; letter-spacing: 0.18em; color: #cce0f5; margin-top: 2px; }
+    .meta-block { flex: 1; }
+    .meta-block table { border-collapse: collapse; }
+    .meta-block td { padding: 1.5px 6px; font-size: 11px; vertical-align: top; }
+    .meta-block .lbl { font-weight: 700; color: #333; width: 72px; }
+    .page-info { font-size: 10px; color: #555; white-space: nowrap; text-align: right; }
+    table.rt { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10.5px; }
+    table.rt th { background: #1a5276; color: #fff; font-weight: 600; padding: 5px; border: 1px solid #2471a3; text-align: center; }
+    table.rt td { border: 1px solid #d5d8dc; padding: 3px 5px; vertical-align: top; }
+    tr.sub-hdr th { background: #d6e4f0; color: #1a3c6e; font-size: 10px; font-weight: 600; border-top: none; text-align: center; }
+    tr.grp-hdr td { background: #eaf2fb; font-weight: 700; color: #1a3c6e; border-top: 2px solid #2471a3; padding: 5px; }
+    .opening-label { color: #c00; font-weight: 700; }
+    .opening-val   { color: #c00; font-weight: 700; font-family: 'Courier New', monospace; }
+    tr.sub-grp-hdr td { background: #f8fafc; font-weight: 700; color: #374151; padding: 3px 5px; border-top: 1px solid #cbd5e1; }
+    tr.data-row td { background: #fff; }
+    tr.total-row td { background: #eaf0fb; font-weight: 700; border-top: 1.5px solid #2471a3; }
+    tr.closing-row td { background: #eaf0fb; font-weight: 700; }
+    tr.grand-row td { background: #d4e6f1; font-weight: 700; border-top: 2px solid #1a5276; }
+    .num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
+    table.rt col.c1 { width: 6%;  } table.rt col.c2 { width: 11%; } table.rt col.c3 { width: 9%;  }
+    table.rt col.c4 { width: 10%; } table.rt col.c5 { width: 9%;  } table.rt col.c6 { width: 14%; }
+    table.rt col.c7 { width: 11%; } table.rt col.c8 { width: 11%; } table.rt col.c9 { width: 12%; }
+    .footer { margin-top: 12px; padding-top: 6px; border-top: 1px solid #d5d8dc; font-size: 10px; color: #777; text-align: center; }
     .no-print { margin-bottom: 10px; text-align: right; }
-    .button { display: inline-flex; align-items: center; justify-content: center; padding: 8px 20px; border-radius: 999px; border: none; background: #0d4d89; color: white; font-weight: 700; cursor: pointer; font-size: 13px; }
-    .button:hover { background: #1d4ed8; }
-    @media print { body { background: #fff; } .page { box-shadow: none; margin: 0; border-radius: 0; } .no-print { display: none; } }
+    .btn { padding: 7px 20px; background: #1a5276; color: #fff; border: none; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .btn:hover { background: #154360; }
+    @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; margin: 0; border-radius: 0; } .no-print { display: none; } }
   </style>
 </head>
 <body>
-  <div class="no-print">
-    <button class="button" onclick="window.print()">🖨 Print / Save PDF</button>
-  </div>
-  <div class="page">
-    <div class="header-top">
-      <div class="header-left">
-        <div class="report-title">${reportTitle}</div>
-        <table class="meta-info">
-          <tr><td class="label">Report</td><td>${text(parameter)}</td></tr>
-          <tr><td class="label">Date</td><td>${reportDate}</td></tr>
-          <tr><td class="label">User</td><td>${generatedBy}</td></tr>
-          <tr><td class="label">Currency</td><td>OMR</td></tr>
-        </table>
-      </div>
-      <div class="brand-block">
-        <div class="brand-name">AL MADINA</div>
-        <div class="brand-subtitle">LOGISTICS</div>
-      </div>
+<div class="no-print"><button class="btn" onclick="window.print()">Print / Save PDF</button></div>
+<div class="page">
+  <div class="header">
+    <div class="logo-block">
+      <div class="logo-arabic">المدينة اللوجستية</div>
+      <div class="logo-name">al madina</div>
+      <div class="logo-sub">L O G I S T I C S</div>
     </div>
-    <table class="report-table">
-      <thead>
-        <tr>
-          <th>A/c Code</th>
-          <th>Type</th>
-          <th>Doc No.</th>
-          <th>Doc Date</th>
-          <th>Chq No.</th>
-          <th>Chq Date</th>
-          <th>Bank</th>
-          <th class="num">Credit</th>
-          <th class="num">Debit</th>
-          <th class="num">Balance</th>
-        </tr>
-      </thead>
-      <tbody>${tableBodyHtml || '<tr><td colspan="10" style="text-align:center;padding:36px 0;">No records found for the selected criteria.</td></tr>'}</tbody>
-    </table>
-    <div class="footer">Generated by ${generatedBy} • ${reportDate}</div>
+    <div class="meta-block">
+      <table>
+        <tr><td class="lbl">Title :</td><td>${reportTitle}</td></tr>
+        <tr><td class="lbl">Date :</td><td>${reportDate}</td></tr>
+        <tr><td class="lbl">User :</td><td>${generatedBy}</td></tr>
+        <tr><td class="lbl">Report :</td><td>${text(parameter)}</td></tr>
+        <tr><td class="lbl">Currency :</td><td>OMR</td></tr>
+      </table>
+    </div>
+    <div class="page-info">Page 1 of 1</div>
   </div>
+  <table class="rt">
+    <colgroup>
+      <col class="c1"/><col class="c2"/><col class="c3"/>
+      <col class="c4"/><col class="c5"/><col class="c6"/>
+      <col class="c7"/><col class="c8"/><col class="c9"/>
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Type</th><th>Doc No.</th><th>Doc Date</th>
+        <th>Chq No.</th><th>Chq Date</th><th>Bank</th>
+        <th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th>
+      </tr>
+      <tr class="sub-hdr">
+        <th colspan="2">Salesman Code/Name</th>
+        <th colspan="4">Ref Ac Code/ Name</th>
+        <th colspan="3"></th>
+      </tr>
+    </thead>
+    <tbody>${tableBodyHtml || '<tr><td colspan="9" style="text-align:center;padding:36px 0;color:#888;">No records found.</td></tr>'}</tbody>
+  </table>
+  <div class="footer">Generated by ${generatedBy} &bull; ${reportDate}</div>
+</div>
 </body>
 </html>`;
 
@@ -691,7 +635,7 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
     res.status(200).send(reportHtml);
 
   } catch (error: any) {
-    console.error("Cheque Date Wise Report Error:", error);
+    console.error("Ledger With Details Report Error:", error);
     res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
   } finally {
     if (connection) { try { await connection.close(); } catch (e) { console.error(e); } }
@@ -699,14 +643,14 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
 };
 
 // ─── Excel Controller ─────────────────────────────────────────────────────────
-export const exportChequeDateWiseExcel = async (req: Request, res: Response): Promise<void> => {
+export const exportLedgerWithDetailsExcel = async (req: Request, res: Response): Promise<void> => {
   let connection;
   try {
     const { parameter, loginid, code5, code6 } = req.body;
     const { rows, connection: conn } = await fetchRows(req);
     connection = conn;
 
-    const buffer = buildChequeDateWiseExcelBuffer(
+    const buffer = buildLedgerWithDetailsExcelBuffer(
       rows,
       text(loginid) || "ADMIN",
       text(parameter),
@@ -715,11 +659,11 @@ export const exportChequeDateWiseExcel = async (req: Request, res: Response): Pr
     );
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="ChequeDateWiseReport.xlsx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="LedgerWithDetailsReport.xlsx"`);
     res.send(buffer);
 
   } catch (error: any) {
-    console.error("Cheque Date Wise Excel Error:", error);
+    console.error("Ledger With Details Excel Error:", error);
     res.status(500).json({ success: false, message: "Unable to generate Excel", details: error.message });
   } finally {
     if (connection) { try { await connection.close(); } catch (e) { console.error(e); } }

@@ -1,11 +1,11 @@
-import { getRepository } from "../../database/connection";
+import { getRepository, AppDataSource } from "../../database/connection";
 import { TaAdjDetail } from "../../entity/WMS/taAdjDetail.entity";
 import oracledb from "oracledb";
 import { executeRaw } from "./tenant-service.helper";
 
 export class TaAdjDetailService {
   private static getRepository() {
-    return getRepository(TaAdjDetail);
+    return AppDataSource.getRepository(TaAdjDetail);
   }
 
   static async findAll(): Promise<TaAdjDetail[]> {
