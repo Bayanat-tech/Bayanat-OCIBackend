@@ -2,7 +2,6 @@ import { Response } from "express";
 import { RequestHandler } from "express";
 import {
   ISearch,
-  RequestWithUser,
 } from "../../../../interfaces/common.interface";
 import { IUser } from "../../../../interfaces/user.interface";
 //import { packingDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
@@ -18,9 +17,14 @@ import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { Like } from "typeorm";
 import { AppDataSource } from "../../../../database/connection";
+import { RequestWithTenant } from "../../../../middleware/tenant.middleware";
 
-export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
+export const getTallyDetail = async (req: RequestWithTenant, res: Response) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({ success:false,message:"company_code not found on authenticated user"});
+    }
     const { prin_code, packdet_no, job_no, seq_number } = req.query;
 
     const tallyDetailsRepo = AppDataSource.getRepository(TiTallyDetail);
@@ -29,7 +33,7 @@ export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
         prin_code: prin_code as string,
         packdet_no: Number(packdet_no),
         job_no: job_no as string,
-        company_code: req.user.company_code,
+        company_code: companyCode,
         seq_number: Number(seq_number)
       },
     });
@@ -46,7 +50,7 @@ export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
     const productInfo = await productRepo.findOne({
       where: {
         prod_code: tallyDetails.prod_code,
-        company_code: req.user.company_code,
+        company_code: companyCode,
       },
     });
 
@@ -71,16 +75,20 @@ export const getTallyDetail = async (req: RequestWithUser, res: Response) => {
 
 
 export const createTallyItem: RequestHandler = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
-): Promise<void> => {
+): Promise<any> => {
   try {
     const requestUser: IUser = req.user;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({ success:false,message:"company_code not found on authenticated user"});
+    }
 console.log('before calling tallyDetailsSchema');
     const { error } = tallyDetailsSchema(
       req.body,
       false,
-      requestUser.company_code
+      companyCode
     );
 
     if (error) {
@@ -109,7 +117,7 @@ console.log('after calling tallyDetailsSchema');
       const productRepo = AppDataSource.getRepository(Product);
       const productResponse = await productRepo.findOne({
         where: {
-          company_code: requestUser.company_code,
+          company_code: companyCode,
           prod_code: req.body.prod_code,
         },
       });
@@ -127,7 +135,7 @@ console.log('after calling tallyDetailsSchema');
       const countryRepo = AppDataSource.getRepository(CountryMaster);
       const countryResponse = await countryRepo.findOne({
         where: {
-          company_code: requestUser.company_code,
+          company_code: companyCode,
           country_code: req.body.country_code,
         },
       });
@@ -150,7 +158,7 @@ console.log('after calling tallyDetailsSchema');
       await tallyDetailsRepo.save({
         ...req.body,
         seq_number: undefined, // trigger generates it
-        company_code: requestUser.company_code,
+        company_code: companyCode,
         created_by: requestUser.loginid,
         updated_by: requestUser.loginid,
       });
@@ -162,7 +170,7 @@ console.log('after calling tallyDetailsSchema');
     else {
       const updateResult = await tallyDetailsRepo.update(
         {
-          company_code: requestUser.company_code,
+          company_code: companyCode,
           seq_number: seq_number,
         },
         {
@@ -197,7 +205,7 @@ console.log('after calling tallyDetailsSchema');
         pda_qty_puom,
         pda_qty_luom,
         pda_quantity,
-        requestUser.company_code,
+        companyCode,
         job_no,
         prin_code,
         prod_code,
@@ -224,16 +232,20 @@ console.log('after calling tallyDetailsSchema');
 
 
 
-export const updateTallyItem = async (req: RequestWithUser, res: Response) => {
+export const updateTallyItem = async (req: RequestWithTenant, res: Response) => {
   try {
     const requestUser: IUser = req.user;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({ success:false,message:"company_code not found on authenticated user"});
+    }
     const { packdet_no , seq_number} = req.params;
     const { prin_code, job_no } = req.query;
 console.log ('seq_number',seq_number);
     const { error } = tallyDetailsSchema(
       req.body,
       false,
-      requestUser.company_code
+      companyCode
     );
     if (error) {
       res
@@ -245,7 +257,7 @@ console.log ('seq_number',seq_number);
     const tallyDetailsRepo = AppDataSource.getRepository(TiTallyDetail);
     const tallyResponse = await tallyDetailsRepo.findOne({
       where: {
-        company_code: requestUser.company_code,
+        company_code: companyCode,
         packdet_no: Number(packdet_no),
         prin_code: prin_code as string,
         job_no: job_no as string,
@@ -263,7 +275,7 @@ console.log ('seq_number',seq_number);
       const productRepo = AppDataSource.getRepository(Product);
       const productResponse = await productRepo.findOne({
         where: {
-          company_code: requestUser.company_code,
+          company_code: companyCode,
           prod_code: req.body.prod_code,
         },
       });
@@ -280,7 +292,7 @@ console.log ('seq_number',seq_number);
       const countryRepo = AppDataSource.getRepository(CountryMaster);
       const countryResponse = await countryRepo.findOne({
         where: {
-          company_code: requestUser.company_code,
+          company_code: companyCode,
           country_code: req.body.country_code,
         },
       });
@@ -295,7 +307,7 @@ console.log ('seq_number',seq_number);
 
     const response = await tallyDetailsRepo.update(
       {
-        company_code: requestUser.company_code,
+        company_code: companyCode,
         packdet_no: Number(packdet_no),
         prin_code: prin_code as string,
         job_no: job_no as string,
@@ -327,12 +339,16 @@ console.log ('seq_number',seq_number);
 };
 
 export const deleteTallyItem = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ): Promise<any> => {
   try {
     const { tally_details } = req.body;
     const requestUser = req.user;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({ success:false,message:"company_code not found on authenticated user"});
+    }
     if (tally_details.length === 0) {
       return res.status(400).json({
         success: false,
@@ -355,7 +371,7 @@ export const deleteTallyItem = async (
             prin_code,
             job_no,
             packdet_no,
-            company_code: requestUser.company_code,
+            company_code: companyCode,
             seq_number
           });
         }
@@ -374,16 +390,20 @@ export const deleteTallyItem = async (
   }
 };
 export const createBulkTallyDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
     const requestUser: IUser = req.user;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({ success:false,message:"company_code not found on authenticated user"});
+    }
 
     const { error } = tallyDetailsSchema(
       req.body,
       true,
-      requestUser.company_code
+      companyCode
     );
     if (error) {
       res
@@ -413,10 +433,14 @@ export const createBulkTallyDetails = async (
   }
 };
 export const exportTallyDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({ success:false,message:"company_code not found on authenticated user"});
+    }
     let csvTransform: fastCsv.CsvFormatterStream<
       fastCsv.FormatterRow,
       fastCsv.FormatterRow
@@ -428,7 +452,7 @@ export const exportTallyDetails = async (
       : {};
 
     const whereConditions: any = {
-      company_code: req.user.company_code,
+      company_code: companyCode,
     };
 
     // Apply search filters if present
