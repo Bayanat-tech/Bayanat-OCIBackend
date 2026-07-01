@@ -1,13 +1,14 @@
 import { Repository, DataSource, Like } from "typeorm";
 import { TiContainer } from "../../../../entities/wms/transaction/inbound/TiContainer.entity";
 import { IShipmentDetails } from "../../../../interfaces/wms/transaction/inbound/shipmentDetails_wms.interface";
-
+import { AppDataSource } from "../../../../database/connection";
 export class ShipmentDetailsService {
   private repository: Repository<TiContainer>;
 
-  constructor(dataSource: DataSource) {
-    this.repository = dataSource.getRepository(TiContainer);
+  constructor() {
+    this.repository = AppDataSource.getRepository(TiContainer);
   }
+
 
   async findOne(
     prin_code: string,

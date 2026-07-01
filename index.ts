@@ -144,7 +144,7 @@ async function startServer() {
     }
     try {
       // Start background schedulers (email sender, attendance, etc.)
-      // await startSchedulers();
+      //await startSchedulers();
     } catch (schedErr) {
       console.error("Failed to start schedulers:", schedErr);
       // Non-fatal: continue running server even if schedulers fail

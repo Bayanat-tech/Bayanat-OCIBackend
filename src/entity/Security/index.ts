@@ -1,5 +1,6 @@
 // Export all Security-related entities from this index file
 export { User } from "./User";
+export { SecLogin } from "./seclogin.entity";
 export { Company } from "./company.entity";
 export { RoleMaster } from "./rolemaster.entity";
 export { FlowMaster } from "./flowmaster.entity";
