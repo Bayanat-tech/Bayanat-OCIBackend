@@ -1,6 +1,6 @@
 import { oracleDb } from "../database/connection";
 import { uploadSupportAttachmentToS3 } from "./ociUpload.service";
-import { emitSupportPresenceChanged, emitSupportTicketChanged, resolveSupportRole } from "./supportRealtime.service";
+import { emitSupportPresenceChanged, emitSupportTicketChanged, getConnectedSupportUsers, resolveSupportRole } from "./supportRealtime.service";
 
 const ROOT_SCHEMA = "CUSTOMERS";
 
@@ -132,7 +132,7 @@ export class SupportChatService {
         ORDER BY CASE WHEN ${seen} >= SYSDATE - (5 / 1440) THEN 0 ELSE 1 END,
                  ${seen} DESC`
     );
-    return normalizeRows(result.rows || []);
+    return mergeConnectedUsers(await normalizeRows(result.rows || []));
   }
 
   static async getTickets(user: UserContext, requestedRole = "user") {
@@ -404,6 +404,21 @@ function cleanFileName(value: string) {
 
 function safeObjectSegment(value: string) {
   return cleanText(value).replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "unknown";
+}
+
+function mergeConnectedUsers(rows: any[]) {
+  const byLogin = new Map<string, any>();
+  for (const row of rows) {
+    byLogin.set(String(row.LOGINID || "").toUpperCase(), row);
+  }
+  for (const connected of getConnectedSupportUsers()) {
+    const key = String(connected.LOGINID || "").toUpperCase();
+    byLogin.set(key, { ...(byLogin.get(key) || {}), ...connected, IS_ONLINE: "Y" });
+  }
+  return Array.from(byLogin.values()).sort((first, second) => {
+    if (first.IS_ONLINE !== second.IS_ONLINE) return first.IS_ONLINE === "Y" ? -1 : 1;
+    return String(first.USERNAME || first.LOGINID || "").localeCompare(String(second.USERNAME || second.LOGINID || ""));
+  });
 }
 
 async function addColumnIfMissing(tableName: string, columnName: string, definition: string) {

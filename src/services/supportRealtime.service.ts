@@ -12,6 +12,7 @@ type SocketUser = {
 };
 
 let ioServer: Server | null = null;
+const connectedUsers = new Map<string, SocketUser & { socketCount: number; lastSeenAt: Date }>();
 
 export function isSupportAdminUser(user: any) {
   const loginid = String(user?.loginid || user?.LOGINID || "").toUpperCase();
@@ -59,10 +60,18 @@ export function initSupportRealtime(server: http.Server) {
     const user = socket.data.user as SocketUser;
     socket.join(userRoom(user.loginid));
     if (user.isSupportAdmin) socket.join(adminRoom());
+    markConnected(user);
 
     socket.emit("support:ready", {
       loginid: user.loginid,
       role: user.isSupportAdmin ? "admin" : "user",
+    });
+
+    emitSupportPresenceChanged();
+
+    socket.on("disconnect", () => {
+      markDisconnected(user);
+      emitSupportPresenceChanged();
     });
   });
 
@@ -81,6 +90,39 @@ export function emitSupportTicketChanged(ticket: { requesterLoginid?: string; as
   if (ticket.assignedTo) {
     ioServer?.to(userRoom(ticket.assignedTo)).emit("support:tickets-changed", { ticketId: ticket.ticketId });
   }
+}
+
+export function getConnectedSupportUsers() {
+  return Array.from(connectedUsers.values()).map((user) => ({
+    LOGINID: user.loginid,
+    USERNAME: user.username,
+    COMPANY_CODE: user.company_code,
+    TENANT_ID: user.tenantId,
+    LAST_SEEN_AT: user.lastSeenAt.toISOString(),
+    IS_ONLINE: "Y",
+  }));
+}
+
+function markConnected(user: SocketUser) {
+  const key = String(user.loginid || "").toUpperCase();
+  const existing = connectedUsers.get(key);
+  connectedUsers.set(key, {
+    ...user,
+    socketCount: (existing?.socketCount || 0) + 1,
+    lastSeenAt: new Date(),
+  });
+}
+
+function markDisconnected(user: SocketUser) {
+  const key = String(user.loginid || "").toUpperCase();
+  const existing = connectedUsers.get(key);
+  if (!existing) return;
+  const nextCount = existing.socketCount - 1;
+  if (nextCount <= 0) {
+    connectedUsers.delete(key);
+    return;
+  }
+  connectedUsers.set(key, { ...existing, socketCount: nextCount, lastSeenAt: new Date() });
 }
 
 function adminRoom() {
