@@ -330,7 +330,6 @@ export class SupportChatService {
     await this.ensureSchema();
     const ticket = await this.assertTicketAccess(ticketId, user, requestedRole);
     const loginid = getLoginId(user);
-    const role = resolveSupportRole(user, requestedRole);
     const message = await fetchOne(
       `SELECT MESSAGE_ID, TICKET_ID, SENDER_LOGINID, NVL(IS_DELETED, 'N') AS IS_DELETED
          FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE
@@ -340,7 +339,7 @@ export class SupportChatService {
     );
     if (!message) throw new Error("Support message not found");
     if (message.IS_DELETED === "Y") return { ticketId, messageId, deleted: true };
-    if (role !== "admin" && String(message.SENDER_LOGINID || "").toUpperCase() !== loginid.toUpperCase()) {
+    if (String(message.SENDER_LOGINID || "").toUpperCase() !== loginid.toUpperCase()) {
       throw new Error("You can delete only your own support messages");
     }
 
