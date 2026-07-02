@@ -316,7 +316,7 @@ export class SupportChatService {
   static async markRead(ticketId: number, user: UserContext) {
     await this.ensureSchema();
     const loginid = getLoginId(user);
-    await oracleDb.query(
+    const result = await oracleDb.query(
       `UPDATE ${ROOT_SCHEMA}.SUPPORT_MESSAGE
           SET READ_AT = SYSDATE
         WHERE TICKET_ID = :ticketId
@@ -324,12 +324,15 @@ export class SupportChatService {
           AND READ_AT IS NULL`,
       { ticketId, loginid }
     );
+    if (!Number(result?.rowsAffected || 0)) {
+      return { ticketId, changed: false };
+    }
     const ticket = await fetchOne(
       `SELECT REQUESTER_LOGINID, ASSIGNED_TO FROM ${ROOT_SCHEMA}.SUPPORT_TICKET WHERE TICKET_ID = :ticketId`,
       { ticketId }
     );
     emitSupportTicketChanged({ requesterLoginid: ticket?.REQUESTER_LOGINID, assignedTo: ticket?.ASSIGNED_TO, ticketId, actorLoginid: loginid });
-    return { ticketId };
+    return { ticketId, changed: true };
   }
 
   static async deleteMessage(ticketId: number, messageId: number, user: UserContext, requestedRole = "user") {
