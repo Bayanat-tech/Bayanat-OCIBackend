@@ -84,3 +84,14 @@ export const markSupportRead = async (req: AuthedRequest, res: Response) => {
     res.status(400).json({ success: false, message: error.message || "Unable to mark messages read" });
   }
 };
+
+export const deleteSupportMessage = async (req: AuthedRequest, res: Response) => {
+  try {
+    const ticketId = Number(req.params.ticketId);
+    const messageId = Number(req.params.messageId);
+    const data = await SupportChatService.deleteMessage(ticketId, messageId, req.user || {}, roleFrom(req));
+    res.json({ success: true, data, message: "Message deleted" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || "Unable to delete message" });
+  }
+};

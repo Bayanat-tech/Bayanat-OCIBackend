@@ -4,6 +4,7 @@ import { tenantContextMiddleware } from "../middleware/tenantContext.middleware"
 import {
   addSupportMessage,
   createSupportTicket,
+  deleteSupportMessage,
   getSupportActiveUsers,
   getSupportMessages,
   getSupportTickets,
@@ -22,6 +23,7 @@ router.get("/tickets", getSupportTickets);
 router.post("/tickets", createSupportTicket);
 router.get("/tickets/:ticketId/messages", getSupportMessages);
 router.post("/tickets/:ticketId/messages", addSupportMessage);
+router.delete("/tickets/:ticketId/messages/:messageId", deleteSupportMessage);
 router.patch("/tickets/:ticketId", updateSupportTicket);
 router.post("/tickets/:ticketId/read", markSupportRead);
 

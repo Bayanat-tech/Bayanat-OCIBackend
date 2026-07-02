@@ -55,9 +55,15 @@ export class SupportChatService {
         MESSAGE_TEXT CLOB,
         HAS_ATTACHMENTS CHAR(1) DEFAULT 'N',
         READ_AT DATE,
+        IS_DELETED CHAR(1) DEFAULT 'N',
+        DELETED_BY VARCHAR2(100),
+        DELETED_AT DATE,
         CREATED_AT DATE DEFAULT SYSDATE
       )`
     );
+    await addColumnIfMissing("SUPPORT_MESSAGE", "IS_DELETED", "CHAR(1) DEFAULT 'N'");
+    await addColumnIfMissing("SUPPORT_MESSAGE", "DELETED_BY", "VARCHAR2(100)");
+    await addColumnIfMissing("SUPPORT_MESSAGE", "DELETED_AT", "DATE");
     await createTableIfMissing(
       "SUPPORT_ATTACHMENT",
       `CREATE TABLE ${ROOT_SCHEMA}.SUPPORT_ATTACHMENT (
@@ -155,6 +161,7 @@ export class SupportChatService {
               (SELECT COUNT(*) FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE M
                 WHERE M.TICKET_ID = T.TICKET_ID
                   AND M.SENDER_LOGINID <> :viewerLoginid
+                  AND NVL(M.IS_DELETED, 'N') <> 'Y'
                   AND M.READ_AT IS NULL) AS UNREAD_COUNT
          FROM ${ROOT_SCHEMA}.SUPPORT_TICKET T
          LEFT JOIN ${ROOT_SCHEMA}.SUPPORT_PRESENCE P ON P.LOGINID = T.REQUESTER_LOGINID
@@ -172,7 +179,9 @@ export class SupportChatService {
     try {
       const messages = await oracleDb.query(
         `SELECT MESSAGE_ID, TICKET_ID, SENDER_LOGINID, SENDER_NAME, SENDER_ROLE,
-                MESSAGE_TEXT, HAS_ATTACHMENTS, TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
+                MESSAGE_TEXT, HAS_ATTACHMENTS, NVL(IS_DELETED, 'N') AS IS_DELETED, DELETED_BY,
+                TO_CHAR(DELETED_AT, 'YYYY-MM-DD HH24:MI:SS') AS DELETED_AT,
+                TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
            FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE
           WHERE TICKET_ID = :ticketId
           ORDER BY MESSAGE_ID`,
@@ -196,7 +205,14 @@ export class SupportChatService {
         const key = Number(item.MESSAGE_ID);
         byMessage.set(key, [...(byMessage.get(key) || []), item]);
       }
-      return messageRows.map((message: any) => ({ ...message, attachments: byMessage.get(Number(message.MESSAGE_ID)) || [] }));
+      return messageRows.map((message: any) => {
+        const deleted = message.IS_DELETED === "Y";
+        return {
+          ...message,
+          MESSAGE_TEXT: deleted ? "This message was deleted" : message.MESSAGE_TEXT,
+          attachments: deleted ? [] : byMessage.get(Number(message.MESSAGE_ID)) || [],
+        };
+      });
     } finally {
       await connection.close();
     }
@@ -252,6 +268,9 @@ export class SupportChatService {
         WHERE TICKET_ID = :ticketId`,
       { message, ticketId }
     );
+    if (String(ticket.STATUS || "").toUpperCase() === "CLOSED" && role !== "admin") {
+      await this.insertSystemMessage(ticketId, "Ticket reopened by customer reply.");
+    }
     emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: ticket.ASSIGNED_TO, ticketId });
     return { ticketId, messageId };
   }
@@ -259,9 +278,14 @@ export class SupportChatService {
   static async updateTicket(ticketId: number, input: any, user: UserContext, requestedRole = "user") {
     await this.ensureSchema();
     const ticket = await this.assertTicketAccess(ticketId, user, requestedRole);
+    const role = resolveSupportRole(user, requestedRole);
     const status = cleanText(input.status).toUpperCase();
     const assignedTo = cleanText(input.assigned_to);
     const priority = cleanText(input.priority).toUpperCase();
+    const previousStatus = String(ticket.STATUS || "").toUpperCase();
+    if (status === "CLOSED" && role !== "admin") {
+      throw new Error("Only support admins can close tickets");
+    }
     await oracleDb.query(
       `UPDATE ${ROOT_SCHEMA}.SUPPORT_TICKET
           SET STATUS = CASE WHEN :statusValue IS NULL THEN STATUS ELSE :statusValue END,
@@ -272,6 +296,18 @@ export class SupportChatService {
         WHERE TICKET_ID = :ticketId`,
       { ticketId, statusValue: status || null, assignedTo: assignedTo || null, priority: priority || null }
     );
+    if (status === "CLOSED" && previousStatus !== "CLOSED") {
+      const closeMessage = "Your ticket has been closed by support. If the issue is not solved, please reply here and the ticket will reopen.";
+      await this.insertSystemMessage(ticketId, closeMessage);
+      await oracleDb.query(
+        `UPDATE ${ROOT_SCHEMA}.SUPPORT_TICKET
+            SET LAST_MESSAGE = :message,
+                LAST_MESSAGE_AT = SYSDATE,
+                UPDATED_AT = SYSDATE
+          WHERE TICKET_ID = :ticketId`,
+        { ticketId, message: closeMessage }
+      );
+    }
     emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: assignedTo || ticket.ASSIGNED_TO, ticketId });
     return { ticketId };
   }
@@ -290,11 +326,60 @@ export class SupportChatService {
     return { ticketId };
   }
 
+  static async deleteMessage(ticketId: number, messageId: number, user: UserContext, requestedRole = "user") {
+    await this.ensureSchema();
+    const ticket = await this.assertTicketAccess(ticketId, user, requestedRole);
+    const loginid = getLoginId(user);
+    const role = resolveSupportRole(user, requestedRole);
+    const message = await fetchOne(
+      `SELECT MESSAGE_ID, TICKET_ID, SENDER_LOGINID, NVL(IS_DELETED, 'N') AS IS_DELETED
+         FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE
+        WHERE TICKET_ID = :ticketId
+          AND MESSAGE_ID = :messageId`,
+      { ticketId, messageId }
+    );
+    if (!message) throw new Error("Support message not found");
+    if (message.IS_DELETED === "Y") return { ticketId, messageId, deleted: true };
+    if (role !== "admin" && String(message.SENDER_LOGINID || "").toUpperCase() !== loginid.toUpperCase()) {
+      throw new Error("You can delete only your own support messages");
+    }
+
+    await oracleDb.query(
+      `UPDATE ${ROOT_SCHEMA}.SUPPORT_MESSAGE
+          SET MESSAGE_TEXT = 'This message was deleted',
+              HAS_ATTACHMENTS = 'N',
+              IS_DELETED = 'Y',
+              DELETED_BY = :loginid,
+              DELETED_AT = SYSDATE
+        WHERE TICKET_ID = :ticketId
+          AND MESSAGE_ID = :messageId`,
+      { ticketId, messageId, loginid }
+    );
+    await oracleDb.query(
+      `UPDATE ${ROOT_SCHEMA}.SUPPORT_TICKET T
+          SET LAST_MESSAGE = NVL((
+                SELECT DBMS_LOB.SUBSTR(M.MESSAGE_TEXT, 4000, 1)
+                  FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE M
+                 WHERE M.TICKET_ID = :ticketId
+                   AND NVL(M.IS_DELETED, 'N') <> 'Y'
+                 ORDER BY M.MESSAGE_ID DESC
+                 FETCH FIRST 1 ROW ONLY
+              ), 'Message deleted'),
+              LAST_MESSAGE_AT = SYSDATE,
+              UPDATED_AT = SYSDATE
+        WHERE T.TICKET_ID = :ticketId`,
+      { ticketId }
+    );
+    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: ticket.ASSIGNED_TO, ticketId });
+    return { ticketId, messageId, deleted: true };
+  }
+
   private static async assertTicketAccess(ticketId: number, user: UserContext, requestedRole = "user") {
     const loginid = getLoginId(user);
     const role = resolveSupportRole(user, requestedRole);
     const row = await fetchOne(
       `SELECT TICKET_ID, REQUESTER_LOGINID, ASSIGNED_TO
+              , STATUS
          FROM ${ROOT_SCHEMA}.SUPPORT_TICKET
         WHERE TICKET_ID = :ticketId
           ${role === "admin" ? "" : "AND (REQUESTER_LOGINID = :loginid OR ASSIGNED_TO = :loginid)"}`,
@@ -302,6 +387,15 @@ export class SupportChatService {
     );
     if (!row) throw new Error("Support ticket not found or not accessible");
     return row;
+  }
+
+  private static async insertSystemMessage(ticketId: number, message: string) {
+    await oracleDb.query(
+      `INSERT INTO ${ROOT_SCHEMA}.SUPPORT_MESSAGE
+        (TICKET_ID, SENDER_LOGINID, SENDER_NAME, SENDER_ROLE, MESSAGE_TEXT, HAS_ATTACHMENTS, CREATED_AT)
+       VALUES (:ticketId, 'SUPPORT_SYSTEM', 'Support', 'SYSTEM', :message, 'N', SYSDATE)`,
+      { ticketId, message }
+    );
   }
 
   private static async insertMessage(ticketId: number, message: string, attachments: AttachmentInput[], user: UserContext, senderRole: string) {
