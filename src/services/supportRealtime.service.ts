@@ -67,6 +67,23 @@ export function initSupportRealtime(server: http.Server) {
       role: user.isSupportAdmin ? "admin" : "user",
     });
 
+    socket.on("support:typing", (payload: { ticketId?: number; requesterLoginid?: string; assignedTo?: string | null; typing?: boolean }) => {
+      const eventPayload = {
+        ticketId: payload?.ticketId,
+        loginid: user.loginid,
+        username: user.username || user.loginid,
+        role: user.isSupportAdmin ? "admin" : "user",
+        typing: Boolean(payload?.typing),
+      };
+      ioServer?.to(adminRoom()).emit("support:typing", eventPayload);
+      if (payload?.requesterLoginid) {
+        ioServer?.to(userRoom(payload.requesterLoginid)).emit("support:typing", eventPayload);
+      }
+      if (payload?.assignedTo) {
+        ioServer?.to(userRoom(payload.assignedTo)).emit("support:typing", eventPayload);
+      }
+    });
+
     emitSupportPresenceChanged();
 
     socket.on("disconnect", () => {
@@ -82,13 +99,13 @@ export function emitSupportPresenceChanged() {
   ioServer?.to(adminRoom()).emit("support:presence-changed");
 }
 
-export function emitSupportTicketChanged(ticket: { requesterLoginid?: string; assignedTo?: string | null; ticketId?: number }) {
-  ioServer?.to(adminRoom()).emit("support:tickets-changed", { ticketId: ticket.ticketId });
+export function emitSupportTicketChanged(ticket: { requesterLoginid?: string; assignedTo?: string | null; ticketId?: number; actorLoginid?: string }) {
+  ioServer?.to(adminRoom()).emit("support:tickets-changed", { ticketId: ticket.ticketId, actorLoginid: ticket.actorLoginid });
   if (ticket.requesterLoginid) {
-    ioServer?.to(userRoom(ticket.requesterLoginid)).emit("support:tickets-changed", { ticketId: ticket.ticketId });
+    ioServer?.to(userRoom(ticket.requesterLoginid)).emit("support:tickets-changed", { ticketId: ticket.ticketId, actorLoginid: ticket.actorLoginid });
   }
   if (ticket.assignedTo) {
-    ioServer?.to(userRoom(ticket.assignedTo)).emit("support:tickets-changed", { ticketId: ticket.ticketId });
+    ioServer?.to(userRoom(ticket.assignedTo)).emit("support:tickets-changed", { ticketId: ticket.ticketId, actorLoginid: ticket.actorLoginid });
   }
 }
 

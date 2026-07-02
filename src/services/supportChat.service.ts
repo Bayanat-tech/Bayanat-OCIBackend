@@ -181,6 +181,7 @@ export class SupportChatService {
         `SELECT MESSAGE_ID, TICKET_ID, SENDER_LOGINID, SENDER_NAME, SENDER_ROLE,
                 MESSAGE_TEXT, HAS_ATTACHMENTS, NVL(IS_DELETED, 'N') AS IS_DELETED, DELETED_BY,
                 TO_CHAR(DELETED_AT, 'YYYY-MM-DD HH24:MI:SS') AS DELETED_AT,
+                TO_CHAR(READ_AT, 'YYYY-MM-DD HH24:MI:SS') AS READ_AT,
                 TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
            FROM ${ROOT_SCHEMA}.SUPPORT_MESSAGE
           WHERE TICKET_ID = :ticketId
@@ -249,7 +250,7 @@ export class SupportChatService {
     );
     const ticketId = Number(result.outBinds?.ticketId?.[0] || result.outBinds?.ticketId);
     const messageId = await this.insertMessage(ticketId, message, input.attachments || [], user, "USER");
-    emitSupportTicketChanged({ requesterLoginid: loginid, assignedTo: cleanText(input.assigned_to), ticketId });
+    emitSupportTicketChanged({ requesterLoginid: loginid, assignedTo: cleanText(input.assigned_to), ticketId, actorLoginid: loginid });
     return { ticketId, messageId };
   }
 
@@ -271,7 +272,7 @@ export class SupportChatService {
     if (String(ticket.STATUS || "").toUpperCase() === "CLOSED" && role !== "admin") {
       await this.insertSystemMessage(ticketId, "Ticket reopened by customer reply.");
     }
-    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: ticket.ASSIGNED_TO, ticketId });
+    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: ticket.ASSIGNED_TO, ticketId, actorLoginid: getLoginId(user) });
     return { ticketId, messageId };
   }
 
@@ -308,7 +309,7 @@ export class SupportChatService {
         { ticketId, message: closeMessage }
       );
     }
-    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: assignedTo || ticket.ASSIGNED_TO, ticketId });
+    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: assignedTo || ticket.ASSIGNED_TO, ticketId, actorLoginid: getLoginId(user) });
     return { ticketId };
   }
 
@@ -323,6 +324,11 @@ export class SupportChatService {
           AND READ_AT IS NULL`,
       { ticketId, loginid }
     );
+    const ticket = await fetchOne(
+      `SELECT REQUESTER_LOGINID, ASSIGNED_TO FROM ${ROOT_SCHEMA}.SUPPORT_TICKET WHERE TICKET_ID = :ticketId`,
+      { ticketId }
+    );
+    emitSupportTicketChanged({ requesterLoginid: ticket?.REQUESTER_LOGINID, assignedTo: ticket?.ASSIGNED_TO, ticketId, actorLoginid: loginid });
     return { ticketId };
   }
 
@@ -369,7 +375,7 @@ export class SupportChatService {
         WHERE T.TICKET_ID = :ticketId`,
       { ticketId }
     );
-    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: ticket.ASSIGNED_TO, ticketId });
+    emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: ticket.ASSIGNED_TO, ticketId, actorLoginid: loginid });
     return { ticketId, messageId, deleted: true };
   }
 
