@@ -94,7 +94,10 @@ export const buildTree = (
     const LEVEL2 = row.LEVEL2 || row.level2;
     const LEVEL3 = row.LEVEL3 || row.level3;
     const URL_PATH = row.URL_PATH || row.url_path;
+    const COMPONENT_NAME = row.COMPONENT_NAME || row.component_name || null;
     const ROW_SERIAL = row.SERIAL_NO ?? row.serial_no;
+    const ICON = row.ICON || row.icon || "AbcIcon";
+    const POSITION = row.POSITION ?? row.position ?? null;
 
     if (!APP_CODE) return;
     const appId =
@@ -106,8 +109,9 @@ export const buildTree = (
         id: String(appId),
         title: APP_CODE,
         type: "collapse",
-        icon: "AbcIcon",
+        icon: ICON,
         url_path: APP_CODE.toLowerCase(),
+        app_code: APP_CODE,
         children: [],
       };
     }
@@ -127,17 +131,29 @@ export const buildTree = (
         level1Node = hasLevel2
           ? {
               id: String(level1Id),
+              serial_no: hasLevel2 ? null : ROW_SERIAL || level1Id,
               title: LEVEL1,
               type: "group",
-              icon: "AbcIcon",
+              icon: ICON,
+              app_code: APP_CODE,
+              level1: LEVEL1,
+              component_name: null,
+              position: POSITION,
               children: [],
             }
           : {
               id: String(level1Id),
+              serial_no: ROW_SERIAL || level1Id,
               title: LEVEL1,
               type: "item",
-              icon: "AbcIcon",
+              icon: ICON,
               url_path: URL_PATH || "",
+              component_name: COMPONENT_NAME,
+              app_code: APP_CODE,
+              level1: LEVEL1,
+              level2: LEVEL2 || null,
+              level3: LEVEL3 || null,
+              position: POSITION,
             };
         tree[APP_CODE].children.push(level1Node);
       }
@@ -153,17 +169,30 @@ export const buildTree = (
           level2Node = hasLevel3
             ? {
                 id: String(level2Id),
+                serial_no: hasLevel3 ? null : ROW_SERIAL || level2Id,
                 title: LEVEL2,
                 type: "collapse",
-                icon: "AbcIcon",
+                icon: ICON,
+                app_code: APP_CODE,
+                level1: LEVEL1,
+                level2: LEVEL2,
+                component_name: null,
+                position: POSITION,
                 children: [],
               }
             : {
                 id: String(level2Id),
+                serial_no: ROW_SERIAL || level2Id,
                 title: LEVEL2,
                 type: "item",
-                icon: "AbcIcon",
+                icon: ICON,
                 url_path: URL_PATH || "",
+                component_name: COMPONENT_NAME,
+                app_code: APP_CODE,
+                level1: LEVEL1,
+                level2: LEVEL2,
+                level3: LEVEL3 || null,
+                position: POSITION,
               };
           level1Node.children.push(level2Node);
         }
@@ -179,10 +208,17 @@ export const buildTree = (
           if (!level3Node) {
             level3Node = {
               id: String(level3Id),
+              serial_no: ROW_SERIAL || level3Id,
               title: LEVEL3,
               type: "item",
-              icon: "AbcIcon",
+              icon: ICON,
               url_path: URL_PATH || "",
+              component_name: COMPONENT_NAME,
+              app_code: APP_CODE,
+              level1: LEVEL1,
+              level2: LEVEL2,
+              level3: LEVEL3,
+              position: POSITION,
             };
             level2Node.children.push(level3Node);
           }

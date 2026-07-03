@@ -69,6 +69,7 @@ export const secmoduleSchema = (data: ISecmodule) => {
     level3: Joi.string().optional().allow(""),
     position: Joi.number().optional().allow(""),
     url_path: Joi.string(),
+    component_name: Joi.string().optional().allow("").allow(null),
     icon: Joi.string().optional().allow("").allow(null),
     user_dt: Joi.date().optional().allow("").allow(null),
     userid: Joi.string().optional().allow("").allow(null),
