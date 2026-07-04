@@ -2,7 +2,7 @@
 // import { RequestWithUser } from "../../interfaces/common.interface";
 // import { IUser } from "../../interfaces/user.interface";
 // import { Response } from "express";
-// import { PurchaseFlowMasterService } from "../../services/purchaseFlow/PfMaster.service";
+// import { PurchaseFlowMasterService } from "../../services/purchaseflow/PfMaster.service";
 
 // export const getPfMaster = async (
 //   req: RequestWithUser, 
