@@ -3,4 +3,4 @@
 /package-lock.json
 *.js
 /build
-src/database/connection.ts
+.md
