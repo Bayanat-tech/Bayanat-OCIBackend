@@ -14,6 +14,7 @@ export const accountLevelTwoFinanceSchema = (
   const schema = Joi.object().keys({
     l2_description: Joi.string().required(),
     l1_code: Joi.string().required(),
+    company_code: Joi.string().optional().allow(null,""),
   });
   return schema.validate(data);
 };
@@ -26,6 +27,7 @@ export const accountLevelThreeFinanceSchema = (
   const schema = Joi.object().keys({
     l3_description: Joi.string().required(),
     l2_code: Joi.string().required(),
+    company_code: Joi.string().optional().allow(null,""),
   });
   return schema.validate(data);
 };
@@ -38,6 +40,7 @@ export const accountLevelFourFinanceSchema = (
   const schema = Joi.object().keys({
     l3_code: Joi.string().required(),
     l4_description: Joi.string().required(),
+    company_code: Joi.string().optional().allow(null,""),
     l4_type: Joi.string().valid("Y", "N").optional().allow(null).allow(""), // Optional type flag
     l4_job: Joi.string().valid("Y", "N").optional().allow(""),  // Optional job flag
     l4_bill: Joi.string().valid("Y", "N").optional().allow(""), // Optional billing flag
@@ -64,6 +67,7 @@ export const accountFinanceSchema = (data: IAccountFinanceAttributes) => {
     fax: Joi.string().optional().allow(null).allow(""),      // Fax number
     e_mail: Joi.string().email().optional().allow(null).allow(""), // Email address with validation
     contact_person: Joi.string().optional().allow(null).allow(""), // Contact person name
+    company_code: Joi.string().optional().allow(null).allow(""), // Company code identifier
 
     //--------account---------
     // Account specific financial details

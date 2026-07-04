@@ -1,8 +1,20 @@
-
 import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../src/database/TenantManager"
 import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware"
+
+const toNum = (value: any): number | null => {
+  if (value === "" || value === undefined || value === null) return null;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const toStr = (value: any): string | null => (value === undefined ? null : value);
+
+const toChar1 = (value: any): string | null => {
+  if (value === "" || value === undefined || value === null) return null;
+  return String(value).charAt(0);
+};
 
 export const insUpdEmpLeaveencashment = async (
   req: Request,
@@ -48,7 +60,7 @@ export const insUpdEmpLeaveencashment = async (
     await connection.execute(
       `
       BEGIN
-        WMSTST.PROC_INS_UPD_HR_EMP_LEAVE(
+        PROC_INS_UPD_HR_EMP_LEAVE(
             :p_header,
             :p_details
         );
@@ -60,20 +72,20 @@ export const insUpdEmpLeaveencashment = async (
           val: {
             COMPANY_CODE: header.company_code,
             EMPLOYEE_ID: header.employee_id,
-            HDR_LVE_SLNO: header.hdr_lve_slno,
+            HDR_LVE_SLNO: toNum(header.hdr_lve_slno),
 
             DESTINATION: header.destination,
-            PLANNED_LEAVE: header.planned_leave,
-            ADVANCE_PAYMENT: header.advance_payment,
-            APPROVAL_STATUS: header.approval_status,
-            LONG_SHORT: header.long_short,
+            PLANNED_LEAVE: toChar1(header.planned_leave),
+            ADVANCE_PAYMENT: toChar1(header.advance_payment),
+            APPROVAL_STATUS: toChar1(header.approval_status),
+            LONG_SHORT: toChar1(header.long_short),
             LEAVE_REMARKS: header.leave_remarks,
-            LEAVE_ALLOWANCE: header.leave_allowance,
-            PAYMENT_MODE: header.payment_mode,
+            LEAVE_ALLOWANCE: toChar1(header.leave_allowance),
+            PAYMENT_MODE: toChar1(header.payment_mode),
 
-            NO_TICKET_ADULT: header.no_ticket_adult,
-            NO_TICKET_CHILD: header.no_ticket_child,
-            NO_TICKET_INFANT: header.no_ticket_infant,
+            NO_TICKET_ADULT: toNum(header.no_ticket_adult),
+            NO_TICKET_CHILD: toNum(header.no_ticket_child),
+            NO_TICKET_INFANT: toNum(header.no_ticket_infant),
 
             CANCEL_DATE: header.cancel_date
               ? new Date(header.cancel_date)
@@ -89,14 +101,14 @@ export const insUpdEmpLeaveencashment = async (
               ? new Date(header.actual_resume_date)
               : null,
 
-            RESUME_WORK: header.resume_work,
-            RESUME_APPROVED: header.resume_approved,
+            RESUME_WORK: toChar1(header.resume_work),
+            RESUME_APPROVED: toChar1(header.resume_approved),
 
             LVE_ADJUSTMENT_REASON:
-              header.lve_adjustment_reason,
+              toChar1(header.lve_adjustment_reason),
 
             LEAVE_CERTIFICATE_REQUIRED:
-              header.leave_certificate_required,
+              toChar1(header.leave_certificate_required),
 
             USER_ID: header.user_id,
 
@@ -135,14 +147,14 @@ export const insUpdEmpLeaveencashment = async (
                 ? new Date(header.resume_approved_on)
                 : null,
 
-            LVE_DOC_NO: header.lve_doc_no,
+            LVE_DOC_NO: header.lve_doc_no || null,
 
             LEAVE_REQUEST_DATE:
               header.leave_request_date
                 ? new Date(header.leave_request_date)
                 : null,
 
-            VAC_ADV_PAID: header.vac_adv_paid,
+            VAC_ADV_PAID: toChar1(header.vac_adv_paid),
 
             DUTY_RESUME_DATE:
               header.duty_resume_date
@@ -153,33 +165,34 @@ export const insUpdEmpLeaveencashment = async (
               header.verified_remarks,
 
             VERIFIED_STATUS:
-              header.verified_status,
+              toChar1(header.verified_status),
 
             DOC_TYPE: header.doc_type,
 
             INCLUDE_CONSOLIDATE:
-              header.include_consolidate,
+              toChar1(header.include_consolidate),
 
             LVE_APPROVED:
-              header.lve_approved,
-
+              toChar1(header.lve_approved),
             REF_HDR_LVE_SLNO:
-              header.ref_hdr_lve_slno,
+              header.ref_hdr_lve_slno === "" || header.ref_hdr_lve_slno === undefined
+                ? null
+                : String(header.ref_hdr_lve_slno),
 
             REF_LVE_DOC_NO:
               header.ref_lve_doc_no,
 
             LVE_CONTINUITY:
-              header.lve_continuity,
+              toChar1(header.lve_continuity),
 
             SYS_GENERATED:
-              header.sys_generated,
+              toChar1(header.sys_generated),
 
             PASI_MONTHS_DEDUCT:
-              header.pasi_months_deduct,
+              toNum(header.pasi_months_deduct),
 
             PASI_AMT:
-              header.pasi_amt,
+              toNum(header.pasi_amt),
 
             LEAVE_CREATED:
               header.leave_created
@@ -187,26 +200,27 @@ export const insUpdEmpLeaveencashment = async (
                 : null,
 
             AMT_AVAIL_NCASH:
-              header.amt_avail_ncash,
+              toNum(header.amt_avail_ncash),
 
             CAUSE_TYPE:
-              header.cause_type,
+              toChar1(header.cause_type),
 
             EXTRA_REMARKS:
               header.extra_remarks,
 
             PAY_MONTH:
-              header.pay_month,
+              toNum(header.pay_month),
 
             PAY_YEAR:
-              header.pay_year
+              toNum(header.pay_year)
           }
         },
 
         p_details: {
           type: "HR_EMP_LEAVE_DET_TAB",
           val: details.map((d: any) => ({
-            HDR_LVE_SLNO: d.hdr_lve_slno,
+            HDR_LVE_SLNO: toNum(d.hdr_lve_slno),
+
             LEAVE_TYPE: d.leave_type,
 
             LEAVE_START_DATE: d.leave_start_date
@@ -217,9 +231,9 @@ export const insUpdEmpLeaveencashment = async (
               ? new Date(d.leave_end_date)
               : null,
 
-            LEAVE_DAYS: d.leave_days,
+            LEAVE_DAYS: toNum(d.leave_days),
             LEAVE_REASON: d.leave_reason,
-            DAYS_ADJUSTED: d.days_adjusted,
+            DAYS_ADJUSTED: toNum(d.days_adjusted),
             HALF_DAY: d.half_day,
             ADJ_REMARKS: d.adj_remarks,
             STATUS: d.status,
@@ -242,16 +256,16 @@ export const insUpdEmpLeaveencashment = async (
               : null,
 
             DOC_TYPE: d.doc_type,
-            LVE_DOC_NO: d.lve_doc_no,
+            LVE_DOC_NO: d.lve_doc_no || null,
             UNAUTH: d.unauth,
-            FY_LEAVE_DAYS: d.fy_leave_days,
+            FY_LEAVE_DAYS: toNum(d.fy_leave_days),
 
             FY_ANNY_DATE: d.fy_anny_date
               ? new Date(d.fy_anny_date)
               : null,
 
-            LVE_WRK_DAYS: d.lve_wrk_days,
-            LVE_DAYS_PERIOD: d.lve_days_period
+            LVE_WRK_DAYS: toNum(d.lve_wrk_days),
+            LVE_DAYS_PERIOD: toNum(d.lve_days_period)
           }))
         }
       },
@@ -287,4 +301,3 @@ export const insUpdEmpLeaveencashment = async (
   }
 
 };
-

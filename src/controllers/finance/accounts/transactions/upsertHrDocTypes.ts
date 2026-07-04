@@ -59,7 +59,13 @@ export const upsertHrDocTypes = async (
     const ObjClass = await connection.getDbObjectClass(
       "MS_HR_DOCTYPES_OBJ"
     );
-
+    if (data.doc_type && String(data.doc_type).length > 5) {
+  res.status(400).json({
+    success: false,
+    message: "doc_type must not exceed 5 characters"
+  });
+  return;
+}
     const obj: any = new ObjClass({
       COMPANY_CODE: data.company_code,
       DOC_TYPE: data.doc_type, // null for insert

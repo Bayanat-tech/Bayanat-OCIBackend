@@ -2,11 +2,11 @@ import { Response } from "express";
 import { TaAdjDetailService } from "../../services/WMS/taAdjDetail.service";
 import { TaAdjHeaderService } from "../../services/WMS/taAdjHeader.service";
 import { ICreateStockAdjustmentRequest, IProcessAdjustmentRequest } from "../../interfaces/wms/stockAdjustment.interface";
-import { RequestWithUser } from "../../interfaces/common.interface";
+import { RequestWithTenant } from "../../middleware/tenant.middleware";
 import constants from "../../helpers/constants";
 
 export const createStockAdjustment = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
@@ -51,9 +51,15 @@ export const createStockAdjustment = async (
     }
 
     // Get user info from request
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
-    const username = requestUser.loginid;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+    const username = req.user.loginid;
 
     // Create stock adjustment header (ADJ_NO will be auto-generated in service)
     const newHeader = await TaAdjHeaderService.createHeader({
@@ -108,125 +114,19 @@ export const createStockAdjustment = async (
   }
 };
 
-// export const updateStockAdjustment = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     const { ADJ_CODE } = req.params;
-//     const { 
-//       // Header fields
-//       PRIN_CODE,
-//       REMARKS,
-//       CONFIRMED,
-//       ADJ_DATE,
-//       CONFIRMED_DATE,
-      
-//       // Detail fields
-//       JOB_NO,
-//       PROD_CODE, 
-//       ADJ_TYPE,
-//       QTY_PUOM, 
-//       SITE_CODE,
-//       LOCATION_CODE,
-//       QTY_LUOM, 
-//       P_UOM,
-//       L_UOM,
-//       PALLET_ID,
-//       KEY_NUMBER
-//     }: ICreateStockAdjustmentRequest = req.body;
-
-//     if (!ADJ_CODE) {
-//       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//         success: false,
-//         message: "ADJ_CODE is required",
-//       });
-//       return;
-//     }
-
-//     const requestUser = req.user;
-//     const COMPANY_CODE = requestUser.company_code;
-//     const username = requestUser.loginid;
-
-//     // Check if adjustment header exists
-//     const existingHeader = await TaAdjHeaderService.findByAdjCode(
-//       ADJ_CODE,
-//       COMPANY_CODE
-//     );
-
-//     if (!existingHeader) {
-//       res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: "Stock adjustment header not found",
-//       });
-//       return;
-//     }
-
-//     // Update stock adjustment header
-//     const headerUpdated = await TaAdjHeaderService.updateHeader(
-//       ADJ_CODE,
-//       COMPANY_CODE,
-//       {
-//         PRIN_CODE,
-//         REMARKS,
-//         CONFIRMED,
-//         ADJ_DATE,
-//         CONFIRMED_DATE,
-//         USER_ID: username,
-//       }
-//     );
-
-//     // Update stock adjustment detail if JOB_NO is provided
-//     let detailUpdated = true;
-//     if (JOB_NO) {
-//       detailUpdated = await TaAdjDetailService.updateAdjustment(
-//         JOB_NO,
-//         COMPANY_CODE,
-//         {
-//           PROD_CODE,
-//           ADJ_TYPE,
-//           QTY_PUOM,
-//           SITE_CODE,
-//           LOCATION_CODE,
-//           QTY_LUOM,
-//           PRIN_CODE,
-//           P_UOM,
-//           L_UOM,
-//           PALLET_ID,
-//           KEY_NUMBER,
-//           USER_ID: username,
-//         }
-//       );
-//     }
-
-//     if (headerUpdated && detailUpdated) {
-//       res.status(constants.STATUS_CODES.OK).json({
-//         success: true,
-//         message: "Stock adjustment updated successfully",
-//       });
-//     } else {
-//       res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//         success: false,
-//         message: "Failed to update stock adjustment",
-//       });
-//     }
-//   } catch (error: any) {
-//     console.error("Error updating stock adjustment:", error);
-//     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Failed to update stock adjustment",
-//       error: error.message,
-//     });
-//   }
-// };
-
 export const getStockAdjustments = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
 
     const headers = await TaAdjHeaderService.findByCompany(COMPANY_CODE);
     const details = await TaAdjDetailService.findByCompany(COMPANY_CODE);
@@ -250,18 +150,25 @@ export const getStockAdjustments = async (
 };
 
 export const getStockAdjustmentByAdjCode = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
     const { ADJ_CODE } = req.params;
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
 
     if (!ADJ_CODE) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "ADJ_CODE is required",
+      });
+      return;
+    }
+
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
       });
       return;
     }
@@ -297,18 +204,25 @@ export const getStockAdjustmentByAdjCode = async (
 };
 
 export const deleteStockAdjustment = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
     const { ADJ_CODE } = req.params;
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
 
     if (!ADJ_CODE) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "ADJ_CODE is required",
+      });
+      return;
+    }
+
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
       });
       return;
     }
@@ -337,8 +251,11 @@ export const deleteStockAdjustment = async (
   }
 };
 
+// processAdjustment left as-is: COMPANY_CODE is an explicit required
+// field in the request body (multi-tenant confirm-by-another-user flows),
+// not derived from the authenticated user's tenant context.
 export const processAdjustment = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ): Promise<void> => {  
   try {
@@ -364,8 +281,9 @@ export const processAdjustment = async (
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({ success: false, message: "Failed to process stock adjustment", error: error.message });
   }
 };
+
 export const createStockAdjustmentHeader = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
@@ -395,9 +313,14 @@ export const createStockAdjustmentHeader = async (
     }
 
     // Get user info from request
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
-    const username = requestUser.loginid;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
 
     // Create stock adjustment header (ADJ_NO will be auto-generated by trigger)
     const newHeader = await TaAdjHeaderService.createHeader({
@@ -427,7 +350,7 @@ export const createStockAdjustmentHeader = async (
   }
 };
 
-export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
+export const createAdjHeader = async (req: RequestWithTenant, res: Response) => {
   try {
     const { ADJ_CODE, PRIN_CODE, REMARKS, ADJ_DATE, USER_ID } = req.body as { ADJ_CODE: string; PRIN_CODE?: string; REMARKS?: string; ADJ_DATE?: Date; CONFIRMED?: string; USER_ID?: string; };
 
@@ -453,8 +376,13 @@ export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
       });
     }
 
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
 
     // Create stock adjustment header (ADJ_NO will be auto-generated in service)
     const newHeader = await TaAdjHeaderService.createHeader({
@@ -486,7 +414,7 @@ export const createAdjHeader = async (req: RequestWithUser, res: Response) => {
 };
 
 export const createAdjustmentDetail = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
@@ -549,11 +477,15 @@ export const createAdjustmentDetail = async (
       return isNaN(d.getTime()) ? null : d;
     };
 
-
     // Get user info from request
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
-    const username = requestUser.loginid;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+    const username = req.user.loginid;
 
     // Create adjustment detail
     const newDetail = await TaAdjDetailService.createAdjustmentDetail({
@@ -598,12 +530,15 @@ export const createAdjustmentDetail = async (
   }
 };
 
+// confirmAdjDetail left as-is: P_COMPANY_CODE is an explicit required
+// field in the request body, not derived from the authenticated user's
+// tenant context.
 export const confirmAdjDetail = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
-): Promise<void> => {  // 👈
+): Promise<void> => {
   try {
-    const { P_COMPANY_CODE, P_PRIN_CODE, P_ADJ_NO, P_USERID, P_ADJ_SERIALNO } = req.body; // 👈
+    const { P_COMPANY_CODE, P_PRIN_CODE, P_ADJ_NO, P_USERID, P_ADJ_SERIALNO } = req.body;
 
     // Validate required fields
     if (!P_COMPANY_CODE) {
@@ -658,113 +593,12 @@ export const confirmAdjDetail = async (
   }
 };
 
-// export const editStockAdjustmentDetail = async (
-//   req: RequestWithUser,
-//   res: Response
-// ) => {
-//   try {
-//     const { ADJ_CODE, JOB_NO } = req.params;
-//     const {
-//       PROD_CODE,
-//       ADJ_TYPE,
-//       QTY_PUOM,
-//       SITE_CODE,
-//       LOCATION_CODE,
-//       QTY_LUOM,
-//       PRIN_CODE,
-//       P_UOM,
-//       L_UOM,
-//       PALLET_ID,
-//       KEY_NUMBER,
-//     } = req.body;
-
-//     if (!ADJ_CODE) {
-//       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//         success: false,
-//         message: "ADJ_CODE is required",
-//       });
-//     }
-
-//     if (!JOB_NO) {
-//       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-//         success: false,
-//         message: "JOB_NO is required",
-//       });
-//     }
-
-//     const requestUser = req.user;
-//     const COMPANY_CODE = requestUser.company_code;
-//     const username = requestUser.loginid;
-
-//     // Check if adjustment header exists
-//     const existingHeader = await TaAdjHeaderService.findByAdjCode(
-//       ADJ_CODE,
-//       COMPANY_CODE
-//     );
-
-//     if (!existingHeader) {
-//       return res.status(constants.STATUS_CODES.NOT_FOUND).json({
-//         success: false,
-//         message: "Stock adjustment header not found",
-//       });
-//     }
-
-//     // Update stock adjustment detail using existing updateAdjustment method
-//     const detailUpdated = await TaAdjDetailService.updateAdjustment(
-//       JOB_NO,
-//       COMPANY_CODE,
-//       {
-//         PROD_CODE,
-//         ADJ_TYPE,
-//         QTY_PUOM,
-//         SITE_CODE,
-//         LOCATION_CODE,
-//         QTY_LUOM,
-//         PRIN_CODE,
-//         P_UOM,
-//         L_UOM,
-//         PALLET_ID,
-//         KEY_NUMBER,
-//         USER_ID: username,
-//       }
-//     );
-
-//     if (detailUpdated) {
-//       // Fetch all details and find the updated one
-//       const allDetails = await TaAdjDetailService.findByCompany(COMPANY_CODE);
-//       const updatedDetail = allDetails.find(
-//         detail => detail.JOB_NO === JOB_NO && detail.ADJ_NO === existingHeader.ADJ_NO
-//       );
-      
-//       return res.status(constants.STATUS_CODES.OK).json({
-//         success: true,
-//         message: "Stock adjustment detail updated successfully",
-//         data: updatedDetail,
-//       });
-//     } else {
-//       return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//         success: false,
-//         message: "Failed to update stock adjustment detail",
-//       });
-//     }
-//   } catch (error: any) {
-//     console.error("Error editing stock adjustment detail:", error);
-//     return res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-//       success: false,
-//       message: "Failed to edit stock adjustment detail",
-//       error: error.message,
-//     });
-//   }
-// };
-
 export const deleteStockAdjustmentDetail = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
     const { ADJ_CODE, JOB_NO } = req.params;
-    const requestUser = req.user;
-    const COMPANY_CODE = requestUser.company_code;
 
     if (!ADJ_CODE) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -777,6 +611,14 @@ export const deleteStockAdjustmentDetail = async (
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "JOB_NO is required",
+      });
+    }
+
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
       });
     }
 
@@ -834,7 +676,7 @@ export const deleteStockAdjustmentDetail = async (
 };
 
 export const editAdjDetail = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
@@ -861,8 +703,14 @@ export const editAdjDetail = async (
     if (!PRIN_CODE)    return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "PRIN_CODE is required" });
     if (!KEY_NUMBER)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "KEY_NUMBER is required" });
 
-    const COMPANY_CODE = req.user.company_code;
-    const USER_ID      = req.user.loginid;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+    const USER_ID = req.user.loginid;
 
     // Check the record exists first
     const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);
@@ -918,7 +766,7 @@ const updated = await TaAdjDetailService.updateAdjustment(
 };
 
 export const deleteAdjDetail = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
@@ -927,7 +775,13 @@ export const deleteAdjDetail = async (
     if (!ADJ_CODE) return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_CODE is required" });
     if (!JOB_NO)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });
 
-    const COMPANY_CODE = req.user.company_code;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
 
     // Check the record exists first
     const existing = await TaAdjDetailService.findByJobNo(JOB_NO, COMPANY_CODE);

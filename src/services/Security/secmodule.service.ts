@@ -14,6 +14,7 @@ export class SecModuleService {
     level2: string;
     level3: string;
     url_path: string;
+    component_name?: string;
     icon: string;
   }): Promise<SecModule | null> {
     const repository = this.getSecModuleRepository();
@@ -48,6 +49,7 @@ export class SecModuleService {
     level3: string;
     position: number;
     url_path: string;
+    component_name?: string;
     icon: string;
     created_by: string;
     updated_by: string;

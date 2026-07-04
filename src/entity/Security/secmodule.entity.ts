@@ -27,6 +27,9 @@ export class SecModule {
   @Column({ name: "URL_PATH", type: "varchar2", length: 1000, nullable: true })
   url_path!: string;
 
+  @Column({ name: "COMPONENT_NAME", type: "varchar2", length: 200, nullable: true })
+  component_name!: string;
+
   @Column({ name: "ICON", type: "varchar2", length: 100, nullable: true })
   icon!: string;
 
