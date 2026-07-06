@@ -4,3 +4,5 @@
 *.js
 /build
 .md
+dockerfile
+.dockerignore
