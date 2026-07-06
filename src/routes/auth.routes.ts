@@ -6,8 +6,9 @@ import {
   me,
   resetPassword,
   forgotPassword,
-    resetPasswordWithLoginId,
-    diagnosticPermissions,
+  changePasswordByEmail,
+  resetPasswordWithLoginId,
+  diagnosticPermissions,
 } from "../controllers/auth.controller";
 
 // Create a new Express router
@@ -15,6 +16,7 @@ const router = express.Router();
 
 router.post("/login", login);
 router.post("/forgotPassword", forgotPassword);
+router.post("/change-password", changePasswordByEmail);
 router.post("/resetPassword", resetPassword);
 router.post("/reset-password-loginid", resetPasswordWithLoginId);
 
