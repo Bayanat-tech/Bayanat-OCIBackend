@@ -59,8 +59,29 @@ function getFrontendOrigin(req: Request): string {
   return (process.env.FRONTEND_URL || "http://localhost:3101").replace(/\/$/, "");
 }
 
-function buildResetPasswordUrl(req: Request, email: string): string {
-  return `${getFrontendOrigin(req)}/reset-password?email=${encodeURIComponent(email)}`;
+function buildResetPasswordUrl(req: Request, token: string): string {
+  return `${getFrontendOrigin(req)}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+function generatePasswordResetToken(email: string): string {
+  const jwt = require("jsonwebtoken");
+  return jwt.sign({ email, purpose: "PASSWORD_RESET" }, process.env.APP_SECRET || "BAYANAT", { expiresIn: "10m" });
+}
+
+function verifyPasswordResetToken(token: string): string {
+  const jwt = require("jsonwebtoken");
+  try {
+    const payload = jwt.verify(token, process.env.APP_SECRET || "BAYANAT") as { email?: string; purpose?: string };
+    if (payload.purpose !== "PASSWORD_RESET" || !payload.email) {
+      throw new Error("Invalid password reset token");
+    }
+    return payload.email;
+  } catch (error: any) {
+    if (error?.name === "TokenExpiredError") {
+      throw new Error("Password reset link has expired. Please request a new link.");
+    }
+    throw new Error("Invalid password reset link. Please request a new link.");
+  }
 }
 export const login: RequestHandler = async (req: Request, res: Response) => {
   try {
@@ -587,7 +608,8 @@ export const forgotPassword: RequestHandler = async (req: Request, res: Response
       return;
     }
 
-    const resetPasswordUrl = buildResetPasswordUrl(req, emailId);
+    const resetToken = generatePasswordResetToken(emailId);
+    const resetPasswordUrl = buildResetPasswordUrl(req, resetToken);
 
 
 
@@ -602,6 +624,7 @@ export const forgotPassword: RequestHandler = async (req: Request, res: Response
         <p>Dear User,</p>
         <p>Please click on the following link to reset your password:</p>
         <p><a href="${resetPasswordUrl}" target="_blank" rel="noopener noreferrer">Reset Password</a></p>
+        <p>This link will expire in 10 minutes.</p>
         <p>If you did not request this, please ignore this email.</p>
         <p>Best regards,</p>
         <p>Bayanat Technology</p>
@@ -624,18 +647,20 @@ export const forgotPassword: RequestHandler = async (req: Request, res: Response
 
 export const resetPassword: RequestHandler = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, token } = req.body;
 
-    if (!email || !password) {
+    if (!password || (!token && !email)) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "Email and password are required",
+        message: "Password reset link and new password are required",
       });
       return;
     }
 
+    const resolvedEmail = token ? verifyPasswordResetToken(token) : email;
+
     // Find user by email
-    const user = await AuthService.findRootUserByIdentifier(email);
+    const user = await AuthService.findRootUserByIdentifier(resolvedEmail);
 
     if (!user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -727,7 +752,8 @@ export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res
     // Update user's password using email
     await AuthService.updateUserPassword(emailId, hashedPassword);
 
-    const resetPasswordUrl = buildResetPasswordUrl(req, emailId);
+    const resetToken = generatePasswordResetToken(emailId);
+    const resetPasswordUrl = buildResetPasswordUrl(req, resetToken);
 
     // Check if company_code contains JASRA (case-insensitive)
     const isJasraCompany = user.COMPANY_CODE && 
