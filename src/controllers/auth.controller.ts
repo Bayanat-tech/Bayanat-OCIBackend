@@ -24,9 +24,11 @@ export async function generateToken(userData: any): Promise<string> {
     email_id: userData.email_id,
     loginid: userData.loginid,
     tenantId: userData.tenantId,
+    tenant_name: userData.tenant_name,
     company_code: userData.company_code,
+    company_name: userData.company_name,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) 
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
   };
   
   return jwt.sign(payload, process.env.APP_SECRET || 'BAYANAT');
@@ -61,6 +63,26 @@ function getFrontendOrigin(req: Request): string {
 
 function buildResetPasswordUrl(req: Request, token: string): string {
   return `${getFrontendOrigin(req)}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+async function resolveTenantCompanyName(tenantId: string, companyCode: string): Promise<string | undefined> {
+  if (!tenantId || !companyCode) {
+    return undefined;
+  }
+
+  try {
+    const rows = await TenantManager.executeInTenant(
+      tenantId,
+      `SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :company_code`,
+      { company_code: companyCode },
+    );
+
+    const companyRow = Array.isArray(rows) ? rows[0] : null;
+    return companyRow?.COMPANY_NAME || companyRow?.company_name || undefined;
+  } catch (error) {
+    console.warn(`[auth.controller] Failed to resolve company name for tenant=${tenantId}, company_code=${companyCode}:`, error);
+    return undefined;
+  }
 }
 
 function generatePasswordResetToken(email: string): string {
@@ -192,15 +214,20 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     
     console.log(`[login] ✅ STEP 3 SUCCESS: Tenant config loaded`);
 
+    const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
+    const tenantName = tenantConfig?.TENANT_NAME || tenantId;
+
     // Generate token with tenant info
     console.log(`[login] STEP 4: Generating JWT token...`);
     const token = await generateToken({
       username: user.USERNAME,
       email_id: user.EMAIL_ID,
       loginid: user.LOGINID,
-      tenantId: tenantId,
+      tenantId,
+      tenant_name: tenantName,
       company_code: user.COMPANY_CODE,
-      schemaName: tenantConfig.SCHEMA_NAME
+      company_name: companyName,
+      schemaName: tenantConfig.SCHEMA_NAME,
     });
     
     console.log(`[login] ✅ STEP 4 SUCCESS: Token generated`);
@@ -215,7 +242,9 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
           username: user.USERNAME,
           email_id: user.EMAIL_ID,
           loginid: user.LOGINID,
-          company_code: user.COMPANY_CODE
+          company_code: user.COMPANY_CODE,
+          company_name: companyName,
+          tenant_name: tenantName,
         }
       },
     });
@@ -269,6 +298,15 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     const userWithoutPassword: any = { ...user };
     delete userWithoutPassword.USERPASS;
     delete userWithoutPassword.SEC_PASSWD;
+
+    const tenantConfig = await TenantManager.getTenantConfig(tenantId);
+    const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
+    const tenantName = tenantConfig?.TENANT_NAME || tenantId;
+    const enrichedUser = {
+      ...userWithoutPassword,
+      company_name: companyName,
+      tenant_name: tenantName,
+    };
 
     // Get permissions from user's tenant
     let userPermissions: any[] = [];
@@ -481,7 +519,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {
-        user: userWithoutPassword,
+        user: enrichedUser,
         tenantId,
         permissionBasedMenuTree,
         permissions: permissionsStructured,
