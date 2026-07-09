@@ -4,7 +4,7 @@ import express from "express";
 console.log("1. Starting minimal test...");
 
 const app = express();
-const PORT = 3500;
+const PORT = process.env.PORT || 3500;
 
 console.log("2. App created");
 

@@ -9,7 +9,7 @@ import {
 import { loginSchema } from "../validation/auth.validation";
 import { StructuredResult } from "../interfaces/auth.interface";
 import { RequestWithUser } from "../interfaces/common.interface";
-import { AuthService } from "../services/auth.service";
+import { AuthService, EMAIL_NOT_FOUND_MESSAGE, OUTDATED_EMAIL_MESSAGE } from "../services/auth.service";
 import { VendorService } from "../services/vendor.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
@@ -24,14 +24,87 @@ export async function generateToken(userData: any): Promise<string> {
     email_id: userData.email_id,
     loginid: userData.loginid,
     tenantId: userData.tenantId,
+    tenant_name: userData.tenant_name,
     company_code: userData.company_code,
+    company_name: userData.company_name,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) 
+    exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
   };
   
   return jwt.sign(payload, process.env.APP_SECRET || 'BAYANAT');
 }
 
+function isUsableEmail(email: string): boolean {
+  const value = String(email || "").trim();
+  return Boolean(value && value.includes("@") && !/^\d/.test(value));
+}
+
+function getFrontendOrigin(req: Request): string {
+  const origin = req.get("origin");
+  if (origin) return origin.replace(/\/$/, "");
+
+  const referer = req.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      // Ignore malformed referer and fall through to configured fallback.
+    }
+  }
+
+  const forwardedHost = req.get("x-forwarded-host");
+  if (forwardedHost) {
+    const forwardedProto = req.get("x-forwarded-proto") || req.protocol || "http";
+    return `${forwardedProto.split(",")[0]}://${forwardedHost.split(",")[0]}`.replace(/\/$/, "");
+  }
+
+  return (process.env.FRONTEND_URL || "http://localhost:3101").replace(/\/$/, "");
+}
+
+function buildResetPasswordUrl(req: Request, token: string): string {
+  return `${getFrontendOrigin(req)}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+async function resolveTenantCompanyName(tenantId: string, companyCode: string): Promise<string | undefined> {
+  if (!tenantId || !companyCode) {
+    return undefined;
+  }
+
+  try {
+    const rows = await TenantManager.executeInTenant(
+      tenantId,
+      `SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :company_code`,
+      { company_code: companyCode },
+    );
+
+    const companyRow = Array.isArray(rows) ? rows[0] : null;
+    return companyRow?.COMPANY_NAME || companyRow?.company_name || undefined;
+  } catch (error) {
+    console.warn(`[auth.controller] Failed to resolve company name for tenant=${tenantId}, company_code=${companyCode}:`, error);
+    return undefined;
+  }
+}
+
+function generatePasswordResetToken(email: string): string {
+  const jwt = require("jsonwebtoken");
+  return jwt.sign({ email, purpose: "PASSWORD_RESET" }, process.env.APP_SECRET || "BAYANAT", { expiresIn: "10m" });
+}
+
+function verifyPasswordResetToken(token: string): string {
+  const jwt = require("jsonwebtoken");
+  try {
+    const payload = jwt.verify(token, process.env.APP_SECRET || "BAYANAT") as { email?: string; purpose?: string };
+    if (payload.purpose !== "PASSWORD_RESET" || !payload.email) {
+      throw new Error("Invalid password reset token");
+    }
+    return payload.email;
+  } catch (error: any) {
+    if (error?.name === "TokenExpiredError") {
+      throw new Error("Password reset link has expired. Please request a new link.");
+    }
+    throw new Error("Invalid password reset link. Please request a new link.");
+  }
+}
 export const login: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { error } = loginSchema(req.body);
@@ -141,15 +214,20 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     
     console.log(`[login] ✅ STEP 3 SUCCESS: Tenant config loaded`);
 
+    const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
+    const tenantName = tenantConfig?.TENANT_NAME || tenantId;
+
     // Generate token with tenant info
     console.log(`[login] STEP 4: Generating JWT token...`);
     const token = await generateToken({
       username: user.USERNAME,
       email_id: user.EMAIL_ID,
       loginid: user.LOGINID,
-      tenantId: tenantId,
+      tenantId,
+      tenant_name: tenantName,
       company_code: user.COMPANY_CODE,
-      schemaName: tenantConfig.SCHEMA_NAME
+      company_name: companyName,
+      schemaName: tenantConfig.SCHEMA_NAME,
     });
     
     console.log(`[login] ✅ STEP 4 SUCCESS: Token generated`);
@@ -164,7 +242,9 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
           username: user.USERNAME,
           email_id: user.EMAIL_ID,
           loginid: user.LOGINID,
-          company_code: user.COMPANY_CODE
+          company_code: user.COMPANY_CODE,
+          company_name: companyName,
+          tenant_name: tenantName,
         }
       },
     });
@@ -218,6 +298,15 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     const userWithoutPassword: any = { ...user };
     delete userWithoutPassword.USERPASS;
     delete userWithoutPassword.SEC_PASSWD;
+
+    const tenantConfig = await TenantManager.getTenantConfig(tenantId);
+    const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
+    const tenantName = tenantConfig?.TENANT_NAME || tenantId;
+    const enrichedUser = {
+      ...userWithoutPassword,
+      company_name: companyName,
+      tenant_name: tenantName,
+    };
 
     // Get permissions from user's tenant
     let userPermissions: any[] = [];
@@ -430,7 +519,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       data: {
-        user: userWithoutPassword,
+        user: enrichedUser,
         tenantId,
         permissionBasedMenuTree,
         permissions: permissionsStructured,
@@ -448,6 +537,83 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
   }
 };
 
+export const changePasswordByEmail: RequestHandler = async (req: Request, res: Response) => {
+  try {
+    const requestUser = (req as any).user;
+    const { newPassword, email, loginid, identifier } = req.body;
+
+    const resolvedIdentifier = (
+      identifier ||
+      loginid ||
+      email ||
+      requestUser?.email_id ||
+      requestUser?.email ||
+      requestUser?.EMAIL_ID
+    )?.toString().trim();
+
+    if (!resolvedIdentifier || !newPassword) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "User identifier and new password are required",
+      });
+      return;
+    }
+
+    const user = await AuthService.findRootUserByIdentifier(resolvedIdentifier);
+
+    if (!user) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: EMAIL_NOT_FOUND_MESSAGE,
+      });
+      return;
+    }
+    const emailId = (user.EMAIL_ID || "").toString().trim();
+
+    if (!isUsableEmail(emailId)) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: OUTDATED_EMAIL_MESSAGE,
+      });
+      return;
+    }
+
+    const hashedPassword = await AuthService.hashPassword(newPassword);
+    await AuthService.updateUserPassword(emailId, hashedPassword);
+
+    try {
+      await notifyUser({
+        event: constants.EVENTS.RESET_PASSWORD,
+        request_users: emailId,
+        subject: "Password change successful",
+        htmlMessage: `
+          <p>Dear User,</p>
+          <p>Your password was changed successfully.</p>
+          <p>New password: ${newPassword}</p>
+          <p>Please sign in with your new password.</p>
+          <p>Best regards,</p>
+          <p>Bayanat Technology</p>
+        `,
+      });
+    } catch (notifyError) {
+      console.warn("Password change email notification failed:", notifyError);
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Dear User, Your password was changed successfully. Please sign in with your new password.",
+    });
+    return;
+  } catch (error: any) {
+    console.error("Change Password Error:", error);
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || "An error occurred",
+    });
+    return;
+  }
+};
+
 export const forgotPassword: RequestHandler = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
@@ -461,27 +627,42 @@ export const forgotPassword: RequestHandler = async (req: Request, res: Response
     }
 
     // Check if user exists
-    const userResult = await AuthService.getUserWithTenant(email);
+    const user = await AuthService.findRootUserByIdentifier(email);
 
-    if (!userResult || !userResult.user) {
+    if (!user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
-        message: "User not found",
+        message: EMAIL_NOT_FOUND_MESSAGE,
       });
       return;
     }
 
-    const user = userResult.user;
+    const emailId = (user.EMAIL_ID || "").toString().trim();
+    if (!isUsableEmail(emailId)) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: OUTDATED_EMAIL_MESSAGE,
+      });
+      return;
+    }
+
+    const resetToken = generatePasswordResetToken(emailId);
+    const resetPasswordUrl = buildResetPasswordUrl(req, resetToken);
+
+
 
     // Send password reset email
+
+
     await notifyUser({
       event: constants.EVENTS.FORGOT_PASSWORD,
-      request_users: user.EMAIL_ID,
+      request_users: emailId,
       subject: "Password Reset Instructions",
       htmlMessage: `
         <p>Dear User,</p>
         <p>Please click on the following link to reset your password:</p>
-        <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.EMAIL_ID}">Reset Password</a></p>
+        <p><a href="${resetPasswordUrl}" target="_blank" rel="noopener noreferrer">Reset Password</a></p>
+        <p>This link will expire in 10 minutes.</p>
         <p>If you did not request this, please ignore this email.</p>
         <p>Best regards,</p>
         <p>Bayanat Technology</p>
@@ -504,43 +685,53 @@ export const forgotPassword: RequestHandler = async (req: Request, res: Response
 
 export const resetPassword: RequestHandler = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, token } = req.body;
 
-    if (!email || !password) {
+    if (!password || (!token && !email)) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "Email and password are required",
+        message: "Password reset link and new password are required",
       });
       return;
     }
+
+    const resolvedEmail = token ? verifyPasswordResetToken(token) : email;
 
     // Find user by email
-    const userResult = await AuthService.getUserWithTenant(email);
+    const user = await AuthService.findRootUserByIdentifier(resolvedEmail);
 
-    if (!userResult || !userResult.user) {
+    if (!user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
-        message: "User not found",
+        message: EMAIL_NOT_FOUND_MESSAGE,
       });
       return;
     }
 
-    const user = userResult.user;
+    const emailId = (user.EMAIL_ID || "").toString().trim();
+    if (!isUsableEmail(emailId)) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: OUTDATED_EMAIL_MESSAGE,
+      });
+      return;
+    }
 
     // Hash the new password
     const hashedPassword = await AuthService.hashPassword(password);
 
     // Update user's password
-    await AuthService.updateUserPassword(email, hashedPassword);
+    await AuthService.updateUserPassword(emailId, hashedPassword);
 
     // Send confirmation email
     await notifyUser({
       event: constants.EVENTS.RESET_PASSWORD,
-      request_users: user.EMAIL_ID,
+      request_users: emailId,
       subject: "Password Reset Successful",
       htmlMessage: `
         <p>Dear User,</p>
         <p>Your password has been successfully reset.</p>
+        <p>New password: ${password}</p>
         <p>If you did not make this change, please contact support immediately.</p>
         <p>Best regards,</p>
         <p>Bayanat Technology</p>
@@ -574,23 +765,33 @@ export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res
     }
 
     // Find user by login ID
-    const userResult = await AuthService.getUserWithTenant(loginId);
+    const user = await AuthService.findRootUserByIdentifier(loginId);
 
-    if (!userResult || !userResult.user) {
+    if (!user) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
-        message: "User not found with the provided login ID",
+        message: EMAIL_NOT_FOUND_MESSAGE,
       });
       return;
     }
 
-    const user = userResult.user;
+    const emailId = (user.EMAIL_ID || "").toString().trim();
+    if (!isUsableEmail(emailId)) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: OUTDATED_EMAIL_MESSAGE,
+      });
+      return;
+    }
 
     // Hash the new password
     const hashedPassword = await AuthService.hashPassword(newPassword);
 
     // Update user's password using email
-    await AuthService.updateUserPassword(user.EMAIL_ID, hashedPassword);
+    await AuthService.updateUserPassword(emailId, hashedPassword);
+
+    const resetToken = generatePasswordResetToken(emailId);
+    const resetPasswordUrl = buildResetPasswordUrl(req, resetToken);
 
     // Check if company_code contains JASRA (case-insensitive)
     const isJasraCompany = user.COMPANY_CODE && 
@@ -600,12 +801,12 @@ export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res
       // For JASRA users: Send password reset link via email
       await notifyUser({
         event: constants.EVENTS.RESET_PASSWORD,
-        request_users: user.EMAIL_ID,
+        request_users: emailId,
         subject: "Password Reset Link",
         htmlMessage: `
           <p>Dear ${user.USERNAME || 'User'},</p>
           <p>Please click on the following link to reset your password:</p>
-          <p><a href="${process.env.FRONTEND_URL}/reset-password?email=${user.EMAIL_ID}">Reset Password</a></p>
+          <p><a href="${resetPasswordUrl}" target="_blank" rel="noopener noreferrer">Reset Password</a></p>
           <p>If you did not request this, please ignore this email.</p>
           <p>Best regards,</p>
           <p>Bayanat Technology</p>
@@ -623,11 +824,12 @@ export const resetPasswordWithLoginId: RequestHandler = async (req: Request, res
       // Send confirmation email
       await notifyUser({
         event: constants.EVENTS.RESET_PASSWORD,
-        request_users: user.EMAIL_ID,
+        request_users: emailId,
         subject: "Password Reset Successful",
         htmlMessage: `
           <p>Dear ${user.USERNAME || 'User'},</p>
           <p>Your password has been successfully reset for login ID: ${loginId}</p>
+          <p>New password: ${newPassword}</p>
           <p>If you did not make this change, please contact support immediately.</p>
           <p>Best regards,</p>
           <p>Bayanat Technology</p>

@@ -4,31 +4,63 @@ import { User } from "../entity/User";
 import { QueryExecutor } from "../database/QueryExecutor";
 import { oracleDb } from "../database/connection";
 
+const ROOT_SCHEMA = "CUSTOMERS";
+
+const SEC_LOGINTEST_TABLE = `${ROOT_SCHEMA}.SEC_LOGINTEST`;
+
+export const EMAIL_NOT_FOUND_MESSAGE = "Email not found in the system. Please update your email in the system.";
+export const OUTDATED_EMAIL_MESSAGE = "Your email address appears to be outdated. Please contact the IT team to update your email before changing the password.";
+
 export class AuthService {
   private static getUserRepository() {
     return getRepository(User);
   }
 
+  static async findRootUserByIdentifier(identifier: string): Promise<any | null> {
+    const normalizedIdentifier = String(identifier || "").trim();
+    if (!normalizedIdentifier) return null;
+
+    console.log(`[AuthService.findRootUserByIdentifier] Finding user in ${SEC_LOGINTEST_TABLE} for ${normalizedIdentifier}`);
+    const result = await oracleDb.query(
+      `SELECT * FROM ${SEC_LOGINTEST_TABLE}
+       WHERE (
+         LOWER(TRIM(NVL(EMAIL_ID, ''))) = LOWER(:identifier)
+         OR LOWER(TRIM(NVL(LOGINID, ''))) = LOWER(:identifier)
+         OR LOWER(TRIM(NVL(CONTACT_EMAIL, ''))) = LOWER(:identifier)
+         OR LOWER(TRIM(NVL(USERNAME, ''))) = LOWER(:identifier)
+       )
+       AND ACTIVE_FLAG = 'Y'`,
+      { identifier: normalizedIdentifier }
+    );
+
+    if (!result.rows || result.rows.length === 0) {
+      console.log(`[AuthService.findRootUserByIdentifier] User not found: ${normalizedIdentifier}`);
+      return null;
+    }
+
+    return result.rows[0];
+  }
+
   static async findUserByEmailOrLoginId(
-    email: string
+    identifier: string
   ): Promise<{
     user: any;
     tenantId: string;
   } | null> {
     try {
-      console.log(`[AuthService.findUserByEmailOrLoginId] STEP 1: Finding user...`);
-      const result = await QueryExecutor.getUserWithTenant(email);
-      
-      if (!result) {
-        console.log(`[AuthService.findUserByEmailOrLoginId] ❌ User not found`);
-        return null;
+      const user = await this.findRootUserByIdentifier(identifier);
+      if (!user) return null;
+
+      console.log(`[AuthService.findUserByEmailOrLoginId] User found: ${user.LOGINID}`);
+
+      const tenantId = await TenantManager.getTenantForUser(user.LOGINID);
+      if (!tenantId) {
+        throw new Error(`No default tenant mapping found for user ${user.LOGINID}`);
       }
 
-      console.log(`[AuthService.findUserByEmailOrLoginId] ✅ User found: ${result.user.LOGINID}, Tenant: ${result.tenantId}`);
-      
       return {
-        user: result.user,
-        tenantId: result.tenantId
+        user,
+        tenantId
       };
     } catch (error) {
       console.error(`[AuthService.findUserByEmailOrLoginId] Error:`, error);
@@ -66,19 +98,23 @@ export class AuthService {
     return await bcrypt.hash(password, 10);
   }
 
-  // Update user password (in central SEC_LOGIN)
+  // Update user password in the root schema table (CUSTOMERS.SEC_LOGINTEST by default)
   static async updateUserPassword(
-    email: string,
+    identifier: string,
     hashedPassword: string
   ): Promise<boolean> {
     try {
+      const normalizedIdentifier = String(identifier || "").trim();
       await oracleDb.query(
-        `UPDATE SEC_LOGINTEST
+        `UPDATE ${SEC_LOGINTEST_TABLE}
          SET USERPASS = :hashedPassword,
-             SEC_PASSWD = :hashedPassword,
              UPDATED_BY = 'system'
-         WHERE EMAIL_ID = :email`,
-        { hashedPassword, email }
+         WHERE (
+           LOWER(TRIM(NVL(EMAIL_ID, ''))) = LOWER(:identifier)
+           OR LOWER(TRIM(NVL(LOGINID, ''))) = LOWER(:identifier)
+           OR LOWER(TRIM(NVL(CONTACT_EMAIL, ''))) = LOWER(:identifier)
+         )`,
+        { hashedPassword, identifier: normalizedIdentifier }
       );
       return true;
     } catch (error) {
@@ -95,10 +131,10 @@ export class AuthService {
   ): Promise<any> {
     try {
       console.log(`[AuthService.createUserFromExternal] Creating user: ${apiUser.USER_ID}...`);
-      
-      // Insert into central SEC_LOGIN table
+
+      // Insert into central SEC_LOGINTEST table
       await oracleDb.query(
-        `INSERT INTO SEC_LOGINTEST 
+        `INSERT INTO ${SEC_LOGINTEST_TABLE}
          (LOGINID, USERNAME, EMAIL_ID, USERPASS, SEC_PASSWD, COMPANY_CODE, ACTIVE_FLAG, CREATED_AT, CREATED_DATE)
          VALUES (:loginid, :username, :email, :hashedPassword, :hashedPassword, :companyCode, 'Y', 'system', SYSDATE)`,
         {
@@ -110,7 +146,7 @@ export class AuthService {
         }
       );
 
-      console.log("✅ External user created in SEC_LOGIN:", apiUser.USER_ID);
+      console.log("External user created in SEC_LOGINTEST:", apiUser.USER_ID);
 
       return {
         LOGINID: apiUser.USER_ID,

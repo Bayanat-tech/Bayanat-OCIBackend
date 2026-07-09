@@ -6,16 +6,14 @@ import * as oracledb from "oracledb";
 import constants from "../../../../helpers/constants";
 import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { RequestHandler } from 'express';
-import {
-  ISearch,
-  RequestWithUser,
-} from "../../../../interfaces/common.interface";
+import { ISearch } from "../../../../interfaces/common.interface";
+import { RequestWithTenant } from "../../../../middleware/tenant.middleware";
 import { pickOrderSchema } from "../../../../validation/wms/transaction/outbound.validation";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
 import { Request } from "express";
 
 export const createToOrder = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ): Promise<void> => {
   try {
@@ -204,8 +202,16 @@ export const createToOrder = async (
 // You'll need to convert these models to use TypeORM or raw Oracle queries
 // For now, I'll show the pattern:
 
-export const getAllOrderEntries = async (req: RequestWithUser, res: Response) => {
+export const getAllOrderEntries = async (req: RequestWithTenant, res: Response) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
     const { prin_code, job_no, cust_code, order_no } = req.query;
 
     if (!job_no) {
@@ -222,7 +228,7 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
     `;
 
     const bindParams: any = {
-      company_code: req.user.company_code,
+      company_code: companyCode,
       job_no: job_no
     };
 
@@ -267,7 +273,7 @@ export const getAllOrderEntries = async (req: RequestWithUser, res: Response) =>
   }
 };
 
-export const getSingleOrderEntry = async (req: RequestWithUser, res: Response) => {
+export const getSingleOrderEntry = async (req: RequestWithTenant, res: Response) => {
   try {
     const { cust_code } = req.query;
 
@@ -308,7 +314,7 @@ export const getSingleOrderEntry = async (req: RequestWithUser, res: Response) =
   }
 };
 
-export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response) => {
+export const updateSingleOrderEntry = async (req: RequestWithTenant, res: Response) => {
   try {
     const { id, ...updateData } = req.body;
 
@@ -366,7 +372,7 @@ export const updateSingleOrderEntry = async (req: RequestWithUser, res: Response
   }
 };
 
-export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
+export const deleteOrderEntry = async (req: RequestWithTenant, res: Response) => {
   try {
     const { id } = req.params;
     console.log('id', id);
@@ -425,19 +431,37 @@ export const deleteOrderEntry = async (req: RequestWithUser, res: Response) => {
 // Here's a pattern for converting View queries:
 
 export const getPickingItemPreferenceDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     const { distinct_field } = req.query;
-    const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
-      : {};
+    // req.query.filter can be string | ParsedQs | string[] | ParsedQs[]
+    // Normalize to ISearch
+    // Initialize required ISearch fields with sensible defaults
+    let filter: ISearch = { sort: [], search: "" } as unknown as ISearch;
+    if (req.query.filter) {
+      if (typeof req.query.filter === "string") {
+        filter = JSON.parse(req.query.filter);
+      } else {
+        // Already parsed object (ParsedQs) or array - coerce to ISearch
+        filter = req.query.filter as unknown as ISearch;
+      }
+    }
 
     // You'll need to adapt getSearchFilterQuery for raw SQL
     // This is a placeholder - you'll need to implement proper filtering
     let whereClause = `WHERE company_code = :company_code`;
-    const bindParams: any = { company_code: req.user.company_code };
+    const bindParams: any = { company_code: companyCode };
 
     // Add filter conditions based on your logic
     if (filter.search) {
@@ -480,8 +504,16 @@ export const getPickingItemPreferenceDetails = async (
   }
 };
 
-export const pickOrder = async (req: RequestWithUser, res: Response) => {
+export const pickOrder = async (req: RequestWithTenant, res: Response) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
     const { error } = pickOrderSchema(req.body);
     if (error) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -513,7 +545,7 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
     `;
 
     const bindParams = {
-      company_code: req.user.company_code,
+      company_code: companyCode,
       prin_code,
       job_no,
       serial_no
@@ -535,10 +567,10 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
         await QueryExecutor.execMaybe(
           `BEGIN SP_WM_OUB_PICKING_V3(:vs_company_code, :principal_code, :VS_job_no, ''); END;`,
           {
-            vs_company_code: req.user.company_code,
+            vs_company_code: companyCode,
             principal_code: prin_code,
             VS_job_no: job_no,
-            VS_USER: req.user.loginid,
+            VS_USER: req.user?.loginid,
             VS_PREFERENCE: preference,
             VS_PICK: pick,
             VS_MIN_QTY: min_qty,
@@ -575,22 +607,45 @@ export const pickOrder = async (req: RequestWithUser, res: Response) => {
 };
 
 export const exportPickingDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     let csvTransform: fastCsv.CsvFormatterStream<
       fastCsv.FormatterRow,
       fastCsv.FormatterRow
     >;
 
-    const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
-      : {};
+    const filterQuery = req.query.filter;
+    let filter: Partial<ISearch> = {};
+
+    if (filterQuery) {
+      if (typeof filterQuery === "string") {
+        filter = JSON.parse(filterQuery);
+      } else if (Array.isArray(filterQuery) && filterQuery.length > 0) {
+        const first = filterQuery[0];
+        if (typeof first === "string") {
+          filter = JSON.parse(first);
+        } else {
+          filter = first as Partial<ISearch>;
+        }
+      } else {
+        filter = filterQuery as Partial<ISearch>;
+      }
+    }
 
     // Simple query - you'll need to adapt your filtering logic
     let query = `SELECT * FROM PICKING_DETAILS_OUTBOUND_WMS_VIEW WHERE company_code = :company_code`;
-    const bindParams = { company_code: req.user.company_code };
+    const bindParams = { company_code: companyCode };
 
     // Add filtering logic here based on your filter object
     if (filter.search) {
@@ -626,22 +681,31 @@ export const exportPickingDetails = async (
 };
 
 export const exportPickingStockDeatils = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     let csvTransform: fastCsv.CsvFormatterStream<
       fastCsv.FormatterRow,
       fastCsv.FormatterRow
     >;
 
-    const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
-      : {};
+    const filter: ISearch = typeof req.query.filter === "string"
+      ? (JSON.parse(req.query.filter) as ISearch)
+      : ((req.query.filter as unknown) as ISearch);
 
     // Simple query - adapt your filtering
     let query = `SELECT * FROM VW_STKLED WHERE company_code = :company_code`;
-    const bindParams = { company_code: req.user.company_code };
+    const bindParams = { company_code: companyCode };
 
     // Add filtering logic
     if (filter.search) {
@@ -874,5 +938,3 @@ export const getddLotNum = async (
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
