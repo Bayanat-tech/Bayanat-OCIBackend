@@ -3,6 +3,12 @@ import { checkUserAuthorization } from "../../../middleware/checkUserAthorizatio
 import passport from "passport"; // Importing Passport for authentication.
 import { exportStockDetailReportExcel, getStockDetailReportHtml } from "../../../controllers/wms/reports/stockDetailReportController";
 import { getStockSummaryReportHtml, exportStockSummaryReportExcel } from "../../../controllers/wms/reports/StockSummaryReport.controller";
+import {
+  getStockAgeingQuantityReportHtml,
+  exportStockAgeingQuantityReportExcel,
+  getStockAgeingVolumeReportHtml,
+  exportStockAgeingVolumeReportExcel,
+} from "../../../controllers/wms/reports/Stockageingcontroller";
 // import { getStockDetailsReport } from "../../../controllers/wms/reports/stockCriteria/stock_details.controller"; // Importing the controller for handling stock details report requests.
 // import { getSummaryStockReport } from "../../../controllers/wms/reports/stockCriteria/summary_stock.controller"; // Importing the controller for handling summary stock report requests.
 // import { getAgeingStockReport } from "../../../controllers/wms/reports/stockCriteria/ageing_stock.controller"; // Importing the controller for handling ageing stock report requests.
@@ -34,6 +40,34 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   exportStockSummaryReportExcel
+);
+
+router.post(
+  "/stockageing/quantity/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getStockAgeingQuantityReportHtml
+);
+
+router.post(
+  "/stockageing/quantity/excel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  exportStockAgeingQuantityReportExcel
+);
+
+router.post(
+  "/stockageing/volume/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getStockAgeingVolumeReportHtml
+);
+
+router.post(
+  "/stockageing/volume/excel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  exportStockAgeingVolumeReportExcel
 );
 
 // ----------- stock details report ------------
