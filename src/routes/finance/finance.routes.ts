@@ -49,7 +49,12 @@ const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
+insUpdBudgetRequestBulk 
 
+router.post(
+  "/insUpdBudgetRequestBulk",
+  insUpdBudgetRequestBulk
+);
 
 router.post(
   "/insUpdChqDepositBulk",
