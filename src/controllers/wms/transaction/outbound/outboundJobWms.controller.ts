@@ -1,12 +1,21 @@
 import { Response } from "express";
 import constants from "../../../../helpers/constants";
-import { RequestWithUser } from "../../../../interfaces/common.interface";
+import { RequestWithTenant } from "../../../../middleware/tenant.middleware";
 import { QueryExecutor } from "../../../../database/QueryExecutor";
 
 //-------------- Outbound Job---------------
 // Function to get details of an outbound job
-export const getOutboundJob = async (req: RequestWithUser, res: Response) => {
+export const getOutboundJob = async (req: RequestWithTenant, res: Response) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     const { job_no } = req.params;
     console.log("inside getOutboundJob:", job_no);
 
@@ -20,8 +29,8 @@ export const getOutboundJob = async (req: RequestWithUser, res: Response) => {
 
     // Using Oracle query instead of Sequelize model
     const result = await QueryExecutor.execMaybe(
-      `SELECT * FROM VW_TO_ORDER_DET WHERE JOB_NO = :job_no AND ROWNUM <= 1`,
-      { job_no }
+      `SELECT * FROM VW_TO_ORDER_DET WHERE JOB_NO = :job_no AND COMPANY_CODE = :company_code AND ROWNUM <= 1`,
+      { job_no, company_code: companyCode }
     );
 
     const jobdata = result.rows?.[0] || null;
@@ -51,8 +60,17 @@ export const getOutboundJob = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const getOutboundJobOrder = async (req: RequestWithUser, res: Response) => {
+export const getOutboundJobOrder = async (req: RequestWithTenant, res: Response) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     const { job_no } = req.params;
     console.log("inside getOutboundJobOrder:", job_no);
 
@@ -66,8 +84,8 @@ export const getOutboundJobOrder = async (req: RequestWithUser, res: Response) =
 
     // Use tenant-aware helper instead of direct oracleDb.query
     const result = await QueryExecutor.executeRawQuery(
-      `SELECT * FROM TO_ORDER WHERE JOB_NO = :job_no`,
-      { job_no: { val: job_no } }
+      `SELECT * FROM TO_ORDER WHERE JOB_NO = :job_no AND COMPANY_CODE = :company_code`,
+      { job_no: { val: job_no }, company_code: { val: companyCode } }
     );
 
     const rows = result.rows || result || [];
