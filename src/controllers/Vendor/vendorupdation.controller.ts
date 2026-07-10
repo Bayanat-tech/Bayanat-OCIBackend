@@ -940,29 +940,7 @@ export const executeRawSql = async (
 
     rawSql = rawSql.replace(/\bLEVEL\b(?=\s*[><=])/g, '"LEVEL"');
 
-    // Modify the SQL to format dates if they're not already formatted
-    if (
-      rawSql.toLowerCase().includes("select") &&
-      !rawSql.toLowerCase().includes("to_char")
-    ) {
-      const dateColumns = [
-        "DOC_DATE",
-        "INVOICE_DATE",
-        "CREATE_DATE",
-        "EDIT_DATE",
-        "REF_DATE",
-        "DUE_DATE",
-      ];
-      for (const col of dateColumns) {
-        const regex = new RegExp(`\\b${col}\\b(?![^,]*TO_CHAR)`, "g");
-        rawSql = rawSql.replace(
-          regex,
-          `TO_CHAR(${col}, 'DD-MM-YYYY') as ${col}`
-        );
-      }
-    }
-
-    console.log("Executing modified rawSql:", rawSql);
+    console.log("Executing rawSql:", rawSql);
     console.log("====================");
     console.log(rawSql);
     console.log("====================");
