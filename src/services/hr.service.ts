@@ -1,5 +1,6 @@
 import axios from "axios";
 import https from "https";
+import oracledb from "oracledb";
 import { LeaveRequestFlow } from "../interfaces/leaveRequestFlow.interface";
 import { oracleDb } from "../database/connection";
 import { QueryExecutor } from "../database/QueryExecutor";
@@ -165,6 +166,68 @@ export const HrService = {
       }
     );
     return response.data;
+  },
+
+  LeaveDaysCount: async (params: {
+    leaveStartDate: string;
+    leaveEndDate: string;
+    leaveType: string;
+    company_code: string;
+    employee_code: string;
+  }) => {
+    const { leaveStartDate, leaveEndDate, leaveType, company_code, employee_code } = params;
+
+    const query = `
+      DECLARE
+        v_leave_days NUMBER;
+      BEGIN
+        v_leave_days := FUN_CALC_LEAVE_DAYS(
+          TO_DATE(:leaveStartDate, 'DD-MM-YYYY'),
+          TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
+          :p_leaveType,
+          :p_company_code,
+          :p_employee_code
+        );
+        :p_leave_days := v_leave_days;
+      END;
+    `;
+
+    try {
+      const result = await QueryExecutor.executeRawQuery(query, {
+        leaveStartDate,
+        leaveEndDate,
+        p_leaveType: leaveType,
+        p_company_code: company_code,
+        p_employee_code: employee_code,
+        p_leave_days: {
+          dir: oracledb.BIND_OUT,
+          type: oracledb.NUMBER,
+        },
+      });
+
+      return {
+        success: true,
+        leaveStartDate,
+        leaveEndDate,
+        company_code,
+        employee_code,
+        leaveDays: (result.outBinds as any).p_leave_days,
+        leaveType,
+        message: "Leave days calculated successfully",
+      };
+    } catch (error) {
+      console.error("Error calculating leave days:", error);
+      return {
+        success: false,
+        leaveStartDate,
+        leaveEndDate,
+        company_code,
+        employee_code,
+        leaveDays: null,
+        leaveType,
+        message: "Failed to calculate leave days",
+      };
+    }
   },
   
 
