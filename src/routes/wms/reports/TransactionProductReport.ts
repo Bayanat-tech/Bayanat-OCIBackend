@@ -449,8 +449,8 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
   <table class="report-table">
     <thead>
       <tr>
-        <th rowspan="2" style="width:80px;">Product<br/><span style="font-weight:400;font-size:10px;">TXN Date</span></th>
-        <th rowspan="2" style="width:80px;"><span style="font-weight:400;font-size:10px;">MFG Date</span><br/><span style="font-weight:400;font-size:10px;">EXP Date</span></th>
+        <th rowspan="2" style="width:80px;">Product<br/><span style="font-weight:400;font-size:10px;">MFG Date</span></th>
+        <th rowspan="2" style="width:80px;"><span style="font-weight:400;font-size:10px;">TXN Date</span><br/><span style="font-weight:400;font-size:10px;">EXP Date</span></th>
         <th rowspan="2" style="width:120px;">Container No.<br/>/Order No./Job No</th>
         <th rowspan="2" style="width:80px;">Doc. Ref.</th>
         <th rowspan="2" style="width:50px;">Site</th>
