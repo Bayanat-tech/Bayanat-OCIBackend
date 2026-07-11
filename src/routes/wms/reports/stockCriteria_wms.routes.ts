@@ -9,12 +9,37 @@ import {
   getStockAgeingVolumeReportHtml,
   exportStockAgeingVolumeReportExcel,
 } from "../../../controllers/wms/reports/Stockageingcontroller";
+import { stockConfirmationReportExcel, stockConfirmationReportHtml, stockTransferReportExcel, stockTransferReportHtml } from "../../../controllers/wms/reports/stockTransferReportController";
 // import { getStockDetailsReport } from "../../../controllers/wms/reports/stockCriteria/stock_details.controller"; // Importing the controller for handling stock details report requests.
 // import { getSummaryStockReport } from "../../../controllers/wms/reports/stockCriteria/summary_stock.controller"; // Importing the controller for handling summary stock report requests.
 // import { getAgeingStockReport } from "../../../controllers/wms/reports/stockCriteria/ageing_stock.controller"; // Importing the controller for handling ageing stock report requests.
 const 
 router = express.Router(); // Creating a new router instance.
 
+router.get(
+  "/stocktransfer-report/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  stockTransferReportHtml
+);
+router.get(
+  "/stocktransfer-report/excel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  stockTransferReportExcel
+);
+router.get(
+  "/stockconfirmation-report/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  stockConfirmationReportHtml
+);
+router.get(
+  "/stockconfirmation-report/excel",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  stockConfirmationReportExcel
+)
 router.post(
   "/stockdetails/html",
   passport.authenticate("jwt", { session: false }),
