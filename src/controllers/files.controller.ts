@@ -7,7 +7,7 @@ import { oracleDb } from "../database/connection";
 import { QueryExecutor } from "../database/QueryExecutor";
 import { FilesPFService } from "../services/filesPF.service";
 import { FilesAFService } from "../services/accountfiles.service";
-import { deleteFile } from "../services/ociUpload.service";
+import { deleteFile, deleteFileFromS3 } from "../services/ociUpload.service";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
@@ -745,20 +745,27 @@ export const deleteHrVendorFiles = async (
       });
       return;
     }
-    
-    const conditions: any = {
-      requestNumber: request_number,
+    const selectSql = `
+      SELECT AWS_FILE_LOCN
+      FROM UPLOADED_FILES_DLTS_VENDOR
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+        AND NVL(SR_NO, 0) = :sr_no
+        ${attachment_sr_no !== undefined ? "AND ATTACHMENT_SR_NO = :attachment_sr_no" : ""}
+      FETCH FIRST 1 ROW ONLY
+    `;
+
+    const binds: any = {
+      request_number: { val: request_number },
+      company_code: { val: req.user.company_code },
+      sr_no: { val: Number(sr_no || 0) },
     };
-
-    if (sr_no !== undefined) {
-      conditions.srNo = sr_no;
-    }
-
     if (attachment_sr_no !== undefined) {
-      conditions.attachmentSrNo = attachment_sr_no;
+      binds.attachment_sr_no = { val: Number(attachment_sr_no) };
     }
 
-    const file = await filesVendorService.findOne(conditions);
+    const fileResult = await QueryExecutor.executeRawQuery(selectSql, binds);
+    const file = fileResult.rows?.[0] || fileResult[0];
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -768,9 +775,22 @@ export const deleteHrVendorFiles = async (
       return;
     }
 
-    const result = await filesVendorService.delete(conditions);
+    const fileLocation = file.AWS_FILE_LOCN || file.awsFileLocn;
+    if (fileLocation) {
+      await deleteFileFromS3(fileLocation);
+    }
 
-    if (result.affected === 0) {
+    const deleteSql = `
+      DELETE FROM UPLOADED_FILES_DLTS_VENDOR
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+        AND NVL(SR_NO, 0) = :sr_no
+        ${attachment_sr_no !== undefined ? "AND ATTACHMENT_SR_NO = :attachment_sr_no" : ""}
+    `;
+
+    const result = await QueryExecutor.executeRawQuery(deleteSql, binds);
+
+    if ((result.rowsAffected || 0) === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "Delete operation failed",

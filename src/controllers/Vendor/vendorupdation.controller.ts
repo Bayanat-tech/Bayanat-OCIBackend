@@ -1154,6 +1154,7 @@ export const saveFileVendorHR = async (
   try {
     for (const file of files) {
       const { org_file_name, sr_no } = file;
+      const safeSrNo = sr_no === undefined || sr_no === null || sr_no === "" ? 0 : Number(sr_no);
 
       // Check for duplicates (now checking with SR_NO too)
       const duplicateCheckResult = await QueryExecutor.executeRawQuery(
@@ -1165,7 +1166,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: sr_no || null },
+          sr_no: { val: safeSrNo },
         }
       );
 
@@ -1206,7 +1207,7 @@ export const saveFileVendorHR = async (
         {
           company_code: { val: company_code || null },
           request_number: { val: request_number },
-          sr_no: { val: sr_no || null },  
+          sr_no: { val: safeSrNo },
           file_name: { val: file_name || null },
           extensions: { val: extensions || null },
           org_file_name: { val: org_file_name || null },
@@ -1233,7 +1234,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: sr_no || null },
+          sr_no: { val: safeSrNo },
         }
       );
 
