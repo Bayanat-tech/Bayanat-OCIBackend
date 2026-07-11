@@ -9,9 +9,8 @@ import {
 import * as XLSX from "xlsx";
 import { IProductEdi } from "../../interfaces/wms/gm_wms.interface";
 import { ProductService } from "../../services/WMS/product.service";
-import { getRepository } from "../../database/connection";
+import {  getRepository } from "../../database/connection";
 import { ProductEDI } from "../../entity/WMS/product_edi.entity";
-// import ProductEdi from "../../models/wms/product_edi_wms.model"; // Keep this for now for Excel import
 
 export const createProduct = async (req: RequestWithUser, res: Response) => {
   try {
@@ -25,24 +24,6 @@ export const createProduct = async (req: RequestWithUser, res: Response) => {
         .json({ success: false, message: error.message });
       return;
     }
-
-    // // Check if product with same company code, principal code, group code, and brand code exists
-    // const existingProduct = await ProductService.checkProductDuplicate(
-    //   bodyWithProdCode.company_code,
-    //   bodyWithProdCode.prin_code,
-    //   bodyWithProdCode.group_code,
-    //   bodyWithProdCode.brand_code
-    // );
-
-    // if (existingProduct) {
-    //   res
-    //     .status(constants.STATUS_CODES.BAD_REQUEST)
-    //     .json({
-    //       success: false,
-    //       message: `Product already exists with same Company Code (${bodyWithProdCode.company_code}), Principal Code (${bodyWithProdCode.prin_code}), Group Code (${bodyWithProdCode.group_code}), and Brand Code (${bodyWithProdCode.brand_code})`
-    //     });
-    //   return;
-    // }
 
     const productData = formatProductData(bodyWithProdCode, requestUser.loginid);
     // Check if product with same name exists
@@ -86,10 +67,10 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
     
-    const { prod_code, company_code, prin_code, ...remainData } = req.body;
+    const { prod_code, company_code, prin_code, group_code, brand_code, ...remainData } = req.body;
 
     // Check if product exists
-    const productExists = await ProductService.checkProductExists(prod_code, company_code);
+    const productExists = await ProductService.checkProductExists(prod_code, company_code, prin_code, group_code, brand_code);
 
     if (!productExists) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -99,11 +80,12 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Pass the entire request body to formatProductData
     const productData = formatProductData(remainData, requestUser.loginid);
+    console.log("remainData", remainData);
+    
+    console.log("productData", productData);
     const updateResult = await ProductService.updateProduct(
-      prod_code,
-      company_code,{
+      prod_code, company_code, prin_code, group_code, brand_code,{
       ...productData,
       updated_by: requestUser.loginid,
       }
@@ -129,146 +111,57 @@ export const updateProduct = async (req: RequestWithUser, res: Response) => {
   }
 };
 
- export const deleteProducts = async (req: RequestWithUser, res: Response) => {
+export const deleteProduct = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
-    const productsToDelete = req.body;
+    const {
+      prod_code,
+      prin_code,
+      company_code,
+      group_code,
+      brand_code,
+    } = req.body;
 
-    console.log('=== DELETE PRODUCTS REQUEST ===');
-    console.log('Full request body:', JSON.stringify(productsToDelete, null, 2));
-
-    if (!Array.isArray(productsToDelete) || !productsToDelete.length) {
-      console.log('Error: No products to delete or invalid format');
+    if (
+      !prod_code ||
+      !prin_code ||
+      !company_code ||
+      !group_code ||
+      !brand_code
+    ) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: constants.MESSAGES.PRODUCT_WMS.SELECT_AT_LEAST_ONE_PRODUCT,
+        message: "Missing required fields.",
       });
-      return;
+      return 
     }
 
-    // Validate each item - require prod_code and prin_code
-    const invalidItems = productsToDelete.filter(item => 
-      !item.prod_code || !item.prin_code
+    const deleted = await ProductService.deleteProduct(
+      prod_code,
+      prin_code,
+      company_code,
+      group_code,
+      brand_code
     );
-    
-    if (invalidItems.length > 0) {
-      console.log('Error: Invalid items found', invalidItems);
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+
+    if (!deleted) {
+       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
-        message: "Invalid data: missing prod_code or prin_code",
+        message: "Product not found or already deleted.",
       });
-      return;
+      return
     }
-
-    const requestUser: IUser = req.user;
-    const companyCode = requestUser.company_code;
-
-    // Group items by (prin_code, company_code) pair
-    const groupedByPrinAndCompany: { [key: string]: any[] } = {};
-    
-    productsToDelete.forEach(item => {
-      const key = `${item.prin_code}_${companyCode}`;
-      if (!groupedByPrinAndCompany[key]) {
-        groupedByPrinAndCompany[key] = [];
-      }
-      groupedByPrinAndCompany[key].push(item);
-    });
-
-    console.log('Grouped by prin_code and company_code:', groupedByPrinAndCompany);
-
-    let totalDeleted = 0;
-    let totalFailed = 0;
-    const deleteResults = [];
-
-    // Delete products for each (prin_code, company_code) combination
-    for (const [key, items] of Object.entries(groupedByPrinAndCompany)) {
-      const [prinCode, compCode] = key.split('_');
-      const prodCodes = items.map(item => item.prod_code);
-
-      console.log(`Deleting products for prin_code=${prinCode}, company_code=${compCode}:`, prodCodes);
-
-      try {
-        // Update service method to accept all three parameters
-        const deleteSuccess = await ProductService.deleteProducts(
-          prodCodes,prinCode,compCode);
-
-        if (deleteSuccess) {
-          const deletedCount = prodCodes.length;
-          totalDeleted += deletedCount;
-          deleteResults.push({
-            prin_code: prinCode,
-            company_code: compCode,
-            success: true,
-            deleted: deletedCount,
-            products: prodCodes
-          });
-          console.log(`Successfully deleted ${deletedCount} products for ${prinCode}/${compCode}`);
-        } else {
-          totalFailed += prodCodes.length;
-          deleteResults.push({
-            prin_code: prinCode,
-            company_code: compCode,
-            success: false,
-            message: "No products were deleted",
-            products: prodCodes
-          });
-          console.log(`Failed to delete products for ${prinCode}/${compCode}`);
-        }
-      } catch (error: any) {
-        totalFailed += prodCodes.length;
-        deleteResults.push({
-          prin_code: prinCode,
-          company_code: compCode,
-          success: false,
-          message: error.message,
-          products: prodCodes
-        });
-        console.error(`Error deleting products for ${prinCode}/${compCode}:`, error.message);
-      }
-    }
-
-    console.log('Delete summary:', {
-      totalAttempted: productsToDelete.length,
-      totalDeleted,
-      totalFailed,
-      results: deleteResults
-    });
-
-    if (totalDeleted === 0) {
-      console.log('Error: No products were deleted');
-      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-        success: false,
-        message: "Failed to delete any products. No records were deleted.",
-        results: deleteResults
-      });
-      return;
-    }
-
-    let message = constants.MESSAGES.PRODUCT_WMS.PRODUCT_DELETED_SUCCESSFULLY;
-    if (totalFailed > 0) {
-      message = `Successfully deleted ${totalDeleted} product(s). ${totalFailed} product(s) could not be deleted.`;
-    }
-
-    console.log('Delete successful!');
+   
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: message,
-      data: {
-        totalDeleted,
-        totalFailed,
-        results: deleteResults
-      }
+      message: constants.MESSAGES.PRODUCT_WMS.PRODUCT_DELETED_SUCCESSFULLY,
     });
-    return;
+    return
   } catch (error: any) {
-    console.error('=== DELETE PRODUCTS ERROR ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    console.error('Full error:', error);
-    
-    res
-      .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-      .json({ success: false, message: `Error occurred while deleting products: ${error.message}` });
-    return;
+    res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message,
+    });
+    return
   }
 };
 
@@ -436,9 +329,6 @@ function formatProductData(data: any, userId?: string): any {
     sap_prod_desc: data.sap_prod_desc || null,
     temp_code: data.temp_code || null,
     edit_user: data.edit_user ?? null,
-    // class: data.class || null,
-    // wob: data.wob || 0,
-    // unified_code: data.unified_code || null,
     current_season: data.current_season || null,
     product_category: data.product_category || null,
     generic_article: data.generic_article || null,
@@ -446,7 +336,6 @@ function formatProductData(data: any, userId?: string): any {
     prod_color: data.prod_color || null,
     prod_size: data.prod_size || null,
     prnt_p_code: data.prnt_p_code || null,
-    // userId: userId ?? data.user_id ?? null,
   };
 }
 
@@ -650,3 +539,5 @@ export const clearProductEDI = async (req: RequestWithUser, res: Response) => {
     });
   }
 };  
+
+
