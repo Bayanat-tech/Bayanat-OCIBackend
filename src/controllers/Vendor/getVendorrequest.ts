@@ -98,7 +98,7 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         REF_DOC1,
         REF_DOC2,
         REF_DOC3
-      FROM TR_AC_LPO_HEADER
+      FROM VMS_FLOW_HDR
       WHERE COMPANY_CODE = :companyCode
         AND DOC_NO = :new_doc_no
               AND ROWNUM = 1
@@ -136,7 +136,7 @@ export const getVendorrequest = async (req: RequestWithUser, res: Response) => {
         DIV_CODE,
         TX_CAT_CODE,
         TX_COMPNTCAT_CODE_1
-      FROM VW_TR_AC_LPO_DETAIL
+      FROM VW_VMS_FLOW_DTL
       WHERE COMPANY_CODE = :companyCode
         AND DOC_NO = :new_doc_no
            ORDER BY SERIAL_NO
