@@ -89,10 +89,7 @@ export const insUpdHrGrade = async (req: Request, res: Response): Promise<void> 
 
     connection = await TenantManager.getConnection(tenantId);
 
-    // ✅ Determine insert vs update, and resolve grade_code accordingly.
-    // A blank grade_code means "this is a new grade" — generate the next
-    // code server-side. A populated grade_code means an edit of an existing
-    // record, so it's used as-is (and never regenerated).
+    
     const isNewGrade = isBlank(header.grade_code);
     const resolvedGradeCode = isNewGrade
       ? await getNextGradeCode(connection, header.company_code)
@@ -121,9 +118,7 @@ export const insUpdHrGrade = async (req: Request, res: Response): Promise<void> 
       DEF_GRADE_CODE: header.def_grade_code ?? null,
     };
 
-    // ✅ Detail mapping — grade_code on every detail row must match the
-    // resolved header code, never whatever the client happened to send
-    // (the client doesn't know the generated code yet on insert).
+    
     const detailRows = (details as Record<string, unknown>[]).map((d) => ({
       COMPANY_CODE: d.company_code ?? header.company_code,
       GRADE_CODE: resolvedGradeCode,
