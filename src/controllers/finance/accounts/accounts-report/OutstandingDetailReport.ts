@@ -51,17 +51,21 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
          *
          * Procedure: "Account_Report_Outstanding_Detail"
          *
-         * SQL returns (per ac_code + inv_no):
-         *   company_code, ac_code, inv_no, inv_date,
-         *   ac_name, cr_period, cr_amt,
-         *   amount (= debit balance),
-         *   due_date, lpo_no, doc_no, div_code,
-         *   remarks, party_email, phone, fax, contact_person,
-         *   master_ex_rate,
-         *   company_name, address1..3, email, fax_no, tel_no,
-         *   bank_name, company_ac_code, reference_no, bank_address,
-         *   swift_code, company_short_name, signatory_1, signatory_2,
-         *   city, country
+         * EXPECTED SQL columns (per ac_code + doc row), based on the target PDF layout:
+         *   ac_code, ac_name,
+         *   address1, address2, address3,     // ⚠ VERIFY: PDF shows these as the CUSTOMER's
+         *                                      //   address — confirm actual column names with SP/sir
+         *   phone, party_email, fax,           // customer's general contact (Ph / Email / Fax)
+         *   contact_person,                    // "Attn." name
+         *   cr_period, cr_amt,                 // Credit Period / Credit Amount
+         *   doc_type,                          // ⚠ NEW FIELD — not present in old SP output,
+         *                                      //   needs to be added/aliased in
+         *                                      //   PROC_BUILD_DYNAMIC_SQL_COMMON20 (e.g. SV / BR)
+         *   inv_no,    → "Doc No."
+         *   inv_date,  → "Doc Date"
+         *   doc_no,    → "Doc Ref No."
+         *   remarks,   → "Narration"
+         *   amount     → signed amount (Debit if > 0, Credit if < 0); running balance per ac_code
          */
 
         const {
@@ -72,8 +76,6 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
         } = req.body;
 
         const parameter = "Account_Report_Outstanding_Detail";
-
-
 
         // ── Tenant / connection ───────────────────────────────────────────
         let tenantId = getCurrentTenantId();
@@ -141,6 +143,7 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
         });
 
         console.log("rawsql------======:", rawSql);
+
         const rows = (dataResult.rows as any[]).map((row) =>
             Object.keys(row).reduce((acc: any, key) => {
                 acc[key.toLowerCase()] = row[key];
@@ -148,14 +151,25 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
             }, {})
         );
 
-        // ── Group by ac_code ──────────────────────────────────────────────
+        // 🔍 DEBUG: uncomment once to confirm actual column names returned by the SP,
+        // then remove again. This is the fastest way to fix any remaining name mismatch.
+        // if (rows.length) console.log("ROW KEYS:", Object.keys(rows[0]));
+
+        // ── Group by ac_code (one statement block per customer) ───────────
         type DetailRow = (typeof rows)[0];
         type AcGroup = {
-            ac_code:    string;
-            ac_name:    string;
-            cr_period:  string;
-            cr_amt:     string;
-            rows:       DetailRow[];
+            ac_code: string;
+            ac_name: string;
+            address1: string;
+            address2: string;
+            address3: string;
+            phone: string;
+            email: string;
+            fax: string;
+            contact_person: string;
+            cr_period: string;
+            cr_amt: string;
+            rows: DetailRow[];
         };
 
         const acMap = new Map<string, AcGroup>();
@@ -164,90 +178,149 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
             const acKey = text(r.ac_code);
             if (!acMap.has(acKey)) {
                 acMap.set(acKey, {
-                    ac_code:   acKey,
-                    ac_name:   text(r.ac_name),
-                    cr_period: text(r.cr_period),
-                    cr_amt:    text(r.cr_amt),
-                    rows:      [],
+                    ac_code:        acKey,
+                    ac_name:        text(r.ac_name),
+                    address1:       text(r.address1),
+                    address2:       text(r.address2),
+                    address3:       text(r.address3),
+                    phone:          text(r.phone),
+                    email:          text(r.party_email),
+                    fax:            text(r.fax),
+                    contact_person: text(r.contact_person),
+                    cr_period:      text(r.cr_period),
+                    cr_amt:         text(r.cr_amt),
+                    rows:           [],
                 });
             }
             acMap.get(acKey)!.rows.push(r);
         });
 
         // ── Currency & as-on date ─────────────────────────────────────────
-        const currCode  = text(code5) || "OMR";
-        const asOnDate  = text(code6); // already DD-MON-YYYY from frontend
+        const currCode = text(code5) || "OMR";
+        const asOnDate = formatDateStr(code6) || text(code6);
+        const todayStr = formatDateStr(new Date());
 
-        // ── Grand totals ──────────────────────────────────────────────────
-        let grandDebit   = 0;
-        let grandCredit  = 0;
-        let grandBalance = 0;
+        // ── Build one statement block per customer ─────────────────────────
+        let blocksHtml = "";
+        const acEntries = Array.from(acMap.values());
 
-        // ── Build table body ──────────────────────────────────────────────
-        let tableBodyHtml = "";
+        acEntries.forEach((ac, blockIdx) => {
+            let runningBalance = 0;
+            let bodyRows = "";
 
-        acMap.forEach((ac) => {
-            let acDebit   = 0;
-            let acCredit  = 0;
-
-            // Per ac_code: each inv_no is one row
-            // amount from SP = net debit balance (SUM lcur_amount * sign_ind)
-            // We treat positive amount as Debit, negative as Credit
             ac.rows.forEach((r) => {
-                const amount = num(r.amount);
-                const debit  = amount > 0 ? amount : 0;
-                const credit = amount < 0 ? Math.abs(amount) : 0;
-                acDebit  += debit;
-                acCredit += credit;
+                const amount  = num(r.amount);
+                const debit   = amount > 0 ? amount : 0;
+                const credit  = amount < 0 ? Math.abs(amount) : 0;
+                runningBalance += debit - credit;
 
-                const balance = debit - credit; // per inv_no running balance
-
-                tableBodyHtml += `
+                bodyRows += `
                 <tr class="detail-row">
-                  <td class="div-cell">${text(r.div_code)}</td>
-                  <td class="accode-cell">${text(r.ac_code)}</td>
-                  <td class="acname-cell">${text(r.ac_name)}</td>
-                  <td class="num">${text(r.cr_period)}</td>
-                  <td class="num">${money(r.cr_amt)}</td>
+                  <td>${text(r.doc_type)}</td>
+                  <td>${text(r.inv_no)}</td>
+                  <td>${formatDateStr(r.inv_date)}</td>
+                  <td>${text(r.doc_no)}</td>
+                  <td class="narration-cell">${text(r.remarks)}</td>
                   <td class="num">${debit  === 0 ? "0.000" : money(debit)}</td>
                   <td class="num">${credit === 0 ? "0.000" : money(credit)}</td>
-                  <td class="num ${balance < 0 ? "neg-balance" : ""}">${moneyBalance(balance)}</td>
+                  <td class="num ${runningBalance < 0 ? "neg-balance" : ""}">${moneyBalance(runningBalance)}</td>
                 </tr>`;
             });
 
-            const acBalance = acDebit - acCredit;
-            grandDebit   += acDebit;
-            grandCredit  += acCredit;
-            grandBalance += acBalance;
+            const addressLines = [ac.address1, ac.address2, ac.address3]
+                .filter((a) => a)
+                .map((a) => `<div>${a}</div>`)
+                .join("");
 
-            // ── Ac subtotal row ───────────────────────────────────────────
-            tableBodyHtml += `
-            <tr class="ac-total-row">
-              <td colspan="5" style="text-align:right;padding-right:8px;">
-                <strong>${ac.ac_code} — ${ac.ac_name} Total</strong>
-              </td>
-              <td class="num"><strong>${money(acDebit)}</strong></td>
-              <td class="num"><strong>${money(acCredit)}</strong></td>
-              <td class="num ${acBalance < 0 ? "neg-balance" : ""}">
-                <strong>${moneyBalance(acBalance)}</strong>
-              </td>
-            </tr>
-            <tr><td colspan="8" style="height:8px;border:none;"></td></tr>`;
+            const isLastBlock = blockIdx === acEntries.length - 1;
+
+            blocksHtml += `
+            <div class="statement-block" ${isLastBlock ? "" : 'style="page-break-after:always;"'}>
+
+              <div class="report-header">
+                <table class="meta-table">
+                  <tr>
+                    <td class="meta-label">Title :</td>
+                    <td><strong>Outstanding Statement as on ${asOnDate}</strong></td>
+                  </tr>
+                  <tr><td class="meta-label">Date :</td><td>${todayStr}</td></tr>
+                  <tr>
+                    <td class="meta-label">Currency :</td>
+                    <td><strong>${currCode}</strong></td>
+                  </tr>
+                </table>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                  <div class="company-name">AL MADINA</div>
+                  <div class="company-sub">LOGISTICS</div>
+                </div>
+              </div>
+
+              <div class="customer-block">
+                <div class="customer-name">${ac.ac_code} &nbsp; ${ac.ac_name}</div>
+                <div class="customer-address">${addressLines}</div>
+
+                <table class="contact-table">
+                  <tr>
+                    <td class="contact-label">Ph.</td>
+                    <td>${ac.phone}</td>
+                    <td class="contact-label">Fax</td>
+                    <td>${ac.fax}</td>
+                    <td class="contact-label right-label">Credit Period:</td>
+                    <td class="right-value">${ac.cr_period}</td>
+                  </tr>
+                  <tr>
+                    <td class="contact-label">Email</td>
+                    <td colspan="3">${ac.email}</td>
+                    <td class="contact-label right-label">Credit Amount:</td>
+                    <td class="right-value">${money(ac.cr_amt)}</td>
+                  </tr>
+                  <tr>
+                    <td class="contact-label">Attn.</td>
+                    <td colspan="3">${ac.contact_person}</td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                </table>
+              </div>
+
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th style="width:40px;">Doc<br>Type</th>
+                    <th style="width:120px;">Doc No.</th>
+                    <th style="width:75px;">Doc Date</th>
+                    <th style="width:100px;">Doc Ref No.</th>
+                    <th style="width:180px;padding-right:2px;">Narration</th>
+                    <th class="num" style="width:80px;padding-left:2px;">Debit</th>
+                    <th class="num" style="width:80px;">Credit</th>
+                    <th class="num" style="width:90px;">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${bodyRows || `
+                    <tr>
+                      <td colspan="8" style="text-align:center;padding:24px;color:#999;">
+                        No outstanding records found.
+                      </td>
+                    </tr>`}
+                </tbody>
+              </table>
+
+              ${isLastBlock ? `
+                <div class="footer">End of Report</div>
+                <div class="powered-by">powered by A W A R E</div>` : ""}
+            </div>`;
         });
 
-        // ── Grand total row ───────────────────────────────────────────────
-        if (rows.length > 0) {
-            tableBodyHtml += `
-            <tr class="grand-total-row">
-              <td colspan="5" style="text-align:right;padding-right:8px;">
-                <strong>Total</strong>
-              </td>
-              <td class="num"><strong>${money(grandDebit)}</strong></td>
-              <td class="num"><strong>${money(grandCredit)}</strong></td>
-              <td class="num ${grandBalance < 0 ? "neg-balance" : ""}">
-                <strong>${moneyBalance(grandBalance)}</strong>
-              </td>
-            </tr>`;
+        if (acEntries.length === 0) {
+            blocksHtml = `
+            <div class="statement-block">
+              <div style="text-align:center;padding:60px;color:#999;">
+                No records found for the selected criteria.
+              </div>
+              <div class="footer">End of Report</div>
+              <div class="powered-by">powered by A W A R E</div>
+            </div>`;
         }
 
         // ─── Final HTML ───────────────────────────────────────────────────
@@ -262,60 +335,58 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
       font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
       font-size:11px; color:#222; margin:30px; background:#f5f5f5;
     }
-    .page {
-      background:white; padding:32px 36px;
-      box-shadow:0 0 10px rgba(0,0,0,.1); min-height:297mm;
+    .statement-block {
+      background:white; padding:32px 36px; margin-bottom:24px;
+      box-shadow:0 0 10px rgba(0,0,0,.1); min-height:auto;
     }
 
     /* ── Header ── */
     .report-header {
       display:flex; justify-content:space-between; align-items:flex-start;
-      border-bottom:2px solid #333; padding-bottom:12px; margin-bottom:6px;
+      border-bottom:2px solid #333; padding-bottom:12px; margin-bottom:14px;
     }
     .company-name { font-size:18px; font-weight:700; color:#185FA5; }
     .company-sub  { font-size:10px; letter-spacing:2px; color:#555; }
     .meta-table td { padding:2px 8px 2px 0; vertical-align:top; font-size:11px; }
     .meta-label    { font-weight:600; color:#555; min-width:70px; }
 
+    /* ── Customer block ── */
+    .customer-block { margin-bottom:14px; }
+    .customer-name { font-size:12px; font-weight:700; margin-bottom:4px; }
+    .customer-address { font-size:11px; color:#333; line-height:1.5; margin-bottom:8px; }
+    .contact-table { width:100%; font-size:11px; border-collapse:collapse; }
+    .contact-table td { padding:2px 6px 2px 0; vertical-align:top; }
+    .contact-label { font-weight:600; color:#555; white-space:nowrap; }
+    .right-label { text-align:right; }
+    .right-value { text-align:right; font-family:'Courier New',monospace; }
+
     /* ── Table ── */
     table.report-table { width:100%; border-collapse:collapse; margin-top:8px; }
     table.report-table thead tr th {
-      border-top:1.5px solid #333; border-bottom:1.5px solid #333;
-      padding:6px 5px; text-align:left; background:#fff;
-      font-size:10px; text-transform:uppercase; white-space:nowrap;
+      border:none;
+      padding:8px 6px; text-align:center; background:#1E3A5F; color:#fff;
+      font-size:11px; font-weight:700; text-transform:none; white-space:nowrap;
     }
+    table.report-table thead tr:first-child th:first-child { border-top-left-radius:4px; }
+    table.report-table thead tr:first-child th:last-child  { border-top-right-radius:4px; }
     table.report-table td {
       padding:4px 5px; vertical-align:middle;
       border-bottom:0.5px solid #f0f0f0;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
       font-size:11px;
     }
+    .narration-cell { white-space:normal; padding-right:2px; }
+    table.report-table td.num:nth-of-type(6) { padding-left:2px; }
     .num { text-align:right !important; font-family:'Courier New',monospace; }
     .neg-balance { color:#c0392b; }
-
-    /* ── Column sizing ── */
-    .div-cell    { width:36px;  color:#888; font-size:10px; }
-    .accode-cell { width:110px; }
-    .acname-cell { width:200px; }
-
-    /* ── Row types ── */
     .detail-row:hover td { background:#f9f9f9; }
-    .ac-total-row td {
-      border-top:1.5px solid #555; border-bottom:2px solid #555;
-      background:#f3f3f3; padding:5px 5px;
-    }
-    .grand-total-row td {
-      border-top:2px solid #333; border-bottom:2.5px solid #333;
-      background:#e8f0fb; padding:6px 5px;
-    }
 
     /* ── Footer ── */
-    .footer     { margin-top:36px; text-align:center; font-weight:600; border-top:1px solid #333; padding-top:8px; font-size:11px; color:#555; }
+    .footer     { margin-top:24px; text-align:center; font-weight:600; border-top:1px solid #333; padding-top:8px; font-size:11px; color:#555; }
     .powered-by { text-align:right; font-size:10px; color:#aaa; margin-top:4px; }
 
     @media print {
       body { background:white; margin:0; }
-      .page { box-shadow:none; padding:16px; }
+      .statement-block { box-shadow:none; padding:16px; }
       .no-print { display:none; }
     }
   </style>
@@ -329,54 +400,7 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
   </button>
 </div>
 
-<div class="page">
-
-  <!-- ── Page header ── -->
-  <div class="report-header">
-    <table class="meta-table">
-      <tr>
-        <td class="meta-label">Title :</td>
-        <td><strong>Outstanding Statement as on ${asOnDate}</strong></td>
-      </tr>
-      <tr><td class="meta-label">Date :</td><td>${formatDateStr(new Date())}</td></tr>
-      <tr>
-        <td class="meta-label">Currency :</td>
-        <td><strong>${currCode}</strong></td>
-      </tr>
-    </table>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-      <div class="company-name">AL MADINA</div>
-      <div class="company-sub">LOGISTICS</div>
-    </div>
-  </div>
-
-  <!-- ── Main table ── -->
-  <table class="report-table">
-    <thead>
-      <tr>
-        <th style="width:36px;">Div</th>
-        <th style="width:110px;">Ac Code</th>
-        <th>A/C Name</th>
-        <th class="num" style="width:55px;">Cr<br>Period</th>
-        <th class="num" style="width:90px;">Credit<br>Amount</th>
-        <th class="num" style="width:90px;">Debit</th>
-        <th class="num" style="width:90px;">Credit</th>
-        <th class="num" style="width:95px;">Balance</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${tableBodyHtml || `
-        <tr>
-          <td colspan="8" style="text-align:center;padding:40px;color:#999;">
-            No records found for the selected criteria.
-          </td>
-        </tr>`}
-    </tbody>
-  </table>
-
-  <div class="footer">End of Report</div>
-  <div class="powered-by">powered by A W A R E</div>
-</div>
+${blocksHtml}
 
 </body>
 </html>`;

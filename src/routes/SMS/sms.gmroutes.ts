@@ -1,33 +1,6 @@
 import * as express from "express";
-import { RequestHandler } from "express";
-import {
-  createcompanymaster,
-  updatecompanymaster,
-} from "../../controllers/SMS/company_sms.controller";
-import {
-  createservicemaster,
-  updateservicemaster,
-} from "../../controllers/SMS/service_sms.controller";
-import {
-  createsegmentmaster,
-  updatesegmentmaster,
-} from "../../controllers/SMS/segment_sms.controller";
-import {
-  createsalesmaster,
-  updatesalesmaster,
-} from "../../controllers/SMS/sales_sms.controller";
-import {
-  createreasonmaster,
-  updatereasonmaster,
-} from "../../controllers/SMS/reason_sms.controller";
-import {
-  createdealmaster,
-  updatedealmaster,
-} from "../../controllers/SMS/dealstatus_sms_controller";
-import {
-  createprobabilitymaster,
-  updateprobabilitymaster,
-} from "../../controllers/SMS/dealProbability_sms_controller";
+import { RequestWithUser } from "../../interfaces/common.interface";
+import { insertSmsRecord, smsGmConfigs, updateSmsRecord } from "../../services/smsTenant.service";
 import {
   batchCreateSalesRequest,
   batchUpdateSalesRequest,
@@ -35,51 +8,55 @@ import {
 
 const router = express.Router();
 
-//SMS company master routes
-router.post("/company_master", createcompanymaster);
-router.put("/company_master", updatecompanymaster);
+function createMaster(endpoint: keyof typeof smsGmConfigs) {
+  return async (req: RequestWithUser, res: express.Response) => {
+    try {
+      await insertSmsRecord(smsGmConfigs[endpoint], req.body, req.user.loginid);
+      res.json({ success: true, message: "Record created successfully" });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  };
+}
 
-//SMS Service master routes
-router.post("/service_master", createservicemaster);
-router.put("/service_master", updateservicemaster);
+function updateMaster(endpoint: keyof typeof smsGmConfigs) {
+  return async (req: RequestWithUser, res: express.Response) => {
+    try {
+      await updateSmsRecord(smsGmConfigs[endpoint], req.body, req.user.loginid);
+      res.json({ success: true, message: "Record updated successfully" });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  };
+}
 
-//sms segment master routes
-router.post("/segment_master", createsegmentmaster);
-router.put("/segment_master", updatesegmentmaster);
+router.post("/company_master", createMaster("company_master"));
+router.put("/company_master", updateMaster("company_master"));
 
-//sms sales master routes
-router.post("/sales_master", createsalesmaster);
-router.put("/sales_master", updatesalesmaster);
+router.post("/service_master", createMaster("service_master"));
+router.put("/service_master", updateMaster("service_master"));
 
-//sms reason master routes
-router.post("/reason_master", createreasonmaster);
-router.put("/reason_master", updatereasonmaster);
+router.post("/segment_master", createMaster("segment_master"));
+router.put("/segment_master", updateMaster("segment_master"));
 
-//sms deal master routes
-router.post("/deal_master", createdealmaster);
-router.put("/deal_master", updatedealmaster);
+router.post("/sales_master", createMaster("sales_master"));
+router.put("/sales_master", updateMaster("sales_master"));
 
-//sms probability master routes
-router.post("/probability_master", createprobabilitymaster);
-router.put("/probability_master", updateprobabilitymaster);
+router.post("/reason_master", createMaster("reason_master"));
+router.put("/reason_master", updateMaster("reason_master"));
 
-//sms Sales Request master routes
+router.post("/deal_master", createMaster("deal_master"));
+router.put("/deal_master", updateMaster("deal_master"));
+
+router.post("/probability_master", createMaster("probability_master"));
+router.put("/probability_master", updateMaster("probability_master"));
+
 router.post("/sales_request", (req, res, next) => {
-  (
-    batchCreateSalesRequest as unknown as (
-      req: express.Request,
-      res: express.Response
-    ) => Promise<any>
-  )(req, res).catch(next);
+  (batchCreateSalesRequest as unknown as (req: express.Request, res: express.Response) => Promise<any>)(req, res).catch(next);
 });
 
 router.patch("/sales_request", (req, res, next) => {
-  (
-    batchUpdateSalesRequest as unknown as (
-      req: express.Request,
-      res: express.Response
-    ) => Promise<any>
-  )(req, res).catch(next);
+  (batchUpdateSalesRequest as unknown as (req: express.Request, res: express.Response) => Promise<any>)(req, res).catch(next);
 });
 
 export default router;

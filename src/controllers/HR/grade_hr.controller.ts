@@ -216,10 +216,10 @@ export const deleteGrades = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const deleteResult = await gradeRepository.delete({
-      grade_code: In(gradesCode),
+   const deleteResult = await gradeRepository.delete({
+  company_code: req.user.company_code,
+  grade_code: In(gradesCode),
     });
-
     if (deleteResult.affected === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,

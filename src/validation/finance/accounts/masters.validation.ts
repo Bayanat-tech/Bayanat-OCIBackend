@@ -105,6 +105,11 @@ export const accountFinanceSchema = (data: IAccountFinanceAttributes) => {
     bi_pl_bs_ind: Joi.string().optional().allow(null).allow(""),     // P&L/BS indicator
     bi_dept: Joi.string().optional().allow(null).allow(""),          // BI department code
     files: Joi.array().items(Joi.any()).allow(null),                 // Associated files array
+    pl_code: Joi.string().optional().allow(null).allow(""),          // P&L code
+    pl_name: Joi.string().optional().allow(null).allow(""),          // P&L name
+    bl_code: Joi.string().optional().allow(null).allow(""),          
+    bl_name: Joi.string().optional().allow(null).allow(""),          
+    bs_code: Joi.string().optional().allow(null).allow(""),          
 
   //----------expense type and subtype---------
     exp_type_code: Joi.string().optional().allow(null).allow(""),     // Expense type code

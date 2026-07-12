@@ -125,6 +125,10 @@ export const postLpoRequestHandler = async (
       INVOICE_NUMBER: defaultString(req.body.INVOICE_NUMBER),
       INVOICE_DATE: defaultDate(req.body.INVOICE_DATE),
       REF_DOC_NO: defaultString(req.body.REF_DOC_NO),
+      PARTY_NAME: defaultString(req.body.AC_NAME ?? req.body.PARTY_NAME),
+      PARTY_ADDRESS: defaultString(req.body.ADDRESS ?? req.body.PARTY_ADDRESS),
+      PARTY_PHONE: defaultString(req.body.PHONE ?? req.body.PARTY_PHONE),
+      PARTY_FAX: defaultString(req.body.FAX ?? req.body.PARTY_FAX),
       items:
         req.body.items?.map((item: DetailsTVendor) => ({
           ...item,
@@ -694,6 +698,11 @@ async function upsertLpoRequestHeader(
         REMARKS = :remarks,
         CURR_CODE = :currCode, 
         EX_RATE = :exRate, 
+        PARTY_NAME = :partyName,
+        PARTY_ADDRESS = :partyAddress,
+        PARTY_PHONE = :partyPhone,
+        PARTY_FAX = :partyFax,
+        DIV_CODE = :divCode,  
       
         EDIT_USER = :editUser, 
         EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
@@ -713,7 +722,11 @@ async function upsertLpoRequestHeader(
       remarks: { val: defaultString(data.REMARKS) },
       currCode: { val: defaultString(data.CURR_CODE) },
       exRate: { val: data.EX_RATE ?? 0 },
-     
+      partyName: { val: defaultString(data.PARTY_NAME ?? data.PARTY_NAME) },
+      partyAddress: { val: defaultString(data.PARTY_ADDRESS ?? data.PARTY_ADDRESS) },
+      partyPhone: { val: defaultString(data.PARTY_PHONE ?? data.PARTY_PHONE) },
+      partyFax: { val: defaultString(data.PARTY_FAX ?? data.PARTY_FAX) },
+      divCode: { val: defaultString(data.DIV_CODE) },
       editUser: { val: defaultString(data.EDIT_USER) },
       editDate: { val: formatDateForOracle(new Date()) },
       companyCode: { val: company_code },
@@ -1154,6 +1167,7 @@ export const saveFileVendorHR = async (
   try {
     for (const file of files) {
       const { org_file_name, sr_no } = file;
+      const safeSrNo = sr_no === undefined || sr_no === null || sr_no === "" ? 0 : Number(sr_no);
 
       // Check for duplicates (now checking with SR_NO too)
       const duplicateCheckResult = await QueryExecutor.executeRawQuery(
@@ -1165,7 +1179,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: sr_no || null },
+          sr_no: { val: safeSrNo },
         }
       );
 
@@ -1206,7 +1220,7 @@ export const saveFileVendorHR = async (
         {
           company_code: { val: company_code || null },
           request_number: { val: request_number },
-          sr_no: { val: sr_no || null },  
+          sr_no: { val: safeSrNo },
           file_name: { val: file_name || null },
           extensions: { val: extensions || null },
           org_file_name: { val: org_file_name || null },
@@ -1233,7 +1247,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: sr_no || null },
+          sr_no: { val: safeSrNo },
         }
       );
 

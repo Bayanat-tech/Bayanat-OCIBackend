@@ -153,6 +153,12 @@ function parseCommon(req: RequestWithUser) {
 }
 
 // ─── Level-1 SQL ──────────────────────────────────────────────────────────────
+// FIXES APPLIED:
+//   1. String concatenation -> bind parameters (was vulnerable to SQL injection)
+//   2. d.doc_date < TO_DATE(:toDate) -> < TO_DATE(:toDate) + 1 (inclusive range;
+//      previously fromDate === toDate always produced zero rows)
+//   3. d.cancelled <> 'Y' -> NVL(d.cancelled,'N') <> 'Y' (rows with NULL
+//      cancelled were silently excluded, since NULL <> 'Y' evaluates to NULL/false)
 
 async function loadPnlRows(
   conn: oracledb.Connection,
@@ -196,12 +202,12 @@ async function loadPnlRows(
       AND p.pl_code        = m.pl_bl_code
       AND m.company_code   = d.company_code
       AND m.ac_code        = d.ac_code
-      AND p.company_code   = '${companyCode}'
-      AND d.doc_date      >= TO_DATE('${fromDate}', 'YYYY-MM-DD')
-      AND d.doc_date       < TO_DATE('${toDate}',   'YYYY-MM-DD')
-      AND d.cancelled     <> 'Y'
+      AND p.company_code   = :companyCode
+      AND d.doc_date      >= TO_DATE(:fromDate, 'YYYY-MM-DD')
+      AND d.doc_date       <  TO_DATE(:toDate,   'YYYY-MM-DD') + 1
+      AND NVL(d.cancelled, 'N') <> 'Y'
       AND d.doc_type      <> 'EJV'
-      AND ('All' = '${divisionCode}' OR d.div_code = '${divisionCode}')
+      AND ('All' = :divisionCode OR d.div_code = :divisionCode)
     GROUP BY
       p.company_code,
       p.h_code,
@@ -212,10 +218,10 @@ async function loadPnlRows(
       p.h_code,
       p.pl_code
   `;
-  console.log("loadPnlRows SQL:", sql.replace(/\s+/g, " ").trim());
+
   const result = await conn.execute(
     sql,
-    [],
+    { companyCode, fromDate, toDate, divisionCode },
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
   );
 
@@ -245,7 +251,9 @@ function renderPnlHtml(
   const totalExpense = expense.reduce((s, g) => s + g.total, 0);
   const net = totalIncome - totalExpense;
 
-  // Drill-down postMessage — same pattern as Trial Balance
+  // Drill-down postMessage. When this HTML is loaded inside the popup's inner
+  // iframe, window.parent is the popup document — the popup shell itself
+  // relays this message on to window.opener (the main app tab).
   const drillScript = `
   <script>
     (function () {
@@ -489,7 +497,6 @@ function buildPnlExcel(
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  // Style IDs — match cellXfs order in stylesXml below
   const S = {
     default: 0,
     titleHdr: 1,
@@ -513,7 +520,6 @@ function buildPnlExcel(
   const r = (v: unknown, s: number): Cell => ({ v, s });
   const _ = null;
 
-  // Header rows
   rows.push([r("AL MADINA LOGISTICS — Profit & Loss Report", S.titleHdr), _, _]);
   rows.push([r(`Period: ${dateText(params.fromDate)} – ${dateText(params.toDate)}   Division: ${params.divisionCode}   User: ${params.loginId}   Date: ${printDateTime}`, S.meta), _, _]);
   rows.push([]);
@@ -535,7 +541,6 @@ function buildPnlExcel(
   if (expense.length) appendSection(expense, "EXPENSES", totalExpense);
   rows.push([r(`NET ${net >= 0 ? "PROFIT" : "LOSS"}`, S.netRow), _, r(Math.abs(net), S.numNet)]);
 
-  // Build sheet XML
   const COL_WIDTHS = [20, 52, 20];
   const colXml = COL_WIDTHS.map((w, i) =>
     `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
@@ -587,7 +592,6 @@ function buildPnlExcel(
   ${mergeXml}
 </worksheet>`;
 
-  // Styles — 14 cellXfs (indices 0–13)
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
@@ -624,33 +628,19 @@ function buildPnlExcel(
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="14">
-    <!-- 0: default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <!-- 1: title header -->
     <xf numFmtId="0" fontId="1" fillId="0" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <!-- 2: meta -->
     <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
-    <!-- 3: table header -->
     <xf numFmtId="0" fontId="3" fillId="0" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
-    <!-- 4: section row (INCOME / EXPENSES) -->
     <xf numFmtId="0" fontId="3" fillId="0" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
-    <!-- 5: group row -->
     <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment indent="2"/></xf>
-    <!-- 6: data text -->
     <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" indent="3"/></xf>
-    <!-- 7: group total text -->
     <xf numFmtId="0" fontId="6" fillId="0" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment indent="2"/></xf>
-    <!-- 8: section total text -->
     <xf numFmtId="0" fontId="4" fillId="0" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
-    <!-- 9: net row text -->
     <xf numFmtId="0" fontId="7" fillId="0" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
-    <!-- 10: num data -->
     <xf numFmtId="164" fontId="5" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <!-- 11: num group total -->
     <xf numFmtId="164" fontId="6" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
-    <!-- 12: num section total -->
     <xf numFmtId="164" fontId="4" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
-    <!-- 13: num net -->
     <xf numFmtId="164" fontId="7" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
