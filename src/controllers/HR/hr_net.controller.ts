@@ -16,6 +16,24 @@ export const getEmployeesHandler = async (req: Request, res: Response) => {
   }
 };
 
+export const leaveDaysCntHandler = async (req: Request, res: Response) => {
+  try {
+    const { leaveStartDate, leaveEndDate, leaveType, company_code, employee_code } = req.query;
+
+    const data = await HrService.LeaveDaysCount({
+      leaveStartDate: leaveStartDate as string,
+      leaveEndDate: leaveEndDate as string,
+      leaveType: leaveType as string,
+      company_code: company_code as string,
+      employee_code: employee_code as string,
+    });
+
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const getLeaveBalanceHandler = async (req: Request, res: Response) => {
   try {
     const { employeeId } = req.params;
@@ -94,13 +112,15 @@ export const validateLeaveHandler = async (req: Request, res: Response) => {
 export const newvalidateLeaveHandler = async (req: Request, res: Response) => {
   try {
     const {
-      leaveStartDate,employeeId,leaveType
+      leaveStartDate, leaveEndDate, employeeId, leaveType, leaveDays
     } = req.query;
 
     const data = await HrService.newValidaterequest({
       leaveStartDate: leaveStartDate as string,
+      leaveEndDate: leaveEndDate as string,
       employeeId: employeeId as string,
       leaveType: leaveType as string,
+      leaveDays: Number(leaveDays || 0),
 
     });
 
