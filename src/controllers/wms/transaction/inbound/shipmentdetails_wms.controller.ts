@@ -1,26 +1,30 @@
 import { Response } from "express";
-import {
-  ISearch,
-  RequestWithUser,
-} from "../../../../interfaces/common.interface";
-import { IUser } from "../../../../interfaces/user.interface";
+import { ISearch } from "../../../../interfaces/common.interface";
+import { RequestWithTenant } from "../../../../middleware/tenant.middleware";
 import { shipmentDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
 import constants from "../../../../helpers/constants";
 import { IShipmentDetails } from "../../../../interfaces/wms/transaction/inbound/shipmentDetails_wms.interface";
 import * as fastCsv from "fast-csv";
 import WmsCsvHeaders from "../../../../utils/exportCsv/WmsCsvHeaders";
-import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { ShipmentDetailsService } from "../../../../services/WMS/transaction/inbound/shipmentDetails.service";
 
 const shipmentService = new ShipmentDetailsService();
 
 export const getAllShipmentDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     const { code, code2, page = 1, limit = 100 } = req.query;
-    const requestUser: IUser = req.user;
 
     // Parse filter from query
     const filter: ISearch = req.query.filter
@@ -29,7 +33,7 @@ export const getAllShipmentDetails = async (
 
     // Prepare filters
     const filters: any = {
-      company_code: requestUser.company_code,
+      company_code: companyCode,
     };
 
     // Map code to job_no and code2 to prin_code
@@ -70,16 +74,25 @@ export const getAllShipmentDetails = async (
 };
 
 export const getShipmentDetail = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     const { prin_code, job_no } = req.query;
 
     const shipmentDetails = await shipmentService.findOne(
       prin_code as string,
       job_no as string,
-      req.user.company_code
+      companyCode
     );
 
     if (!shipmentDetails) {
@@ -104,17 +117,20 @@ export const getShipmentDetail = async (
 };
 
 export const createShipmentItem = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    const requestUser: IUser = req.user;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
 
-    const { error } = shipmentDetailsSchema(
-      req.body,
-      false,
-      requestUser.company_code
-    );
+    const { error } = shipmentDetailsSchema(req.body, false, companyCode);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
@@ -124,8 +140,8 @@ export const createShipmentItem = async (
 
     const response = await shipmentService.create({
       ...req.body,
-      company_code: requestUser.company_code,
-      user_id: requestUser.loginid,
+      company_code: companyCode,
+      user_id: req.user?.loginid,
     });
 
     if (!response) {
@@ -149,18 +165,22 @@ export const createShipmentItem = async (
 };
 
 export const updateShipmentItem = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    const requestUser: IUser = req.user;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     const { container_no, prin_code, job_no } = req.query;
 
-    const { error } = shipmentDetailsSchema(
-      req.body,
-      false,
-      requestUser.company_code
-    );
+    const { error } = shipmentDetailsSchema(req.body, false, companyCode);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
@@ -171,7 +191,7 @@ export const updateShipmentItem = async (
     const shipmentResponse = await shipmentService.findOne(
       prin_code as string,
       job_no as string,
-      requestUser.company_code
+      companyCode
     );
 
     if (!shipmentResponse) {
@@ -186,10 +206,10 @@ export const updateShipmentItem = async (
       prin_code as string,
       job_no as string,
       container_no as string,
-      requestUser.company_code,
+      companyCode,
       {
         ...req.body,
-        user_id: requestUser.loginid,
+        user_id: req.user?.loginid,
       }
     );
 
@@ -214,12 +234,19 @@ export const updateShipmentItem = async (
 };
 
 export const deleteShipmentItem = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ): Promise<any> => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
     const { shipment_details } = req.body;
-    const requestUser = req.user;
 
     if (shipment_details.length === 0) {
       return res.status(400).json({
@@ -241,7 +268,7 @@ export const deleteShipmentItem = async (
             prin_code,
             job_no,
             container_no,
-            requestUser.company_code
+            companyCode
           );
         }
       )
@@ -260,17 +287,20 @@ export const deleteShipmentItem = async (
 };
 
 export const createBulkShipmentDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    const requestUser: IUser = req.user;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
 
-    const { error } = shipmentDetailsSchema(
-      req.body,
-      true,
-      requestUser.company_code
-    );
+    const { error } = shipmentDetailsSchema(req.body, true, companyCode);
     if (error) {
       res
         .status(constants.STATUS_CODES.BAD_REQUEST)
@@ -280,8 +310,8 @@ export const createBulkShipmentDetails = async (
 
     const shipmentData = req.body.map((shipmentDetail: IShipmentDetails) => ({
       ...shipmentDetail,
-      company_code: requestUser.company_code,
-      user_id: requestUser.loginid,
+      company_code: companyCode,
+      user_id: req.user?.loginid,
     }));
 
     await shipmentService.bulkCreate(shipmentData);
@@ -300,10 +330,19 @@ export const createBulkShipmentDetails = async (
 };
 
 export const exportShipmentDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     let csvTransform: fastCsv.CsvFormatterStream<
       fastCsv.FormatterRow,
       fastCsv.FormatterRow
@@ -315,10 +354,7 @@ export const exportShipmentDetails = async (
       : {};
 
     const searchFilter = filter.search || null;
-    fetchedData = await shipmentService.findAll(
-      req.user.company_code,
-      searchFilter
-    );
+    fetchedData = await shipmentService.findAll(companyCode, searchFilter);
 
     csvTransform = fastCsv.format({
       headers: WmsCsvHeaders.TANSACTION.INBOUND.SHIPMENT_DETAIL,

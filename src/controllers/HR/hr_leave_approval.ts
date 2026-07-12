@@ -1,5 +1,4 @@
 import oracledb from 'oracledb';
-import { oracleDb } from "../../database/connection";
 import { Request, Response } from "express";
 import constants from "../../helpers/constants";
 import { HrService } from "../../services/hr.service";
@@ -7,6 +6,8 @@ import { TLeaveApproval } from "../../interfaces/Hr/hr_leave_approval";
 import {sendLeaveNotifications} from "./sendLeaveNotifications";
 import { notifyUser } from "../../helpers/functions";
 import { QueryExecutor } from "../../database/QueryExecutor";
+import TenantManager from "../../database/TenantManager";
+import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
@@ -68,13 +69,35 @@ async function retryOnDeadlock<T>(
   }
 }
 
+async function withTenantTransaction<T>(
+  fn: (conn: oracledb.Connection) => Promise<T>
+): Promise<T> {
+  const tenantId = getCurrentTenantId();
+  if (!tenantId) {
+    throw new Error("No tenant context available for leave approval transaction.");
+  }
+
+  const conn = await TenantManager.getConnection(tenantId);
+  try {
+    await conn.execute("BEGIN NULL; END;");
+    const result = await fn(conn);
+    await conn.commit();
+    return result;
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    await conn.close();
+  }
+}
+
 export async function upsertLeaveApproval(
   data: TLeaveApproval
 ): Promise<{ requestNumber: string; uuid: string }> {
   // Generate UUID if not provided (for new records)
   const uuid = data.UUID || generateUUID();
   
-  const { requestNumber, finalApproved } = await oracleDb.withTransaction(
+  const { requestNumber, finalApproved } = await withTenantTransaction(
     async (connection: oracledb.Connection) => {
       // For SAVEASDRAFT, try to find existing draft by UUID first
       let finalReq = data.REQUEST_NUMBER;

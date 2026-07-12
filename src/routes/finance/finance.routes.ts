@@ -44,11 +44,17 @@ import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/u
 import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
 import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
 import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIncrement";
+import { insUpdBudgetRequestBulk } from "../../controllers/finance/accounts/transactions/insUpdBudgetRequestBulk";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
+insUpdBudgetRequestBulk 
 
+router.post(
+  "/insUpdBudgetRequestBulk",
+  insUpdBudgetRequestBulk
+);
 
 router.post(
   "/insUpdChqDepositBulk",

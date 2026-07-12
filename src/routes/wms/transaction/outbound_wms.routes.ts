@@ -26,6 +26,7 @@ import { deleteOrderEntry, getAllOrderEntries, getSingleOrderEntry, updateSingle
 import { createToOrder } from "../../../controllers/wms/transaction/outbound/createToOrder";
 import { getDnReportExcel, getDnReportHtml } from "../../../controllers/wms/reports/DnReport.controller";
 import { getPickListExcel, getPickListHtml } from "../../../controllers/wms/reports/OubPick.controller";
+import { getWmsOutboundJobDetailsReportExcel, getWmsOutboundJobDetailsReportHtml } from "../../../controllers/wms/reports/Outbound_jobDetialsReport.controller";
 
 // Ensure getToOrder uses Express.Request and Express.Response types for compatibility.
 
@@ -137,6 +138,9 @@ router.get("/picking_details/export", exportPickingDetails);
  * @desc Export picking stock details
  */
 router.get("/picking_details/stock_details/export", exportPickingStockDeatils);
+
+router.get("/reports/Oub_jobDet-report/:job_no", getWmsOutboundJobDetailsReportHtml);
+router.get("/reports/Oub_jobDet-report/:job_no/excel",getWmsOutboundJobDetailsReportExcel);
 
 router.get("/reports/Dn-report/:job_no", getDnReportHtml);
 router.get("/reports/Dn-report/:job_no/excel",getDnReportExcel);

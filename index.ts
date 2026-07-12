@@ -1,7 +1,7 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
 import { initializeAllConnections, TypeORMService } from "./src/database/connection";
-//import startSchedulers from "./src/scheduler/startSchedulers";
+import startSchedulers from "./src/scheduler/startSchedulers";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
 import passport from "passport";
 
@@ -52,6 +52,7 @@ app.use("/api/reports", boldReportsRoutes);
 app.use("/api/security", secRoutes);
 
 app.use("/api/hr", hrRoutes);
+app.use("/api/ems", hrRoutes);
 
 app.use("/api/pf", pfRoutes);
 
@@ -144,7 +145,7 @@ async function startServer() {
     }
     try {
       // Start background schedulers (email sender, attendance, etc.)
-      //await startSchedulers();
+      await startSchedulers();
     } catch (schedErr) {
       console.error("Failed to start schedulers:", schedErr);
       // Non-fatal: continue running server even if schedulers fail
