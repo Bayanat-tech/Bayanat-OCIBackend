@@ -9,6 +9,7 @@ const AdmZip = require("adm-zip");
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TMetric = "quantity" | "volume";
+type TGroupBy = "product_group" | "product" | "principal";
 type ReportRow = Record<string, any>;
 
 interface AgeBuckets {
@@ -31,6 +32,7 @@ interface AgeingParams {
   prodCodeFrom: string;
   prodCodeTo:   string;
   age1: number; age2: number; age3: number; age4: number; age5: number;
+  groupBy: TGroupBy;
 }
 
 const DEFAULT_AGES: [number, number, number, number, number] = [30, 60, 90, 120, 150];
@@ -125,7 +127,15 @@ function parseAgeingParams(req: RequestWithUser): AgeingParams {
   const age4 = toAge(req.body.age4, DEFAULT_AGES[3]);
   const age5 = toAge(req.body.age5, DEFAULT_AGES[4]);
 
-  return { prinCode, deptCodeFrom, prodCodeFrom, prodCodeTo, age1, age2, age3, age4, age5 };
+  // "product" -> flat Principal -> Product grouping (no Product Group header/subtotal).
+  // Anything else (including missing/unrecognized) falls back to the original
+  // Principal -> Product Group -> Product grouping.
+  const groupByRaw = text(req.body.group_by || "").trim().toLowerCase();
+  const groupBy: TGroupBy = groupByRaw === "product" ? "product"
+    : groupByRaw === "principal" ? "principal"
+    : "product_group";
+
+  return { prinCode, deptCodeFrom, prodCodeFrom, prodCodeTo, age1, age2, age3, age4, age5, groupBy };
 }
 
 function bucketLabels(p: AgeingParams): string[] {
@@ -267,47 +277,89 @@ function renderAgeingHtml(
     <td class="num">${fmtNumber(b.b6)}</td>
     <td class="num total-col">${fmtNumber(b.total)}</td>`;
 
-  const byPrin = groupRowsBy(rows, (r) => r.prin_code);
-  let bodyHtml = "";
+  // ── Renders the product-wise lines (+ per-product subtotal rows) for any
+  // slice of rows. Shared by both the "Product Group -> Product" branch and
+  // the flat "Product" branch so the two grouping modes stay in sync.
+  const renderProductRows = (rowsForProd: AgeingRow[]): string => {
+    let html = "";
+    const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
+    byProd.forEach((prodRows, prodCode) => {
+      const prodName = text(prodRows[0]?.prod_name);
 
-  byPrin.forEach((prinRows, prinCode) => {
-    const prinName = text(prinRows[0]?.prin_name);
-    bodyHtml += `
-      <tr class="principal-header">
-        <td colspan="${COL_COUNT}">${escapeHtml(prinCode)} &nbsp;|&nbsp; ${escapeHtml(prinName)}</td>
-      </tr>`;
-
-    const byGroup = groupRowsBy(prinRows, (r) => r.group_code);
-    byGroup.forEach((grpRows, grpCode) => {
-      const grpName = text(grpRows[0]?.group_name);
-      bodyHtml += `
-        <tr class="group-header">
-          <td colspan="${COL_COUNT}">${escapeHtml(grpCode)} &nbsp;|&nbsp; ${escapeHtml(grpName)}</td>
-        </tr>`;
-
-      grpRows.forEach((r) => {
+      prodRows.forEach((r) => {
         const b = metric === "quantity" ? r.qty : r.vol;
-        bodyHtml += `
+        html += `
           <tr class="data-row">
             <td>${escapeHtml(r.prod_code)} | ${escapeHtml(r.prod_name)}</td>
             ${bucketCells(b)}
           </tr>`;
       });
 
-      const grpTotal = sumBuckets(grpRows, metric);
-      bodyHtml += `
-        <tr class="group-total-row">
-          <td class="subtotal-label">Total For ${escapeHtml(grpCode)} | ${escapeHtml(grpName)} :</td>
-          ${bucketCells(grpTotal)}
+      const prodTotal = sumBuckets(prodRows, metric);
+      html += `
+        <tr class="product-total-row">
+          <td class="subtotal-label">Total For ${escapeHtml(prodCode)} | ${escapeHtml(prodName)} :</td>
+          ${bucketCells(prodTotal)}
         </tr>`;
     });
+    return html;
+  };
 
+  const renderPrincipalSummaryRow = (prinRows: AgeingRow[], prinCode: string): string => {
+    const prinName = text(prinRows[0]?.prin_name);
     const prinTotal = sumBuckets(prinRows, metric);
-    bodyHtml += `
+    return `
       <tr class="principal-total-row">
-        <td class="subtotal-label">Total For ${escapeHtml(prinName)} :</td>
+        <td class="subtotal-label">${escapeHtml(prinCode)} | ${escapeHtml(prinName)}</td>
         ${bucketCells(prinTotal)}
       </tr>`;
+  };
+
+  const byPrin = groupRowsBy(rows, (r) => r.prin_code);
+  let bodyHtml = "";
+
+  byPrin.forEach((prinRows, prinCode) => {
+    const prinName = text(prinRows[0]?.prin_name);
+    if (params.groupBy !== "principal") {
+      bodyHtml += `
+      <tr class="principal-header">
+        <td colspan="${COL_COUNT}">${escapeHtml(prinCode)} &nbsp;|&nbsp; ${escapeHtml(prinName)}</td>
+      </tr>`;
+    }
+
+    if (params.groupBy === "principal") {
+      bodyHtml += renderPrincipalSummaryRow(prinRows, prinCode);
+    } else if (params.groupBy === "product") {
+      // Flat mode: Principal -> Product directly, no Product Group header/subtotal.
+      bodyHtml += renderProductRows(prinRows);
+    } else {
+      const byGroup = groupRowsBy(prinRows, (r) => r.group_code);
+      byGroup.forEach((grpRows, grpCode) => {
+        const grpName = text(grpRows[0]?.group_name);
+        bodyHtml += `
+          <tr class="group-header">
+            <td colspan="${COL_COUNT}">${escapeHtml(grpCode)} &nbsp;|&nbsp; ${escapeHtml(grpName)}</td>
+          </tr>`;
+
+        bodyHtml += renderProductRows(grpRows);
+
+        const grpTotal = sumBuckets(grpRows, metric);
+        bodyHtml += `
+          <tr class="group-total-row">
+            <td class="subtotal-label">Total For ${escapeHtml(grpCode)} | ${escapeHtml(grpName)} :</td>
+            ${bucketCells(grpTotal)}
+          </tr>`;
+      });
+    }
+
+    if (params.groupBy !== "principal") {
+      const prinTotal = sumBuckets(prinRows, metric);
+      bodyHtml += `
+        <tr class="principal-total-row">
+          <td class="subtotal-label">Total For ${escapeHtml(prinName)} :</td>
+          ${bucketCells(prinTotal)}
+        </tr>`;
+    }
   });
 
   const grandTotal = sumBuckets(rows, metric);
@@ -350,6 +402,9 @@ function renderAgeingHtml(
       background: #dbeafe; font-weight: 700; border: 1px solid #93c5fd; padding: 3px 6px;
     }
     tr.data-row td { background: #fff; }
+    tr.product-total-row td {
+      background: #e0f2fe; font-weight: 700; border-top: 1px solid #7dd3fc;
+    }
     tr.group-total-row td {
       background: #fffde7; font-weight: 700; border-top: 1px solid #999;
     }
@@ -385,7 +440,7 @@ function renderAgeingHtml(
   <table>
     <thead>
       <tr>
-        <th>Product</th>
+        <th>${escapeHtml(params.groupBy === "principal" ? "Principal" : "Product")}</th>
         ${labels.map((l) => `<th>${escapeHtml(l)}</th>`).join("")}
         <th class="total-col-hdr">Total</th>
       </tr>
@@ -401,7 +456,7 @@ function renderAgeingHtml(
     </tfoot>
   </table>
   <div class="filter-criteria">
-    Filter Criteria : Principal Code: [${params.prinCode.join(", ")}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}]${params.deptCodeFrom ? `, Department Code From: [${escapeHtml(params.deptCodeFrom)}]` : ""}${params.prodCodeFrom ? `, Product Code From: [${escapeHtml(params.prodCodeFrom)}]` : ""}${params.prodCodeTo ? `, Product Code To: [${escapeHtml(params.prodCodeTo)}]` : ""}
+    Filter Criteria : Principal Code: [${params.prinCode.join(", ")}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]${params.deptCodeFrom ? `, Department Code From: [${escapeHtml(params.deptCodeFrom)}]` : ""}${params.prodCodeFrom ? `, Product Code From: [${escapeHtml(params.prodCodeFrom)}]` : ""}${params.prodCodeTo ? `, Product Code To: [${escapeHtml(params.prodCodeTo)}]` : ""}
   </div>
   <div class="report-footer">
     <span>Report: rpt_stock_ageing_${metric}</span>
@@ -428,6 +483,7 @@ function buildAgeingExcelBuffer(
 
   const BLUE = "FF1D4ED8", DARKBLUE = "FF0F3460", WHITE = "FFFFFFFF";
   const LBLUE = "FFDBEAFE", YELLOW = "FFFFFDE7", SITEBLUE = "FFBFDBFE", INDIGO = "FFEFF6FF";
+  const PRODBLUE = "FFE0F2FE", PRODBLUE_BORDER = "FF7DD3FC";
 
   const borderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
 
@@ -449,6 +505,8 @@ function buildAgeingExcelBuffer(
     data:      { font: { sz: 9 }, border: { bottom: borderThin("FFE2E8F0") } },
     dataNum:   { font: { sz: 9 }, alignment: { horizontal: "right" }, numFmt: "#,##0", border: { bottom: borderThin("FFE2E8F0") } },
     dataTotal: { font: { bold: true, sz: 9, color: { rgb: "FF1E3A8A" } }, fill: { fgColor: { rgb: INDIGO } }, alignment: { horizontal: "right" }, numFmt: "#,##0", border: { bottom: borderThin("FFE2E8F0") } },
+    productTotalLabel: { font: { bold: true, sz: 9 }, fill: { fgColor: { rgb: PRODBLUE } }, border: { top: borderThin(PRODBLUE_BORDER) } },
+    productTotalNum:   { font: { bold: true, sz: 9 }, fill: { fgColor: { rgb: PRODBLUE } }, alignment: { horizontal: "right" }, numFmt: "#,##0", border: { top: borderThin(PRODBLUE_BORDER) } },
     groupTotalLabel: { font: { bold: true, sz: 9 }, fill: { fgColor: { rgb: YELLOW } }, border: { top: borderThin("FF999999") } },
     groupTotalNum:   { font: { bold: true, sz: 9 }, fill: { fgColor: { rgb: YELLOW } }, alignment: { horizontal: "right" }, numFmt: "#,##0", border: { top: borderThin("FF999999") } },
     prinTotalLabel:  { font: { bold: true, sz: 9 }, fill: { fgColor: { rgb: SITEBLUE } }, border: { top: borderThin(BLUE) } },
@@ -484,7 +542,7 @@ function buildAgeingExcelBuffer(
 
   // Header
   const hRow = sheetData.length;
-  const hCells = ["Product", ...labels, "Total"];
+  const hCells = [params.groupBy === "principal" ? "Principal" : "Product", ...labels, "Total"];
   const hStyles: Record<number, any> = {};
   hCells.forEach((_, i) => { hStyles[i] = i === COL_COUNT - 1 ? styles.headerTotal : styles.header; });
   addRow(hCells, hStyles);
@@ -504,17 +562,15 @@ function buildAgeingExcelBuffer(
     merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 1 } });
   };
 
-  const byPrin = groupRowsBy(rows, (r) => r.prin_code);
-  byPrin.forEach((prinRows, prinCode) => {
-    const prinName = text(prinRows[0]?.prin_name);
-    addSectionRow(`${prinCode} | ${prinName}`, styles.principal);
+  // ── Adds the product-wise data lines (+ per-product subtotal rows) for any
+  // slice of rows. Shared by both the "Product Group -> Product" branch and
+  // the flat "Product" branch so the two grouping modes stay in sync.
+  const addProductRows = (rowsForProd: AgeingRow[]) => {
+    const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
+    byProd.forEach((prodRows, prodCode) => {
+      const prodName = text(prodRows[0]?.prod_name);
 
-    const byGroup = groupRowsBy(prinRows, (r) => r.group_code);
-    byGroup.forEach((grpRows, grpCode) => {
-      const grpName = text(grpRows[0]?.group_name);
-      addSectionRow(`${grpCode} | ${grpName}`, styles.group);
-
-      grpRows.forEach((r) => {
+      prodRows.forEach((r) => {
         const b = metric === "quantity" ? r.qty : r.vol;
         const cells = [`${r.prod_code} | ${r.prod_name}`, ...bucketVals(b)];
         const styleMap: Record<number, any> = { 0: styles.data };
@@ -523,8 +579,29 @@ function buildAgeingExcelBuffer(
         addRow(cells, styleMap);
       });
 
-      addTotalRow(`Total For ${grpCode} | ${grpName} :`, sumBuckets(grpRows, metric), styles.groupTotalLabel, styles.groupTotalNum);
+      addTotalRow(`Total For ${prodCode} | ${prodName} :`, sumBuckets(prodRows, metric), styles.productTotalLabel, styles.productTotalNum);
     });
+  };
+
+  const byPrin = groupRowsBy(rows, (r) => r.prin_code);
+  byPrin.forEach((prinRows, prinCode) => {
+    const prinName = text(prinRows[0]?.prin_name);
+    addSectionRow(`${prinCode} | ${prinName}`, styles.principal);
+
+    if (params.groupBy === "product") {
+      // Flat mode: Principal -> Product directly, no Product Group header/subtotal.
+      addProductRows(prinRows);
+    } else {
+      const byGroup = groupRowsBy(prinRows, (r) => r.group_code);
+      byGroup.forEach((grpRows, grpCode) => {
+        const grpName = text(grpRows[0]?.group_name);
+        addSectionRow(`${grpCode} | ${grpName}`, styles.group);
+
+        addProductRows(grpRows);
+
+        addTotalRow(`Total For ${grpCode} | ${grpName} :`, sumBuckets(grpRows, metric), styles.groupTotalLabel, styles.groupTotalNum);
+      });
+    }
 
     addTotalRow(`Total For ${prinName} :`, sumBuckets(prinRows, metric), styles.prinTotalLabel, styles.prinTotalNum);
   });
