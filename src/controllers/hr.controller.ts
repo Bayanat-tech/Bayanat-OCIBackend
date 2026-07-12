@@ -133,9 +133,10 @@ export const getHrMaster = async (
           case "Pg_Leave_flow":
             whereConditions = `
               company_code = :company_code
-              AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
+              AND UPPER(TRIM(NVL(LAST_ACTION, ''))) NOT IN ('REJECTED', 'CANCEL')
               AND (
-                (NEXT_ACTION_BY = :loginid AND FINAL_APPROVED <> 'YES')
+                (NEXT_ACTION_BY = :loginid AND UPPER(TRIM(NVL(FINAL_APPROVED, 'NO'))) <> 'YES')
+                OR (UPPER(TRIM(NVL(LAST_ACTION, ''))) = 'SAVEASDRAFT' AND CREATED_BY = :loginid)
                 OR
                 (
                   IMMEDIATE_SUPERVISOR = :loginid
@@ -181,9 +182,9 @@ export const getHrMaster = async (
          case "Pg_leave_flow_InProgress":
     whereConditions = `
         company_code = :company_code
-        AND LAST_ACTION <> 'REJECTED'
-        AND FINAL_APPROVED <> 'YES'
-        AND LAST_ACTION <> 'CANCEL'
+        AND UPPER(TRIM(NVL(LAST_ACTION, ''))) <> 'REJECTED'
+        AND UPPER(TRIM(NVL(FINAL_APPROVED, 'NO'))) <> 'YES'
+        AND UPPER(TRIM(NVL(LAST_ACTION, ''))) <> 'CANCEL'
         AND NEXT_ACTION_BY NOT IN (
             SELECT EMPLOYEE_ID 
             FROM VW_HR_EMPLOYEE_AWARE 

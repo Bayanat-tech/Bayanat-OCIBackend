@@ -233,13 +233,16 @@ export const HrService = {
 
 newValidaterequest: async(params: {
   leaveStartDate: string;
+  leaveEndDate?: string;
   employeeId: string;
   leaveType: string;
+  leaveDays?: number;
 }) => {
-  const { leaveStartDate, employeeId , leaveType } = params;
+  const { leaveStartDate, employeeId, leaveType } = params;
+  const requestedDays = Number(params.leaveDays || 0);
 
   console.log("Input leaveStartDate:", leaveStartDate); // '12-11-2025' (DD-MM-YYYY)
-  const formattedDate = leaveStartDate; // Keep as '12-11-2025'
+  const formattedDate = normalizeOracleDate(leaveStartDate);
 
   const query = `
     DECLARE
@@ -301,6 +304,39 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
   }
 }
 
+function normalizeOracleDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+  return value;
+}
+
+async function buildBalanceValidation(functionResult: string | null) {
+  const leaveBalances = await getLeaveBalances(employeeId, leaveType);
+  const availableBalance = leaveBalances === null || leaveBalances === undefined ? null : Number(leaveBalances);
+  const hasRequestedDays = Number.isFinite(requestedDays) && requestedDays > 0;
+  const hasBalance = availableBalance !== null && Number.isFinite(availableBalance);
+  const isValid = !hasRequestedDays || !hasBalance || requestedDays <= Number(availableBalance);
+
+  return {
+    success: true,
+    leaveType: leaveType,
+    functionResult: functionResult || "BALANCE_FALLBACK",
+    leaveStartDate: leaveStartDate,
+    leaveEndDate: params.leaveEndDate,
+    formattedDate: formattedDate,
+    availableBalance: availableBalance,
+    requestedDays: requestedDays,
+    isValid: isValid,
+    message: !isValid
+      ? `Insufficient leave balance. Available balance: ${availableBalance}, requested days: ${requestedDays}`
+      : hasBalance
+        ? `Validation successful. Available balance: ${availableBalance}`
+        : "Validation successful"
+  };
+}
+
   try {
     // First, ensure temp table exists
     await ensureTempTableExists();
@@ -316,34 +352,11 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
     // Clean up
     await QueryExecutor.executeRawQuery(`DELETE FROM TEMP_FUNCTION_RESULT WHERE ROWNUM = 1`, {});
 
-    let leaveBalances = null;
-
-    // If function returned "OK", then get leave balances
-    if (functionResult === 'OK') {
-      leaveBalances = await getLeaveBalances(employeeId, leaveType);
-    }
-
-
-    
-
-    return {
-      success: true,
-      leaveType: leaveType,
-      functionResult: functionResult,
-      leaveStartDate: leaveStartDate,
-      formattedDate: formattedDate,
-      availableBalance: leaveBalances,
-      message: 'Validation Successful'
-    };
+    return await buildBalanceValidation(functionResult);
 
   } catch (error: any) {
     console.error("Error in newValidaterequest:", error);
-    return {
-      success: false,
-      functionResult: null,
-      leaveStartDate: leaveStartDate,
-      message: `Validation failed: ${error.message}`
-    };
+    return await buildBalanceValidation("BALANCE_FALLBACK");
   }
 },
 

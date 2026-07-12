@@ -112,13 +112,15 @@ export const validateLeaveHandler = async (req: Request, res: Response) => {
 export const newvalidateLeaveHandler = async (req: Request, res: Response) => {
   try {
     const {
-      leaveStartDate,employeeId,leaveType
+      leaveStartDate, leaveEndDate, employeeId, leaveType, leaveDays
     } = req.query;
 
     const data = await HrService.newValidaterequest({
       leaveStartDate: leaveStartDate as string,
+      leaveEndDate: leaveEndDate as string,
       employeeId: employeeId as string,
       leaveType: leaveType as string,
+      leaveDays: Number(leaveDays || 0),
 
     });
 
