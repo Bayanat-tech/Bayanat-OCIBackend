@@ -58,6 +58,7 @@ import {
   validateLeaveHandler,
   getLeaveRequestsWithErpDocHandler,
   newvalidateLeaveHandler,
+  leaveDaysCntHandler,
 } from "../../controllers/HR/hr_net.controller";
 import { executeRawSql } from "../../controllers/HR/rawSql_hr_controller";
 import { getRequestFlowUsers } from "../../controllers/HR/hr_leave_flow_sentback";
@@ -153,6 +154,7 @@ router.get("/leavehistory", getLeaveHistoryHandler);
 // router.get("/validateleave", validateLeaveHandler);
 router.get("/validateleave", newvalidateLeaveHandler);
 router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
+router.get("/leavedayscount", leaveDaysCntHandler);
 
 // Exporting the router
 

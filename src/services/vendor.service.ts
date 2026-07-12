@@ -349,7 +349,7 @@ export class VendorService {
   static async updateDataTransferFlag(companyCode: string, docNo: string) {
     try {
       const result = await QueryExecutor.executeRawQuery(
-        `UPDATE TR_AC_LPO_HEADER
+        `UPDATE VMS_FLOW_HDR
          SET DATA_TRANSFER = 'Y'
          WHERE COMPANY_CODE = :companyCode 
          AND DOC_NO = :docNo`,
