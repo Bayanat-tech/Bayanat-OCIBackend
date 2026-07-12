@@ -27,6 +27,24 @@ export const getSupportActiveUsers = async (_req: AuthedRequest, res: Response) 
   }
 };
 
+export const getSupportDevelopers = async (_req: AuthedRequest, res: Response) => {
+  try {
+    const data = await SupportChatService.getDevelopers();
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || "Unable to load developers" });
+  }
+};
+
+export const saveSupportDeveloper = async (req: AuthedRequest, res: Response) => {
+  try {
+    const data = await SupportChatService.upsertDeveloper(req.body || {}, req.user || {});
+    res.json({ success: true, data, message: "Support developer saved" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || "Unable to save developer" });
+  }
+};
+
 export const getSupportTickets = async (req: AuthedRequest, res: Response) => {
   try {
     const data = await SupportChatService.getTickets(req.user || {}, roleFrom(req));
@@ -72,6 +90,35 @@ export const updateSupportTicket = async (req: AuthedRequest, res: Response) => 
     res.json({ success: true, data, message: "Ticket updated" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message || "Unable to update ticket" });
+  }
+};
+
+export const assignSupportDeveloper = async (req: AuthedRequest, res: Response) => {
+  try {
+    const ticketId = Number(req.params.ticketId);
+    const data = await SupportChatService.assignDeveloper(ticketId, req.body || {}, req.user || {}, roleFrom(req));
+    res.json({ success: true, data, message: "Developer assigned" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || "Unable to assign developer" });
+  }
+};
+
+export const getDeveloperSupportTickets = async (req: AuthedRequest, res: Response) => {
+  try {
+    const data = await SupportChatService.getDeveloperTickets(req.user || {});
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || "Unable to load assigned tickets" });
+  }
+};
+
+export const updateDeveloperSupportStatus = async (req: AuthedRequest, res: Response) => {
+  try {
+    const ticketId = Number(req.params.ticketId);
+    const data = await SupportChatService.updateDeveloperStatus(ticketId, req.body || {}, req.user || {});
+    res.json({ success: true, data, message: "Developer status updated" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || "Unable to update developer status" });
   }
 };
 
