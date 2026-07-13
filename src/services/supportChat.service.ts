@@ -71,6 +71,8 @@ export class SupportChatService {
     await addColumnIfMissing("SUPPORT_TICKET", "DEV_STATUS", "VARCHAR2(30) DEFAULT 'UNASSIGNED'");
     await addColumnIfMissing("SUPPORT_TICKET", "ASSIGNED_BY", "VARCHAR2(100)");
     await addColumnIfMissing("SUPPORT_TICKET", "ASSIGNED_AT", "DATE");
+    await addColumnIfMissing("SUPPORT_TICKET", "SLA_MINUTES", "NUMBER");
+    await addColumnIfMissing("SUPPORT_TICKET", "DUE_AT", "DATE");
     await createTableIfMissing(
       "SUPPORT_DEVELOPER",
       `CREATE TABLE ${ROOT_SCHEMA}.SUPPORT_DEVELOPER (
@@ -176,7 +178,9 @@ export class SupportChatService {
               `SELECT T.TICKET_ID, T.COMPANY_CODE, T.TENANT_ID, T.REQUESTER_LOGINID, T.REQUESTER_NAME,
               T.ASSIGNED_TO, T.SUBJECT, T.MODULE_NAME, T.PAGE_URL, T.STATUS, T.PRIORITY,
               T.DEVELOPER_LOGINID, T.DEVELOPER_NAME, T.DEVELOPER_EMAIL, T.DEV_STATUS, T.ASSIGNED_BY,
+              T.SLA_MINUTES,
               TO_CHAR(T.ASSIGNED_AT, 'YYYY-MM-DD HH24:MI:SS') AS ASSIGNED_AT,
+              TO_CHAR(T.DUE_AT, 'YYYY-MM-DD HH24:MI:SS') AS DUE_AT,
               DBMS_LOB.SUBSTR(T.LAST_MESSAGE, 4000, 1) AS LAST_MESSAGE,
               TO_CHAR(T.LAST_MESSAGE_AT, 'YYYY-MM-DD HH24:MI:SS') AS LAST_MESSAGE_AT,
               TO_CHAR(T.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
@@ -409,6 +413,8 @@ export class SupportChatService {
     const adminLoginid = getLoginId(user);
     const note = cleanText(input.note);
     const devStatus = cleanText(input.dev_status).toUpperCase() || "ASSIGNED";
+    const priority = normalizePriority(input.priority || input.PRIORITY || ticket.PRIORITY);
+    const slaMinutes = normalizeSlaMinutes(input.sla_minutes || input.SLA_MINUTES);
 
     await oracleDb.query(
       `UPDATE ${ROOT_SCHEMA}.SUPPORT_TICKET
@@ -416,6 +422,9 @@ export class SupportChatService {
               DEVELOPER_NAME = :developerName,
               DEVELOPER_EMAIL = :developerEmail,
               DEV_STATUS = :devStatus,
+              PRIORITY = :priority,
+              SLA_MINUTES = :slaMinutes,
+              DUE_AT = CASE WHEN :slaMinutes IS NULL THEN DUE_AT ELSE SYSDATE + (:slaMinutes / 1440) END,
               ASSIGNED_TO = :developerLoginid,
               ASSIGNED_BY = :assignedBy,
               ASSIGNED_AT = SYSDATE,
@@ -427,14 +436,16 @@ export class SupportChatService {
         developerName,
         developerEmail,
         devStatus,
+        priority,
+        slaMinutes,
         assignedBy: adminLoginid,
       }
     );
 
-    await this.insertSystemMessage(ticketId, `Ticket assigned to ${developerName}${note ? `. Note: ${note}` : "."}`);
+    await this.insertSystemMessage(ticketId, `Ticket assigned to ${developerName}. Priority: ${priority}${slaMinutes ? `. SLA: ${formatSlaMinutes(slaMinutes)}` : ""}${note ? `. Note: ${note}` : "."}`);
     await this.sendDeveloperAssignmentEmail({
       ticketId,
-      ticket,
+      ticket: { ...ticket, PRIORITY: priority, SLA_MINUTES: slaMinutes },
       developerName,
       developerEmail,
       developerLoginid,
@@ -442,7 +453,7 @@ export class SupportChatService {
       note,
     });
     emitSupportTicketChanged({ requesterLoginid: ticket.REQUESTER_LOGINID, assignedTo: developerLoginid, ticketId, actorLoginid: adminLoginid });
-    return { ticketId, developerLoginid, developerName, developerEmail, devStatus };
+    return { ticketId, developerLoginid, developerName, developerEmail, devStatus, priority, slaMinutes };
   }
 
   static async getDeveloperTickets(user: UserContext) {
@@ -452,7 +463,9 @@ export class SupportChatService {
       `SELECT TICKET_ID, COMPANY_CODE, TENANT_ID, REQUESTER_LOGINID, REQUESTER_NAME,
               ASSIGNED_TO, SUBJECT, MODULE_NAME, PAGE_URL, STATUS, PRIORITY,
               DEVELOPER_LOGINID, DEVELOPER_NAME, DEVELOPER_EMAIL, DEV_STATUS, ASSIGNED_BY,
+              SLA_MINUTES,
               TO_CHAR(ASSIGNED_AT, 'YYYY-MM-DD HH24:MI:SS') AS ASSIGNED_AT,
+              TO_CHAR(DUE_AT, 'YYYY-MM-DD HH24:MI:SS') AS DUE_AT,
               DBMS_LOB.SUBSTR(LAST_MESSAGE, 4000, 1) AS LAST_MESSAGE,
               TO_CHAR(LAST_MESSAGE_AT, 'YYYY-MM-DD HH24:MI:SS') AS LAST_MESSAGE_AT,
               TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT
@@ -600,6 +613,15 @@ export class SupportChatService {
   }) {
     if (!input.developerEmail) return;
     const subject = `Support Ticket Assigned #${input.ticketId} - ${cleanText(input.ticket.SUBJECT) || "Customer request"}`;
+    const attachmentLinks = await this.getTicketAttachmentLinks(input.ticketId);
+    const attachmentSection = attachmentLinks.length
+      ? `
+        <h3 style="margin:18px 0 8px;color:#111827;font-size:16px">Customer attachments</h3>
+        <ul style="margin:0 0 16px;padding-left:18px">
+          ${attachmentLinks.map((item: { name: string; url: string }) => `<li><a href="${escapeHtml(item.url)}" style="color:#0b63ce;text-decoration:none">${escapeHtml(item.name)}</a></li>`).join("")}
+        </ul>
+      `
+      : "";
     const htmlMessage = `
       <div style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
         <h2 style="margin:0 0 12px;color:#0b63ce">Support ticket assigned</h2>
@@ -610,9 +632,11 @@ export class SupportChatService {
           ${mailRow("Subject", cleanText(input.ticket.SUBJECT) || "-")}
           ${mailRow("Customer", cleanText(input.ticket.REQUESTER_NAME || input.ticket.REQUESTER_LOGINID) || "-")}
           ${mailRow("Priority", cleanText(input.ticket.PRIORITY) || "NORMAL")}
+          ${input.ticket.SLA_MINUTES ? mailRow("SLA Timer", formatSlaMinutes(Number(input.ticket.SLA_MINUTES))) : ""}
           ${mailRow("Assigned By", input.assignedBy)}
           ${input.note ? mailRow("Admin Note", input.note) : ""}
         </table>
+        ${attachmentSection}
         <p style="margin-top:16px">Please open the BT Support module and update the developer status as work progresses.</p>
         <p>Regards,<br/>Bayanat Support Desk</p>
       </div>
@@ -628,6 +652,24 @@ export class SupportChatService {
     } catch (error) {
       console.warn("Support developer assignment email failed:", error);
     }
+  }
+
+  private static async getTicketAttachmentLinks(ticketId: number) {
+    const result = await oracleDb.query(
+      `SELECT FILE_NAME, FILE_URL
+         FROM ${ROOT_SCHEMA}.SUPPORT_ATTACHMENT
+        WHERE TICKET_ID = :ticketId
+          AND FILE_URL IS NOT NULL
+        ORDER BY CREATED_AT DESC
+        FETCH FIRST 5 ROWS ONLY`,
+      { ticketId }
+    );
+    return (result.rows || [])
+      .map((row: any) => ({
+        name: cleanText(row.FILE_NAME) || "Attachment",
+        url: cleanText(row.FILE_URL),
+      }))
+      .filter((item: { name: string; url: string }) => item.url);
   }
 
   private static async insertMessage(ticketId: number, message: string, attachments: AttachmentInput[], user: UserContext, senderRole: string) {
@@ -802,6 +844,24 @@ function getLoginId(user: UserContext) {
 
 function getUserName(user: UserContext) {
   return cleanText(user.username || (user as any).USERNAME || getLoginId(user));
+}
+
+function normalizePriority(value: unknown) {
+  const priority = cleanText(value).toUpperCase();
+  const allowed = new Set(["LOW", "MEDIUM", "HIGH", "CRITICAL", "NORMAL"]);
+  return allowed.has(priority) ? priority : "MEDIUM";
+}
+
+function normalizeSlaMinutes(value: unknown) {
+  const minutes = Number(value);
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  return Math.min(Math.round(minutes), 60 * 24 * 30);
+}
+
+function formatSlaMinutes(minutes: number) {
+  if (minutes >= 1440 && minutes % 1440 === 0) return `${minutes / 1440} day${minutes === 1440 ? "" : "s"}`;
+  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60} hour${minutes === 60 ? "" : "s"}`;
+  return `${minutes} minutes`;
 }
 
 function cleanText(value: unknown) {
