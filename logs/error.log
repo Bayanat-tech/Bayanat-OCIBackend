@@ -76658,3 +76658,60 @@ Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 6
     at Timeout.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
     at listOnTimeout (node:internal/timers:588:17)
     at processTimers (node:internal/timers:523:7)
+2026-07-13 17:37:54 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/stockTransferReportController.ts[0m:[93m754[0m:[93m15[0m - [91merror[0m[90m TS2554: [0mExpected 3 arguments, but got 0.
+
+[7m754[0m   const sql = buildStockConfirmationSql();
+[7m   [0m [91m              ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/reports/stockTransferReportController.ts[0m:[93m669[0m:[93m36[0m
+    [7m669[0m function buildStockConfirmationSql(stn_no: string, prin_code: string, company_code: string): string {
+    [7m   [0m [96m                                   ~~~~~~~~~~~~~~[0m
+    An argument for 'stn_no' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/stockTransferReportController.ts[0m:[93m754[0m:[93m15[0m - [91merror[0m[90m TS2554: [0mExpected 3 arguments, but got 0.
+
+[7m754[0m   const sql = buildStockConfirmationSql();
+[7m   [0m [91m              ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/reports/stockTransferReportController.ts[0m:[93m669[0m:[93m36[0m
+    [7m669[0m function buildStockConfirmationSql(stn_no: string, prin_code: string, company_code: string): string {
+    [7m   [0m [96m                                   ~~~~~~~~~~~~~~[0m
+    An argument for 'stn_no' was not provided.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/stockTransferReportController.ts[0m:[93m754[0m:[93m15[0m - [91merror[0m[90m TS2554: [0mExpected 3 arguments, but got 0.
+
+[7m754[0m   const sql = buildStockConfirmationSql();
+[7m   [0m [91m              ~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/wms/reports/stockTransferReportController.ts[0m:[93m669[0m:[93m36[0m
+    [7m669[0m function buildStockConfirmationSql(stn_no: string, prin_code: string, company_code: string): string {
+    [7m   [0m [96m                                   ~~~~~~~~~~~~~~[0m
+    An argument for 'stn_no' was not provided.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-07-13 17:39:02 [[31merror[39m]: Unhandled Rejection: Error: ORA-01036: illegal variable name/number 
+2026-07-13 17:42:08 [[31merror[39m]: Unhandled Rejection: Error: ORA-00907: missing right parenthesis 
+2026-07-13 17:44:34 [[31merror[39m]: Unhandled Rejection: Error: ORA-00933: SQL command not properly ended 
+2026-07-13 17:45:13 [[31merror[39m]: Unhandled Rejection: Error: ORA-00933: SQL command not properly ended 
