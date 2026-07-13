@@ -27,10 +27,9 @@ interface AgeingRow {
 }
 
 interface AgeingParams {
-  prinCode:     string[];
-  deptCodeFrom: string;
-  prodCodeFrom: string;
-  prodCodeTo:   string;
+  prinCode: string[];
+  deptCode: string[];
+  prodCode: string[];
   age1: number; age2: number; age3: number; age4: number; age5: number;
   groupBy: TGroupBy;
 }
@@ -116,10 +115,9 @@ function parseAgeingParams(req: RequestWithUser): AgeingParams {
     return Number.isFinite(n) && n > 0 ? n : fallback;
   };
 
-  const prinCode     = toArr(req.body.prin_code);
-  const deptCodeFrom = text(req.body.dept_code_from || "").trim();
-  const prodCodeFrom = text(req.body.prod_code_from || "").trim();
-  const prodCodeTo   = text(req.body.prod_code_to   || "").trim();
+  const prinCode = toArr(req.body.prin_code);
+  const deptCode = toArr(req.body.dept_code);
+  const prodCode = toArr(req.body.prod_code);
 
   const age1 = toAge(req.body.age1, DEFAULT_AGES[0]);
   const age2 = toAge(req.body.age2, DEFAULT_AGES[1]);
@@ -135,7 +133,7 @@ function parseAgeingParams(req: RequestWithUser): AgeingParams {
     : groupByRaw === "principal" ? "principal"
     : "product_group";
 
-  return { prinCode, deptCodeFrom, prodCodeFrom, prodCodeTo, age1, age2, age3, age4, age5, groupBy };
+  return { prinCode, deptCode, prodCode, age1, age2, age3, age4, age5, groupBy };
 }
 
 function bucketLabels(p: AgeingParams): string[] {
@@ -161,6 +159,8 @@ async function loadAgeingData(
 
   try {
     const prinBinds = params.prinCode.map((_, i) => `:prin${i}`);
+    const deptBinds = params.deptCode.map((_, i) => `:dept${i}`);
+    const prodBinds = params.prodCode.map((_, i) => `:prod${i}`);
 
     const ageExpr = "(TRUNC(SYSDATE) - TRUNC(TXN_DATE))";
     const bucketCase = (col: string, alias: string) => `
@@ -182,9 +182,8 @@ async function loadAgeingData(
         ${bucketCase("VOLUME", "VOL")}
       FROM VW_BOWM_STKLED_FOREXPAGEING
       WHERE ('All' IN (${prinBinds.join(",")}) OR PRIN_CODE IN (${prinBinds.join(",")}))
-        AND (:deptCodeFrom IS NULL OR DEPT_CODE >= :deptCodeFrom)
-        AND (:prodCodeFrom IS NULL OR PROD_CODE >= :prodCodeFrom)
-        AND (:prodCodeTo   IS NULL OR PROD_CODE <= :prodCodeTo)
+        AND ('All' IN (${deptBinds.join(",")}) OR DEPT_CODE IN (${deptBinds.join(",")}))
+        AND ('All' IN (${prodBinds.join(",")}) OR PROD_CODE IN (${prodBinds.join(",")}))
       GROUP BY PRIN_CODE, PRIN_NAME, GROUP_CODE, GROUP_NAME, PROD_CODE, PROD_NAME, L_UOM
       ORDER BY PRIN_CODE, GROUP_CODE, PROD_CODE
     `;
@@ -192,11 +191,10 @@ async function loadAgeingData(
     const binds: Record<string, any> = {
       age1: params.age1, age2: params.age2, age3: params.age3,
       age4: params.age4, age5: params.age5,
-      deptCodeFrom: params.deptCodeFrom || null,
-      prodCodeFrom: params.prodCodeFrom || null,
-      prodCodeTo:   params.prodCodeTo   || null,
     };
     params.prinCode.forEach((v, i) => { binds[`prin${i}`] = v; });
+    params.deptCode.forEach((v, i) => { binds[`dept${i}`] = v; });
+    params.prodCode.forEach((v, i) => { binds[`prod${i}`] = v; });
 
     const result = await conn.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const raw    = normalize(result.rows as any[]);
@@ -280,6 +278,11 @@ function renderAgeingHtml(
   // ── Renders the product-wise lines (+ per-product subtotal rows) for any
   // slice of rows. Shared by both the "Product Group -> Product" branch and
   // the flat "Product" branch so the two grouping modes stay in sync.
+  //
+  // NOTE: the per-product subtotal row is only rendered when a product has
+  // MORE THAN ONE row — with a single row, the subtotal just duplicates the
+  // data row directly above it, so we suppress it to avoid the "Total For X"
+  // line appearing twice in a row for single-line products.
   const renderProductRows = (rowsForProd: AgeingRow[]): string => {
     let html = "";
     const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
@@ -295,12 +298,14 @@ function renderAgeingHtml(
           </tr>`;
       });
 
-      const prodTotal = sumBuckets(prodRows, metric);
-      html += `
-        <tr class="product-total-row">
-          <td class="subtotal-label">Total For ${escapeHtml(prodCode)} | ${escapeHtml(prodName)} :</td>
-          ${bucketCells(prodTotal)}
-        </tr>`;
+      if (prodRows.length > 1) {
+        const prodTotal = sumBuckets(prodRows, metric);
+        html += `
+          <tr class="product-total-row">
+            <td class="subtotal-label">Total For ${escapeHtml(prodCode)} | ${escapeHtml(prodName)} :</td>
+            ${bucketCells(prodTotal)}
+          </tr>`;
+      }
     });
     return html;
   };
@@ -456,7 +461,7 @@ function renderAgeingHtml(
     </tfoot>
   </table>
   <div class="filter-criteria">
-    Filter Criteria : Principal Code: [${params.prinCode.join(", ")}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]${params.deptCodeFrom ? `, Department Code From: [${escapeHtml(params.deptCodeFrom)}]` : ""}${params.prodCodeFrom ? `, Product Code From: [${escapeHtml(params.prodCodeFrom)}]` : ""}${params.prodCodeTo ? `, Product Code To: [${escapeHtml(params.prodCodeTo)}]` : ""}
+    Filter Criteria : Principal Code: [${params.prinCode.join(", ")}], Department Code: [${params.deptCode.join(", ")}], Product Code: [${params.prodCode.join(", ")}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]
   </div>
   <div class="report-footer">
     <span>Report: rpt_stock_ageing_${metric}</span>
@@ -565,6 +570,10 @@ function buildAgeingExcelBuffer(
   // ── Adds the product-wise data lines (+ per-product subtotal rows) for any
   // slice of rows. Shared by both the "Product Group -> Product" branch and
   // the flat "Product" branch so the two grouping modes stay in sync.
+  //
+  // NOTE: mirrors the HTML renderer — the per-product subtotal row is only
+  // added when a product has MORE THAN ONE row, so single-line products
+  // don't show a "Total For X" row that duplicates the line right above it.
   const addProductRows = (rowsForProd: AgeingRow[]) => {
     const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
     byProd.forEach((prodRows, prodCode) => {
@@ -579,7 +588,9 @@ function buildAgeingExcelBuffer(
         addRow(cells, styleMap);
       });
 
-      addTotalRow(`Total For ${prodCode} | ${prodName} :`, sumBuckets(prodRows, metric), styles.productTotalLabel, styles.productTotalNum);
+      if (prodRows.length > 1) {
+        addTotalRow(`Total For ${prodCode} | ${prodName} :`, sumBuckets(prodRows, metric), styles.productTotalLabel, styles.productTotalNum);
+      }
     });
   };
 

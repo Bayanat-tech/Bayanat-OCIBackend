@@ -136,11 +136,10 @@ function parseParams(req: RequestWithUser) {
   const prodCode     = toArr(req.body.prod_code);
   const siteCode     = toArr(req.body.site_code);
   const prinCode     = toArr(req.body.prin_code);
-  const locationFrom = text(req.body.location_code_from || "");
-  const locationTo   = text(req.body.location_code_to   || "");
+  const locationCode = toArr(req.body.location_code);
   const groupBy      = text(req.body.group_by) as TGroupBy;
 
-  return { prodCode, siteCode, prinCode, locationFrom, locationTo, groupBy };
+  return { prodCode, siteCode, prinCode, locationCode, groupBy };
 }
 
 // ─── Data Loader ─────────────────────────────────────────────────────────────
@@ -153,6 +152,7 @@ async function loadStockData(req: RequestWithUser): Promise<ReportRow[]> {
     const prodBinds = params.prodCode.map((_, i) => `:prod${i}`);
     const siteBinds = params.siteCode.map((_, i) => `:site${i}`);
     const prinBinds = params.prinCode.map((_, i) => `:prin${i}`);
+    const locBinds  = params.locationCode.map((_, i) => `:loc${i}`);
 
     const isGroupedBySite = params.groupBy === "site_location";
 
@@ -182,10 +182,7 @@ async function loadStockData(req: RequestWithUser): Promise<ReportRow[]> {
       WHERE ('All' IN (${prinBinds.join(",")}) OR PRIN_CODE IN (${prinBinds.join(",")}))
         AND ('All' IN (${prodBinds.join(",")}) OR PROD_CODE IN (${prodBinds.join(",")}))
         AND ('All' IN (${siteBinds.join(",")}) OR SITE_CODE IN (${siteBinds.join(",")}))
-        AND (
-          :loc_from IS NULL OR :loc_to IS NULL OR :loc_from = '' OR :loc_to = ''
-          OR LOCATION_CODE BETWEEN :loc_from AND :loc_to
-        )
+        AND ('All' IN (${locBinds.join(",")}) OR LOCATION_CODE IN (${locBinds.join(",")}))
       GROUP BY
         PRIN_CODE, PRIN_NAME,
         BRAND_CODE, BRAND_NAME,
@@ -202,8 +199,7 @@ async function loadStockData(req: RequestWithUser): Promise<ReportRow[]> {
     params.prodCode.forEach((v, i) => { binds[`prod${i}`] = v; });
     params.siteCode.forEach((v, i) => { binds[`site${i}`] = v; });
     params.prinCode.forEach((v, i) => { binds[`prin${i}`] = v; });
-    binds["loc_from"] = params.locationFrom || null;
-    binds["loc_to"]   = params.locationTo   || null;
+    params.locationCode.forEach((v, i) => { binds[`loc${i}`] = v; });
 
     const result = await conn.execute(sql, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,

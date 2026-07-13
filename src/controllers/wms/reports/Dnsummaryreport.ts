@@ -101,25 +101,48 @@ function normalizeFilter(value: unknown): string {
   return v;
 }
 
+// ★ NEW — splits a comma-joined filter value ("P001,P002,P003") into a clean
+//   list of individual codes. Returns null for "All" or a single code, since
+//   those two cases are handled fine by the proc itself via equality match.
+function parseMultiCodeFilter(value: string): string[] | null {
+  if (value === "All") return null;
+  if (!value.includes(",")) return null; // single code — proc handles it natively
+  const list = value.split(",").map((c) => c.trim()).filter(Boolean);
+  return list.length > 1 ? list : null;
+}
+
 // ─── Data loader ──────────────────────────────────────────────────────────────
 
 async function loadDnData(
   req: RequestWithUser,
   params: {
     loginid?:  string;
-    prinCode?: string;   // "All" or a specific PRIN_CODE
+    prinCode?: string;   // "All", a single PRIN_CODE, or "P1,P2,P3"
     fromdate?: string;   // "All" or "DD/MM/YYYY"
     todate?:   string;   // "All" or "DD/MM/YYYY"
   } = {}
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
   try {
+    const requestedPrin = normalizeFilter(params.prinCode);
+
+    // ★ FIX: PROC_BUILD_DYNAMIC_SQL_COMMON20 only supports a single-value
+    //   equality match on PRIN_CODE (or the literal "All" to skip the filter
+    //   altogether) — it does NOT understand a comma-joined list. Passing a
+    //   list straight through used to silently return zero rows.
+    //
+    //   When the user picks 2+ specific principals, we ask the proc for the
+    //   full unfiltered dataset instead (same as "All") and then narrow the
+    //   result down to just the requested principals ourselves, in JS, below.
+    const multiCodes  = parseMultiCodeFilter(requestedPrin);
+    const procPrinCode = multiCodes ? "All" : requestedPrin;
+
     const binds: Record<string, any> = {
       parameter: "WMS_Stock_DN_Summary_Report",
       loginid:   params.loginid || text(req.user?.loginid) || "ADMIN",
 
       code1:  req.body.code1 || null,
-      code2:  normalizeFilter(params.prinCode),
+      code2:  procPrinCode,
       code3:  normalizeFilter(params.fromdate),
       code4:  normalizeFilter(params.todate),
       code5:  null, code6: null, code7: null, code8: null, code9: null,
@@ -153,6 +176,9 @@ async function loadDnData(
 
     const rawSql = (procResult.outBinds as any).out_sql as string | null;
     console.log("[DnSummaryReport] Generated SQL:", rawSql);
+    if (multiCodes) {
+      console.log("[DnSummaryReport] Multi-principal filter requested, narrowing client-side to:", multiCodes);
+    }
 
     if (!rawSql) {
       throw new Error(
@@ -165,7 +191,16 @@ async function loadDnData(
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
 
-    return normalize(dataResult.rows as any[]);
+    let rows = normalize(dataResult.rows as any[]);
+
+    // ★ FIX: narrow down to just the selected principals when multiple were
+    //   requested. Case/whitespace-insensitive compare to be safe.
+    if (multiCodes) {
+      const wanted = new Set(multiCodes.map((c) => c.toUpperCase()));
+      rows = rows.filter((r) => wanted.has(text(r.prin_code).trim().toUpperCase()));
+    }
+
+    return rows;
   } finally {
     await closeConn(conn);
   }
