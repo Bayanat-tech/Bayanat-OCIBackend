@@ -666,14 +666,60 @@ export const stockTransferReportExcel = async (req: RequestWithUser, res: Respon
 // TS_STN.ALLOCATED AS HDR_ALLOCATED — the code below prefers HDR_CONFIRMED /
 // HDR_ALLOCATED if present and falls back to CONFIRMED / ALLOCATED otherwise.
 
-function buildStockConfirmationSql() {
-  return `SELECT TS_STN.STN_NO, TS_STN.PRIN_CODE, TS_STN.DESCRIPTION, TS_STN.STN_DATE, TS_STN.ALLOCATED, TS_STN.ALLOCATED_DATE, TS_STN.CONFIRMED, TS_STN.CONFIRMED_DATE, TS_BATCH.PROD_CODE, TS_BATCH.TXN_TYPE, TS_BATCH.SITE_CODE, TS_BATCH.LOCATION_CODE, TS_BATCH.QTY_PUOM, TS_BATCH.P_UOM, TS_BATCH.QTY_LUOM, TS_BATCH.L_UOM, TS_BATCH.QUANTITY, MS_PRODUCT.PROD_NAME, MS_PRODUCT.UPPP, TS_BATCH.PACKDET_NO, TS_BATCH.APPLIED_KEYNO, TS_BATCH.ALLOCATED, TS_BATCH.CONFIRMED ,
-ts_batch.lot_no,
-ts_batch.mfg_Date,
-ts_batch.exp_Date,
-ts_batch.batch_no
-FROM TS_BATCH, TS_STN, MS_PRODUCT WHERE ( TS_BATCH.COMPANY_CODE = TS_STN.COMPANY_CODE ) and ( TS_BATCH.PRIN_CODE = TS_STN.PRIN_CODE ) and ( TS_BATCH.STN_NO = TS_STN.STN_NO ) and ( TS_BATCH.CONFIRMED = 'Y' ) and
-( TS_STN.PRIN_CODE = MS_PRODUCT.PRIN_CODE ) and ( TS_STN.COMPANY_CODE = MS_PRODUCT.COMPANY_CODE ) and ( TS_BATCH.PROD_CODE = MS_PRODUCT.PROD_CODE ) and ( TS_BATCH.COMPANY_CODE = MS_PRODUCT.COMPANY_CODE ) and ( TS_BATCH.PRIN_CODE = MS_PRODUCT.PRIN_CODE ) and ( ( TS_STN.COMPANY_CODE = :as_companycode ) AND ( TS_STN.PRIN_CODE = :as_princode ) AND ( TS_STN.STN_NO = :ai_stnno ) )`;
+function buildStockConfirmationSql(stn_no: string, prin_code: string, company_code: string): string {
+  return `
+SELECT
+    TS_STN.STN_NO,
+    TS_STN.PRIN_CODE,
+    TS_STN.DESCRIPTION,
+    TS_STN.STN_DATE,
+    TS_STN.ALLOCATED,
+    TS_STN.ALLOCATED_DATE,
+    TS_STN.CONFIRMED,
+    TS_STN.CONFIRMED_DATE,
+
+    TS_BATCH.PROD_CODE,
+    TS_BATCH.TXN_TYPE,
+    TS_BATCH.SITE_CODE,
+    TS_BATCH.LOCATION_CODE,
+    TS_BATCH.QTY_PUOM,
+    TS_BATCH.P_UOM,
+    TS_BATCH.QTY_LUOM,
+    TS_BATCH.L_UOM,
+    TS_BATCH.QUANTITY,
+    TS_BATCH.PACKDET_NO,
+    TS_BATCH.APPLIED_KEYNO,
+    TS_BATCH.ALLOCATED,
+    TS_BATCH.CONFIRMED,
+    TS_BATCH.LOT_NO,
+    TS_BATCH.MFG_DATE,
+    TS_BATCH.EXP_DATE,
+    TS_BATCH.BATCH_NO,
+
+    MS_PRODUCT.PROD_NAME,
+    MS_PRODUCT.UPPP
+
+FROM
+    TS_BATCH,
+    TS_STN,
+    MS_PRODUCT
+
+WHERE
+    TS_BATCH.COMPANY_CODE = TS_STN.COMPANY_CODE
+    AND TS_BATCH.PRIN_CODE = TS_STN.PRIN_CODE
+    AND TS_BATCH.STN_NO = TS_STN.STN_NO
+    AND TS_BATCH.CONFIRMED = 'Y'
+
+    AND TS_STN.PRIN_CODE = MS_PRODUCT.PRIN_CODE
+    AND TS_STN.COMPANY_CODE = MS_PRODUCT.COMPANY_CODE
+    AND TS_BATCH.PROD_CODE = MS_PRODUCT.PROD_CODE
+    AND TS_BATCH.COMPANY_CODE = MS_PRODUCT.COMPANY_CODE
+    AND TS_BATCH.PRIN_CODE = MS_PRODUCT.PRIN_CODE
+
+    AND TS_STN.COMPANY_CODE = ${company_code}
+    AND TS_STN.PRIN_CODE = ${prin_code}
+    AND TS_STN.STN_NO = ${stn_no}
+  `;
 }
 
 // TXN_TYPE → action label. ADJUST THESE to match the real TS_BATCH.TXN_TYPE
@@ -751,13 +797,11 @@ function groupConfirmationRows(rows: any[]): ConfirmationLine[] {
 export const stockConfirmationReportHtml = async (req: RequestWithUser, res: Response) => {
   const { stn_no, prin_code, company_code } = req.query;
 
-  const sql = buildStockConfirmationSql();
+  const sql = buildStockConfirmationSql(stn_no, prin_code, company_code);
   const result = await raw_sql_api({
     sql,
-    binds: { as_companycode: company_code, as_princode: prin_code, ai_stnno: stn_no },
     req,
   });
-
   const rows: any[] = result.rows || [];
   const header = rows[0];
   const userName = req.user?.loginid ?? "";
@@ -960,10 +1004,10 @@ function buildStockConfirmationExcel(header: any, lines: ConfirmationLine[], use
 export const stockConfirmationReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const { stn_no, prin_code, company_code } = req.query;
-    const sql = buildStockConfirmationSql();
+    const sql = buildStockConfirmationSql(stn_no, prin_code, company_code);
+    console.log("Stock Confirmation SQL:", sql);
     const result = await raw_sql_api({
       sql,
-      binds: { as_companycode: company_code, as_princode: prin_code, ai_stnno: stn_no },
       req,
     });
 

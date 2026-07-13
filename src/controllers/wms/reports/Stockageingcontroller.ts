@@ -27,10 +27,9 @@ interface AgeingRow {
 }
 
 interface AgeingParams {
-  prinCode:     string[];
-  deptCodeFrom: string;
-  prodCodeFrom: string;
-  prodCodeTo:   string;
+  prinCode: string[];
+  deptCode: string[];
+  prodCode: string[];
   age1: number; age2: number; age3: number; age4: number; age5: number;
   groupBy: TGroupBy;
 }
@@ -116,10 +115,9 @@ function parseAgeingParams(req: RequestWithUser): AgeingParams {
     return Number.isFinite(n) && n > 0 ? n : fallback;
   };
 
-  const prinCode     = toArr(req.body.prin_code);
-  const deptCodeFrom = text(req.body.dept_code_from || "").trim();
-  const prodCodeFrom = text(req.body.prod_code_from || "").trim();
-  const prodCodeTo   = text(req.body.prod_code_to   || "").trim();
+  const prinCode = toArr(req.body.prin_code);
+  const deptCode = toArr(req.body.dept_code);
+  const prodCode = toArr(req.body.prod_code);
 
   const age1 = toAge(req.body.age1, DEFAULT_AGES[0]);
   const age2 = toAge(req.body.age2, DEFAULT_AGES[1]);
@@ -127,15 +125,12 @@ function parseAgeingParams(req: RequestWithUser): AgeingParams {
   const age4 = toAge(req.body.age4, DEFAULT_AGES[3]);
   const age5 = toAge(req.body.age5, DEFAULT_AGES[4]);
 
-  // "product" -> flat Principal -> Product grouping (no Product Group header/subtotal).
-  // Anything else (including missing/unrecognized) falls back to the original
-  // Principal -> Product Group -> Product grouping.
   const groupByRaw = text(req.body.group_by || "").trim().toLowerCase();
   const groupBy: TGroupBy = groupByRaw === "product" ? "product"
     : groupByRaw === "principal" ? "principal"
     : "product_group";
 
-  return { prinCode, deptCodeFrom, prodCodeFrom, prodCodeTo, age1, age2, age3, age4, age5, groupBy };
+  return { prinCode, deptCode, prodCode, age1, age2, age3, age4, age5, groupBy };
 }
 
 function bucketLabels(p: AgeingParams): string[] {
@@ -150,8 +145,6 @@ function bucketLabels(p: AgeingParams): string[] {
 }
 
 // ─── Data Loader ──────────────────────────────────────────────────────────────
-// One query computes BOTH quantity (STOCK) and volume (VOLUME) buckets so the
-// two reports can share a single round-trip to the DB.
 
 async function loadAgeingData(
   req: RequestWithUser,
@@ -161,6 +154,8 @@ async function loadAgeingData(
 
   try {
     const prinBinds = params.prinCode.map((_, i) => `:prin${i}`);
+    const deptBinds = params.deptCode.map((_, i) => `:dept${i}`);
+    const prodBinds = params.prodCode.map((_, i) => `:prod${i}`);
 
     const ageExpr = "(TRUNC(SYSDATE) - TRUNC(TXN_DATE))";
     const bucketCase = (col: string, alias: string) => `
@@ -182,9 +177,8 @@ async function loadAgeingData(
         ${bucketCase("VOLUME", "VOL")}
       FROM VW_BOWM_STKLED_FOREXPAGEING
       WHERE ('All' IN (${prinBinds.join(",")}) OR PRIN_CODE IN (${prinBinds.join(",")}))
-        AND (:deptCodeFrom IS NULL OR DEPT_CODE >= :deptCodeFrom)
-        AND (:prodCodeFrom IS NULL OR PROD_CODE >= :prodCodeFrom)
-        AND (:prodCodeTo   IS NULL OR PROD_CODE <= :prodCodeTo)
+        AND ('All' IN (${deptBinds.join(",")}) OR DEPT_CODE IN (${deptBinds.join(",")}))
+        AND ('All' IN (${prodBinds.join(",")}) OR PROD_CODE IN (${prodBinds.join(",")}))
       GROUP BY PRIN_CODE, PRIN_NAME, GROUP_CODE, GROUP_NAME, PROD_CODE, PROD_NAME, L_UOM
       ORDER BY PRIN_CODE, GROUP_CODE, PROD_CODE
     `;
@@ -192,11 +186,10 @@ async function loadAgeingData(
     const binds: Record<string, any> = {
       age1: params.age1, age2: params.age2, age3: params.age3,
       age4: params.age4, age5: params.age5,
-      deptCodeFrom: params.deptCodeFrom || null,
-      prodCodeFrom: params.prodCodeFrom || null,
-      prodCodeTo:   params.prodCodeTo   || null,
     };
     params.prinCode.forEach((v, i) => { binds[`prin${i}`] = v; });
+    params.deptCode.forEach((v, i) => { binds[`dept${i}`] = v; });
+    params.prodCode.forEach((v, i) => { binds[`prod${i}`] = v; });
 
     const result = await conn.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const raw    = normalize(result.rows as any[]);
@@ -277,9 +270,6 @@ function renderAgeingHtml(
     <td class="num">${fmtNumber(b.b6)}</td>
     <td class="num total-col">${fmtNumber(b.total)}</td>`;
 
-  // ── Renders the product-wise lines (+ per-product subtotal rows) for any
-  // slice of rows. Shared by both the "Product Group -> Product" branch and
-  // the flat "Product" branch so the two grouping modes stay in sync.
   const renderProductRows = (rowsForProd: AgeingRow[]): string => {
     let html = "";
     const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
@@ -295,12 +285,14 @@ function renderAgeingHtml(
           </tr>`;
       });
 
-      const prodTotal = sumBuckets(prodRows, metric);
-      html += `
-        <tr class="product-total-row">
-          <td class="subtotal-label">Total For ${escapeHtml(prodCode)} | ${escapeHtml(prodName)} :</td>
-          ${bucketCells(prodTotal)}
-        </tr>`;
+      if (prodRows.length > 1) {
+        const prodTotal = sumBuckets(prodRows, metric);
+        html += `
+          <tr class="product-total-row">
+            <td class="subtotal-label">Total For ${escapeHtml(prodCode)} | ${escapeHtml(prodName)} :</td>
+            ${bucketCells(prodTotal)}
+          </tr>`;
+      }
     });
     return html;
   };
@@ -330,7 +322,6 @@ function renderAgeingHtml(
     if (params.groupBy === "principal") {
       bodyHtml += renderPrincipalSummaryRow(prinRows, prinCode);
     } else if (params.groupBy === "product") {
-      // Flat mode: Principal -> Product directly, no Product Group header/subtotal.
       bodyHtml += renderProductRows(prinRows);
     } else {
       const byGroup = groupRowsBy(prinRows, (r) => r.group_code);
@@ -370,50 +361,97 @@ function renderAgeingHtml(
   <meta charset="utf-8"/>
   <title>${escapeHtml(reportTitle)}</title>
   <style>
-    @media print { @page { size: A4 landscape; margin: 8mm; } }
+    /* ── Base layout ───────────────────────────────────────────────────── */
     * { box-sizing: border-box; }
     html, body {
       margin: 0; font-family: Arial, sans-serif; font-size: 9px; color: #000;
       background: #eef2f7;
     }
     .sheet { width: 100%; margin: 0 auto; background: #fff; padding: 10px 12px; }
+
     .report-title {
       text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 3px;
-      margin-bottom: 5px; color: #fff; background: #1d4ed8; padding: 6px 0;
+      margin-bottom: 5px; color: #fff;
+      background-color: #1d4ed8;
+      /* box-shadow keeps the fill in print even when background-color is stripped */
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      padding: 6px 0;
     }
     .report-meta {
       display: flex; justify-content: space-between; font-size: 9px;
       margin-bottom: 8px; color: #333;
     }
+
+    /* ── Table base ────────────────────────────────────────────────────── */
     table { width: 100%; border-collapse: collapse; font-size: 9px; }
     th {
-      background: #1d4ed8; border: 1px solid #1e3a8a; padding: 5px 4px;
+      background-color: #1d4ed8;
+      border: 1px solid #1e3a8a; padding: 5px 4px;
       text-align: center; font-weight: 700; color: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
-    th.total-col-hdr { background: #0f3460; }
+    th.total-col-hdr {
+      background-color: #0f3460;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
     td { border: 1px solid #cbd5e1; padding: 3px 5px; vertical-align: top; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    td.total-col { font-weight: 700; background: #eff6ff; }
+    td.total-col { font-weight: 700; background-color: #eff6ff; }
     td.subtotal-label { text-align: right; font-weight: 700; padding-right: 8px; }
+
+    /* ── Row types ─────────────────────────────────────────────────────── */
     tr.principal-header td {
-      background: #1d4ed8; color: #fff; font-weight: 700; border: 1px solid #1d4ed8; padding: 4px 6px;
+      background-color: #1d4ed8;
+      color: #fff;
+      font-weight: 700;
+      border: 1px solid #1d4ed8;
+      padding: 4px 6px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     tr.group-header td {
-      background: #dbeafe; font-weight: 700; border: 1px solid #93c5fd; padding: 3px 6px;
+      background-color: #dbeafe;
+      font-weight: 700;
+      border: 1px solid #93c5fd;
+      padding: 3px 6px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
-    tr.data-row td { background: #fff; }
+    tr.data-row td { background-color: #fff; }
     tr.product-total-row td {
-      background: #e0f2fe; font-weight: 700; border-top: 1px solid #7dd3fc;
+      background-color: #e0f2fe;
+      font-weight: 700;
+      border-top: 1px solid #7dd3fc;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     tr.group-total-row td {
-      background: #fffde7; font-weight: 700; border-top: 1px solid #999;
+      background-color: #fffde7;
+      font-weight: 700;
+      border-top: 1px solid #999;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     tr.principal-total-row td {
-      background: #bfdbfe; font-weight: 700; border-top: 2px solid #1d4ed8;
+      background-color: #bfdbfe;
+      font-weight: 700;
+      border-top: 2px solid #1d4ed8;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     tr.grand-total-row td {
-      background: #1d4ed8; color: #fff; font-weight: 700; font-size: 9.5px; border: 2px solid #1e3a8a;
+      background-color: #1d4ed8;
+      color: #fff;
+      font-weight: 700;
+      font-size: 9.5px;
+      border: 2px solid #1e3a8a;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
+
     .filter-criteria {
       font-size: 8px; font-style: italic; color: #555; margin-top: 8px;
     }
@@ -421,12 +459,80 @@ function renderAgeingHtml(
       display: flex; justify-content: space-between; font-size: 8px; color: #666;
       margin-top: 6px; border-top: 1px solid #ccc; padding-top: 3px;
     }
+
+    /* ── Print overrides ───────────────────────────────────────────────────
+       Three-layer defence against browsers stripping backgrounds in print:
+       1. -webkit-print-color-adjust / print-color-adjust: exact  (set above
+          on every coloured element individually — most reliable approach)
+       2. The @media print block forces it globally as a last resort.
+       3. box-shadow: inset 0 0 0 1000px repaint — treated as a foreground
+          paint op so it survives even the most aggressive stripping.
+          White-text rows also get an explicit color:#fff here.
+    ─────────────────────────────────────────────────────────────────── */
     @media print {
+      @page { size: A4 landscape; margin: 8mm; }
+
+      /* Global force — some Chromium versions need this at the page level */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
       html, body { background: white; font-size: 10px; }
-      .sheet { padding: 6mm; }
+      .sheet { padding: 0; }
       .actions { display: none !important; }
       thead { display: table-header-group; }
       tfoot { display: table-footer-group; }
+
+      /* ── Dark-blue rows — repaint via box-shadow + keep text white ── */
+      .report-title {
+        background-color: #1d4ed8 !important;
+        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
+        color: #fff !important;
+      }
+      th {
+        background-color: #1d4ed8 !important;
+        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
+        color: #fff !important;
+      }
+      th.total-col-hdr {
+        background-color: #0f3460 !important;
+        box-shadow: inset 0 0 0 1000px #0f3460 !important;
+        color: #fff !important;
+      }
+      tr.principal-header td {
+        background-color: #1d4ed8 !important;
+        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
+        color: #fff !important;
+      }
+      tr.grand-total-row td {
+        background-color: #1d4ed8 !important;
+        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
+        color: #fff !important;
+      }
+
+      /* ── Light-colour rows — repaint via box-shadow ── */
+      tr.group-header td {
+        background-color: #dbeafe !important;
+        box-shadow: inset 0 0 0 1000px #dbeafe !important;
+      }
+      tr.product-total-row td {
+        background-color: #e0f2fe !important;
+        box-shadow: inset 0 0 0 1000px #e0f2fe !important;
+      }
+      tr.group-total-row td {
+        background-color: #fffde7 !important;
+        box-shadow: inset 0 0 0 1000px #fffde7 !important;
+      }
+      tr.principal-total-row td {
+        background-color: #bfdbfe !important;
+        box-shadow: inset 0 0 0 1000px #bfdbfe !important;
+      }
+      td.total-col {
+        background-color: #eff6ff !important;
+        box-shadow: inset 0 0 0 1000px #eff6ff !important;
+      }
     }
   </style>
 </head>
@@ -456,7 +562,7 @@ function renderAgeingHtml(
     </tfoot>
   </table>
   <div class="filter-criteria">
-    Filter Criteria : Principal Code: [${params.prinCode.join(", ")}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]${params.deptCodeFrom ? `, Department Code From: [${escapeHtml(params.deptCodeFrom)}]` : ""}${params.prodCodeFrom ? `, Product Code From: [${escapeHtml(params.prodCodeFrom)}]` : ""}${params.prodCodeTo ? `, Product Code To: [${escapeHtml(params.prodCodeTo)}]` : ""}
+    Filter Criteria : Principal Code: [${params.prinCode.join(", ")}], Department Code: [${params.deptCode.join(", ")}], Product Code: [${params.prodCode.join(", ")}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]
   </div>
   <div class="report-footer">
     <span>Report: rpt_stock_ageing_${metric}</span>
@@ -468,8 +574,6 @@ function renderAgeingHtml(
 }
 
 // ─── Excel Builder ────────────────────────────────────────────────────────────
-// Uses a hand-built OOXML package (via AdmZip) so we get full styling control,
-// the same approach used by the Stock Summary report's Excel export.
 
 function buildAgeingExcelBuffer(
   rows: AgeingRow[], params: AgeingParams, metric: TMetric,
@@ -562,9 +666,6 @@ function buildAgeingExcelBuffer(
     merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 1 } });
   };
 
-  // ── Adds the product-wise data lines (+ per-product subtotal rows) for any
-  // slice of rows. Shared by both the "Product Group -> Product" branch and
-  // the flat "Product" branch so the two grouping modes stay in sync.
   const addProductRows = (rowsForProd: AgeingRow[]) => {
     const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
     byProd.forEach((prodRows, prodCode) => {
@@ -579,7 +680,9 @@ function buildAgeingExcelBuffer(
         addRow(cells, styleMap);
       });
 
-      addTotalRow(`Total For ${prodCode} | ${prodName} :`, sumBuckets(prodRows, metric), styles.productTotalLabel, styles.productTotalNum);
+      if (prodRows.length > 1) {
+        addTotalRow(`Total For ${prodCode} | ${prodName} :`, sumBuckets(prodRows, metric), styles.productTotalLabel, styles.productTotalNum);
+      }
     });
   };
 
@@ -589,16 +692,13 @@ function buildAgeingExcelBuffer(
     addSectionRow(`${prinCode} | ${prinName}`, styles.principal);
 
     if (params.groupBy === "product") {
-      // Flat mode: Principal -> Product directly, no Product Group header/subtotal.
       addProductRows(prinRows);
     } else {
       const byGroup = groupRowsBy(prinRows, (r) => r.group_code);
       byGroup.forEach((grpRows, grpCode) => {
         const grpName = text(grpRows[0]?.group_name);
         addSectionRow(`${grpCode} | ${grpName}`, styles.group);
-
         addProductRows(grpRows);
-
         addTotalRow(`Total For ${grpCode} | ${grpName} :`, sumBuckets(grpRows, metric), styles.groupTotalLabel, styles.groupTotalNum);
       });
     }
@@ -607,7 +707,6 @@ function buildAgeingExcelBuffer(
   });
 
   addTotalRow("Grand Total :", sumBuckets(rows, metric), styles.grandLabel, styles.grandNum);
-
   addRow(["", "", "", "", "", "", "", "Powered by Bayanat Technology"], { [COL_COUNT - 1]: styles.footer });
 
   // Worksheet
@@ -620,7 +719,7 @@ function buildAgeingExcelBuffer(
   ];
   ws["!rows"] = sheetData.map((_, i) => ({ hpt: i === 0 ? 24 : i <= 3 ? 18 : 14 }));
 
-  // ── Minimal style engine (mirrors Stock Summary's approach) ─────────────
+  // ── Style engine ─────────────────────────────────────────────────────────
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }
   interface BorderDef { top?: string; bottom?: string; left?: string; right?: string; }
