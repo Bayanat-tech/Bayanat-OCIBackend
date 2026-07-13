@@ -280,6 +280,11 @@ function renderAgeingHtml(
   // ── Renders the product-wise lines (+ per-product subtotal rows) for any
   // slice of rows. Shared by both the "Product Group -> Product" branch and
   // the flat "Product" branch so the two grouping modes stay in sync.
+  //
+  // NOTE: the per-product subtotal row is only rendered when a product has
+  // MORE THAN ONE row — with a single row, the subtotal just duplicates the
+  // data row directly above it, so we suppress it to avoid the "Total For X"
+  // line appearing twice in a row for single-line products.
   const renderProductRows = (rowsForProd: AgeingRow[]): string => {
     let html = "";
     const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
@@ -295,12 +300,14 @@ function renderAgeingHtml(
           </tr>`;
       });
 
-      const prodTotal = sumBuckets(prodRows, metric);
-      html += `
-        <tr class="product-total-row">
-          <td class="subtotal-label">Total For ${escapeHtml(prodCode)} | ${escapeHtml(prodName)} :</td>
-          ${bucketCells(prodTotal)}
-        </tr>`;
+      if (prodRows.length > 1) {
+        const prodTotal = sumBuckets(prodRows, metric);
+        html += `
+          <tr class="product-total-row">
+            <td class="subtotal-label">Total For ${escapeHtml(prodCode)} | ${escapeHtml(prodName)} :</td>
+            ${bucketCells(prodTotal)}
+          </tr>`;
+      }
     });
     return html;
   };
@@ -565,6 +572,10 @@ function buildAgeingExcelBuffer(
   // ── Adds the product-wise data lines (+ per-product subtotal rows) for any
   // slice of rows. Shared by both the "Product Group -> Product" branch and
   // the flat "Product" branch so the two grouping modes stay in sync.
+  //
+  // NOTE: mirrors the HTML renderer — the per-product subtotal row is only
+  // added when a product has MORE THAN ONE row, so single-line products
+  // don't show a "Total For X" row that duplicates the line right above it.
   const addProductRows = (rowsForProd: AgeingRow[]) => {
     const byProd = groupRowsBy(rowsForProd, (r) => r.prod_code);
     byProd.forEach((prodRows, prodCode) => {
@@ -579,7 +590,9 @@ function buildAgeingExcelBuffer(
         addRow(cells, styleMap);
       });
 
-      addTotalRow(`Total For ${prodCode} | ${prodName} :`, sumBuckets(prodRows, metric), styles.productTotalLabel, styles.productTotalNum);
+      if (prodRows.length > 1) {
+        addTotalRow(`Total For ${prodCode} | ${prodName} :`, sumBuckets(prodRows, metric), styles.productTotalLabel, styles.productTotalNum);
+      }
     });
   };
 
