@@ -307,8 +307,11 @@ export async function updateBilling(
 
 
         ACTIVITY:
-          getValue(s,"ACTIVITY")
+          getValue(s,"ACTIVITY"),
 
+          COMPANY_CODE:
+          getValue(s,"COMPANY_CODE")
+          
       }));
 
 
@@ -403,7 +406,10 @@ export async function updateBilling(
 
 
         SEQ_NUMBER:
-          getValue(j,"SEQ_NUMBER")
+          getValue(j,"SEQ_NUMBER"),
+
+          SRNO:
+          getValue(j,"SRNO")
 
       }));
 
