@@ -153,7 +153,7 @@ export const insUpdHrGrade = async (req: Request, res: Response): Promise<void> 
        END;`,
       {
         p_header: { type: "HR_GRADE_TAB", val: [headerRow] },
-        p_details: { type: "HR_GRADE_COMP_TAB", val: detailRows },
+        p_details: { type: "HR_GRADE_COMP_TAB_V1", val: detailRows },
       },
       { autoCommit: false },
     );
