@@ -99,6 +99,7 @@ import { UomMaster } from "../entity/WMS/uom.entity";
 import { Vessel } from "../entity/WMS/vessel.entity";
 import { Warehouse } from "../entity/WMS/Warehouse.entity";
 import { TiTallyDetail } from "../entity/WMS/TiTallyDetail.entity";
+import { FilesAFEntity } from "../entities/account_files.entity";
 // TEMP EMERGENCY: allow skipping Oracle thick client init using FORCE_THIN_ORACLE=1
 if (process.env.FORCE_THIN_ORACLE === "1") {
   console.warn("FORCE_THIN_ORACLE=1 set — skipping oracledb.initOracleClient() (using thin mode)");
@@ -238,7 +239,8 @@ export const AppDataSource = new DataSource({
   ActivityUOC,
   UomMaster,
   Vessel,
-  Warehouse
+  Warehouse,
+  FilesAFEntity
 ],
 
   migrations: ["src/migration/**/*.ts"],
