@@ -87,6 +87,7 @@ import { getGrnReportExcel, getGrnReportHtml } from "../../../controllers/wms/re
 import { getTallyReportExcel, getTallyReportHtml } from "../../../controllers/wms/reports/TallReport.controller";
 import { getStockSummaryReportHtml, exportStockSummaryReportExcel } from "../../../controllers/wms/reports/StockSummaryReport.controller";
 import { getWmsInboundServiceActivityReportExcel, getWmsInboundServiceActivityReportHtml } from "../../../controllers/wms/reports/Inboundserviceactivityreport.controller";
+import { getWmsAdjConfirmReportExcel, getWmsAdjConfirmReportHtml } from "../../../controllers/wms/reports/Adjustmentconfirmreport.controller";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -346,5 +347,9 @@ router.post("/reports/stocksummary/excel", exportStockSummaryReportExcel);
 //inbound service activity report routes 
 router.get("/reports/inb-serviceactivity/:job_no", getWmsInboundServiceActivityReportHtml);
 router.get("/reports/inb-serviceactivity/:job_no/excel", getWmsInboundServiceActivityReportExcel);
+
+//inbound service activity report routes 
+router.get("/reports/AdjConfirmation_report/:adj_no", getWmsAdjConfirmReportHtml);
+router.get("/reports/AdjConfirmation_report/:adj_no/excel", getWmsAdjConfirmReportExcel);
 
 export default router;
