@@ -13,11 +13,12 @@ type SocketUser = {
 
 let ioServer: Server | null = null;
 const connectedUsers = new Map<string, SocketUser & { socketCount: number; lastSeenAt: Date }>();
+const SUPPORT_ADMIN_LOGINIDS = new Set(["ADMIN", "BTADMIN", "SUPERADMIN", "2012020136"]);
 
 export function isSupportAdminUser(user: any) {
   const loginid = String(user?.loginid || user?.LOGINID || "").toUpperCase();
   const username = String(user?.username || user?.USERNAME || "").toUpperCase();
-  return loginid === "ADMIN" || loginid === "BTADMIN" || loginid === "SUPERADMIN" || username === "ADMIN" || loginid.includes("ADMIN");
+  return SUPPORT_ADMIN_LOGINIDS.has(loginid) || SUPPORT_ADMIN_LOGINIDS.has(username) || loginid.includes("ADMIN");
 }
 
 export function resolveSupportRole(user: any, requestedRole: string) {
