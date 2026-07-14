@@ -302,7 +302,7 @@ function renderAgeingHtml(
     const prinTotal = sumBuckets(prinRows, metric);
     return `
       <tr class="principal-total-row">
-        <td class="subtotal-label">${escapeHtml(prinCode)} | ${escapeHtml(prinName)}</td>
+        <td class="principal-label">${escapeHtml(prinCode)} | ${escapeHtml(prinName)}</td>
         ${bucketCells(prinTotal)}
       </tr>`;
   };
@@ -401,6 +401,8 @@ function renderAgeingHtml(
     td.num { text-align: right; font-variant-numeric: tabular-nums; }
     td.total-col { font-weight: 700; background-color: #eff6ff; }
     td.subtotal-label { text-align: right; font-weight: 700; padding-right: 8px; }
+    td.principal-label { text-align: left; font-weight: 700; padding-right: 8px; }
+
 
     /* ── Row types ─────────────────────────────────────────────────────── */
     tr.principal-header td {
