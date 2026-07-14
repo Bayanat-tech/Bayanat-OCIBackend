@@ -6,6 +6,7 @@ import {
   assignSupportDeveloper,
   createSupportTicket,
   deleteSupportMessage,
+  getSupportAssistantSuggestion,
   getDeveloperSupportTickets,
   getSupportActiveUsers,
   getSupportDevelopers,
@@ -23,6 +24,7 @@ const router = express.Router();
 router.use(passport.authenticate("jwt", { session: false }), tenantContextMiddleware);
 
 router.post("/heartbeat", supportHeartbeat);
+router.post("/assist/suggest", getSupportAssistantSuggestion);
 router.get("/active-users", getSupportActiveUsers);
 router.get("/developers", getSupportDevelopers);
 router.post("/developers", saveSupportDeveloper);

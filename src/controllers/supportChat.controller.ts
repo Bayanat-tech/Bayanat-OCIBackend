@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { SupportAssistantService } from "../services/supportAssistant.service";
 import { SupportChatService } from "../services/supportChat.service";
 
 type AuthedRequest = Request & {
@@ -140,5 +141,14 @@ export const deleteSupportMessage = async (req: AuthedRequest, res: Response) =>
     res.json({ success: true, data, message: "Message deleted" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message || "Unable to delete message" });
+  }
+};
+
+export const getSupportAssistantSuggestion = async (req: AuthedRequest, res: Response) => {
+  try {
+    const data = SupportAssistantService.suggest(req.body || {});
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || "Unable to prepare support suggestion" });
   }
 };

@@ -1,6 +1,7 @@
 import { oracleDb } from "../database/connection";
 import { notifyUser } from "../helpers/functions";
 import { uploadSupportAttachmentToS3 } from "./ociUpload.service";
+import { SupportAssistantService } from "./supportAssistant.service";
 import { emitSupportPresenceChanged, emitSupportTicketChanged, getConnectedSupportUsers, resolveSupportRole } from "./supportRealtime.service";
 
 const ROOT_SCHEMA = "CUSTOMERS";
@@ -278,6 +279,27 @@ export class SupportChatService {
     );
     const ticketId = Number(result.outBinds?.ticketId?.[0] || result.outBinds?.ticketId);
     const messageId = await this.insertMessage(ticketId, message, input.attachments || [], user, "USER");
+    const assistantSuggestion = SupportAssistantService.suggest({
+      subject,
+      message,
+      module: cleanText(input.module),
+    });
+    if (assistantSuggestion.suggestedReply) {
+      await this.insertSystemMessage(ticketId, assistantSuggestion.suggestedReply);
+      await oracleDb.query(
+        `UPDATE ${ROOT_SCHEMA}.SUPPORT_TICKET
+            SET PRIORITY = :priority,
+                LAST_MESSAGE = :autoReply,
+                LAST_MESSAGE_AT = SYSDATE,
+                UPDATED_AT = SYSDATE
+          WHERE TICKET_ID = :ticketId`,
+        {
+          ticketId,
+          priority: assistantSuggestion.priority || "NORMAL",
+          autoReply: assistantSuggestion.suggestedReply,
+        }
+      );
+    }
     emitSupportTicketChanged({ requesterLoginid: loginid, assignedTo: cleanText(input.assigned_to), ticketId, actorLoginid: loginid });
     return { ticketId, messageId };
   }
