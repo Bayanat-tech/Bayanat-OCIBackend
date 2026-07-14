@@ -84,6 +84,8 @@ import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, expo
 import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
 import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
 import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsexcels";
+import { getTransactionWithoutTransfersReport } from "../../wms/reports/Transactionwithouttransfersreport";
+import { exportTransactionWithoutTransfersExcel } from "../../wms/reports/WithoutTrasactionExcel";
 
 
 const router = express.Router();
@@ -169,7 +171,10 @@ router.post('/reports/tax-vat-out-ledger-summary/excel', exportTaxInvoiceSummary
 // -----------------------------WMS Reports Routes----------------------
 router.post('/reports/wms-joblisting/html', getJobListingReport);
 router.post('/reports/wms-TransactionProductReport/html', getTransactionProductReport);
+router.post('/reports/wms-TransactionProductWithoutTransfersReport/html', getTransactionWithoutTransfersReport);
+
 router.post('/reports/wms-exportTransactionProductExcel/excel', exportTransactionProductExcel);
+router.post('/reports/wms-exportTransactionWithoutTransfersExcel/excel', exportTransactionWithoutTransfersExcel);
 
 router.post('/reports/wms-joblisting', exportJobListingExcel);
 

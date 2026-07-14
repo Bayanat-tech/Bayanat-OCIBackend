@@ -307,8 +307,11 @@ export async function updateBilling(
 
 
         ACTIVITY:
-          getValue(s,"ACTIVITY")
+          getValue(s,"ACTIVITY"),
 
+          COMPANY_CODE:
+          getValue(s,"COMPANY_CODE")
+          
       }));
 
 
@@ -403,7 +406,10 @@ export async function updateBilling(
 
 
         SEQ_NUMBER:
-          getValue(j,"SEQ_NUMBER")
+          getValue(j,"SEQ_NUMBER"),
+
+          SRNO:
+          getValue(j,"SRNO")
 
       }));
 
@@ -427,7 +433,7 @@ export async function updateBilling(
     ======================= */
 
 
-    await connection.execute(
+const result = await connection.execute(
 
 `
 BEGIN
@@ -437,7 +443,8 @@ BEGIN
     :p_invoice_hdr,
     :p_invoice_dtl,
     :p_storage_sel,
-    :p_job_sel
+    :p_job_sel,
+    :p_invoice_no
  );
 
 END;
@@ -470,8 +477,14 @@ END;
  {
     type:"P_INVOICE_JOB_SELECTION_TAB",
     val:jobRows
- }
+ },
 
+ p_invoice_no:
+ {
+    dir: oracledb.BIND_OUT,
+    type: oracledb.STRING,
+    maxSize: 50
+ }
 },
 
 {
@@ -484,12 +497,14 @@ END;
 
     await connection.commit();
 
-
+    const generatedInvoiceNo = result.outBinds.p_invoice_no;
 
     res.json(
     {
       message:
-      "Invoice updated successfully"
+      "Invoice updated successfully",
+      invoice_no:
+      generatedInvoiceNo
     });
 
 
