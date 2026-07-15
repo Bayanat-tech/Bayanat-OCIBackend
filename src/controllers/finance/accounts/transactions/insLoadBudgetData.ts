@@ -61,21 +61,20 @@ export const insLoadBudgetData = async (
       REQUEST_NUMBER: d.request_number ?? null
     }));
 
-    await connection.execute(
-      `BEGIN
-          (:p_data);
-       END;`,
-      {
-        p_data: {
-          type: "GT_LOAD_BUDGET_DATA_TAB",
-          val: rows
-        }
-      },PROC_INS_GT_LOAD_BUDGET_DATA
-      {
-        autoCommit: false
-      }
-    );
-
+   await connection.execute(
+  `BEGIN
+      PROC_INS_GT_LOAD_BUDGET_DATA(:p_data);
+   END;`,
+  {
+    p_data: {
+      type: "GT_LOAD_BUDGET_DATA_TAB",
+      val: rows
+    }
+  },
+  {
+    autoCommit: false
+  }
+);
     await connection.commit();
 
     res.json({
