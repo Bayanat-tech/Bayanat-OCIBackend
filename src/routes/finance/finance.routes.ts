@@ -45,11 +45,14 @@ import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveenc
 import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
 import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIncrement";
 import { insUpdBudgetRequestBulk } from "../../controllers/finance/accounts/transactions/insUpdBudgetRequestBulk";
+import { insLoadBudgetData } from "../../controllers/finance/accounts/transactions/insLoadBudgetData";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
-insUpdBudgetRequestBulk 
+router.post(
+  "/insLoadBudgetData",
+  insLoadBudgetData);
 
 router.post(
   "/insUpdBudgetRequestBulk",
