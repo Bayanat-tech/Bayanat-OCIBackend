@@ -84,6 +84,7 @@ import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, expo
 import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
 import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
 import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsexcels";
+import { CapexApprovalReport } from "../../../controllers/ALMS/CapexApprovalReport";
 
 
 const router = express.Router();
@@ -193,6 +194,11 @@ router.post('/reports/OutstandingSummaryReport/html',OutstandingSummaryReport);
 router.post("/reports/AcStatement/excel", exportAcStatementExcel);
 router.post("/reports/OutstandingDetail/excel",  exportOutstandingDetailExcel);
 router.post("/reports/OutstandingSummary/excel", exportOutstandingSummaryExcel);
+
+
+
+// ALMS report
+router.post('/reports/CapexApprovalReport/html', CapexApprovalReport);
 
 
 
