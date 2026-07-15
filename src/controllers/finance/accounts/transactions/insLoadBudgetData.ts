@@ -63,14 +63,14 @@ export const insLoadBudgetData = async (
 
     await connection.execute(
       `BEGIN
-          PROC_INS_GT_LOAD_BUDGET_DATA(:p_data);
+          (:p_data);
        END;`,
       {
         p_data: {
           type: "GT_LOAD_BUDGET_DATA_TAB",
           val: rows
         }
-      },
+      },PROC_INS_GT_LOAD_BUDGET_DATA
       {
         autoCommit: false
       }
