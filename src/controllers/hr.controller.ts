@@ -132,27 +132,18 @@ export const getHrMaster = async (
           case "Pg_Leave_flow":
 
             whereConditions = `
-    company_code = :company_code
-    AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
-    AND (
-         (NEXT_ACTION_BY = :loginid AND FINAL_APPROVED <> 'YES')
-         OR
-         (IMMEDIATE_SUPERVISOR = :loginid
-          AND ACTUAL_RESUME_DATE IS NOT NULL
-          AND RESUME_DATE_APPROVED = 'NO') AND FINAL_APPROVED <> 'YES')
+  company_code = :company_code
+  AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
+  AND (
+        (NEXT_ACTION_BY = :loginid AND FINAL_APPROVED <> 'YES')
+        OR (
+            IMMEDIATE_SUPERVISOR = :loginid
+            AND ACTUAL_RESUME_DATE IS NOT NULL
+            AND RESUME_DATE_APPROVED = 'NO'
+            AND FINAL_APPROVED <> 'YES'
         )
+      )
   `;
-         /*   whereConditions = `company_code = :company_code
-                      AND (
-                          (NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_ID =  :loginid ) AND FINAL_APPROVED <> 'YES')
-                          OR
-                          (IMMEDIATE_SUPERVISOR IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
-                      )
-                      AND LAST_ACTION <> 'REJECTED'
-                      AND LAST_ACTION <> 'CANCEL'
-                      `;*/
             break;
           case "Pg_leave_flow_Rejected":
               whereConditions = `
