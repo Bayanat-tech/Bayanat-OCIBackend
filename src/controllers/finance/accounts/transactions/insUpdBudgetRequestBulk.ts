@@ -126,7 +126,9 @@ export const insUpdBudgetRequestBulk = async (
 
       SENDBACK_HISTRY: header.sendback_histry ?? null,
 
-      NEXT_ACTION_BY: header.next_action_by ?? null
+      NEXT_ACTION_BY: header.next_action_by ?? null,
+
+      BUDGET_YEAR: header.budget_year ?? null,
     };
 
     //------------------------------------------------------------------
@@ -134,7 +136,7 @@ export const insUpdBudgetRequestBulk = async (
     //------------------------------------------------------------------
 
     const detailRows = details.map((row: any) => ({
-      PROJECT_CODE: row.project_code ?? null,
+      DIV_CODE: row.div_code ?? null,
 
       COST_CODE: row.cost_code ?? null,
 
