@@ -19,6 +19,7 @@ export class SecmasterController {
       }
 
       const {
+        loginid,
         username,
         contact_no,
         email_id,
@@ -59,7 +60,8 @@ export class SecmasterController {
 
       // Create user
       const createdUser = await SecmasterService.createUser({
-        company_code,
+        loginid,
+        company_code,       
         contact_no,
         email_id,
         username,
