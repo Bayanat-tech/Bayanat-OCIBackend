@@ -254,7 +254,13 @@ router.post(
   "/upsertMsAcAsset",
   upsertMsAcAsset
 );
+router.post(
 
+  "/insUpdBudgetRequestBulk",
+
+  insUpdBudgetRequestBulk
+
+);
 
 router.post(
   "/insUpdHrPayComponent",
