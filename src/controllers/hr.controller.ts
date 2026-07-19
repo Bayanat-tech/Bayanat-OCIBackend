@@ -139,7 +139,7 @@ export const getHrMaster = async (
          OR
          (IMMEDIATE_SUPERVISOR = :loginid
           AND ACTUAL_RESUME_DATE IS NOT NULL
-          AND RESUME_DATE_APPROVED = 'NO')
+          AND RESUME_DATE_APPROVED = 'NO') AND FINAL_APPROVED <> 'YES')
         )
   `;
          /*   whereConditions = `company_code = :company_code
