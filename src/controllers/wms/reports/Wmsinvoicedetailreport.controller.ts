@@ -147,11 +147,11 @@ SELECT '1',j.job_type||'-'||j.job_no job_no,ACT_CODE,
        j.doc_ref, NULL, j.confirm_date txn_date, t.quantity, NULL, NULL,
        t.bill amount, g.act_group_name, t.prin_code, t.bill_rate,
        tx_compnt_lcuramt_1 vat_amt, '' site_code, d.dIV_CODE
-  FROM TN_INVOICE_DET t, TI_JOB j, MS_ACTIVITY m, ms_activity_group g, ms_hr_division d
+FROM TN_INVOICE_DET t, TI_JOB j, MS_ACTIVITY m, ms_activity_group g, ms_hr_division d
  WHERE t.company_code = j.company_code AND t.prin_code = j.prin_code AND
        t.job_no = j.job_no AND
        t.company_code = m.company_code AND t.ACT_CODE = m.ACTIVITY_CODE AND
-       t.company_code = g.company_code AND m.activity_group_code = g.ACTIVITY_GROUP_CODE AND
+       t.company_code = g.company_code (+) AND m.activity_group_code = g.ACTIVITY_GROUP_CODE (+) AND
        (t.company_code = d.company_code (+)) AND (t.div_code = d.div_code (+)) AND
        t.company_code = :as_companycode AND t.prin_code = :as_princode AND
        (nvl(consolidated_invno,' ') = :as_consolidated_invno) AND
@@ -165,6 +165,11 @@ async function loadInvoiceDetailData(
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
   try {
+    console.log('DEBUG invoice detail:', { 
+  company_code: req.user.company_code, 
+  prin_code: prinCode, 
+  invoice_no: consolidatedInvNo 
+});
     const result = await conn.execute(
       INVOICE_DETAIL_SQL,
       {
@@ -176,7 +181,7 @@ async function loadInvoiceDetailData(
     );
     const rows = normalize(result.rows as any[]);
     if (!rows.length)
-      throw Object.assign(new Error("No billable items found for this invoice"), { status: 404 });
+      throw Object.assign(new Error("No billable items found for this invoice"), { status: 500 });
     return rows;
   } finally {
     await closeConn(conn);

@@ -86,6 +86,7 @@ import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../
 import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsexcels";
 import { getTransactionWithoutTransfersReport } from "../../wms/reports/Transactionwithouttransfersreport";
 import { exportTransactionWithoutTransfersExcel } from "../../wms/reports/WithoutTrasactionExcel";
+import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../controllers/wms/reports/GrnSummaryreport.controller";
 
 
 const router = express.Router();
@@ -156,9 +157,12 @@ router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 
 // WMS REPORTS ROUTES
-
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
+
+//inbound Grn Summary report
+router.post('/reports/GrnSummaryReport/html', getGrnSummaryReportHtml);
+router.post('/reports/GrnSummaryReport/excel', getGrnSummaryReportExcel);
 
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);

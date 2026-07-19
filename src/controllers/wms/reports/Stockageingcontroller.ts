@@ -153,9 +153,17 @@ async function loadAgeingData(
   const conn   = await getConn(req);
 
   try {
-    const prinBinds = params.prinCode.map((_, i) => `:prin${i}`);
-    const deptBinds = params.deptCode.map((_, i) => `:dept${i}`);
-    const prodBinds = params.prodCode.map((_, i) => `:prod${i}`);
+    const prinBinds = params.prinCode.includes("All") ? [] : params.prinCode.map((_, i) => `:prin${i}`);
+const deptBinds = params.deptCode.includes("All") ? [] : params.deptCode.map((_, i) => `:dept${i}`);
+const prodBinds = params.prodCode.includes("All") ? [] : params.prodCode.map((_, i) => `:prod${i}`);
+
+const whereParts = [
+  prinBinds.length ? `PRIN_CODE IN (${prinBinds.join(",")})` : "",
+  deptBinds.length ? `DEPT_CODE IN (${deptBinds.join(",")})` : "",
+  prodBinds.length ? `PROD_CODE IN (${prodBinds.join(",")})` : "",
+].filter(Boolean);
+
+const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
     const ageExpr = "(TRUNC(SYSDATE) - TRUNC(TXN_DATE))";
     const bucketCase = (col: string, alias: string) => `
@@ -176,20 +184,17 @@ async function loadAgeingData(
         ${bucketCase("STOCK", "QTY")},
         ${bucketCase("VOLUME", "VOL")}
       FROM VW_BOWM_STKLED_FOREXPAGEING
-      WHERE ('All' IN (${prinBinds.join(",")}) OR PRIN_CODE IN (${prinBinds.join(",")}))
-        AND ('All' IN (${deptBinds.join(",")}) OR DEPT_CODE IN (${deptBinds.join(",")}))
-        AND ('All' IN (${prodBinds.join(",")}) OR PROD_CODE IN (${prodBinds.join(",")}))
+      ${whereSql}
       GROUP BY PRIN_CODE, PRIN_NAME, GROUP_CODE, GROUP_NAME, PROD_CODE, PROD_NAME, L_UOM
-      ORDER BY PRIN_CODE, GROUP_CODE, PROD_CODE
     `;
 
     const binds: Record<string, any> = {
       age1: params.age1, age2: params.age2, age3: params.age3,
       age4: params.age4, age5: params.age5,
     };
-    params.prinCode.forEach((v, i) => { binds[`prin${i}`] = v; });
-    params.deptCode.forEach((v, i) => { binds[`dept${i}`] = v; });
-    params.prodCode.forEach((v, i) => { binds[`prod${i}`] = v; });
+    if (!params.prinCode.includes("All")) params.prinCode.forEach((v, i) => { binds[`prin${i}`] = v; });
+    if (!params.deptCode.includes("All")) params.deptCode.forEach((v, i) => { binds[`dept${i}`] = v; });
+    if (!params.prodCode.includes("All")) params.prodCode.forEach((v, i) => { binds[`prod${i}`] = v; });
 
     const result = await conn.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const raw    = normalize(result.rows as any[]);
