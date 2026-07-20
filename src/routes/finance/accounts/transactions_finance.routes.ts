@@ -84,6 +84,9 @@ import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, expo
 import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
 import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
 import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsexcels";
+import { getTransactionWithoutTransfersReport } from "../../wms/reports/Transactionwithouttransfersreport";
+import { exportTransactionWithoutTransfersExcel } from "../../wms/reports/WithoutTrasactionExcel";
+import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../controllers/wms/reports/GrnSummaryreport.controller";
 
 
 const router = express.Router();
@@ -154,9 +157,12 @@ router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 
 // WMS REPORTS ROUTES
-
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
+
+//inbound Grn Summary report
+router.post('/reports/GrnSummaryReport/html', getGrnSummaryReportHtml);
+router.post('/reports/GrnSummaryReport/excel', getGrnSummaryReportExcel);
 
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
@@ -169,7 +175,10 @@ router.post('/reports/tax-vat-out-ledger-summary/excel', exportTaxInvoiceSummary
 // -----------------------------WMS Reports Routes----------------------
 router.post('/reports/wms-joblisting/html', getJobListingReport);
 router.post('/reports/wms-TransactionProductReport/html', getTransactionProductReport);
+router.post('/reports/wms-TransactionProductWithoutTransfersReport/html', getTransactionWithoutTransfersReport);
+
 router.post('/reports/wms-exportTransactionProductExcel/excel', exportTransactionProductExcel);
+router.post('/reports/wms-exportTransactionWithoutTransfersExcel/excel', exportTransactionWithoutTransfersExcel);
 
 router.post('/reports/wms-joblisting', exportJobListingExcel);
 

@@ -9,27 +9,21 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 
 type ReportRow = Record<string, any>;
 
-interface ProdSection {
-  prodCode:    string;
-  prodName:    string;
-  rows:        ReportRow[];
-  totalQty:    number;
-  totalVolume: number;
-}
-
 interface GroupSection {
-  groupName:   string;
-  prods:       ProdSection[];
-  totalQty:    number;
-  totalVolume: number;
+  groupName:    string;
+  rows:         ReportRow[];
+  totalQty:     number;
+  totalVolume:  number;
+  totalGrossWt: number;
 }
 
 interface PrinSection {
-  prinCode:    string;
-  prinName:    string;
-  groups:      GroupSection[];
-  totalQty:    number;
-  totalVolume: number;
+  prinCode:     string;
+  prinName:     string;
+  groups:       GroupSection[];
+  totalQty:     number;
+  totalVolume:  number;
+  totalGrossWt: number;
 }
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
@@ -91,19 +85,12 @@ function numFmt(value: unknown, decimals = 0): string {
   });
 }
 
-// Normalizes an incoming filter value to what the SQL-builder proc expects:
-// undefined / "" / "all" (any case) all collapse to the literal "All" string,
-// which is what the proc's `UPPER(TRIM(P_CODEx)) <> 'ALL'` checks skip on.
-// Any other non-empty string passes through trimmed.
 function normalizeFilter(value: unknown): string {
   const v = text(value).trim();
   if (!v || v.toUpperCase() === "ALL") return "All";
   return v;
 }
 
-// ★ NEW — splits a comma-joined filter value ("P001,P002,P003") into a clean
-//   list of individual codes. Returns null for "All" or a single code, since
-//   those two cases are handled fine by the proc itself via equality match.
 function parseMultiCodeFilter(value: string): string[] | null {
   if (value === "All") return null;
   if (!value.includes(",")) return null; // single code — proc handles it natively
@@ -113,32 +100,25 @@ function parseMultiCodeFilter(value: string): string[] | null {
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
 
-async function loadDnData(
+async function loadGrnData(
   req: RequestWithUser,
   params: {
     loginid?:  string;
-    prinCode?: string;   // "All", a single PRIN_CODE, or "P1,P2,P3"
-    fromdate?: string;   // "All" or "DD/MM/YYYY"
-    todate?:   string;   // "All" or "DD/MM/YYYY"
+    prinCode?: string; 
+    fromdate?: string;  
+    todate?:   string; 
   } = {}
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
   try {
     const requestedPrin = normalizeFilter(params.prinCode);
 
-    // ★ FIX: PROC_BUILD_DYNAMIC_SQL_COMMON20 only supports a single-value
-    //   equality match on PRIN_CODE (or the literal "All" to skip the filter
-    //   altogether) — it does NOT understand a comma-joined list. Passing a
-    //   list straight through used to silently return zero rows.
-    //
-    //   When the user picks 2+ specific principals, we ask the proc for the
-    //   full unfiltered dataset instead (same as "All") and then narrow the
-    //   result down to just the requested principals ourselves, in JS, below.
+
     const multiCodes  = parseMultiCodeFilter(requestedPrin);
     const procPrinCode = multiCodes ? "All" : requestedPrin;
 
     const binds: Record<string, any> = {
-      parameter: "WMS_Stock_DN_Summary_Report",
+      parameter: "WMS_Stock_GRN_Summary_Report",
       loginid:   params.loginid || text(req.user?.loginid) || "ADMIN",
 
       code1:  req.body.code1 || null,
@@ -175,15 +155,15 @@ async function loadDnData(
     );
 
     const rawSql = (procResult.outBinds as any).out_sql as string | null;
-    console.log("[DnSummaryReport] Generated SQL:", rawSql);
+    console.log("[GrnSummaryReport] Generated SQL:", rawSql);
     if (multiCodes) {
-      console.log("[DnSummaryReport] Multi-principal filter requested, narrowing client-side to:", multiCodes);
+      console.log("[GrnSummaryReport] Multi-principal filter requested, narrowing client-side to:", multiCodes);
     }
 
     if (!rawSql) {
       throw new Error(
         "PROC_BUILD_DYNAMIC_SQL_COMMON20 returned no SQL. " +
-        "Ensure the WHEN 'WMS_Stock_DN_Summary_Report' branch exists in the procedure."
+        "Ensure the WHEN 'WMS_Stock_GRN_Summary_Report' branch exists in the procedure."
       );
     }
 
@@ -193,8 +173,8 @@ async function loadDnData(
 
     let rows = normalize(dataResult.rows as any[]);
 
-    // ★ FIX: narrow down to just the selected principals when multiple were
-    //   requested. Case/whitespace-insensitive compare to be safe.
+    // Narrow down to just the selected principals when multiple were
+    // requested. Case/whitespace-insensitive compare to be safe.
     if (multiCodes) {
       const wanted = new Set(multiCodes.map((c) => c.toUpperCase()));
       rows = rows.filter((r) => wanted.has(text(r.prin_code).trim().toUpperCase()));
@@ -207,53 +187,46 @@ async function loadDnData(
 }
 
 // ─── Grouping ─────────────────────────────────────────────────────────────────
+// PRIN_CODE -> GROUP_NAME -> data rows -> group total -> principal total -> grand total
 
 function groupRows(rows: ReportRow[]): PrinSection[] {
   const prinMap: Record<string, {
     prinCode: string; prinName: string;
     groups: Record<string, {
-      groupName: string;
-      prods: Record<string, {
-        prodCode: string; prodName: string;
-        rows: ReportRow[]; totalQty: number; totalVolume: number;
-      }>;
-      totalQty: number; totalVolume: number;
+      groupName: string; rows: ReportRow[];
+      totalQty: number; totalVolume: number; totalGrossWt: number;
     }>;
-    totalQty: number; totalVolume: number;
+    totalQty: number; totalVolume: number; totalGrossWt: number;
   }> = {};
 
   for (const r of rows) {
-    const prinKey  = text(r.prin_code)  || "\u2014";
-    const groupKey = text(r.group_name) || "Ungrouped";
-    const prodKey  = text(r.prod_code)  || "\u2014";
-    const qty      = parseFloat(String(r.qty ?? r.quantity ?? r.qty_puom)) || 0;
-    const volume   = parseFloat(String(r.volume)) || 0;
+    const prinKey  = text(r.prin_code)   || "\u2014";
+    const groupKey = text(r.group_name)  || "Ungrouped";
+    const qty      = parseFloat(String(r.qty_puom ?? r.qty ?? r.quantity)) || 0;
+    const volume   = parseFloat(String(r.volume))    || 0;
+    const grossWt  = parseFloat(String(r.gross_wt))  || 0;
 
     if (!prinMap[prinKey])
-      prinMap[prinKey] = { prinCode: text(r.prin_code), prinName: text(r.prin_name), groups: {}, totalQty: 0, totalVolume: 0 };
+      prinMap[prinKey] = {
+        prinCode: text(r.prin_code), prinName: text(r.prin_name),
+        groups: {}, totalQty: 0, totalVolume: 0, totalGrossWt: 0,
+      };
     const ps = prinMap[prinKey];
-    ps.totalQty += qty; ps.totalVolume += volume;
+    ps.totalQty += qty; ps.totalVolume += volume; ps.totalGrossWt += grossWt;
 
     if (!ps.groups[groupKey])
-      ps.groups[groupKey] = { groupName: groupKey, prods: {}, totalQty: 0, totalVolume: 0 };
+      ps.groups[groupKey] = { groupName: groupKey, rows: [], totalQty: 0, totalVolume: 0, totalGrossWt: 0 };
     const gs = ps.groups[groupKey];
-    gs.totalQty += qty; gs.totalVolume += volume;
-
-    if (!gs.prods[prodKey])
-      gs.prods[prodKey] = { prodCode: text(r.prod_code), prodName: text(r.prod_name), rows: [], totalQty: 0, totalVolume: 0 };
-    const prd = gs.prods[prodKey];
-    prd.rows.push(r); prd.totalQty += qty; prd.totalVolume += volume;
+    gs.totalQty += qty; gs.totalVolume += volume; gs.totalGrossWt += grossWt;
+    gs.rows.push(r);
   }
 
   return Object.values(prinMap).map((p) => ({
     ...p,
-    groups: Object.values(p.groups).map((g) => ({ ...g, prods: Object.values(g.prods) })),
+    groups: Object.values(p.groups),
   }));
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
-// NOTE: No action-bar rendered here — Print & Excel buttons live on the React
-//       parent page and communicate with this iframe via postMessage / API call.
 
 function renderHtml(
   prins:       PrinSection[],
@@ -265,8 +238,9 @@ function renderHtml(
     day: "2-digit", month: "short", year: "numeric",
   });
 
-  const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
-  const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
+  const grandQty     = prins.reduce((s, p) => s + p.totalQty,     0);
+  const grandVolume  = prins.reduce((s, p) => s + p.totalVolume,  0);
+  const grandGrossWt = prins.reduce((s, p) => s + p.totalGrossWt, 0);
 
   const autoPrintScript = autoPrint
     ? "window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 300); });"
@@ -275,66 +249,66 @@ function renderHtml(
   let bodyRows = "";
 
   for (const ps of prins) {
-    bodyRows += "<tr class=\"prin-row\"><td colspan=\"8\">" +
+    bodyRows += "<tr class=\"prin-row\"><td colspan=\"12\">" +
       escapeHtml(ps.prinCode) + (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") +
       "</td></tr>";
 
     for (const gs of ps.groups) {
-      bodyRows += "<tr class=\"group-row\"><td colspan=\"8\">Group : " +
+      bodyRows += "<tr class=\"group-row\"><td colspan=\"12\">Group : " +
         escapeHtml(gs.groupName) + "</td></tr>";
 
-      for (const prd of gs.prods) {
-        bodyRows += "<tr class=\"prod-row\"><td colspan=\"8\">" +
-          escapeHtml(prd.prodCode) + (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") +
-          "</td></tr>";
-
-        for (const dr of prd.rows) {
-          const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
-          const volume = parseFloat(String(dr.volume)) || 0;
-          bodyRows +=
-            "<tr class=\"data-row\">" +
-            "<td>" + escapeHtml(dr.dn_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.dn_date ?? dr.receipt_date)) + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date)) + "</td>" +
-            "<td>" + escapeHtml(dr.job_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.customer || dr.cust_code || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.container_no || "\u2014") + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(qty)) + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(volume, 3)) + "</td>" +
-            "</tr>";
-        }
-
+      for (const dr of gs.rows) {
+        const qty     = parseFloat(String(dr.qty_puom ?? dr.qty ?? dr.quantity)) || 0;
+        const volume  = parseFloat(String(dr.volume))   || 0;
+        const grossWt = parseFloat(String(dr.gross_wt)) || 0;
         bodyRows +=
-          "<tr class=\"prod-total\">" +
-          "<td colspan=\"6\">Total For " + escapeHtml(prd.prodCode) +
-          (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalQty)) + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalVolume, 3)) + "</td>" +
+          "<tr class=\"data-row\">" +
+          "<td>" + escapeHtml(dr.grn_number || "\u2014") + "</td>" +
+          "<td>" + escapeHtml(dr.job_no || "\u2014") + "</td>" +
+          "<td>" + escapeHtml(dateText(dr.job_date)) + "</td>" +
+          "<td>" + escapeHtml(dateText(dr.confirm_date)) + "</td>" +
+          "<td>" + escapeHtml(dateText(dr.grn_date)) + "</td>" +
+          "<td>" + escapeHtml(dr.container_no || "\u2014") + "</td>" +
+          "<td>" + escapeHtml(dr.container_size || "\u2014") + "</td>" +
+          "<td class=\"num\">" + escapeHtml(numFmt(qty)) + "</td>" +
+          "<td class=\"num\">" + escapeHtml(numFmt(volume, 3)) + "</td>" +
+          "<td>" + escapeHtml(dr.pallet_id || "\u2014") + "</td>" +
+          "<td class=\"num\">" + escapeHtml(numFmt(grossWt, 3)) + "</td>" +
+          "<td>" + escapeHtml(dr.user_id || "\u2014") + "</td>" +
           "</tr>";
       }
 
       bodyRows +=
         "<tr class=\"group-total\">" +
-        "<td colspan=\"6\">Total For " + escapeHtml(gs.groupName) + "</td>" +
+        "<td colspan=\"7\">Total For " + escapeHtml(gs.groupName) + "</td>" +
         "<td class=\"num\">" + escapeHtml(numFmt(gs.totalQty)) + "</td>" +
         "<td class=\"num\">" + escapeHtml(numFmt(gs.totalVolume, 3)) + "</td>" +
+        "<td></td>" +
+        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalGrossWt, 3)) + "</td>" +
+        "<td></td>" +
         "</tr>";
     }
 
     bodyRows +=
       "<tr class=\"prin-total\">" +
-      "<td colspan=\"6\">Total For " + escapeHtml(ps.prinCode) +
+      "<td colspan=\"7\">Total For " + escapeHtml(ps.prinCode) +
       (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") + "</td>" +
       "<td class=\"num\">" + escapeHtml(numFmt(ps.totalQty)) + "</td>" +
       "<td class=\"num\">" + escapeHtml(numFmt(ps.totalVolume, 3)) + "</td>" +
+      "<td></td>" +
+      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalGrossWt, 3)) + "</td>" +
+      "<td></td>" +
       "</tr>";
   }
 
   const grandRow =
     "<tr class=\"grand-total\">" +
-    "<td colspan=\"6\">Grand Total</td>" +
+    "<td colspan=\"7\">Grand Total</td>" +
     "<td class=\"num\">" + escapeHtml(numFmt(grandQty)) + "</td>" +
     "<td class=\"num\">" + escapeHtml(numFmt(grandVolume, 3)) + "</td>" +
+    "<td></td>" +
+    "<td class=\"num\">" + escapeHtml(numFmt(grandGrossWt, 3)) + "</td>" +
+    "<td></td>" +
     "</tr>";
 
   return `<!doctype html>
@@ -347,13 +321,13 @@ function renderHtml(
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
+      font-size: 11px; color: #111827;
       background: #eef1f6;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     .sheet {
-      width: 277mm; min-height: 190mm;
+      width: 297mm; min-height: 190mm;
       margin: 18px auto; background: #fff;
       padding: 10mm 12mm;
       border: 1px solid #c4cdd9;
@@ -374,12 +348,13 @@ function renderHtml(
     }
     .rpt-meta strong { color: #111827; font-weight: 600; }
     table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    col.c0 { width: 9%;  } col.c1 { width: 10%; } col.c2 { width: 10%; }
-    col.c3 { width: 14%; } col.c4 { width: 13%; } col.c5 { width: 15%; }
-    col.c6 { width: 15%; } col.c7 { width: 14%; }
+    col.c0  { width: 9%;  } col.c1  { width: 8%;  } col.c2 { width: 8%; }
+    col.c3  { width: 8%;  } col.c4  { width: 8%;  } col.c5 { width: 10%; }
+    col.c6  { width: 7%;  } col.c7  { width: 6%;  } col.c8 { width: 8%; }
+    col.c9  { width: 8%;  } col.c10 { width: 8%;  } col.c11 { width: 12%; }
     thead tr.th-main th {
       background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 7px 10px; text-align: center;
+      font-size: 9.5px; padding: 7px 6px; text-align: center;
       border-right: 1px solid rgba(255,255,255,0.15);
     }
     thead tr.th-main th:last-child { border-right: none; }
@@ -395,34 +370,25 @@ function renderHtml(
       font-size: 11px; padding: 4px 10px 4px 20px;
       border-bottom: 1px solid #c8d4e4;
     }
-    tr.prod-row td {
-      background: #fef3c7; color: #92400e; font-weight: 700;
-      font-size: 10px; padding: 3px 10px 3px 32px;
-      border-bottom: 1px solid #fde68a;
-    }
     tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
+      padding: 4px 6px; border-bottom: 1px solid #e5e7eb;
+      color: #374151; font-size: 10.5px;
       white-space: normal; word-wrap: break-word; vertical-align: top;
     }
-    tbody tr.data-row td:first-child { padding-left: 40px; }
+    tbody tr.data-row td:first-child { padding-left: 24px; }
     tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
     td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    tr.prod-total td {
-      background: #fde68a; padding: 3px 10px; font-size: 10px;
-      font-weight: 700; color: #78350f; white-space: nowrap;
-    }
     tr.group-total td {
-      background: #c8d4e4; padding: 4px 10px; font-size: 11px;
+      background: #c8d4e4; padding: 4px 6px; font-size: 10.5px;
       font-weight: 700; color: #1e3a5f; white-space: nowrap;
     }
     tr.prin-total td {
-      background: #a8b8d0; padding: 5px 10px; font-size: 11px;
+      background: #a8b8d0; padding: 5px 6px; font-size: 10.5px;
       font-weight: 700; color: #0f2040; white-space: nowrap;
     }
     tr.grand-total td {
       background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
+      font-size: 11px; padding: 8px 6px;
       border-top: 2px solid #162d4a;
     }
     .rpt-footer {
@@ -435,8 +401,8 @@ function renderHtml(
       body   { background: #fff; }
       .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
       thead  { display: table-header-group; }
-      tr.prin-row, tr.group-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
-      tr.prod-total, tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
+      tr.prin-row, tr.group-row { break-after: avoid; page-break-after: avoid; }
+      tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
     }
   </style>
 </head>
@@ -450,22 +416,26 @@ function renderHtml(
       <span>Page 1 of 1</span>
     </div>
 
-    <table class="rpt-table" id="dnTable">
+    <table class="rpt-table" id="grnTable">
       <colgroup>
-        <col class="c0"/><col class="c1"/><col class="c2"/>
-        <col class="c3"/><col class="c4"/><col class="c5"/>
-        <col class="c6"/><col class="c7"/>
+        <col class="c0"/><col class="c1"/><col class="c2"/><col class="c3"/>
+        <col class="c4"/><col class="c5"/><col class="c6"/><col class="c7"/>
+        <col class="c8"/><col class="c9"/><col class="c10"/><col class="c11"/>
       </colgroup>
       <thead>
         <tr class="th-main">
-          <th class="left">DN No</th>
-          <th>DN Date</th>
-          <th>Confirm Date</th>
+          <th class="left">GRN No</th>
           <th class="left">Job No</th>
-          <th class="left">Customer</th>
+          <th>Job Date</th>
+          <th>Confirm Date</th>
+          <th>GRN Date</th>
           <th class="left">Container No</th>
+          <th>Size</th>
           <th class="num">Qty</th>
           <th class="num">Volume</th>
+          <th class="left">Pallet Id</th>
+          <th class="num">Gross Wt</th>
+          <th class="left">User Id</th>
         </tr>
       </thead>
       <tbody>
@@ -475,7 +445,7 @@ function renderHtml(
     </table>
 
     <div class="rpt-footer">
-      <span>Report Name : <code>Delivery Note Summary</code></span>
+      <span>Report Name : <code>GRN Summary</code></span>
       <span>Powered by Bayanat Technology</span>
     </div>
   </div>
@@ -499,17 +469,14 @@ const STYLE_ID = {
   header:        1,
   sectionPrin:   2,
   sectionGroup:  3,
-  sectionProd:   4,
-  value:         5,
-  totalProd:     6,
-  totalGroup:    7,
-  totalPrin:     8,
-  totalGrand:    9,
-  numValue:      10,
-  numTotalProd:  11,
-  numTotalGroup: 12,
-  numTotalPrin:  13,
-  numGrand:      14,
+  value:         4,
+  totalGroup:    5,
+  totalPrin:     6,
+  totalGrand:    7,
+  numValue:      8,
+  numTotalGroup: 9,
+  numTotalPrin:  10,
+  numGrand:      11,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -517,17 +484,18 @@ interface XlCell { v: unknown; s: number }
 function xc(v: unknown, style: StyleKey): XlCell { return { v, s: STYLE_ID[style] }; }
 
 function buildExcelBuffer(prins: PrinSection[]): Buffer {
-  const NCOLS = 8;
+  const NCOLS = 12;
   type Row = (XlCell | null)[];
   const skip = null;
   const rows: Row[] = [];
 
-  rows.push([xc("Delivery Note Report (Summary)", "header"), ...Array(NCOLS - 1).fill(skip)]);
+  rows.push([xc("GRN Report (Summary)", "header"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
   rows.push([
-    xc("DN No",       "header"), xc("DN Date",      "header"), xc("Confirm Date", "header"),
-    xc("Job No",      "header"), xc("Customer",     "header"), xc("Container No", "header"),
-    xc("Qty",         "header"), xc("Volume",       "header"),
+    xc("GRN No",      "header"), xc("Job No",       "header"), xc("Job Date",     "header"),
+    xc("Confirm Date","header"), xc("GRN Date",      "header"), xc("Container No", "header"),
+    xc("Size",        "header"), xc("Qty",           "header"), xc("Volume",       "header"),
+    xc("Pallet Id",   "header"), xc("Gross Wt",       "header"), xc("User Id",      "header"),
   ]);
 
   for (const ps of prins) {
@@ -536,61 +504,68 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
     for (const gs of ps.groups) {
       rows.push([xc("Group : " + gs.groupName, "sectionGroup"), ...Array(NCOLS - 1).fill(skip)]);
 
-      for (const prd of gs.prods) {
-        rows.push([xc(prd.prodCode + (prd.prodName ? " | " + prd.prodName : ""), "sectionProd"), ...Array(NCOLS - 1).fill(skip)]);
-
-        for (const dr of prd.rows) {
-          const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
-          const volume = parseFloat(String(dr.volume)) || 0;
-          rows.push([
-            xc(text(dr.dn_no)                                        || "\u2014", "value"),
-            xc(dateText(dr.dn_date ?? dr.receipt_date),                           "value"),
-            xc(dateText(dr.principal_confirm_date ?? dr.confirm_date),            "value"),
-            xc(text(dr.job_no)                                       || "\u2014", "value"),
-            xc(text(dr.customer ?? dr.cust_code)                     || "\u2014", "value"),
-            xc(text(dr.container_no)                                 || "\u2014", "value"),
-            xc(numFmt(qty),                                                       "numValue"),
-            xc(numFmt(volume, 3),                                                 "numValue"),
-          ]);
-        }
-
+      for (const dr of gs.rows) {
+        const qty     = parseFloat(String(dr.qty_puom ?? dr.qty ?? dr.quantity)) || 0;
+        const volume  = parseFloat(String(dr.volume))   || 0;
+        const grossWt = parseFloat(String(dr.gross_wt)) || 0;
         rows.push([
-          xc("Total For " + prd.prodCode + (prd.prodName ? " | " + prd.prodName : ""), "totalProd"),
-          skip, skip, skip, skip, skip,
-          xc(numFmt(prd.totalQty), "numTotalProd"),
-          xc(numFmt(prd.totalVolume, 3), "numTotalProd"),
+          xc(text(dr.grn_number)      || "\u2014", "value"),
+          xc(text(dr.job_no)          || "\u2014", "value"),
+          xc(dateText(dr.job_date),                "value"),
+          xc(dateText(dr.confirm_date),             "value"),
+          xc(dateText(dr.grn_date),                 "value"),
+          xc(text(dr.container_no)    || "\u2014", "value"),
+          xc(text(dr.container_size)  || "\u2014", "value"),
+          xc(numFmt(qty),                           "numValue"),
+          xc(numFmt(volume, 3),                     "numValue"),
+          xc(text(dr.pallet_id)       || "\u2014", "value"),
+          xc(numFmt(grossWt, 3),                    "numValue"),
+          xc(text(dr.user_id)         || "\u2014", "value"),
         ]);
       }
 
       rows.push([
         xc("Total For " + gs.groupName, "totalGroup"),
-        skip, skip, skip, skip, skip,
+        skip, skip, skip, skip, skip, skip,
         xc(numFmt(gs.totalQty), "numTotalGroup"),
         xc(numFmt(gs.totalVolume, 3), "numTotalGroup"),
+        skip,
+        xc(numFmt(gs.totalGrossWt, 3), "numTotalGroup"),
+        skip,
       ]);
     }
 
     rows.push([
       xc("Total For " + ps.prinCode + (ps.prinName ? " | " + ps.prinName : ""), "totalPrin"),
-      skip, skip, skip, skip, skip,
+      skip, skip, skip, skip, skip, skip,
       xc(numFmt(ps.totalQty), "numTotalPrin"),
       xc(numFmt(ps.totalVolume, 3), "numTotalPrin"),
+      skip,
+      xc(numFmt(ps.totalGrossWt, 3), "numTotalPrin"),
+      skip,
     ]);
   }
 
-  const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
-  const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
+  const grandQty     = prins.reduce((s, p) => s + p.totalQty,     0);
+  const grandVolume  = prins.reduce((s, p) => s + p.totalVolume,  0);
+  const grandGrossWt = prins.reduce((s, p) => s + p.totalGrossWt, 0);
   rows.push([
     xc("Grand Total", "totalGrand"),
-    skip, skip, skip, skip, skip,
+    skip, skip, skip, skip, skip, skip,
     xc(numFmt(grandQty), "numGrand"),
     xc(numFmt(grandVolume, 3), "numGrand"),
+    skip,
+    xc(numFmt(grandGrossWt, 3), "numGrand"),
+    skip,
   ]);
 
-  const COL_WIDTHS = [12, 14, 14, 18, 16, 16, 14, 14];
+  const COL_WIDTHS = [14, 14, 12, 12, 12, 16, 10, 10, 10, 12, 10, 12];
   const colXml = COL_WIDTHS.map((w, i) =>
     "<col min=\"" + (i + 1) + "\" max=\"" + (i + 1) + "\" width=\"" + w + "\" customWidth=\"1\"/>"
   ).join("");
+
+  const colLetter = (i: number) =>
+    i < 26 ? String.fromCharCode(65 + i) : "A" + String.fromCharCode(65 + i - 26);
 
   const merges: string[] = [];
   rows.forEach((row, ri) => {
@@ -601,8 +576,8 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
         let end = ci + 1;
         while (end < row.length && row[end] === null) end++;
         if (end - 1 > ci) {
-          const startCol = String.fromCharCode(65 + ci);
-          const endCol   = String.fromCharCode(65 + end - 1);
+          const startCol = colLetter(ci);
+          const endCol   = colLetter(end - 1);
           merges.push(startCol + rn + ":" + endCol + rn);
         }
         ci = end;
@@ -619,7 +594,7 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
     let rowXml = "<row r=\"" + rn + "\"" + ht + ">";
     row.forEach((cell, ci) => {
       if (cell === null) return;
-      const ref = String.fromCharCode(65 + ci) + rn;
+      const ref = colLetter(ci) + rn;
       if (typeof cell.v === "number") {
         rowXml += "<c r=\"" + ref + "\" s=\"" + cell.s + "\"><v>" + cell.v + "</v></c>";
       } else {
@@ -648,24 +623,22 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="8">
+  <fonts count="7">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF92400E"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF0F2040"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
-  <fills count="7">
+  <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFDCE4EF"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFC8D4E4"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFDE68A"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFA8B8D0"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
@@ -681,22 +654,19 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="15">
+  <cellXfs count="12">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="2" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1" indent="6"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1" indent="1"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="7" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
     <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="7" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -704,7 +674,7 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="DN Summary" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="GRN Summary" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -739,11 +709,6 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
 
 // ─── Route helpers ────────────────────────────────────────────────────────────
 
-// Pulls filter params from query (GET) or body (POST). Every field defaults
-// to "All" so a request with no filters at all — i.e. the very first load
-// when the page mounts — asks the SQL-builder proc for the entire dataset.
-// The proc already treats the literal "All" (case-insensitive) as "skip this
-// filter," so this is the single source of truth for that contract.
 function extractParams(req: RequestWithUser) {
   const src = { ...req.query, ...req.body };
   return {
@@ -756,18 +721,18 @@ function extractParams(req: RequestWithUser) {
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-export const getDnSummaryReportHtml = async (
+export const getGrnSummaryReportHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-    const reportTitle = text(req.query.title as string) || "Delivery Note Report (Summary)";
+    const reportTitle = text(req.query.title as string) || "GRN Report (Summary)";
     const autoPrint   = req.query.print === "true";
     const params      = extractParams(req);
-    console.log("DN Summary HTML params:", params);
-    console.log("DN summary req", req.body)
+    console.log("GRN Summary HTML params:", params);
+    console.log("GRN summary req", req.body)
 
-    const rows = await loadDnData(req, params);
+    const rows = await loadGrnData(req, params);
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
@@ -777,18 +742,18 @@ export const getDnSummaryReportHtml = async (
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint));
   } catch (error: any) {
-    console.error("DN Summary HTML error:", error);
+    console.error("GRN Summary HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
 
-export const getDnSummaryReportPdf = async (
+export const getGrnSummaryReportPdf = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows   = await loadDnData(req, params);
+    const rows   = await loadGrnData(req, params);
 
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
@@ -796,24 +761,24 @@ export const getDnSummaryReportPdf = async (
     }
 
     const prins = groupRows(rows);
-    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true);
+    const html  = renderHtml(prins, "GRN Report (Summary)", params.loginid, true);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Content-Disposition", "inline; filename=\"DN_Summary.pdf\"");
+    res.setHeader("Content-Disposition", "inline; filename=\"GRN_Summary.pdf\"");
     res.send(html);
   } catch (error: any) {
-    console.error("DN Summary PDF error:", error);
+    console.error("GRN Summary PDF error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
   }
 };
 
-export const getDnSummaryReportExcel = async (
+export const getGrnSummaryReportExcel = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows   = await loadDnData(req, params);
+    const rows   = await loadGrnData(req, params);
 
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
@@ -824,10 +789,10 @@ export const getDnSummaryReportExcel = async (
     const buffer = buildExcelBuffer(prins);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", "attachment; filename=\"DN_Summary.xlsx\"");
+    res.setHeader("Content-Disposition", "attachment; filename=\"GRN_Summary.xlsx\"");
     res.end(buffer);
   } catch (error: any) {
-    console.error("DN Summary Excel error:", error);
+    console.error("GRN Summary Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
   }
 };
