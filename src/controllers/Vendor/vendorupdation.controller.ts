@@ -1,4 +1,3 @@
-import { oracleDb } from "./../../../src/database/connection";
 import { QueryExecutor } from "../../database/QueryExecutor";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
@@ -234,6 +233,11 @@ async function sendDataToDotNetAPI(
       );
     }
 
+    // Header/detail transfer to the external .NET API is intentionally disabled.
+    // Uploaded files are still transferred and marked as transferred above.
+    return;
+
+    /*
     // Fetch all columns from TR_AC_LPO_HEADER
     const headerResult = await execMaybe(
       `SELECT 
@@ -432,6 +436,7 @@ async function sendDataToDotNetAPI(
     // Update DATA_TRANSFER flag
     await VendorService.updateDataTransferFlag(companyCode, docNo);
     console.log("Successfully updated data transfer flag");
+    */
   } catch (error) {
     console.error("Error in sendDataToDotNetAPI:", error);
     throw error;
