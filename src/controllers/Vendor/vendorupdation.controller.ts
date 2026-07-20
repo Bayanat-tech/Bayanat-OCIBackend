@@ -279,7 +279,7 @@ async function sendDataToDotNetAPI(
         NVL(REF_DOC2, '') AS REF_DOC2,
         NVL(REF_DOC3, '') AS REF_DOC3
       FROM VMS_FLOW_HDR
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES'`,
+      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES' AND NEXT_ACTION_BY = 'APPROVED'`,
       {
         companyCode: { val: companyCode },
         docNo: { val: docNo },
@@ -329,7 +329,7 @@ async function sendDataToDotNetAPI(
         NVL(TX_CAT_CODE, '') AS TX_CAT_CODE,
         NVL(TX_COMPNTCAT_CODE_1, '') AS TX_COMPNTCAT_CODE_1
       FROM VMS_FLOW_DTL
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND NEXT_ACTION_BY = 'APPROVED'`,
       {
         companyCode: { val: companyCode },
         docNo: { val: docNo },
@@ -1320,7 +1320,7 @@ export async function processSubmittedRecords(
       const recordsResult = await QueryExecutor.executeRawQuery(
         `SELECT COMPANY_CODE, DOC_NO 
          FROM VMS_FLOW_HDR
-         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y'
+         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y' AND NEXT_ACTION_BY = 'APPROVED'
          FETCH FIRST 1 ROWS ONLY`
       );
       records = recordsResult.rows || recordsResult;
