@@ -20,6 +20,12 @@ import {
   frtEnquiryActivityList,
   frtEnquiryActivitySave,
 } from "../../controllers/Freight/freightEnquiryActivityProcedures";
+import {
+  frtRfqDelete,
+  frtRfqGet,
+  frtRfqList,
+  frtRfqSave,
+} from "../../controllers/Freight/freightRfqProcedures";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
 
 const router = express.Router();
@@ -40,6 +46,11 @@ router.post("/enquiry/delete", frtEnquiryDelete);
 router.post("/enquiry-activities/list", frtEnquiryActivityList);
 router.post("/enquiry-activities/save", frtEnquiryActivitySave);
 router.post("/enquiry-activities/delete", frtEnquiryActivityDelete);
+
+router.post("/rfq/list", frtRfqList);
+router.post("/rfq/get", frtRfqGet);
+router.post("/rfq/save", frtRfqSave);
+router.post("/rfq/delete", frtRfqDelete);
 
 router.post(
   "/gm/proc_build_dynamic_sql_freight",

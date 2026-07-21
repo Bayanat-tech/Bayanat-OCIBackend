@@ -138,7 +138,7 @@ async function rowsFromCursor(cursor: any) {
   }
 }
 
-function toHeaderObject(header: Record<string, unknown>) {
+export function toHeaderObject(header: Record<string, unknown>) {
   return {
     ENQUIRY_NR: stringValue(header.enquiry_nr, "0"),
     ENQUIRY_DATE: toDate(header.enquiry_date),
@@ -198,7 +198,7 @@ function toHeaderObject(header: Record<string, unknown>) {
   };
 }
 
-function toDetailObject(row: Record<string, unknown>, header: Record<string, unknown>) {
+export function toDetailObject(row: Record<string, unknown>, header: Record<string, unknown>) {
   return {
     COMPANY_CODE: stringValue(row.company_code, stringValue(header.company_code)),
     PRIN_CODE: stringValue(row.prin_code, stringValue(header.prin_code)),
