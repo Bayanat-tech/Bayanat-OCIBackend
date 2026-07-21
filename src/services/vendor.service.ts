@@ -240,6 +240,15 @@ export class VendorService {
         data: response.data,
       });
 
+      if (response.status < 200 || response.status >= 300) {
+        const responseMessage =
+          response.data?.message ||
+          response.data?.error ||
+          response.statusText ||
+          `HTTP ${response.status}`;
+        throw new Error(`File-transfer API rejected the request: ${responseMessage}`);
+      }
+
       return response.data;
     } catch (error: any) {
       // Log detailed error information
@@ -342,6 +351,38 @@ export class VendorService {
       }
 
       throw error;
+    }
+  }
+
+  static async callAwareVmsEntry(
+    companyCode: string,
+    docNo: string,
+    userName: string = "SYSTEM"
+  ) {
+    try {
+      console.log(
+        `Calling PROC_AWARE_VMS_ENTRY for Company: ${companyCode}, Doc No: ${docNo}`
+      );
+
+      await oracleDb.query(
+        `BEGIN
+           WMSDEV.PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
+         END;`,
+        {
+          companyCode: { val: companyCode },
+          docNo: { val: Number(docNo) },
+          userName: { val: userName },
+        }
+      );
+
+      console.log("PROC_AWARE_VMS_ENTRY executed successfully");
+      return {
+        success: true,
+        message: "Data transferred via Oracle procedure",
+      };
+    } catch (error: any) {
+      console.error("Error in callAwareVmsEntry:", error);
+      throw new Error(`Oracle procedure failed: ${error.message}`);
     }
   }
 
