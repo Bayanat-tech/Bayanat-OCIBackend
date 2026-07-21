@@ -232,10 +232,48 @@ async function sendDataToDotNetAPI(
         transaction
       );
     }
+    // Header/detail transfer is handled by the Oracle procedure. The direct
+    console.log(
+      `Calling Oracle procedure PROC_AWARE_VMS_ENTRY for DOC_NO: ${docNo}`
+    );
+    try {
+      await VendorService.callAwareVmsEntry(companyCode, docNo, "SYSTEM");
+      console.log(
+        `Oracle procedure executed successfully for DOC_NO: ${docNo}`
+      );
+    } catch (spError: any) {
+      console.error(
+        `Oracle procedure PROC_AWARE_VMS_ENTRY failed for ${companyCode}/${docNo}:`,
+        spError
+      );
 
-    // Header/detail transfer to the external .NET API is intentionally disabled.
-    // Uploaded files are still transferred and marked as transferred above.
-    return;
+      const apiMessage = spError?.message || String(spError);
+      const notifPayload = {
+        event: "VENDOR_SP_ERROR",
+        message: `Stored procedure PROC_AWARE_VMS_ENTRY failed for Document ${docNo} (Company: ${companyCode}). Error: ${apiMessage}`,
+        subject: "Vendor SP Transfer Failed",
+        request_user:
+          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        cc: "prem@bayanattechnology.com",
+        htmlMessage: `
+          <h3>Vendor SP Transfer Failed</h3>
+          <p><strong>Company:</strong> ${escapeHtml(companyCode)}</p>
+          <p><strong>Document No:</strong> ${escapeHtml(docNo)}</p>
+          <pre>${escapeHtml(apiMessage)}</pre>
+        `,
+      };
+
+      try {
+        await notifyUser(notifPayload);
+      } catch (notifErr) {
+        console.error("notifyUser failed for SP error:", notifErr);
+      }
+
+      throw spError;
+    }
+
+    await VendorService.updateDataTransferFlag(companyCode, docNo);
+    console.log(`Successfully completed data transfer for DOC_NO: ${docNo}`);
 
     /*
     // Fetch all columns from TR_AC_LPO_HEADER
