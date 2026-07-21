@@ -174,6 +174,69 @@ LeaveDaysCount: async (params: {
     }
   },
 
+  LeaveExists: async (params: {
+    company_code: string;
+    employee_code: string;
+    leaveStartDate: string;
+    leaveEndDate: string;
+  }) => {
+    const { company_code, employee_code, leaveStartDate, leaveEndDate } = params;
+
+    const query = `
+      DECLARE
+        v_leave_exists NUMBER;
+      BEGIN
+        v_leave_exists := FUN_CHECK_LEAVE_EXIST_IN_AWARE(
+          :p_company_code,
+          :p_employee_code,
+          TO_DATE(:leaveStartDate, 'MM-DD-YYYY'),
+          TO_DATE(:leaveEndDate, 'MM-DD-YYYY')
+        );
+        :p_leave_exists := v_leave_exists;
+      END;
+    `;
+
+    const bindParams = {
+      p_company_code: company_code,
+      p_employee_code: employee_code,
+      leaveStartDate: leaveStartDate,
+      leaveEndDate: leaveEndDate,
+      p_leave_exists: {
+        dir: oracledb.BIND_OUT,
+        type: oracledb.NUMBER,
+      },
+    };
+
+    try {
+      const result = await oracleDb.query(query, bindParams);
+      const leaveCount = (result.outBinds as any).p_leave_exists;
+      const leaveExists = leaveCount > 0;
+
+      return {
+        success: leaveExists, // true = leave exists (block submit), false = no leave found (allow submit)
+        queryFailed: false,
+        leaveStartDate,
+        leaveEndDate,
+        company_code,
+        employee_code,
+        message: leaveExists
+          ? "Leave already exists for the selected date range. Please choose different dates."
+          : "No existing leave found for the selected date range.",
+      };
+    } catch (error: any) {
+      console.error("Error checking leave existence:", error);
+      return {
+        success: false,
+        queryFailed: true, // distinguishes "DB/query failed" from "no leave found"
+        leaveStartDate,
+        leaveEndDate,
+        company_code,
+        employee_code,
+        message: "Failed to check leave existence. Please try again.",
+      };
+    }
+  },
+
 newValidaterequest: async(params: {
   leaveStartDate: string;
   employeeId: string;

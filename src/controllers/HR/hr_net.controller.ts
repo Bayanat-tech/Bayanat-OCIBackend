@@ -40,6 +40,28 @@ export const leaveDaysCntHandler = async (req: Request, res: Response) => {
   }
 };
 
+export const leaveExistsHandler = async (req: Request, res: Response) => {
+  try {
+    const {
+      company_code,
+      employee_code,
+      leaveStartDate,
+      leaveEndDate,
+    } = req.query;
+
+    const data = await HrService.LeaveExists({
+      company_code: company_code as string,
+      employee_code: employee_code as string,
+      leaveStartDate: leaveStartDate as string,
+      leaveEndDate: leaveEndDate as string,
+    });
+
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const getLeaveBalanceHandler = async (req: Request, res: Response) => {
   try {
     const { employeeId } = req.params;
