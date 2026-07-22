@@ -557,8 +557,9 @@ async function upsertLpoRequest(data: TVendorMain, req: Request) {
     );
     const LAST_ACTION =
       result.rows?.[0]?.FINAL_APPROVED || result[0]?.FINAL_APPROVED;
+    const NEXT_ACTION_BY = result.rows?.[0]?.NEXT_ACTION_BY || "";
 
-    if (LAST_ACTION === "YES") {
+    if (LAST_ACTION === "YES" && NEXT_ACTION_BY === "APPROVED") {
       console.log(
         `Sending data to .NET API for DOC_NO: ${generatedRequestNumber}`
       );
