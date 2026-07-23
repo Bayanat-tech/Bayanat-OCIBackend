@@ -37,6 +37,10 @@ import {
   frtQuotationList,
   frtQuotationSave,
 } from "../../controllers/Freight/freightQuotationProcedures";
+import {
+  frtJobSearch,
+  frtWorkspaceSummary,
+} from "../../controllers/Freight/freightWorkspaceProcedures";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
 
 const router = express.Router();
@@ -71,6 +75,9 @@ router.post("/quotation/list", frtQuotationList);
 router.post("/quotation/get", frtQuotationGet);
 router.post("/quotation/save", frtQuotationSave);
 router.post("/quotation/delete", frtQuotationDelete);
+
+router.post("/workspace/summary", frtWorkspaceSummary);
+router.post("/workspace/job-search", frtJobSearch);
 
 router.post(
   "/gm/proc_build_dynamic_sql_freight",
