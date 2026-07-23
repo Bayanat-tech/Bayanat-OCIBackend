@@ -106,6 +106,32 @@ export const frtEnquiryDelete = async (req: Request, res: Response): Promise<voi
   });
 };
 
+export const frtEnquiryCancel = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    await connection.execute(
+      `BEGIN
+         PROC_FRT_ENQUIRY_CANCEL(
+           :p_company_code,
+           :p_enquiry_type,
+           :p_enquiry_nr,
+           :p_cancel_by,
+           :p_cancel_remarks
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_enquiry_type: req.body.enquiry_type ?? req.body.ENQUIRY_TYPE ?? "EQI",
+        p_enquiry_nr: req.body.enquiry_nr ?? req.body.ENQUIRY_NR,
+        p_cancel_by: req.body.cancel_by ?? req.body.CANCEL_BY ?? req.body.userid ?? req.body.USERID,
+        p_cancel_remarks: req.body.cancel_remarks ?? req.body.CANCEL_REMARKS,
+      },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "Enquiry cancelled successfully" });
+  });
+};
+
 async function withConnection(res: Response, handler: (connection: Connection) => Promise<void>) {
   let connection: Connection | undefined;
   try {
