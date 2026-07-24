@@ -10,10 +10,18 @@ export const frtRfqList = async (req: Request, res: Response): Promise<void> => 
   await withConnection(res, async (connection) => {
     const result = await connection.execute(
       `BEGIN
-         PROC_FRT_RFQ_LIST(:p_company_code, :p_search, :p_from_date, :p_to_date, :p_result);
+         PROC_FRT_ENQUIRY_LIST(
+           :p_company_code,
+           :p_enquiry_type,
+           :p_search,
+           :p_from_date,
+           :p_to_date,
+           :p_result
+         );
        END;`,
       {
         p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_enquiry_type: "RFQ",
         p_search: req.body.search ?? null,
         p_from_date: toDate(req.body.from_date),
         p_to_date: toDate(req.body.to_date),
@@ -31,10 +39,17 @@ export const frtRfqGet = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const result = await connection.execute(
       `BEGIN
-         PROC_FRT_RFQ_GET(:p_company_code, :p_rfq_nr, :p_header, :p_details);
+         PROC_FRT_ENQUIRY_GET(
+           :p_company_code,
+           :p_enquiry_type,
+           :p_rfq_nr,
+           :p_header,
+           :p_details
+         );
        END;`,
       {
         p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_enquiry_type: "RFQ",
         p_rfq_nr: req.body.enquiry_nr ?? req.body.rfq_nr ?? req.body.RFQ_NR,
         p_header: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
         p_details: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
@@ -60,7 +75,7 @@ export const frtRfqSave = async (req: Request, res: Response): Promise<void> => 
     const rfqHeader = { ...header, enquiry_type: "RFQ" };
     const result = await connection.execute(
       `BEGIN
-         PROC_FRT_RFQ_SAVE(:p_header, :p_details, :p_rfq_nr_out);
+         PROC_FRT_ENQUIRY_SAVE(:p_header, :p_details, :p_rfq_nr_out);
        END;`,
       {
         p_header: { type: "FRT_ENQUIRY_HDR_TAB", val: [toHeaderObject(rfqHeader)] },
@@ -79,10 +94,11 @@ export const frtRfqDelete = async (req: Request, res: Response): Promise<void> =
   await withConnection(res, async (connection) => {
     await connection.execute(
       `BEGIN
-         PROC_FRT_RFQ_DELETE(:p_company_code, :p_rfq_nr);
+         PROC_FRT_ENQUIRY_DELETE(:p_company_code, :p_enquiry_type, :p_rfq_nr);
        END;`,
       {
         p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_enquiry_type: "RFQ",
         p_rfq_nr: req.body.enquiry_nr ?? req.body.rfq_nr ?? req.body.RFQ_NR,
       },
       { autoCommit: true }

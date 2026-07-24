@@ -10,6 +10,7 @@ import {
   proc_build_dynamic_sql_FREIGHT,
 } from "../../controllers/Freight/freightDynamicProcedures";
 import {
+  frtEnquiryApprove,
   frtEnquiryCancel,
   frtEnquiryDelete,
   frtEnquiryGet,
@@ -33,11 +34,19 @@ import {
   frtRfqActivitySave,
 } from "../../controllers/Freight/freightRfqActivityProcedures";
 import {
+  frtQuotationApprove,
   frtQuotationDelete,
   frtQuotationGet,
   frtQuotationList,
   frtQuotationSave,
 } from "../../controllers/Freight/freightQuotationProcedures";
+import {
+  frtAirlineTariffDelete,
+  frtAirlineTariffGet,
+  frtAirlineTariffList,
+  frtAirlineTariffReport,
+  frtAirlineTariffSave,
+} from "../../controllers/Freight/freightAirlineTariffProcedures";
 import {
   frtJobSearch,
   frtWorkspaceSummary,
@@ -57,6 +66,7 @@ router.post(
 router.post("/enquiry/list", frtEnquiryList);
 router.post("/enquiry/get", frtEnquiryGet);
 router.post("/enquiry/save", frtEnquirySave);
+router.post("/enquiry/approve", frtEnquiryApprove);
 router.post("/enquiry/cancel", frtEnquiryCancel);
 router.post("/enquiry/delete", frtEnquiryDelete);
 
@@ -67,6 +77,7 @@ router.post("/enquiry-activities/delete", frtEnquiryActivityDelete);
 router.post("/rfq/list", frtRfqList);
 router.post("/rfq/get", frtRfqGet);
 router.post("/rfq/save", frtRfqSave);
+router.post("/rfq/approve", frtEnquiryApprove);
 router.post("/rfq/cancel", frtEnquiryCancel);
 router.post("/rfq/delete", frtRfqDelete);
 
@@ -77,7 +88,14 @@ router.post("/rfq-activities/delete", frtRfqActivityDelete);
 router.post("/quotation/list", frtQuotationList);
 router.post("/quotation/get", frtQuotationGet);
 router.post("/quotation/save", frtQuotationSave);
+router.post("/quotation/approve", frtQuotationApprove);
 router.post("/quotation/delete", frtQuotationDelete);
+
+router.post("/airline-tariff/list", frtAirlineTariffList);
+router.post("/airline-tariff/get", frtAirlineTariffGet);
+router.post("/airline-tariff/save", frtAirlineTariffSave);
+router.post("/airline-tariff/delete", frtAirlineTariffDelete);
+router.post("/airline-tariff/report", frtAirlineTariffReport);
 
 router.post("/workspace/summary", frtWorkspaceSummary);
 router.post("/workspace/job-search", frtJobSearch);

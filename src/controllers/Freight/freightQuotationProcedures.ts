@@ -108,6 +108,32 @@ export const frtQuotationDelete = async (req: Request, res: Response): Promise<v
   });
 };
 
+export const frtQuotationApprove = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    await connection.execute(
+      `BEGIN
+         PROC_FRT_QUOTATION_APPROVE(
+           :p_company_code,
+           :p_prin_code,
+           :p_quotation_nr,
+           :p_approved_by,
+           :p_approval_remarks
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
+        p_quotation_nr: req.body.quotation_nr ?? req.body.QUOTATION_NR,
+        p_approved_by: req.body.approved_by ?? req.body.APPROVED_BY ?? req.body.userid ?? req.body.USERID,
+        p_approval_remarks: req.body.approval_remarks ?? req.body.APPROVAL_REMARKS,
+      },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "Quotation approved successfully" });
+  });
+};
+
 async function withConnection(res: Response, handler: (connection: Connection) => Promise<void>) {
   let connection: Connection | undefined;
   try {
