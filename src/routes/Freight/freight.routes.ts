@@ -51,6 +51,46 @@ import {
   frtJobSearch,
   frtWorkspaceSummary,
 } from "../../controllers/Freight/freightWorkspaceProcedures";
+import {
+  frtJobCancel,
+  frtJobGet,
+  frtJobList,
+  frtJobSave,
+} from "../../controllers/Freight/freightJobProcedures";
+import {
+  frtPacklistDelete,
+  frtPacklistGet,
+  frtPacklistJobs,
+  frtPacklistList,
+  frtPacklistSave,
+} from "../../controllers/Freight/freightPacklistProcedures";
+import {
+  frtJobActivityConfirm,
+  frtJobActivityDelete,
+  frtJobActivityGet,
+  frtJobActivityJobList,
+  frtJobActivitySave,
+} from "../../controllers/Freight/freightJobActivityProcedures";
+import {
+  frtJobAlertCodeList,
+  frtJobAlertDelete,
+  frtJobAlertInit,
+  frtJobAlertList,
+  frtJobAlertSave,
+  frtJobDepositDelete,
+  frtJobDepositList,
+  frtJobDepositSave,
+  frtJobDocDelete,
+  frtJobDocInit,
+  frtJobDocList,
+  frtJobDocSave,
+  frtJobInstructionCodeList,
+  frtJobInstructionDelete,
+  frtJobInstructionInit,
+  frtJobInstructionList,
+  frtJobInstructionSave,
+} from "../../controllers/Freight/freightJobFollowupProcedures";
+import { frtReportRun } from "../../controllers/Freight/freightReportProcedures";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
 
 const router = express.Router();
@@ -96,6 +136,46 @@ router.post("/airline-tariff/get", frtAirlineTariffGet);
 router.post("/airline-tariff/save", frtAirlineTariffSave);
 router.post("/airline-tariff/delete", frtAirlineTariffDelete);
 router.post("/airline-tariff/report", frtAirlineTariffReport);
+
+router.post("/job/list", frtJobList);
+router.post("/job/get", frtJobGet);
+router.post("/job/save", frtJobSave);
+router.post("/job/cancel", frtJobCancel);
+
+router.post("/packlist/jobs", frtPacklistJobs);
+router.post("/packlist/list", frtPacklistList);
+router.post("/packlist/get", frtPacklistGet);
+router.post("/packlist/save", frtPacklistSave);
+router.post("/packlist/delete", frtPacklistDelete);
+
+router.post("/job-activities/jobs", frtJobActivityJobList);
+router.post("/job-activities/get", frtJobActivityGet);
+router.post("/job-activities/save", frtJobActivitySave);
+router.post("/job-activities/delete", frtJobActivityDelete);
+router.post("/job-activities/confirm", frtJobActivityConfirm);
+
+router.post("/job-documents/list", frtJobDocList);
+router.post("/job-documents/init", frtJobDocInit);
+router.post("/job-documents/save", frtJobDocSave);
+router.post("/job-documents/delete", frtJobDocDelete);
+
+router.post("/job-instructions/codes", frtJobInstructionCodeList);
+router.post("/job-instructions/list", frtJobInstructionList);
+router.post("/job-instructions/init", frtJobInstructionInit);
+router.post("/job-instructions/save", frtJobInstructionSave);
+router.post("/job-instructions/delete", frtJobInstructionDelete);
+
+router.post("/job-alerts/codes", frtJobAlertCodeList);
+router.post("/job-alerts/list", frtJobAlertList);
+router.post("/job-alerts/init", frtJobAlertInit);
+router.post("/job-alerts/save", frtJobAlertSave);
+router.post("/job-alerts/delete", frtJobAlertDelete);
+
+router.post("/job-deposits/list", frtJobDepositList);
+router.post("/job-deposits/save", frtJobDepositSave);
+router.post("/job-deposits/delete", frtJobDepositDelete);
+
+router.post("/reports/run", frtReportRun);
 
 router.post("/workspace/summary", frtWorkspaceSummary);
 router.post("/workspace/job-search", frtJobSearch);
