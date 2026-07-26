@@ -12,19 +12,16 @@ router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
 router.post(
-  "/insUpdTtePQuotationBulk",
-  insUpdTtePQuotationBulk 
+  "/insUpdTtePOrderBulk",
+  insUpdTtePOrderBulk
 );
-
 
 router.post(
-  "/insUpdTtePOrderBulk",
-  insUpdTtePOrderBulk 
+  "/insUpdTtePQuotationBulk",
+  insUpdTtePQuotationBulk
 );
 
-
-
- export default router;
+export default router;
 
 
 
