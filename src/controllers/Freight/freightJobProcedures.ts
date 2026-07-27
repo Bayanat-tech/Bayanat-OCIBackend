@@ -64,7 +64,6 @@ export const frtJobGet = async (req: Request, res: Response): Promise<void> => {
 export const frtJobSave = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const job = req.body.job ?? req.body.header ?? req.body;
-    const pack = req.body.packlist ?? {};
     const result = await connection.execute(
       `BEGIN
          PROC_FRT_JOB_SAVE(
@@ -98,23 +97,6 @@ export const frtJobSave = async (req: Request, res: Response): Promise<void> => 
            :p_ref_customs,
            :p_remarks,
            :p_user_id,
-           :p_shipper_name,
-           :p_shipper_address,
-           :p_consignee_name,
-           :p_consignee_address,
-           :p_notify_name,
-           :p_notify_address,
-           :p_cargo_details,
-           :p_no_of_packings,
-           :p_quantity,
-           :p_puom,
-           :p_volume,
-           :p_gross_wt,
-           :p_charge_wt,
-           :p_container_no,
-           :p_container_size,
-           :p_container_type,
-           :p_bl_no,
            :p_job_no_out
          );
        END;`,
@@ -149,23 +131,6 @@ export const frtJobSave = async (req: Request, res: Response): Promise<void> => 
         p_ref_customs: value(job.ref_customs ?? job.REF_CUSTOMS),
         p_remarks: value(job.remarks ?? job.REMARKS),
         p_user_id: value(job.user_id ?? job.USER_ID ?? req.body.user_id ?? req.body.USER_ID),
-        p_shipper_name: value(pack.shipper_name ?? pack.SHIPPER_NAME),
-        p_shipper_address: value(pack.shipper_address ?? pack.SHIPPER_ADDRESS),
-        p_consignee_name: value(pack.consignee_name ?? pack.CONSIGNEE_NAME),
-        p_consignee_address: value(pack.consignee_address ?? pack.CONSIGNEE_ADDRESS),
-        p_notify_name: value(pack.notify_name ?? pack.NOTIFY_NAME),
-        p_notify_address: value(pack.notify_address ?? pack.NOTIFY_ADDRESS),
-        p_cargo_details: value(pack.cargo_details ?? pack.CARGO_DETAILS),
-        p_no_of_packings: numberValue(pack.no_of_packings ?? pack.NO_OF_PACKINGS),
-        p_quantity: numberValue(pack.quantity ?? pack.QUANTITY),
-        p_puom: value(pack.puom ?? pack.PUOM),
-        p_volume: numberValue(pack.volume ?? pack.VOLUME),
-        p_gross_wt: numberValue(pack.gross_wt ?? pack.GROSS_WT),
-        p_charge_wt: numberValue(pack.charge_wt ?? pack.CHARGE_WT),
-        p_container_no: value(pack.container_no ?? pack.CONTAINER_NO),
-        p_container_size: value(pack.container_size ?? pack.CONTAINER_SIZE),
-        p_container_type: value(pack.container_type ?? pack.CONTAINER_TYPE),
-        p_bl_no: value(pack.bl_no ?? pack.BL_NO),
         p_job_no_out: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 30 },
       },
       { autoCommit: true }
