@@ -209,11 +209,11 @@ LeaveDaysCount: async (params: {
 
     try {
       const result = await oracleDb.query(query, bindParams);
-      const leaveCount = (result.outBinds as any).p_leave_exists;
-      const leaveExists = leaveCount > 0;
+       const leaveResultCode = (result.outBinds as any).p_leave_exists;
+      const leaveExists = leaveResultCode === -1;
 
       return {
-        success: leaveExists, // true = leave exists (block submit), false = no leave found (allow submit)
+        success: leaveExists,
         queryFailed: false,
         leaveStartDate,
         leaveEndDate,
