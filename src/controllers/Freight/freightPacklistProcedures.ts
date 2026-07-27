@@ -91,7 +91,7 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
     const pack = req.body.packlist ?? req.body;
     const result = await connection.execute(
       `BEGIN
-         PROC_FRT_PACKLIST_SAVE(
+         WMSTST.PROC_FRT_PACKLIST_SAVE(
            :p_company_code,
            :p_prin_code,
            :p_job_no,
@@ -199,7 +199,7 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
         p_teus: numberValue(pack.teus ?? pack.TEUS),
         p_bl_mode: value(pack.bl_mode ?? pack.BL_MODE),
         p_container_no: value(pack.container_no ?? pack.CONTAINER_NO),
-        p_container_size: value(pack.container_size ?? pack.CONTAINER_SIZE),
+        p_container_size: numberValue(pack.container_size ?? pack.CONTAINER_SIZE),
         p_container_type: value(pack.container_type ?? pack.CONTAINER_TYPE),
         p_vessel_name: value(pack.vessel_name ?? pack.VESSEL_NAME),
         p_voyage_no: value(pack.voyage_no ?? pack.VOYAGE_NO),
