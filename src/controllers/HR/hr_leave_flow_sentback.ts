@@ -15,15 +15,17 @@ export const getRequestFlowUsers = async (
     const { loginId } = req.query;
 
     const dynamic_Ceoid =`SELECT d.LEAVE_FINAL_APPROVER
-            FROM MS_HR_DEPARTMENT d
-            JOIN MS_HR_EMPLOYEE e
+            FROM MS_HR_DEPARTMENT_AWARE d
+            JOIN VW_MS_HR_EMPLOYEE_AWARE e
               ON d.DIV_CODE = e.DIV_CODE
              AND d.DEPT_CODE = e.DEPT_CODE
-            WHERE e.EMPLOYEE_ID = ${loginId}`
+            WHERE e.EMPLOYEE_ID =  (SELECT EMPLOYEE_CODE FROM LEAVE_REQUEST_FLOW WHERE REQUEST_NUMBER = :doc_id)`
             
-    const ceoResult = await oracleDb.query(dynamic_Ceoid);
+    const ceoResult = await oracleDb.query(dynamic_Ceoid, { doc_id });
     const CEO_CODE = ceoResult.rows?.[0]?.LEAVE_FINAL_APPROVER || "00001";
 
+    console.log('CEO_CODE',CEO_CODE ,'ceoResult',ceoResult);
+    
     const leaveInfoQuery = `
       SELECT LEAVE_TYPE, LEAVE_DAYS
       FROM VW_HR_LEAVE_REQUEST_FLOW
@@ -36,8 +38,7 @@ export const getRequestFlowUsers = async (
 
     const isCeoFlow =
       leaveData &&
-      ["AL", "ANNUAL"].includes(String(leaveData.LEAVE_TYPE).toUpperCase()) &&
-      Number(leaveData.LEAVE_DAYS) < 20;
+      ["AL", "ANNUAL"].includes(String(leaveData.LEAVE_TYPE).toUpperCase());
 
     console.log("CEO FLOW:", isCeoFlow);
     console.log("All query parameters:", req.query);
