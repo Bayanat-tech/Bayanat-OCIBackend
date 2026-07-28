@@ -5,10 +5,9 @@ import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types No group────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
-
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -35,6 +34,14 @@ function normalize(rows: any[] = []): ReportRow[] {
 }
 
 // ─── Formatting helpers ───────────────────────────────────────────────────────
+function getAdjustmentNo(req: RequestWithUser): string {
+  return text(
+    req.params.adjNo ||
+    req.params.adj_no ||
+    req.query.adjNo ||
+    req.query.adj_no
+  ).trim();
+}
 
 function text(value: unknown): string {
   if (value == null) return "";
@@ -42,18 +49,18 @@ function text(value: unknown): string {
 }
 
 function dateTimeText(value: unknown): string {
-  if (!value) return "—";
-  const d = new Date(String(value));
-  if (Number.isNaN(d.getTime())) return String(value);
+  if (value === null || value === undefined || text(value).trim() === "") {
+    return "";
+  }
 
-  return d.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const d = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(d.getTime())) return text(value).trim();
+
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+
+  return `${day}/${month}/${year}`;
 }
 
 function escapeHtml(value: unknown): string {
@@ -83,12 +90,12 @@ function isConfirmed(value: unknown): boolean {
 }
 
 function confirmedYesNo(value: unknown): string {
-  if (text(value).trim() === "") return "—";
+  if (text(value).trim() === "") return "";
   return isConfirmed(value) ? "Yes" : "No";
 }
 
 function detailStatus(value: unknown): string {
-  if (text(value).trim() === "") return "—";
+  if (text(value).trim() === "") return "";
   return isConfirmed(value) ? "Confirmed" : "Not Confirmed";
 }
 
@@ -99,13 +106,22 @@ function principalDisplay(row: ReportRow, fallbackPrinCode: string): string {
 }
 
 function countryDisplay(row: ReportRow): string {
-  const countryCode = text(row.country_code);
-  const countryName = text(row.country_name);
+  const countryCode = text(row.country_code).trim();
+  const countryName = text(row.country_name).trim();
 
-  if (countryCode && countryName)
-    return `${countryCode} - ${countryName}`;
+  if (countryCode && countryName) return `${countryCode} - ${countryName}`;
+  return countryName || countryCode || "";
+}
 
-  return countryName || countryCode || "—";
+function manufacturerDisplay(row: ReportRow): string {
+  const manufacturerCode = text(row.manu_code).trim();
+  const manufacturerName = text(row.manu_name).trim();
+
+  if (manufacturerCode && manufacturerName) {
+    return `${manufacturerCode} - ${manufacturerName}`;
+  }
+
+  return manufacturerName || manufacturerCode || "";
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -167,12 +183,11 @@ async function loadAdjustmentData(
        LEFT JOIN MS_COUNTRY co
          ON co.COMPANY_CODE = mf.COMPANY_CODE
         AND co.COUNTRY_CODE = mf.COUNTRY_CODE
-       WHERE ah.COMPANY_CODE = :company_code
+       WHERE ah.COMPANY_CODE = '${req.user.company_code}'
          AND ah.PRIN_CODE    = :prin_code
          AND ah.ADJ_NO       = :adj_no
        ORDER BY ad.ADJ_SERIALNO ASC`,
       {
-        company_code: req.user.company_code,
         prin_code: prinCode,
         adj_no: adjNo,
       },
@@ -199,369 +214,652 @@ function renderHtml(
   loginId: string,
   autoPrint: boolean
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+  const printDate = dateTimeText(new Date());
 
   const r = firstRow || {};
+  const header = r;
+  const documentTitle = autoPrint
+    ? `Stock_Adjusment_${adjNo}`
+    : `${reportTitle} - ${adjNo}`;
+  const headerConfirmed = confirmedYesNo(r.header_confirmed);
+  const headerStatusClass = isConfirmed(r.header_confirmed)
+    ? "confirmed"
+    : headerConfirmed
+      ? "not-confirmed"
+      : "empty";
+
   let bodyRows = "";
 
   for (const row of rows) {
     const serialNo = parseInt(text(row.adj_serialno), 10) || 0;
+    const statusText = detailStatus(row.detail_confirmed);
+    const statusClass = isConfirmed(row.detail_confirmed)
+      ? "confirmed"
+      : statusText
+        ? "not-confirmed"
+        : "empty";
 
     bodyRows += `
-      <tr class="data-row">
-        <td class="num">${escapeHtml(serialNo || "")}</td>
-        <td>${escapeHtml(text(row.site_code) || "—")}</td>
-        <td>${escapeHtml(text(row.location_code) || "—")}</td>
-        <td>${escapeHtml(text(row.prod_code) || "—")}</td>
-        <td>${escapeHtml(text(row.job_no) || "—")}</td>
-        <td>${escapeHtml(text(row.lot_no) || "—")}</td>
-        <td>${escapeHtml(text(row.doc_ref) || "—")}</td>
-        <td>${escapeHtml(text(row.adj_type) || "—")}</td>
-        <td>${escapeHtml(text(row.p_uom) || "—")}</td>
-        <td class="num">${escapeHtml(quantityText(row.qty_puom))}</td>
-        <td>${escapeHtml(text(row.l_uom) || "—")}</td>
-        <td class="num">${escapeHtml(quantityText(row.qty_luom))}</td>
-      </tr>
+      <tbody class="item-block">
+        <tr class="main-row">
+          <td class="cell-center serial-cell">${escapeHtml(serialNo || "")}</td>
+          <td class="cell-center">${escapeHtml(text(row.site_code).trim())}</td>
+          <td>${escapeHtml(text(row.location_code).trim())}</td>
+          <td class="product-code">${escapeHtml(text(row.prod_code).trim())}</td>
+          <td>${escapeHtml(text(row.job_no).trim())}</td>
+          <td>${escapeHtml(text(row.lot_no).trim())}</td>
+          <td>${escapeHtml(text(row.doc_ref).trim())}</td>
+          <td class="cell-center adj-type">${escapeHtml(text(row.adj_type).trim())}</td>
+          <td class="cell-center">${escapeHtml(text(row.p_uom).trim())}</td>
+          <td class="cell-number">${escapeHtml(quantityText(row.qty_puom))}</td>
+          <td class="cell-center">${escapeHtml(text(row.l_uom).trim())}</td>
+          <td class="cell-number">${escapeHtml(quantityText(row.qty_luom))}</td>
+        </tr>
 
-      <tr class="data-row">
-        <td></td>
-        <td colspan="2"></td>
-        <td colspan="5">${escapeHtml(text(row.prod_name) || "—")}</td>
-        <td colspan="4"><strong>Status:</strong>&nbsp;&nbsp;${escapeHtml(detailStatus(row.detail_confirmed))}</td>
-      </tr>
+        <tr class="description-row">
+          <td></td>
+          <td colspan="2"></td>
+          <td colspan="5" class="product-name">
+            ${escapeHtml(text(row.prod_name).trim())}
+          </td>
+          <td colspan="4" class="status-cell">
+            <span class="detail-label-inline">Status</span>
+            <span class="status-pill ${statusClass}">${escapeHtml(statusText)}</span>
+          </td>
+        </tr>
 
-      <tr class="data-row">
-        <td></td>
-        <td colspan="2"><strong>Country Of Origin:</strong></td>
-        <td colspan="9">${escapeHtml(countryDisplay(row))}</td>
-      </tr>
+        <tr class="detail-row">
+          <td></td>
+          <td colspan="2" class="detail-label">Country of Origin</td>
+          <td colspan="9" class="detail-value">${escapeHtml(countryDisplay(row))}</td>
+        </tr>
 
-      <tr class="data-row">
-        <td></td>
-        <td colspan="2"><strong>Manufacturer:</strong></td>
-        <td>${escapeHtml(text(row.manu_code) || "—")}</td>
-        <td colspan="8">${escapeHtml(text(row.manu_name) || "—")}</td>
-      </tr>`;
+        <tr class="detail-row item-last-row">
+          <td></td>
+          <td colspan="2" class="detail-label">Manufacturer</td>
+          <td colspan="9" class="detail-value">${escapeHtml(manufacturerDisplay(row))}</td>
+        </tr>
+      </tbody>`;
   }
 
   if (!bodyRows) {
     bodyRows = `
-      <tr class="data-row">
-        <td colspan="12">No adjustment details found.</td>
-      </tr>`;
+      <tbody>
+        <tr class="empty-row">
+          <td colspan="12">No adjustment details found.</td>
+        </tr>
+      </tbody>`;
   }
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(adjNo)}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>${escapeHtml(documentTitle)}</title>
   <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1f3e64;
+      --navy-dark: #162f4f;
+      --navy-soft: #eef3f8;
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #d7dee8;
+      --line-strong: #b8c4d2;
+      --paper: #ffffff;
+      --canvas: #eef2f7;
+      --success-bg: #e8f5ee;
+      --success-text: #17603a;
+      --danger-bg: #fdecec;
+      --danger-text: #a83232;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 8mm 10mm;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
+      font-size: 11px;
+      line-height: 1.35;
+      color: var(--ink);
+      background: var(--canvas);
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+
     .sheet {
       width: 277mm;
       min-height: 190mm;
-      margin: 0 auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
+      margin: 12px auto;
+      padding: 9mm 10mm 8mm;
+      background: var(--paper);
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
     }
 
-    /* ── Report header banner ── */
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
+    .report-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 16px;
+      color: #ffffff;
+      background: var(--navy);
+      border-radius: 3px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-transform: uppercase;
     }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 6px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
 
-    /* ── Job header block (flat label : value, no box) ── */
-    .job-header {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0 16px;
-      margin-bottom: 10px;
-      padding: 8px 0 10px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 11px;
+    .report-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      min-height: 28px;
+      padding: 5px 2px 6px;
+      color: var(--muted);
+      font-size: 9.5px;
+      border-bottom: 1px solid #edf1f5;
     }
-    .job-col { display: flex; flex-direction: column; gap: 3px; }
-    .job-row { display: flex; align-items: baseline; gap: 6px; line-height: 1.6; }
-    .job-label {
-      font-size: 10.5px;
-      color: #6b7280;
-      white-space: nowrap;
-    }
-    .job-label::after { content: ":"; }
-    .job-value {
-      font-size: 11px;
+
+    .report-meta strong {
+      color: var(--ink);
       font-weight: 700;
-      color: #111827;
     }
-    .job-value.nil { font-weight: 400; color: #9ca3af; }
 
-    /* ── Data table ── */
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
-    col.c0  { width: 8%;  } col.c1  { width: 8%;  } col.c2  { width: 9%;  }
-    col.c3  { width: 9%;  } col.c4  { width: 7%;  } col.c5  { width: 7%;  }
-    col.c6  { width: 14%; } col.c7  { width: 11%; }
-    col.c8  { width: 14%; } col.c9  { width: 13%; }
-
-    thead tr.th-group th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 6px 10px; text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
-      border-bottom: 1px solid rgba(255,255,255,0.12);
+    .header-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(190px, 0.75fr) minmax(190px, 0.8fr);
+      gap: 18px;
+      margin: 8px 0 10px;
+      padding: 9px 12px;
+      background: #f8fafc;
+      border: 1px solid #e1e7ef;
+      border-left: 4px solid var(--navy);
+      border-radius: 3px;
     }
-    thead tr.th-group th:last-child { border-right: none; }
-    thead tr.th-sub th {
-      background: #162d4a; color: #cbd5e1; font-weight: 600;
-      font-size: 9.5px; padding: 5px 10px; text-align: left;
-      border-right: 1px solid rgba(255,255,255,0.10);
+
+    .header-column {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 104px minmax(0, 1fr);
+      align-items: baseline;
+      gap: 7px;
+      min-height: 18px;
+    }
+
+    .header-column.compact .info-row {
+      grid-template-columns: 72px minmax(0, 1fr);
+    }
+
+    .info-label {
+      color: var(--muted);
+      font-size: 10px;
       white-space: nowrap;
     }
-    thead tr.th-sub th.num { text-align: right; }
 
-    tr.group-row td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    tr.prod-row td {
-      background: #e8ecf2; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 4px 10px 4px 22px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid #d5dce8;
-    }
-    tr.prod-row td.prod-asn {
-      background: #e8ecf2; color: #374151; font-weight: 600;
-      padding-left: 10px; text-align: right; font-size: 10.5px;
+    .info-label::after {
+      content: ":";
     }
 
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
-      vertical-align: top;
-    }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    td.dim  { color: #9ca3af !important; font-weight: 400; }
-    td.short  { color: #dc2626 !important; font-weight: 700; }
-    td.excess { color: #16a34a !important; font-weight: 700; }
-
-    tr.group-total td {
-      background: #d5dce8; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
+    .info-value {
+      min-width: 0;
+      color: var(--ink);
+      font-size: 10.5px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
     }
 
-    /* ── Footer ── */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 19px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 9.5px;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .status-pill.confirmed {
+      color: var(--success-text);
+      background: var(--success-bg);
+      border: 1px solid #c8e7d5;
+    }
+
+    .status-pill.not-confirmed {
+      color: var(--danger-text);
+      background: var(--danger-bg);
+      border: 1px solid #f1caca;
+    }
+
+    .status-pill.empty {
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .table-frame {
+      border: 1px solid var(--line-strong);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    table.report-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    thead th {
+      color: #ffffff;
+      font-weight: 700;
+      text-align: center;
+      vertical-align: middle;
+      border-right: 1px solid rgba(255,255,255,0.16);
+    }
+
+    thead th:last-child {
+      border-right: 0;
+    }
+
+    thead tr.header-main th {
+      padding: 6px 5px;
+      background: var(--navy);
+      font-size: 9px;
+      line-height: 1.15;
+    }
+
+    thead tr.header-sub th {
+      padding: 5px;
+      color: #e7edf5;
+      background: var(--navy-dark);
+      font-size: 8.5px;
+      line-height: 1.1;
+    }
+
+    tbody.item-block + tbody.item-block .main-row td {
+      border-top: 2px solid var(--line-strong);
+    }
+
+    tbody td {
+      padding: 5px 6px;
+      color: #263445;
+      font-size: 9.6px;
+      vertical-align: middle;
+      border-right: 1px solid #e3e8ef;
+      border-bottom: 1px solid #e3e8ef;
+      overflow-wrap: anywhere;
+    }
+
+    tbody td:last-child {
+      border-right: 0;
+    }
+
+    .main-row td {
+      min-height: 25px;
+      background: #ffffff;
+    }
+
+    .serial-cell,
+    .product-code,
+    .adj-type,
+    .cell-number {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .cell-center {
+      text-align: center;
+    }
+
+    .cell-number {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .description-row td {
+      padding-top: 5px;
+      padding-bottom: 5px;
+      background: #f6f8fb;
+    }
+
+    .product-name {
+      color: #263445;
+      font-weight: 600;
+    }
+
+    .status-cell {
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .detail-label-inline {
+      margin-right: 7px;
+      color: var(--ink);
+      font-size: 9.5px;
+      font-weight: 700;
+    }
+
+    .detail-label-inline::after {
+      content: ":";
+    }
+
+    .detail-row td {
+      padding-top: 4px;
+      padding-bottom: 4px;
+      background: #fbfcfd;
+      border-right: 0;
+      border-bottom: 0;
+    }
+
+    .detail-label {
+      color: #334155;
+      font-size: 9.3px;
+      font-weight: 700;
+    }
+
+    .detail-label::after {
+      content: ":";
+    }
+
+    .detail-value {
+      color: #475569;
+      font-size: 9.3px;
+    }
+
+    .item-last-row td {
+      border-bottom: 0;
+    }
+
+    .empty-row td {
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+      font-style: italic;
+    }
+
+    .report-ending {
+      margin-top: 10px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .end-title {
+      position: relative;
+      padding: 9px 0 5px;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .end-title::before {
+      content: "";
+      display: block;
+      margin-bottom: 8px;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .signature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 52px;
+      margin-top: 25px;
+    }
+
+    .signature-box {
+      min-height: 72px;
+      font-size: 10px;
+    }
+
+    .signature-role {
+      margin-bottom: 13px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .signature-line {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      align-items: end;
+      gap: 6px;
+      margin-top: 7px;
+      color: #334155;
+    }
+
+    .signature-blank {
+      height: 13px;
+      border-bottom: 1px solid #9aa8b8;
+    }
+
     .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 24px;
+      padding-top: 7px;
+      border-top: 1px solid var(--line);
+      color: #64748b;
+      font-size: 9px;
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
+
     .rpt-footer code {
-      font-family: "Courier New", monospace; font-size: 9px; color: #6b7280;
+      color: #334155;
+      font-family: "Courier New", monospace;
+      font-size: 9px;
+      font-weight: 600;
+    }
+
+    @media screen and (max-width: 1100px) {
+      .sheet {
+        width: calc(100% - 20px);
+        min-width: 980px;
+      }
     }
 
     @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      thead { display: table-header-group; }
-
-      /* Keep section headers attached to their first data row */
-      tr.group-row,
-      tr.prod-row {
-        break-after: avoid;
-        page-break-after: avoid;
+      body {
+        background: #ffffff;
       }
 
-      /* Keep totals attached to the group above them */
-      tr.group-total,
-      tr.grand-total {
-        break-before: avoid;
-        page-break-before: avoid;
+      .sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+      }
+
+      .report-title,
+      thead tr.header-main th,
+      thead tr.header-sub th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      tbody.item-block {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .header-panel,
+      .report-ending,
+      .signature-grid {
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
     }
   </style>
 </head>
 <body>
   <main class="sheet">
+    <header>
+      <div class="report-title">${escapeHtml(reportTitle)}</div>
 
-    <!-- ── Report title banner ── -->
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-
-    <!-- ── Print meta row ── -->
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
-    </div>
-
-    <!-- ── Adjustment header block ── -->
-    <div class="job-header">
-      <div class="job-col">
-        <div class="job-row">
-          <span class="job-label">Principal</span>
-          <span class="job-value">${escapeHtml(principalDisplay(r, prinCode))}</span>
+      <div class="report-meta">
+        <div>
+          Print Date:&nbsp;<strong>${escapeHtml(printDate)}</strong>
+          &nbsp;&nbsp;&nbsp;
+          Print User:&nbsp;<strong>${escapeHtml(loginId)}</strong>
         </div>
-        <div class="job-row">
-          <span class="job-label">Adjustment No.</span>
-          <span class="job-value">${escapeHtml(text(r.adj_no) || adjNo)}</span>
-        </div>
-        <div class="job-row">
-          <span class="job-label">Adjustment Reason</span>
-          <span class="job-value">${escapeHtml(text(r.adj_code) || "—")}</span>
-        </div>
-        <div class="job-row">
-          <span class="job-label">Remarks</span>
-          <span class="job-value">${escapeHtml(text(r.remarks) || "—")}</span>
-        </div>
+        <div>Page&nbsp;<strong>1</strong>&nbsp;of&nbsp;<strong>1</strong></div>
       </div>
 
-      <div class="job-col">
-        <div class="job-row">
-          <span class="job-label">Date</span>
-          <span class="job-value">${escapeHtml(dateTimeText(r.adj_date))}</span>
+      <section class="header-panel">
+        <div class="header-column">
+          <div class="info-row">
+            <span class="info-label">Principal</span>
+            <span class="info-value">${escapeHtml(principalDisplay(r, prinCode))}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Adjustment No.</span>
+            <span class="info-value">${escapeHtml(text(r.adj_no).trim() || adjNo)}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Adjustment Reason</span>
+            <span class="info-value">${escapeHtml(text(r.adj_code).trim())}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Remarks</span>
+            <span class="info-value">${escapeHtml(text(r.remarks).trim())}</span>
+          </div>
         </div>
-      </div>
 
-      <div class="job-col">
-        <div class="job-row">
-          <span class="job-label">Confirmed</span>
-          <span class="job-value">${escapeHtml(confirmedYesNo(r.header_confirmed))}</span>
+        <div class="header-column compact">
+          <div class="info-row">
+            <span class="info-label">Date</span>
+            <span class="info-value">${escapeHtml(dateTimeText(r.adj_date))}</span>
+          </div>
         </div>
-        <div class="job-row">
-          <span class="job-label">Date</span>
-          <span class="job-value">${escapeHtml(dateTimeText(r.confirmed_date))}</span>
+
+        <div class="header-column compact">
+          <div class="info-row">
+            <span class="info-label">Confirmed</span>
+            <span class="info-value">
+              <span class="status-pill ${headerStatusClass}">${escapeHtml(headerConfirmed)}</span>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Date</span>
+            <span class="info-value">${escapeHtml(dateTimeText(r.confirmed_date))}</span>
+          </div>
         </div>
-      </div>
-    </div><!-- /job-header -->
+      </section>
+    </header>
 
-    <!-- ── Data table ── -->
-    <table class="rpt-table">
-      <colgroup>
-        <col width="4%" />
-        <col width="5%" />
-        <col width="11%" />
-        <col width="22%" />
-        <col width="9%" />
-        <col width="12%" />
-        <col width="12%" />
-        <col width="5%" />
-        <col width="5%" />
-        <col width="5%" />
-        <col width="5%" />
-        <col width="5%" />
-      </colgroup>
+    <div class="table-frame">
+      <table class="report-table">
+        <colgroup>
+          <col style="width: 4%" />
+          <col style="width: 5%" />
+          <col style="width: 11%" />
+          <col style="width: 22%" />
+          <col style="width: 9%" />
+          <col style="width: 12%" />
+          <col style="width: 12%" />
+          <col style="width: 5%" />
+          <col style="width: 5%" />
+          <col style="width: 5%" />
+          <col style="width: 5%" />
+          <col style="width: 5%" />
+        </colgroup>
 
-      <thead>
-        <tr class="th-group">
-          <th rowspan="2">No.</th>
-          <th rowspan="2">Site</th>
-          <th rowspan="2">Location</th>
-          <th>Product Code</th>
-          <th rowspan="2">Job No</th>
-          <th rowspan="2">Lot No</th>
-          <th rowspan="2">Doc Ref</th>
-          <th rowspan="2">Adj Type</th>
-          <th colspan="4">Quantity</th>
-        </tr>
-        <tr class="th-sub">
-          <th>Name</th>
-          <th>UOM</th>
-          <th class="num">Qty1</th>
-          <th>UOM</th>
-          <th class="num">Qty2</th>
-        </tr>
-      </thead>
+        <thead>
+          <tr class="header-main">
+            <th rowspan="2">No.</th>
+            <th rowspan="2">Site</th>
+            <th rowspan="2">Location</th>
+            <th>Product Code</th>
+            <th rowspan="2">Job No</th>
+            <th rowspan="2">Lot No</th>
+            <th rowspan="2">Doc Ref</th>
+            <th rowspan="2">Adj<br/>Type</th>
+            <th colspan="4">Quantity</th>
+          </tr>
+          <tr class="header-sub">
+            <th>Name</th>
+            <th>UOM</th>
+            <th>Qty1</th>
+            <th>UOM</th>
+            <th>Qty2</th>
+          </tr>
+        </thead>
 
-      <tbody>
         ${bodyRows}
-      </tbody>
-    </table>
-
-    <!-- ── End of report and approval/signature area ── -->
-    <div
-      style="
-        margin-top: 10px;
-        border-top: 1px solid #9ca3af;
-        padding-top: 8px;
-        break-inside: avoid;
-        page-break-inside: avoid;
-      "
-    >
-      <div
-        style="
-          border-top: 1px solid #9ca3af;
-          padding-top: 7px;
-          text-align: center;
-          font-size: 12px;
-          font-weight: 700;
-          color: #111827;
-        "
-      >
-        End of Report
-      </div>
-
-      <div
-        style="
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          column-gap: 70px;
-          margin-top: 28px;
-          font-size: 11px;
-          color: #111827;
-          line-height: 1.9;
-        "
-      >
-        <div>
-          <div>Prepared by:</div>
-          <div>Date:</div>
-          <div>Signature:</div>
-        </div>
-
-        <div>
-          <div>Checked by:</div>
-          <div>Date:</div>
-          <div>Signature:</div>
-        </div>
-
-        <div>
-          <div>Supervised by:</div>
-          <div>Date:</div>
-          <div>Signature:</div>
-        </div>
-      </div>
+      </table>
     </div>
 
+    <section class="report-ending">
+      <div class="end-title">End of Report</div>
+
+      <div class="signature-grid">
+        <div class="signature-box">
+          <div class="signature-role">Prepared by</div>
+          <div class="signature-line"><span>Name:</span><span class="signature-blank"></span></div>
+          <div class="signature-line"><span>Date:</span><span class="signature-blank"></span></div>
+          <div class="signature-line"><span>Signature:</span><span class="signature-blank"></span></div>
+        </div>
+
+        <div class="signature-box">
+          <div class="signature-role">Checked by</div>
+          <div class="signature-line"><span>Name:</span><span class="signature-blank"></span></div>
+          <div class="signature-line"><span>Date:</span><span class="signature-blank"></span></div>
+          <div class="signature-line"><span>Signature:</span><span class="signature-blank"></span></div>
+        </div>
+
+        <div class="signature-box">
+          <div class="signature-role">Supervised by</div>
+          <div class="signature-line"><span>Name:</span><span class="signature-blank"></span></div>
+          <div class="signature-line"><span>Date:</span><span class="signature-blank"></span></div>
+          <div class="signature-line"><span>Signature:</span><span class="signature-blank"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="rpt-footer">
+      <span>Object: <code>${escapeHtml(header.company_code)}-${escapeHtml(header.adj_no)}</code></span>
+      <span>Powered by Bayanat Technology</span>
+    </div>
   </main>
+
   <script>
-    window.addEventListener("message", (e) => {
-      if (e.data === "print") window.print();
+    window.addEventListener("message", (event) => {
+      if (event.data === "print") window.print();
     });
+
     ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
   </script>
 </body>
@@ -618,7 +916,7 @@ function buildExcelBuffer(
   // ── Title ────────────────────────────────────────────────────────────────
 
   rows.push([
-    xc(`Adjustment Report ${adjNo}`, "header"),
+    xc("Entry List", "header"),
     ...Array(NCOLS - 1).fill(skip),
   ]);
 
@@ -653,12 +951,12 @@ function buildExcelBuffer(
   ]);
   rows.push([
     xc("Adjustment Reason", "label"),
-    xc(text(r.adj_code) || "—", "value"),
+    xc(text(r.adj_code).trim(), "value"),
     ...Array(NCOLS - 2).fill(skip),
   ]);
   rows.push([
     xc("Remarks", "label"),
-    xc(text(r.remarks) || "—", "value"),
+    xc(text(r.remarks).trim(), "value"),
     ...Array(NCOLS - 2).fill(skip),
   ]);
 
@@ -690,33 +988,33 @@ function buildExcelBuffer(
 
     rows.push([
       xc(parseInt(text(row.adj_serialno), 10) || "", "numValue"),
-      xc(text(row.site_code) || "—", "value"),
-      xc(text(row.location_code) || "—", "value"),
+      xc(text(row.site_code) || "", "value"),
+      xc(text(row.location_code) || "", "value"),
       xc(productText, "value"),
-      xc(text(row.job_no) || "—", "value"),
-      xc(text(row.lot_no) || "—", "value"),
-      xc(text(row.doc_ref) || "—", "value"),
-      xc(text(row.adj_type) || "—", "value"),
-      xc(text(row.p_uom) || "—", "value"),
+      xc(text(row.job_no) || "", "value"),
+      xc(text(row.lot_no) || "", "value"),
+      xc(text(row.doc_ref) || "", "value"),
+      xc(text(row.adj_type) || "", "value"),
+      xc(text(row.p_uom) || "", "value"),
       xc(Number(row.qty_puom) || 0, "numValue"),
-      xc(text(row.l_uom) || "—", "value"),
+      xc(text(row.l_uom) || "", "value"),
       xc(Number(row.qty_luom) || 0, "numValue"),
     ]);
 
     rows.push([
       xc("Country Of Origin", "label"),
-      xc(countryDisplay(row), "value"),
+      xc(countryDisplay(row), "default"),
       ...Array(6).fill(skip),
       xc("Status", "label"),
-      xc(detailStatus(row.detail_confirmed), "value"),
+      xc(detailStatus(row.detail_confirmed), "default"),
       skip,
       skip,
     ]);
 
     rows.push([
       xc("Manufacturer", "label"),
-      xc(text(row.manu_code) || "—", "value"),
-      xc(text(row.manu_name) || "—", "value"),
+      xc(text(row.manu_code) || "", "default"),
+      xc(text(row.manu_name) || "", "default"),
       ...Array(NCOLS - 3).fill(skip),
     ]);
   }
@@ -839,7 +1137,7 @@ function buildExcelBuffer(
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="Adjustment Detail" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="Entry List" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -873,40 +1171,45 @@ function buildExcelBuffer(
 }
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
-
-function getAdjustmentNo(req: RequestWithUser): string {
-  return text(
-    req.params.adj_no ||
-    req.query.adj_no ||
-    req.params.job_no ||
-    req.query.job_no
-  );
-}
-
 export const getStockAdjusmentReportHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-    const adjNo = getAdjustmentNo(req);
+     const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "Entry List";
     const autoPrint = req.query.print === "true";
 
-   console.log('Adj no',adjNo,'prinCode',prinCode)
+    console.log("Stock Adjustment", {
+      adjNo,
+      prinCode,
+      params: req.params,
+      query: req.query,
+    });
 
-    if (!prinCode) {
+    if (!adjNo || !prinCode) {
       res.status(400).json({
         success: false,
-        message: "prin_code are required",
+        message: "adj_no and prin_code are required",
       });
       return;
     }
 
     const rows = await loadAdjustmentData(req, prinCode, adjNo);
+
+    if (!rows.length) {
+      res.status(404).json({
+        success: false,
+        message: `No adjustment data found for adjustment ${adjNo} and principal ${prinCode}`,
+      });
+      return;
+    }
+
     const first = rows[0] ?? null;
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+
     res.send(
       renderHtml(
         rows,
@@ -920,6 +1223,7 @@ export const getStockAdjusmentReportHtml = async (
     );
   } catch (error: any) {
     console.error("Adjustment HTML error:", error);
+
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Unable to generate report",
@@ -935,7 +1239,14 @@ export const getStockAdjusmentReportPdf = async (
     const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
-    if (!prinCode) {
+    console.log("Stock Adjustment PDF parameters:", {
+      adjNo,
+      prinCode,
+      params: req.params,
+      query: req.query,
+    });
+
+    if (!adjNo || !prinCode) {
       res.status(400).json({
         success: false,
         message: "adj_no and prin_code are required",
@@ -944,8 +1255,18 @@ export const getStockAdjusmentReportPdf = async (
     }
 
     const rows = await loadAdjustmentData(req, prinCode, adjNo);
+
+    if (!rows.length) {
+      res.status(404).json({
+        success: false,
+        message: `No adjustment data found for adjustment ${adjNo} and principal ${prinCode}`,
+      });
+      return;
+    }
+
     const first = rows[0] ?? null;
     const reportTitle = "Entry List";
+
     const html = renderHtml(
       rows,
       first,
@@ -959,11 +1280,13 @@ export const getStockAdjusmentReportPdf = async (
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="ADJUSTMENT_${adjNo}.pdf"`
+      `inline; filename="Stock_Adjusment_${adjNo}.pdf"`
     );
+
     res.send(html);
   } catch (error: any) {
     console.error("Adjustment PDF error:", error);
+
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Unable to generate PDF",
@@ -979,15 +1302,32 @@ export const exportStockAdjusmentReportExcel = async (
     const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
+    console.log("Stock Adjustment Excel parameters:", {
+      adjNo,
+      prinCode,
+      params: req.params,
+      query: req.query,
+    });
+
     if (!adjNo || !prinCode) {
       res.status(400).json({
         success: false,
-        message: "prin_code are required",
+        message: "adj_no and prin_code are required",
       });
       return;
     }
 
+  
     const rows = await loadAdjustmentData(req, prinCode, adjNo);
+
+    if (!rows.length) {
+      res.status(404).json({
+        success: false,
+        message: `No adjustment data found for adjustment ${adjNo} and principal ${prinCode}`,
+      });
+      return;
+    }
+
     const first = rows[0] ?? null;
     const buffer = buildExcelBuffer(rows, first, adjNo, prinCode);
 
@@ -995,16 +1335,20 @@ export const exportStockAdjusmentReportExcel = async (
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
+
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="Stock_Adjusment_${adjNo}.xlsx"`
     );
+
     res.end(buffer);
   } catch (error: any) {
     console.error("Adjustment Excel error:", error);
+
     res.status(error.status || 500).json({
       success: false,
       message: error.message || "Unable to generate Excel",
     });
   }
 };
+
