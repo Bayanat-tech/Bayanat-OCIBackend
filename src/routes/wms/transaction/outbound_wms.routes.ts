@@ -29,6 +29,7 @@ import { getPickListExcel, getPickListHtml } from "../../../controllers/wms/repo
 import { getWmsOutboundJobDetailsReportExcel, getWmsOutboundJobDetailsReportHtml } from "../../../controllers/wms/reports/Outbound_jobDetialsReport.controller";
 import { getWmsOutboundServiceActivityReportExcel, getWmsOutboundServiceActivityReportHtml } from "../../../controllers/wms/reports/Outboundserviceactivityreport.controller";
 import { getSalesOrderReportHtml, exportSalesOrderReportExcel } from "../../../controllers/wms/reports/salesOrder.controller";
+import { getStockAdjusmentReportHtml, exportStockAdjusmentReportExcel } from "../../../controllers/wms/reports/StockAdjustment.controller";
 
 // Ensure getToOrder uses Express.Request and Express.Response types for compatibility.
 
@@ -157,6 +158,10 @@ router.get("/reports/Oub-serviceactivity/:job_no/excel", getWmsOutboundServiceAc
 //salesorder route
 router.get('/reports/salesorder/:job_no', getSalesOrderReportHtml);
 router.get('/reports/salesorder/:job_no/excel', exportSalesOrderReportExcel);
+
+//Stock Adj route
+router.get('/reports/stockadjusment/:adjNo', getStockAdjusmentReportHtml);
+router.get('/reports/stockadjusment/:adjNo/excel', exportStockAdjusmentReportExcel);
 
 
 // Export router

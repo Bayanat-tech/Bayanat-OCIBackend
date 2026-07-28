@@ -1,6 +1,5 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import oracledb = require("oracledb");
-import * as XLSX from "xlsx";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
@@ -10,41 +9,7 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 
 type ReportRow = Record<string, any>;
 
-// UOM-keyed totals e.g. { "PKT": 99, "CTN": 12 }
-type UomTotals = Record<string, number>;
-
-interface ProductGroup {
-  serialNo: number;
-  prodCode:   string;
-  prodName:   string;
-    
-  qty1: number; // QTY_PUOM
-  uom1: string; // P_UOM
-
-  qty2: number; // QTY_LUOM
-  uom2: string; // L_UOM
-
-  rows:       ReportRow[];
-
-  qty1ByUom: UomTotals;
-  qty2ByUom: UomTotals;
-
-}
-
-interface GroupSection {
-  orderNo: string;
-  orderDate: string;
-
-  custCode: string;
-  custName: string;
-
-  products: ProductGroup[];
-
-  qty1ByUom: UomTotals;
-  qty2ByUom: UomTotals;
-}
-
-interface ShortExcessCell { text: string; cls: "short" | "excess" | "" }
+// This report has no grouping. Each query row is rendered directly.
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -77,11 +42,19 @@ function text(value: unknown): string {
   return String(value);
 }
 
-function dateText(value: unknown): string {
+function dateTimeText(value: unknown): string {
   if (!value) return "—";
   const d = new Date(String(value));
-  if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  return d.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 function escapeHtml(value: unknown): string {
@@ -96,140 +69,113 @@ function escapeXml(value: unknown): string {
     .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
-function numFmt(value: unknown, decimals = 3): string {
+function quantityText(value: unknown): string {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "0";
   return n.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
   });
 }
 
-/** Add qty into a UomTotals bucket */
-function addUom(map: UomTotals, uom: string, qty: number): void {
-  if (!uom) return;
-  map[uom] = (map[uom] ?? 0) + qty;
+function isConfirmed(value: unknown): boolean {
+  const v = text(value).trim().toUpperCase();
+  return ["Y", "YES", "1", "TRUE", "C", "CONFIRMED"].includes(v);
 }
 
-function fmtQtyCell(qtyPuom: number, pUom: string, qtyLuom: number, lUom: string): string {
-  let s = `${numFmt(qtyPuom)} ${pUom}`.trim();
-  if (qtyLuom !== 0 && lUom) s += ` / ${numFmt(qtyLuom)} ${lUom}`;
-  return s;
+function confirmedYesNo(value: unknown): string {
+  if (text(value).trim() === "") return "—";
+  return isConfirmed(value) ? "Yes" : "No";
 }
 
-function fmtUomTotals(map: UomTotals, primaryUom?: string): string {
-  const keys = Object.keys(map);
-  if (keys.length === 0) return "—";
-
-  // Put primaryUom first if provided
-  const ordered = primaryUom
-    ? [primaryUom, ...keys.filter(k => k !== primaryUom)]
-    : keys;
-
-  return ordered
-    .filter(k => map[k] !== undefined)
-    .map(k => `${numFmt(map[k])} ${k}`)
-    .join(" / ");
+function detailStatus(value: unknown): string {
+  if (text(value).trim() === "") return "—";
+  return isConfirmed(value) ? "Confirmed" : "Not Confirmed";
 }
 
-/**
- * Merge two UomTotals maps (sum values for matching keys).
- */
-function mergeUomTotals(...maps: UomTotals[]): UomTotals {
-  const result: UomTotals = {};
-  for (const map of maps)
-    for (const [uom, qty] of Object.entries(map))
-      result[uom] = (result[uom] ?? 0) + qty;
-  return result;
+function principalDisplay(row: ReportRow, fallbackPrinCode: string): string {
+  const code = text(row.prin_code) || fallbackPrinCode;
+  const name = text(row.prin_name);
+  return name ? `${code} - ${name}` : code;
 }
 
-/**
- * Mirrors the SSRS expression:
- *   exp - recv == 0            -> blank
- *   recv > exp (negative diff) -> "Excess: +<diff>"  (green)
- *   recv < exp (positive diff) -> "Short: -<diff>"   (red)
- */
-function fmtShortExcessCell(
-  expPuom: number, recvPuom: number, pUom: string,
-  expLuom: number, recvLuom: number, lUom: string
-): ShortExcessCell {
-  const diffPuom = expPuom - recvPuom;
-  const diffLuom = expLuom - recvLuom;
+function countryDisplay(row: ReportRow): string {
+  const countryCode = text(row.country_code);
+  const countryName = text(row.country_name);
 
-  if (diffPuom === 0 && diffLuom === 0) return { text: "—", cls: "" };
+  if (countryCode && countryName)
+    return `${countryCode} - ${countryName}`;
 
-  // Drive the Short/Excess label off the primary UOM diff; fall back to L_UOM
-  // if the primary UOM diff happens to be zero.
-  const driver  = diffPuom !== 0 ? diffPuom : diffLuom;
-  const isExcess = driver < 0;
-  const prefix  = isExcess ? "Excess: +" : "Short: -";
-
-  const parts: string[] = [];
-  if (diffPuom !== 0) parts.push(`${numFmt(Math.abs(diffPuom))} ${pUom}`.trim());
-  if (diffLuom !== 0 && lUom) parts.push(`${numFmt(Math.abs(diffLuom))} ${lUom}`.trim());
-
-  return { text: `${prefix}${parts.join(" / ")}`, cls: isExcess ? "excess" : "short" };
+  return countryName || countryCode || "—";
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
 
-async function loadOrderData(
+async function loadAdjustmentData(
   req: RequestWithUser,
   prinCode: string,
-  jobNo: string
+  adjNo: string | number
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
 
   try {
     const result = await conn.execute(
       `SELECT
-         o.PRIN_CODE,
-         pr.PRIN_NAME,
-         o.JOB_NO,
-         o.CUST_CODE,
-         cu.CUST_NAME,
-         o.ORDER_NO,
-         o.ORDER_DATE,
-         od.SERIAL_NO,
-         od.PROD_CODE,
-         p.PROD_NAME,
-         od.QTY_PUOM,
-         od.P_UOM,
-         od.QTY_LUOM,
-         od.L_UOM,
-         od.QUANTITY,
-         j.JOB_DATE
-       FROM TO_ORDER o
-       INNER JOIN TO_ORDER_DET od
-         ON od.COMPANY_CODE = o.COMPANY_CODE
-        AND od.PRIN_CODE    = o.PRIN_CODE
-        AND od.JOB_NO       = o.JOB_NO
-        AND od.ORDER_NO     = o.ORDER_NO
-       INNER JOIN MS_PRINCIPAL pr
-         ON pr.COMPANY_CODE = o.COMPANY_CODE
-        AND pr.PRIN_CODE    = o.PRIN_CODE
-       INNER JOIN MS_CUSTOMER cu
-         ON cu.COMPANY_CODE = o.COMPANY_CODE
-        AND cu.PRIN_CODE    = o.PRIN_CODE
-        AND cu.CUST_CODE    = o.CUST_CODE
-       INNER JOIN MS_PRODUCT p
-         ON p.COMPANY_CODE = od.COMPANY_CODE
-        AND p.PRIN_CODE    = od.PRIN_CODE
-        AND p.PROD_CODE    = od.PROD_CODE
-       INNER JOIN TI_JOB j
-         ON j.COMPANY_CODE = o.COMPANY_CODE
-        AND j.PRIN_CODE    = o.PRIN_CODE
-        AND j.JOB_NO       = o.JOB_NO
-       WHERE o.COMPANY_CODE = '${req.user.company_code}'
-         AND o.PRIN_CODE    = :prin_code
-         AND o.JOB_NO       = :job_no
-       ORDER BY
-         o.ORDER_NO,
-         od.SERIAL_NO,
-         od.PROD_CODE`,
+         ah.ADJ_NO,
+         ah.PRIN_CODE,
+         mp.PRIN_NAME,
+         ah.ADJ_CODE,
+         ah.COMPANY_CODE,
+         ah.ADJ_DATE,
+         ad.ADJ_SERIALNO,
+         ad.SITE_CODE,
+         ad.LOCATION_CODE,
+         ad.PROD_CODE,
+         ad.JOB_NO,
+         ad.LOT_NO,
+         ad.DOC_REF,
+         ad.ADJ_TYPE,
+         ad.P_UOM,
+         ad.QTY_PUOM,
+         ad.L_UOM,
+         ad.QTY_LUOM,
+         ad.MANU_CODE,
+         mf.MANU_NAME,
+         mf.COUNTRY_CODE,
+         co.COUNTRY_NAME,
+         pr.PROD_NAME,
+         ah.CONFIRMED AS HEADER_CONFIRMED,
+         ah.CONFIRMED_DATE,
+         ad.POSTED_IND,
+         ad.CONFIRMED AS DETAIL_CONFIRMED,
+         ah.REMARKS
+       FROM TA_ADJHEADER ah
+       INNER JOIN TA_ADJDETAIL ad
+         ON ad.COMPANY_CODE = ah.COMPANY_CODE
+        AND ad.PRIN_CODE    = ah.PRIN_CODE
+        AND ad.ADJ_NO       = ah.ADJ_NO
+       INNER JOIN MS_PRODUCT pr
+         ON pr.COMPANY_CODE = ad.COMPANY_CODE
+        AND pr.PRIN_CODE    = ad.PRIN_CODE
+        AND pr.PROD_CODE    = ad.PROD_CODE
+       LEFT JOIN MS_PRINCIPAL mp
+         ON mp.COMPANY_CODE = ah.COMPANY_CODE
+        AND mp.PRIN_CODE    = ah.PRIN_CODE
+       LEFT JOIN MS_MANUFACTURER mf
+         ON mf.COMPANY_CODE = ad.COMPANY_CODE
+        AND mf.PRIN_CODE    = ad.PRIN_CODE
+        AND mf.MANU_CODE    = ad.MANU_CODE
+       LEFT JOIN MS_COUNTRY co
+         ON co.COMPANY_CODE = mf.COMPANY_CODE
+        AND co.COUNTRY_CODE = mf.COUNTRY_CODE
+       WHERE ah.COMPANY_CODE = :company_code
+         AND ah.PRIN_CODE    = :prin_code
+         AND ah.ADJ_NO       = :adj_no
+       ORDER BY ad.ADJ_SERIALNO ASC`,
       {
+        company_code: req.user.company_code,
         prin_code: prinCode,
-        job_no: jobNo,
+        adj_no: adjNo,
       },
       {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
@@ -241,196 +187,80 @@ async function loadOrderData(
     await closeConn(conn);
   }
 }
-// ─── Grouping ─────────────────────────────────────────────────────────────────
 
-function groupRows(rows: ReportRow[]): GroupSection[] {
-  const groupMap: Record<string, {
-
-    orderNo:    string;
-    orderDate:  string;
-    custCode:   string;
-    custName:   string;
-    products:   Record<string, ProductGroup>;
-    qty1ByUom:  UomTotals;
-    qty2ByUom:  UomTotals;
-
-  }> = {};
-
-  for (const r of rows) {
-
-    const groupKey = text(r.order_no) || "No Order";
-    const prodKey  = `${text(r.serial_no)}-${text(r.prod_code)}`;
-    const pUom     = text(r.p_uom);
-    const lUom     = text(r.l_uom);
-
-    const qtyPuom = parseFloat(String(r.qty_puom)) || 0;
-    const qtyLuom = parseFloat(String(r.qty_luom)) || 0;
-
-if (!groupMap[groupKey])
-      groupMap[groupKey] = {
-        orderNo:   text(r.order_no),
-        orderDate: text(r.order_date),
-        custCode:  text(r.cust_code),
-        custName:  text(r.cust_name),
-        products:  {},
-        qty1ByUom: {},
-        qty2ByUom: {},
-      };
-
-    if (!groupMap[groupKey].products[prodKey])
-      groupMap[groupKey].products[prodKey] = {
-        serialNo: parseInt(String(r.serial_no), 10) || 0,
-        prodCode: text(r.prod_code),
-        prodName: text(r.prod_name),
-
-        qty1: 0,
-        uom1: pUom,
-
-        qty2: 0,
-        uom2: lUom,
-
-        rows: [],
-
-        qty1ByUom: {},
-        qty2ByUom: {},
-      };
-
-    const pg = groupMap[groupKey].products[prodKey];
-
-    pg.rows.push(r);
-
-    pg.qty1 += qtyPuom;
-    pg.qty2 += qtyLuom;
-
-    // Always accumulate PUOM
-    addUom(pg.qty1ByUom, pUom, qtyPuom);
-
-    // L_UOM rule: only if qty is not zero
-    if (qtyLuom !== 0)
-      addUom(pg.qty2ByUom, lUom, qtyLuom);
-
-    const gs = groupMap[groupKey];
-
-    addUom(gs.qty1ByUom, pUom, qtyPuom);
-
-    if (qtyLuom !== 0)
-      addUom(gs.qty2ByUom, lUom, qtyLuom);
-  }
-
-  return Object.values(groupMap).map((g) => ({
-    ...g,
-    products: Object.values(g.products),
-  }));
-}
+// ─── No grouping ──────────────────────────────────────────────────────────────
+// Rows remain exactly as returned by the query, ordered by ADJ_SERIALNO.
 
 // ─── HTML renderer ────────────────────────────────────────────────────────────
 
 function renderHtml(
-  groups:      GroupSection[],
-  firstRow:    ReportRow | null,
-  jobNo:       string,
-  prinCode:    string,
+  rows: ReportRow[],
+  firstRow: ReportRow | null,
+  adjNo: string,
+  prinCode: string,
   reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
+  loginId: string,
+  autoPrint: boolean
 ): string {
   const printDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   });
 
   const r = firstRow || {};
-
-  // ── Grand-level UOM totals ────────────────────────────────────────────────
-  const grandTotalPuom = mergeUomTotals(...groups.map(g => g.qty1ByUom));
-  const grandTotalLuom = mergeUomTotals(...groups.map(g => g.qty2ByUom));
-
-
-  // ── Build body rows ────────────────────────────────────────────────────────
   let bodyRows = "";
 
-  for (const gs of groups) {
-    bodyRows += `
-      <tr class="group-row">
-       <td colspan="6">
-        Order No./ Date:
-        ${escapeHtml(gs.orderNo || "—")} /
-        ${escapeHtml(dateText(gs.orderDate))}
-        &nbsp;&nbsp;&nbsp;
-        Customer:
-        ${escapeHtml(gs.custName || "—")}
-        ${gs.custCode ? `(${escapeHtml(gs.custCode)})` : ""}
-      </td>
-      </tr>`;
+  for (const row of rows) {
+    const serialNo = parseInt(text(row.adj_serialno), 10) || 0;
 
- for (const pg of gs.products) {
     bodyRows += `
       <tr class="data-row">
-        <td class="num">
-          ${escapeHtml(String(pg.serialNo || ""))}
-        </td>
+        <td class="num">${escapeHtml(serialNo || "")}</td>
+        <td>${escapeHtml(text(row.site_code) || "—")}</td>
+        <td>${escapeHtml(text(row.location_code) || "—")}</td>
+        <td>${escapeHtml(text(row.prod_code) || "—")}</td>
+        <td>${escapeHtml(text(row.job_no) || "—")}</td>
+        <td>${escapeHtml(text(row.lot_no) || "—")}</td>
+        <td>${escapeHtml(text(row.doc_ref) || "—")}</td>
+        <td>${escapeHtml(text(row.adj_type) || "—")}</td>
+        <td>${escapeHtml(text(row.p_uom) || "—")}</td>
+        <td class="num">${escapeHtml(quantityText(row.qty_puom))}</td>
+        <td>${escapeHtml(text(row.l_uom) || "—")}</td>
+        <td class="num">${escapeHtml(quantityText(row.qty_luom))}</td>
+      </tr>
 
-        <td>
-          ${escapeHtml(pg.prodCode || "—")}
-          ${pg.prodName ? ` | ${escapeHtml(pg.prodName)}` : ""}
-        </td>
+      <tr class="data-row">
+        <td></td>
+        <td colspan="2"></td>
+        <td colspan="5">${escapeHtml(text(row.prod_name) || "—")}</td>
+        <td colspan="4"><strong>Status:</strong>&nbsp;&nbsp;${escapeHtml(detailStatus(row.detail_confirmed))}</td>
+      </tr>
 
-        <td class="num">
-          ${escapeHtml(String(pg.qty1 || 0))}
-        </td>
+      <tr class="data-row">
+        <td></td>
+        <td colspan="2"><strong>Country Of Origin:</strong></td>
+        <td colspan="9">${escapeHtml(countryDisplay(row))}</td>
+      </tr>
 
-        <td>
-          ${escapeHtml(pg.uom1 || "—")}
-        </td>
-
-        <td class="num">
-          ${escapeHtml(String(pg.qty2 || 0))}
-        </td>
-
-        <td>
-          ${escapeHtml(pg.uom2 || "—")}
-        </td>
+      <tr class="data-row">
+        <td></td>
+        <td colspan="2"><strong>Manufacturer:</strong></td>
+        <td>${escapeHtml(text(row.manu_code) || "—")}</td>
+        <td colspan="8">${escapeHtml(text(row.manu_name) || "—")}</td>
       </tr>`;
   }
 
-  // Order total
-  bodyRows += `
-    <tr class="group-total">
-      <td colspan="2">
-        Total
-      </td>
-
-      <td colspan="2" class="num">
-        ${escapeHtml(fmtUomTotals(gs.qty1ByUom))}
-      </td>
-
-      <td colspan="2" class="num">
-        ${escapeHtml(fmtUomTotals(gs.qty2ByUom))}
-      </td>
-    </tr>`;
-}
-
-// Grand total row
-const grandRow = `
-  <tr class="grand-total">
-    <td colspan="2">
-      Grand Total
-    </td>
-
-    <td colspan="2" class="num">
-      ${escapeHtml(fmtUomTotals(grandTotalPuom))}
-    </td>
-
-    <td colspan="2" class="num">
-      ${escapeHtml(fmtUomTotals(grandTotalLuom))}
-    </td>
-  </tr>`;
-
+  if (!bodyRows) {
+    bodyRows = `
+      <tr class="data-row">
+        <td colspan="12">No adjustment details found.</td>
+      </tr>`;
+  }
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(jobNo)}</title>
+  <title>${escapeHtml(reportTitle)} - ${escapeHtml(adjNo)}</title>
   <style>
     @page { size: A4 landscape; margin: 10mm 12mm; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -593,58 +423,141 @@ const grandRow = `
       <span>Page 1 of 1</span>
     </div>
 
-    <!-- ── Job header block (flat, no box) ── -->
+    <!-- ── Adjustment header block ── -->
     <div class="job-header">
-
       <div class="job-col">
         <div class="job-row">
-          <span class="job-label">Job No:</span>
-          <span class="job-value">${escapeHtml(text(r.job_no) || jobNo)}</span>
-        </div>
-        <div class="job-row">
-          <span class="job-label">Job Date</span>
-          <span class="job-value">  ${escapeHtml(text(r.job_date) || "—")}</span>
-        </div>
-        <div class="job-row">
           <span class="job-label">Principal</span>
-          <span class="job-value">${escapeHtml(text(r.prin_code) || prinCode)}${r.prin_name ? ` - ${escapeHtml(text(r.prin_name))}` : ""}</span>
+          <span class="job-value">${escapeHtml(principalDisplay(r, prinCode))}</span>
+        </div>
+        <div class="job-row">
+          <span class="job-label">Adjustment No.</span>
+          <span class="job-value">${escapeHtml(text(r.adj_no) || adjNo)}</span>
+        </div>
+        <div class="job-row">
+          <span class="job-label">Adjustment Reason</span>
+          <span class="job-value">${escapeHtml(text(r.adj_code) || "—")}</span>
+        </div>
+        <div class="job-row">
+          <span class="job-label">Remarks</span>
+          <span class="job-value">${escapeHtml(text(r.remarks) || "—")}</span>
         </div>
       </div>
 
+      <div class="job-col">
+        <div class="job-row">
+          <span class="job-label">Date</span>
+          <span class="job-value">${escapeHtml(dateTimeText(r.adj_date))}</span>
+        </div>
+      </div>
+
+      <div class="job-col">
+        <div class="job-row">
+          <span class="job-label">Confirmed</span>
+          <span class="job-value">${escapeHtml(confirmedYesNo(r.header_confirmed))}</span>
+        </div>
+        <div class="job-row">
+          <span class="job-label">Date</span>
+          <span class="job-value">${escapeHtml(dateTimeText(r.confirmed_date))}</span>
+        </div>
+      </div>
     </div><!-- /job-header -->
 
     <!-- ── Data table ── -->
-<table class="rpt-table">
-  <colgroup>
-    <col class="c0" />
-    <col class="c1" />
-    <col class="c2" />
-    <col class="c3" />
-    <col class="c4" />
-    <col class="c5" />
-  </colgroup>
+    <table class="rpt-table">
+      <colgroup>
+        <col width="4%" />
+        <col width="5%" />
+        <col width="11%" />
+        <col width="22%" />
+        <col width="9%" />
+        <col width="12%" />
+        <col width="12%" />
+        <col width="5%" />
+        <col width="5%" />
+        <col width="5%" />
+        <col width="5%" />
+        <col width="5%" />
+      </colgroup>
 
-  <thead>
-    <tr class="th-group">
-      <th class="col-no">No.</th>
-      <th class="col-product">Product</th>
-      <th class="col-qty">Quantity1</th>
-      <th class="col-uom">UOM</th>
-      <th class="col-qty">Quantity2</th>
-      <th class="col-uom">UOM</th>
-    </tr>
-  </thead>
+      <thead>
+        <tr class="th-group">
+          <th rowspan="2">No.</th>
+          <th rowspan="2">Site</th>
+          <th rowspan="2">Location</th>
+          <th>Product Code</th>
+          <th rowspan="2">Job No</th>
+          <th rowspan="2">Lot No</th>
+          <th rowspan="2">Doc Ref</th>
+          <th rowspan="2">Adj Type</th>
+          <th colspan="4">Quantity</th>
+        </tr>
+        <tr class="th-sub">
+          <th>Name</th>
+          <th>UOM</th>
+          <th class="num">Qty1</th>
+          <th>UOM</th>
+          <th class="num">Qty2</th>
+        </tr>
+      </thead>
 
-  <tbody>
-    ${bodyRows}
-    ${grandRow}
-  </tbody>
-</table>
+      <tbody>
+        ${bodyRows}
+      </tbody>
+    </table>
 
-    <!-- ── Page footer ── -->
-    <div class="rpt-footer">
-      <span>Report Name : <code>${escapeHtml(jobNo)}</code></span>
-      <span>Powered by Bayanat Technology</span>
+    <!-- ── End of report and approval/signature area ── -->
+    <div
+      style="
+        margin-top: 10px;
+        border-top: 1px solid #9ca3af;
+        padding-top: 8px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      "
+    >
+      <div
+        style="
+          border-top: 1px solid #9ca3af;
+          padding-top: 7px;
+          text-align: center;
+          font-size: 12px;
+          font-weight: 700;
+          color: #111827;
+        "
+      >
+        End of Report
+      </div>
+
+      <div
+        style="
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          column-gap: 70px;
+          margin-top: 28px;
+          font-size: 11px;
+          color: #111827;
+          line-height: 1.9;
+        "
+      >
+        <div>
+          <div>Prepared by:</div>
+          <div>Date:</div>
+          <div>Signature:</div>
+        </div>
+
+        <div>
+          <div>Checked by:</div>
+          <div>Date:</div>
+          <div>Signature:</div>
+        </div>
+
+        <div>
+          <div>Supervised by:</div>
+          <div>Date:</div>
+          <div>Signature:</div>
+        </div>
+      </div>
     </div>
 
   </main>
@@ -692,38 +605,64 @@ function xc(v: unknown, style: StyleKey): XlCell {
 }
 
 function buildExcelBuffer(
-  groups: GroupSection[],
-  jobNo: string,
+  reportRows: ReportRow[],
+  firstRow: ReportRow | null,
+  adjNo: string,
   prinCode: string
 ): Buffer {
-  const NCOLS = 6;
+  const NCOLS = 12;
 
   type Row = (XlCell | null)[];
 
   const skip = null;
   const rows: Row[] = [];
-
-  // Total quantity from UOM-keyed totals
-  const sumUomTotals = (totals: UomTotals): number =>
-    Object.values(totals).reduce(
-      (sum, qty) => sum + Number(qty || 0),
-      0
-    );
-
-  // UOM names, for example: CTR / PCS
-  const getUomNames = (totals: UomTotals): string =>
-    Object.keys(totals)
-      .filter((uom) => uom.trim() !== "")
-      .join(" / ");
+  const r = firstRow || {};
 
   // ── Title ────────────────────────────────────────────────────────────────
 
   rows.push([
-    xc(
-      `Sales Order Report ${jobNo} / ${prinCode}`,
-      "header"
-    ),
+    xc(`Adjustment Report ${adjNo}`, "header"),
     ...Array(NCOLS - 1).fill(skip),
+  ]);
+
+  rows.push(Array(NCOLS).fill(skip));
+
+  // ── Adjustment header ────────────────────────────────────────────────────
+
+  rows.push([
+    xc("Principal", "label"),
+    xc(principalDisplay(r, prinCode), "value"),
+    ...Array(NCOLS - 2).fill(skip),
+  ]);
+  rows.push([
+    xc("Adjustment No.", "label"),
+    xc(text(r.adj_no) || adjNo, "value"),
+    ...Array(NCOLS - 2).fill(skip),
+  ]);
+  rows.push([
+    xc("Date", "label"),
+    xc(dateTimeText(r.adj_date), "value"),
+    ...Array(NCOLS - 2).fill(skip),
+  ]);
+  rows.push([
+    xc("Confirmed", "label"),
+    xc(confirmedYesNo(r.header_confirmed), "value"),
+    ...Array(NCOLS - 2).fill(skip),
+  ]);
+  rows.push([
+    xc("Confirmed Date", "label"),
+    xc(dateTimeText(r.confirmed_date), "value"),
+    ...Array(NCOLS - 2).fill(skip),
+  ]);
+  rows.push([
+    xc("Adjustment Reason", "label"),
+    xc(text(r.adj_code) || "—", "value"),
+    ...Array(NCOLS - 2).fill(skip),
+  ]);
+  rows.push([
+    xc("Remarks", "label"),
+    xc(text(r.remarks) || "—", "value"),
+    ...Array(NCOLS - 2).fill(skip),
   ]);
 
   rows.push(Array(NCOLS).fill(skip));
@@ -731,119 +670,68 @@ function buildExcelBuffer(
   // ── Column headers ───────────────────────────────────────────────────────
 
   rows.push([
-    xc("No.",       "header"),
-    xc("Product",   "header"),
-    xc("Quantity1", "header"),
-    xc("UOM",       "header"),
-    xc("Quantity2", "header"),
-    xc("UOM",       "header"),
+    xc("No.", "header"),
+    xc("Site", "header"),
+    xc("Location", "header"),
+    xc("Product Code / Name", "header"),
+    xc("Job No", "header"),
+    xc("Lot No", "header"),
+    xc("Doc Ref", "header"),
+    xc("Adj Type", "header"),
+    xc("UOM", "header"),
+    xc("Qty1", "header"),
+    xc("UOM", "header"),
+    xc("Qty2", "header"),
   ]);
 
-  // ── Order sections ───────────────────────────────────────────────────────
+  // ── Adjustment detail rows ───────────────────────────────────────────────
 
-  for (const gs of groups) {
-    const orderDate = dateText(gs.orderDate) || "—";
+  for (const row of reportRows) {
+    const productText = text(row.prod_name)
+      ? `${text(row.prod_code)} | ${text(row.prod_name)}`
+      : text(row.prod_code) || "—";
 
-    const customer = gs.custCode
-      ? `${gs.custName} (${gs.custCode})`
-      : gs.custName || "—";
-
-    // Order header
     rows.push([
-      xc(
-        `Order No./ Date: ${gs.orderNo || "—"} / ${orderDate}` +
-        `    Customer: ${customer}`,
-        "sectionGroup"
-      ),
-      ...Array(NCOLS - 1).fill(skip),
+      xc(parseInt(text(row.adj_serialno), 10) || "", "numValue"),
+      xc(text(row.site_code) || "—", "value"),
+      xc(text(row.location_code) || "—", "value"),
+      xc(productText, "value"),
+      xc(text(row.job_no) || "—", "value"),
+      xc(text(row.lot_no) || "—", "value"),
+      xc(text(row.doc_ref) || "—", "value"),
+      xc(text(row.adj_type) || "—", "value"),
+      xc(text(row.p_uom) || "—", "value"),
+      xc(Number(row.qty_puom) || 0, "numValue"),
+      xc(text(row.l_uom) || "—", "value"),
+      xc(Number(row.qty_luom) || 0, "numValue"),
     ]);
 
-    // Product rows
-    for (const pg of gs.products) {
-      const product = pg.prodName
-        ? `${pg.prodCode} | ${pg.prodName}`
-        : pg.prodCode || "—";
-
-      rows.push([
-        xc(pg.serialNo || "", "numValue"),
-        xc(product,            "value"),
-        xc(pg.qty1,            "numValue"),
-        xc(pg.uom1 || "",      "value"),
-        xc(pg.qty2,            "numValue"),
-        xc(pg.uom2 || "",      "value"),
-      ]);
-    }
-
-    // Order total
     rows.push([
-      xc("Total:", "totalGroup"),
-      xc("",       "totalGroup"),
+      xc("Country Of Origin", "label"),
+      xc(countryDisplay(row), "value"),
+      ...Array(6).fill(skip),
+      xc("Status", "label"),
+      xc(detailStatus(row.detail_confirmed), "value"),
+      skip,
+      skip,
+    ]);
 
-      xc(
-        sumUomTotals(gs.qty1ByUom),
-        "numTotal"
-      ),
-
-      xc(
-        getUomNames(gs.qty1ByUom),
-        "totalGroup"
-      ),
-
-      xc(
-        sumUomTotals(gs.qty2ByUom),
-        "numTotal"
-      ),
-
-      xc(
-        getUomNames(gs.qty2ByUom),
-        "totalGroup"
-      ),
+    rows.push([
+      xc("Manufacturer", "label"),
+      xc(text(row.manu_code) || "—", "value"),
+      xc(text(row.manu_name) || "—", "value"),
+      ...Array(NCOLS - 3).fill(skip),
     ]);
   }
 
-  // ── Grand-level UOM totals ───────────────────────────────────────────────
+  if (reportRows.length === 0) {
+    rows.push([
+      xc("No adjustment details found.", "value"),
+      ...Array(NCOLS - 1).fill(skip),
+    ]);
+  }
 
-  const grandTotalPuom = mergeUomTotals(
-    ...groups.map((g) => g.qty1ByUom)
-  );
-
-  const grandTotalLuom = mergeUomTotals(
-    ...groups.map((g) => g.qty2ByUom)
-  );
-
-  // Grand total row
-  rows.push([
-    xc("Grand Total", "totalGrand"),
-    xc("",            "totalGrand"),
-
-    xc(
-      sumUomTotals(grandTotalPuom),
-      "numGrand"
-    ),
-
-    xc(
-      getUomNames(grandTotalPuom),
-      "totalGrand"
-    ),
-
-    xc(
-      sumUomTotals(grandTotalLuom),
-      "numGrand"
-    ),
-
-    xc(
-      getUomNames(grandTotalLuom),
-      "totalGrand"
-    ),
-  ]);
-
-  // Keep your existing Excel XML/workbook generation code below this point.
-  // It should use:
-  //
-  // rows
-  // NCOLS = 6
-
-  const COL_WIDTHS = [13, 13, 16, 16, 10, 10, 22, 22, 22, 18];
+  const COL_WIDTHS = [6, 8, 13, 34, 15, 18, 19, 10, 9, 10, 9, 10];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
@@ -954,7 +842,7 @@ function buildExcelBuffer(
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="GRN Detail" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="Adjustment Detail" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -989,86 +877,137 @@ function buildExcelBuffer(
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-export const getSalesOrderReportHtml = async (
+function getAdjustmentNo(req: RequestWithUser): string {
+  return text(
+    req.params.adj_no ||
+    req.query.adj_no ||
+    req.params.job_no ||
+    req.query.job_no
+  );
+}
+
+export const getStockAdjusmentReportHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-   // const companyCode     = text(req.params.companyCode  || req.query.companyCode);
-    const  jobNo     = text(req.params.job_no  || req.query.job_no);
-    const prinCode    = text(req.query.prin_code || req.params.prin_code);
-    const reportTitle = text(req.query.title)    || "Sales Order Report";
-    const autoPrint   = req.query.print === "true";
+    const adjNo = getAdjustmentNo(req);
+    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const reportTitle = text(req.query.title) || "Entry List";
+    const autoPrint = req.query.print === "true";
 
-    if (!jobNo || !prinCode) {
-      res.status(400).json({ success: false, message:  "job_no and prin_code are required" });
+   console.log('Adj no',adjNo,'prinCode',prinCode)
+
+    if (!prinCode) {
+      res.status(400).json({
+        success: false,
+        message: "prin_code are required",
+      });
       return;
     }
 
-    const rows   = await loadOrderData(req, prinCode, jobNo);
-    const groups = groupRows(rows);
-    const first  = rows[0] ?? null;
+    const rows = await loadAdjustmentData(req, prinCode, adjNo);
+    const first = rows[0] ?? null;
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(groups, first,jobNo,prinCode, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(
+      renderHtml(
+        rows,
+        first,
+        adjNo,
+        prinCode,
+        reportTitle,
+        text(req.user?.loginid),
+        autoPrint
+      )
+    );
   } catch (error: any) {
-    console.error("GRN HTML error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+    console.error("Adjustment HTML error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate report",
+    });
   }
 };
 
-export const getSalesOrderReportPdf = async (
+export const getStockAdjusmentReportPdf = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-    const companyCode     = text(req.params.companyCode  || req.query.companyCode);
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
+    const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
-    if (!companyCode || !jobNo || !prinCode) {
-      res.status(400).json({ success: false, message: " job_no and prin_code are required" });
+    if (!prinCode) {
+      res.status(400).json({
+        success: false,
+        message: "adj_no and prin_code are required",
+      });
       return;
     }
 
-    const rows        = await loadOrderData(req, prinCode, jobNo);
-    const groups      = groupRows(rows);
-    const first       = rows[0] ?? null;
-    const reportTitle = "Sales Order Report";
-    const html = renderHtml(groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
+    const rows = await loadAdjustmentData(req, prinCode, adjNo);
+    const first = rows[0] ?? null;
+    const reportTitle = "Entry List";
+    const html = renderHtml(
+      rows,
+      first,
+      adjNo,
+      prinCode,
+      reportTitle,
+      text(req.user?.loginid),
+      true
+    );
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Content-Disposition", `inline; filename="ORDER_${jobNo}.pdf"`);
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="ADJUSTMENT_${adjNo}.pdf"`
+    );
     res.send(html);
   } catch (error: any) {
-    console.error("GRN PDF error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
+    console.error("Adjustment PDF error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate PDF",
+    });
   }
 };
 
-export const exportSalesOrderReportExcel = async (
+export const exportStockAdjusmentReportExcel = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-    const companyCode     = text(req.params.companyCode  || req.query.companyCode);
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
+    const adjNo = getAdjustmentNo(req);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
-    if (!jobNo || !prinCode) {
-      res.status(400).json({ success: false, message: "company_code, job_no and prin_code are required" });
+    if (!adjNo || !prinCode) {
+      res.status(400).json({
+        success: false,
+        message: "prin_code are required",
+      });
       return;
     }
-    
-    const rows   = await loadOrderData(req, prinCode, jobNo);
-    const groups = groupRows(rows);
-    const buffer = buildExcelBuffer(groups, jobNo, prinCode);
 
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="ORDER_${jobNo}.xlsx"`);
+    const rows = await loadAdjustmentData(req, prinCode, adjNo);
+    const first = rows[0] ?? null;
+    const buffer = buildExcelBuffer(rows, first, adjNo, prinCode);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="Stock_Adjusment_${adjNo}.xlsx"`
+    );
     res.end(buffer);
   } catch (error: any) {
-    console.error("GRN Excel error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
+    console.error("Adjustment Excel error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate Excel",
+    });
   }
 };
