@@ -31,16 +31,18 @@ export const frtReportRun = async (req: Request, res: Response): Promise<void> =
   await withConnection(res, async (connection) => {
     const binds = reportBinds(req);
     let rows: unknown[];
+    let source = "PROC_FRT_REPORT_RUN_PB";
     try {
       rows = await runPowerBuilderReport(connection, reportKey, binds);
     } catch (error: any) {
       const message = String(error?.message || "");
       const canFallback = message.includes("PLS-00201") || message.includes("PLS-00306") || message.includes("PROC_FRT_REPORT_RUN_PB");
       if (!canFallback) throw error;
+      source = procName;
       rows = await runLegacyReport(connection, procName, binds);
     }
 
-    res.json({ success: true, data: rows, totalCount: rows.length });
+    res.json({ success: true, data: rows, totalCount: rows.length, source });
   });
 };
 
