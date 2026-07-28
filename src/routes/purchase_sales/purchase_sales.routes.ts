@@ -6,6 +6,12 @@ import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.m
 import { tenantMiddleware } from "../../../src/middleware/tenant.middleware";
 import { insUpdTtePOrderBulk } from "../../controllers/purchase_sales/insUpdTtePOrderBulk";
 import { insUpdTtePQuotationBulk } from "../../controllers/purchase_sales/insUpdTtePQuotationBulk";
+import { insUpdTtePGrnBulk } from "../../controllers/purchase_sales/insUpdTtePGrnBulk";
+import { insUpdTteJOrderBulk } from "../../controllers/purchase_sales/insUpdTteJOrderBulk";
+import { insUpdTteSOrderBulk } from "../../controllers/purchase_sales/insUpdTteSOrderBulk";
+import { insUpdTteSdnBulk } from "../../controllers/purchase_sales/insUpdTteSdnBulk";
+import { insUpdTteTransferBulk } from "../../controllers/purchase_sales/insUpdTteTransferBulk";
+import { insUpdTteAdjustmentBulk } from "../../controllers/purchase_sales/insUpdTteAdjustmentBulk";
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -21,6 +27,36 @@ router.post(
   insUpdTtePQuotationBulk
 );
 
+router.post(
+  "/insUpdTtePGrnBulk",
+  insUpdTtePGrnBulk
+);
+router.post(
+  "/insUpdTteJOrderBulk",
+  insUpdTteJOrderBulk
+);
+
+router.post(
+  "/insUpdTteSOrderBulk",
+  insUpdTteSOrderBulk 
+);
+
+router.post(
+  "/insUpdTteSdnBulk",
+  insUpdTteSdnBulk  
+);
+
+
+router.post(
+  "/insUpdTteTransferBulk",
+  insUpdTteTransferBulk   
+);
+
+
+router.post(
+  "/insUpdTteAdjustmentBulk",
+  insUpdTteAdjustmentBulk    
+);
 export default router;
 
 
