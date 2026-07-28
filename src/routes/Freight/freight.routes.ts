@@ -59,6 +59,8 @@ import {
 } from "../../controllers/Freight/freightJobProcedures";
 import {
   frtPacklistDelete,
+  frtPacklistDimList,
+  frtPacklistDimSave,
   frtPacklistGet,
   frtPacklistJobs,
   frtPacklistList,
@@ -92,6 +94,12 @@ import {
 } from "../../controllers/Freight/freightJobFollowupProcedures";
 import { frtReportRun } from "../../controllers/Freight/freightReportProcedures";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
+import {
+  frtAttachmentDelete,
+  frtAttachmentList,
+  frtAttachmentRename,
+  frtAttachmentSave,
+} from "../../controllers/Freight/freightAttachmentProcedures";
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -147,6 +155,8 @@ router.post("/packlist/list", frtPacklistList);
 router.post("/packlist/get", frtPacklistGet);
 router.post("/packlist/save", frtPacklistSave);
 router.post("/packlist/delete", frtPacklistDelete);
+router.post("/packlist/dimensions/list", frtPacklistDimList);
+router.post("/packlist/dimensions/save", frtPacklistDimSave);
 
 router.post("/job-activities/jobs", frtJobActivityJobList);
 router.post("/job-activities/get", frtJobActivityGet);
@@ -174,6 +184,11 @@ router.post("/job-alerts/delete", frtJobAlertDelete);
 router.post("/job-deposits/list", frtJobDepositList);
 router.post("/job-deposits/save", frtJobDepositSave);
 router.post("/job-deposits/delete", frtJobDepositDelete);
+
+router.post("/attachments/list", frtAttachmentList);
+router.post("/attachments/save", frtAttachmentSave);
+router.post("/attachments/rename", frtAttachmentRename);
+router.post("/attachments/delete", frtAttachmentDelete);
 
 router.post("/reports/run", frtReportRun);
 

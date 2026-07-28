@@ -86,6 +86,58 @@ export const frtPacklistGet = async (req: Request, res: Response): Promise<void>
   });
 };
 
+export const frtPacklistDimList = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const result = await connection.execute(
+      `BEGIN
+         PROC_FRT_PACKLIST_DIM_LIST(
+           :p_company_code,
+           :p_prin_code,
+           :p_job_no,
+           :p_result
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
+        p_job_no: req.body.job_no ?? req.body.JOB_NO,
+        p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const rows = await rowsFromCursor((result.outBinds as any).p_result);
+    res.json({ success: true, data: rows, totalCount: rows.length });
+  });
+};
+
+export const frtPacklistDimSave = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const lines = Array.isArray(req.body.lines) ? req.body.lines : [];
+    await connection.execute(
+      `BEGIN
+         PROC_FRT_PACKLIST_DIM_SAVE(
+           :p_company_code,
+           :p_prin_code,
+           :p_job_no,
+           :p_user_id,
+           :p_lines
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
+        p_job_no: req.body.job_no ?? req.body.JOB_NO,
+        p_user_id: req.body.user_id ?? req.body.USER_ID,
+        p_lines: { type: "FRT_PACKLIST_DIM_TAB", val: lines.map(toDimensionObject) },
+      },
+      { autoCommit: true }
+    );
+
+    res.json({ success: true, message: "Freight pack dimensions saved successfully" });
+  });
+};
+
 export const frtPacklistSave = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const pack = req.body.packlist ?? req.body;
@@ -334,4 +386,21 @@ function toDate(input: unknown) {
   if (input instanceof Date) return input;
   const date = new Date(String(input));
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function toDimensionObject(row: Record<string, unknown>, index: number) {
+  return {
+    SR_NO: numberValue(row.sr_no ?? row.SR_NO) ?? index + 1,
+    PACKLIST_DIM_NO: numberValue(row.packlist_dim_no ?? row.PACKLIST_DIM_NO),
+    LENGTH: numberValue(row.length ?? row.LENGTH),
+    BREADTH: numberValue(row.breadth ?? row.BREADTH),
+    HEIGHT: numberValue(row.height ?? row.HEIGHT),
+    QTY: numberValue(row.qty ?? row.QTY),
+    GROSS_WT: numberValue(row.gross_wt ?? row.GROSS_WT),
+    CHARGEABLE_WT: numberValue(row.chargeable_wt ?? row.CHARGEABLE_WT),
+    VOLUME: numberValue(row.volume ?? row.VOLUME),
+    TOTAL_QTY: numberValue(row.total_qty ?? row.TOTAL_QTY),
+    CARGO_DETAILS: value(row.cargo_details ?? row.CARGO_DETAILS),
+    PROD_DESCRIPTION: value(row.prod_description ?? row.PROD_DESCRIPTION),
+  };
 }

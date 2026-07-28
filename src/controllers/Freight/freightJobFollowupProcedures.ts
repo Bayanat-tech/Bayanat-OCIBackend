@@ -29,7 +29,7 @@ export const frtJobDocSave = async (req: Request, res: Response): Promise<void> 
 
 export const frtJobInstructionCodeList = codeListProc("PROC_FRT_JOB_INSTRUCTION_CODE_LIST");
 export const frtJobInstructionList = listProc("PROC_FRT_JOB_INSTRUCTION_LIST", "p_result");
-export const frtJobInstructionInit = actionProc("PROC_FRT_JOB_INSTRUCTION_INIT", ["p_company_code", "p_prin_code", "p_job_no", "p_user_id"], "Job instructions initialized");
+export const frtJobInstructionInit = actionProc("PROC_FRT_JOB_INSTRUCTION_INIT", ["p_company_code", "p_prin_code", "p_job_no", "p_user_id", "p_op_type", "p_op_mode"], "Job instructions initialized");
 export const frtJobInstructionDelete = actionProc("PROC_FRT_JOB_INSTRUCTION_DELETE", ["p_company_code", "p_prin_code", "p_job_no", "p_op_code"], "Job instruction deleted");
 
 export const frtJobInstructionSave = async (req: Request, res: Response): Promise<void> => {
@@ -39,7 +39,7 @@ export const frtJobInstructionSave = async (req: Request, res: Response): Promis
 
 export const frtJobAlertCodeList = codeListProc("PROC_FRT_JOB_ALERT_CODE_LIST");
 export const frtJobAlertList = listProc("PROC_FRT_JOB_ALERT_LIST", "p_result");
-export const frtJobAlertInit = actionProc("PROC_FRT_JOB_ALERT_INIT", ["p_company_code", "p_prin_code", "p_job_no", "p_user_id"], "Job alerts initialized");
+export const frtJobAlertInit = actionProc("PROC_FRT_JOB_ALERT_INIT", ["p_company_code", "p_prin_code", "p_job_no", "p_user_id", "p_op_type", "p_op_mode"], "Job alerts initialized");
 export const frtJobAlertDelete = actionProc("PROC_FRT_JOB_ALERT_DELETE", ["p_company_code", "p_prin_code", "p_job_no", "p_op_code"], "Job alert deleted");
 
 export const frtJobAlertSave = async (req: Request, res: Response): Promise<void> => {
