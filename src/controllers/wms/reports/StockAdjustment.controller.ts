@@ -9,7 +9,6 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 
 type ReportRow = Record<string, any>;
 
-// This report has no grouping. Each query row is rendered directly.
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -188,8 +187,6 @@ async function loadAdjustmentData(
   }
 }
 
-// ─── No grouping ──────────────────────────────────────────────────────────────
-// Rows remain exactly as returned by the query, ordered by ADJ_SERIALNO.
 
 // ─── HTML renderer ────────────────────────────────────────────────────────────
 
