@@ -462,6 +462,7 @@ async function recordExists(
 
     UPDATED_BY = :updated_by,
     UPDATED_AT = SYSTIMESTAMP,
+    HISTORY_SERIAL = :HISTORY_SERIAL,
     UUID = NVL(:uuid, UUID)
 
   WHERE COMPANY_CODE = :company_code
@@ -507,6 +508,7 @@ const params = {
 
   air_route: { val: data.AIR_ROUTE || null },
   air_ticket: { val: data.AIR_TICKET || null },
+  HISTORY_SERIAL: { val: 1},
   uuid: { val: data.UUID },
 };
 
@@ -566,7 +568,7 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     EMPLOYEE_CODE, LEAVE_TYPE, LEAVE_START_DATE, LEAVE_END_DATE,
     LEAVE_DAYS, AIR_TICKET, AIR_ROUTE, LAST_ACTION, CURRENT_STEP, 
     FLOW_LEVEL_INITIAL, FLOW_LEVEL_RUNNING, CREATE_USER, CREATE_DATE,
-    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL, UUID
+    CREATED_BY, CREATED_AT, FLOW_LEVEL_FINAL, UUID , HISTORY_SERIAL
 ) VALUES (
     :employee_name, :half_day,
     CASE WHEN :duty_resume_date IS NOT NULL THEN TO_DATE(:duty_resume_date, 'YYYY-MM-DD') ELSE NULL END,
@@ -582,7 +584,7 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     TO_DATE(:leave_start_date, 'YYYY-MM-DD'),
     TO_DATE(:leave_end_date, 'YYYY-MM-DD'),
     :leave_days, :air_ticket, :air_route, :last_action, 1, 1, 4, :create_user, SYSDATE,
-    :created_by, SYSDATE, 4, :uuid
+    :created_by, SYSDATE, 4, :uuid , :HISTORY_SERIAL
 )
 `;
 
@@ -621,6 +623,7 @@ async function insertLeaveApproval(data: TLeaveApproval, connection: any) {
     create_user: { val: data.UPDATED_BY },
     created_by: { val: data.CREATED_BY },
     uuid: { val: data.UUID },
+    HISTORY_SERIAL: { val: 1},
 
   };
 
