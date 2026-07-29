@@ -16,6 +16,7 @@ import {
   frtEnquiryGet,
   frtEnquiryList,
   frtEnquirySave,
+  frtEnquiryWorkflowAction,
 } from "../../controllers/Freight/freightEnquiryProcedures";
 import {
   frtEnquiryActivityDelete,
@@ -114,6 +115,7 @@ router.post(
 router.post("/enquiry/list", frtEnquiryList);
 router.post("/enquiry/get", frtEnquiryGet);
 router.post("/enquiry/save", frtEnquirySave);
+router.post("/enquiry/workflow-action", frtEnquiryWorkflowAction);
 router.post("/enquiry/approve", frtEnquiryApprove);
 router.post("/enquiry/cancel", frtEnquiryCancel);
 router.post("/enquiry/delete", frtEnquiryDelete);
@@ -125,6 +127,7 @@ router.post("/enquiry-activities/delete", frtEnquiryActivityDelete);
 router.post("/rfq/list", frtRfqList);
 router.post("/rfq/get", frtRfqGet);
 router.post("/rfq/save", frtRfqSave);
+router.post("/rfq/workflow-action", frtEnquiryWorkflowAction);
 router.post("/rfq/approve", frtEnquiryApprove);
 router.post("/rfq/cancel", frtEnquiryCancel);
 router.post("/rfq/delete", frtRfqDelete);
