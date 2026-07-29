@@ -1,4 +1,3 @@
-import { oracleDb } from "./../../../src/database/connection";
 import { QueryExecutor } from "../../database/QueryExecutor";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
@@ -233,7 +232,50 @@ async function sendDataToDotNetAPI(
         transaction
       );
     }
+    // Header/detail transfer is handled by the Oracle procedure. The direct
+    console.log(
+      `Calling Oracle procedure PROC_AWARE_VMS_ENTRY for DOC_NO: ${docNo}`
+    );
+    try {
+      await VendorService.callAwareVmsEntry(companyCode, docNo, "SYSTEM");
+      console.log(
+        `Oracle procedure executed successfully for DOC_NO: ${docNo}`
+      );
+    } catch (spError: any) {
+      console.error(
+        `Oracle procedure PROC_AWARE_VMS_ENTRY failed for ${companyCode}/${docNo}:`,
+        spError
+      );
 
+      const apiMessage = spError?.message || String(spError);
+      const notifPayload = {
+        event: "VENDOR_SP_ERROR",
+        message: `Stored procedure PROC_AWARE_VMS_ENTRY failed for Document ${docNo} (Company: ${companyCode}). Error: ${apiMessage}`,
+        subject: "Vendor SP Transfer Failed",
+        request_user:
+          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        cc: "prem@bayanattechnology.com",
+        htmlMessage: `
+          <h3>Vendor SP Transfer Failed</h3>
+          <p><strong>Company:</strong> ${escapeHtml(companyCode)}</p>
+          <p><strong>Document No:</strong> ${escapeHtml(docNo)}</p>
+          <pre>${escapeHtml(apiMessage)}</pre>
+        `,
+      };
+
+      try {
+        await notifyUser(notifPayload);
+      } catch (notifErr) {
+        console.error("notifyUser failed for SP error:", notifErr);
+      }
+
+      throw spError;
+    }
+
+    await VendorService.updateDataTransferFlag(companyCode, docNo);
+    console.log(`Successfully completed data transfer for DOC_NO: ${docNo}`);
+
+    /*
     // Fetch all columns from TR_AC_LPO_HEADER
     const headerResult = await execMaybe(
       `SELECT 
@@ -279,7 +321,7 @@ async function sendDataToDotNetAPI(
         NVL(REF_DOC2, '') AS REF_DOC2,
         NVL(REF_DOC3, '') AS REF_DOC3
       FROM VMS_FLOW_HDR
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES'`,
+      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES' AND NEXT_ACTION_BY = 'APPROVED'`,
       {
         companyCode: { val: companyCode },
         docNo: { val: docNo },
@@ -329,7 +371,7 @@ async function sendDataToDotNetAPI(
         NVL(TX_CAT_CODE, '') AS TX_CAT_CODE,
         NVL(TX_COMPNTCAT_CODE_1, '') AS TX_COMPNTCAT_CODE_1
       FROM VMS_FLOW_DTL
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND NEXT_ACTION_BY = 'APPROVED'`,
       {
         companyCode: { val: companyCode },
         docNo: { val: docNo },
@@ -432,6 +474,7 @@ async function sendDataToDotNetAPI(
     // Update DATA_TRANSFER flag
     await VendorService.updateDataTransferFlag(companyCode, docNo);
     console.log("Successfully updated data transfer flag");
+    */
   } catch (error) {
     console.error("Error in sendDataToDotNetAPI:", error);
     throw error;
@@ -1320,7 +1363,7 @@ export async function processSubmittedRecords(
       const recordsResult = await QueryExecutor.executeRawQuery(
         `SELECT COMPANY_CODE, DOC_NO 
          FROM VMS_FLOW_HDR
-         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y'
+         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y' AND NEXT_ACTION_BY = 'APPROVED'
          FETCH FIRST 1 ROWS ONLY`
       );
       records = recordsResult.rows || recordsResult;

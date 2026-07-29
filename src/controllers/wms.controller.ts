@@ -1034,7 +1034,7 @@ case "assetgroup":
          UPDATED_AT AS "updated_at"
        FROM MS_AC_ASSET_GROUP
        WHERE COMPANY_CODE = :1
-       ORDER BY ASSET_GROUP_CODE`,
+       ORDER BY CREATED_AT DESC`,
       [requestUser.company_code]
     );
     totalCount = rows.length;

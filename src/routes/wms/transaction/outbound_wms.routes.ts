@@ -28,6 +28,7 @@ import { getDnReportExcel, getDnReportHtml } from "../../../controllers/wms/repo
 import { getPickListExcel, getPickListHtml } from "../../../controllers/wms/reports/OubPick.controller";
 import { getWmsOutboundJobDetailsReportExcel, getWmsOutboundJobDetailsReportHtml } from "../../../controllers/wms/reports/Outbound_jobDetialsReport.controller";
 import { getWmsOutboundServiceActivityReportExcel, getWmsOutboundServiceActivityReportHtml } from "../../../controllers/wms/reports/Outboundserviceactivityreport.controller";
+import { getSalesOrderReportHtml, exportSalesOrderReportExcel } from "../../../controllers/wms/reports/salesOrder.controller";
 
 // Ensure getToOrder uses Express.Request and Express.Response types for compatibility.
 
@@ -152,6 +153,11 @@ router.get("/reports/Oubpick/:job_no/excel",getPickListExcel);
 //inbound service activity report routes 
 router.get("/reports/Oub-serviceactivity/:job_no", getWmsOutboundServiceActivityReportHtml);
 router.get("/reports/Oub-serviceactivity/:job_no/excel", getWmsOutboundServiceActivityReportExcel);
+
+//salesorder route
+router.get('/reports/salesorder/:job_no', getSalesOrderReportHtml);
+router.get('/reports/salesorder/:job_no/excel', exportSalesOrderReportExcel);
+
 
 // Export router
 export default router;

@@ -264,7 +264,7 @@ function renderPnlHtml(
 
       document.querySelectorAll("tbody tr[data-plcode]").forEach(function (tr) {
         tr.style.cursor = "pointer";
-        tr.addEventListener("mouseenter", function () { tr.style.background = "#f5f5f5"; });
+        tr.addEventListener("mouseenter", function () { tr.style.background = "#f0f9f5"; });
         tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
         tr.addEventListener("click", function () {
           var plCode = tr.getAttribute("data-plcode");

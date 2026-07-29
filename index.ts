@@ -21,6 +21,7 @@ export const withTenantContext = () => [
 ];
 
 import freight from "./src/routes/Freight/freight.routes"
+import purchaseSalesRoutes from "./src/routes/purchase_sales/purchase_sales.routes";
 import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
 import authRoutes from "./src/routes/auth.routes";
@@ -75,6 +76,8 @@ app.use("/api/wms", wmsRoutes);
 app.use("/api/finance", financeRoutes);
 
 app.use("/api/freight", freight);
+
+app.use("/api/purchase-sales", purchaseSalesRoutes);
 
 app.use("/api/alms/", almsRoutes);
 
