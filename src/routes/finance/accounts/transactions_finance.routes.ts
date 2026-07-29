@@ -88,6 +88,8 @@ import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accou
 import { getTransactionWithoutTransfersReport } from "../../wms/reports/Transactionwithouttransfersreport";
 import { exportTransactionWithoutTransfersExcel } from "../../wms/reports/WithoutTrasactionExcel";
 import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../controllers/wms/reports/GrnSummaryreport.controller";
+import { CapexApprovalReport } from "../../../controllers/ALMS/CapexApprovalReport";
+import { exportCapexApprovalExcel } from "../../../controllers/ALMS/Capexapprovalexcel";
 
 
 const router = express.Router();
@@ -206,6 +208,12 @@ router.post('/reports/OutstandingSummaryReport/html',OutstandingSummaryReport);
 router.post("/reports/AcStatement/excel", exportAcStatementExcel);
 router.post("/reports/OutstandingDetail/excel",  exportOutstandingDetailExcel);
 router.post("/reports/OutstandingSummary/excel", exportOutstandingSummaryExcel);
+
+
+
+// ALMS report  Capex Approval Report and Excel 
+router.post('/reports/CapexApprovalReport/html', CapexApprovalReport);
+router.post('/reports/CapexApprovalReport/excel', exportCapexApprovalExcel);
 
 
 
