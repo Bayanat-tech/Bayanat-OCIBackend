@@ -12,6 +12,7 @@ import { insUpdTteSOrderBulk } from "../../controllers/purchase_sales/insUpdTteS
 import { insUpdTteSdnBulk } from "../../controllers/purchase_sales/insUpdTteSdnBulk";
 import { insUpdTteTransferBulk } from "../../controllers/purchase_sales/insUpdTteTransferBulk";
 import { insUpdTteAdjustmentBulk } from "../../controllers/purchase_sales/insUpdTteAdjustmentBulk";
+import {insUpdJobProduction} from "../../controllers/purchase_sales/insUpdJobProduction"
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -56,6 +57,11 @@ router.post(
 router.post(
   "/insUpdTteAdjustmentBulk",
   insUpdTteAdjustmentBulk    
+);
+
+router.post(
+  "/insUpdJobProduction",
+  insUpdJobProduction    
 );
 export default router;
 
