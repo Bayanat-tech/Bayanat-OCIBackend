@@ -10,6 +10,7 @@ import {
   proc_build_dynamic_sql_FREIGHT,
 } from "../../controllers/Freight/freightDynamicProcedures";
 import {
+  frtApprovalConfig,
   frtEnquiryApprove,
   frtEnquiryCancel,
   frtEnquiryDelete,
@@ -113,6 +114,7 @@ router.post(
 );
 
 router.post("/enquiry/list", frtEnquiryList);
+router.post("/approval/config", frtApprovalConfig);
 router.post("/enquiry/get", frtEnquiryGet);
 router.post("/enquiry/save", frtEnquirySave);
 router.post("/enquiry/workflow-action", frtEnquiryWorkflowAction);

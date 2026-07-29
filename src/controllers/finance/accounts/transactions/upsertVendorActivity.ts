@@ -36,6 +36,12 @@ return isNaN(d.getTime())
 
 };
 
+const paramValue=(val:string|string[]|undefined):string=>{
+return Array.isArray(val)
+? val[0] ?? ""
+: val ?? "";
+};
+
 
 
 export const upsertVendorActivity=async(
@@ -225,7 +231,8 @@ let connection:oracledb.Connection|undefined;
 
 try{
 
-const { ac_code, srno }=req.params;
+const ac_code=paramValue(req.params.ac_code);
+const srno=paramValue(req.params.srno);
 const data=req.body || {};
 
 if(

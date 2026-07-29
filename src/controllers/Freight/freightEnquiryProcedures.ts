@@ -5,6 +5,28 @@ import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middle
 
 type Connection = oracledb.Connection;
 
+export const frtApprovalConfig = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = req.body.company_code ?? req.body.COMPANY_CODE;
+    const process = req.body.process ?? req.body.PROCESS;
+    const result = await connection.execute(
+      `SELECT NVL(MAX(LAST_LEVEL), 0) AS LAST_LEVEL
+         FROM MS_APPROVER_LEVELS
+        WHERE COMPANY_CODE = :company_code
+          AND PROCESS = :process`,
+      {
+        company_code: companyCode,
+        process,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const row = (result.rows?.[0] ?? {}) as Record<string, unknown>;
+    const lastLevel = Number(row.LAST_LEVEL ?? 0);
+    res.json({ success: true, data: { approval_enabled: lastLevel > 0, last_level: lastLevel } });
+  });
+};
+
 export const frtEnquiryList = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const result = await connection.execute(
@@ -290,6 +312,16 @@ export function toHeaderObject(header: Record<string, unknown>) {
     NO_OF_CONTANERS: numberValue(header.no_of_contaners),
     VEHICLE_TYPE: stringValue(header.vehicle_type),
     T_F: stringValue(header.t_f),
+    FLOW_LEVEL_RUNNING: numberValue(header.flow_level_running),
+    FLOW_LEVEL_INITIAL: numberValue(header.flow_level_initial),
+    FLOW_LEVEL_FINAL: numberValue(header.flow_level_final),
+    FINAL_APPROVED: stringValue(header.final_approved, "N"),
+    LAST_ACTION: stringValue(header.last_action, "SAVEASDRAFT"),
+    NEXT_ACTION_BY: stringValue(header.next_action_by),
+    SENTBACK_REASON: stringValue(header.sentback_reason),
+    REJECT_REASON: stringValue(header.reject_reason),
+    SUBMITTED_BY: stringValue(header.submitted_by),
+    SUBMITTED_DATE: toDate(header.submitted_date),
   };
 }
 
