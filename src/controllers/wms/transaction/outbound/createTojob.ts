@@ -5,6 +5,9 @@ import { createInboundSchema } from "../../../../../src/validation/wms/transacti
 
 const router = Router();
 
+const paramValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
+
 /* =========================
    UPDATE SQL
 ========================= */
@@ -300,7 +303,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
         console.log('=== EDIT JOB API ===');
         
         // 1. Get job_no from URL parameter
-        const { job_no } = req.params;
+        const job_no = paramValue(req.params.job_no);
         
         console.log('Editing job:', job_no);
         

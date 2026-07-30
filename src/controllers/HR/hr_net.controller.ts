@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { HrService } from "../../services/hr.service";
 
+const paramValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
+
 export const getEmployeesHandler = async (req: Request, res: Response) => {
   try {
     console.log('in getEmployeesHandler')
@@ -36,7 +39,7 @@ export const leaveDaysCntHandler = async (req: Request, res: Response) => {
 
 export const getLeaveBalanceHandler = async (req: Request, res: Response) => {
   try {
-    const { employeeId } = req.params;
+    const employeeId = paramValue(req.params.employeeId);
     const data = await HrService.getLeaveBalance(employeeId);
     res.json(data);
   } catch (error: any) {
@@ -46,7 +49,7 @@ export const getLeaveBalanceHandler = async (req: Request, res: Response) => {
 
 export const getLeaveEntitleHandler = async (req: Request, res: Response) => {
   try {
-    const { employeeId } = req.params;
+    const employeeId = paramValue(req.params.employeeId);
     const data = await HrService.getLeaveEntitle(employeeId);
     res.json(data);
   } catch (error: any) {
