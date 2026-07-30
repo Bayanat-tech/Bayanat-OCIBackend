@@ -102,11 +102,12 @@ export const updateSiteMaster: RequestHandler = async (req, res: Response) => {
       { autoCommit: true }
     );
 
-    res.json({ message: "Site master updated successfully" });
+    res.json({ success: true, message: "Site master updated successfully" });
 
   } catch (err) {
     console.error("updateSiteMaster error:", err);
     res.status(500).json({
+      success: false,
       error: "Site master update failed",
       details: err instanceof Error ? err.message : "Unknown error"
     });
