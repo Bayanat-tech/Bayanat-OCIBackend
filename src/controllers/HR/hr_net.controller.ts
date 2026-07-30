@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { HrService } from "../../services/hr.service";
+import { normalizeToMMDDYYYY } from "../../utils/dateUtils";
 
 export const getEmployeesHandler = async (req: Request, res: Response) => {
   try {
@@ -49,11 +50,14 @@ export const leaveExistsHandler = async (req: Request, res: Response) => {
       leaveEndDate,
     } = req.query;
 
+    const normalizedStart = normalizeToMMDDYYYY(leaveStartDate as string, "leaveStartDate");
+    const normalizedEnd = normalizeToMMDDYYYY(leaveEndDate as string, "leaveEndDate");
+
     const data = await HrService.LeaveExists({
       company_code: company_code as string,
       employee_code: employee_code as string,
-      leaveStartDate: leaveStartDate as string,
-      leaveEndDate: leaveEndDate as string,
+      leaveStartDate: normalizedStart,
+      leaveEndDate: normalizedEnd,
     });
 
     res.json(data);
