@@ -41,6 +41,7 @@ import {
   frtQuotationGet,
   frtQuotationList,
   frtQuotationSave,
+  frtQuotationWorkflowAction,
 } from "../../controllers/Freight/freightQuotationProcedures";
 import {
   frtAirlineTariffDelete,
@@ -141,6 +142,7 @@ router.post("/rfq-activities/delete", frtRfqActivityDelete);
 router.post("/quotation/list", frtQuotationList);
 router.post("/quotation/get", frtQuotationGet);
 router.post("/quotation/save", frtQuotationSave);
+router.post("/quotation/workflow-action", frtQuotationWorkflowAction);
 router.post("/quotation/approve", frtQuotationApprove);
 router.post("/quotation/delete", frtQuotationDelete);
 
