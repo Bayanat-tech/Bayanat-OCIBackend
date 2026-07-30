@@ -96,6 +96,12 @@ import {
   frtJobInstructionSave,
 } from "../../controllers/Freight/freightJobFollowupProcedures";
 import { frtReportRun } from "../../controllers/Freight/freightReportProcedures";
+import {
+  frtInvoiceGet,
+  frtInvoiceJobSelection,
+  frtInvoiceList,
+  frtInvoiceSave,
+} from "../../controllers/Freight/freightInvoiceProcedures";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
 import {
   frtAttachmentDelete,
@@ -198,6 +204,11 @@ router.post("/attachments/rename", frtAttachmentRename);
 router.post("/attachments/delete", frtAttachmentDelete);
 
 router.post("/reports/run", frtReportRun);
+
+router.post("/invoice/list", frtInvoiceList);
+router.post("/invoice/get", frtInvoiceGet);
+router.post("/invoice/job-selection", frtInvoiceJobSelection);
+router.post("/invoice/save", frtInvoiceSave);
 
 router.post("/workspace/summary", frtWorkspaceSummary);
 router.post("/workspace/job-search", frtJobSearch);

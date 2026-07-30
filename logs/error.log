@@ -78532,3 +78532,179 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:561:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-07-30 20:28:40 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:30:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:32:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:34:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:36:38 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:38:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:40:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:42:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:44:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:46:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:48:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:58:47 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:00:50 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:34:01 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:36:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:38:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:40:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:42:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:44:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:46:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:48:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:50:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
