@@ -41,11 +41,22 @@ export const updateSiteMaster: RequestHandler = async (req, res: Response) => {
     console.log("UPDATE SITE MASTER API HIT");
     console.log("Incoming body:", req.body);
 
-    const { rows } = req.body;
+    // ✅ Normalize input: accept { rows: [...] }, a bare array, or a single object
+    let rows: any[];
 
-    if (!Array.isArray(rows) || rows.length === 0) {
+    if (Array.isArray(req.body)) {
+      rows = req.body;
+    } else if (Array.isArray(req.body?.rows)) {
+      rows = req.body.rows;
+    } else if (req.body && typeof req.body === "object") {
+      rows = [req.body]; // single site object sent directly
+    } else {
+      rows = [];
+    }
+
+    if (rows.length === 0) {
       res.status(400).json({ error: "No site rows provided" });
-      return; // ✅ IMPORTANT
+      return;
     }
 
     connection = await oracledb.getConnection();
@@ -95,7 +106,7 @@ export const updateSiteMaster: RequestHandler = async (req, res: Response) => {
 
   } catch (err) {
     console.error("updateSiteMaster error:", err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Site master update failed",
       details: err instanceof Error ? err.message : "Unknown error"
     });
