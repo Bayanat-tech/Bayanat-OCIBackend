@@ -134,6 +134,50 @@ export const frtQuotationApprove = async (req: Request, res: Response): Promise<
   });
 };
 
+export const frtQuotationWorkflowAction = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const action = String(req.body.action ?? req.body.ACTION ?? "").trim().toUpperCase();
+    if (!action) {
+      res.status(400).json({ success: false, message: "Workflow action is required" });
+      return;
+    }
+
+    const result = await connection.execute(
+      `BEGIN
+         PROC_FRT_QUOTATION_WORKFLOW_ACTION(
+           :p_company_code,
+           :p_prin_code,
+           :p_quotation_nr,
+           :p_action,
+           :p_action_by,
+           :p_action_remarks,
+           :p_sentback_to,
+           :p_result
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
+        p_quotation_nr: req.body.quotation_nr ?? req.body.QUOTATION_NR,
+        p_action: action,
+        p_action_by: req.body.action_by ?? req.body.ACTION_BY ?? req.body.userid ?? req.body.USERID,
+        p_action_remarks: req.body.action_remarks ?? req.body.ACTION_REMARKS ?? null,
+        p_sentback_to: req.body.sentback_to ?? req.body.SENTBACK_TO ?? null,
+        p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      },
+      { autoCommit: true, outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const rows = await rowsFromCursor((result.outBinds as any).p_result);
+    res.json({
+      success: true,
+      message: workflowMessage(action),
+      data: rows[0] ?? null,
+    });
+  });
+};
+
+
 async function withConnection(res: Response, handler: (connection: Connection) => Promise<void>) {
   let connection: Connection | undefined;
   try {
@@ -277,6 +321,16 @@ function toQuotationTermObject(row: Record<string, unknown>, header: Record<stri
     USER_ID: stringValue(row.user_id, stringValue(header.userid)),
     USER_DT: toDate(row.user_dt) ?? new Date(),
   };
+}
+
+function workflowMessage(action: string) {
+  if (action === "SAVEASDRAFT") return "Draft saved successfully";
+  if (action === "SUBMITTED") return "Submitted for approval";
+  if (action === "APPROVED") return "Approval action completed";
+  if (action === "SENTBACK") return "Sent back successfully";
+  if (action === "REJECTED") return "Rejected successfully";
+  if (action === "CANCEL") return "Cancelled successfully";
+  return "Workflow action completed";
 }
 
 function stringValue(value: unknown, fallback: string | null = null) {
