@@ -663,6 +663,8 @@ export const partnerSchema = (data: IPartner) => {
     broker_code: Joi.string().required(),
     broker_name: Joi.string().required(),
     broker_addr1: Joi.string().allow("", null),
+    broker_addr2: Joi.string().allow("", null),
+    broker_addr3: Joi.string().allow("", null),
     broker_city: Joi.string().allow("", null),
     broker_contact1: Joi.string().allow("", null),
     broker_telno1: Joi.string().allow("", null),
