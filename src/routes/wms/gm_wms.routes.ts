@@ -550,5 +550,6 @@ router.post("/locationtype/bulk", createBulkLocationType); // Create multiple lo
 router.get("/locationtype", getAllLocationTypes); // Get all location types as JSON
 
 router.post("/siteMaster", updateSiteMaster); 
+router.put("/siteMaster", updateSiteMaster);
 
 export default router;
