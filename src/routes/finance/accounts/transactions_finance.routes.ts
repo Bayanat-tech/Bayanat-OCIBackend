@@ -90,6 +90,7 @@ import { exportTransactionWithoutTransfersExcel } from "../../wms/reports/Withou
 import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../controllers/wms/reports/GrnSummaryreport.controller";
 import { CapexApprovalReport } from "../../../controllers/ALMS/CapexApprovalReport";
 import { exportCapexApprovalExcel } from "../../../controllers/ALMS/Capexapprovalexcel";
+import { PRPurchaseReport } from "../../../controllers/ALMS/Prpurchasereport";
 
 
 const router = express.Router();
@@ -211,9 +212,12 @@ router.post("/reports/OutstandingSummary/excel", exportOutstandingSummaryExcel);
 
 
 
-// ALMS report  Capex Approval Report and Excel 
+// ALMS report 1) Capex Approval Report and Excel 2) PR Purchase report and excel
 router.post('/reports/CapexApprovalReport/html', CapexApprovalReport);
 router.post('/reports/CapexApprovalReport/excel', exportCapexApprovalExcel);
+router.post('/reports/PRPurchaseReport/html',PRPurchaseReport);
+
+
 
 
 
