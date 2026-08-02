@@ -162,17 +162,18 @@ export class SecurityMasterService {
     sort?: { field_name: string; desc: boolean },
     searchFilter?: any
   ) {
-    const whereCondition = this.buildSearchCondition<SecModule>(
-      company_code,
-      searchFilter
-    );
-    return await this.getMasterDataWithPagination<SecModule>(
-      SecModule,
-      whereCondition,
-      page,
-      limit,
-      sort
-    );
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    const where = this.buildSearchCondition<SecModule>(company_code, searchFilter);
+    const [tableData, count] = await repository.findAndCount({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: sort?.field_name
+        ? ({ [sort.field_name]: sort.desc ? "DESC" : "ASC" } as FindOptionsOrder<SecModule>)
+        : ({ app_code: "ASC", position: "ASC", serial_no: "ASC" } as FindOptionsOrder<SecModule>),
+    });
+    return { tableData, count };
   }
 
   static async getProjectAccess(

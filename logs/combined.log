@@ -86244,62 +86244,342 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
 2026-07-30 15:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-07-30 15:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
 2026-07-30 15:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 17:45:46 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-08-02 17:45:46 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-08-02 17:46:16 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-08-02 17:46:16 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-08-02 17:46:42 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-08-02 17:46:42 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-08-02 18:01:47 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-08-02 18:01:47 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-08-02 18:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:02:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-08-02 18:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-08-02 18:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-08-02 18:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:22:53 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-07-30 18:22:53 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-07-30 18:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:28:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:36:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:48:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 18:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 18:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 18:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 19:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 19:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 19:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 19:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 19:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 19:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 19:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 19:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 19:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 20:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:28:40 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:30:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:32:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:34:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:36:38 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:38:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:40:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:42:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:44:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:46:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:48:37 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:50:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 20:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:52:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 20:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:54:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 20:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 20:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 20:58:47 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 20:59:33 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:00:50 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:02:30 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:04:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:06:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:08:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:10:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:13:35 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:19:16 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-07-30 21:19:17 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-07-30 21:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:22:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:24:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:26:25 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:28:25 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:30:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:32:17 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-07-30 21:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:34:01 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:36:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:38:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:40:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:42:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:44:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:46:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:48:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-07-30 21:50:36 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12541: TNS:no listener 
+Error: ORA-12541: TNS:no listener
+    at async Function.getCentralConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async Function.getTenantConfig (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async Function.getConnection (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async Function.executeInTenant (D:\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async D:\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async D:\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-07-30 21:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-07-30 21:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
