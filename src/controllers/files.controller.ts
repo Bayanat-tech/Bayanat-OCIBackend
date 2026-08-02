@@ -14,6 +14,11 @@ let filesPFService: FilesPFService;
 let filesVendorService: FilesVendorService;
 let filesAFService: FilesAFService;
 
+function routeParamValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 // Initialize service
 (async () => {
   filesVHService = await FilesVHService.getInstance();
@@ -608,9 +613,10 @@ export const getFilesBySrNo = async (
       ORDER BY ATTACHMENT_SR_NO ASC, CREATED_AT DESC
     `;
     
+    const srNoValue = routeParamValue(sr_no);
     const params: any = {
       request_number: { val: request_number },
-      sr_no: { val: parseInt(sr_no) },
+      sr_no: { val: parseInt(srNoValue, 10) },
       company_code: { val: req.user.company_code }
     };
     
@@ -818,7 +824,7 @@ export const getEmployeeFiles = async (
     let { request_number } = req.params;
     const { modules } = req.query;
 
-    request_number = decodeURIComponent(request_number);
+    request_number = decodeURIComponent(routeParamValue(request_number));
 
     if (!request_number) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({

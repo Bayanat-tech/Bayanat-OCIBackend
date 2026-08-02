@@ -37,6 +37,7 @@ export interface ComparePasswordInterface {
 
 export interface RequestWithUser extends Request {
   user?: any;
+  params: any;
   query: any;
 }
 export interface TCreatedORUpdatedBy {

@@ -86,721 +86,323 @@ export const insUpdJobProduction = async (
      ******************************************************/
 
 
-    const headerRow = {
+   const headerRow = {
+  COMPANY_CODE: header.company_code ?? null,
+  DOC_TYPE: header.doc_type ?? null,
+  DOC_NO: header.doc_no ?? null,
 
+  DOC_DATE: header.doc_date
+    ? new Date(header.doc_date)
+    : null,
 
-      COMPANY_CODE:
-        header.COMPANY_CODE ?? null,
+  DIV_CODE: header.div_code ?? null,
+  DEPT_CODE: header.dept_code ?? null,
 
+  REMARKS: header.remarks ?? null,
 
-      DOC_TYPE:
-        header.DOC_TYPE ?? null,
+  REF_NO: header.ref_no ?? null,
 
+  REF_DATE: header.ref_date
+    ? new Date(header.ref_date)
+    : null,
 
-      DOC_NO:
-        header.DOC_NO ?? null,
+  AC_CODE: header.ac_code ?? null,
+  CURR_CODE: header.curr_code ?? null,
 
+  EX_RATE: header.ex_rate ?? 1,
 
+  OTHER_EXPENSE_COST: header.other_expense_cost ?? 0,
 
-      DOC_DATE:
-        header.DOC_DATE
-          ? new Date(header.DOC_DATE)
-          : null,
+  DISC_CODE: header.disc_code ?? null,
+  DISC_HDR_PERCENT: header.disc_hdr_percent ?? 0,
+  DISC_HDR_PRICE: header.disc_hdr_price ?? 0,
 
+  PAYMENT_TERMS: header.payment_terms ?? null,
 
+  CREDIT_PERIOD: header.credit_period ?? 0,
 
-      DIV_CODE:
-        header.DIV_CODE ?? null,
+  DUE_DATE: header.due_date
+    ? new Date(header.due_date)
+    : null,
 
+  PARTY_NAME: header.party_name ?? null,
+  PARTY_ADDRESS: header.party_address ?? null,
+  PARTY_PHONE: header.party_phone ?? null,
+  PARTY_FAX: header.party_fax ?? null,
 
-      DEPT_CODE:
-        header.DEPT_CODE ?? null,
+  INV_GENERATED: header.inv_generated ?? null,
 
+  DELIVERY_TO: header.delivery_to ?? null,
+  DLVR_CONTACT: header.dlvr_contact ?? null,
+  DLVR_EMAIL: header.dlvr_email ?? null,
+  DLVR_MOBILE: header.dlvr_mobile ?? null,
+  DLVR_TERM: header.dlvr_term ?? null,
 
+  SALESMAN_CODE: header.salesman_code ?? null,
 
-      REMARKS:
-        header.REMARKS ?? null,
+  REF_DOC_TYPE: header.ref_doc_type ?? null,
+  REF_DOC_NO: header.ref_doc_no ?? 0,
 
+  JOB_NO: header.job_no ?? null,
 
+  CANCELLED: String(header.cancelled ?? "N"),
 
-      REF_NO:
-        header.REF_NO ?? null,
+  CANCELLED_DT: header.cancelled_dt
+    ? new Date(header.cancelled_dt)
+    : null,
 
+  APPROVED: header.approved ?? null,
+  APPROVED_BY: header.approved_by ?? null,
 
+  APPROVED_DT: header.approved_dt
+    ? new Date(header.approved_dt)
+    : null,
 
-      REF_DATE:
-        header.REF_DATE
-          ? new Date(header.REF_DATE)
-          : null,
+  NO_APPR_REQD: header.no_appr_reqd ?? null,
+  NO_APPR_COLLECT: header.no_appr_collect ?? null,
 
+  LAST_SERIAL_NO: header.last_serial_no ?? 0,
+  LAST_DTL_SERIAL_NO: header.last_dtl_serial_no ?? 0,
 
+  USER_ID: header.user_id ?? null,
 
-      AC_CODE:
-        header.AC_CODE ?? null,
+  USER_DT: header.user_dt
+    ? new Date(header.user_dt)
+    : null,
 
+  EDIT_USER: header.edit_user ?? null,
 
+  EDIT_DATE: header.edit_date
+    ? new Date(header.edit_date)
+    : null,
 
-      CURR_CODE:
-        header.CURR_CODE ?? null,
+  CONFIRMED: String(header.confirmed ?? "N"),
 
+  CONFIRM_DATE: header.confirm_date
+    ? new Date(header.confirm_date)
+    : null,
 
+  ZONE_CODE: header.zone_code ?? null,
 
-      EX_RATE:
-        header.EX_RATE ?? 1,
+  AUTO_INV: header.auto_inv ?? null,
 
+  INV_REF_TYPE: header.inv_ref_type ?? null,
+  INV_REF_NO: header.inv_ref_no ?? null,
 
+  TX_COMPNT_HDISC_AMT_1: header.tx_compnt_hdisc_amt_1 ?? 0,
 
-      OTHER_EXPENSE_COST:
-        header.OTHER_EXPENSE_COST ?? 0,
+  PURCHASE_ACTYPE: header.purchase_actype ?? null,
 
+  TX_CAT_CODE: header.tx_cat_code ?? null,
 
+  TX_COMPNTCAT_CODE_1: header.tx_compntcat_code_1 ?? null,
+  TX_COMPNTCAT_CODE_2: header.tx_compntcat_code_2 ?? null,
+  TX_COMPNTCAT_CODE_3: header.tx_compntcat_code_3 ?? null,
+  TX_COMPNTCAT_CODE_4: header.tx_compntcat_code_4 ?? null,
 
-      DISC_CODE:
-        header.DISC_CODE ?? null,
+  TX_COMPNT_PERC_1: header.tx_compnt_perc_1 ?? 0,
+  TX_COMPNT_PERC_2: header.tx_compnt_perc_2 ?? 0,
+  TX_COMPNT_PERC_3: header.tx_compnt_perc_3 ?? 0,
+  TX_COMPNT_PERC_4: header.tx_compnt_perc_4 ?? 0,
 
-      DISC_HDR_PERCENT:
-        header.DISC_HDR_PERCENT ?? 0,
+  TX_COMPNT_AMT_1: header.tx_compnt_amt_1 ?? 0,
+  TX_COMPNT_AMT_2: header.tx_compnt_amt_2 ?? 0,
+  TX_COMPNT_AMT_3: header.tx_compnt_amt_3 ?? 0,
+  TX_COMPNT_AMT_4: header.tx_compnt_amt_4 ?? 0,
 
-      DISC_HDR_PRICE:
-        header.DISC_HDR_PRICE ?? 0,
+  TX_COMPNT_LCURAMT_1: header.tx_compnt_lcuramt_1 ?? 0,
+  TX_COMPNT_LCURAMT_2: header.tx_compnt_lcuramt_2 ?? 0,
+  TX_COMPNT_LCURAMT_3: header.tx_compnt_lcuramt_3 ?? 0,
+  TX_COMPNT_LCURAMT_4: header.tx_compnt_lcuramt_4 ?? 0,
 
+  TX_COMPNT_1_EXPMT: header.tx_compnt_1_expmt ?? null,
+  TX_COMPNT_2_EXPMT: header.tx_compnt_2_expmt ?? null,
+  TX_COMPNT_3_EXPMT: header.tx_compnt_3_expmt ?? null,
+  TX_COMPNT_4_EXPMT: header.tx_compnt_4_expmt ?? null,
 
+  APPROVAL_LEVEL: header.approval_level ?? null,
 
-      PAYMENT_TERMS:
-        header.PAYMENT_TERMS ?? null,
+  CREATED_BY: header.created_by ?? null,
+  UPDATED_BY: header.updated_by ?? null,
 
+  FLOW_LEVEL_RUNNING: header.flow_level_running ?? 0,
 
+  LAST_ACTION: header.last_action ?? "NEW",
 
-      CREDIT_PERIOD:
-        header.CREDIT_PERIOD ?? null,
+  FLOW_LEVEL_INITIAL: header.flow_level_initial ?? 0,
+  FLOW_LEVEL_FINAL: header.flow_level_final ?? 0,
 
+  FINAL_APPROVED: String(header.final_approved ?? "N"),
 
+  HISTORY_SERIAL: header.history_serial ?? 0,
 
-      DUE_DATE:
-        header.DUE_DATE
-          ? new Date(header.DUE_DATE)
-          : null,
+  NEXT_ACTION_BY: header.next_action_by ?? null,
 
+  SENTBACK_REASON: header.sentback_reason ?? null,
 
+  REJECT_REASON: header.reject_reason ?? null,
 
-      PARTY_NAME:
-        header.PARTY_NAME ?? null,
-
-      PARTY_ADDRESS:
-        header.PARTY_ADDRESS ?? null,
-
-      PARTY_PHONE:
-        header.PARTY_PHONE ?? null,
-
-      PARTY_FAX:
-        header.PARTY_FAX ?? null,
-
-
-
-      INV_GENERATED:
-        header.INV_GENERATED ?? null,
-
-
-
-      DELIVERY_TO:
-        header.DELIVERY_TO ?? null,
-
-      DLVR_CONTACT:
-        header.DLVR_CONTACT ?? null,
-
-      DLVR_EMAIL:
-        header.DLVR_EMAIL ?? null,
-
-      DLVR_MOBILE:
-        header.DLVR_MOBILE ?? null,
-
-      DLVR_TERM:
-        header.DLVR_TERM ?? null,
-
-
-
-      SALESMAN_CODE:
-        header.SALESMAN_CODE ?? null,
-
-
-
-      REF_DOC_TYPE:
-        header.REF_DOC_TYPE ?? null,
-
-      REF_DOC_NO:
-        header.REF_DOC_NO ?? 0,
-
-
-
-      JOB_NO:
-        header.JOB_NO ?? null,
-
-
-
-      CANCELLED:
-        String(header.CANCELLED ?? "N"),
-
-
-      CANCELLED_DT:
-        header.CANCELLED_DT
-          ? new Date(header.CANCELLED_DT)
-          : null,
-
-
-
-      APPROVED:
-        header.APPROVED ?? null,
-
-      APPROVED_BY:
-        header.APPROVED_BY ?? null,
-
-
-
-      APPROVED_DT:
-        header.APPROVED_DT
-          ? new Date(header.APPROVED_DT)
-          : null,
-
-
-
-      NO_APPR_REQD:
-        header.NO_APPR_REQD ?? null,
-
-      NO_APPR_COLLECT:
-        header.NO_APPR_COLLECT ?? null,
-
-
-
-      LAST_SERIAL_NO:
-        header.LAST_SERIAL_NO ?? 0,
-
-      LAST_DTL_SERIAL_NO:
-        header.LAST_DTL_SERIAL_NO ?? 0,
-
-
-
-      USER_ID:
-        header.USER_ID ?? null,
-
-
-
-      USER_DT:
-        header.USER_DT
-          ? new Date(header.USER_DT)
-          : null,
-
-
-
-      EDIT_USER:
-        header.EDIT_USER ?? null,
-
-
-
-      EDIT_DATE:
-        header.EDIT_DATE
-          ? new Date(header.EDIT_DATE)
-          : null,
-
-
-
-      CONFIRMED:
-        String(header.CONFIRMED ?? "N"),
-
-
-
-      CONFIRM_DATE:
-        header.CONFIRM_DATE
-          ? new Date(header.CONFIRM_DATE)
-          : null,
-
-
-
-      ZONE_CODE:
-        header.ZONE_CODE ?? null,
-
-
-
-      AUTO_INV:
-        header.AUTO_INV ?? null,
-
-
-
-      INV_REF_TYPE:
-        header.INV_REF_TYPE ?? null,
-
-      INV_REF_NO:
-        header.INV_REF_NO ?? null,
-
-
-
-      TX_COMPNT_HDISC_AMT_1:
-        header.TX_COMPNT_HDISC_AMT_1 ?? 0,
-
-
-
-      PURCHASE_ACTYPE:
-        header.PURCHASE_ACTYPE ?? null,
-
-
-
-      TX_CAT_CODE:
-        header.TX_CAT_CODE ?? null,
-
-
-
-      TX_COMPNTCAT_CODE_1:
-        header.TX_COMPNTCAT_CODE_1 ?? null,
-
-      TX_COMPNTCAT_CODE_2:
-        header.TX_COMPNTCAT_CODE_2 ?? null,
-
-      TX_COMPNTCAT_CODE_3:
-        header.TX_COMPNTCAT_CODE_3 ?? null,
-
-      TX_COMPNTCAT_CODE_4:
-        header.TX_COMPNTCAT_CODE_4 ?? null,
-
-
-
-      TX_COMPNT_PERC_1:
-        header.TX_COMPNT_PERC_1 ?? 0,
-
-      TX_COMPNT_PERC_2:
-        header.TX_COMPNT_PERC_2 ?? 0,
-
-      TX_COMPNT_PERC_3:
-        header.TX_COMPNT_PERC_3 ?? 0,
-
-      TX_COMPNT_PERC_4:
-        header.TX_COMPNT_PERC_4 ?? 0,
-
-
-
-      TX_COMPNT_AMT_1:
-        header.TX_COMPNT_AMT_1 ?? 0,
-
-      TX_COMPNT_AMT_2:
-        header.TX_COMPNT_AMT_2 ?? 0,
-
-      TX_COMPNT_AMT_3:
-        header.TX_COMPNT_AMT_3 ?? 0,
-
-      TX_COMPNT_AMT_4:
-        header.TX_COMPNT_AMT_4 ?? 0,
-
-
-
-      TX_COMPNT_LCURAMT_1:
-        header.TX_COMPNT_LCURAMT_1 ?? 0,
-
-      TX_COMPNT_LCURAMT_2:
-        header.TX_COMPNT_LCURAMT_2 ?? 0,
-
-      TX_COMPNT_LCURAMT_3:
-        header.TX_COMPNT_LCURAMT_3 ?? 0,
-
-      TX_COMPNT_LCURAMT_4:
-        header.TX_COMPNT_LCURAMT_4 ?? 0,
-
-
-
-      TX_COMPNT_1_EXPMT:
-        header.TX_COMPNT_1_EXPMT ?? null,
-
-      TX_COMPNT_2_EXPMT:
-        header.TX_COMPNT_2_EXPMT ?? null,
-
-      TX_COMPNT_3_EXPMT:
-        header.TX_COMPNT_3_EXPMT ?? null,
-
-      TX_COMPNT_4_EXPMT:
-        header.TX_COMPNT_4_EXPMT ?? null,
-
-
-
-      APPROVAL_LEVEL:
-        header.APPROVAL_LEVEL ?? null,
-
-
-
-      CREATED_BY:
-        header.CREATED_BY ?? null,
-
-      UPDATED_BY:
-        header.UPDATED_BY ?? null,
-
-
-
-      FLOW_LEVEL_RUNNING:
-        header.FLOW_LEVEL_RUNNING ?? 0,
-
-
-
-      LAST_ACTION:
-        header.LAST_ACTION ?? "NEW",
-
-
-
-      FLOW_LEVEL_INITIAL:
-        header.FLOW_LEVEL_INITIAL ?? 0,
-
-      FLOW_LEVEL_FINAL:
-        header.FLOW_LEVEL_FINAL ?? 0,
-
-
-
-      FINAL_APPROVED:
-        String(header.FINAL_APPROVED ?? "N"),
-
-
-
-      HISTORY_SERIAL:
-        header.HISTORY_SERIAL ?? 0,
-
-
-
-      NEXT_ACTION_BY:
-        header.NEXT_ACTION_BY ?? null,
-
-
-
-      SENTBACK_REASON:
-        header.SENTBACK_REASON ?? null,
-
-
-
-      REJECT_REASON:
-        header.REJECT_REASON ?? null,
-
-
-
-      FLOW_CODE:
-        header.FLOW_CODE ?? "NA"
-
-    };
-
+  FLOW_CODE: header.flow_code ?? "NA"
+};
 
 
     /******************************************************
      * Detail Mapping
      ******************************************************/
 
-    const detailRows = details.map((d: any) => ({
+ const detailRows = details.map((d: any) => ({
 
+  COMPANY_CODE: d.company_code ?? header.company_code ?? null,
 
-      COMPANY_CODE:
-        d.COMPANY_CODE ?? header.COMPANY_CODE ?? null,
+  DOC_TYPE: d.doc_type ?? header.doc_type ?? null,
 
+  DOC_NO: d.doc_no ?? null,
 
-      DOC_TYPE:
-        d.DOC_TYPE ?? header.DOC_TYPE ?? null,
+  DOC_DATE: d.doc_date
+    ? new Date(d.doc_date)
+    : null,
 
+  DIV_CODE: d.div_code ?? null,
 
-      DOC_NO:
-        d.DOC_NO ?? null,
+  DEPT_CODE: d.dept_code ?? null,
 
+  SERIAL_NO: d.serial_no ?? 0,
 
+  PROD_CODE: d.prod_code ?? null,
 
-      DOC_DATE:
-        d.DOC_DATE
-          ? new Date(d.DOC_DATE)
-          : null,
+  PROD_NAME: d.prod_name ?? null,
 
+  REMARKS: d.remarks ?? null,
 
+  P_UOM: d.p_uom ?? null,
 
-      DIV_CODE:
-        d.DIV_CODE ?? null,
+  QTY_PUOM: d.qty_puom ?? 0,
 
+  L_UOM: d.l_uom ?? null,
 
-      DEPT_CODE:
-        d.DEPT_CODE ?? null,
+  QTY_LUOM: d.qty_luom ?? 0,
 
+  UPPP: d.uppp ?? 0,
 
+  QUANTITY: d.quantity ?? 0,
 
-      SERIAL_NO:
-        d.SERIAL_NO ?? 0,
+  UNIT_PRICE: d.unit_price ?? 0,
 
+  DISC_CODE: d.disc_code ?? null,
 
+  DISC_PERCENT: d.disc_percent ?? 0,
 
-      PROD_CODE:
-        d.PROD_CODE ?? null,
+  DISC_PRICE: d.disc_price ?? 0,
 
+  OTHER_EXPENSE_COST: d.other_expense_cost ?? 0,
 
-      PROD_NAME:
-        d.PROD_NAME ?? null,
+  UNIT_PRICE_NET: d.unit_price_net ?? 0,
 
+  DISC_HDR_PRICE: d.disc_hdr_price ?? 0,
 
+  NET_PRICE: d.net_price ?? 0,
 
-      REMARKS:
-        d.REMARKS ?? null,
+  AMOUNT: d.amount ?? 0,
 
+  COST_RATE: d.cost_rate ?? 0,
 
+  CURR_CODE: d.curr_code ?? header.curr_code ?? null,
 
-      P_UOM:
-        d.P_UOM ?? null,
+  EX_RATE: d.ex_rate ?? header.ex_rate ?? 1,
 
-      QTY_PUOM:
-        d.QTY_PUOM ?? 0,
+  LCUR_AMOUNT: d.lcur_amount ?? 0,
 
+  SIGN_IND: d.sign_ind ?? 1,
 
+  REQUIRED_DT: d.required_dt
+    ? new Date(d.required_dt)
+    : null,
 
-      L_UOM:
-        d.L_UOM ?? null,
+  SALESMAN_CODE: d.salesman_code ?? null,
 
-      QTY_LUOM:
-        d.QTY_LUOM ?? 0,
+  QTY_PROCESSED: d.qty_processed ?? 0,
 
+  JOB_NO: d.job_no ?? header.job_no ?? null,
 
+  REF_DOC_TYPE: d.ref_doc_type ?? null,
 
-      UPPP:
-        d.UPPP ?? 0,
+  REF_DOC_NO: d.ref_doc_no ?? 0,
 
+  REF_DOC_SERIAL: d.ref_doc_serial ?? 0,
 
+  CANCELLED: String(d.cancelled ?? "N"),
 
-      QUANTITY:
-        d.QUANTITY ?? 0,
+  CANCELLED_DT: d.cancelled_dt
+    ? new Date(d.cancelled_dt)
+    : null,
 
+  EDIT_USER: d.edit_user ?? null,
 
+  EDIT_DATE: d.edit_date
+    ? new Date(d.edit_date)
+    : null,
 
-      UNIT_PRICE:
-        d.UNIT_PRICE ?? 0,
+  USER_ID: d.user_id ?? header.user_id ?? null,
 
+  USER_DT: d.user_dt
+    ? new Date(d.user_dt)
+    : null,
 
+  KEY_NUMBER: d.key_number ?? null,
 
-      DISC_CODE:
-        d.DISC_CODE ?? null,
+  TX_IDENTITY_NUMBER: d.tx_identity_number ?? null,
 
-      DISC_PERCENT:
-        d.DISC_PERCENT ?? 0,
+  ZONE_CODE: d.zone_code ?? header.zone_code ?? null,
 
-      DISC_PRICE:
-        d.DISC_PRICE ?? 0,
+  LCUR_AMOUNT_DISCOUNTED: d.lcur_amount_discounted ?? 0,
 
+  TX_CAT_CODE: d.tx_cat_code ?? null,
 
+  TX_COMPNTCAT_CODE_1: d.tx_compntcat_code_1 ?? null,
 
-      OTHER_EXPENSE_COST:
-        d.OTHER_EXPENSE_COST ?? 0,
+  TX_COMPNTCAT_CODE_2: d.tx_compntcat_code_2 ?? null,
 
+  TX_COMPNTCAT_CODE_3: d.tx_compntcat_code_3 ?? null,
 
+  TX_COMPNTCAT_CODE_4: d.tx_compntcat_code_4 ?? null,
 
-      UNIT_PRICE_NET:
-        d.UNIT_PRICE_NET ?? 0,
+  TX_COMPNT_PERC_1: d.tx_compnt_perc_1 ?? 0,
 
+  TX_COMPNT_PERC_2: d.tx_compnt_perc_2 ?? 0,
 
+  TX_COMPNT_PERC_3: d.tx_compnt_perc_3 ?? 0,
 
-      DISC_HDR_PRICE:
-        d.DISC_HDR_PRICE ?? 0,
+  TX_COMPNT_PERC_4: d.tx_compnt_perc_4 ?? 0,
 
+  TX_COMPNT_AMT_1: d.tx_compnt_amt_1 ?? 0,
 
+  TX_COMPNT_AMT_2: d.tx_compnt_amt_2 ?? 0,
 
-      NET_PRICE:
-        d.NET_PRICE ?? 0,
+  TX_COMPNT_AMT_3: d.tx_compnt_amt_3 ?? 0,
 
+  TX_COMPNT_AMT_4: d.tx_compnt_amt_4 ?? 0,
 
+  TX_COMPNT_LCURAMT_1: d.tx_compnt_lcuramt_1 ?? 0,
 
-      AMOUNT:
-        d.AMOUNT ?? 0,
+  TX_COMPNT_LCURAMT_2: d.tx_compnt_lcuramt_2 ?? 0,
 
+  TX_COMPNT_LCURAMT_3: d.tx_compnt_lcuramt_3 ?? 0,
 
+  TX_COMPNT_LCURAMT_4: d.tx_compnt_lcuramt_4 ?? 0,
 
-      COST_RATE:
-        d.COST_RATE ?? 0,
+  TX_COMPNT_1_EXPMT: d.tx_compnt_1_expmt ?? null,
 
+  TX_COMPNT_2_EXPMT: d.tx_compnt_2_expmt ?? null,
 
+  TX_COMPNT_3_EXPMT: d.tx_compnt_3_expmt ?? null,
 
-      CURR_CODE:
-        d.CURR_CODE ?? header.CURR_CODE ?? null,
+  TX_COMPNT_4_EXPMT: d.tx_compnt_4_expmt ?? null,
 
+  TX_COMPNT_HDISC_AMT_1: d.tx_compnt_hdisc_amt_1 ?? 0,
 
+  TX_COMPNT_HDISC_LCURAMT_1: d.tx_compnt_hdisc_lcuramt_1 ?? 0
 
-      EX_RATE:
-        d.EX_RATE ?? header.EX_RATE ?? 1,
-
-
-
-      LCUR_AMOUNT:
-        d.LCUR_AMOUNT ?? 0,
-
-
-
-      SIGN_IND:
-        d.SIGN_IND ?? 1,
-
-
-
-      REQUIRED_DT:
-        d.REQUIRED_DT
-          ? new Date(d.REQUIRED_DT)
-          : null,
-
-
-
-      SALESMAN_CODE:
-        d.SALESMAN_CODE ?? null,
-
-
-
-      QTY_PROCESSED:
-        d.QTY_PROCESSED ?? 0,
-
-
-
-      JOB_NO:
-        d.JOB_NO ?? header.JOB_NO ?? null,
-
-
-
-      REF_DOC_TYPE:
-        d.REF_DOC_TYPE ?? null,
-
-      REF_DOC_NO:
-        d.REF_DOC_NO ?? 0,
-
-      REF_DOC_SERIAL:
-        d.REF_DOC_SERIAL ?? 0,
-
-
-
-      CANCELLED:
-        String(d.CANCELLED ?? "N"),
-
-
-
-      CANCELLED_DT:
-        d.CANCELLED_DT
-          ? new Date(d.CANCELLED_DT)
-          : null,
-
-
-
-      EDIT_USER:
-        d.EDIT_USER ?? null,
-
-
-
-      EDIT_DATE:
-        d.EDIT_DATE
-          ? new Date(d.EDIT_DATE)
-          : null,
-
-
-
-      USER_ID:
-        d.USER_ID ?? header.USER_ID ?? null,
-
-
-
-      USER_DT:
-        d.USER_DT
-          ? new Date(d.USER_DT)
-          : null,
-
-
-
-      KEY_NUMBER:
-        d.KEY_NUMBER ?? null,
-
-
-
-      TX_IDENTITY_NUMBER:
-        d.TX_IDENTITY_NUMBER ?? null,
-
-
-
-      ZONE_CODE:
-        d.ZONE_CODE ?? header.ZONE_CODE ?? null,
-
-
-
-      LCUR_AMOUNT_DISCOUNTED:
-        d.LCUR_AMOUNT_DISCOUNTED ?? 0,
-
-
-
-      TX_CAT_CODE:
-        d.TX_CAT_CODE ?? null,
-
-
-
-      TX_COMPNTCAT_CODE_1:
-        d.TX_COMPNTCAT_CODE_1 ?? null,
-
-      TX_COMPNTCAT_CODE_2:
-        d.TX_COMPNTCAT_CODE_2 ?? null,
-
-      TX_COMPNTCAT_CODE_3:
-        d.TX_COMPNTCAT_CODE_3 ?? null,
-
-      TX_COMPNTCAT_CODE_4:
-        d.TX_COMPNTCAT_CODE_4 ?? null,
-
-
-
-      TX_COMPNT_PERC_1:
-        d.TX_COMPNT_PERC_1 ?? 0,
-
-      TX_COMPNT_PERC_2:
-        d.TX_COMPNT_PERC_2 ?? 0,
-
-      TX_COMPNT_PERC_3:
-        d.TX_COMPNT_PERC_3 ?? 0,
-
-      TX_COMPNT_PERC_4:
-        d.TX_COMPNT_PERC_4 ?? 0,
-
-
-
-      TX_COMPNT_AMT_1:
-        d.TX_COMPNT_AMT_1 ?? 0,
-
-      TX_COMPNT_AMT_2:
-        d.TX_COMPNT_AMT_2 ?? 0,
-
-      TX_COMPNT_AMT_3:
-        d.TX_COMPNT_AMT_3 ?? 0,
-
-      TX_COMPNT_AMT_4:
-        d.TX_COMPNT_AMT_4 ?? 0,
-
-
-
-      TX_COMPNT_LCURAMT_1:
-        d.TX_COMPNT_LCURAMT_1 ?? 0,
-
-      TX_COMPNT_LCURAMT_2:
-        d.TX_COMPNT_LCURAMT_2 ?? 0,
-
-      TX_COMPNT_LCURAMT_3:
-        d.TX_COMPNT_LCURAMT_3 ?? 0,
-
-      TX_COMPNT_LCURAMT_4:
-        d.TX_COMPNT_LCURAMT_4 ?? 0,
-
-
-
-      TX_COMPNT_1_EXPMT:
-        d.TX_COMPNT_1_EXPMT ?? null,
-
-      TX_COMPNT_2_EXPMT:
-        d.TX_COMPNT_2_EXPMT ?? null,
-
-      TX_COMPNT_3_EXPMT:
-        d.TX_COMPNT_3_EXPMT ?? null,
-
-      TX_COMPNT_4_EXPMT:
-        d.TX_COMPNT_4_EXPMT ?? null,
-
-
-
-      TX_COMPNT_HDISC_AMT_1:
-        d.TX_COMPNT_HDISC_AMT_1 ?? 0,
-
-
-
-      TX_COMPNT_HDISC_LCURAMT_1:
-        d.TX_COMPNT_HDISC_LCURAMT_1 ?? 0
-
-    }));
+}));
 
 
 
@@ -808,217 +410,108 @@ export const insUpdJobProduction = async (
      * Expense Detail Mapping
      ******************************************************/
 
-    const expenseRows = expenseDetails.map((e: any) => ({
+const expenseRows = expenseDetails.map((e: any) => ({
 
+  COMPANY_CODE: e.company_code ?? header.company_code ?? null,
 
-      COMPANY_CODE:
-        e.COMPANY_CODE ?? header.COMPANY_CODE ?? null,
+  DOC_TYPE: e.doc_type ?? header.doc_type ?? null,
 
+  DOC_NO: e.doc_no ?? null,
 
-      DOC_TYPE:
-        e.DOC_TYPE ?? header.DOC_TYPE ?? null,
+  DOC_DATE: e.doc_date
+    ? new Date(e.doc_date)
+    : null,
 
+  DIV_CODE: e.div_code ?? null,
 
-      DOC_NO:
-        e.DOC_NO ?? null,
+  DEPT_CODE: e.dept_code ?? null,
 
+  SERIAL_NO: e.serial_no ?? 0,
 
+  EXP_CODE: e.exp_code ?? null,
 
-      DOC_DATE:
-        e.DOC_DATE
-          ? new Date(e.DOC_DATE)
-          : null,
+  REMARKS: e.remarks ?? null,
 
+  AMOUNT: e.amount ?? 0,
 
+  CURR_CODE: e.curr_code ?? header.curr_code ?? null,
 
-      DIV_CODE:
-        e.DIV_CODE ?? null,
+  EX_RATE: e.ex_rate ?? header.ex_rate ?? 1,
 
-      DEPT_CODE:
-        e.DEPT_CODE ?? null,
+  LCUR_AMOUNT: e.lcur_amount ?? 0,
 
+  REF_DOC_TYPE: e.ref_doc_type ?? null,
 
+  REF_DOC_NO: e.ref_doc_no ?? 0,
 
-      SERIAL_NO:
-        e.SERIAL_NO ?? 0,
+  REF_DOC_SERIAL: e.ref_doc_serial ?? 0,
 
+  EDIT_USER: e.edit_user ?? null,
 
+  EDIT_DATE: e.edit_date
+    ? new Date(e.edit_date)
+    : null,
 
-      EXP_CODE:
-        e.EXP_CODE ?? null,
+  USER_ID: e.user_id ?? header.user_id ?? null,
 
+  USER_DT: e.user_dt
+    ? new Date(e.user_dt)
+    : null,
 
+  ZONE_CODE: e.zone_code ?? header.zone_code ?? null,
 
-      REMARKS:
-        e.REMARKS ?? null,
+  AC_CODE: e.ac_code ?? null,
 
+  WRK_TYPE: e.wrk_type ?? null,
 
+  EMPLOYEE_ID: e.employee_id ?? null,
 
-      AMOUNT:
-        e.AMOUNT ?? 0,
+  HOURLY_RATE: e.hourly_rate ?? 0
 
-
-
-      CURR_CODE:
-        e.CURR_CODE ?? header.CURR_CODE ?? null,
-
-      EX_RATE:
-        e.EX_RATE ?? header.EX_RATE ?? 1,
-
-
-
-      LCUR_AMOUNT:
-        e.LCUR_AMOUNT ?? 0,
-
-
-
-      REF_DOC_TYPE:
-        e.REF_DOC_TYPE ?? null,
-
-      REF_DOC_NO:
-        e.REF_DOC_NO ?? 0,
-
-      REF_DOC_SERIAL:
-        e.REF_DOC_SERIAL ?? 0,
-
-
-
-      EDIT_USER:
-        e.EDIT_USER ?? null,
-
-
-
-      EDIT_DATE:
-        e.EDIT_DATE
-          ? new Date(e.EDIT_DATE)
-          : null,
-
-
-
-      USER_ID:
-        e.USER_ID ?? header.USER_ID ?? null,
-
-
-
-      USER_DT:
-        e.USER_DT
-          ? new Date(e.USER_DT)
-          : null,
-
-
-
-      ZONE_CODE:
-        e.ZONE_CODE ?? header.ZONE_CODE ?? null,
-
-
-
-      AC_CODE:
-        e.AC_CODE ?? null,
-
-
-
-      WRK_TYPE:
-        e.WRK_TYPE ?? null,
-
-
-
-      EMPLOYEE_ID:
-        e.EMPLOYEE_ID ?? null,
-
-
-
-      HOURLY_RATE:
-        e.HOURLY_RATE ?? 0
-
-    }));
+}));
 
 
 
     /******************************************************
      * JMI Consumption Mapping
      ******************************************************/
+const jmiConsumRows = jmiConsumDetails.map((j: any) => ({
 
-    const jmiConsumRows = jmiConsumDetails.map((j: any) => ({
+  COMPANY_CODE: j.company_code ?? header.company_code ?? null,
 
+  DOC_TYPE: j.doc_type ?? header.doc_type ?? null,
 
-      COMPANY_CODE:
-        j.COMPANY_CODE ?? header.COMPANY_CODE ?? null,
+  DOC_NO: j.doc_no ?? null,
 
+  MI_DOC_NO: j.mi_doc_no ?? null,
 
-      DOC_TYPE:
-        j.DOC_TYPE ?? header.DOC_TYPE ?? null,
+  PROD_CODE: j.prod_code ?? null,
 
+  QUANTITY: j.quantity ?? 0,
 
-      DOC_NO:
-        j.DOC_NO ?? null,
+  P_UOM: j.p_uom ?? null,
 
+  L_UOM: j.l_uom ?? null,
 
+  QTY_PUOM: j.qty_puom ?? 0,
 
-      MI_DOC_NO:
-        j.MI_DOC_NO ?? null,
+  QTY_LUOM: j.qty_luom ?? 0,
 
+  SERIAL_NO: j.serial_no ?? 0,
 
+  QTY_CONSUMD: j.qty_consumd ?? 0,
 
-      PROD_CODE:
-        j.PROD_CODE ?? null,
+  QTY_SCRAPPED: j.qty_scrapped ?? 0,
 
+  COST_RATE: j.cost_rate ?? 0,
 
+  COST_AMOUNT: j.cost_amount ?? 0,
 
-      QUANTITY:
-        j.QUANTITY ?? 0,
+  SCRAP_AMOUNT: j.scrap_amount ?? 0,
 
+  DIV_CODE: j.div_code ?? header.div_code ?? null
 
-
-      P_UOM:
-        j.P_UOM ?? null,
-
-      L_UOM:
-        j.L_UOM ?? null,
-
-
-
-      QTY_PUOM:
-        j.QTY_PUOM ?? 0,
-
-      QTY_LUOM:
-        j.QTY_LUOM ?? 0,
-
-
-
-      SERIAL_NO:
-        j.SERIAL_NO ?? 0,
-
-
-
-      QTY_CONSUMD:
-        j.QTY_CONSUMD ?? 0,
-
-
-
-      QTY_SCRAPPED:
-        j.QTY_SCRAPPED ?? 0,
-
-
-
-      COST_RATE:
-        j.COST_RATE ?? 0,
-
-
-
-      COST_AMOUNT:
-        j.COST_AMOUNT ?? 0,
-
-
-
-      SCRAP_AMOUNT:
-        j.SCRAP_AMOUNT ?? 0,
-
-
-
-      DIV_CODE:
-        j.DIV_CODE ?? header.DIV_CODE ?? null
-
-    }));
+}));
 
     /******************************************************
      * Execute Oracle Procedure

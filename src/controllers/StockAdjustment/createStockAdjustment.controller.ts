@@ -5,6 +5,9 @@ import { ICreateStockAdjustmentRequest, IProcessAdjustmentRequest } from "../../
 import { RequestWithTenant } from "../../middleware/tenant.middleware";
 import constants from "../../helpers/constants";
 
+const paramValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
+
 export const createStockAdjustment = async (
   req: RequestWithTenant,
   res: Response
@@ -154,7 +157,7 @@ export const getStockAdjustmentByAdjCode = async (
   res: Response
 ) => {
   try {
-    const { ADJ_CODE } = req.params;
+    const ADJ_CODE = paramValue(req.params.ADJ_CODE);
 
     if (!ADJ_CODE) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -208,7 +211,7 @@ export const deleteStockAdjustment = async (
   res: Response
 ) => {
   try {
-    const { ADJ_CODE } = req.params;
+    const ADJ_CODE = paramValue(req.params.ADJ_CODE);
 
     if (!ADJ_CODE) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -598,7 +601,8 @@ export const deleteStockAdjustmentDetail = async (
   res: Response
 ) => {
   try {
-    const { ADJ_CODE, JOB_NO } = req.params;
+    const ADJ_CODE = paramValue(req.params.ADJ_CODE);
+    const JOB_NO = paramValue(req.params.JOB_NO);
 
     if (!ADJ_CODE) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -770,7 +774,8 @@ export const deleteAdjDetail = async (
   res: Response
 ) => {
   try {
-    const { ADJ_CODE, JOB_NO } = req.params;
+    const ADJ_CODE = paramValue(req.params.ADJ_CODE);
+    const JOB_NO = paramValue(req.params.JOB_NO);
 
     if (!ADJ_CODE) return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "ADJ_CODE is required" });
     if (!JOB_NO)   return res.status(constants.STATUS_CODES.BAD_REQUEST).json({ success: false, message: "JOB_NO is required" });

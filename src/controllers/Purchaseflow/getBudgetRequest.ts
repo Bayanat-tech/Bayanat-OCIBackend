@@ -3,11 +3,15 @@ import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
 import { getBudgetData } from "./getBudgetData"; // Oracle version
 
+const paramValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
+
 export const getBudgetRequest = async (req: Request, res: Response): Promise<void> => {
   let connection: oracledb.Connection | undefined;
 
   try {
-    const { request_number, cost_code } = req.params;
+    const request_number = paramValue(req.params.request_number);
+    const cost_code = paramValue(req.params.cost_code);
     const ls_request_number = request_number.replace(/\$\$/g, "/");
 
     // Use existing Oracle connection from wrapper
