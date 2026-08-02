@@ -2,7 +2,7 @@
 import express from "express";
 import { insPsUserRoleMappingBulk } from "../../controllers/ALMS/insPsUserRoleMappingBulk";
 import { insPsFlowRoleMappingBulk } from "../../controllers/ALMS/insPsFlowRoleMappingBulk ";
-import { insUpdPurchaseRequest } from '../../controllers/ALMS/insUpdPurchaseRequest';
+import { insUpdTtePrequestBulk } from "../../controllers/ALMS/insUpdTtePRequestBulk";
 
 
 
@@ -10,8 +10,8 @@ import { insUpdPurchaseRequest } from '../../controllers/ALMS/insUpdPurchaseRequ
 const router = express.Router();
 
 router.post(
-  "/insUpdPurchaseRequest",
-  insUpdPurchaseRequest
+  "/insUpdTtePrequestBulk",
+  insUpdTtePrequestBulk
 );
 
 router.post(
