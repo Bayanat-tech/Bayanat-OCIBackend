@@ -59,6 +59,15 @@ export const buildTree = (
 ): TreeNode[] => {
   const tree: Record<string, TreeNode> = {};
 
+  // Oracle NULLs can also arrive as the literal text "NULL" after data imports.
+  // Treat both representations as an absent hierarchy level so a two-level
+  // screen is attached directly to LEVEL2.
+  const menuValue = (value: unknown): string => {
+    if (value === undefined || value === null) return "";
+    const normalized = String(value).trim();
+    return normalized.toLowerCase() === "null" ? "" : normalized;
+  };
+
   console.log(
     `[buildTree] Starting with ${data.length} rows and permission structure: ${
       Object.keys(permission).length > 0 ? permission : "EMPTY"
@@ -89,12 +98,13 @@ export const buildTree = (
   };
 
   data.forEach((row) => {
-    const APP_CODE = row.APP_CODE || row.app_code;
-    const LEVEL1 = row.LEVEL1 || row.level1;
-    const LEVEL2 = row.LEVEL2 || row.level2;
-    const LEVEL3 = row.LEVEL3 || row.level3;
-    const URL_PATH = row.URL_PATH || row.url_path;
+    const APP_CODE = menuValue(row.APP_CODE ?? row.app_code);
+    const LEVEL1 = menuValue(row.LEVEL1 ?? row.level1);
+    const LEVEL2 = menuValue(row.LEVEL2 ?? row.level2);
+    const LEVEL3 = menuValue(row.LEVEL3 ?? row.level3);
+    const URL_PATH = menuValue(row.URL_PATH ?? row.url_path);
     const ROW_SERIAL = row.SERIAL_NO ?? row.serial_no;
+    const POSITION = Number(row.POSITION ?? row.position ?? Number.MAX_SAFE_INTEGER);
 
     if (!APP_CODE) return;
     const appId =
@@ -118,8 +128,8 @@ export const buildTree = (
     if (LEVEL1 && String(LEVEL1).trim() !== "") {
       let level1Node = tree[APP_CODE].children.find((n) => n.title === LEVEL1);
 
-      const hasLevel2 = LEVEL2 && String(LEVEL2).trim() !== "";
-      const hasLevel3 = LEVEL3 && String(LEVEL3).trim() !== "";
+      const hasLevel2 = LEVEL2 !== "";
+      const hasLevel3 = LEVEL3 !== "";
       const level1Id =
         getPermSerial(APP_CODE, LEVEL1) || safeId([appId, LEVEL1]);
 
@@ -130,6 +140,7 @@ export const buildTree = (
               title: LEVEL1,
               type: "group",
               icon: "AbcIcon",
+              position: POSITION,
               children: [],
             }
           : {
@@ -138,8 +149,11 @@ export const buildTree = (
               type: "item",
               icon: "AbcIcon",
               url_path: URL_PATH || "",
+              position: POSITION,
             };
         tree[APP_CODE].children.push(level1Node);
+      } else {
+        level1Node.position = Math.min(level1Node.position ?? POSITION, POSITION);
       }
 
       if (hasLevel2 && level1Node.type === "group") {
@@ -156,6 +170,7 @@ export const buildTree = (
                 title: LEVEL2,
                 type: "collapse",
                 icon: "AbcIcon",
+                position: POSITION,
                 children: [],
               }
             : {
@@ -164,8 +179,11 @@ export const buildTree = (
                 type: "item",
                 icon: "AbcIcon",
                 url_path: URL_PATH || "",
+                position: POSITION,
               };
           level1Node.children.push(level2Node);
+        } else {
+          level2Node.position = Math.min(level2Node.position ?? POSITION, POSITION);
         }
 
         // LEVEL3 handling
@@ -183,6 +201,7 @@ export const buildTree = (
               type: "item",
               icon: "AbcIcon",
               url_path: URL_PATH || "",
+              position: POSITION,
             };
             level2Node.children.push(level3Node);
           }
@@ -190,6 +209,18 @@ export const buildTree = (
       }
     }
   });
+
+  const sortChildren = (node: TreeNode) => {
+    if (!node.children?.length) return;
+    node.children.forEach(sortChildren);
+    node.children.sort(
+      (left, right) =>
+        (left.position ?? Number.MAX_SAFE_INTEGER) -
+          (right.position ?? Number.MAX_SAFE_INTEGER) ||
+        left.title.localeCompare(right.title),
+    );
+  };
+  Object.values(tree).forEach(sortChildren);
 
   console.log(`[buildTree] Built tree with ${Object.values(tree).length} apps`);
   return Object.values(tree);

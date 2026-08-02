@@ -28,6 +28,7 @@ export interface TreeNode {
   icon: string;
   url_path?: string | null;
   children?: TreeNode[];
+  position?: number;
 }
 export type TLogin = { email: string; password: string };
 export interface ComparePasswordInterface {
