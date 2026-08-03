@@ -81180,3 +81180,68 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:561:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-03 15:10:14 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-03 15:15:32 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-03 17:18:43 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-03 17:31:18 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-03 18:17:09 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
