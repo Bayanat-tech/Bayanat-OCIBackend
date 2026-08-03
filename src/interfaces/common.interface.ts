@@ -39,7 +39,6 @@ export interface TreeNode {
   level3?: string | null;
   position?: number | null;
   children?: TreeNode[];
-  position?: number;
 }
 export type TLogin = { email: string; password: string };
 export interface ComparePasswordInterface {
