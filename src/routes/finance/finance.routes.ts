@@ -46,9 +46,17 @@ import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSala
 import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIncrement";
 import { insUpdBudgetRequestBulk } from "../../controllers/finance/accounts/transactions/insUpdBudgetRequestBulk";
 import { insLoadBudgetData } from "../../controllers/finance/accounts/transactions/insLoadBudgetData";
+import { insUpdTnInvoiceBulk } from "../../controllers/wms/insUpdTnInvoiceBulk";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
+
+router.post(
+  "/insUpdTnInvoiceBulk",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  insUpdTnInvoiceBulk
+);
 
 router.post(
   "/insLoadBudgetData",

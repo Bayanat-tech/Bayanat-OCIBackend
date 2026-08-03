@@ -162,17 +162,18 @@ export class SecurityMasterService {
     sort?: { field_name: string; desc: boolean },
     searchFilter?: any
   ) {
-    const whereCondition = this.buildSearchCondition<SecModule>(
-      company_code,
-      searchFilter
-    );
-    return await this.getMasterDataWithPagination<SecModule>(
-      SecModule,
-      whereCondition,
-      page,
-      limit,
-      sort
-    );
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    const where = this.buildSearchCondition<SecModule>(company_code, searchFilter);
+    const [tableData, count] = await repository.findAndCount({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: sort?.field_name
+        ? ({ [sort.field_name]: sort.desc ? "DESC" : "ASC" } as FindOptionsOrder<SecModule>)
+        : ({ app_code: "ASC", position: "ASC", serial_no: "ASC" } as FindOptionsOrder<SecModule>),
+    });
+    return { tableData, count };
   }
 
   static async getProjectAccess(
@@ -268,16 +269,28 @@ export class SecurityMasterService {
         .filter((row) => hasSecurityText(row.level3))
         .map((row) => securityMenuKey(row.app_code, row.level1, row.level2))
     );
+    const level2Parents = new Set(
+      rows
+        .filter((row) => hasSecurityText(row.level2))
+        .map((row) => securityMenuKey(row.app_code, row.level1))
+    );
     const bySerial = new Map<number, SecModule>();
 
     rows.forEach((row) => {
+      const hasLevel1 = hasSecurityText(row.level1);
+      const hasLevel2 = hasSecurityText(row.level2);
       const hasLevel3 = hasSecurityText(row.level3);
       const isLeafLevel2 =
-        hasSecurityText(row.level2) &&
+        hasLevel2 &&
         !hasLevel3 &&
         !level3Parents.has(securityMenuKey(row.app_code, row.level1, row.level2));
+      const isLeafLevel1 =
+        hasLevel1 &&
+        !hasLevel2 &&
+        !hasLevel3 &&
+        !level2Parents.has(securityMenuKey(row.app_code, row.level1));
 
-      if (hasLevel3 || isLeafLevel2) {
+      if (hasLevel3 || isLeafLevel2 || isLeafLevel1) {
         bySerial.set(Number(row.serial_no), row);
       }
     });
@@ -313,14 +326,27 @@ export class SecurityMasterService {
   static async getSecModuleDropdown(
     company_code: string,
     page: number = 1,
-    limit: number = 200
+    limit: number = 100000
   ) {
-    return await this.getMasterDataWithPagination<SecModule>(
-      SecModule,
-      { company_code } as FindOptionsWhere<SecModule>,
-      page,
-      limit
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    // Use raw rows here because legacy data can contain duplicate SERIAL_NO
+    // values. TypeORM hydrates SERIAL_NO as the entity primary key and would
+    // collapse those database rows, producing incomplete dropdown options and
+    // incorrect module counts.
+    const allRows = await repository.query(
+      `SELECT *
+         FROM SEC_MODULE_DATA
+        WHERE COMPANY_CODE = :1
+        ORDER BY APP_CODE, POSITION, SERIAL_NO`,
+      [company_code],
     );
+    const rows = Array.isArray(allRows) ? allRows : allRows?.rows || [];
+    const skip = (page - 1) * limit;
+    return {
+      tableData: rows.slice(skip, skip + limit),
+      count: rows.length,
+    };
   }
 
   static async getUserDivisionAccess(
@@ -524,7 +550,8 @@ export class SecurityMasterService {
 }
 
 function hasSecurityText(value: unknown): boolean {
-  return String(value ?? "").trim().length > 0;
+  const normalized = String(value ?? "").trim();
+  return normalized.length > 0 && normalized.toLowerCase() !== "null";
 }
 
 function securityMenuKey(...parts: unknown[]): string {

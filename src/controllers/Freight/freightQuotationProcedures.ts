@@ -177,6 +177,7 @@ export const frtQuotationWorkflowAction = async (req: Request, res: Response): P
   });
 };
 
+
 async function withConnection(res: Response, handler: (connection: Connection) => Promise<void>) {
   let connection: Connection | undefined;
   try {
@@ -322,6 +323,16 @@ function toQuotationTermObject(row: Record<string, unknown>, header: Record<stri
   };
 }
 
+function workflowMessage(action: string) {
+  if (action === "SAVEASDRAFT") return "Draft saved successfully";
+  if (action === "SUBMITTED") return "Submitted for approval";
+  if (action === "APPROVED") return "Approval action completed";
+  if (action === "SENTBACK") return "Sent back successfully";
+  if (action === "REJECTED") return "Rejected successfully";
+  if (action === "CANCEL") return "Cancelled successfully";
+  return "Workflow action completed";
+}
+
 function stringValue(value: unknown, fallback: string | null = null) {
   if (value === undefined || value === null || value === "") return fallback;
   return String(value);
@@ -338,14 +349,4 @@ function toDate(value: unknown) {
   if (value instanceof Date) return value;
   const parsed = new Date(String(value));
   return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function workflowMessage(action: string) {
-  if (action === "SAVEASDRAFT") return "Draft saved successfully";
-  if (action === "SUBMITTED") return "Submitted for approval";
-  if (action === "APPROVED") return "Approval action completed";
-  if (action === "SENTBACK") return "Sent back successfully";
-  if (action === "REJECTED") return "Rejected successfully";
-  if (action === "CANCEL") return "Cancelled successfully";
-  return "Workflow action completed";
 }

@@ -625,7 +625,7 @@ const grandRow = `
   </colgroup>
 
   <thead>
-    <tr>
+    <tr class="th-group">
       <th class="col-no">No.</th>
       <th class="col-product">Product</th>
       <th class="col-qty">Quantity1</th>
@@ -1001,7 +1001,7 @@ export const getSalesOrderReportHtml = async (
     const autoPrint   = req.query.print === "true";
 
     if (!jobNo || !prinCode) {
-      res.status(400).json({ success: false, message:  "company_code, job_no and prin_code are required" });
+      res.status(400).json({ success: false, message:  "job_no and prin_code are required" });
       return;
     }
 
