@@ -141,7 +141,8 @@ export const insUpdTnInvoiceBulk = async (
       TX_COMPNT_4_EXPMT_COST: d.TX_COMPNT_4_EXPMT_COST ?? null,
       TX_COMPNT_LCURAMT_1: Number(d.TX_COMPNT_LCURAMT_1 ?? 0),
       TX_COMPNT_AMT_1: Number(d.TX_COMPNT_AMT_1 ?? 0),
-      GROSS_WT: Number(d.GROSS_WT ?? 0)
+      GROSS_WT: Number(d.GROSS_WT ?? 0),
+      COST_RATE: Number(d.COST_RATE ?? 0),
     }));
     console.timeEnd("Mapping");
 
