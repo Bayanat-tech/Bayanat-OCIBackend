@@ -16,10 +16,10 @@ export class SecModule {
   level1!: string;
 
   @Column({ name: "LEVEL2", type: "varchar2", length: 50, nullable: true })
-  level2!: string;
+  level2!: string | null;
 
   @Column({ name: "LEVEL3", type: "varchar2", length: 50, nullable: true })
-  level3!: string;
+  level3!: string | null;
 
   @Column({ name: "POSITION", type: "number", nullable: true })
   position!: number;

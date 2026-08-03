@@ -1,4 +1,5 @@
-import { getRepository } from "../../database/connection";
+import { AppDataSource, getRepository } from "../../database/connection";
+import { ensureCorrectSchemaOnQueryRunner } from "../../database/TypeORMTenantInterceptor";
 import { SecModule } from "../../entity/Security/secmodule.entity";
 import constants from "../../helpers/constants";
 
@@ -52,22 +53,40 @@ export class SecModuleService {
     created_by: string;
     updated_by: string;
   }): Promise<SecModule> {
-    const repository = this.getSecModuleRepository();
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
+    await queryRunner.startTransaction();
+    try {
+      const repository = queryRunner.manager.getRepository(SecModule);
+      const rows = await this.lockScope(repository, moduleData.company_code, moduleData.app_code);
+      const desiredPosition = clampPosition(moduleData.position, rows.length + 1);
+      await this.displaceScope(repository, moduleData.company_code, moduleData.app_code, rows);
 
-    const maxSerialRows = await repository.query(
-      `SELECT NVL(MAX(SERIAL_NO), 0) AS MAX_SERIAL FROM ${constants.TABLE.SEC_MODULE_DATA}`
-    );
-    const maxSerial = Array.isArray(maxSerialRows) ? maxSerialRows[0] : maxSerialRows?.rows?.[0];
-    const nextSerial = Number(maxSerial?.MAX_SERIAL ?? maxSerial?.max_serial ?? 0) + 1;
-
-    const module = repository.create({
-      ...moduleData,
-      serial_no: nextSerial,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
-    return await repository.save(module);
+      const maxSerialRows = await repository.query(
+        `SELECT NVL(MAX(SERIAL_NO), 0) AS MAX_SERIAL FROM ${constants.TABLE.SEC_MODULE_DATA}`,
+      );
+      const maxSerial = Array.isArray(maxSerialRows) ? maxSerialRows[0] : maxSerialRows?.rows?.[0];
+      const nextSerial = Number(maxSerial?.MAX_SERIAL ?? maxSerial?.max_serial ?? 0) + 1;
+      const module = repository.create({
+        ...moduleData,
+        position: 2000000 + nextSerial,
+        serial_no: nextSerial,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+      const saved = await repository.save(module);
+      rows.splice(desiredPosition - 1, 0, saved);
+      await this.applyPositions(repository, rows);
+      await queryRunner.commitTransaction();
+      saved.position = desiredPosition;
+      return saved;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   static async updateModule(
@@ -75,16 +94,146 @@ export class SecModuleService {
     company_code: string,
     updateData: any
   ): Promise<boolean> {
-    const repository = this.getSecModuleRepository();
-
-    const result = await repository.update(
-      { serial_no, company_code },
-      {
-        ...updateData,
-        updated_at: new Date(),
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
+    await queryRunner.startTransaction();
+    try {
+      const repository = queryRunner.manager.getRepository(SecModule);
+      const existing = await repository.findOne({ where: { serial_no, company_code } });
+      if (!existing) {
+        await queryRunner.rollbackTransaction();
+        return false;
       }
-    );
 
-    return result.affected ? result.affected > 0 : false;
+      const oldAppCode = existing.app_code;
+      const newAppCode = String(updateData.app_code || oldAppCode).trim();
+      const positionChanged = Number(updateData.position) !== Number(existing.position);
+      const appChanged = newAppCode !== oldAppCode;
+
+      // Hierarchy, URL, icon, or other metadata edits do not require menu
+      // resequencing. Keep these as one normal UPDATE.
+      if (!positionChanged && !appChanged) {
+        const result = await repository.update(
+          {
+            company_code,
+            app_code: oldAppCode,
+            position: existing.position,
+          },
+          {
+            ...updateData,
+            app_code: newAppCode,
+            position: existing.position,
+            updated_at: new Date(),
+          },
+        );
+        await queryRunner.commitTransaction();
+        return Boolean(result.affected && result.affected > 0);
+      }
+
+      const oldRows = await this.lockScope(repository, company_code, oldAppCode);
+      const targetRows = oldAppCode === newAppCode
+        ? oldRows
+        : await this.lockScope(repository, company_code, newAppCode);
+      const remainingOldRows = oldRows.filter((row) => Number(row.serial_no) !== Number(serial_no));
+      const remainingTargetRows = oldAppCode === newAppCode
+        ? remainingOldRows
+        : targetRows.filter((row) => Number(row.serial_no) !== Number(serial_no));
+      const desiredPosition = clampPosition(updateData.position, remainingTargetRows.length + 1);
+
+      const movingRow = oldRows.find((row) => Number(row.serial_no) === Number(serial_no));
+      await this.displaceScope(repository, company_code, oldAppCode, oldRows);
+      if (oldAppCode !== newAppCode) await this.displaceScope(repository, company_code, newAppCode, targetRows);
+      const movingTemporaryPosition = movingRow?.position ?? existing.position;
+      await repository.update(
+        { company_code, app_code: oldAppCode, position: movingTemporaryPosition },
+        { ...updateData, app_code: newAppCode, position: 3000000, updated_at: new Date() },
+      );
+      const moved = { ...existing, ...updateData, app_code: newAppCode, position: 3000000 } as SecModule;
+      remainingTargetRows.splice(desiredPosition - 1, 0, moved);
+      await this.applyPositions(repository, remainingTargetRows);
+      if (oldAppCode !== newAppCode) await this.applyPositions(repository, remainingOldRows);
+      await queryRunner.commitTransaction();
+      return true;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
+
+  static async deleteAndCompact(companyCode: string, serialNumbers: number[]): Promise<boolean> {
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await ensureCorrectSchemaOnQueryRunner(queryRunner);
+    await queryRunner.startTransaction();
+    try {
+      const repository = queryRunner.manager.getRepository(SecModule);
+      const selected = await repository.createQueryBuilder("module")
+        .where("module.company_code = :companyCode", { companyCode })
+        .andWhere("module.serial_no IN (:...serialNumbers)", { serialNumbers })
+        .getMany();
+      if (!selected.length) {
+        await queryRunner.rollbackTransaction();
+        return false;
+      }
+
+      const appCodes = Array.from(new Set(selected.map((row) => row.app_code)));
+      for (const appCode of appCodes) {
+        const rows = await this.lockScope(repository, companyCode, appCode);
+        const remaining = rows.filter((row) => !serialNumbers.includes(Number(row.serial_no)));
+        await repository.delete(selected.filter((row) => row.app_code === appCode).map((row) => row.serial_no));
+        await this.displaceScope(repository, companyCode, appCode, remaining);
+        await this.applyPositions(repository, remaining);
+      }
+      await queryRunner.commitTransaction();
+      return true;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private static async lockScope(repository: any, companyCode: string, appCode: string): Promise<SecModule[]> {
+    return repository.createQueryBuilder("module")
+      .where("module.company_code = :companyCode", { companyCode })
+      .andWhere("module.app_code = :appCode", { appCode })
+      .orderBy("NVL(module.position, 999999)", "ASC")
+      .addOrderBy("module.serial_no", "ASC")
+      .getMany();
+  }
+
+  private static async displaceScope(repository: any, companyCode: string, appCode: string, rows: SecModule[]) {
+    for (let index = 0; index < rows.length; index += 1) {
+      const temporaryPosition = 1000000 + index + 1;
+      await repository.update(
+        { company_code: companyCode, app_code: appCode, position: rows[index].position },
+        { position: temporaryPosition },
+      );
+      rows[index].position = temporaryPosition;
+    }
+  }
+
+  private static async applyPositions(repository: any, rows: SecModule[]) {
+    for (let index = 0; index < rows.length; index += 1) {
+      await repository.update(
+        {
+          company_code: rows[index].company_code,
+          app_code: rows[index].app_code,
+          position: rows[index].position,
+        },
+        { position: index + 1 },
+      );
+      rows[index].position = index + 1;
+    }
+  }
+}
+
+function clampPosition(value: unknown, maximum: number) {
+  const requested = Math.trunc(Number(value));
+  if (!Number.isFinite(requested)) return maximum;
+  return Math.min(Math.max(requested, 1), maximum);
 }
