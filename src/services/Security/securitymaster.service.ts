@@ -314,14 +314,21 @@ export class SecurityMasterService {
   static async getSecModuleDropdown(
     company_code: string,
     page: number = 1,
-    limit: number = 200
+    limit: number = 100000
   ) {
-    return await this.getMasterDataWithPagination<SecModule>(
-      SecModule,
-      { company_code } as FindOptionsWhere<SecModule>,
-      page,
-      limit
-    );
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    const [tableData, count] = await repository.findAndCount({
+      where: { company_code } as FindOptionsWhere<SecModule>,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: {
+        app_code: "ASC",
+        position: "ASC",
+        serial_no: "ASC",
+      } as FindOptionsOrder<SecModule>,
+    });
+    return { tableData, count };
   }
 
   static async getUserDivisionAccess(
