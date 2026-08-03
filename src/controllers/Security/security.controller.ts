@@ -138,7 +138,7 @@ export const getSecMaster = async (
         result = await SecurityMasterService.getSecModuleDropdown(
           requestUser.company_code,
           page,
-          200
+          limit
         );
         break;
 
