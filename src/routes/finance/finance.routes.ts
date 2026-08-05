@@ -47,6 +47,8 @@ import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIn
 import { insUpdBudgetRequestBulk } from "../../controllers/finance/accounts/transactions/insUpdBudgetRequestBulk";
 import { insLoadBudgetData } from "../../controllers/finance/accounts/transactions/insLoadBudgetData";
 import { insUpdTnInvoiceBulk } from "../../controllers/wms/insUpdTnInvoiceBulk";
+import {insUpdMsApproverLevels} from "../../controllers/Security/insUpdMsApproverLevels.controller";
+import {insSecRoleFunctionAccessUser} from "../../controllers/Security/insSecRoleFunctionAccessUser.controller";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -331,7 +333,8 @@ router.post(
   "/proc_common_sql_finance",
   proc_common_sql_finance
 );
-
+router.post("/insUpdMsApproverLevels", insUpdMsApproverLevels);
+router.post("/insSecRoleFunctionAccessUser", insSecRoleFunctionAccessUser); 
  export default router;
 
 
