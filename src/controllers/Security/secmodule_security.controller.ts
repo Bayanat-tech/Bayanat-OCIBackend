@@ -21,6 +21,7 @@ export const createsecmodulemaster = async (
     }
 
     const {
+      company_code,
       app_code,
       level1,
       level2,
@@ -32,6 +33,7 @@ export const createsecmodulemaster = async (
 
     // Check for duplicate module
     const duplicateModule = await SecModuleService.findDuplicate({
+      company_code,
       app_code,
       level1,
       level2,
@@ -41,18 +43,16 @@ export const createsecmodulemaster = async (
     });
 
     if (duplicateModule) {
-      await SecModuleService.enableForCompany(requestUser.company_code, duplicateModule.serial_no);
-      res.status(constants.STATUS_CODES.OK).json({
-        success: true,
-        message: "Existing global screen enabled for this company.",
-        data: duplicateModule,
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: constants.MESSAGES.SECMODULE_SEC.SECMODULE_ALREADY_EXISTS,
       });
       return;
     }
 
     // Create module
     const createdModule = await SecModuleService.createModule({
-      company_code: requestUser.company_code,
+      company_code,
       app_code,
       level1,
       level2,
@@ -98,8 +98,7 @@ export const updatesecmodulemaster = async (
       return;
     }
 
-    const { serial_no } = req.body;
-    const company_code = requestUser.company_code;
+    const { serial_no, company_code } = req.body;
 
     // Check if module exists
     const existingModule = await SecModuleService.findBySerialAndCompany(

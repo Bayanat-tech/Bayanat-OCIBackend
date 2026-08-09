@@ -17,7 +17,6 @@ import {
   AccessRoleAppAccess,
   AccessUserSecRoleAccess,
   AccessUserSecMaster,
-  SecCompanyModuleAccess,
 } from "../../entity/Security/index";
 import {
   Like,
@@ -165,27 +164,15 @@ export class SecurityMasterService {
   ) {
     await ensureCorrectSchema();
     const repository = getRepository(SecModule);
-    const query = repository.createQueryBuilder("module")
-      .innerJoin(SecCompanyModuleAccess, "access",
-        "access.module_id = module.serial_no AND access.company_code = :companyCode AND access.enabled = 'Y'",
-        { companyCode: company_code })
-      .skip((page - 1) * limit)
-      .take(limit);
-    if (searchFilter?.field && searchFilter?.value) {
-      const allowed = new Set(["app_code", "level1", "level2", "level3", "url_path"]);
-      if (allowed.has(searchFilter.field)) {
-        query.andWhere(`UPPER(module.${searchFilter.field}) LIKE UPPER(:search)`, {
-          search: `%${searchFilter.value}%`,
-        });
-      }
-    }
-    const allowedSorts = new Set(["serial_no", "app_code", "level1", "level2", "level3", "position", "url_path"]);
-    if (sort?.field_name && allowedSorts.has(sort.field_name)) {
-      query.orderBy(`module.${sort.field_name}`, sort.desc ? "DESC" : "ASC");
-    } else {
-      query.orderBy("module.app_code", "ASC").addOrderBy("module.position", "ASC").addOrderBy("module.serial_no", "ASC");
-    }
-    const [tableData, count] = await query.getManyAndCount();
+    const where = this.buildSearchCondition<SecModule>(company_code, searchFilter);
+    const [tableData, count] = await repository.findAndCount({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: sort?.field_name
+        ? ({ [sort.field_name]: sort.desc ? "DESC" : "ASC" } as FindOptionsOrder<SecModule>)
+        : ({ app_code: "ASC", position: "ASC", serial_no: "ASC" } as FindOptionsOrder<SecModule>),
+    });
     return { tableData, count };
   }
 
@@ -266,16 +253,16 @@ export class SecurityMasterService {
     await ensureCorrectSchema();
 
     const repository = getRepository(SecModule);
-    const rows = await repository.createQueryBuilder("module")
-      .innerJoin(SecCompanyModuleAccess, "access",
-        "access.module_id = module.serial_no AND access.company_code = :companyCode AND access.enabled = 'Y'",
-        { companyCode: company_code })
-      .orderBy("module.app_code", "ASC")
-      .addOrderBy("module.level1", "ASC")
-      .addOrderBy("module.level2", "ASC")
-      .addOrderBy("module.level3", "ASC")
-      .addOrderBy("module.serial_no", "ASC")
-      .getMany();
+    const rows = await repository.find({
+      where: { company_code } as FindOptionsWhere<SecModule>,
+      order: {
+        app_code: "ASC",
+        level1: "ASC",
+        level2: "ASC",
+        level3: "ASC",
+        serial_no: "ASC",
+      } as FindOptionsOrder<SecModule>,
+    });
 
     const level3Parents = new Set(
       rows
@@ -348,11 +335,10 @@ export class SecurityMasterService {
     // collapse those database rows, producing incomplete dropdown options and
     // incorrect module counts.
     const allRows = await repository.query(
-      `SELECT m.*
-         FROM SEC_MODULE_DATA m
-         JOIN SEC_COMPANY_MODULE_ACCESS c ON c.MODULE_ID = m.SERIAL_NO
-        WHERE c.COMPANY_CODE = :1 AND c.ENABLED = 'Y'
-        ORDER BY m.APP_CODE, m.POSITION, m.SERIAL_NO`,
+      `SELECT *
+         FROM SEC_MODULE_DATA
+        WHERE COMPANY_CODE = :1
+        ORDER BY APP_CODE, POSITION, SERIAL_NO`,
       [company_code],
     );
     const rows = Array.isArray(allRows) ? allRows : allRows?.rows || [];

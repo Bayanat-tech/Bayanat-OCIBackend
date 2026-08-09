@@ -10,8 +10,7 @@
     "start:dev": "nodemon build/index.js",
     "start:prod": "node build/index.js",
     "dev": "nodemon -L --watch . --ext ts,json --exec ts-node index.ts",
-    "check:tenant": "node scripts/check-no-oracle-query.js",
-    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/connection.ts"
+    "check:tenant": "node scripts/check-no-oracle-query.js"
   },
   "keywords": [],
   "author": "",

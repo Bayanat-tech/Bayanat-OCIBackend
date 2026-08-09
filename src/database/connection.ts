@@ -49,7 +49,6 @@ import {
   SecLoginRoleAccess,
   SecLoginUserDivision,
   SecModule,
-  SecCompanyModuleAccess,
   User,
 } from "../entity/Security";
 import { TsStn } from "../entity/WMS/TsStn.entity";
@@ -191,7 +190,6 @@ export const AppDataSource = new DataSource({
   SecLoginRoleAccess,
   SecLoginUserDivision,
   SecModule,
-  SecCompanyModuleAccess,
   User,
   TsStn, 
   TsStndetail,

@@ -13,6 +13,9 @@ export class AccessSecModuleData {
   @Column({ name: "LEVEL3", type: "varchar2", length: 30 })
   level3!: string;
 
+  @Column({ name: "COMPANY_CODE", type: "varchar2", length: 10 })
+  company_code!: string;
+
   // One-to-Many relationship with AccessSecOperation
   @OneToMany(() => AccessSecOperation, (operation) => operation.module)
   operations!: AccessSecOperation[];
