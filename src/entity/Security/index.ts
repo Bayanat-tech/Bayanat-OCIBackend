@@ -5,6 +5,7 @@ export { Company } from "./company.entity";
 export { RoleMaster } from "./rolemaster.entity";
 export { FlowMaster } from "./flowmaster.entity";
 export { SecModule } from "./secmodule.entity";
+export { SecCompanyModuleAccess } from "./seccompanymoduleaccess.entity";
 export { SecLoginRoleAccess } from "./seclogin-roleaccess.entity";
 export { MSPSProjectMaster } from "./mspsprojectmaster.entity";
 export { MsRole } from "./msrole.entity";

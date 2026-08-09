@@ -323,7 +323,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       userPermissions = await AuthService.executeInUserTenant(
         loginid,
         userPermissionQuery,
-        { loginid }
+        { loginid, company_code: user.COMPANY_CODE }
       );
       
       console.log(`[me] ✅ STEP 1 RESULT: Found ${userPermissions.length} permission records`);
@@ -343,7 +343,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
       allPermissions = await AuthService.executeInUserTenant(
         loginid,
         permissionsListQuery,
-        {}
+        { company_code: user.COMPANY_CODE }
       );
       
       console.log(`[me] ✅ Found ${allPermissions.length} total permissions available`);
@@ -893,7 +893,7 @@ export const diagnosticPermissions = async (req: RequestWithUser, res: Response)
       const userPerms = await AuthService.executeInUserTenant(
         loginid,
         userPermissionQuery,
-        { loginid }
+        { loginid, company_code: requestUser.company_code }
       );
       diagnostics.checks.user_permissions_count = userPerms.length;
       if (userPerms.length > 0) {
@@ -910,7 +910,7 @@ export const diagnosticPermissions = async (req: RequestWithUser, res: Response)
       const allPerms = await AuthService.executeInUserTenant(
         loginid,
         permissionsListQuery,
-        {}
+        { company_code: requestUser.company_code }
       );
       diagnostics.checks.all_permissions_count = allPerms.length;
       console.log(`[diagnostic] CHECK 3: Total permissions available = ${allPerms.length}`);
@@ -925,7 +925,7 @@ export const diagnosticPermissions = async (req: RequestWithUser, res: Response)
       const userPermissions = await AuthService.executeInUserTenant(
         loginid,
         userPermissionQuery,
-        { loginid }
+        { loginid, company_code: requestUser.company_code }
       );
       const formattedPerms = formatRolePermissions(userPermissions);
       diagnostics.checks.formatted_permissions = formattedPerms;
