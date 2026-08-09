@@ -194,8 +194,7 @@ LeaveDaysCount: async (params: {
         );
         :p_leave_exists := v_leave_exists;
       END;
-    `;
-
+    `;  
     const bindParams = {
       p_company_code: company_code,
       p_employee_code: employee_code,
@@ -206,6 +205,8 @@ LeaveDaysCount: async (params: {
         type: oracledb.NUMBER,
       },
     };
+
+    console.log(bindParams, "date range")
 
     try {
       const result = await oracleDb.query(query, bindParams);
