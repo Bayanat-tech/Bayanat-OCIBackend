@@ -85245,3 +85245,257 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:563:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 12:16:56 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:17:56 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:18:19 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'hr/controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "hr/controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'hr/controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "hr/controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'hr/controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "hr/controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:18:43 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:27:03 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:53:09 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:55:14 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:56:16 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:04:17 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:21:15 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 14:24:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T08:54:08.414Z 08DEF5336A5F4C1E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T08:54:08.414Z 08DEF5336A5F4C1E]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 14:32:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T09:02:08.330Z 08DEF5265E1C0626] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T09:02:08.330Z 08DEF5265E1C0626]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
