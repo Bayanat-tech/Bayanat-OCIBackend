@@ -61,7 +61,9 @@ export const secmasterSchema = (data: ISecmaster) => {
 
 export const secmoduleSchema = (data: ISecmodule) => {
   const schema = Joi.object().keys({
-    company_code: Joi.string().required(),
+    // Kept optional so older frontend payloads remain accepted. It is not
+    // read or persisted for SEC_MODULE_DATA.
+    company_code: Joi.string().optional().allow("", null),
     app_code: Joi.string().required(),
     serial_no: Joi.number().optional().allow(""),
     level1: Joi.string().trim().required(),
