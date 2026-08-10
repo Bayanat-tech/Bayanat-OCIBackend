@@ -11,6 +11,9 @@ import {
   updateEmployee, // Update an existing employee
 } from "../../controllers/HR/hr_employee.controller";
 
+// Import the pay component (pay units) upsert controller
+import { insUpdHrEmpPayunits } from "../../controllers/HR/insUpdHrEmpPayunits";
+
 // Define routes for employee master management
 // -------------- Employee master ----------------
 router.post("/employeemaster", createEmployee); // Create a new employee
@@ -18,6 +21,10 @@ router.put("/:employeeCode", updateEmployee); // Update an existing employee
 router.get("/employeemaster/export", exportEmployee); // Export employee data
 router.post("/employeemaster/bulk", createBulkEmployee); // Create multiple employees in bulk
 router.get("/:employeeCode", getSingleEmployee); // Retrieve a single employee by employee code
+
+// -------------- Pay components / pay units ----------------
+// Full path: POST /api/hr/employee/pay-components/upsert
+router.post("/pay-components/upsert", insUpdHrEmpPayunits);
 
 
 // Export the router instance

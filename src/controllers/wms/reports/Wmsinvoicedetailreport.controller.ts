@@ -101,7 +101,7 @@ function numFmt(value: unknown, decimals = 3): string {
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
-// Union of three billing sources:
+// Union of three billing sources, now served via VW_INVOICE_DETAIL:
 //   t_type '2' = MNSTORAGE_DET   (recurring storage charges)
 //   t_type '3' = TO_STORAGETXN   (one-off storage transactions)
 //   t_type '1' = TN_INVOICE_DET  (job/activity based billing)
@@ -114,49 +114,25 @@ function numFmt(value: unknown, decimals = 3): string {
 //     ("<job_type>-<job_no>  Ref:<doc_ref>") rather than a separate column.
 // If MNSTORAGE_DET (t_type '2') actually has its own reference/import number
 // column (the sample PDF shows one, e.g. "IMP-1026074956"), add it to the
-// t_type '2' branch as JOB_NO instead of the current empty string literal.
+// t_type '2' branch as JOB_NO instead of the current empty string literal
+// (that change now belongs in the VW_INVOICE_DETAIL view definition, not here).
+//
+// IMPORTANT: the view can't carry bind-parameter filters itself, so
+// company_code / prin_code / consolidated_invno filtering happens here.
+// consolidated_invno is applied ONLY to t_type '2'/'3' rows — t_type '1'
+// (TN_INVOICE_DET) never had that filter in the original query, so it's
+// deliberately excluded from that condition below. Filtering it the same
+// way as the other branches would silently drop all job-cost lines.
 
 const INVOICE_DETAIL_SQL = `
-SELECT '2' t_type,'' job_no,d.prod_code,d.prod_name, d.site_ind,d.txn_date,
-       d.inv_date,d.qty,d.dayscharged,d.volume,d.amount ,' ' act_group_name,
-       d.prin_code, d.cpu,(d.amount *0.05 ) vat_amt,d.site_code, '01' div_code
-  FROM MNSTORAGE_DET d
- WHERE d.company_code = :as_companycode AND d.prin_code = :as_princode AND
-       (nvl(d.consolidated_invno,' ') = :as_consolidated_invno) AND
-       (d.amount <> 0)
-UNION ALL
-SELECT '3',j.job_type ||'-'|| t.job_no||'         Ref:' ||T.doc_ref job_no,t.prod_code,
-       (SELECT MAX(prod_name) FROM ms_product WHERE company_code = t.company_code
-         AND prin_code = t.prin_code AND prod_code = t.prod_code) prod_name,
-       site_indicator, from_date, to_date txn_date, total_qty, no_days, total_volume,
-       total_amount,' ' act_group_name,t.prin_code,T.cpu,(t.total_amount *0.05 ) vat_amt,
-       '' site_code,'01' div_code
-  FROM TO_STORAGETXN t, TI_JOB j
- WHERE t.company_code = j.company_code AND t.prin_code = j.prin_code AND
-       t.job_no = j.job_no AND
-       t.company_code = :as_companycode AND t.prin_code = :as_princode AND
-       (nvl(consolidated_invno,' ') = :as_consolidated_invno) AND
-       (total_amount <> 0)
-UNION ALL
-SELECT '1',j.job_type||'-'||j.job_no job_no,ACT_CODE,
-       other_services || '--' || rowtocol('select ORDER_NO || '' [ '' ||cust_code || ''(''
-         || (select cust_name from ms_customer where company_code = to_order.company_code
-             and prin_code = to_order.prin_code and cust_code = to_order.cust_code)
-         || '')''  || '' ] '' from to_order where prin_code=' ||T.prin_code||' AND job_no='
-         || T.job_no),
-       j.doc_ref, NULL, j.confirm_date txn_date, t.quantity, NULL, NULL,
-       t.bill amount, g.act_group_name, t.prin_code, t.bill_rate,
-       tx_compnt_lcuramt_1 vat_amt, '' site_code, d.dIV_CODE
-FROM TN_INVOICE_DET t, TI_JOB j, MS_ACTIVITY m, ms_activity_group g, ms_hr_division d
- WHERE t.company_code = j.company_code AND t.prin_code = j.prin_code AND
-       t.job_no = j.job_no AND
-       t.company_code = m.company_code AND t.ACT_CODE = m.ACTIVITY_CODE AND
-       t.company_code = g.company_code (+) AND m.activity_group_code = g.ACTIVITY_GROUP_CODE (+) AND
-       (t.company_code = d.company_code (+)) AND (t.div_code = d.div_code (+)) AND
-       t.company_code = :as_companycode AND t.prin_code = :as_princode AND
-       (nvl(consolidated_invno,' ') = :as_consolidated_invno) AND
-       (nvl(t.print_flag,'Y') = 'Y') AND
-       (t.bill <> 0)`;
+SELECT *
+  FROM VW_INVOICE_DETAIL
+ WHERE company_code = :as_companycode
+   AND prin_code    = :as_princode
+   AND (
+         t_type = '1'
+         OR nvl(consolidated_invno, ' ') = :as_consolidated_invno
+       )`;
 
 async function loadInvoiceDetailData(
   req: RequestWithUser,

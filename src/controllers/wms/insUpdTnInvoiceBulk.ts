@@ -98,6 +98,7 @@ export const insUpdTnInvoiceBulk = async (
       TXN_DATE: d.TXN_DATE ? new Date(d.TXN_DATE) : null,
       MOC1: d.MOC1 ?? null,
       TX_CAT_CODE: d.TX_CAT_CODE ?? null,
+      TX_CAT_CODE_COST: d.TX_CAT_CODE_COST ?? null,
       TX_COMPNTCAT_CODE_1: d.TX_COMPNTCAT_CODE_1 ?? null,
       TX_COMPNTCAT_CODE_2: d.TX_COMPNTCAT_CODE_2 ?? null,
       TX_COMPNTCAT_CODE_3: d.TX_COMPNTCAT_CODE_3 ?? null,
@@ -141,7 +142,8 @@ export const insUpdTnInvoiceBulk = async (
       TX_COMPNT_4_EXPMT_COST: d.TX_COMPNT_4_EXPMT_COST ?? null,
       TX_COMPNT_LCURAMT_1: Number(d.TX_COMPNT_LCURAMT_1 ?? 0),
       TX_COMPNT_AMT_1: Number(d.TX_COMPNT_AMT_1 ?? 0),
-      GROSS_WT: Number(d.GROSS_WT ?? 0)
+      GROSS_WT: Number(d.GROSS_WT ?? 0),
+      COST_RATE: Number(d.COST_RATE ?? 0),
     }));
     console.timeEnd("Mapping");
 
