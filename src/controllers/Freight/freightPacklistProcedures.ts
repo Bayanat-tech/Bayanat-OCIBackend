@@ -141,6 +141,10 @@ export const frtPacklistDimSave = async (req: Request, res: Response): Promise<v
 export const frtPacklistSave = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const pack = req.body.packlist ?? req.body;
+    const isNewPacklist =
+      pack.is_new_packlist === true ||
+      pack.IS_NEW_PACKLIST === true ||
+      String(pack.packlist_action ?? pack.PACKLIST_ACTION ?? "").toUpperCase() === "NEW";
     const result = await connection.execute(
       `BEGIN
          WMSTST.PROC_FRT_PACKLIST_SAVE(
@@ -225,10 +229,10 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
         p_company_code: value(pack.company_code ?? pack.COMPANY_CODE),
         p_prin_code: value(pack.prin_code ?? pack.PRIN_CODE),
         p_job_no: value(pack.job_no ?? pack.JOB_NO),
-        p_packlist_no: numberValue(pack.packlist_no ?? pack.PACKLIST_NO),
+        p_packlist_no: isNewPacklist ? null : numberValue(pack.packlist_no ?? pack.PACKLIST_NO),
         p_transport_mode: value(pack.transport_mode ?? pack.TRANSPORT_MODE),
         p_job_type: value(pack.job_type ?? pack.JOB_TYPE),
-        p_seq_number: value(pack.seq_number ?? pack.SEQ_NUMBER),
+        p_seq_number: isNewPacklist ? null : value(pack.seq_number ?? pack.SEQ_NUMBER),
         p_cust_code: value(pack.cust_code ?? pack.CUST_CODE),
         p_broker_code: value(pack.broker_code ?? pack.BROKER_CODE),
         p_shipper_name: value(pack.shipper_name ?? pack.SHIPPER_NAME),

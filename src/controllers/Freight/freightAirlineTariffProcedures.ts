@@ -75,6 +75,9 @@ export const frtAirlineTariffSave = async (req: Request, res: Response): Promise
            :p_k_1000,
            :p_hard_freight,
            :p_perishable,
+           :p_direct_via,
+           :p_restriction,
+           :p_restriction_det,
            :p_user_id,
            :p_air_tariff_no_out
          );
@@ -98,8 +101,11 @@ export const frtAirlineTariffSave = async (req: Request, res: Response): Promise
         p_k_1000: numberValue(tariff.k_1000 ?? tariff.K_1000),
         p_hard_freight: value(tariff.hard_freight ?? tariff.HARD_FREIGHT),
         p_perishable: value(tariff.perishable ?? tariff.PERISHABLE),
+        p_direct_via: value(tariff.direct_via ?? tariff.DIRECT_VIA),
+        p_restriction: value(tariff.restriction ?? tariff.RESTRICTION),
+        p_restriction_det: value(tariff.restriction_det ?? tariff.RESTRICTION_DET),
         p_user_id: value(tariff.user_id ?? tariff.USER_ID ?? req.body.user_id ?? req.body.USER_ID),
-        p_air_tariff_no_out: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+        p_air_tariff_no_out: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
       },
       { autoCommit: true }
     );

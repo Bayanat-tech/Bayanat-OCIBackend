@@ -84525,3 +84525,977 @@ Error: ORA-00942: table or view does not exist
     at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-10 11:00:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:08.843Z 08DEF51A1E8ED1FD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:08.843Z 08DEF51A1E8ED1FD]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:00:16 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0025.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:16.105Z 08DEF502F9000BBD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0025.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:16.105Z 08DEF502F9000BBD]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:00:23 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:23.252Z 08DEF4F79880A5DF] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:23.252Z 08DEF4F79880A5DF]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:00:30 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:30.571Z 08DEF52190982AE3] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:30.571Z 08DEF52190982AE3]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:00:37 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:37.568Z 08DEF4F7310A6099] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:37.568Z 08DEF4F7310A6099]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:00:44 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:44.635Z 08DEF4F7310A60B9] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:44.635Z 08DEF4F7310A60B9]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:02:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:07.392Z 08DEF52B36CEBADD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:07.392Z 08DEF52B36CEBADD]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:02:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0028.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:14.919Z 08DEF50B57CE379F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0028.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:14.919Z 08DEF50B57CE379F]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:02:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:22.501Z 08DEF5319B159963] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:22.501Z 08DEF5319B159963]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:02:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:29.769Z 08DEF52190982CE0] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:29.769Z 08DEF52190982CE0]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:02:37 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:37.499Z 08DEF4F7310A62B9] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:37.499Z 08DEF4F7310A62B9]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:02:44 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:44.876Z 08DEF519F95E6CFD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:44.876Z 08DEF519F95E6CFD]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:04:09 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:09.576Z 08DEF51A1E8ED63E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:09.576Z 08DEF51A1E8ED63E]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:04:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:22.050Z 08DEF52745ECC7B5] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:22.050Z 08DEF52745ECC7B5]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:04:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:29.377Z 08DEF51A1E8ED6F7] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:29.377Z 08DEF51A1E8ED6F7]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:04:37 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:37.174Z 08DEF5319B159C0D] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:37.174Z 08DEF5319B159C0D]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:04:44 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:44.529Z 08DEF52745ECC85E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:44.529Z 08DEF52745ECC85E]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:04:51 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:51.707Z 08DEF52745ECC882] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:51.707Z 08DEF52745ECC882]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:06:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0013.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:08.015Z 08DEF50FAC505BDB] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0013.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:08.015Z 08DEF50FAC505BDB]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:06:14 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:14.785Z 08DEF524C2640173] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:14.785Z 08DEF524C2640173]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:06:21 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:21.965Z 08DEF5180EF2BE42] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:21.965Z 08DEF5180EF2BE42]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:06:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0010.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:29.015Z 08DEF542883CF3C8] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0010.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:29.015Z 08DEF542883CF3C8]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:06:35 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:35.848Z 08DEF4F99B526D12] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:35.848Z 08DEF4F99B526D12]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:06:42 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:42.693Z 08DEF5180EF2BE91] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:42.693Z 08DEF5180EF2BE91]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:08:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:07.407Z 08DEF4F99B52717B] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:07.407Z 08DEF4F99B52717B]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:08:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:14.995Z 08DEF50BC92E270B] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:14.995Z 08DEF50BC92E270B]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:08:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:21.925Z 08DEF4F99B5271B9] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:21.925Z 08DEF4F99B5271B9]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:08:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:29.015Z 08DEF4F99B5271CE] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:29.015Z 08DEF4F99B5271CE]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:08:35 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:35.825Z 08DEF524C26406DC] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:35.825Z 08DEF524C26406DC]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:08:42 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0013.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:42.775Z 08DEF50FAC50618E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0013.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:42.775Z 08DEF50FAC50618E]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:10:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0014.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:07.385Z 08DEF505DBBF9BFA] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0014.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:07.385Z 08DEF505DBBF9BFA]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:10:14 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0002.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:14.322Z 08DEF536F7ACB3FC] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0002.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:14.322Z 08DEF536F7ACB3FC]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:12:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0033.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:07.792Z 08DEF53828E56A94] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0033.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:07.792Z 08DEF53828E56A94]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:12:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:15.218Z 08DEF508A2937373] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:15.218Z 08DEF508A2937373]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:12:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:22.510Z 08DEF52D60E0BE68] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:22.510Z 08DEF52D60E0BE68]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:12:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:29.506Z 08DEF52D60E0BE90] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:29.506Z 08DEF52D60E0BE90]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:12:37 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:36.929Z 08DEF513F8EF492A] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:36.929Z 08DEF513F8EF492A]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:12:44 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:44.264Z 08DEF513F8EF4959] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:44.264Z 08DEF513F8EF4959]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:14:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:07.564Z 08DEF5477560AA5F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:07.564Z 08DEF5477560AA5F]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:14:14 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0025.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:14.940Z 08DEF51EFD980CED] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0025.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:14.940Z 08DEF51EFD980CED]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:14:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:22.169Z 08DEF54DBABCB293] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:22.169Z 08DEF54DBABCB293]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:14:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:29.401Z 08DEF5265E19478A] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:29.401Z 08DEF5265E19478A]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:16:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:07.774Z 08DEF54DBABCB559] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:07.774Z 08DEF54DBABCB559]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:16:14 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0032.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:14.991Z 08DEF53769338128] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0032.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:14.991Z 08DEF53769338128]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:18:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:07.805Z 08DEF513F8EF5149] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:07.805Z 08DEF513F8EF5149]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:18:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:15.045Z 08DEF54DBABCB8BC] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:15.045Z 08DEF54DBABCB8BC]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:18:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0025.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:22.312Z 08DEF51EFD98132F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0025.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:22.312Z 08DEF51EFD98132F]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:18:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:29.303Z 08DEF528E3344001] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:29.303Z 08DEF528E3344001]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:18:37 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0028.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:37.501Z 08DEF50B0DCF2D00] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0028.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:37.501Z 08DEF50B0DCF2D00]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:18:44 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:44.902Z 08DEF53F41B3D510] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0021.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:44.902Z 08DEF53F41B3D510]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:20:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:07.669Z 08DEF528E3344279] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:07.669Z 08DEF528E3344279]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:20:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:15.099Z 08DEF54DBABCBC0D] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:15.099Z 08DEF54DBABCBC0D]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:20:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:22.177Z 08DEF544CCFDEEAF] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:22.177Z 08DEF544CCFDEEAF]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:20:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0035.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:29.495Z 08DEF51046F4FD6B] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0035.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:29.495Z 08DEF51046F4FD6B]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:20:36 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:36.499Z 08DEF528E334436D] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:36.499Z 08DEF528E334436D]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:20:43 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:43.830Z 08DEF51C27682C72] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:43.830Z 08DEF51C27682C72]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:22:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:07.684Z 08DEF51C27682F2C] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:07.684Z 08DEF51C27682F2C]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:22:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0035.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:15.213Z 08DEF51046F500DE] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0035.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:15.213Z 08DEF51046F500DE]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:22:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:22.497Z 08DEF513F8EF58F7] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:22.497Z 08DEF513F8EF58F7]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 11:22:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:29.641Z 08DEF513F8EF5943] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0036.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:29.641Z 08DEF513F8EF5943]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 12:16:56 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:17:56 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "../../controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:18:19 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'hr/controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "hr/controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'hr/controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "hr/controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'hr/controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "hr/controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:18:43 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/HR/employeHr.routes.ts[0m:[93m15[0m:[93m37[0m - [91merror[0m[90m TS2307: [0mCannot find module 'controllers/HR/hr_employee_paycomponents.controller' or its corresponding type declarations.
+
+[7m15[0m import { insUpdHrEmpPayunits } from "controllers/HR/hr_employee_paycomponents.controller";
+[7m  [0m [91m                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-08-10 12:27:03 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:53:09 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:55:14 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:56:16 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:04:17 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:21:15 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at app.listen (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 14:24:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T08:54:08.414Z 08DEF5336A5F4C1E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T08:54:08.414Z 08DEF5336A5F4C1E]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-10 14:32:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T09:02:08.330Z 08DEF5265E1C0626] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T09:02:08.330Z 08DEF5265E1C0626]
+    at SMTPConnection._formatError (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Gurshish\Desktop\Bayanat\JASRA-APP\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:509:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)

@@ -6,9 +6,6 @@ export class SecModule {
   @PrimaryColumn({ name: "SERIAL_NO", type: "number" })
   serial_no!: number;
 
-  @Column({ name: "COMPANY_CODE", type: "varchar2", length: 20 })
-  company_code!: string;
-
   @Column({ name: "APP_CODE", type: "varchar2", length: 30 })
   app_code!: string;
 

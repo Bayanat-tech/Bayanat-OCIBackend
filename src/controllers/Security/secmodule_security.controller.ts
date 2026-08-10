@@ -21,7 +21,6 @@ export const createsecmodulemaster = async (
     }
 
     const {
-      company_code,
       app_code,
       level1,
       level2,
@@ -34,7 +33,6 @@ export const createsecmodulemaster = async (
 
     // Check for duplicate module
     const duplicateModule = await SecModuleService.findDuplicate({
-      company_code,
       app_code,
       level1,
       level2,
@@ -54,7 +52,6 @@ export const createsecmodulemaster = async (
 
     // Create module
     const createdModule = await SecModuleService.createModule({
-      company_code,
       app_code,
       level1,
       level2,
@@ -101,13 +98,10 @@ export const updatesecmodulemaster = async (
       return;
     }
 
-    const { serial_no, company_code } = req.body;
+    const { serial_no } = req.body;
 
     // Check if module exists
-    const existingModule = await SecModuleService.findBySerialAndCompany(
-      serial_no,
-      company_code
-    );
+    const existingModule = await SecModuleService.findBySerial(serial_no);
 
     if (!existingModule) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -123,11 +117,7 @@ export const updatesecmodulemaster = async (
       updated_by: requestUser.loginid,
     };
 
-    const isUpdated = await SecModuleService.updateModule(
-      serial_no,
-      company_code,
-      updateData
-    );
+    const isUpdated = await SecModuleService.updateModule(serial_no, updateData);
 
     if (!isUpdated) {
       res
