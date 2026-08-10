@@ -84525,3 +84525,1131 @@ Error: ORA-00942: table or view does not exist
     at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-10 10:54:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU2P273CA0081.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:24:08.226Z 08DEF5ED931C83B9] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU2P273CA0081.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:24:08.226Z 08DEF5ED931C83B9]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 10:54:16 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0037.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:24:16.212Z 08DEF53DF69AD551] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0037.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:24:16.212Z 08DEF53DF69AD551]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 10:56:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:26:07.577Z 08DEF5DAB13A6B61] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:26:07.577Z 08DEF5DAB13A6B61]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 10:56:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU2P273CA0089.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:26:15.098Z 08DEF50F2BFC6EDE] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU2P273CA0089.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:26:15.098Z 08DEF50F2BFC6EDE]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 10:58:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0032.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:07.836Z 08DEF4FFC4D001F4] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0032.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:07.836Z 08DEF4FFC4D001F4]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 10:58:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AUXP273CA0073.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:15.328Z 08DEF52980BC6EF3] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AUXP273CA0073.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:15.328Z 08DEF52980BC6EF3]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 10:58:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:22.400Z 08DEF5DAB13A6D3C] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU1P273CA0022.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:22.400Z 08DEF5DAB13A6D3C]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 10:58:30 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU2P273CA0108.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:30.472Z 08DEF5104A58F01F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [AU2P273CA0108.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:28:30.472Z 08DEF5104A58F01F]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:00:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:08.623Z 08DEF54DBABC9E8E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:08.623Z 08DEF54DBABC9E8E]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:00:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:15.784Z 08DEF51A1E8ED220] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:15.784Z 08DEF51A1E8ED220]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:00:23 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0032.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:23.742Z 08DEF53769336ADC] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0032.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:23.742Z 08DEF53769336ADC]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:00:31 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0027.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:31.599Z 08DEF530189BD7EA] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0027.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:31.599Z 08DEF530189BD7EA]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:00:39 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0009.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:39.578Z 08DEF501DE0E618B] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0009.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:39.578Z 08DEF501DE0E618B]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:00:47 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0011.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:47.252Z 08DEF514A6A56AD7] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0011.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:30:47.252Z 08DEF514A6A56AD7]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:02:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:07.744Z 08DEF52D60E0B06F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0030.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:07.744Z 08DEF52D60E0B06F]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:02:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0060.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:15.224Z 08DEF503D7C0EFAD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0060.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:15.224Z 08DEF503D7C0EFAD]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:02:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:22.382Z 08DEF5265E19374C] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0020.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:22.382Z 08DEF5265E19374C]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:02:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0007.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:29.991Z 08DEF50D8D1E699E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0007.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:29.991Z 08DEF50D8D1E699E]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:02:38 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0014.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:38.015Z 08DEF5257A8515A7] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0014.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:38.015Z 08DEF5257A8515A7]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:02:45 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0019.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:45.108Z 08DEF4FE8F51FBFC] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0019.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:32:45.108Z 08DEF4FE8F51FBFC]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:04:09 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0019.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:09.713Z 08DEF4FFE902AA5B] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0019.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:09.713Z 08DEF4FFE902AA5B]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:04:17 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0005.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:17.152Z 08DEF520D68A85E6] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0005.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:17.152Z 08DEF520D68A85E6]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:04:24 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0027.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:24.756Z 08DEF530189BDD37] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0027.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:24.756Z 08DEF530189BDD37]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:04:32 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:32.794Z 08DEF54DBABCA475] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0026.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:32.794Z 08DEF54DBABCA475]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:04:40 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0016.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:40.257Z 08DEF512EBEA750C] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0016.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:40.257Z 08DEF512EBEA750C]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:04:47 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0034.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:47.380Z 08DEF500E7FAD3BD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0034.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:34:47.380Z 08DEF500E7FAD3BD]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:06:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:08.179Z 08DEF524C264015E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:08.179Z 08DEF524C264015E]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:06:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0014.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:15.373Z 08DEF505DBBF94F0] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0014.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:15.373Z 08DEF505DBBF94F0]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:06:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0015.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:22.227Z 08DEF522C0E453CD] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0015.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:22.227Z 08DEF522C0E453CD]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:06:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0008.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:29.622Z 08DEF53A1547CF5E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0008.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:29.622Z 08DEF53A1547CF5E]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:06:36 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0008.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:36.504Z 08DEF53A1547CF7E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0008.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:36.504Z 08DEF53A1547CF7E]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:06:43 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:43.661Z 08DEF50B8464844F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0007.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:36:43.661Z 08DEF50B8464844F]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:08:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0011.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:07.891Z 08DEF50E3C4E04D1] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0011.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:07.891Z 08DEF50E3C4E04D1]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:08:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0005.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:15.453Z 08DEF519075CDB69] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0005.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:15.453Z 08DEF519075CDB69]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:08:27 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0024.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:27.871Z 08DEF512191CA3C1] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0024.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:27.871Z 08DEF512191CA3C1]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:08:34 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:34.874Z 08DEF50725E5F6E7] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:34.874Z 08DEF50725E5F6E7]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:08:41 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:41.776Z 08DEF50725E5F709] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:41.776Z 08DEF50725E5F709]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:08:48 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0002.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:48.577Z 08DEF51BB2889C26] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0002.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:38:48.577Z 08DEF51BB2889C26]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:10:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:07.468Z 08DEF5109CF97844] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:07.468Z 08DEF5109CF97844]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:10:14 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0011.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:14.491Z 08DEF50E3C4E06C5] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0011.QATP289.PROD.OUTLOOK.COM 2026-08-10T05:40:14.491Z 08DEF50E3C4E06C5]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:12:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0034.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:07.938Z 08DEF500E7FADEC0] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0034.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:07.938Z 08DEF500E7FADEC0]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:12:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0028.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:15.458Z 08DEF50B0DCF2345] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0028.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:15.458Z 08DEF50B0DCF2345]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:12:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0027.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:22.896Z 08DEF520D7937B84] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0027.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:22.896Z 08DEF520D7937B84]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:12:31 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0043.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:31.043Z 08DEF52FF3E0F97F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0043.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:31.043Z 08DEF52FF3E0F97F]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:12:38 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0074.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:38.113Z 08DEF50DDE71EB76] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0074.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:38.113Z 08DEF50DDE71EB76]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:12:45 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0083.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:45.820Z 08DEF507C04ED33A] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0083.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:42:45.820Z 08DEF507C04ED33A]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:14:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0097.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:07.852Z 08DEF4FB46E37BCF] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0097.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:07.852Z 08DEF4FB46E37BCF]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:14:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:15.267Z 08DEF52B36CED07D] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0029.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:15.267Z 08DEF52B36CED07D]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:14:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:22.622Z 08DEF51C27682284] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:22.622Z 08DEF51C27682284]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:14:30 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:30.293Z 08DEF535779BE8EE] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:44:30.293Z 08DEF535779BE8EE]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:16:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0063.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:07.589Z 08DEF503953C7424] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0063.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:07.589Z 08DEF503953C7424]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:16:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:15.407Z 08DEF5668B0E3DD4] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:46:15.407Z 08DEF5668B0E3DD4]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:18:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0086.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:07.722Z 08DEF5040666567F] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0086.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:07.722Z 08DEF5040666567F]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:18:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:15.038Z 08DEF5319B15B671] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:15.038Z 08DEF5319B15B671]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:18:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:22.525Z 08DEF535779BEF54] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:22.525Z 08DEF535779BEF54]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:18:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:29.889Z 08DEF51C276828D7] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:29.889Z 08DEF51C276828D7]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:18:37 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:37.724Z 08DEF5161391CFF6] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0031.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:37.724Z 08DEF5161391CFF6]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:18:45 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:45.242Z 08DEF51A1E8EF26A] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0023.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:48:45.242Z 08DEF51A1E8EF26A]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:20:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0009.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:07.881Z 08DEF501DE0F4183] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0009.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:07.881Z 08DEF501DE0F4183]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:20:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0009.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:15.311Z 08DEF55C18B7BEE9] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0009.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:15.311Z 08DEF55C18B7BEE9]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:20:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0044.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:22.657Z 08DEF50748DF5E4D] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0044.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:22.657Z 08DEF50748DF5E4D]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:20:34 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:34.752Z 08DEF5668B0E4376] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX1P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:34.752Z 08DEF5668B0E4376]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:20:42 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:42.152Z 08DEF52F37555E49] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:42.152Z 08DEF52F37555E49]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:20:49 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0012.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:49.508Z 08DEF5280B2AD900] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0012.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:50:49.508Z 08DEF5280B2AD900]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:22:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0088.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:07.776Z 08DEF5314673C14E] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0088.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:07.776Z 08DEF5314673C14E]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:22:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0098.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:15.015Z 08DEF516DC0D2108] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0098.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:15.015Z 08DEF516DC0D2108]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:22:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0011.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:22.486Z 08DEF514A6A649A5] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0011.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:22.486Z 08DEF514A6A649A5]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 11:22:29 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0070.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:29.894Z 08DEF5211CCA91EB] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0070.AREP273.PROD.OUTLOOK.COM 2026-08-10T05:52:29.894Z 08DEF5211CCA91EB]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-10 12:16:41 [[31merror[39m]: uncaughtException: write EPIPE
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:159:15)
+    at writeGeneric (node:internal/stream_base_commons:150:3)
+    at WriteStream.Socket._writeGeneric (node:net:966:11)
+    at WriteStream.Socket._write (node:net:978:8)
+    at writeOrBuffer (node:internal/streams/writable:572:12)
+    at _write (node:internal/streams/writable:501:10)
+    at WriteStream.Writable.write (node:internal/streams/writable:510:10)
+    at console.value (node:internal/console/constructor:298:16)
+    at console.log (node:internal/console/constructor:384:26)
+    at Function.initialize (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:62:15) 
+Error: write EPIPE
+    at afterWriteDispatched (node:internal/stream_base_commons:159:15)
+    at writeGeneric (node:internal/stream_base_commons:150:3)
+    at WriteStream.Socket._writeGeneric (node:net:966:11)
+    at WriteStream.Socket._write (node:net:978:8)
+    at writeOrBuffer (node:internal/streams/writable:572:12)
+    at _write (node:internal/streams/writable:501:10)
+    at WriteStream.Writable.write (node:internal/streams/writable:510:10)
+    at console.value (node:internal/console/constructor:298:16)
+    at console.log (node:internal/console/constructor:384:26)
+    at Function.initialize (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:62:15)
+2026-08-10 12:16:55 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:42:08 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:44:00 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:45:40 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m4[0m:[93m21[0m - [91merror[0m[90m TS2459: [0mModule '"../../../../res/helperFunction"' declares 'ReportRow' locally, but it is not exported.
+
+[7m4[0m import { normalize, ReportRow } from "../../../../res/helperFunction";
+[7m [0m [91m                    ~~~~~~~~~[0m
+
+  [96msrc/res/helperFunction.ts[0m:[93m1[0m:[93m6[0m
+    [7m1[0m type ReportRow = Record<string, any>;
+    [7m [0m [96m     ~~~~~~~~~[0m
+    'ReportRow' is declared here.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m4[0m:[93m21[0m - [91merror[0m[90m TS2459: [0mModule '"../../../../res/helperFunction"' declares 'ReportRow' locally, but it is not exported.
+
+[7m4[0m import { normalize, ReportRow } from "../../../../res/helperFunction";
+[7m [0m [91m                    ~~~~~~~~~[0m
+
+  [96msrc/res/helperFunction.ts[0m:[93m1[0m:[93m6[0m
+    [7m1[0m type ReportRow = Record<string, any>;
+    [7m [0m [96m     ~~~~~~~~~[0m
+    'ReportRow' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m4[0m:[93m21[0m - [91merror[0m[90m TS2459: [0mModule '"../../../../res/helperFunction"' declares 'ReportRow' locally, but it is not exported.
+
+[7m4[0m import { normalize, ReportRow } from "../../../../res/helperFunction";
+[7m [0m [91m                    ~~~~~~~~~[0m
+
+  [96msrc/res/helperFunction.ts[0m:[93m1[0m:[93m6[0m
+    [7m1[0m type ReportRow = Record<string, any>;
+    [7m [0m [96m     ~~~~~~~~~[0m
+    'ReportRow' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-08-10 12:45:58 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m4[0m:[93m21[0m - [91merror[0m[90m TS2459: [0mModule '"../../../../res/helperFunction"' declares 'ReportRow' locally, but it is not exported.
+
+[7m4[0m import { normalize, ReportRow } from "../../../../res/helperFunction";
+[7m [0m [91m                    ~~~~~~~~~[0m
+
+  [96msrc/res/helperFunction.ts[0m:[93m1[0m:[93m6[0m
+    [7m1[0m type ReportRow = Record<string, any>;
+    [7m [0m [96m     ~~~~~~~~~[0m
+    'ReportRow' is declared here.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m4[0m:[93m21[0m - [91merror[0m[90m TS2459: [0mModule '"../../../../res/helperFunction"' declares 'ReportRow' locally, but it is not exported.
+
+[7m4[0m import { normalize, ReportRow } from "../../../../res/helperFunction";
+[7m [0m [91m                    ~~~~~~~~~[0m
+
+  [96msrc/res/helperFunction.ts[0m:[93m1[0m:[93m6[0m
+    [7m1[0m type ReportRow = Record<string, any>;
+    [7m [0m [96m     ~~~~~~~~~[0m
+    'ReportRow' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m4[0m:[93m21[0m - [91merror[0m[90m TS2459: [0mModule '"../../../../res/helperFunction"' declares 'ReportRow' locally, but it is not exported.
+
+[7m4[0m import { normalize, ReportRow } from "../../../../res/helperFunction";
+[7m [0m [91m                    ~~~~~~~~~[0m
+
+  [96msrc/res/helperFunction.ts[0m:[93m1[0m:[93m6[0m
+    [7m1[0m type ReportRow = Record<string, any>;
+    [7m [0m [96m     ~~~~~~~~~[0m
+    'ReportRow' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-08-10 12:49:24 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 12:59:19 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:02:44 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:04:01 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:05:28 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:06:19 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:06:55 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:08:23 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:12:36 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:14:22 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:15:29 [[31merror[39m]: uncaughtException: listen EADDRINUSE: address already in use :::3500
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9) 
+Error: listen EADDRINUSE: address already in use :::3500
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
+    at startServer (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\index.ts:160:9)
+2026-08-10 13:19:18 [[31merror[39m]: Unhandled Rejection: Error: ORA-00900: invalid SQL statement 
