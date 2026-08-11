@@ -90,6 +90,7 @@ import { getWmsInboundServiceActivityReportExcel, getWmsInboundServiceActivityRe
 import { getWmsAdjConfirmReportExcel, getWmsAdjConfirmReportHtml } from "../../../controllers/wms/reports/Adjustmentconfirmreport.controller";
 import { getWmsInvoiceDetailReportExcel, getWmsInvoiceDetailReportHtml } from "../../../controllers/wms/reports/Wmsinvoicedetailreport.controller";
 import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../controllers/wms/reports/GrnSummaryreport.controller";
+import invoice_report from "../../../controllers/wms/reports/invoice_reports/invoice_report";
 const router = express.Router();
 
 router.put("/upsertPackDetailEDIHandler", upsertPackDetailEDIHandler);
@@ -355,7 +356,8 @@ router.get("/reports/AdjConfirmation_report/:adj_no", getWmsAdjConfirmReportHtml
 router.get("/reports/AdjConfirmation_report/:adj_no/excel", getWmsAdjConfirmReportExcel);
 
 //invoce report 
-router.get("/reports/invoice-detail/html", getWmsInvoiceDetailReportHtml);
+// router.get("/reports/invoice-detail/html", getWmsInvoiceDetailReportHtml);
+router.get("/reports/invoice-detail/html", invoice_report);
 router.get("/reports/invoice-detail/excel", getWmsInvoiceDetailReportExcel);
 
 // inbound Grn Summary report
