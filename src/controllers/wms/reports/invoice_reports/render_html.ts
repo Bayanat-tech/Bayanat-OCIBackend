@@ -86,9 +86,14 @@ export interface InvoiceRow {
   onl_remrks: string | null;
   div_code: string | null;
   logo_path?: string | null;
+  company_logo?: string | null;
   cust_vat_no?: string | null;
   customer_rep?: string | null;
   billing_rep?: string | null;
+  /** When true / 'Y' / 'cost', row is treated as cost and hidden on the tax invoice */
+  is_cost?: boolean | string | null;
+  /** e.g. 'bill' | 'cost' | table name like 'job_cost' */
+  row_source?: string | null;
 }
 
 export interface InvoiceMeta {
@@ -223,10 +228,35 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     : [first.address1, first.address2, first.address3, first.city]
         .filter((v) => v && String(v).trim().length > 0);
 
+  // ---- Detect cost rows (never show on tax invoice) ----
+  function isCostRow(r: InvoiceRow): boolean {
+    // Explicit flags from SQL
+    if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") {
+      return true;
+    }
+    if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) {
+      return true;
+    }
+    const source = (r.row_source || "").toLowerCase();
+    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) {
+      return true;
+    }
+    // Name / code heuristics
+    const text = [r.act_group_name, r.activity_group_code, r.inv_desc, r.other_services, r.remarks]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (/\bcost\b|_cost|cost_/.test(text)) {
+      return true;
+    }
+    return false;
+  }
+
   // ---- Group by srno: one charge line per group (no cost / sub breakdown rows) ----
   const grouped = new Map<number, InvoiceRow[]>();
   for (const r of rows) {
-    // Skip rows with no billable amount (cost-only / empty)
+    // Skip cost rows and rows with no billable amount
+    if (isCostRow(r)) continue;
     if (r.bill == null || Number(r.bill) === 0) continue;
     const key = r.srno ?? 0;
     if (!grouped.has(key)) grouped.set(key, []);
@@ -338,8 +368,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
     ["Billing Rep", esc(first.billing_rep || "")],
-    ["VAT (TIN No)", esc(companyVatNo)],
-    ["", "Page 1 of 1"],
+    ["VAT (TIN No)", esc(companyVatNo)]
   ];
 
   return `<!DOCTYPE html>
@@ -399,7 +428,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
   /* ---- Masthead ---- */
   .masthead { text-align: left; margin-bottom: 2px; flex-shrink: 0; }
-  .logo-img { max-height: 42px; }
+  .logo-img {
+    max-height: 80px;
+    max-width: 320px;
+    object-fit: contain;
+    display: block;
+  }
   .company-name-fallback { font-size: 18px; font-weight: 700; color: #1a3c5e; }
   .company-tagline {
     font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #333;
@@ -569,9 +603,13 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   <!-- Masthead -->
   <div class="masthead">
     ${
-      first.logo_path
-        ? `<img class="logo-img" src="${esc(first.logo_path)}" alt="Logo" />`
-        : `<div class="company-name-fallback">${esc(companyName)}</div>`
+      (() => {
+        const logoUrl = (first.company_logo || first.logo_path || "").trim();
+        if (logoUrl) {
+          return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
+        }
+        return `<div class="company-name-fallback">${esc(companyName)}</div>`;
+      })()
     }
     <div class="company-tagline">${esc(companyTagline)}</div>
   </div>
