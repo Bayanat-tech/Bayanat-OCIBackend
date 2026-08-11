@@ -3,25 +3,25 @@ import oracledb from "oracledb";
 type ReportRow = Record<string, any>;
 interface DynamicProcParams {
   [key: string]: string | number | Date | null | undefined;
-};
+}
 interface ProcOut {
   out_sql: string | null;
-};
+}
 
-function normalize(rows: any[] = []): ReportRow[] {
+function normalize<T extends ReportRow = ReportRow>(rows: any[] = []): T[] {
   return rows.map((row) =>
     Object.keys(row).reduce((acc: ReportRow, key) => {
       acc[key.toLowerCase()] = row[key];
       return acc;
     }, {}),
-  );
+  ) as T[];
 }
 
-async function execDynamicProc(
+async function execDynamicProc<T extends ReportRow = ReportRow>(
   conn: oracledb.Connection,
   procedureName: string,
   params: DynamicProcParams
-): Promise<ReportRow[]> {
+): Promise<T[]> {
 
   const paramEntries = Object.entries(params);
 
@@ -73,7 +73,10 @@ async function execDynamicProc(
     }
   );
 
-  return normalize(dataResult.rows as any[]);
+  return normalize<T>(dataResult.rows as any[]);
 }
 
-export { execDynamicProc, normalize, ReportRow, DynamicProcParams };
+// Values (functions) exported normally...
+export { execDynamicProc, normalize };
+// ...types exported separately, required when isolatedModules is on
+export type { ReportRow, DynamicProcParams };
