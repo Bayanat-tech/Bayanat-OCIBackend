@@ -208,7 +208,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
 
   const first = rows[0];
-  const currCode = first.curr_code || "";
+  // Default currency: SAR for AMKSA / KSA, otherwise use provided code
+  const currCode =
+    first.curr_code ||
+    (first.company_code === "AMKSA" || first.country === "KSA" ? "SAR" : "") ||
+    "";
 
   const companyName = (first.div_short_name || first.div_name || "AL MADINA LOGISTICS").trim();
   const companyTagline = "AL MADINA LOGISTIC SERVICES COMPANY";
@@ -219,11 +223,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     : [first.address1, first.address2, first.address3, first.city]
         .filter((v) => v && String(v).trim().length > 0);
 
-  // ---- Group rows into invoice line items ----
-  // Each top-level row (matched by srno) may have one or more sub-lines (c_srno)
-  // that break the billed amount down by component/service.
+  // ---- Group by srno: one charge line per group (no cost / sub breakdown rows) ----
   const grouped = new Map<number, InvoiceRow[]>();
   for (const r of rows) {
+    // Skip rows with no billable amount (cost-only / empty)
+    if (r.bill == null || Number(r.bill) === 0) continue;
     const key = r.srno ?? 0;
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(r);
@@ -246,13 +250,15 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
         0
       );
       const vatPct = Number(head.tx_compnt_perc_1 ?? 0);
-      const headDesc = head.act_group_name || head.inv_desc || "";
+      // Description: inv_desc → other_services → act_group_name
+      const desc =
+        head.inv_desc ||
+        head.other_services ||
+        head.act_group_name ||
+        "";
 
-      // Single item in group → one full row only (no duplicate sub-row)
-      if (group.length === 1) {
-        const r = head;
-        const desc = r.inv_desc || r.other_services || headDesc;
-        return `
+      // Always one row per srno — no cost/sub breakdown rows
+      return `
         <tr>
           <td class="c-no">${rowCounter}</td>
           <td class="c-desc">${esc(desc)}</td>
@@ -261,36 +267,6 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
           <td class="c-amt">${fmtMoney(vatAmt, 5)}</td>
           <td class="c-amt">${fmtMoney(incl, 3)}</td>
         </tr>`;
-      }
-
-      // Multiple items → group header + breakdown sub-rows
-      const headRow = `
-        <tr>
-          <td class="c-no">${rowCounter}</td>
-          <td class="c-desc"><strong>${esc(headDesc)}</strong></td>
-          <td class="c-amt">${fmtMoney(excl, 3)}</td>
-          <td class="c-vat">${vatPct}</td>
-          <td class="c-amt">${fmtMoney(vatAmt, 5)}</td>
-          <td class="c-amt">${fmtMoney(incl, 3)}</td>
-        </tr>`;
-
-      const subRows = group
-        .map((r) => {
-          const subDesc = r.inv_desc || r.other_services || headDesc;
-          const subAmt = Number(r.bill ?? 0);
-          return `
-        <tr class="sub-row">
-          <td class="c-no">${r.c_srno ?? ""}</td>
-          <td class="c-desc sub-desc">${esc(subDesc)}</td>
-          <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
-          <td class="c-vat"></td>
-          <td class="c-amt"></td>
-          <td class="c-amt"></td>
-        </tr>`;
-        })
-        .join("");
-
-      return headRow + subRows;
     })
     .join("");
 
@@ -362,8 +338,9 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
     ["Billing Rep", esc(first.billing_rep || "")],
-    ["VAT (TIN No)", esc(companyVatNo)]
-    ];
+    ["VAT (TIN No)", esc(companyVatNo)],
+    ["", "Page 1 of 1"],
+  ];
 
   return `<!DOCTYPE html>
 <html lang="en">
