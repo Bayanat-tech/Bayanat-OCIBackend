@@ -6,6 +6,7 @@ import { deleteHrMaster, getHrMaster } from "../controllers/hr.controller";
 import hrGmRoutes from "./HR/gmHr.routes";
 import employeeHrRoutes from "./HR/employeHr.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
+import { insUpdAccrualAcctSetup } from "../controllers/purchase_sales/insUpdAccrualAcctSetup";
 
 // Initialize the Express router
 const router = express.Router();
@@ -48,6 +49,17 @@ router.delete(
   checkUserAuthorization,
   // Call the deleteHrMaster controller function to handle the request
   deleteHrMaster
+);
+
+// Accrual Account Setup — must be registered before the "/:master" catch-all
+// below, otherwise Express matches that generic route first and this never
+// gets hit.
+router.post(
+  "/insUpdAccrualAcctSetup",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  insUpdAccrualAcctSetup
 );
 
 // Define a POST API endpoint to create HR master data
