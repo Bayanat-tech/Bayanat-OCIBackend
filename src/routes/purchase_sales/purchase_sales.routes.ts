@@ -12,7 +12,9 @@ import { insUpdTteSOrderBulk } from "../../controllers/purchase_sales/insUpdTteS
 import { insUpdTteSdnBulk } from "../../controllers/purchase_sales/insUpdTteSdnBulk";
 import { insUpdTteTransferBulk } from "../../controllers/purchase_sales/insUpdTteTransferBulk";
 import { insUpdTteAdjustmentBulk } from "../../controllers/purchase_sales/insUpdTteAdjustmentBulk";
-import {insUpdJobProduction} from "../../controllers/purchase_sales/insUpdJobProduction"
+import { insUpdJobProduction } from "../../controllers/purchase_sales/insUpdJobProduction";
+// TODO: fix this import path to wherever insUpdMfBom actually lives
+import { insUpdMfBom } from "../../controllers/purchase_sales/insUpdMfBom";
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -63,7 +65,10 @@ router.post(
   "/insUpdJobProduction",
   insUpdJobProduction    
 );
+
+router.post(
+  "/insUpdMfBom",
+  insUpdMfBom
+);
+
 export default router;
-
-
-
