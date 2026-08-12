@@ -94,6 +94,14 @@ export interface InvoiceRow {
   is_cost?: boolean | string | null;
   /** e.g. 'bill' | 'cost' | table name like 'job_cost' */
   row_source?: string | null;
+  /** Service Accounting Code (SAC) – used by BTIND invoices */
+  sac_code?: string | null;
+  /** Company GSTIN (India) */
+  gstin?: string | null;
+  /** LUT ARN number for export invoices */
+  lut_arn?: string | null;
+  /** Optional company stamp / seal image URL */
+  stamp_path?: string | null;
 }
 
 export interface InvoiceMeta {
@@ -368,7 +376,8 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
     ["Billing Rep", esc(first.billing_rep || "")],
-    ["VAT (TIN No)", esc(companyVatNo)]
+    ["VAT (TIN No)", esc(companyVatNo)],
+    ["", "Page 1 of 1"],
   ];
 
   return `<!DOCTYPE html>
@@ -695,6 +704,531 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     <div class="disclaimer">
       Details mentioned in this document is deemed accurate as per AMLS DC billing records related to activities mentioned in this document.<br/>
       Disputes (if any) to be copied to AMLS in writing within 72 hours from Invoice date or else AMLS will not be obligated to attend to it.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>`;
+}
+
+/* ================================================================== */
+/*  BTIND – Bayanat Technology Pvt Ltd (India) Tax Invoice             */
+/* ================================================================== */
+
+function amountInWordsBTIND(amount: number, currCode: string | null | undefined): string {
+  const code = (currCode || "USD").toUpperCase();
+  // Match sample: "US DOLLARS - Six Thousand Five Hundred and Seventy only"
+  const majorNames: Record<string, string> = {
+    USD: "US DOLLARS",
+    INR: "INDIAN RUPEES",
+    OMR: "OMANI RIALS",
+    SAR: "SAUDI RIYALS",
+    AED: "UAE DIRHAMS",
+    EUR: "EUROS",
+    GBP: "POUNDS STERLING",
+  };
+  const minorNames: Record<string, string> = {
+    USD: "CENTS",
+    INR: "PAISE",
+    OMR: "BAISA",
+    SAR: "HALALAS",
+    AED: "FILS",
+    EUR: "CENTS",
+    GBP: "PENCE",
+  };
+  const major = majorNames[code] || `${code}`;
+  const minor = minorNames[code] || "CENTS";
+  const whole = Math.floor(amount);
+  const fraction = Math.round((amount - whole) * 100);
+  const wholeWords = integerToWords(whole);
+  const fracWords = fraction > 0 ? ` and ${minor} ${integerToWords(fraction)}` : "";
+  return `${major} - ${wholeWords}${fracWords} only`.replace(/\s+/g, " ");
+}
+
+/**
+ * Build HTML for BTIND (Bayanat Technology India) tax invoice.
+ * Layout matches BI26xxxxxx export invoices:
+ *   No. | Description | Service Accounting Code (SAC) | Amount ($)
+ */
+export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}): string {
+  if (!rows || rows.length === 0) {
+    return `<html><body><p style="font-family:Arial;padding:40px;text-align:center;color:#999;">No invoice data found.</p></body></html>`;
+  }
+
+  const first = rows[0];
+  const currCode = (first.curr_code || "USD").toUpperCase();
+  const currSymbol = currCode === "USD" ? "$" : currCode === "INR" ? "₹" : currCode;
+
+  const companyName =
+    (first.div_short_name || first.div_name || first.company_short_name || "BAYANAT TECHNOLOGY PRIVATE LTD").trim();
+  const companyTagline = "BAYANAT TECHNOLOGY PVT.LTD";
+  const companyLegal = "BAYANAT TECHNOLOGY PVT LTD (INDIA)";
+
+  const billToName =
+    meta.clientName || first.reference_no || first.invoice_to || first.cust_code || "";
+  const billToAddressLines = meta.clientAddress
+    ? [meta.clientAddress]
+    : [first.address1, first.address2, first.address3, first.city]
+        .filter((v) => v && String(v).trim().length > 0);
+
+  const clientGstin = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "N.A.";
+  const companyGstin = first.gstin || first.comp_trn_no || "";
+
+  // ---- Cost filter (same rules as AMKSA) ----
+  function isCostRow(r: InvoiceRow): boolean {
+    if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") return true;
+    if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) return true;
+    const source = (r.row_source || "").toLowerCase();
+    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) {
+      return true;
+    }
+    const text = [r.act_group_name, r.activity_group_code, r.inv_desc, r.other_services, r.remarks]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return /\bcost\b|_cost|cost_/.test(text);
+  }
+
+  // ---- Group by srno ----
+  const grouped = new Map<number, InvoiceRow[]>();
+  for (const r of rows) {
+    if (isCostRow(r)) continue;
+    if (r.bill == null || Number(r.bill) === 0) continue;
+    const key = r.srno ?? 0;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(r);
+  }
+
+  let rowCounter = 0;
+  const itemRowsHtml = Array.from(grouped.values())
+    .map((group) => {
+      const head = group[0];
+      rowCounter += 1;
+      const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+      const headDesc = head.act_group_name || head.inv_desc || head.other_services || "";
+
+      // Group header row (description + total amount, no SAC)
+      const headRow = `
+        <tr>
+          <td class="c-no">${rowCounter}</td>
+          <td class="c-desc"><strong>${esc(headDesc)}</strong></td>
+          <td class="c-sac"></td>
+          <td class="c-amt">${fmtMoney(groupAmt, 2)}</td>
+        </tr>`;
+
+      // Detail / SAC rows
+      const subRows = group
+        .map((r) => {
+          const subDesc = r.inv_desc || r.other_services || headDesc;
+          const sac =
+            r.sac_code ||
+            (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
+              ? r.activity_group_code
+              : "") ||
+            r.prin_ref1 ||
+            r.inv_desc2 ||
+            "";
+          const subAmt = Number(r.bill ?? 0);
+          // Skip redundant sub-row when only one line and same description with no SAC
+          if (group.length === 1 && !sac && subDesc === headDesc) {
+            return "";
+          }
+          return `
+        <tr class="sub-row">
+          <td class="c-no">${r.c_srno ?? ""}</td>
+          <td class="c-desc sub-desc">${esc(subDesc)}</td>
+          <td class="c-sac">${esc(sac)}</td>
+          <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
+        </tr>`;
+        })
+        .join("");
+
+      return headRow + subRows;
+    })
+    .join("");
+
+  // Fillers so table body stretches to bottom
+  const FIXED_FILLERS = 18;
+  const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
+    .map(
+      () =>
+        `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-sac"></td><td class="c-amt"></td></tr>`
+    )
+    .join("");
+  const fillerRowsHtml =
+    fixedFillerHtml +
+    `
+        <tr class="spacer-row">
+          <td class="c-no"></td>
+          <td class="c-desc"></td>
+          <td class="c-sac"></td>
+          <td class="c-amt"></td>
+        </tr>`;
+
+  const totalAmt = rows.reduce((s, r) => {
+    if (isCostRow(r)) return s;
+    return s + Number(r.bill ?? 0);
+  }, 0);
+
+  const printDate = fmtDate(first.invoice_date || first.user_dt);
+  const dueDate = fmtDate(first.due_date);
+  const invoiceNo = meta.invoiceNo || first.invoice_no || first.invno_prefixed || "";
+  const invoicePeriod =
+    meta.invoicePeriod ||
+    (first.from_date && first.to_date ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}` : "");
+
+  const lutArn = first.lut_arn || "";
+  const exportNote =
+    first.onl_remrks ||
+    "Export invoice for authorized operations without payment of IGST.";
+
+  // Bank fields
+  const bankName = first.bank_name_inv || first.bank_name || "";
+  const acCode = first.ac_code_inv || first.ac_code || "";
+  const bankAddr = first.bank_address_inv || first.bank_address || "";
+  const swift = first.swift_code_inv || first.swift_code || "";
+
+  const bankSection = `
+    <div class="bank-block">
+      <div class="bank-title">Bank Details</div>
+      ${bankName ? `<div class="bank-line">${esc(bankName)}</div>` : ""}
+      ${acCode ? `<div class="bank-line">${esc(acCode)}</div>` : ""}
+      <div class="bank-line">For ${esc(companyName)}</div>
+      ${bankAddr ? `<div class="bank-line">${esc(bankAddr)}</div>` : ""}
+      ${swift ? `<div class="bank-line">${esc(swift)}</div>` : ""}
+      <div class="bank-line">All Cheques to be favour of ${esc(companyLegal)}</div>
+      <div class="bank-line export-note">${esc(exportNote)}</div>
+      ${lutArn ? `<div class="bank-line">LUT ARN No: ${esc(lutArn)}</div>` : ""}
+    </div>`;
+
+  const logoUrl = (first.company_logo || first.logo_path || "").trim();
+  const stampUrl = (first.stamp_path || "").trim();
+
+  const metaRows: Array<[string, string]> = [
+    ["Invoice No.", esc(invoiceNo)],
+    ["Invoice Date", printDate],
+    ...(invoicePeriod ? ([["Invoice Period", invoicePeriod]] as Array<[string, string]>) : []),
+    ...(dueDate ? ([["Due Date", dueDate]] as Array<[string, string]>) : []),
+    ["Customer Rep", esc(first.customer_rep || "")],
+    ["Currency", esc(currCode)],
+    ["Sales Rep", esc(first.salesman || "")],
+    ["Bill Rep", esc(first.billing_rep || first.company_code || "BTIND")],
+    ["GSTIN", esc(companyGstin)],
+  ];
+
+  const footerAddress =
+    first.div_address1 ||
+    "BAYANAT TECHNOLOGY PVT LTD (INDIA) 706 LOTUS TRADE CENTRE KL WALAWALKAR MARG SAHAKAR NGR ,ANDHERI WEST MUMBAI";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tax Invoice ${esc(invoiceNo)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    background: #e8e8e8;
+    color: #000;
+    padding: 12px;
+  }
+  .invoice-wrapper {
+    max-width: 794px;
+    width: 100%;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 14px 18px 10px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    height: 1123px;
+    min-height: 1123px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+  }
+  @media print {
+    @page { size: A4; margin: 8mm; }
+    html, body { height: 100%; background: #fff; padding: 0; margin: 0; }
+    .invoice-wrapper {
+      box-shadow: none;
+      max-width: 100%;
+      width: 100%;
+      height: 100vh;
+      min-height: 100vh;
+      border: none;
+      padding: 6px 10px;
+      page-break-after: always;
+    }
+    .no-print { display: none !important; }
+  }
+  .no-print { text-align: right; margin-bottom: 8px; }
+  .no-print button {
+    padding: 6px 20px; background: #1a3c5e; color: #fff; border: none;
+    border-radius: 4px; font-size: 12px; cursor: pointer;
+  }
+
+  /* ---- Masthead ---- */
+  .masthead { text-align: center; margin-bottom: 4px; flex-shrink: 0; }
+  .logo-img {
+    max-height: 70px;
+    max-width: 280px;
+    object-fit: contain;
+    display: inline-block;
+  }
+  .company-name-fallback {
+    font-size: 16px; font-weight: 700; color: #1a3c5e; letter-spacing: 1px;
+  }
+  .company-tagline {
+    font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555;
+    margin: 2px 0 4px 0;
+  }
+  .invoice-title {
+    text-align: center; font-size: 16px; font-weight: 700;
+    letter-spacing: 3px; margin: 6px 0 4px 0; flex-shrink: 0;
+  }
+  .title-rule {
+    border: none; border-top: 2px solid #000; margin: 0 0 6px 0; flex-shrink: 0;
+  }
+
+  /* ---- To: / meta ---- */
+  .top-info {
+    display: flex;
+    border: none;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+  }
+  .to-block { flex: 1.35; padding: 4px 10px 4px 0; }
+  .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
+  .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
+  .to-line {
+    font-size: 10px; line-height: 1.45;
+    border-bottom: 1px solid #bbb; max-width: 300px; min-height: 14px;
+  }
+  .meta-block { flex: 1; padding: 4px 0 4px 12px; }
+  .meta-row { display: flex; font-size: 10px; line-height: 1.5; }
+  .meta-label { width: 110px; color: #000; }
+  .meta-colon { width: 10px; }
+  .meta-value { font-weight: 600; flex: 1; }
+  .page-line {
+    text-align: right; font-size: 9px; margin-top: 2px; color: #333;
+  }
+
+  /* ---- Table ---- */
+  .table-area {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 2px;
+  }
+  .items-table {
+    width: 100%;
+    height: 100%;
+    border-collapse: collapse;
+    border: 1px solid #000;
+    font-size: 10px;
+    table-layout: fixed;
+  }
+  .items-table th,
+  .items-table td {
+    border: 1px solid #000;
+    padding: 3px 5px;
+    vertical-align: top;
+    overflow: hidden;
+  }
+  .items-table thead th {
+    background: #f0f0f0;
+    font-weight: 700;
+    font-size: 9.5px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .c-no  { width: 32px; text-align: center; }
+  .c-desc { text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
+  .c-sac { width: 130px; text-align: center; white-space: nowrap; }
+  .c-amt {
+    width: 110px;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .sub-desc { padding-left: 18px; color: #222; }
+  .sub-amt { color: #222; }
+
+  .filler-row td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    height: 14px;
+    padding: 0 5px;
+  }
+  .spacer-row td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    height: 100%;
+    min-height: 30px;
+    padding: 0;
+  }
+
+  .words-row td {
+    border: 1px solid #000;
+    border-top: 2px solid #000;
+    font-weight: 700;
+    vertical-align: middle;
+    padding: 5px;
+    font-size: 10px;
+  }
+  .words-row .total-label { text-align: left; }
+  .words-row .total-prefix { font-size: 10px; margin-right: 4px; }
+
+  /* ---- Bank + stamp ---- */
+  .bank-sig-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 10px;
+    flex-shrink: 0;
+  }
+  .bank-block { font-size: 9.5px; line-height: 1.45; max-width: 58%; }
+  .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
+  .bank-line { margin-bottom: 1px; }
+  .export-note { margin-top: 4px; }
+  .stamp-block {
+    text-align: center;
+    min-width: 160px;
+  }
+  .stamp-img {
+    max-height: 90px;
+    max-width: 140px;
+    object-fit: contain;
+  }
+  .signature-text {
+    font-weight: 700;
+    font-size: 10px;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  /* ---- Footer ---- */
+  .footer {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #000;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .footer .addr-line { font-weight: 400; margin-top: 2px; font-size: 8.5px; }
+  .footer .disclaimer {
+    font-weight: 400;
+    font-size: 8px;
+    color: #333;
+    margin-top: 4px;
+    text-align: left;
+    padding-top: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()">🖨️ Print / Save PDF</button>
+</div>
+
+<div class="invoice-wrapper">
+
+  <!-- Masthead -->
+  <div class="masthead">
+    ${
+      logoUrl
+        ? `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`
+        : `<div class="company-name-fallback">${esc(companyName)}</div>`
+    }
+    <div class="company-tagline">${esc(companyTagline)}</div>
+  </div>
+  <div class="invoice-title">TAX INVOICE</div>
+  <hr class="title-rule" />
+
+  <!-- To: + meta -->
+  <div class="top-info">
+    <div class="to-block">
+      <div class="to-label">To :</div>
+      <div class="to-name">${esc(billToName)}</div>
+      ${billToAddressLines.map((l) => `<div class="to-line">${esc(l)}</div>`).join("")}
+      ${first.tel_no ? `<div class="to-line">Ph. ${esc(first.tel_no)}</div>` : ""}
+      ${first.fax_no ? `<div class="to-line">Fax. ${esc(first.fax_no)}</div>` : ""}
+      ${first.email ? `<div class="to-line">e-Mail : ${esc(first.email)}</div>` : ""}
+      <div class="to-line">GSTIN: ${esc(clientGstin)}</div>
+    </div>
+    <div class="meta-block">
+      ${metaRows
+        .map(
+          ([label, value]) => `
+      <div class="meta-row">
+        <div class="meta-label">${label}</div>
+        <div class="meta-colon">:</div>
+        <div class="meta-value">${value}</div>
+      </div>`
+        )
+        .join("")}
+      <div class="page-line">Page 1 of 1</div>
+    </div>
+  </div>
+
+  <!-- Items table -->
+  <div class="table-area">
+    <table class="items-table">
+      <colgroup>
+        <col style="width:32px" />
+        <col />
+        <col style="width:130px" />
+        <col style="width:110px" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="c-no">No.</th>
+          <th class="c-desc">Description</th>
+          <th class="c-sac">Service Accounting<br/>Code (SAC)</th>
+          <th class="c-amt">Amount (${esc(currSymbol)})</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemRowsHtml}
+        ${fillerRowsHtml}
+        <tr class="words-row">
+          <td class="total-label" colspan="2">${esc(amountInWordsBTIND(totalAmt, currCode))}</td>
+          <td style="text-align:right;font-weight:700;"><span class="total-prefix">Total :</span></td>
+          <td class="c-amt">${fmtMoney(totalAmt, 2)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Bank + stamp / signature -->
+  <div class="bank-sig-row">
+    ${bankSection}
+    <div class="stamp-block">
+      ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
+      <div class="signature-text">${esc(companyLegal)}</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>${esc(footerAddress)}</div>
+    <div class="disclaimer">
+      Details mentioned in this document is deemed accurate as per BAYANAT TECHNOLOGY PVT LTD billing records related to activities mentioned in this document.<br/>
+      Disputes (if any) to be copied to BAYANAT TECHNOLOGY PVT LTD in writing within 72 hours from Invoice date or else BAYANAT TECHNOLOGY PVT LTD will not be obligated to attend to it.<br/>
+      Electronic document, Signature not required
     </div>
   </div>
 

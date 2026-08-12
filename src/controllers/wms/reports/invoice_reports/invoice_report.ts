@@ -1,19 +1,24 @@
 import { Request, Response } from "express";
 import { getConn } from "../../../../res/oracleDbConnect";
 import { execDynamicProc } from "../../../../res/helperFunction";
-import { buildInvoiceHtmlAMKSA, InvoiceMeta, InvoiceRow } from "./render_html";
+import { buildInvoiceHtmlAMKSA, buildInvoiceHtmlBTIND, InvoiceMeta, InvoiceRow } from "./render_html";
 
 const report = {
   AMKSA: {
     parameter: "INVOICE_AMKSA",
     template: "AMKSA", // used to pick which html builder to use
   },
+  BTIND: {
+    parameter: "INVOICE_AMKSA",
+    template: "BTIND", // used to pick which html builder to use
+  }
   // Add more company codes here, each pointing at its own template key
   // e.g. XYZCO: { parameter: 'INVOICE_XYZCO', template: 'XYZCO' }
 };
 
 const templateBuilders: Record<string, (rows: InvoiceRow[], meta: InvoiceMeta) => string> = {
   AMKSA: buildInvoiceHtmlAMKSA,
+  BTIND: buildInvoiceHtmlBTIND, // Assuming BTIND uses the same template as AMKSA for now
   // XYZCO: buildInvoiceHtmlXYZCO,
 };
 
