@@ -61,6 +61,31 @@ export const frtJobSearch = async (req: Request, res: Response): Promise<void> =
   });
 };
 
+export const frtGlobalSearch = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const result = await connection.execute(
+      `BEGIN
+         PROC_FRT_GLOBAL_SEARCH(
+           :p_company_code,
+           :p_user_id,
+           :p_search,
+           :p_result
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_user_id: req.body.user_id ?? req.body.USER_ID ?? req.body.loginid ?? req.body.LOGINID,
+        p_search: req.body.search ?? req.body.SEARCH ?? req.body.q ?? req.body.Q ?? null,
+        p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const rows = await rowsFromCursor((result.outBinds as any).p_result);
+    res.json({ success: true, data: rows, totalCount: rows.length });
+  });
+};
+
 async function withConnection(res: Response, handler: (connection: Connection) => Promise<void>) {
   let connection: Connection | undefined;
   try {
