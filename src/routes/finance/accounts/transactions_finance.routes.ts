@@ -91,6 +91,7 @@ import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../cont
 import { CapexApprovalReport } from "../../../controllers/ALMS/CapexApprovalReport";
 import { exportCapexApprovalExcel } from "../../../controllers/ALMS/Capexapprovalexcel";
 import { PRPurchaseReport } from "../../../controllers/ALMS/Prpurchasereport";
+import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/Plsummaryreportpage.controller";
 
 
 const router = express.Router();
@@ -159,6 +160,12 @@ router.post('/reports/cheque-date-wise/excel', exportChequeDateWiseExcel);
 
 router.post('/reports/getProfitLossReport/html', getProfitLossReportHtml);
 router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
+
+
+
+//--------PL(PROFIT AND LOSS) ANALYSIS REPORTS ROUTES------
+router.post('/reports/getPLSummaryReport/html', getPLSummaryReportHtml);
+router.post('/reports/getPLSummaryReport/excel', getPLSummaryReportExcel);
 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
