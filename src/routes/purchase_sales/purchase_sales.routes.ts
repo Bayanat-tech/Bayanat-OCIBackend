@@ -12,15 +12,11 @@ import { insUpdTteSOrderBulk } from "../../controllers/purchase_sales/insUpdTteS
 import { insUpdTteSdnBulk } from "../../controllers/purchase_sales/insUpdTteSdnBulk";
 import { insUpdTteTransferBulk } from "../../controllers/purchase_sales/insUpdTteTransferBulk";
 import { insUpdTteAdjustmentBulk } from "../../controllers/purchase_sales/insUpdTteAdjustmentBulk";
-<<<<<<< Updated upstream
 import { insUpdJobProduction } from "../../controllers/purchase_sales/insUpdJobProduction";
 // TODO: fix this import path to wherever insUpdMfBom actually lives
 import { insUpdMfBom } from "../../controllers/purchase_sales/insUpdMfBom";
-=======
-import {insUpdJobProduction} from "../../controllers/purchase_sales/insUpdJobProduction"
 import { insUpdTtePInvoiceBulk } from "../../controllers/purchase_sales/insUpdTtePInvoiceBulk";
 import { insUpdTteSinvoice } from "../../controllers/purchase_sales/insUpdTteSinvoice";
->>>>>>> Stashed changes
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -81,7 +77,6 @@ router.post(
   "/insUpdTteSinvoice",
   insUpdTteSinvoice    
 );
-export default router;
 
 
 router.post(
