@@ -96,8 +96,8 @@ export interface InvoiceRow {
   row_source?: string | null;
   /** Service Accounting Code (SAC) – used by BTIND invoices */
   sac_code?: string | null;
-  /** Company GSTIN (India) */
-  gstin?: string | null;
+  /** Company tax_num (India) */
+  tax_num?: string | null;
   /** LUT ARN number for export invoices */
   lut_arn?: string | null;
   /** Optional company stamp / seal image URL */
@@ -277,6 +277,14 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     .map((group) => {
       const head = group[0];
       rowCounter += 1;
+      const qty = group.reduce((s, r) => s + Number(r.quantity ?? 0), 0);
+      // Price: use bill_rate from head, or derive from bill/qty when rate missing
+      const price =
+        head.bill_rate != null && Number(head.bill_rate) !== 0
+          ? Number(head.bill_rate)
+          : qty > 0
+            ? group.reduce((s, r) => s + Number(r.bill ?? 0), 0) / qty
+            : Number(head.bill ?? 0);
       const excl = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
       const vatAmt = group.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
       const incl = group.reduce(
@@ -288,18 +296,19 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
         0
       );
       const vatPct = Number(head.tx_compnt_perc_1 ?? 0);
-      // Description: inv_desc → other_services → act_group_name
       const desc =
         head.inv_desc ||
         head.other_services ||
         head.act_group_name ||
         "";
 
-      // Always one row per srno — no cost/sub breakdown rows
+      // SR No | Description | Price | Qty | Total Before Tax | VAT % | VAT Amount | Total With VAT
       return `
         <tr>
           <td class="c-no">${rowCounter}</td>
           <td class="c-desc">${esc(desc)}</td>
+          <td class="c-price">${fmtMoney(price, 3)}</td>
+          <td class="c-qty">${qty || ""}</td>
           <td class="c-amt">${fmtMoney(excl, 3)}</td>
           <td class="c-vat">${vatPct}</td>
           <td class="c-amt">${fmtMoney(vatAmt, 5)}</td>
@@ -310,12 +319,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
   // Many fixed-height blank rows + one expanding spacer so the table
   // body always covers the full remaining page (no white gap under items).
-  // Continuous left/right borders keep the grid looking solid.
   const FIXED_FILLERS = 28;
   const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
     .map(
       () =>
-        `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`
+        `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-price"></td><td class="c-qty"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`
     )
     .join("");
   const fillerRowsHtml =
@@ -324,14 +332,17 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
         <tr class="spacer-row">
           <td class="c-no"></td>
           <td class="c-desc"></td>
+          <td class="c-price"></td>
+          <td class="c-qty"></td>
           <td class="c-amt"></td>
           <td class="c-vat"></td>
           <td class="c-amt"></td>
           <td class="c-amt"></td>
         </tr>`;
 
-  const totalBeforeVat = rows.reduce((s, r) => s + Number(r.bill ?? 0), 0);
-  const totalVat = rows.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
+  const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+  const totalBeforeVat = billableRows.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+  const totalVat = billableRows.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
   const totalAfterVat = totalBeforeVat + totalVat;
 
   const printDate = fmtDate(first.invoice_date || first.user_dt);
@@ -500,18 +511,32 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     text-align: left;
     vertical-align: middle;
   }
-  /* Fixed widths so amounts never spill into neighboring columns */
-  .c-no  { width: 26px;  text-align: center; padding-left: 2px; padding-right: 2px; }
+  /* Fixed widths – 8 columns: SR | Desc | Price | Qty | Before Tax | VAT% | VAT Amt | With VAT */
+  .c-no  { width: 28px;  text-align: center; padding-left: 2px; padding-right: 2px; }
   .c-desc { width: auto; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
-  .c-amt {
-    width: 118px;
+  .c-price {
+    width: 80px;
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     padding-left: 2px;
     padding-right: 4px;
   }
-  .c-vat { width: 34px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
+  .c-qty {
+    width: 40px;
+    text-align: center;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .c-amt {
+    width: 90px;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    padding-left: 2px;
+    padding-right: 4px;
+  }
+  .c-vat { width: 36px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
   .sub-row td { border: 1px solid #000; }
   .sub-desc { padding-left: 14px; color: #333; }
   .sub-amt { color: #333; }
@@ -653,31 +678,35 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   <div class="table-area">
     <table class="items-table">
       <colgroup>
-        <col style="width:26px" />
+        <col style="width:28px" />
         <col />
-        <col style="width:118px" />
-        <col style="width:34px" />
-        <col style="width:118px" />
-        <col style="width:118px" />
+        <col style="width:80px" />
+        <col style="width:40px" />
+        <col style="width:90px" />
+        <col style="width:36px" />
+        <col style="width:90px" />
+        <col style="width:90px" />
       </colgroup>
       <thead>
         <tr>
-          <th class="c-no">No.</th>
+          <th class="c-no">SR No</th>
           <th class="c-desc">Description</th>
-          <th class="c-amt" style="text-align:right;">Amount<br/>(Excl. TAX)</th>
+          <th class="c-price" style="text-align:right;">Price</th>
+          <th class="c-qty" style="text-align:center;">Qty</th>
+          <th class="c-amt" style="text-align:right;">Total<br/>Before Tax</th>
           <th class="c-vat" style="text-align:center;">VAT<br/>%</th>
-          <th class="c-amt" style="text-align:right;">TAX<br/>Amt</th>
-          <th class="c-amt" style="text-align:right;">Amount<br/>(Inclu. TAX)</th>
+          <th class="c-amt" style="text-align:right;">VAT<br/>Amount</th>
+          <th class="c-amt" style="text-align:right;">Total<br/>With VAT</th>
         </tr>
       </thead>
       <tbody>
         ${itemRowsHtml}
         ${fillerRowsHtml}
         <tr class="legend-row">
-          <td colspan="6">NT - No Tax, 0% - Zero, 5% - Standard</td>
+          <td colspan="8">NT - No Tax, 0% - Zero, 5% - Standard</td>
         </tr>
         <tr class="words-row">
-          <td class="total-label" colspan="2">${esc(amountInWords(totalAfterVat, currCode, 3))}</td>
+          <td class="total-label" colspan="4">${esc(amountInWords(totalAfterVat, currCode, 3))}</td>
           <td class="c-amt"><span class="total-prefix">Total :</span> ${fmtMoney(totalBeforeVat, 3)}</td>
           <td class="c-vat"></td>
           <td class="c-amt">${fmtMoney(totalVat, 3)}</td>
@@ -773,8 +802,8 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     : [first.address1, first.address2, first.address3, first.city]
         .filter((v) => v && String(v).trim().length > 0);
 
-  const clientGstin = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "N.A.";
-  const companyGstin = first.gstin || first.comp_trn_no || "";
+  const clienttax_num = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "N.A.";
+  const companytax_num = first.tax_num || first.comp_trn_no || "";
 
   // ---- Cost filter (same rules as AMKSA) ----
   function isCostRow(r: InvoiceRow): boolean {
@@ -900,7 +929,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       ${swift ? `<div class="bank-line">${esc(swift)}</div>` : ""}
       <div class="bank-line">All Cheques to be favour of ${esc(companyLegal)}</div>
       <div class="bank-line export-note">${esc(exportNote)}</div>
-      ${lutArn ? `<div class="bank-line">LUT ARN No: ${esc(lutArn)}</div>` : ""}
+      <div class="bank-line">LUT ARN No: AS270326095738G</div>
     </div>`;
 
   const logoUrl = (first.company_logo || first.logo_path || "").trim();
@@ -909,13 +938,13 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const metaRows: Array<[string, string]> = [
     ["Invoice No.", esc(invoiceNo)],
     ["Invoice Date", printDate],
-    ...(invoicePeriod ? ([["Invoice Period", invoicePeriod]] as Array<[string, string]>) : []),
-    ...(dueDate ? ([["Due Date", dueDate]] as Array<[string, string]>) : []),
+    ["Invoice Period", invoicePeriod],
+    ["Due Date", dueDate],
     ["Customer Rep", esc(first.customer_rep || "")],
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
     ["Bill Rep", esc(first.billing_rep || first.company_code || "BTIND")],
-    ["GSTIN", esc(companyGstin)],
+    ["GSTIN", esc(companytax_num)],
   ];
 
   const footerAddress =
@@ -973,12 +1002,12 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
 
   /* ---- Masthead ---- */
-  .masthead { text-align: center; margin-bottom: 4px; flex-shrink: 0; }
+  .masthead { text-align: left; margin-bottom: 4px; flex-shrink: 0; }
   .logo-img {
     max-height: 70px;
     max-width: 280px;
     object-fit: contain;
-    display: inline-block;
+    display: block;
   }
   .company-name-fallback {
     font-size: 16px; font-weight: 700; color: #1a3c5e; letter-spacing: 1px;
@@ -986,6 +1015,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .company-tagline {
     font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555;
     margin: 2px 0 4px 0;
+    text-align: left;
   }
   .invoice-title {
     text-align: center; font-size: 16px; font-weight: 700;
@@ -1167,7 +1197,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       ${first.tel_no ? `<div class="to-line">Ph. ${esc(first.tel_no)}</div>` : ""}
       ${first.fax_no ? `<div class="to-line">Fax. ${esc(first.fax_no)}</div>` : ""}
       ${first.email ? `<div class="to-line">e-Mail : ${esc(first.email)}</div>` : ""}
-      <div class="to-line">GSTIN: ${esc(clientGstin)}</div>
+      <div class="to-line">GSTIN: ${esc(clienttax_num)}</div>
     </div>
     <div class="meta-block">
       ${metaRows

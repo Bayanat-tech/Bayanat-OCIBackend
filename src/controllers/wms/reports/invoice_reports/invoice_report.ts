@@ -52,6 +52,7 @@ const invoice_report = async (req: Request, res: Response): Promise<void> => {
     parameter: companyConfig?.parameter || "",
     code1: company_code || "",
     code2: prin_code || "",
+    code3: invoice_no || "",
   });
 
   console.log("Dynamic SQL Result:", result);
