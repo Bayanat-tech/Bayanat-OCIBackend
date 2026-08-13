@@ -156,7 +156,6 @@ export class SecurityMasterService {
   }
 
   static async getSecModuleData(
-    company_code: string,
     page: number = 1,
     limit: number = 20,
     sort?: { field_name: string; desc: boolean },
@@ -164,7 +163,14 @@ export class SecurityMasterService {
   ) {
     await ensureCorrectSchema();
     const repository = getRepository(SecModule);
-    const where = this.buildSearchCondition<SecModule>(company_code, searchFilter);
+    // SEC_MODULE_DATA is a shared screen catalogue. Do not restrict the
+    // screen master by the logged-in user's company.
+    let where: FindOptionsWhere<SecModule> = {};
+    if (searchFilter?.field && searchFilter?.value) {
+      where = {
+        [searchFilter.field]: Like(`%${searchFilter.value}%`),
+      } as FindOptionsWhere<SecModule>;
+    }
     const [tableData, count] = await repository.findAndCount({
       where,
       skip: (page - 1) * limit,
@@ -246,15 +252,13 @@ export class SecurityMasterService {
   }
 
   static async getSerialNo(
-    company_code: string,
-    page: number = 1,
-    limit: number = 200
+    _page: number = 1,
+    _limit: number = 200
   ) {
     await ensureCorrectSchema();
 
     const repository = getRepository(SecModule);
     const rows = await repository.find({
-      where: { company_code } as FindOptionsWhere<SecModule>,
       order: {
         app_code: "ASC",
         level1: "ASC",
@@ -264,45 +268,11 @@ export class SecurityMasterService {
       } as FindOptionsOrder<SecModule>,
     });
 
-    const level3Parents = new Set(
-      rows
-        .filter((row) => hasSecurityText(row.level3))
-        .map((row) => securityMenuKey(row.app_code, row.level1, row.level2))
-    );
-    const level2Parents = new Set(
-      rows
-        .filter((row) => hasSecurityText(row.level2))
-        .map((row) => securityMenuKey(row.app_code, row.level1))
-    );
-    const bySerial = new Map<number, SecModule>();
-
-    rows.forEach((row) => {
-      const hasLevel1 = hasSecurityText(row.level1);
-      const hasLevel2 = hasSecurityText(row.level2);
-      const hasLevel3 = hasSecurityText(row.level3);
-      const isLeafLevel2 =
-        hasLevel2 &&
-        !hasLevel3 &&
-        !level3Parents.has(securityMenuKey(row.app_code, row.level1, row.level2));
-      const isLeafLevel1 =
-        hasLevel1 &&
-        !hasLevel2 &&
-        !hasLevel3 &&
-        !level2Parents.has(securityMenuKey(row.app_code, row.level1));
-
-      if (hasLevel3 || isLeafLevel2 || isLeafLevel1) {
-        bySerial.set(Number(row.serial_no), row);
-      }
-    });
-
-    const assignableRows = Array.from(bySerial.values()).sort(
-      (left, right) => Number(left.serial_no) - Number(right.serial_no)
-    );
-    const skip = (page - 1) * limit;
-
+    // User/role access dropdowns must receive the complete global module
+    // catalogue. Do not remove parent rows and do not apply master-page limits.
     return {
-      tableData: assignableRows.slice(skip, skip + limit),
-      count: assignableRows.length,
+      tableData: rows,
+      count: rows.length,
     };
   }
 
@@ -324,9 +294,8 @@ export class SecurityMasterService {
   }
 
   static async getSecModuleDropdown(
-    company_code: string,
-    page: number = 1,
-    limit: number = 100000
+    _page: number = 1,
+    _limit: number = 100000
   ) {
     await ensureCorrectSchema();
     const repository = getRepository(SecModule);
@@ -337,14 +306,11 @@ export class SecurityMasterService {
     const allRows = await repository.query(
       `SELECT *
          FROM SEC_MODULE_DATA
-        WHERE COMPANY_CODE = :1
         ORDER BY APP_CODE, POSITION, SERIAL_NO`,
-      [company_code],
     );
     const rows = Array.isArray(allRows) ? allRows : allRows?.rows || [];
-    const skip = (page - 1) * limit;
     return {
-      tableData: rows.slice(skip, skip + limit),
+      tableData: rows,
       count: rows.length,
     };
   }
@@ -441,7 +407,6 @@ export class SecurityMasterService {
 
         case "sec_module_data":
           result = await queryRunner.manager.delete(SecModule, {
-            company_code,
             serial_no: In(ids as number[]),
           });
           break;
@@ -547,14 +512,5 @@ export class SecurityMasterService {
 
     return fieldMap[master] || "id";
   }
-}
-
-function hasSecurityText(value: unknown): boolean {
-  const normalized = String(value ?? "").trim();
-  return normalized.length > 0 && normalized.toLowerCase() !== "null";
-}
-
-function securityMenuKey(...parts: unknown[]): string {
-  return parts.map((part) => String(part ?? "").trim().toLowerCase()).join("||");
 }
 

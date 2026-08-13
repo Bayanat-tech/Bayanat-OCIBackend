@@ -61,7 +61,6 @@ export const getSecMaster = async (
 
       case "sec_module_data":
         result = await SecurityMasterService.getSecModuleData(
-          requestUser.company_code,
           page,
           limit,
           sort,
@@ -120,7 +119,6 @@ export const getSecMaster = async (
 
       case "serialno":
         result = await SecurityMasterService.getSerialNo(
-          requestUser.company_code,
           page,
           limit
         );
@@ -136,7 +134,6 @@ export const getSecMaster = async (
 
       case "sec_module_dropdown":
         result = await SecurityMasterService.getSecModuleDropdown(
-          requestUser.company_code,
           page,
           limit
         );
@@ -241,7 +238,6 @@ export const deleteSecMaster = async (
     switch (master) {
       case "sec_module_data":
         isDeleted = await SecModuleService.deleteAndCompact(
-          requestUser.company_code,
           ids.map(Number),
         );
         break;
