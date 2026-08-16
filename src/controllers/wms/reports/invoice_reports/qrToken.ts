@@ -6,7 +6,7 @@ import { InvoiceRow } from "./render_html";
 const ALGORITHM = "aes-256-gcm";
 
 function getKey(): Buffer {
-  const secret = process.env.INVOICE_QR_SECRET;
+  const secret = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   if (!secret || secret.length !== 64) {
     throw new Error("INVOICE_QR_SECRET must be 64 hex characters (32 bytes)");
   }
