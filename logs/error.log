@@ -85499,3 +85499,196 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:563:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-08-16 12:02:34 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m5[0m:[93m84[0m - [91merror[0m[90m TS2306: [0mFile 'C:/Users/Administrator.ROHAN-LAPTOP/Documents/GitHub/Bayanat-OCIBackend/src/controllers/wms/reports/invoice_reports/qrToken.ts' is not a module.
+
+[7m5[0m import { encryptInvoiceToken, decryptInvoiceToken, generateInvoiceQrDataUrl } from "./qrToken";
+[7m [0m [91m                                                                                   ~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m5[0m:[93m84[0m - [91merror[0m[90m TS2306: [0mFile 'C:/Users/Administrator.ROHAN-LAPTOP/Documents/GitHub/Bayanat-OCIBackend/src/controllers/wms/reports/invoice_reports/qrToken.ts' is not a module.
+
+[7m5[0m import { encryptInvoiceToken, decryptInvoiceToken, generateInvoiceQrDataUrl } from "./qrToken";
+[7m [0m [91m                                                                                   ~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m5[0m:[93m84[0m - [91merror[0m[90m TS2306: [0mFile 'C:/Users/Administrator.ROHAN-LAPTOP/Documents/GitHub/Bayanat-OCIBackend/src/controllers/wms/reports/invoice_reports/qrToken.ts' is not a module.
+
+[7m5[0m import { encryptInvoiceToken, decryptInvoiceToken, generateInvoiceQrDataUrl } from "./qrToken";
+[7m [0m [91m                                                                                   ~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-08-16 12:27:00 [[31merror[39m]: Unhandled Rejection: Error: ORA-24415: Missing or null username. 
+2026-08-16 12:27:08 [[31merror[39m]: Unhandled Rejection: Error: ORA-24415: Missing or null username. 
+2026-08-16 12:33:58 [[31merror[39m]: Unhandled Rejection: Error: Unable to determine tenant database 
+2026-08-16 12:35:13 [[31merror[39m]: Unhandled Rejection: Error: Unable to determine tenant database 
+2026-08-16 12:36:51 [[31merror[39m]: Unhandled Rejection: Error: Unable to determine tenant database 
+2026-08-16 12:37:45 [[31merror[39m]: Unhandled Rejection: Error: Unable to determine tenant database 
+2026-08-16 12:44:11 [[31merror[39m]: Unhandled Rejection: Error: Unable to determine tenant database 
+2026-08-16 12:54:21 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m5[0m:[93m52[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'generateInvoiceQrDataUrl'.
+
+[7m5[0m import { encryptInvoiceToken, decryptInvoiceToken, generateInvoiceQrDataUrl } from "./qrToken";
+[7m [0m [91m                                                   ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m91[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ invoice_no: string; company_code: string; prin_code: string; exp: number; }' is not assignable to parameter of type 'InvoiceTokenPayload'.
+  Type '{ invoice_no: string; company_code: string; prin_code: string; exp: number; }' is missing the following properties from type 'InvoiceTokenPayload': data, meta
+
+[7m 91[0m   const token = encryptInvoiceToken({
+[7m   [0m [91m                                    ~[0m
+[7m 92[0m     invoice_no: invoice_no || "",
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m 95[0m     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m 96[0m   });
+[7m   [0m [91m~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m5[0m:[93m52[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'generateInvoiceQrDataUrl'.
+
+[7m5[0m import { encryptInvoiceToken, decryptInvoiceToken, generateInvoiceQrDataUrl } from "./qrToken";
+[7m [0m [91m                                                   ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m91[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ invoice_no: string; company_code: string; prin_code: string; exp: number; }' is not assignable to parameter of type 'InvoiceTokenPayload'.
+  Type '{ invoice_no: string; company_code: string; prin_code: string; exp: number; }' is missing the following properties from type 'InvoiceTokenPayload': data, meta
+
+[7m 91[0m   const token = encryptInvoiceToken({
+[7m   [0m [91m                                    ~[0m
+[7m 92[0m     invoice_no: invoice_no || "",
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m 95[0m     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m 96[0m   });
+[7m   [0m [91m~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m5[0m:[93m52[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'generateInvoiceQrDataUrl'.
+
+[7m5[0m import { encryptInvoiceToken, decryptInvoiceToken, generateInvoiceQrDataUrl } from "./qrToken";
+[7m [0m [91m                                                   ~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m91[0m:[93m37[0m - [91merror[0m[90m TS2345: [0mArgument of type '{ invoice_no: string; company_code: string; prin_code: string; exp: number; }' is not assignable to parameter of type 'InvoiceTokenPayload'.
+  Type '{ invoice_no: string; company_code: string; prin_code: string; exp: number; }' is missing the following properties from type 'InvoiceTokenPayload': data, meta
+
+[7m 91[0m   const token = encryptInvoiceToken({
+[7m   [0m [91m                                    ~[0m
+[7m 92[0m     invoice_no: invoice_no || "",
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m...[0m 
+[7m 95[0m     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+[7m   [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m 96[0m   });
+[7m   [0m [91m~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-08-16 13:17:19 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m8[0m:[93m3[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'getPublicInvoiceUrl'.
+
+[7m8[0m   getPublicInvoiceUrl,
+[7m [0m [91m  ~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m9[0m:[93m3[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'getQrImageUrl'.
+
+[7m9[0m   getQrImageUrl,
+[7m [0m [91m  ~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m65[0m:[93m5[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'invoice_no' does not exist in type 'InvoiceTokenPayload'.
+
+[7m65[0m     invoice_no: invoice_no || "",
+[7m  [0m [91m    ~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m134[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'invoice_no' does not exist on type 'InvoiceTokenPayload'.
+
+[7m134[0m       invoiceNo: payload.invoice_no,
+[7m   [0m [91m                         ~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m8[0m:[93m3[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'getPublicInvoiceUrl'.
+
+[7m8[0m   getPublicInvoiceUrl,
+[7m [0m [91m  ~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m9[0m:[93m3[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'getQrImageUrl'.
+
+[7m9[0m   getQrImageUrl,
+[7m [0m [91m  ~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m65[0m:[93m5[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'invoice_no' does not exist in type 'InvoiceTokenPayload'.
+
+[7m65[0m     invoice_no: invoice_no || "",
+[7m  [0m [91m    ~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m134[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'invoice_no' does not exist on type 'InvoiceTokenPayload'.
+
+[7m134[0m       invoiceNo: payload.invoice_no,
+[7m   [0m [91m                         ~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m8[0m:[93m3[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'getPublicInvoiceUrl'.
+
+[7m8[0m   getPublicInvoiceUrl,
+[7m [0m [91m  ~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m9[0m:[93m3[0m - [91merror[0m[90m TS2305: [0mModule '"./qrToken"' has no exported member 'getQrImageUrl'.
+
+[7m9[0m   getQrImageUrl,
+[7m [0m [91m  ~~~~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m65[0m:[93m5[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'invoice_no' does not exist in type 'InvoiceTokenPayload'.
+
+[7m65[0m     invoice_no: invoice_no || "",
+[7m  [0m [91m    ~~~~~~~~~~[0m
+[96msrc/controllers/wms/reports/invoice_reports/invoice_report.ts[0m:[93m134[0m:[93m26[0m - [91merror[0m[90m TS2339: [0mProperty 'invoice_no' does not exist on type 'InvoiceTokenPayload'.
+
+[7m134[0m       invoiceNo: payload.invoice_no,
+[7m   [0m [91m                         ~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
