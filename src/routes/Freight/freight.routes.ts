@@ -51,6 +51,7 @@ import {
   frtAirlineTariffSave,
 } from "../../controllers/Freight/freightAirlineTariffProcedures";
 import {
+  frtGlobalSearch,
   frtJobSearch,
   frtWorkspaceSummary,
 } from "../../controllers/Freight/freightWorkspaceProcedures";
@@ -212,6 +213,7 @@ router.post("/invoice/save", frtInvoiceSave);
 
 router.post("/workspace/summary", frtWorkspaceSummary);
 router.post("/workspace/job-search", frtJobSearch);
+router.post("/workspace/global-search", frtGlobalSearch);
 
 router.post(
   "/gm/proc_build_dynamic_sql_freight",
