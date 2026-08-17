@@ -138,9 +138,19 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
     const manuClause     = buildInClause("MANU_CODE",     p.manu,         "man", binds);
     const custClause     = buildInClause("AC_CODE",       p.cust,         "cus", binds);
 
+    // ── FIX (was ORA-01036: illegal variable name/number) ──────────────────
+    // Previously `binds.docNo` was ALWAYS added, even when docClause was
+    // hardcoded to "1=1" (i.e. the bind ":docNo" never actually appeared in
+    // the SQL text). oracledb throws ORA-01036 if a named bind is supplied
+    // but not referenced anywhere in the statement. Now we only set the
+    // bind when the clause actually uses it — same pattern already used
+    // correctly below for salesmanClause.
     const docNo = parseInt(p.docno, 10) || 0;
-    binds.docNo = docNo;
-    const docClause = docNo === 0 ? "1=1" : "DOC_NO = :docNo";
+    let docClause = "1=1";
+    if (docNo !== 0) {
+      binds.docNo = docNo;
+      docClause = "DOC_NO = :docNo";
+    }
 
     const salesman = (p.salesman || "All").trim();
     let salesmanClause = "1=1";
