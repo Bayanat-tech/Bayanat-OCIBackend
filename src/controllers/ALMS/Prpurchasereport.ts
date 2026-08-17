@@ -2,8 +2,6 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import TenantManager from "../../database/TenantManager";
-// import TenantManager from "../../../../database/TenantManager";
-// import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -71,13 +69,17 @@ export const PRPurchaseReport = async (req: Request, res: Response): Promise<voi
     }
     connection = await TenantManager.getConnection(tenantId);
 
-    // ── Helper: run PROC_BUILD_DYNAMIC_SQL_COMMON for a given parameter ──
-    const runDynamicSql = async (parameter: string, code3: string | null = null) => {
+    // ── Helper function to execute stored procedure ──────────────────
+    const executeStoredProcedure = async (
+      parameter: string, 
+      code2: string, 
+      code3: string | null = null
+    ): Promise<string> => {
       const binds: any = {
         parameter,
         loginid: loginid || "ADMIN",
         code1: companyCode,
-        code2: requestNumber,
+        code2: code2,
         code3: code3,
         code4: null,
         number1: null, number2: null, number3: null, number4: null,
@@ -89,7 +91,7 @@ export const PRPurchaseReport = async (req: Request, res: Response): Promise<voi
         `DECLARE
            v_sql VARCHAR2(32767);
          BEGIN
-           PROC_BUILD_DYNAMIC_SQL_COMMON(
+           PROC_BUILD_DYNAMIC_PREQUEST_ENTRY(
              :parameter, :loginid,
              :code1,  :code2,  :code3,  :code4,
              :number1, :number2, :number3, :number4,
@@ -103,12 +105,18 @@ export const PRPurchaseReport = async (req: Request, res: Response): Promise<voi
 
       const rawSql = (result.outBinds as any).out_sql;
       if (!rawSql) throw new Error(`Procedure did not return SQL for parameter "${parameter}"`);
+      
+      console.log(`Generated SQL for ${parameter}:`, rawSql);
+      return rawSql;
+    };
 
-      const dataResult = await connection!.execute(rawSql, [], {
+    // ── Execute query from SQL string ──────────────────────────────────
+    const executeQuery = async (sql: string): Promise<any[]> => {
+      const result = await connection!.execute(sql, [], {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
       });
-
-      return (dataResult.rows as any[]).map((row) =>
+      
+      return (result.rows || []).map((row: any) =>
         Object.keys(row).reduce((acc: any, key) => {
           acc[key.toLowerCase()] = row[key];
           return acc;
@@ -116,15 +124,118 @@ export const PRPurchaseReport = async (req: Request, res: Response): Promise<voi
       );
     };
 
-    // ── Fetch header (report-only fields) first — flow_code from it is
-    //    needed to scope the history/status-trail query ──────────────────
-    const headerRows = await runDynamicSql("Amlspf_PRReport");
+    // ── Fetch header data ──────────────────────────────────────────────
+    const headerSql = await executeStoredProcedure(
+      "PS_PREQUEST_ENTRY_PRReport",
+      requestNumber
+    );
+    const headerRows = await executeQuery(headerSql);
     const header = headerRows[0] || {};
 
-    const [itemRows, historyRows] = await Promise.all([
-      runDynamicSql("Amlspf_TabPRItems"),
-      runDynamicSql("Amlspf_PRReport", header.flow_code || null),
-    ]);
+    // ── Fetch items data using direct query ───────────────────────────
+    // Since the stored procedure for items needs DOC_TYPE and DOC_NO,
+    // we'll use a direct query instead
+    const itemsQuery = `
+      SELECT 
+        D.*,
+        I.ITEM_DESP,
+        S.AC_NAME AS SUPPLIER_NAME,
+        C.COST_NAME
+      FROM 
+        TTE_PREQUEST_DET D
+        LEFT JOIN MS_PS_ITEM_MASTER I ON D.ITEM_CODE = I.ITEM_CODE
+        LEFT JOIN MS_ACCODES S ON D.SUPPLIER = S.AC_CODE
+        LEFT JOIN MS_PS_COST C ON D.COST_CODE = C.COST_CODE
+      WHERE 
+        D.COMPANY_CODE = :companyCode
+        AND D.REQUEST_NUMBER = :requestNumber
+      ORDER BY D.ITEM_SRNO
+    `;
+
+    const itemsResult = await connection.execute(itemsQuery, {
+      companyCode: companyCode,
+      requestNumber: requestNumber
+    }, {
+      outFormat: oracledb.OUT_FORMAT_OBJECT
+    });
+
+    const itemRows = (itemsResult.rows || []).map((row: any) =>
+      Object.keys(row).reduce((acc: any, key) => {
+        acc[key.toLowerCase()] = row[key];
+        return acc;
+      }, {})
+    );
+
+    // ── Fetch history data using direct query ─────────────────────────
+    const historyQuery = `
+      SELECT 
+        H.*,
+        TO_CHAR(H.USER_DT, 'DD-MON-YYYY HH24:MI:SS') AS LAST_UPDATED_DT
+      FROM 
+        TTE_PREQUEST_HDR_HISTORY H
+      WHERE 
+        H.COMPANY_CODE = :companyCode
+        AND H.REQUEST_NUMBER = :requestNumber
+      ORDER BY H.HISTORY_SERIAL DESC
+    `;
+
+    const historyResult = await connection.execute(historyQuery, {
+      companyCode: companyCode,
+      requestNumber: requestNumber
+    }, {
+      outFormat: oracledb.OUT_FORMAT_OBJECT
+    });
+
+    const historyRows = (historyResult.rows || []).map((row: any) =>
+      Object.keys(row).reduce((acc: any, key) => {
+        acc[key.toLowerCase()] = row[key];
+        return acc;
+      }, {})
+    );
+
+    // ── Fetch tax category name if not in header ──────────────────────
+    let taxCategoryName = header.tx_cat_name || "";
+    if (!taxCategoryName && header.tx_cat_code) {
+      const taxQuery = `
+        SELECT TX_CAT_NAME 
+        FROM MS_TAX_CATEGORY 
+        WHERE COMPANY_CODE = :companyCode 
+          AND TX_CAT_CODE = :txCatCode
+      `;
+      const taxResult = await connection.execute(taxQuery, {
+        companyCode: companyCode,
+        txCatCode: header.tx_cat_code
+      }, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      });
+      if (taxResult.rows && taxResult.rows.length > 0) {
+        taxCategoryName = (taxResult.rows[0] as any).TX_CAT_NAME || "";
+      }
+    }
+
+    // ── Fetch tax component name if not in header ─────────────────────
+    let taxComponentName = header.tx_compntcat_name || "";
+    if (!taxComponentName && header.tx_compncat_code_1) {
+      const compQuery = `
+        SELECT TX_COMPNTCAT_NAME 
+        FROM MS_TAX_COMPNTCATEGORY 
+        WHERE COMPANY_CODE = :companyCode 
+          AND TX_COMPNTCAT_CODE = :txCompCode
+      `;
+      const compResult = await connection.execute(compQuery, {
+        companyCode: companyCode,
+        txCompCode: header.tx_compncat_code_1
+      }, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      });
+      if (compResult.rows && compResult.rows.length > 0) {
+        taxComponentName = (compResult.rows[0] as any).TX_COMPNTCAT_NAME || "";
+      }
+    }
+
+    // Update header with fetched names
+    header.tx_cat_name = taxCategoryName;
+    header.tx_compntcat_name = taxComponentName;
 
     // ── Build item rows + running totals ────────────────────────────────
     let itemRowsHtml = "";
