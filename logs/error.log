@@ -85692,3 +85692,5 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-08-17 17:06:49 [[31merror[39m]: Unhandled Rejection: Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+2026-08-17 17:07:18 [[31merror[39m]: Unhandled Rejection: Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
