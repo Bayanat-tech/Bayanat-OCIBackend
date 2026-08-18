@@ -296,7 +296,8 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
 /* =========================
    EDIT JOB ENDPOINT
 ========================= */
-    export const editJob = async (req: Request, res: Response): Promise<void> => {
+export const editJob = async (req: Request, res: Response): Promise<void> => {
+  console.log('🔥🔥🔥 EDITJOB VERSION CHECK 12345 🔥🔥🔥');
       let connection: oracledb.Connection | undefined;
 
       try {
@@ -318,7 +319,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
         // 2. Get user info
         const requestUser = req.body.user || {
           loginid: "SYSTEM",
-          company_code: req.body.company_code || "BSG"
+          company_code: req.body.company_code
         };
 
         // 3. Build SIMPLE UPDATE SQL - Only update fields that your form allows
@@ -413,4 +414,4 @@ const SIMPLE_UPDATE_SQL = `
           }
         }
       }
-    };
+};
