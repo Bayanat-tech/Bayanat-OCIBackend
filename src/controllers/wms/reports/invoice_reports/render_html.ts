@@ -312,14 +312,8 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
         // Main group header row (always 8 cells)
         const headRow = `
           <tr>
-            <td class="c-no">${rowCounter}</td>
-            <td class="c-desc"><strong>${esc(groupDesc)}</strong></td>
-            <td class="c-price">${price ? fmtMoney(price, 3) : ""}</td>
-            <td class="c-qty">${qty}</td>
-            <td class="c-amt">${fmtMoney(groupAmt, 3)}</td>
-            <td class="c-vat">${vatPerc}</td>
-            <td class="c-amt">${fmtMoney(groupVat, 3)}</td>
-            <td class="c-amt">${fmtMoney(groupWithVat, 3)}</td>
+            <td class="c-no"></td>
+            <td colspan="7" class="c-desc"><strong>${esc(groupDesc)}</strong></td>
           </tr>`;
 
         // Sub-activity rows (also 8 cells)
