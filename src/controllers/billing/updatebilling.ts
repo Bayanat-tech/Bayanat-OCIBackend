@@ -20,6 +20,8 @@ export interface TInvoice {
   inv_amount?: number;
   curr_code?: string;
   inv_status?: string;
+  inv_desc1?: string;
+  inv_desc2?: string;
   user_id?: string;
 }
 
@@ -122,62 +124,70 @@ export async function updateBilling(
     ======================= */
 
 
-    const headerRows =
-      (invoiceHeader || []).map((h:any)=>({
+const headerRows =
+  (invoiceHeader || []).map((h:any)=>({
 
-        COMPANY_CODE:
-          getValue(h,"COMPANY_CODE"),
+    COMPANY_CODE:
+      getValue(h,"COMPANY_CODE"),
 
-        INVOICE_NO:
-          getValue(h,"INVOICE_NO"),
-
-
-        INVOICE_DATE:
-          getValue(h,"INVOICE_DATE")
-          ? new Date(getValue(h,"INVOICE_DATE"))
-          : null,
+    INVOICE_NO:
+      getValue(h,"INVOICE_NO"),
 
 
-        FROM_DATE:
-          getValue(h,"FROM_DATE")
-          ? new Date(getValue(h,"FROM_DATE"))
-          : null,
+    INVOICE_DATE:
+      getValue(h,"INVOICE_DATE")
+      ? new Date(getValue(h,"INVOICE_DATE"))
+      : null,
 
 
-        TO_DATE:
-          getValue(h,"TO_DATE")
-          ? new Date(getValue(h,"TO_DATE"))
-          : null,
+    FROM_DATE:
+      getValue(h,"FROM_DATE")
+      ? new Date(getValue(h,"FROM_DATE"))
+      : null,
 
 
-        JOB_NO:
-          getValue(h,"JOB_NO"),
+    TO_DATE:
+      getValue(h,"TO_DATE")
+      ? new Date(getValue(h,"TO_DATE"))
+      : null,
 
 
-        PRIN_CODE:
-          getValue(h,"PRIN_CODE"),
+    JOB_NO:
+      getValue(h,"JOB_NO"),
 
 
-        CUST_CODE:
-          getValue(h,"CUST_CODE"),
+    PRIN_CODE:
+      getValue(h,"PRIN_CODE"),
 
 
-        INV_AMOUNT:
-          getValue(h,"INV_AMOUNT"),
+    CUST_CODE:
+      getValue(h,"CUST_CODE"),
 
 
-        CURR_CODE:
-          getValue(h,"CURR_CODE"),
+    INV_AMOUNT:
+      getValue(h,"INV_AMOUNT"),
 
 
-        INV_STATUS:
-          getValue(h,"INV_STATUS"),
+    CURR_CODE:
+      getValue(h,"CURR_CODE"),
 
 
-        USER_ID:
-          getValue(h,"USER_ID")
+    INV_STATUS:
+      getValue(h,"INV_STATUS"),
 
-      }));
+
+    INV_DESC1:
+      getValue(h,"INV_DESC1"),
+
+
+    INV_DESC2:
+      getValue(h,"INV_DESC2"),
+
+
+    USER_ID:
+      getValue(h,"USER_ID")
+
+  }));
 
 
 
@@ -188,55 +198,63 @@ export async function updateBilling(
     ======================= */
 
 
-    const detailRows =
-      (invoiceDetails || []).map((d:any)=>({
+const detailRows =
+  (invoiceDetails || []).map((d:any)=>({
 
-        COMPANY_CODE:
-          getValue(d,"COMPANY_CODE")
-          ??
-          headerRows[0]?.COMPANY_CODE,
-
-
-        INVOICE_NO:
-          getValue(d,"INVOICE_NO"),
+    COMPANY_CODE:
+      getValue(d,"COMPANY_CODE")
+      ??
+      headerRows[0]?.COMPANY_CODE,
 
 
-        SRNO:
-          getValue(d,"SRNO"),
+    INVOICE_NO:
+      getValue(d,"INVOICE_NO"),
 
 
-        ACT_CODE:
-          getValue(d,"ACT_CODE"),
+    SRNO:
+      getValue(d,"SRNO"),
 
 
-        BILL:
-          getValue(d,"BILL"),
+    ACT_CODE:
+      getValue(d,"ACT_CODE"),
 
 
-        COST:
-          getValue(d,"COST"),
+    BILL:
+      getValue(d,"BILL"),
 
 
-        QUANTITY:
-          getValue(d,"QUANTITY"),
+    COST:
+      getValue(d,"COST"),
 
 
-        BILL_RATE:
-          getValue(d,"BILL_RATE"),
+    QUANTITY:
+      getValue(d,"QUANTITY"),
 
 
-        COST_RATE:
-          getValue(d,"COST_RATE"),
+    BILL_RATE:
+      getValue(d,"BILL_RATE"),
 
 
-        INV_DESC:
-          getValue(d,"INV_DESC"),
+    COST_RATE:
+      getValue(d,"COST_RATE"),
 
 
-        USER_ID:
-          getValue(d,"USER_ID")
+    INV_DESC:
+      getValue(d,"INV_DESC"),
 
-      }));
+
+    INV_DESC1:
+      getValue(d,"INV_DESC1"),
+
+
+    INV_DESC2:
+      getValue(d,"INV_DESC2"),
+
+
+    USER_ID:
+      getValue(d,"USER_ID")
+
+  }));
 
 
 

@@ -52,6 +52,7 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
     client_name,
     client_address,
     client_vat_no,
+    report_type,                 // <-- NEW
   } = req.query as Record<string, string | undefined>;
 
   const conn = await getConn(req);
@@ -63,6 +64,8 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
     code2: prin_code || "",
     code3: invoice_no || "",
   });
+  console.log("Fetched invoice rows:", result.length);
+  console.log("Invoice rows sample:", result.slice(0, 3));
 
   // Build self-contained token: company_code + rows + meta + expiry
   const token = encryptInvoiceToken({
@@ -76,8 +79,10 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
       clientName: client_name,
       clientAddress: client_address,
       clientVatNo: client_vat_no,
+      reportType: report_type,          // <-- NEW
     },
   });
+  
 
   const qrCodeDataUrl = await generateInvoiceQrDataUrl(token, BASE_URL);
 
@@ -91,6 +96,7 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
       clientAddress: client_address,
       clientVatNo: client_vat_no,
       qrCodeDataUrl,
+      reportType: report_type,          // <-- NEW
     },
     company_code || "AMKSA"
   );
@@ -130,7 +136,7 @@ export const public_invoice = async (req: Request, res: Response): Promise<void>
       clientName: payload.meta?.clientName,
       clientAddress: payload.meta?.clientAddress,
       clientVatNo: payload.meta?.clientVatNo,
-      // No qrCodeDataUrl here — optional, prevents infinite recursion
+      reportType: payload.meta?.reportType,   // <-- NEW
     },
     payload.company_code
   );

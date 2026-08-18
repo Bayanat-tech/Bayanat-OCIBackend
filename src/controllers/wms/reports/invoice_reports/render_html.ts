@@ -1,6 +1,7 @@
 // invoice.types.ts or in your render_html.ts
 export interface InvoiceRow {
   prin_code: string | null;
+  client_name: string | null;
   cust_code: string | null;
   from_date: string | null;
   to_date: string | null;
@@ -106,6 +107,7 @@ export interface InvoiceMeta {
   clientAddress?: string;
   clientVatNo?: string;
   qrCodeDataUrl?: string;
+  reportType?: string;
 }
 
 function fmtMoney(n: number | null | undefined, decimals = 3): string {
@@ -200,12 +202,17 @@ function amountInWords(amount: number, currCode: string | null | undefined, mino
   return `${names.major} - ${wholeWords}${fracWords} only`.replace(/\s+/g, " ");
 }
 
+/* ------------------------------------------------------------------ */
+/*  AMKSA builder                                                     */
+/* ------------------------------------------------------------------ */
 export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}): string {
   if (!rows || rows.length === 0) {
     return `<html><body><p style="font-family:Arial;padding:40px;text-align:center;color:#999;">No invoice data found.</p></body></html>`;
   }
 
   const first = rows[0];
+  const remark1 = first.inv_desc1 || "";
+  const remark2 = first.inv_desc2 || "";
   const currCode =
     first.curr_code ||
     (first.company_code === "AMKSA" || first.country === "KSA" ? "SAR" : "") ||
@@ -214,10 +221,10 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const companyName = (first.div_short_name || first.div_name || "AL MADINA LOGISTICS").trim();
   const companyTagline = "AL MADINA LOGISTIC SERVICES COMPANY";
 
-  const billToName = meta.clientName || first.reference_no || first.cust_code || "";
+  const billToName = first.client_name || "";
   const billToAddressLines = meta.clientAddress
     ? [meta.clientAddress]
-    : [first.address1, first.address2, first.address3, first.city]
+    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city]
         .filter((v) => v && String(v).trim().length > 0);
 
   function isCostRow(r: InvoiceRow): boolean {
@@ -241,58 +248,122 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     return false;
   }
 
-  const grouped = new Map<number, InvoiceRow[]>();
-  for (const r of rows) {
-    if (isCostRow(r)) continue;
-    if (r.bill == null || Number(r.bill) === 0) continue;
-    const key = r.srno ?? 0;
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(r);
+  const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
+
+  let itemRowsHtml = "";
+
+  if (isActivityWise) {
+    /* ---------- flat / activity-wise ---------- */
+    const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+    itemRowsHtml = flatRows
+      .map((r, idx) => {
+        const desc = r.inv_desc || r.other_services || r.act_group_name || "";
+        const price = Number(r.bill_rate ?? 0);
+        const qty = r.quantity ?? "";
+        const beforeTax = Number(r.bill ?? 0);
+        const vatPerc = r.tx_compnt_perc_1 ?? "";
+        const vatAmt = Number(r.tx_compnt_amt_1 ?? 0);
+        const withVat = beforeTax + vatAmt;
+        return `
+          <tr>
+            <td class="c-no">${idx + 1}</td>
+            <td class="c-desc">${esc(desc)}</td>
+            <td class="c-price">${fmtMoney(price, 3)}</td>
+            <td class="c-qty">${qty}</td>
+            <td class="c-amt">${fmtMoney(beforeTax, 3)}</td>
+            <td class="c-vat">${vatPerc}</td>
+            <td class="c-amt">${fmtMoney(vatAmt, 3)}</td>
+            <td class="c-amt">${fmtMoney(withVat, 3)}</td>
+          </tr>`;
+      })
+      .join("");
+  } else {
+    /* ---------- grouped (default) – now also 8 columns ---------- */
+    const grouped = new Map<number, InvoiceRow[]>();
+    for (const r of rows) {
+      if (isCostRow(r)) continue;
+      if (r.bill == null || Number(r.bill) === 0) continue;
+      const key = r.srno ?? 0;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(r);
+    }
+
+    let rowCounter = 0;
+    itemRowsHtml = Array.from(grouped.values())
+      .map((group) => {
+        const head = group[0];
+        rowCounter += 1;
+
+        const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+        const groupVat = group.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
+        const groupWithVat = groupAmt + groupVat;
+
+        // Prefer a rate/qty from the first row when the group is a single activity
+        const price = group.length === 1 ? Number(head.bill_rate ?? 0) : 0;
+        const qty   = group.length === 1 ? (head.quantity ?? "") : "";
+        const vatPerc = head.tx_compnt_perc_1 ?? "";
+
+        const groupDesc =
+          (head.act_group_name || "").trim() ||
+          head.inv_desc ||
+          head.other_services ||
+          "Service";
+
+        // Main group header row (always 8 cells)
+        const headRow = `
+          <tr>
+            <td class="c-no">${rowCounter}</td>
+            <td class="c-desc"><strong>${esc(groupDesc)}</strong></td>
+            <td class="c-price">${price ? fmtMoney(price, 3) : ""}</td>
+            <td class="c-qty">${qty}</td>
+            <td class="c-amt">${fmtMoney(groupAmt, 3)}</td>
+            <td class="c-vat">${vatPerc}</td>
+            <td class="c-amt">${fmtMoney(groupVat, 3)}</td>
+            <td class="c-amt">${fmtMoney(groupWithVat, 3)}</td>
+          </tr>`;
+
+        // Sub-activity rows (also 8 cells)
+        const subRows = group
+          .map((r) => {
+            const activityDesc =
+              (r as any).activity?.trim() ||
+              r.inv_desc ||
+              r.other_services ||
+              groupDesc;
+
+            // Skip the sub-row when it would just duplicate the header
+            if (
+              group.length === 1 &&
+              activityDesc.trim().toUpperCase() === groupDesc.trim().toUpperCase()
+            ) {
+              return "";
+            }
+
+            const subPrice = Number(r.bill_rate ?? 0);
+            const subQty   = r.quantity ?? "";
+            const subAmt   = Number(r.bill ?? 0);
+            const subVat   = Number(r.tx_compnt_amt_1 ?? 0);
+            const subWith  = subAmt + subVat;
+            const subVatP  = r.tx_compnt_perc_1 ?? "";
+
+            return `
+              <tr class="sub-row">
+                <td class="c-no">${r.c_srno ?? ""}</td>
+                <td class="c-desc sub-desc">${esc(activityDesc)}</td>
+                <td class="c-price">${subPrice ? fmtMoney(subPrice, 3) : ""}</td>
+                <td class="c-qty">${subQty}</td>
+                <td class="c-amt sub-amt">${fmtMoney(subAmt, 3)}</td>
+                <td class="c-vat">${subVatP}</td>
+                <td class="c-amt">${fmtMoney(subVat, 3)}</td>
+                <td class="c-amt">${fmtMoney(subWith, 3)}</td>
+              </tr>`;
+          })
+          .join("");
+
+        return headRow + subRows;
+      })
+      .join("");
   }
-
-  let rowCounter = 0;
-
-  const itemRowsHtml = Array.from(grouped.values())
-    .map((group) => {
-      const head = group[0];
-      rowCounter += 1;
-      const qty = group.reduce((s, r) => s + Number(r.quantity ?? 0), 0);
-      const price =
-        head.bill_rate != null && Number(head.bill_rate) !== 0
-          ? Number(head.bill_rate)
-          : qty > 0
-            ? group.reduce((s, r) => s + Number(r.bill ?? 0), 0) / qty
-            : Number(head.bill ?? 0);
-      const excl = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
-      const vatAmt = group.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
-      const incl = group.reduce(
-        (s, r) =>
-          s +
-          (r.tx_compnt_lcuramt_1 != null
-            ? Number(r.tx_compnt_lcuramt_1)
-            : Number(r.bill ?? 0) + Number(r.tx_compnt_amt_1 ?? 0)),
-        0
-      );
-      const vatPct = Number(head.tx_compnt_perc_1 ?? 0);
-      const desc =
-        head.inv_desc ||
-        head.other_services ||
-        head.act_group_name ||
-        "";
-
-      return `
-        <tr>
-          <td class="c-no">${rowCounter}</td>
-          <td class="c-desc">${esc(desc)}</td>
-          <td class="c-price">${fmtMoney(price, 3)}</td>
-          <td class="c-qty">${qty || ""}</td>
-          <td class="c-amt">${fmtMoney(excl, 3)}</td>
-          <td class="c-vat">${vatPct}</td>
-          <td class="c-amt">${fmtMoney(vatAmt, 5)}</td>
-          <td class="c-amt">${fmtMoney(incl, 3)}</td>
-        </tr>`;
-    })
-    .join("");
 
   const FIXED_FILLERS = 28;
   const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
@@ -348,7 +419,10 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
           ? `<div class="bank-line">Swift: ${esc(swift)}${acCode ? `, IBAN: ${esc(acCode)}` : ""}</div>`
           : ""
       }
+      --
       <div class="bank-line">All cheques to be favour of ${esc(companyName.toUpperCase())}</div>
+      <div class="bank-line export-note">${esc(remark1)}</div>
+      <div class="bank-line export-note">${esc(remark2)}</div>
     </div>`
       : "";
 
@@ -364,6 +438,8 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["VAT (TIN No)", esc(companyVatNo)],
     ["", "Page 1 of 1"],
   ];
+
+  const stampUrl = (first.stamp_path || "").trim();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -431,14 +507,20 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     .invoice-title { font-size: 15px; letter-spacing: 2px; }
     .company-name-fallback { font-size: 15px; }
     .footer { font-size: 9px; }
-    .qr-block img { width: 85px; height: 85px; }
+    .qr-top img { width: 50px; height: 50px; }
   }
   .no-print { text-align: right; margin-bottom: 8px; }
   .no-print button {
     padding: 6px 20px; background: #1a3c5e; color: #fff; border: none;
     border-radius: 4px; font-size: 12px; cursor: pointer;
   }
-  .masthead { text-align: left; margin-bottom: 2px; flex-shrink: 0; }
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2px;
+    flex-shrink: 0;
+  }
   .logo-img {
     max-height: 80px;
     max-width: 320px;
@@ -449,6 +531,20 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .company-tagline {
     font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #333;
     margin: 2px 0 6px 0;
+  }
+  .qr-top {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qr-top img {
+    width: 58px;
+    height: 58px;
+    display: block;
+  }
+  .qr-top .qr-label {
+    font-size: 7px;
+    color: #444;
+    margin-top: 2px;
   }
   .invoice-title {
     text-align: center; font-size: 18px; font-weight: 700;
@@ -584,9 +680,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     align-items: flex-end;
     gap: 6px;
   }
-  .qr-block { text-align: center; }
-  .qr-block img { width: 90px; height: 90px; display: block; margin: 0 auto; }
-  .qr-label { font-size: 7.5px; color: #444; margin-top: 2px; }
+  .stamp-img {
+    max-height: 90px;
+    max-width: 140px;
+    object-fit: contain;
+    display: block;
+  }
   .signature-text {
     font-weight: 700;
     font-size: 11px;
@@ -624,16 +723,23 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 <div class="invoice-wrapper">
 
   <div class="masthead">
-    ${
-      (() => {
-        const logoUrl = (first.company_logo || first.logo_path || "").trim();
-        if (logoUrl) {
-          return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
-        }
-        return `<div class="company-name-fallback">${esc(companyName)}</div>`;
-      })()
-    }
-    <div class="company-tagline">${esc(companyTagline)}</div>
+    <div>
+      ${
+        (() => {
+          const logoUrl = (first.company_logo || first.logo_path || "").trim();
+          if (logoUrl) {
+            return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
+          }
+          return `<div class="company-name-fallback">${esc(companyName)}</div>`;
+        })()
+      }
+      <div class="company-tagline">${esc(companyTagline)}</div>
+    </div>
+    ${meta.qrCodeDataUrl ? `
+    <div class="qr-top">
+      <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
+      <div class="qr-label">Scan to view online</div>
+    </div>` : ""}
   </div>
   <div class="invoice-title">TAX INVOICE</div>
 
@@ -642,9 +748,9 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       <div class="to-label">To :</div>
       <div class="to-name">${esc(billToName)}</div>
       ${billToAddressLines.map((l) => `<div class="to-line">${esc(l)}</div>`).join("")}
-      ${first.tel_no ? `<div class="to-line">Ph. ${esc(first.tel_no)}</div>` : ""}
-      ${first.fax_no ? `<div class="to-line">Fax: ${esc(first.fax_no)}</div>` : ""}
-      ${first.email ? `<div class="to-line">e-Mail : ${esc(first.email)}</div>` : ""}
+      ${first.prin_telno1 ? `<div class="to-line">Ph. ${esc(first.prin_telno1)}</div>` : ""}
+      ${first.prin_faxno1 ? `<div class="to-line">Fax: ${esc(first.prin_faxno1)}</div>` : ""}
+      ${first.prin_email1 ? `<div class="to-line">e-Mail : ${esc(first.prin_email1)}</div>` : ""}
       ${vatNo ? `<div class="to-line">VAT (TIN No) : ${esc(vatNo)}</div>` : ""}
     </div>
     <div class="meta-block">
@@ -705,11 +811,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   <div class="bank-sig-row">
     ${bankSection}
     <div class="right-block">
-      ${meta.qrCodeDataUrl ? `
-      <div class="qr-block">
-        <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
-        <div class="qr-label">Scan to view online</div>
-      </div>` : ""}
+      ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
       <div class="signature-text">For ${esc(companyName)}${first.city ? ` (${esc(first.city)})` : ""}</div>
     </div>
   </div>
@@ -762,12 +864,17 @@ function amountInWordsBTIND(amount: number, currCode: string | null | undefined)
   return `${major} - ${wholeWords}${fracWords} only`.replace(/\s+/g, " ");
 }
 
+/* ------------------------------------------------------------------ */
+/*  BTIND builder                                                     */
+/* ------------------------------------------------------------------ */
 export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}): string {
   if (!rows || rows.length === 0) {
     return `<html><body><p style="font-family:Arial;padding:40px;text-align:center;color:#999;">No invoice data found.</p></body></html>`;
   }
 
   const first = rows[0];
+  const remark1 = first.inv_desc1 || "";
+  const remark2 = first.inv_desc2 || "";
   const currCode = (first.curr_code || "USD").toUpperCase();
   const currSymbol = currCode === "USD" ? "$" : currCode === "INR" ? "₹" : currCode;
 
@@ -777,10 +884,10 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const companyLegal = "BAYANAT TECHNOLOGY PVT LTD (INDIA)";
 
   const billToName =
-    meta.clientName || first.reference_no || first.invoice_to || first.cust_code || "";
+    first.client_name ||  "";
   const billToAddressLines = meta.clientAddress
     ? [meta.clientAddress]
-    : [first.address1, first.address2, first.address3, first.city]
+    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city]
         .filter((v) => v && String(v).trim().length > 0);
 
   const clienttax_num = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "N.A.";
@@ -800,59 +907,90 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     return /\bcost\b|_cost|cost_/.test(text);
   }
 
-  const grouped = new Map<number, InvoiceRow[]>();
-  for (const r of rows) {
-    if (isCostRow(r)) continue;
-    if (r.bill == null || Number(r.bill) === 0) continue;
-    const key = r.srno ?? 0;
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(r);
+  const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
+
+  let itemRowsHtml = "";
+
+  if (isActivityWise) {
+    /* ---------- flat / activity-wise ---------- */
+    const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+    itemRowsHtml = flatRows
+      .map((r, idx) => {
+        const desc = r.inv_desc || r.other_services || r.act_group_name || "";
+        const sac =
+          r.sac_code ||
+          (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
+            ? r.activity_group_code
+            : "") ||
+          r.prin_ref1 ||
+          r.inv_desc2 ||
+          "";
+        const amt = Number(r.bill ?? 0);
+        return `
+          <tr>
+            <td class="c-no">${idx + 1}</td>
+            <td class="c-desc">${esc(desc)}</td>
+            <td class="c-sac">${esc(sac)}</td>
+            <td class="c-amt">${fmtMoney(amt, 2)}</td>
+          </tr>`;
+      })
+      .join("");
+  } else {
+    /* ---------- grouped (default) ---------- */
+    const grouped = new Map<number, InvoiceRow[]>();
+    for (const r of rows) {
+      if (isCostRow(r)) continue;
+      if (r.bill == null || Number(r.bill) === 0) continue;
+      const key = r.srno ?? 0;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(r);
+    }
+
+    let rowCounter = 0;
+    itemRowsHtml = Array.from(grouped.values())
+      .map((group) => {
+        const head = group[0];
+        rowCounter += 1;
+        const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+        const headDesc = head.act_group_name || head.inv_desc || head.other_services || "";
+
+        const headRow = `
+          <tr>
+            <td class="c-no">${rowCounter}</td>
+            <td class="c-desc"><strong>${esc(headDesc)}</strong></td>
+            <td class="c-sac"></td>
+            <td class="c-amt">${fmtMoney(groupAmt, 2)}</td>
+          </tr>`;
+
+        const subRows = group
+          .map((r) => {
+            const subDesc = r.inv_desc || r.other_services || headDesc;
+            const sac =
+              r.sac_code ||
+              (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
+                ? r.activity_group_code
+                : "") ||
+              r.prin_ref1 ||
+              r.inv_desc2 ||
+              "";
+            const subAmt = Number(r.bill ?? 0);
+            if (group.length === 1 && !sac && subDesc === headDesc) {
+              return "";
+            }
+            return `
+          <tr class="sub-row">
+            <td class="c-no">${r.c_srno ?? ""}</td>
+            <td class="c-desc sub-desc">${esc(subDesc)}</td>
+            <td class="c-sac">${esc(sac)}</td>
+            <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
+          </tr>`;
+          })
+          .join("");
+
+        return headRow + subRows;
+      })
+      .join("");
   }
-
-  let rowCounter = 0;
-  const itemRowsHtml = Array.from(grouped.values())
-    .map((group) => {
-      const head = group[0];
-      rowCounter += 1;
-      const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
-      const headDesc = head.act_group_name || head.inv_desc || head.other_services || "";
-
-      const headRow = `
-        <tr>
-          <td class="c-no">${rowCounter}</td>
-          <td class="c-desc"><strong>${esc(headDesc)}</strong></td>
-          <td class="c-sac"></td>
-          <td class="c-amt">${fmtMoney(groupAmt, 2)}</td>
-        </tr>`;
-
-      const subRows = group
-        .map((r) => {
-          const subDesc = r.inv_desc || r.other_services || headDesc;
-          const sac =
-            r.sac_code ||
-            (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
-              ? r.activity_group_code
-              : "") ||
-            r.prin_ref1 ||
-            r.inv_desc2 ||
-            "";
-          const subAmt = Number(r.bill ?? 0);
-          if (group.length === 1 && !sac && subDesc === headDesc) {
-            return "";
-          }
-          return `
-        <tr class="sub-row">
-          <td class="c-no">${r.c_srno ?? ""}</td>
-          <td class="c-desc sub-desc">${esc(subDesc)}</td>
-          <td class="c-sac">${esc(sac)}</td>
-          <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
-        </tr>`;
-        })
-        .join("");
-
-      return headRow + subRows;
-    })
-    .join("");
 
   const FIXED_FILLERS = 18;
   const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
@@ -896,8 +1034,10 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       <div class="bank-line">For ${esc(companyName)}</div>
       ${bankAddr ? `<div class="bank-line">${esc(bankAddr)}</div>` : ""}
       ${swift ? `<div class="bank-line">${esc(swift)}</div>` : ""}
+      --
       <div class="bank-line">All Cheques to be favour of ${esc(companyLegal)}</div>
-      <div class="bank-line export-note">${esc(first.onl_remrks || "Export invoice for authorized operations without payment of IGST.")}</div>
+      <div class="bank-line export-note">${esc(remark1)}</div>
+      <div class="bank-line export-note">${esc(remark2)}</div>
       <div class="bank-line">LUT ARN No: AS270326095738G</div>
     </div>`;
 
@@ -986,14 +1126,20 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     .invoice-title { font-size: 15px; letter-spacing: 2px; }
     .company-name-fallback { font-size: 15px; }
     .footer { font-size: 9px; }
-    .qr-block img { width: 85px; height: 85px; }
+    .qr-top img { width: 50px; height: 50px; }
   }
   .no-print { text-align: right; margin-bottom: 8px; }
   .no-print button {
     padding: 6px 20px; background: #1a3c5e; color: #fff; border: none;
     border-radius: 4px; font-size: 12px; cursor: pointer;
   }
-  .masthead { text-align: left; margin-bottom: 4px; flex-shrink: 0; }
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
   .logo-img {
     max-height: 70px;
     max-width: 280px;
@@ -1007,6 +1153,20 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555;
     margin: 2px 0 4px 0;
     text-align: left;
+  }
+  .qr-top {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qr-top img {
+    width: 58px;
+    height: 58px;
+    display: block;
+  }
+  .qr-top .qr-label {
+    font-size: 7px;
+    color: #444;
+    margin-top: 2px;
   }
   .invoice-title {
     text-align: center; font-size: 16px; font-weight: 700;
@@ -1127,9 +1287,6 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     max-width: 140px;
     object-fit: contain;
   }
-  .qr-block { text-align: center; }
-  .qr-block img { width: 90px; height: 90px; display: block; margin: 0 auto; }
-  .qr-label { font-size: 7.5px; color: #444; margin-top: 2px; }
   .signature-text {
     font-weight: 700;
     font-size: 10px;
@@ -1165,12 +1322,19 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
 <div class="invoice-wrapper">
 
   <div class="masthead">
-    ${
-      logoUrl
-        ? `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`
-        : `<div class="company-name-fallback">${esc(companyName)}</div>`
-    }
-    <div class="company-tagline">${esc(companyTagline)}</div>
+    <div>
+      ${
+        logoUrl
+          ? `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`
+          : `<div class="company-name-fallback">${esc(companyName)}</div>`
+      }
+      <div class="company-tagline">${esc(companyTagline)}</div>
+    </div>
+    ${meta.qrCodeDataUrl ? `
+    <div class="qr-top">
+      <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
+      <div class="qr-label">Scan to view online</div>
+    </div>` : ""}
   </div>
   <div class="invoice-title">TAX INVOICE</div>
   <hr class="title-rule" />
@@ -1180,9 +1344,9 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       <div class="to-label">To :</div>
       <div class="to-name">${esc(billToName)}</div>
       ${billToAddressLines.map((l) => `<div class="to-line">${esc(l)}</div>`).join("")}
-      ${first.tel_no ? `<div class="to-line">Ph. ${esc(first.tel_no)}</div>` : ""}
-      ${first.fax_no ? `<div class="to-line">Fax. ${esc(first.fax_no)}</div>` : ""}
-      ${first.email ? `<div class="to-line">e-Mail : ${esc(first.email)}</div>` : ""}
+      ${first.prin_telno1 ? `<div class="to-line">Ph. ${esc(first.prin_telno1)}</div>` : ""}
+      ${first.prin_faxno1 ? `<div class="to-line">Fax. ${esc(first.prin_faxno1)}</div>` : ""}
+      ${first.prin_email1 ? `<div class="to-line">e-Mail : ${esc(first.prin_email1)}</div>` : ""}
       <div class="to-line">GSTIN: ${esc(clienttax_num)}</div>
     </div>
     <div class="meta-block">
@@ -1232,11 +1396,6 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ${bankSection}
     <div class="stamp-qr-block">
       ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
-      ${meta.qrCodeDataUrl ? `
-      <div class="qr-block">
-        <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
-        <div class="qr-label">Scan to view online</div>
-      </div>` : ""}
       <div class="signature-text">${esc(companyLegal)}</div>
     </div>
   </div>
