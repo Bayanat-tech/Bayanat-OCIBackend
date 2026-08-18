@@ -918,12 +918,13 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       .map((r, idx) => {
         const desc = r.inv_desc || r.other_services || r.act_group_name || "";
         const sac =
-          r.sac_code ||
-          (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
-            ? r.activity_group_code
-            : "") ||
-          r.prin_ref1 ||
-          r.inv_desc2 ||
+          r.sac_code 
+          ||
+          // (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
+          //   ? r.activity_group_code
+          //   : "") ||
+          // r.prin_ref1 ||
+          // r.inv_desc2 ||
           "";
         const amt = Number(r.bill ?? 0);
         return `
@@ -966,12 +967,13 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
           .map((r) => {
             const subDesc = r.inv_desc || r.other_services || headDesc;
             const sac =
-              r.sac_code ||
-              (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
-                ? r.activity_group_code
-                : "") ||
-              r.prin_ref1 ||
-              r.inv_desc2 ||
+              r.sac_code
+               ||
+              // (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
+              //   ? r.activity_group_code
+              //   : "") ||
+              // r.prin_ref1 ||
+              // r.inv_desc2 ||
               "";
             const subAmt = Number(r.bill ?? 0);
             if (group.length === 1 && !sac && subDesc === headDesc) {
@@ -1038,7 +1040,6 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       <div class="bank-line">All Cheques to be favour of ${esc(companyLegal)}</div>
       <div class="bank-line export-note">${esc(remark1)}</div>
       <div class="bank-line export-note">${esc(remark2)}</div>
-      <div class="bank-line">LUT ARN No: AS270326095738G</div>
     </div>`;
 
   const logoUrl = (first.company_logo || first.logo_path || "").trim();
