@@ -336,7 +336,8 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
             schedule_date = :schedule_date,
             job_class = :job_class,
             updated_at = :updated_at,
-            updated_by = :updated_by
+            updated_by = :updated_by,
+            grn_remarks = :grn_remarks
           WHERE company_code = :company_code
             AND job_no = :job_no
         `;
@@ -360,7 +361,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
           transport_mode: req.body.transport_mode || null,
           schedule_date: toDate(req.body.schedule_date),
           job_class: req.body.job_class || null,
-          
+          grn_remarks: req.body.grn_remarks || null,
           // Audit fields
           updated_at: new Date(),
           updated_by: requestUser.loginid
