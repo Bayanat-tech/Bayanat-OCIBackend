@@ -169,7 +169,7 @@ export const getGrnPrintReport = async (req: Request, res: Response): Promise<vo
           :root { color-scheme: light; }
           html, body { height:100%; margin:0; font-family: Arial, Helvetica, sans-serif; background:#f2f4f7; color:#1f2937; }
           .page {
-            width:100%;
+            width:50%;
             max-width:1000px;
             min-height: 277mm; /* A4 height minus @page margins, so footer has room to sit at the bottom */
             margin:20px auto;
@@ -185,7 +185,7 @@ export const getGrnPrintReport = async (req: Request, res: Response): Promise<vo
 
           .title { font-size:18px; font-weight:bold; margin-bottom:6px; }
 
-          .party-box { border:1px solid #cfd8e3; border-radius:4px; padding:12px 14px; width:48%; line-height:1.7; font-size:13px; }
+          .party-box { border:1px solid #cfd8e3; border-radius:4px; padding:12px 14px; width:30%; line-height:1.7; font-size:13px; }
           .party-box .label-line { font-weight:bold; margin-bottom:4px; }
 
           .meta-table { border-collapse: collapse; width:50%; }
