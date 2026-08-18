@@ -323,24 +323,25 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
 
         // 3. Build SIMPLE UPDATE SQL - Only update fields that your form allows
         // Based on your form, these are the modifiable fields:
-        const SIMPLE_UPDATE_SQL = `
-          UPDATE TI_JOB SET
-            country_origin = :country_origin,
-            country_destination = :country_destination,
-            description1 = :description1,
-            remarks = :remarks,
-            prin_ref2 = :prin_ref2,
-            port_code = :port_code,
-            destination_port = :destination_port,
-            transport_mode = :transport_mode,
-            schedule_date = :schedule_date,
-            job_class = :job_class,
-            updated_at = :updated_at,
-            updated_by = :updated_by,
-            grn_remarks = :grn_remarks
-          WHERE company_code = :company_code
-            AND job_no = :job_no
-        `;
+const SIMPLE_UPDATE_SQL = `
+  UPDATE TI_JOB SET
+    country_origin = :country_origin,
+    country_destination = :country_destination,
+    description1 = :description1,
+    remarks = :remarks,
+    prin_ref2 = :prin_ref2,
+    port_code = :port_code,
+    destination_port = :destination_port,
+    transport_mode = :transport_mode,
+    schedule_date = :schedule_date,
+    job_class = :job_class,
+    updated_at = :updated_at,
+    updated_by = :updated_by,
+    grn_remarks = :grn_remarks,
+    curr_code = :curr_code
+  WHERE company_code = :company_code
+    AND job_no = :job_no
+`;
 
         // 4. Build bind data - Only modifiable fields
         const toDate = (val: any) => val ? new Date(val) : null;
@@ -362,6 +363,7 @@ export const createOrUpdateJob = async (req: Request, res: Response): Promise<vo
           schedule_date: toDate(req.body.schedule_date),
           job_class: req.body.job_class || null,
           grn_remarks: req.body.grn_remarks || null,
+          curr_code: req.body.curr_code || null,
           // Audit fields
           updated_at: new Date(),
           updated_by: requestUser.loginid
