@@ -10,10 +10,12 @@ import {
   resetPasswordWithLoginId,
   diagnosticPermissions,
 } from "../controllers/auth.controller";
+import { public_invoice } from "../controllers/wms/reports/invoice_reports/invoice_report";
 
 // Create a new Express router
 const router = express.Router();
 
+router.get("/public/invoice", public_invoice)
 router.post("/login", login);
 router.post("/forgotPassword", forgotPassword);
 router.post("/change-password", changePasswordByEmail);
