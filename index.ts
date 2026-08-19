@@ -42,11 +42,8 @@ import pamsRoutes from "./src/routes/pams.routes";
 
 import almsRoutes from "./src/routes/alms.routes";
 import mmsRoutes from "./src/routes/mms_routes";
-import { public_invoice } from "./src/controllers/wms/reports/invoice_reports/invoice_report";
 
 //----------------routes-------------
-app.get("/public/invoice", public_invoice);
-
 app.use("/api/files", fileRoutes);
 
 app.use("/api/auth", authRoutes);

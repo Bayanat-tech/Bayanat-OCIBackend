@@ -111,7 +111,7 @@ export interface InvoiceMeta {
   reportType?: string;
 }
 
-function fmtMoney(n: number | null | undefined, decimals = 3): string {
+function fmtMoney(n: number | null | undefined, decimals = 2): string {
   const v = Number(n ?? 0);
   return v.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
@@ -192,7 +192,7 @@ const CURRENCY_NAMES: Record<string, { major: string; minor: string }> = {
   BHD: { major: "BAHRAINI DINAR", minor: "FILS" },
 };
 
-function amountInWords(amount: number, currCode: string | null | undefined, minorDigits = 3): string {
+function amountInWords(amount: number, currCode: string | null | undefined, minorDigits = 2): string {
   const code = (currCode || "").toUpperCase();
   const names = CURRENCY_NAMES[code] || { major: code || "CURRENCY", minor: "CENTS" };
   const whole = Math.floor(amount);
@@ -268,12 +268,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
           <tr>
             <td class="c-no">${idx + 1}</td>
             <td class="c-desc">${esc(desc)}</td>
-            <td class="c-price">${fmtMoney(price, 3)}</td>
+            <td class="c-price">${fmtMoney(price, 2)}</td>
             <td class="c-qty">${qty}</td>
-            <td class="c-amt">${fmtMoney(beforeTax, 3)}</td>
+            <td class="c-amt">${fmtMoney(beforeTax, 2)}</td>
             <td class="c-vat">${vatPerc}</td>
-            <td class="c-amt">${fmtMoney(vatAmt, 3)}</td>
-            <td class="c-amt">${fmtMoney(withVat, 3)}</td>
+            <td class="c-amt">${fmtMoney(vatAmt, 2)}</td>
+            <td class="c-amt">${fmtMoney(withVat, 2)}</td>
           </tr>`;
       })
       .join("");
@@ -344,12 +344,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
               <tr class="sub-row">
                 <td class="c-no">${r.c_srno ?? ""}</td>
                 <td class="c-desc sub-desc">${esc(activityDesc)}</td>
-                <td class="c-price">${subPrice ? fmtMoney(subPrice, 3) : ""}</td>
+                <td class="c-price">${subPrice ? fmtMoney(subPrice, 2) : ""}</td>
                 <td class="c-qty">${subQty}</td>
-                <td class="c-amt sub-amt">${fmtMoney(subAmt, 3)}</td>
+                <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
                 <td class="c-vat">${subVatP}</td>
-                <td class="c-amt">${fmtMoney(subVat, 3)}</td>
-                <td class="c-amt">${fmtMoney(subWith, 3)}</td>
+                <td class="c-amt">${fmtMoney(subVat, 2)}</td>
+                <td class="c-amt">${fmtMoney(subWith, 2)}</td>
               </tr>`;
           })
           .join("");
@@ -423,9 +423,8 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["Customer Rep", esc(first.customer_rep || "")],
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
-    ["Billing Rep", esc(first.billing_rep || "")],
+    ["Billing Rep", esc(first.user_id || "")],
     ["VAT (TIN No)", esc(companyVatNo)],
-    ["", "Page 1 of 1"],
   ];
 
   const stampUrl = (first.stamp_path || "").trim();
@@ -453,8 +452,8 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     background: #ffffff;
     padding: 12px 18px 8px 18px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    height: 1123px;
-    min-height: 1123px;
+    height: 1122px;
+    min-height: 1122px;
     border: none;
     display: flex;
     flex-direction: column;
@@ -500,7 +499,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
   .no-print { text-align: right; margin-bottom: 8px; }
   .no-print button {
-    padding: 6px 20px; background: #1a3c5e; color: #fff; border: none;
+    padding: 6px 20px; background: #1a2c5e; color: #fff; border: none;
     border-radius: 4px; font-size: 12px; cursor: pointer;
   }
   .masthead {
@@ -512,13 +511,13 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
   .logo-img {
     max-height: 80px;
-    max-width: 320px;
+    max-width: 220px;
     object-fit: contain;
     display: block;
   }
-  .company-name-fallback { font-size: 18px; font-weight: 700; color: #1a3c5e; }
+  .company-name-fallback { font-size: 18px; font-weight: 700; color: #1a2c5e; }
   .company-tagline {
-    font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #333;
+    font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #222;
     margin: 2px 0 6px 0;
   }
   .qr-top {
@@ -544,7 +543,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     border: none;
     flex-shrink: 0;
   }
-  .to-block { flex: 1.3; padding: 6px 10px 6px 0; border: none; }
+  .to-block { flex: 1.2; padding: 6px 10px 6px 0; border: none; }
   .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
   .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
   .to-line { font-size: 10px; line-height: 1.5; border: none; max-width: 280px; }
@@ -571,7 +570,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .items-table th,
   .items-table td {
     border: 1px solid #000;
-    padding: 3px 4px;
+    padding: 2px 4px;
     vertical-align: top;
     overflow: hidden;
   }
@@ -606,12 +605,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   padding-left: 2px;
   padding-right: 4px;
 }
-.c-vat { width: 36px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
-  .c-vat { width: 36px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
+.c-vat { width: 26px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
+  .c-vat { width: 26px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
   .sub-row td { border: 1px solid #000; }
-  .sub-desc { padding-left: 14px; color: #333; }
-  .sub-amt { color: #333; }
-  .total-prefix { font-size: 8.5px; font-weight: 700; margin-right: 3px; }
+  .sub-desc { padding-left: 14px; color: #222; }
+  .sub-amt { color: #222; }
+  .total-prefix { font-size: 8.5px; font-weight: 700; margin-right: 2px; }
   .filler-row td {
     border-top: none !important;
     border-bottom: none !important;
@@ -632,10 +631,10 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
   .legend-row td {
     font-size: 8.5px;
-    color: #333;
+    color: #222;
     border: 1px solid #000;
     vertical-align: middle;
-    padding: 3px 4px;
+    padding: 2px 4px;
   }
   .words-row .total-label {
     text-align: left;
@@ -696,11 +695,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .footer .disclaimer {
     font-weight: 400;
     font-size: 8.5px;
-    color: #333;
+    color: #222;
     border: none;
     margin-top: 4px;
     text-align: left;
-    padding-top: 3px;
+    padding-top: 2px;
   }
   .logo-company-block {
     display: flex;
@@ -713,14 +712,14 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     padding-top: 4px;
   }
   .company-name-next {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    color: #1a3c5e;
+    color: #1a2c5e;
     margin-bottom: 2px;
   }
   .company-addr-line {
     font-size: 9.5px;
-    color: #333;
+    color: #222;
   }
 </style>
 </head>
@@ -792,7 +791,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
         <col style="width:80px" />
         <col style="width:40px" />
         <col style="width:90px" />
-        <col style="width:36px" />
+        <col style="width:26px" />
         <col style="width:90px" />
         <col style="width:90px" />
       </colgroup>
@@ -812,11 +811,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
         ${itemRowsHtml}
         ${fillerRowsHtml}
         <tr class="words-row">
-          <td class="total-label" colspan="4">${esc(amountInWords(totalAfterVat, currCode, 3))}</td>
-          <td class="c-amt">${fmtMoney(totalBeforeVat, 3)}</td>
+          <td class="total-label" colspan="4">${esc(amountInWords(totalAfterVat, currCode, 2))}</td>
+          <td class="c-amt">${fmtMoney(totalBeforeVat, 2)}</td>
           <td class="c-vat"></td>
-          <td class="c-amt">${fmtMoney(totalVat, 3)}</td>
-          <td class="c-amt">${fmtMoney(totalAfterVat, 3)}</td>
+          <td class="c-amt">${fmtMoney(totalVat, 2)}</td>
+          <td class="c-amt">${fmtMoney(totalAfterVat, 2)}</td>
         </tr>
       </tbody>
     </table>
@@ -836,7 +835,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       ${first.phone ? `Tel: ${esc(first.phone)}` : ""}${first.fax ? ` ; Fax: ${esc(first.fax)}` : ""}
     </div>
     <div class="disclaimer">
-      This is a digitally signed Tax Invoice generated electronically by AL MADINA LOGISTIC SERVICES COMPANY.<br/>
+      This is a digitally signed Tax Invoice generated electronically by ${esc(companyName)}.<br/>
       No physical signature is required. The authenticity of this document can be verified using the QR code (if present) or by contacting the issuer.
     </div>
   </div>
@@ -846,7 +845,6 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 </body>
 </html>`;
 }
-
 
 function amountInWordsBTIND(amount: number, currCode: string | null | undefined): string {
   const code = (currCode || "USD").toUpperCase();
@@ -1066,7 +1064,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["Customer Rep", esc(first.customer_rep || "")],
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
-    ["Bill Rep", esc(first.billing_rep || first.company_code || "BTIND")],
+    ["Bill Rep", esc(first.user_id)],
     ["GSTIN", esc(companytax_num)],
   ];
 
@@ -1097,8 +1095,8 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     background: #ffffff;
     padding: 14px 18px 10px 18px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    height: 1123px;
-    min-height: 1123px;
+    height: 1122px;
+    min-height: 1122px;
     border: none;
     display: flex;
     flex-direction: column;
@@ -1144,7 +1142,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
   .no-print { text-align: right; margin-bottom: 8px; }
   .no-print button {
-    padding: 6px 20px; background: #1a3c5e; color: #fff; border: none;
+    padding: 6px 20px; background: #1a2c5e; color: #fff; border: none;
     border-radius: 4px; font-size: 12px; cursor: pointer;
   }
   .masthead {
@@ -1161,7 +1159,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     display: block;
   }
   .company-name-fallback {
-    font-size: 16px; font-weight: 700; color: #1a3c5e; letter-spacing: 1px;
+    font-size: 16px; font-weight: 700; color: #1a2c5e; letter-spacing: 1px;
   }
   .company-tagline {
     font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555;
@@ -1184,7 +1182,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
   .invoice-title {
     text-align: center; font-size: 16px; font-weight: 700;
-    letter-spacing: 3px; margin: 6px 0 4px 0; flex-shrink: 0;
+    letter-spacing: 2px; margin: 6px 0 4px 0; flex-shrink: 0;
   }
   .title-rule {
     border: none; border-top: 2px solid #000; margin: 0 0 6px 0; flex-shrink: 0;
@@ -1195,12 +1193,12 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     flex-shrink: 0;
     margin-bottom: 4px;
   }
-  .to-block { flex: 1.35; padding: 4px 10px 4px 0; }
+  .to-block { flex: 1.25; padding: 4px 10px 4px 0; }
   .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
   .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
   .to-line {
     font-size: 10px; line-height: 1.45;
-    border-bottom: 1px solid #bbb; max-width: 300px; min-height: 14px;
+    border-bottom: 1px solid #bbb; max-width: 200px; min-height: 14px;
   }
   .meta-block { flex: 1; padding: 4px 0 4px 12px; }
   .meta-row { display: flex; font-size: 10px; line-height: 1.5; }
@@ -1208,7 +1206,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .meta-colon { width: 10px; }
   .meta-value { font-weight: 600; flex: 1; }
   .page-line {
-    text-align: right; font-size: 9px; margin-top: 2px; color: #333;
+    text-align: right; font-size: 9px; margin-top: 2px; color: #222;
   }
   .table-area {
     flex: 1 1 auto;
@@ -1228,7 +1226,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .items-table th,
   .items-table td {
     border: 1px solid #000;
-    padding: 3px 5px;
+    padding: 2px 5px;
     vertical-align: top;
     overflow: hidden;
   }
@@ -1239,9 +1237,9 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     text-align: center;
     vertical-align: middle;
   }
-  .c-no  { width: 32px; text-align: center; }
+  .c-no  { width: 22px; text-align: center; }
   .c-desc { text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
-  .c-sac { width: 130px; text-align: center; white-space: nowrap; }
+  .c-sac { width: 120px; text-align: center; white-space: nowrap; }
   .c-amt {
     width: 110px;
     text-align: right;
@@ -1264,7 +1262,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     border-left: 1px solid #000;
     border-right: 1px solid #000;
     height: 100%;
-    min-height: 30px;
+    min-height: 20px;
     padding: 0;
   }
   .words-row td {
@@ -1320,10 +1318,10 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .footer .disclaimer {
     font-weight: 400;
     font-size: 8px;
-    color: #333;
+    color: #222;
     margin-top: 4px;
     text-align: left;
-    padding-top: 3px;
+    padding-top: 2px;
   }
 </style>
 </head>
@@ -1374,16 +1372,15 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       </div>`
         )
         .join("")}
-      <div class="page-line">Page 1 of 1</div>
     </div>
   </div>
 
   <div class="table-area">
     <table class="items-table">
       <colgroup>
-        <col style="width:32px" />
+        <col style="width:22px" />
         <col />
-        <col style="width:130px" />
+        <col style="width:120px" />
         <col style="width:110px" />
       </colgroup>
       <thead>
