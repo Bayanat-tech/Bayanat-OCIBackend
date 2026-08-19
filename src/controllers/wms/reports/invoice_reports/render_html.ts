@@ -2,6 +2,7 @@
 export interface InvoiceRow {
   prin_code: string | null;
   client_name: string | null;
+  company_name: string | null;
   cust_code: string | null;
   from_date: string | null;
   to_date: string | null;
@@ -218,8 +219,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     (first.company_code === "AMKSA" || first.country === "KSA" ? "SAR" : "") ||
     "";
 
-  const companyName = (first.div_short_name || first.div_name || "AL MADINA LOGISTICS").trim();
-  const companyTagline = "AL MADINA LOGISTIC SERVICES COMPANY";
+  const companyName = first.company_name;
 
   const billToName = first.client_name || "";
   const billToAddressLines = meta.clientAddress
@@ -394,32 +394,27 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const vatNo = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "";
   const companyVatNo = first.comp_trn_no || "";
 
-  const bankName = first.bank_name_inv || first.bank_name || "";
+  const bankName = first.bank_name
   const acCode = first.ac_code_inv || first.ac_code || "";
+  const refNo = first.reference_no_inv || first.reference_no || "";
   const bankAddr = first.bank_address_inv || first.bank_address || "";
-  const swift = first.swift_code_inv || first.swift_code || "";
+  const companyForBank = companyName; // or first.div_name / first.div_short_name
 
   const bankSection =
-    bankName || acCode || swift || bankAddr
+    bankName || acCode || refNo || bankAddr
       ? `
     <div class="bank-block">
       <div class="bank-title">Bank Details</div>
       ${bankName ? `<div class="bank-line">${esc(bankName)}</div>` : ""}
+      <div class="bank-line">${esc(companyForBank)}</div>
       ${acCode ? `<div class="bank-line">${esc(acCode)}</div>` : ""}
-      <div class="bank-line">For ${esc(companyName)}${first.city ? `(${esc(first.city)})` : ""}</div>
+      ${refNo ? `<div class="bank-line">${esc(refNo)}</div>` : ""}
       ${bankAddr ? `<div class="bank-line">${esc(bankAddr)}</div>` : ""}
-      ${
-        swift
-          ? `<div class="bank-line">Swift: ${esc(swift)}${acCode ? `, IBAN: ${esc(acCode)}` : ""}</div>`
-          : ""
-      }
-      --
-      <div class="bank-line">All cheques to be favour of ${esc(companyName.toUpperCase())}</div>
-      <div class="bank-line export-note">${esc(remark1)}</div>
-      <div class="bank-line export-note">${esc(remark2)}</div>
+      <div class="bank-line">--</div>
+      ${remark1 ? `<div class="bank-line export-note">${esc(remark1)}</div>` : ""}
+      ${remark2 ? `<div class="bank-line export-note">${esc(remark2)}</div>` : ""}
     </div>`
       : "";
-
   const metaRows: Array<[string, string]> = [
     ["Invoice No.", esc(invoiceNo)],
     ["Invoice Print Date", printDate],
@@ -583,34 +578,35 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .items-table thead th {
     background: #eef2f6;
     font-weight: 700;
-    font-size: 9px;
-    text-align: left;
+    font-size: 10.5px;
+    text-align: center;
     vertical-align: middle;
   }
-  .c-no  { width: 28px;  text-align: center; padding-left: 2px; padding-right: 2px; }
-  .c-desc { width: auto; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
-  .c-price {
-    width: 80px;
-    text-align: right;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-    padding-left: 2px;
-    padding-right: 4px;
-  }
-  .c-qty {
-    width: 40px;
-    text-align: center;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-  .c-amt {
-    width: 90px;
-    text-align: right;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-    padding-left: 2px;
-    padding-right: 4px;
-  }
+.c-no  { width: 28px;  text-align: center; padding-left: 2px; padding-right: 2px; }
+.c-desc { width: auto; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
+.c-price {
+  width: 80px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-left: 2px;
+  padding-right: 4px;
+}
+.c-qty {
+  width: 40px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.c-amt {
+  width: 90px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-left: 2px;
+  padding-right: 4px;
+}
+.c-vat { width: 36px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
   .c-vat { width: 36px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
   .sub-row td { border: 1px solid #000; }
   .sub-desc { padding-left: 14px; color: #333; }
@@ -706,6 +702,26 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     text-align: left;
     padding-top: 3px;
   }
+  .logo-company-block {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .company-details-next-to-logo {
+    font-size: 10px;
+    line-height: 1.4;
+    padding-top: 4px;
+  }
+  .company-name-next {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a3c5e;
+    margin-bottom: 2px;
+  }
+  .company-addr-line {
+    font-size: 9.5px;
+    color: #333;
+  }
 </style>
 </head>
 <body>
@@ -716,25 +732,32 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
 <div class="invoice-wrapper">
 
-  <div class="masthead">
-    <div>
-      ${
-        (() => {
-          const logoUrl = (first.company_logo || first.logo_path || "").trim();
-          if (logoUrl) {
-            return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
-          }
-          return `<div class="company-name-fallback">${esc(companyName)}</div>`;
-        })()
-      }
-      <div class="company-tagline">${esc(companyTagline)}</div>
+    <div class="masthead">
+      <div class="logo-company-block">
+        ${
+          (() => {
+            const logoUrl = (first.company_logo || first.logo_path || "").trim();
+            if (logoUrl) {
+              return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
+            }
+            return `<div class="company-name-fallback">${esc(companyName)}</div>`;
+          })()
+        }
+        <div class="company-details-next-to-logo">
+          <div class="company-name-next">${esc(companyName)}</div>
+          ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
+          ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
+          ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
+          ${first.email ? `<div class="company-addr-line">e-Mail: ${esc(first.email)}</div>` : ""}
+          ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
+        </div>
+      </div>
+      ${meta.qrCodeDataUrl ? `
+      <div class="qr-top">
+        <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
+        <div class="qr-label">Scan to view online</div>
+      </div>` : ""}
     </div>
-    ${meta.qrCodeDataUrl ? `
-    <div class="qr-top">
-      <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
-      <div class="qr-label">Scan to view online</div>
-    </div>` : ""}
-  </div>
   <div class="invoice-title">TAX INVOICE</div>
 
   <div class="top-info">
@@ -773,27 +796,24 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
         <col style="width:90px" />
         <col style="width:90px" />
       </colgroup>
-      <thead>
-        <tr>
-          <th class="c-no">SR No</th>
-          <th class="c-desc">Description</th>
-          <th class="c-price" style="text-align:right;">Price</th>
-          <th class="c-qty" style="text-align:center;">Qty</th>
-          <th class="c-amt" style="text-align:right;">Total<br/>Before Tax</th>
-          <th class="c-vat" style="text-align:center;">VAT<br/>%</th>
-          <th class="c-amt" style="text-align:right;">VAT<br/>Amount</th>
-          <th class="c-amt" style="text-align:right;">Total<br/>With VAT</th>
-        </tr>
-      </thead>
+<thead>
+  <tr>
+    <th class="c-no">SR No</th>
+    <th class="c-desc">Description</th>
+    <th class="c-price">Price</th>
+    <th class="c-qty">Qty</th>
+    <th class="c-amt">Total<br/>Before Tax</th>
+    <th class="c-vat">VAT<br/>%</th>
+    <th class="c-amt">VAT<br/>Amount</th>
+    <th class="c-amt">Total<br/>With VAT</th>
+  </tr>
+</thead>
       <tbody>
         ${itemRowsHtml}
         ${fillerRowsHtml}
-        <tr class="legend-row">
-          <td colspan="8">NT - No Tax, 0% - Zero, 5% - Standard</td>
-        </tr>
         <tr class="words-row">
           <td class="total-label" colspan="4">${esc(amountInWords(totalAfterVat, currCode, 3))}</td>
-          <td class="c-amt"><span class="total-prefix">Total :</span> ${fmtMoney(totalBeforeVat, 3)}</td>
+          <td class="c-amt">${fmtMoney(totalBeforeVat, 3)}</td>
           <td class="c-vat"></td>
           <td class="c-amt">${fmtMoney(totalVat, 3)}</td>
           <td class="c-amt">${fmtMoney(totalAfterVat, 3)}</td>
@@ -813,13 +833,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   <div class="footer">
     <div>${esc(first.div_address1 || "")}</div>
     <div class="addr-line">
-      ${first.phone ? `Tel: ${esc(first.phone)}` : ""}${first.fax ? ` ; Fax: ${esc(first.fax)}` : ""}${
-        first.email ? ` ; e-Mail: ${esc(first.email)}` : ""
-      }
+      ${first.phone ? `Tel: ${esc(first.phone)}` : ""}${first.fax ? ` ; Fax: ${esc(first.fax)}` : ""}
     </div>
     <div class="disclaimer">
-      Details mentioned in this document is deemed accurate as per AMLS DC billing records related to activities mentioned in this document.<br/>
-      Disputes (if any) to be copied to AMLS in writing within 72 hours from Invoice date or else AMLS will not be obligated to attend to it.
+      This is a digitally signed Tax Invoice generated electronically by AL MADINA LOGISTIC SERVICES COMPANY.<br/>
+      No physical signature is required. The authenticity of this document can be verified using the QR code (if present) or by contacting the issuer.
     </div>
   </div>
 
@@ -828,6 +846,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 </body>
 </html>`;
 }
+
 
 function amountInWordsBTIND(amount: number, currCode: string | null | undefined): string {
   const code = (currCode || "USD").toUpperCase();
