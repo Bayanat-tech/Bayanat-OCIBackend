@@ -98,6 +98,7 @@ export interface InvoiceRow {
   tax_num?: string | null;
   lut_arn?: string | null;
   stamp_path?: string | null;
+  crn?: string | null;
 }
 
 export interface InvoiceMeta {
@@ -391,7 +392,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const invoicePeriod =
     meta.invoicePeriod ||
     (first.from_date && first.to_date ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}` : "");
-  const vatNo = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "";
+  const vatNo = first.prin_trn_no || "";
   const companyVatNo = first.comp_trn_no || "";
 
   const bankName = first.bank_name
@@ -399,17 +400,19 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const refNo = first.reference_no_inv || first.reference_no || "";
   const bankAddr = first.bank_address_inv || first.bank_address || "";
   const companyForBank = companyName; // or first.div_name / first.div_short_name
+  const swiftCode = first.swift_code || first.swift_code_inv || "";
 
   const bankSection =
     bankName || acCode || refNo || bankAddr
       ? `
     <div class="bank-block">
       <div class="bank-title">Bank Details</div>
-      ${bankName ? `<div class="bank-line">${esc(bankName)}</div>` : ""}
-      <div class="bank-line">${esc(companyForBank)}</div>
-      ${acCode ? `<div class="bank-line">${esc(acCode)}</div>` : ""}
-      ${refNo ? `<div class="bank-line">${esc(refNo)}</div>` : ""}
-      ${bankAddr ? `<div class="bank-line">${esc(bankAddr)}</div>` : ""}
+      ${bankName ? `<div class="bank-line">Bank Name: ${esc(bankName)}</div>` : ""}
+      <div class="bank-line">A/C Name: ${esc(companyForBank)} COMPANY</div>
+      ${acCode ? `<div class="bank-line">A/C No.-${esc(acCode)}</div>` : ""}
+      ${refNo ? `<div class="bank-line">Ref No.- ${esc(refNo)}</div>` : ""}
+      ${swiftCode ? `<div class="bank-line">SWIFT Code: ${esc(swiftCode)}</div>` : ""}
+      ${bankAddr ? `<div class="bank-line">Bank Address: ${esc(bankAddr)}</div>` : ""}
       <div class="bank-line">--</div>
       ${remark1 ? `<div class="bank-line export-note">${esc(remark1)}</div>` : ""}
       ${remark2 ? `<div class="bank-line export-note">${esc(remark2)}</div>` : ""}
@@ -417,14 +420,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       : "";
   const metaRows: Array<[string, string]> = [
     ["Invoice No.", esc(invoiceNo)],
-    ["Invoice Print Date", printDate],
     ...(invoicePeriod ? ([["Invoice Period", invoicePeriod]] as Array<[string, string]>) : []),
     ...(dueDate ? ([["Due Date", dueDate]] as Array<[string, string]>) : []),
-    ["Customer Rep", esc(first.customer_rep || "")],
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
     ["Billing Rep", esc(first.user_id || "")],
-    ["VAT (TIN No)", esc(companyVatNo)],
+    ["VAT (TIN NO)", esc(companyVatNo || "")],
   ];
 
   const stampUrl = (first.stamp_path || "").trim();
@@ -743,12 +744,13 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
           })()
         }
         <div class="company-details-next-to-logo">
-          <div class="company-name-next">${esc(companyName)}</div>
+          <div class="company-name-next">${esc(companyName)} COMPANY</div>
           ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
           ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
           ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
           ${first.email ? `<div class="company-addr-line">e-Mail: ${esc(first.email)}</div>` : ""}
           ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
+          <div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>
         </div>
       </div>
       ${meta.qrCodeDataUrl ? `
@@ -762,12 +764,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   <div class="top-info">
     <div class="to-block">
       <div class="to-label">To :</div>
-      <div class="to-name">${esc(billToName)}</div>
+      <div class="to-name">${esc(billToName)} Company</div>
       ${billToAddressLines.map((l) => `<div class="to-line">${esc(l)}</div>`).join("")}
       ${first.prin_telno1 ? `<div class="to-line">Ph. ${esc(first.prin_telno1)}</div>` : ""}
       ${first.prin_faxno1 ? `<div class="to-line">Fax: ${esc(first.prin_faxno1)}</div>` : ""}
       ${first.prin_email1 ? `<div class="to-line">e-Mail : ${esc(first.prin_email1)}</div>` : ""}
-      ${vatNo ? `<div class="to-line">VAT (TIN No) : ${esc(vatNo)}</div>` : ""}
+      <div class="to-line">VAT (TIN No) : ${esc(vatNo)}</div>
     </div>
     <div class="meta-block">
       ${metaRows
@@ -825,7 +827,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ${bankSection}
     <div class="right-block">
       ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
-      <div class="signature-text">For ${esc(companyName)}${first.city ? ` (${esc(first.city)})` : ""}</div>
+      <div class="signature-text">For ${esc(companyName)} COMPANY</div>
     </div>
   </div>
 
@@ -1061,7 +1063,6 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["Invoice Date", printDate],
     ["Invoice Period", invoicePeriod],
     ["Due Date", dueDate],
-    ["Customer Rep", esc(first.customer_rep || "")],
     ["Currency", esc(currCode)],
     ["Sales Rep", esc(first.salesman || "")],
     ["Bill Rep", esc(first.user_id)],
@@ -1282,7 +1283,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     margin-top: 10px;
     flex-shrink: 0;
   }
-  .bank-block { font-size: 9.5px; line-height: 1.45; max-width: 58%; }
+  .bank-block { font-size: 9.5px; line-height: 1.45; max-width:60%}
   .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
   .bank-line { margin-bottom: 1px; }
   .export-note { margin-top: 4px; }
