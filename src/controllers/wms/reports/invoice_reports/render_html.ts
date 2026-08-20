@@ -420,6 +420,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       : "";
   const metaRows: Array<[string, string]> = [
     ["Invoice No.", esc(invoiceNo)],
+    ["Invoice Date", printDate],
     ...(invoicePeriod ? ([["Invoice Period", invoicePeriod]] as Array<[string, string]>) : []),
     ...(dueDate ? ([["Due Date", dueDate]] as Array<[string, string]>) : []),
     ["Currency", esc(currCode)],
