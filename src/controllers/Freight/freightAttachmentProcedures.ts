@@ -33,6 +33,52 @@ export const frtAttachmentList = async (req: Request, res: Response): Promise<vo
   });
 };
 
+export const frtAccountAttachmentList = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const requestNumber = bodyValue(req, "request_number");
+    const companyCode = bodyValue(req, "company_code");
+
+    if (!requestNumber || !companyCode) {
+      res.status(400).json({
+        success: false,
+        message: "Company code and request number are required",
+      });
+      return;
+    }
+
+    const result = await connection.execute(
+      `SELECT COMPANY_CODE,
+              REQUEST_NUMBER,
+              SR_NO,
+              FILE_NAME,
+              ORG_FILE_NAME,
+              AWS_FILE_LOCN,
+              FLOW_LEVEL,
+              MODULES,
+              UPDATED_BY,
+              CREATED_BY,
+              EXTENSIONS,
+              USER_FILE_NAME,
+              CREATED_AT,
+              UPDATED_AT,
+              TYPE
+         FROM ACCOUNTS_FILES
+        WHERE COMPANY_CODE = :p_company_code
+          AND REQUEST_NUMBER = :p_request_number
+        ORDER BY SR_NO DESC`,
+      {
+        p_company_code: companyCode,
+        p_request_number: requestNumber,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const rows = (result.rows || []) as Record<string, unknown>[];
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ success: true, data: rows, totalCount: rows.length });
+  });
+};
+
 export const frtAttachmentSave = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const file = req.body.file ?? req.body;
