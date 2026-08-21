@@ -69,6 +69,20 @@ router.get(
   getAfFiles
 );
 
+// Some reverse proxies decode %2F before Express performs route matching.
+// Keep slash-containing account request numbers addressable in production.
+router.get(
+  "/accountFiles/*",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  (req, _res, next) => {
+    req.params.request_number = req.params[0];
+    next();
+  },
+  getAfFiles
+);
+
 
 router.get(
   "/purchaseFiles/:request_number",
