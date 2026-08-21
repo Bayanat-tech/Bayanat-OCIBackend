@@ -106,6 +106,7 @@ import {
 } from "../../controllers/Freight/freightInvoiceProcedures";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
 import {
+  frtAccountAttachmentList,
   frtAttachmentDelete,
   frtAttachmentList,
   frtAttachmentRename,
@@ -202,6 +203,7 @@ router.post("/job-deposits/save", frtJobDepositSave);
 router.post("/job-deposits/delete", frtJobDepositDelete);
 
 router.post("/attachments/list", frtAttachmentList);
+router.post("/account-attachments/list", frtAccountAttachmentList);
 router.post("/attachments/save", frtAttachmentSave);
 router.post("/attachments/rename", frtAttachmentRename);
 router.post("/attachments/delete", frtAttachmentDelete);
