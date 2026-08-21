@@ -1,6 +1,7 @@
 import * as express from "express";
 import passport from "passport";
 import { Router } from "express";
+import { NextFunction, Request, Response } from "express";
 
 import { tenantContextMiddleware } from "../../../src/middleware/tenantContext.middleware";
 import { tenantMiddleware } from "../../../src/middleware/tenant.middleware";
@@ -114,6 +115,7 @@ import {
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
+router.use(enforceFreightRequestIdentity);
 
 
 router.post(
@@ -137,9 +139,9 @@ router.post("/enquiry-activities/delete", frtEnquiryActivityDelete);
 router.post("/rfq/list", frtRfqList);
 router.post("/rfq/get", frtRfqGet);
 router.post("/rfq/save", frtRfqSave);
-router.post("/rfq/workflow-action", frtEnquiryWorkflowAction);
-router.post("/rfq/approve", frtEnquiryApprove);
-router.post("/rfq/cancel", frtEnquiryCancel);
+router.post("/rfq/workflow-action", forceRfqType, frtEnquiryWorkflowAction);
+router.post("/rfq/approve", forceRfqType, frtEnquiryApprove);
+router.post("/rfq/cancel", forceRfqType, frtEnquiryCancel);
 router.post("/rfq/delete", frtRfqDelete);
 
 router.post("/rfq-activities/list", frtRfqActivityList);
@@ -232,6 +234,61 @@ router.post(
 
 
  export default router;
+
+function forceRfqType(req: Request, _res: Response, next: NextFunction) {
+  req.body = { ...(req.body || {}), enquiry_type: "RFQ" };
+  next();
+}
+
+
+function enforceFreightRequestIdentity(req: Request, _res: Response, next: NextFunction) {
+  const authenticatedUser = (req as any).user || {};
+  const loginId = authenticatedUser.loginid;
+  const companyCode = authenticatedUser.company_code;
+
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    req.body = {};
+  }
+
+  if (companyCode) {
+    req.body.company_code = companyCode;
+    req.body.COMPANY_CODE = companyCode;
+  }
+
+  if (loginId) {
+    Object.assign(req.body, {
+      user_id: loginId,
+      USER_ID: loginId,
+      userid: loginId,
+      USERID: loginId,
+      loginid: loginId,
+      LOGINID: loginId,
+      approved_by: loginId,
+      APPROVED_BY: loginId,
+      action_by: loginId,
+      ACTION_BY: loginId,
+      cancelled_by: loginId,
+      CANCELLED_BY: loginId,
+    });
+  }
+
+  for (const key of ["header", "job", "packlist", "file"]) {
+    const target = req.body[key];
+    if (!target || typeof target !== "object" || Array.isArray(target)) continue;
+    if (companyCode) {
+      target.company_code = companyCode;
+      target.COMPANY_CODE = companyCode;
+    }
+    if (loginId) {
+      target.user_id = loginId;
+      target.USER_ID = loginId;
+      target.userid = loginId;
+      target.USERID = loginId;
+    }
+  }
+
+  next();
+}
 
 
 
