@@ -72,6 +72,7 @@ import { HrDepartment } from "../../models/Hr/hr_department";
 import { HrDivision } from "../../models/Hr/hr_division";
 import { HrAirport } from "../../models/Hr/hr_airport";
 import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
+import { generateAbsentMemoDaily } from "../../controllers/HR/absentmemo";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -155,7 +156,7 @@ router.get("/leavehistory", getLeaveHistoryHandler);
 router.get("/validateleave", newvalidateLeaveHandler);
 router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
 router.get("/leavedayscount", leaveDaysCntHandler);
-
+router.post("/absentmemo", generateAbsentMemoDaily);
 // Exporting the router
 
 //raw sql execution route
