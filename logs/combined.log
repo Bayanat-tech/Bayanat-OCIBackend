@@ -3587,3 +3587,577 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
 2026-08-20 15:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-08-20 15:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
 2026-08-20 15:54:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 15:58:44 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-20 15:58:44 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-20 16:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:26:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:28:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:32:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:34:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:38:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 16:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 16:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 16:40:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 17:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 17:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-20 17:11:48 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-20 17:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-20 17:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:36:00 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-23 10:36:00 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-23 10:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:38:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 10:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 10:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 10:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:18:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:20:01 [[32minfo[39m]: [WMSTST_TENANT] Found 2 unsent notification(s) 
+2026-08-23 11:20:01 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: arun.colaco@bayanattechnology.com 
+2026-08-23 11:20:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0002.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:08.167Z 08DF00C97C9E7BB9] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0002.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:08.167Z 08DF00C97C9E7BB9]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-23 11:20:08 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000535 
+2026-08-23 11:20:08 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: subin.kumar@dhl.com 
+2026-08-23 11:20:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:15.499Z 08DF00B11040CFBA] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0003.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:15.499Z 08DF00B11040CFBA]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-23 11:20:15 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000535 
+2026-08-23 11:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:24:00 [[32minfo[39m]: [WMSTST_TENANT] Found 2 unsent notification(s) 
+2026-08-23 11:24:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: subin.kumar@dhl.com 
+2026-08-23 11:24:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:07.802Z 08DF00C6EE013396] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:07.802Z 08DF00C6EE013396]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-23 11:24:07 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000538 
+2026-08-23 11:24:07 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: arun.colaco@bayanattechnology.com 
+2026-08-23 11:24:14 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:14.589Z 08DF00BB37D30229] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:14.589Z 08DF00BB37D30229]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-23 11:24:14 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000537 
+2026-08-23 11:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:34:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 11:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 11:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 11:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:00:45 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-23 12:00:45 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-23 12:02:07 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-23 12:02:07 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-23 12:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:04:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:14:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:22:07 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-23 12:22:07 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-23 12:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 12:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 12:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 12:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 13:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 13:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 13:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:04:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:30:25 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:42:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 14:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 14:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 14:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:18:00 [[32minfo[39m]: [WMSTST_TENANT] Found 1 unsent notification(s) 
+2026-08-23 15:18:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: subin.kumar@dhl.com 
+2026-08-23 15:18:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0015.QATP289.PROD.OUTLOOK.COM 2026-08-23T09:48:07.901Z 08DF00DB19AA9DCF] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0015.QATP289.PROD.OUTLOOK.COM 2026-08-23T09:48:07.901Z 08DF00DB19AA9DCF]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-23 15:18:07 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000542 
+2026-08-23 15:19:57 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-23 15:19:57 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-23 15:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:20:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:22:37 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-23 15:22:37 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-23 15:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:24:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 15:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 15:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 15:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
