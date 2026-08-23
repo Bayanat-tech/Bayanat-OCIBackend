@@ -749,7 +749,8 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
           ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
           ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
           ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
-          ${first.email ? `<div class="company-addr-line">e-Mail: ${esc(first.email)}</div>` : ""}
+          ${first.city ? `<div class="company-addr-line">City: ${esc(first.city)}</div>` : ""}
+          ${first.email ? `<div class="company-addr-line">e-mail: ${esc(first.email)}</div>` : ""}
           ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
           <div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>
         </div>
