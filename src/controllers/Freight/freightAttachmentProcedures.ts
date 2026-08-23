@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../src/database/TenantManager";
 import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware";
+import { deleteFileFromS3 } from "../../../src/services/ociUpload.service";
 
 type Connection = oracledb.Connection;
 
@@ -30,6 +31,123 @@ export const frtAttachmentList = async (req: Request, res: Response): Promise<vo
     );
     const rows = await rowsFromCursor((result.outBinds as any).p_result);
     res.json({ success: true, data: rows, totalCount: rows.length });
+  });
+};
+
+export const frtAccountAttachmentList = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const requestNumber = bodyValue(req, "request_number");
+    const companyCode = bodyValue(req, "company_code");
+
+    if (!requestNumber || !companyCode) {
+      res.status(400).json({
+        success: false,
+        message: "Company code and request number are required",
+      });
+      return;
+    }
+
+    const result = await connection.execute(
+      `SELECT COMPANY_CODE,
+              REQUEST_NUMBER,
+              SR_NO,
+              FILE_NAME,
+              ORG_FILE_NAME,
+              AWS_FILE_LOCN,
+              FLOW_LEVEL,
+              MODULES,
+              UPDATED_BY,
+              CREATED_BY,
+              EXTENSIONS,
+              USER_FILE_NAME,
+              CREATED_AT,
+              UPDATED_AT,
+              TYPE
+         FROM ACCOUNTS_FILES
+        WHERE COMPANY_CODE = :p_company_code
+          AND REQUEST_NUMBER = :p_request_number
+        ORDER BY SR_NO DESC`,
+      {
+        p_company_code: companyCode,
+        p_request_number: requestNumber,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const rows = (result.rows || []) as Record<string, unknown>[];
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ success: true, data: rows, totalCount: rows.length });
+  });
+};
+
+export const frtAccountAttachmentRename = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const result = await connection.execute(
+      `UPDATE ACCOUNTS_FILES
+          SET USER_FILE_NAME = :p_user_file_name,
+              UPDATED_BY = :p_user_id,
+              UPDATED_AT = SYSDATE
+        WHERE COMPANY_CODE = :p_company_code
+          AND REQUEST_NUMBER = :p_request_number
+          AND SR_NO = :p_sr_no`,
+      {
+        p_user_file_name: bodyValue(req, "user_file_name"),
+        p_user_id: bodyValue(req, "user_id"),
+        p_company_code: bodyValue(req, "company_code"),
+        p_request_number: bodyValue(req, "request_number"),
+        p_sr_no: numberValue(bodyValue(req, "sr_no")),
+      },
+      { autoCommit: true }
+    );
+
+    if (!result.rowsAffected) {
+      res.status(404).json({ success: false, message: "Attachment not found" });
+      return;
+    }
+    res.json({ success: true, message: "Attachment renamed successfully" });
+  });
+};
+
+export const frtAccountAttachmentDelete = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const binds = {
+      p_company_code: bodyValue(req, "company_code"),
+      p_request_number: bodyValue(req, "request_number"),
+      p_sr_no: numberValue(bodyValue(req, "sr_no")),
+    };
+    const selected = await connection.execute(
+      `SELECT AWS_FILE_LOCN
+         FROM ACCOUNTS_FILES
+        WHERE COMPANY_CODE = :p_company_code
+          AND REQUEST_NUMBER = :p_request_number
+          AND SR_NO = :p_sr_no`,
+      binds,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const row = (selected.rows?.[0] || null) as { AWS_FILE_LOCN?: string } | null;
+    if (!row) {
+      res.status(404).json({ success: false, message: "Attachment not found" });
+      return;
+    }
+
+    try {
+      const deleted = await connection.execute(
+        `DELETE FROM ACCOUNTS_FILES
+          WHERE COMPANY_CODE = :p_company_code
+            AND REQUEST_NUMBER = :p_request_number
+            AND SR_NO = :p_sr_no`,
+        binds,
+        { autoCommit: false }
+      );
+      if (!deleted.rowsAffected) throw new Error("Attachment database row was not deleted");
+      if (row.AWS_FILE_LOCN) await deleteFileFromS3(row.AWS_FILE_LOCN);
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    }
+
+    res.json({ success: true, message: "Attachment and OCI object deleted successfully" });
   });
 };
 
