@@ -25,6 +25,7 @@ export const leaveDaysCntHandler = async (req: Request, res: Response) => {
       leaveType,
       company_code,
       employee_code,
+      half_day,
     } = req.query;
 
     const data = await HrService.LeaveDaysCount({
@@ -33,6 +34,7 @@ export const leaveDaysCntHandler = async (req: Request, res: Response) => {
       leaveType: leaveType as string,
       company_code: company_code as string,
       employee_code: employee_code as string,
+      half_day: half_day as string,
     });
 
     res.json(data);

@@ -115,8 +115,9 @@ LeaveDaysCount: async (params: {
     leaveType: string;
     company_code: string;
     employee_code: string;
+    half_day:string;
   }) => {
-    const { leaveStartDate, leaveEndDate , leaveType , company_code , employee_code} = params;
+    const { leaveStartDate, leaveEndDate , leaveType , company_code , employee_code , half_day} = params;
 
     const query = `
     DECLARE
@@ -127,7 +128,8 @@ LeaveDaysCount: async (params: {
           TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
           :p_leaveType,
           :p_company_code,
-          :p_employee_code
+          :p_employee_code,
+          :p_half_day
         );
       :p_leave_days := v_leave_days;
       END;
@@ -139,6 +141,7 @@ LeaveDaysCount: async (params: {
       p_leaveType: leaveType,
       p_company_code: company_code,
       p_employee_code: employee_code,
+      p_half_day: half_day,
       p_leave_days: {
         dir: oracledb.BIND_OUT,
         type: oracledb.NUMBER,
@@ -155,6 +158,7 @@ LeaveDaysCount: async (params: {
         leaveEndDate: leaveEndDate,
         company_code: company_code,
         employee_code: employee_code,
+        half_day: half_day,
         leaveDays: leaveDays,
         leaveType: leaveType,
         message: "Leave days calculated successfully",
@@ -167,6 +171,7 @@ LeaveDaysCount: async (params: {
         leaveEndDate: leaveEndDate,
         company_code: company_code,
         employee_code: employee_code,
+        half_day: half_day,
         leaveDays: null,
         leaveType: leaveType,
         message: "Failed to calculate leave days",
