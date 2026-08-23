@@ -7,6 +7,7 @@ import hrGmRoutes from "./HR/gmHr.routes";
 import employeeHrRoutes from "./HR/employeHr.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import { insUpdAccrualAcctSetup } from "../controllers/purchase_sales/insUpdAccrualAcctSetup";
+import { saveLeaveSlap } from "../controllers/HR/leaveSlap.controller";
 
 // Initialize the Express router
 const router = express.Router();
@@ -69,6 +70,14 @@ router.post(
   tenantContextMiddleware,
   checkUserAuthorization,
   deleteHrMaster
+);
+
+router.post(
+  "/leaveslap/save",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  saveLeaveSlap
 );
 
 // Export the router as the default module
