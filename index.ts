@@ -42,7 +42,7 @@ import pamsRoutes from "./src/routes/pams.routes";
 
 import almsRoutes from "./src/routes/alms.routes";
 import mmsRoutes from "./src/routes/mms_routes";
-
+import gmHrRoutes from "./src/routes/HR/gmHr.routes";
 //----------------routes-------------
 app.use("/api/files", fileRoutes);
 
@@ -53,6 +53,7 @@ app.use("/api/reports", boldReportsRoutes);
 app.use("/api/security", secRoutes);
 
 app.use("/api/hr", hrRoutes);
+app.use("/api/gm/hr", gmHrRoutes);
 app.use("/api/ems", hrRoutes);
 
 app.use("/api/pf", pfRoutes);

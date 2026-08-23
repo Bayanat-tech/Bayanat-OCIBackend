@@ -4161,3 +4161,244 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
 2026-08-23 15:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
 2026-08-23 15:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-08-23 15:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
+2026-08-23 17:28:54 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-08-23 17:28:54 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-08-23 17:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:30:01 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:30:02 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:30:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:30:05 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:30:06 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:30:08 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:32:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:32:01 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:32:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:32:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:32:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:32:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:34:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:34:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:34:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:34:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:34:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:34:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:36:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:36:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:36:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:36:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:36:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:36:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:38:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:38:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:38:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:38:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:38:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:38:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:40:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:40:01 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:40:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:40:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:40:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:40:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:42:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:42:01 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:42:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:42:02 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:42:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:42:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:44:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:44:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:44:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:44:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:44:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:44:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:46:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:46:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:46:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:46:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:46:01 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:46:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:48:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:48:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:48:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:48:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:48:01 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:48:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:50:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:50:01 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:50:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:50:02 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:50:03 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:50:03 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:52:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:52:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:52:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:52:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:52:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:52:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:54:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:54:00 [[32minfo[39m]: [WMSDEV_TENANT] Found 1 unsent notification(s) 
+2026-08-23 17:54:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: subin.kumar@dhl.com 
+2026-08-23 17:54:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0018.QATP289.PROD.OUTLOOK.COM 2026-08-23T12:24:08.884Z 08DF00C142352410] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0018.QATP289.PROD.OUTLOOK.COM 2026-08-23T12:24:08.884Z 08DF00C142352410]
+    at SMTPConnection._formatError (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:518:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-23 17:54:08 [[32minfo[39m]: [WMSDEV_TENANT] Email sent for TXN_NO=TK2600000543 
+2026-08-23 17:54:09 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:54:09 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:54:10 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:54:10 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:56:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:56:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:56:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:56:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:56:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:56:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-08-23 17:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-08-23 17:58:00 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:58:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-08-23 17:58:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-08-23 17:58:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist 
+Error: ORA-00942: table or view does not exist
+    at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 17:58:02 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-08-23 17:58:02 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
