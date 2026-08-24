@@ -17,6 +17,10 @@ import { insUpdJobProduction } from "../../controllers/purchase_sales/insUpdJobP
 import { insUpdMfBom } from "../../controllers/purchase_sales/insUpdMfBom";
 import { insUpdTtePInvoiceBulk } from "../../controllers/purchase_sales/insUpdTtePInvoiceBulk";
 import { insUpdTteSinvoice } from "../../controllers/purchase_sales/insUpdTteSinvoice";
+import {
+  getPendingPOReportHtml,
+  exportPendingPOReportExcel,
+} from "../../controllers/wms/reports/pendingPurchaseOrderReport.controller";
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -82,6 +86,16 @@ router.post(
 router.post(
   "/insUpdMfBom",
   insUpdMfBom
+);
+
+router.post(
+  "/reports/pending-po/html",
+  getPendingPOReportHtml
+);
+
+router.post(
+  "/reports/pending-po/excel",
+  exportPendingPOReportExcel
 );
 
 export default router;
