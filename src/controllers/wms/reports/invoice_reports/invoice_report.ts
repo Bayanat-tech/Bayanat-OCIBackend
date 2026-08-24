@@ -20,6 +20,8 @@ const report = {
   BTIND: { parameter: "INVOICE_AMKSA", template: "BTIND" },
 };
 
+const defaultReportConfig = { parameter: "INVOICE_AMKSA", template: "AMKSA" };
+
 const templateBuilders: Record<string, (rows: InvoiceRow[], meta: InvoiceMeta) => string> = {
   AMKSA: buildInvoiceHtmlAMKSA,
   BTIND: buildInvoiceHtmlBTIND,
@@ -33,7 +35,7 @@ function buildHtmlFromRows(
   meta: InvoiceMeta,
   company_code: string
 ): string {
-  const companyConfig = report[company_code as keyof typeof report];
+  const companyConfig = report[company_code as keyof typeof report] || defaultReportConfig;
   const templateKey = companyConfig?.template || "AMKSA";
   const buildHtml = templateBuilders[templateKey] || buildInvoiceHtmlAMKSA;
   return buildHtml(rows, meta);
@@ -55,17 +57,24 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
     report_type,                 // <-- NEW
   } = req.query as Record<string, string | undefined>;
 
+  if (!company_code || !prin_code || !invoice_no) {
+    res.status(400).send("<h3>Company, principal, and invoice number are required.</h3>");
+    return;
+  }
+
   const conn = await getConn(req);
 
-  const companyConfig = report[company_code as keyof typeof report];
+  const companyConfig = report[company_code as keyof typeof report] || defaultReportConfig;
   const result = await execDynamicProc<InvoiceRow>(conn, "PROC_BUILD_DYNAMIC_INVOICE", {
-    parameter: companyConfig?.parameter || "",
-    code1: company_code || "",
-    code2: prin_code || "",
-    code3: invoice_no || "",
+    parameter: companyConfig.parameter,
+    code1: company_code,
+    code2: prin_code,
+    code3: invoice_no,
   });
-  console.log("Fetched invoice rows:", result.length);
-  console.log("Invoice rows sample:", result.slice(0, 3));
+  if (!result.length) {
+    res.status(404).send("<h3>No invoice report data was found for the selected invoice.</h3>");
+    return;
+  }
 
   // Build self-contained token: company_code + rows + meta + expiry
   const token = encryptInvoiceToken({
