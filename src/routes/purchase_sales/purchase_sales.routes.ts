@@ -21,7 +21,7 @@ import {
   getPendingPOReportHtml,
   exportPendingPOReportExcel,
 } from "../../controllers/wms/reports/pendingPurchaseOrderReport.controller";
-import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/sales-reports/controller";
+import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/report/controller";
 
 const router = express.Router();
 router.use(tenantMiddleware);
