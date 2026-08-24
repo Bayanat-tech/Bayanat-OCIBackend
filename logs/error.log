@@ -1506,3 +1506,41 @@ Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credenti
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:561:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-08-24 18:29:17 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m20[0m:[93m66[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/sales-reports/controller' or its corresponding type declarations.
+
+[7m20[0m import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/sales-reports/controller";
+[7m  [0m [91m                                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m20[0m:[93m66[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/sales-reports/controller' or its corresponding type declarations.
+
+[7m20[0m import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/sales-reports/controller";
+[7m  [0m [91m                                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m20[0m:[93m66[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/sales-reports/controller' or its corresponding type declarations.
+
+[7m20[0m import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/sales-reports/controller";
+[7m  [0m [91m                                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
