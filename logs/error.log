@@ -1494,53 +1494,41 @@ Error: ORA-00942: table or view does not exist
     at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
-2026-08-24 14:16:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0004.QATP289.PROD.OUTLOOK.COM 2026-08-24T08:46:07.943Z 08DF00AD4A0DC8E4] 
-Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0004.QATP289.PROD.OUTLOOK.COM 2026-08-24T08:46:07.943Z 08DF00AD4A0DC8E4]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-08-24 18:29:17 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
-[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m20[0m:[93m66[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/sales-reports/controller' or its corresponding type declarations.
+2026-08-24 10:52:39 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m23[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/pendingPOReport' or its corresponding type declarations.
 
-[7m20[0m import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/sales-reports/controller";
-[7m  [0m [91m                                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m23[0m } from "../../controllers/purchase_sales/pendingPOReport";
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
 TSError: ⨯ Unable to compile TypeScript:
-[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m20[0m:[93m66[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/sales-reports/controller' or its corresponding type declarations.
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m23[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/pendingPOReport' or its corresponding type declarations.
 
-[7m20[0m import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/sales-reports/controller";
-[7m  [0m [91m                                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m23[0m } from "../../controllers/purchase_sales/pendingPOReport";
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
-    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
-    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
-    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
-    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
-    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
-    at node:internal/modules/cjs/loader:1839:10
-    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
-    at Module.load (node:internal/modules/cjs/loader:1441:32)
-    at Function._load (node:internal/modules/cjs/loader:1263:12)
-    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
 TSError: ⨯ Unable to compile TypeScript:
-[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m20[0m:[93m66[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/sales-reports/controller' or its corresponding type declarations.
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m23[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/pendingPOReport' or its corresponding type declarations.
 
-[7m20[0m import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/sales-reports/controller";
-[7m  [0m [91m                                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[7m23[0m } from "../../controllers/purchase_sales/pendingPOReport";
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
-    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
-    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
-    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
-    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
-    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
-    at node:internal/modules/cjs/loader:1839:10
-    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
-    at Module.load (node:internal/modules/cjs/loader:1441:32)
-    at Function._load (node:internal/modules/cjs/loader:1263:12)
-    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
