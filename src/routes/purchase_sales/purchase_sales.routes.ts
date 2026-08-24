@@ -17,6 +17,7 @@ import { insUpdJobProduction } from "../../controllers/purchase_sales/insUpdJobP
 import { insUpdMfBom } from "../../controllers/purchase_sales/insUpdMfBom";
 import { insUpdTtePInvoiceBulk } from "../../controllers/purchase_sales/insUpdTtePInvoiceBulk";
 import { insUpdTteSinvoice } from "../../controllers/purchase_sales/insUpdTteSinvoice";
+import { exportSalesDNReportExcel, getSalesDNReportHtml } from "../../controllers/purchase_sales/report/sales_dn_report";
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -83,5 +84,8 @@ router.post(
   "/insUpdMfBom",
   insUpdMfBom
 );
+
+router.post("/reports/sales-dn/html", getSalesDNReportHtml);
+router.post("/reports/sales-dn/excel", exportSalesDNReportExcel);
 
 export default router;
