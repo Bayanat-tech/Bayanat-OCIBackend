@@ -61,7 +61,7 @@ async function getRoundOffAc(
   try {
     const result: any = await conn.execute(
       `SELECT ROUND_OFF_AC
-       FROM   WMSTST.MS_DOCCONFIG
+       FROM   MS_DOCCONFIG
        WHERE  company_code = :cc
          AND  doc_type     = :dt
          AND  ROWNUM       = 1`,
@@ -1586,7 +1586,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     //  Call your SP safely
     await conn.execute(
-      `BEGIN WMSTST.SP_UPDATE_LPO(
+      `BEGIN SP_UPDATE_LPO(
         :cc, :dt, :dn,
         :dd, :ac, :cu, :er,
         :rm,

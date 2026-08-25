@@ -69,7 +69,7 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
       DECLARE
         v_sql CLOB;
       BEGIN
-        WMSTST.PROC_BUILD_DYNAMIC_INS_UPD_PAMS(
+        PROC_BUILD_DYNAMIC_INS_UPD_PAMS(
           :parameter,
           :loginid,
 

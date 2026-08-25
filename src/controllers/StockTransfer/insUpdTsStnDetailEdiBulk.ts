@@ -50,7 +50,7 @@ export const insUpdTsStnDetailEdiBulk = async (
 
     // ✅ Get DB object type
     const objType = await connection.getDbObjectClass(
-      "WMSTST.TS_STNDETAIL_EDI_TAB"
+      "TS_STNDETAIL_EDI_TAB"
     );
 
     const mappedRows = rows.map((row: any) => ({

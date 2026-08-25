@@ -147,7 +147,7 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
       String(pack.packlist_action ?? pack.PACKLIST_ACTION ?? "").toUpperCase() === "NEW";
     const result = await connection.execute(
       `BEGIN
-         WMSTST.PROC_FRT_PACKLIST_SAVE(
+           PROC_FRT_PACKLIST_SAVE(
            p_company_code => :p_company_code,
            p_prin_code => :p_prin_code,
            p_job_no => :p_job_no,
