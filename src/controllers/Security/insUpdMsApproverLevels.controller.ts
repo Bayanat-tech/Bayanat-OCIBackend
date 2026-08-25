@@ -40,6 +40,7 @@ export const insUpdMsApproverLevels = async (
       COMPANY_CODE: r.company_code ?? null,
       PROCESS: r.process ?? null,
       LEVEL1_ROLE: r.level1_role ?? null,
+      FLOW_CODE: r.flow_code ?? null,
       LEVEL2_ROLE: r.level2_role ?? null,
       LEVEL3_ROLE: r.level3_role ?? null,
       LEVEL4_ROLE: r.level4_role ?? null,
@@ -51,7 +52,7 @@ export const insUpdMsApproverLevels = async (
           ? Number(r.last_level)
           : 0
     }));
-
+console.log(approverRows, "MIGUEL")
     await connection.execute(
       `
       BEGIN
