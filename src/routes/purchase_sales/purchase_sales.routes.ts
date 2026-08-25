@@ -21,6 +21,7 @@ import {
   getPendingPOReportHtml,
   exportPendingPOReportExcel,
 } from "../../controllers/wms/reports/pendingPurchaseOrderReport.controller";
+import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/report/controller";
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -97,5 +98,8 @@ router.post(
   "/reports/pending-po/excel",
   exportPendingPOReportExcel
 );
+
+router.post("/reports/sales/:reportType",       getSalesDocReportHtml);
+router.post("/reports/sales/:reportType/excel", exportSalesDocReportExcel);
 
 export default router;

@@ -61,7 +61,7 @@ async function getRoundOffAc(
   try {
     const result: any = await conn.execute(
       `SELECT ROUND_OFF_AC
-       FROM   WMSTST.MS_DOCCONFIG
+       FROM   MS_DOCCONFIG
        WHERE  company_code = :cc
          AND  doc_type     = :dt
          AND  ROWNUM       = 1`,
@@ -892,11 +892,23 @@ export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise
           d.edit_user,
           d.create_user
        FROM   TR_AC_LPO_DETAIL  d
-       LEFT JOIN wmstst.ms_accodes m
-              ON m.ac_code = d.ac_code
+       LEFT JOIN MS_ACCODES m
+              ON m.company_code = d.company_code
+             AND m.ac_code = d.ac_code
        WHERE  d.company_code        = :cc
-         AND  d.doc_no              = :dn
          AND  d.doc_type            = :dt
+         AND  (
+                d.doc_no = :dn
+                OR EXISTS (
+                  SELECT 1
+                  FROM VW_AC_LPO_HEADER_DETAIL h
+                  WHERE h.company_code = d.company_code
+                    AND h.doc_type = d.doc_type
+                    AND h.doc_no = :dn
+                    AND d.doc_no = h.doc_type || h.fy_period
+                                   || h.div_code || SUBSTR(h.doc_no, -5)
+                )
+              )
          AND  NVL(d.cancelled, 'N') = 'N'
        ORDER BY d.serial_no`,
       {
@@ -938,8 +950,18 @@ export const getLPOPrint = async (req: RequestWithUser, res: Response): Promise<
 
     // details
     const det = await conn.execute(
-      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt FROM TR_AC_LPO_DETAIL d LEFT JOIN WMSTST.MS_ACCODES m ON m.ac_code = d.ac_code WHERE d.company_code = :cc AND d.doc_no = :dn AND d.doc_type = :dt AND NVL(d.cancelled,'N') = 'N' ORDER BY d.serial_no`,
-      { cc: req.user.company_code, dn: String(doc_no), dt: doc_type },
+      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt
+       FROM TR_AC_LPO_DETAIL d
+       LEFT JOIN MS_ACCODES m
+              ON m.company_code = d.company_code
+             AND m.ac_code = d.ac_code
+       WHERE d.company_code = :cc
+         AND d.doc_type = :dt
+         AND (d.doc_no = :dn
+              OR d.doc_no = :dt || :fy || :dv || SUBSTR(:dn, -5))
+         AND NVL(d.cancelled,'N') = 'N'
+       ORDER BY d.serial_no`,
+      { cc: req.user.company_code, dn: String(doc_no), dt: doc_type, fy: header.fy_period, dv: header.div_code },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const details = normalize(det.rows as any[] || []);
@@ -1551,6 +1573,12 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       party_address: req.body.party_address ?? old.PARTY_ADDRESS,
       party_phone: req.body.party_phone ?? old.PARTY_PHONE,
       party_fax: req.body.party_fax ?? old.PARTY_FAX,
+      dlvr_email: req.body.dlvr_email ?? old.DLVR_EMAIL,
+      delivery_to: req.body.delivery_to ?? old.DELIVERY_TO,
+      dlvr_mobile: req.body.dlvr_mobile ?? old.DLVR_MOBILE,
+      dlvr_contact: req.body.dlvr_contact ?? old.DLVR_CONTACT,
+      dlvr_term: req.body.dlvr_term ?? old.DLVR_TERM,
+      payment_terms: req.body.payment_terms ?? old.PAYMENT_TERMS,
       ref_no: req.body.ref_no ?? old.REF_NO,
       ref_date: req.body.ref_date ?? old.REF_DATE,
       invoice_no: req.body.invoice_no ?? old.INVOICE_NUMBER,
@@ -1564,7 +1592,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     //  Call your SP safely
     await conn.execute(
-      `BEGIN WMSTST.SP_UPDATE_LPO(
+      `BEGIN SP_UPDATE_LPO(
         :cc, :dt, :dn,
         :dd, :ac, :cu, :er,
         :rm,

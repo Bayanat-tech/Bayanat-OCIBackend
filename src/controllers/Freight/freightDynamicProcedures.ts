@@ -27,7 +27,7 @@ type BindValue = string | number | Date | null | undefined | oracledb.BindParame
 
 export const proc_build_dynamic_sql_FREIGHT = async (req: Request, res: Response): Promise<void> => {
   try {
-    const rawSql = await callSqlBuilder("WMSTST.PROC_BUILD_DYNAMIC_SQL_FREIGHT", req.body, selectSlots);
+    const rawSql = await callSqlBuilder("PROC_BUILD_DYNAMIC_SQL_FREIGHT", req.body, selectSlots);
 
     if (!rawSql) {
       res.status(500).json({ success: false, message: "Procedure did not return SQL" });
@@ -53,7 +53,7 @@ export const proc_build_dynamic_sql_FREIGHT = async (req: Request, res: Response
 
 export const proc_build_dynamic_ins_upd_FREIGHT = async (req: Request, res: Response): Promise<void> => {
   try {
-    const dynamicSql = await callSqlBuilder("WMSTST.PROC_BUILD_DYNAMIC_INS_UPD_FREIGHT", req.body, mutationSlots);
+    const dynamicSql = await callSqlBuilder("PROC_BUILD_DYNAMIC_INS_UPD_FREIGHT", req.body, mutationSlots);
 
     if (!dynamicSql) {
       res.status(400).json({ success: false, message: "Procedure returned no SQL" });
@@ -70,7 +70,7 @@ export const proc_build_dynamic_ins_upd_FREIGHT = async (req: Request, res: Resp
 
 export const proc_build_dynamic_del_FREIGHT = async (req: Request, res: Response): Promise<void> => {
   try {
-    const dynamicSql = await callSqlBuilder("WMSTST.PROC_BUILD_DYNAMIC_DEL_FREIGHT", req.body, selectSlots);
+    const dynamicSql = await callSqlBuilder("PROC_BUILD_DYNAMIC_DEL_FREIGHT", req.body, selectSlots);
 
     if (!dynamicSql) {
       res.status(400).json({ success: false, message: "Procedure returned no SQL" });
