@@ -72,6 +72,8 @@ import { HrDepartment } from "../../models/Hr/hr_department";
 import { HrDivision } from "../../models/Hr/hr_division";
 import { HrAirport } from "../../models/Hr/hr_airport";
 import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
+import {insUpdHRHolidayCalendarBulk} from "../../controllers/HR/holiday_calendar_hr.controller";
+import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -160,6 +162,7 @@ router.get("/leavedayscount", leaveDaysCntHandler);
 
 //raw sql execution route
 router.post("/executeRawSql", executeRawSql); // Raw SQL execution route
+router.post("/holiday-calendar", tenantContextMiddleware, insUpdHRHolidayCalendarBulk); // Bulk insert/update route for HR holiday calendar
 export default router;
 
 function upsertHrSimpleMaster(entity: any, keyFields: string[]) {
