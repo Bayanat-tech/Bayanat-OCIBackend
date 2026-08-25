@@ -67,7 +67,7 @@ export const insUpdHrEmpPayunits = async (
     await connection.execute(
       `
       BEGIN
-        WMSTST.PROC_INS_UPD_HR_EMP_COMPONENTS(
+        PROC_INS_UPD_HR_EMP_COMPONENTS(
           :p_component
         );
       END;
@@ -76,7 +76,7 @@ export const insUpdHrEmpPayunits = async (
 
         p_component: {
 
-          type: "WMSTST.HR_EMP_COMPONENTS_TAB",
+          type: "HR_EMP_COMPONENTS_TAB",
 
           val: [
             {

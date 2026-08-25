@@ -161,7 +161,7 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
       MS_AC_BLSETUP.BL_NAME,
       MS_AC_BLSETUP.h_code,
       (SELECT bl_name
-       FROM   WMSTST.ms_ac_blsetup m
+       FROM   ms_ac_blsetup m
        WHERE  m.company_code = MS_AC_BLSETUP.company_code
          AND  m.bl_code      = MS_AC_BLSETUP.h_code) h_name,
       MS_AC_BLSETUP.BL_TYPE,
@@ -172,9 +172,9 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
              ELSE            -1
            END) lcur_amount,
       TR_AC_DETAIL.div_code
-    FROM  WMSTST.MS_AC_BLSETUP
-        , WMSTST.MS_ACCODES
-        , WMSTST.TR_AC_DETAIL
+    FROM  MS_AC_BLSETUP
+        , MS_ACCODES
+        , TR_AC_DETAIL
     WHERE MS_AC_BLSETUP.company_code = MS_ACCODES.company_code
       AND MS_AC_BLSETUP.BL_CODE      = MS_ACCODES.PL_BL_CODE
       AND TR_AC_DETAIL.company_code  = MS_ACCODES.company_code
@@ -201,14 +201,14 @@ async function loadRows(req: Request): Promise<{ rows: ReportRow[]; params: Retu
       CAST(NULL AS VARCHAR2(200))  h_name,
       MS_AC_BLSETUP.BL_TYPE,
       (SELECT ROUND(SUM(lcur_amount * sign_ind), 3) * -1
-       FROM   WMSTST.TR_AC_DETAIL d
+       FROM   TR_AC_DETAIL d
        WHERE  SUBSTR(d.ac_code, 1, 1) IN ('4', '5')
          AND  d.company_code = MS_AC_BLSETUP.company_code
          AND  d.CANCELLED   <> 'Y'
          AND  d.doc_date     < TO_DATE(:asOnDate, 'YYYY-MM-DD')
          AND  ${divFilterAlias}) lcur_amount,
       CAST(NULL AS VARCHAR2(20))   div_code
-    FROM  WMSTST.MS_AC_BLSETUP
+    FROM  MS_AC_BLSETUP
     WHERE bl_code      = '75005'
       AND company_code = :companyCode
 

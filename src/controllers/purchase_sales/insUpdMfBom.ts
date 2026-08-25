@@ -133,7 +133,7 @@ export const insUpdMfBom = async (
     await connection.execute(
       `
       BEGIN
-        WMSTST.PROC_INS_UPD_MF_BOM(
+        PROC_INS_UPD_MF_BOM(
           :p_bom
         );
       END;
@@ -142,7 +142,7 @@ export const insUpdMfBom = async (
 
         p_bom: {
 
-          type: "WMSTST.MF_BOM_TAB",
+          type: "MF_BOM_TAB",
 
           val: bom.map((b: any) => ({
 
