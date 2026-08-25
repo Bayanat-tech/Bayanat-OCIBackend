@@ -99,6 +99,19 @@ function docLabel(docType: unknown, docNo: unknown): string {
   return t || n || "";
 }
 
+// Only allow http(s) image URLs through to the report — never trust the body blindly
+function safeLogoUrl(value: unknown): string {
+  const v = text(value).trim();
+  if (!v) return "";
+  try {
+    const u = new URL(v);
+    if (u.protocol === "http:" || u.protocol === "https:") return v;
+  } catch {
+    /* not a valid absolute URL */
+  }
+  return "";
+}
+
 // ─── Request Param Parser ────────────────────────────────────────────────────
 
 function parseParams(req: RequestWithUser) {
@@ -120,6 +133,8 @@ function parseParams(req: RequestWithUser) {
       ? "Detail"
       : "Summary";
 
+  const logoUrl = safeLogoUrl(body.logo_url);
+
   return {
     companyCode,
     supplierCode,
@@ -130,6 +145,7 @@ function parseParams(req: RequestWithUser) {
     dateFrom,
     dateTo,
     reportType,
+    logoUrl,
     loginId: req.user?.loginid ?? "",
   };
 }
@@ -274,6 +290,7 @@ function renderHtml(
   loginId: string,
   dateFrom: string | null,
   dateTo: string | null,
+  logoUrl: string,
 ): string {
   const printDate = new Date().toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -299,6 +316,8 @@ function renderHtml(
       ? `Pending Purchase Orders List for the Period ${periodFrom} - ${periodTo}`
       : "Purchase Orders";
 
+  const reportSlug = reportType === "Summary" ? "rpt_pending_porder" : "rpt_pending_porder_detail";
+
   const styles = `
     <style>
       * { box-sizing: border-box; }
@@ -308,19 +327,51 @@ function renderHtml(
         color: #111;
         margin: 16px;
       }
-      .meta {
+      .report-header {
         display: flex;
-        justify-content: flex-end;
-        margin-bottom: 8px;
+        align-items: flex-start;
+        justify-content: space-between;
+        border-bottom: 2px solid #185FA5;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+      }
+      .report-header .logo-block {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .report-header .logo-block img {
+        max-height: 56px;
+        max-width: 220px;
+        object-fit: contain;
+      }
+      .report-header .company-name {
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: #6b7280;
+        text-transform: uppercase;
+      }
+      .report-header .page-info {
         font-size: 11px;
         color: #374151;
+        text-align: right;
+        white-space: nowrap;
       }
       .title {
-        text-align: center;
         font-size: 15px;
         font-weight: 700;
-        margin: 4px 0 12px;
+        margin: 4px 0 6px;
+        border-bottom: 1px solid #111;
+        padding-bottom: 6px;
       }
+      .meta-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #374151;
+        margin-bottom: 10px;
+      }
+      .meta-row .meta-left div { margin-bottom: 1px; }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -462,6 +513,13 @@ function renderHtml(
     `;
   }
 
+  const logoBlockHtml = logoUrl
+    ? `
+      <div class="logo-block">
+        <img src="${escapeHtml(logoUrl)}" alt="Company Logo" />
+      </div>`
+    : `<div class="logo-block"></div>`;
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -470,13 +528,20 @@ function renderHtml(
   ${styles}
 </head>
 <body>
-  <div class="meta">
-    <div>
-      <div>Date : ${escapeHtml(printDate)}</div>
-      <div>User : ${escapeHtml(loginId)}</div>
+  <div class="report-header">
+    ${logoBlockHtml}
+    <div class="page-info">Page 1 of 1</div>
+  </div>
+
+  <div class="title">${escapeHtml(title)}</div>
+
+  <div class="meta-row">
+    <div class="meta-left">
+      <div>Date &nbsp;: ${escapeHtml(printDate)}</div>
+      <div>Report : ${escapeHtml(reportSlug)}</div>
     </div>
   </div>
-  <div class="title">${escapeHtml(title)}</div>
+
   ${body}
   <div class="footer">End of Report</div>
 </body>
@@ -593,6 +658,7 @@ export const getPendingPOReportHtml = async (
       params.loginId,
       params.dateFrom,
       params.dateTo,
+      params.logoUrl,
     );
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
@@ -638,4 +704,4 @@ export const exportPendingPOReportExcel = async (
       message: error.message || "Unable to export report",
     });
   }
-};
+};  
