@@ -405,7 +405,10 @@ export const insUpdTteSinvoice = async (
       WARRANTY_UOM:
         header.warranty_uom ?? null,
 
-
+INV_NO:
+  header.inv_no != null
+    ? String(header.inv_no)
+    : null,
       INV_DATE:
         header.inv_date
           ? new Date(header.inv_date)
