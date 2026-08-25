@@ -1494,3 +1494,41 @@ Error: ORA-00942: table or view does not exist
     at async Function.executeInTenant (C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
     at async C:\Users\Hritik.s\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-24 10:52:39 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m23[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/pendingPOReport' or its corresponding type declarations.
+
+[7m23[0m } from "../../controllers/purchase_sales/pendingPOReport";
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m23[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/pendingPOReport' or its corresponding type declarations.
+
+[7m23[0m } from "../../controllers/purchase_sales/pendingPOReport";
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/purchase_sales/purchase_sales.routes.ts[0m:[93m23[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../controllers/purchase_sales/pendingPOReport' or its corresponding type declarations.
+
+[7m23[0m } from "../../controllers/purchase_sales/pendingPOReport";
+[7m  [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:2002:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Gurshish\Desktop\Bayanat\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
