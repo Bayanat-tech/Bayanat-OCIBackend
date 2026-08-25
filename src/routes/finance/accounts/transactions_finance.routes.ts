@@ -93,6 +93,7 @@ import { exportCapexApprovalExcel } from "../../../controllers/ALMS/Capexapprova
 import { PRPurchaseReport } from "../../../controllers/ALMS/Prpurchasereport";
 import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/Plsummaryreportpage.controller";
 import { getGrnPrintReport } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getPoOrderRegisterReportExcel, getPoOrderRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PoOrderRegisterReport";
 
 
 const router = express.Router();
@@ -167,6 +168,11 @@ router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
 //--------PL(PROFIT AND LOSS) ANALYSIS REPORTS ROUTES------
 router.post('/reports/getPLSummaryReport/html', getPLSummaryReportHtml);
 router.post('/reports/getPLSummaryReport/excel', getPLSummaryReportExcel);
+
+
+router.post('/reports/PoOrderRegisterReport/html', getPoOrderRegisterReportHtml);
+router.post('/reports/PoOrderRegisterReport/excel', getPoOrderRegisterReportExcel);
+
 
 
 
