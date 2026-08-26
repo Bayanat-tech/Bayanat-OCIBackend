@@ -23,6 +23,7 @@ export interface EmbeddedMeta {
   clientName?: string;
   clientAddress?: string;
   clientVatNo?: string;
+  reportType?: string; // <-- NEW
 }
 
 export interface InvoiceTokenPayload {
@@ -89,7 +90,7 @@ export async function generateInvoiceQrDataUrl(
   baseUrl: string
 ): Promise<string> {
   const url = `${baseUrl}/public/invoice?token=${encodeURIComponent(token)}`;
-
+  console.log("Generated QR URL:", url);
   // Warn if URL is getting too long for reliable scanning
   if (url.length > 2500) {
     console.warn(
