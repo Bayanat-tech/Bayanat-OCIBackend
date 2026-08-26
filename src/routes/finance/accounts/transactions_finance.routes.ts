@@ -92,6 +92,7 @@ import { CapexApprovalReport } from "../../../controllers/ALMS/CapexApprovalRepo
 import { exportCapexApprovalExcel } from "../../../controllers/ALMS/Capexapprovalexcel";
 import { PRPurchaseReport } from "../../../controllers/ALMS/Prpurchasereport";
 import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/Plsummaryreportpage.controller";
+import { exportPRRegisterReportExcel, getPRRegisterReportHtml } from "../../../controllers/ALMS/PrRegisterReport";
 
 
 const router = express.Router();
@@ -223,6 +224,8 @@ router.post("/reports/OutstandingSummary/excel", exportOutstandingSummaryExcel);
 router.post('/reports/CapexApprovalReport/html', CapexApprovalReport);
 router.post('/reports/CapexApprovalReport/excel', exportCapexApprovalExcel);
 router.post('/reports/PRPurchaseReport/html',PRPurchaseReport);
+router.post('/reports/PrRegisterReport/html', getPRRegisterReportHtml);
+router.post('/reports/PrRegisterReport/excel', exportPRRegisterReportExcel);
 
 
 

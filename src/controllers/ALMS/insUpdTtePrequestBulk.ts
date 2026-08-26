@@ -145,7 +145,11 @@ console.time("Mapping");
   NEXT_ACTION_BY: header.NEXT_ACTION_BY || null,
   SENTBACK_REASON: header.SENTBACK_REASON || null,
   REJECT_REASON: header.REJECT_REASON || null,
-  DOC_NO: header.DOC_NO ? String(header.DOC_NO) : null
+  DOC_NO: header.DOC_NO ? String(header.DOC_NO) : null,
+  DIV_CODE: header.DIV_CODE || null,
+  DIV_NAME: header.DIV_NAME || null,
+  DEPT_CODE_FLOW: header.DEPT_CODE_FLOW || null,
+  DEPT_NAME: header.DEPT_NAME || null
 };
 
     /******************************************************

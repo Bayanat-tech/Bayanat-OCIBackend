@@ -1,0 +1,809 @@
+2026-08-21 23:22:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-21 23:44:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-21 23:46:21 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 14:45:05 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 15:52:43 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 16:12:21 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 20:16:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 20:18:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 20:20:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 20:22:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-22 20:30:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 11:20:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:08.543Z 08DF00C3C7AF2BC0] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0001.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:08.543Z 08DF00C3C7AF2BC0]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 11:20:16 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:16.033Z 08DF00C3338A1FFF] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:50:16.033Z 08DF00C3338A1FFF]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 11:24:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0024.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:07.449Z 08DF00BFEBB286E3] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0024.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:07.449Z 08DF00BFEBB286E3]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 11:24:14 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0016.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:14.422Z 08DF00B97559B25B] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0016.QATP289.PROD.OUTLOOK.COM 2026-08-23T05:54:14.422Z 08DF00B97559B25B]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 15:18:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-23T09:48:08.194Z 08DF00DE14003348] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-08-23T09:48:08.194Z 08DF00DE14003348]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 15:38:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0024.QATP289.PROD.OUTLOOK.COM 2026-08-23T10:08:08.733Z 08DF00BFEBB76084] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0024.QATP289.PROD.OUTLOOK.COM 2026-08-23T10:08:08.733Z 08DF00BFEBB76084]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 15:38:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-08-23T10:08:15.537Z 08DF00BDACEC77D1] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-08-23T10:08:15.537Z 08DF00BDACEC77D1]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 15:38:22 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0005.QATP289.PROD.OUTLOOK.COM 2026-08-23T10:08:22.818Z 08DF00C9EE080480] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0005.QATP289.PROD.OUTLOOK.COM 2026-08-23T10:08:22.818Z 08DF00C9EE080480]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-23 15:39:30 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'rou'.
+
+[7m226[0m rou
+[7m   [0m [91m~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'rou'.
+
+[7m226[0m rou
+[7m   [0m [91m~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'rou'.
+
+[7m226[0m rou
+[7m   [0m [91m~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 15:39:48 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m8[0m - [91merror[0m[90m TS2555: [0mExpected at least 1 arguments, but got 0.
+
+[7m226[0m router.post()
+[7m   [0m [91m       ~~~~[0m
+
+  [96mnode_modules/@types/express-serve-static-core/index.d.ts[0m:[93m125[0m:[93m9[0m
+    [7m125[0m         path: Route,
+    [7m   [0m [96m        ~~~~~~~~~~~[0m
+    An argument for 'path' was not provided.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m8[0m - [91merror[0m[90m TS2555: [0mExpected at least 1 arguments, but got 0.
+
+[7m226[0m router.post()
+[7m   [0m [91m       ~~~~[0m
+
+  [96mnode_modules/@types/express-serve-static-core/index.d.ts[0m:[93m125[0m:[93m9[0m
+    [7m125[0m         path: Route,
+    [7m   [0m [96m        ~~~~~~~~~~~[0m
+    An argument for 'path' was not provided.
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m8[0m - [91merror[0m[90m TS2555: [0mExpected at least 1 arguments, but got 0.
+
+[7m226[0m router.post()
+[7m   [0m [91m       ~~~~[0m
+
+  [96mnode_modules/@types/express-serve-static-core/index.d.ts[0m:[93m125[0m:[93m9[0m
+    [7m125[0m         path: Route,
+    [7m   [0m [96m        ~~~~~~~~~~~[0m
+    An argument for 'path' was not provided.
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 15:40:40 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m46[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html',PrRegisterReport);
+[7m   [0m [91m                                             ~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m46[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html',PrRegisterReport);
+[7m   [0m [91m                                             ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m46[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html',PrRegisterReport);
+[7m   [0m [91m                                             ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 15:41:54 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m46[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html',PrRegisterReport);
+[7m   [0m [91m                                             ~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m46[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html',PrRegisterReport);
+[7m   [0m [91m                                             ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m46[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html',PrRegisterReport);
+[7m   [0m [91m                                             ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 15:44:17 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m47[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html', PrRegisterReport);
+[7m   [0m [91m                                              ~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m47[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html', PrRegisterReport);
+[7m   [0m [91m                                              ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/routes/finance/accounts/transactions_finance.routes.ts[0m:[93m226[0m:[93m47[0m - [91merror[0m[90m TS2304: [0mCannot find name 'PrRegisterReport'.
+
+[7m226[0m router.post('/reports/PrRegisterReport/html', PrRegisterReport);
+[7m   [0m [91m                                              ~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 15:45:37 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 15:50:08 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 15:50:30 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m138[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'ret' does not exist on type '{}'.
+
+[7m138[0m         const sql = result.outBinds?.ret as string || "";
+[7m   [0m [91m                                     ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 17:59:19 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m100[0m:[93m27[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m100[0m         const sql = await proc_build_dynamic_sql_common({
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/common/common_contoller.ts[0m:[93m446[0m:[93m67[0m
+    [7m446[0m export const proc_build_dynamic_sql_common = async (req: Request, res: Response): Promise<void> => {
+    [7m   [0m [96m                                                                  ~~~~~~~~~~~~~[0m
+    An argument for 'res' was not provided.
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m117[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m117[0m         if (!sql) {
+[7m   [0m [91m             ~~~[0m
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m570[0m:[93m23[0m - [91merror[0m[90m TS2345: [0mArgument of type 'WorkSheet' is not assignable to parameter of type 'WorkBook'.
+  Type 'WorkSheet' is missing the following properties from type 'WorkBook': Sheets, SheetNames
+
+[7m570[0m     return XLSX.write(ws, { bookType: "xlsx", type: "buffer" });
+[7m   [0m [91m                      ~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m100[0m:[93m27[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m100[0m         const sql = await proc_build_dynamic_sql_common({
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/common/common_contoller.ts[0m:[93m446[0m:[93m67[0m
+    [7m446[0m export const proc_build_dynamic_sql_common = async (req: Request, res: Response): Promise<void> => {
+    [7m   [0m [96m                                                                  ~~~~~~~~~~~~~[0m
+    An argument for 'res' was not provided.
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m117[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m117[0m         if (!sql) {
+[7m   [0m [91m             ~~~[0m
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m570[0m:[93m23[0m - [91merror[0m[90m TS2345: [0mArgument of type 'WorkSheet' is not assignable to parameter of type 'WorkBook'.
+  Type 'WorkSheet' is missing the following properties from type 'WorkBook': Sheets, SheetNames
+
+[7m570[0m     return XLSX.write(ws, { bookType: "xlsx", type: "buffer" });
+[7m   [0m [91m                      ~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m100[0m:[93m27[0m - [91merror[0m[90m TS2554: [0mExpected 2 arguments, but got 1.
+
+[7m100[0m         const sql = await proc_build_dynamic_sql_common({
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96msrc/controllers/common/common_contoller.ts[0m:[93m446[0m:[93m67[0m
+    [7m446[0m export const proc_build_dynamic_sql_common = async (req: Request, res: Response): Promise<void> => {
+    [7m   [0m [96m                                                                  ~~~~~~~~~~~~~[0m
+    An argument for 'res' was not provided.
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m117[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m117[0m         if (!sql) {
+[7m   [0m [91m             ~~~[0m
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m570[0m:[93m23[0m - [91merror[0m[90m TS2345: [0mArgument of type 'WorkSheet' is not assignable to parameter of type 'WorkBook'.
+  Type 'WorkSheet' is missing the following properties from type 'WorkBook': Sheets, SheetNames
+
+[7m570[0m     return XLSX.write(ws, { bookType: "xlsx", type: "buffer" });
+[7m   [0m [91m                      ~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 18:00:28 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m103[0m:[93m13[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'parameter' does not exist in type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m103[0m             parameter: "PS_PR_REGISTER_SUMMARY_REPORT",
+[7m   [0m [91m            ~~~~~~~~~[0m
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m120[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m120[0m         if (!sql || typeof sql !== 'string') {
+[7m   [0m [91m             ~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m103[0m:[93m13[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'parameter' does not exist in type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m103[0m             parameter: "PS_PR_REGISTER_SUMMARY_REPORT",
+[7m   [0m [91m            ~~~~~~~~~[0m
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m120[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m120[0m         if (!sql || typeof sql !== 'string') {
+[7m   [0m [91m             ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m103[0m:[93m13[0m - [91merror[0m[90m TS2353: [0mObject literal may only specify known properties, and 'parameter' does not exist in type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m103[0m             parameter: "PS_PR_REGISTER_SUMMARY_REPORT",
+[7m   [0m [91m            ~~~~~~~~~[0m
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m120[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m120[0m         if (!sql || typeof sql !== 'string') {
+[7m   [0m [91m             ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 18:01:41 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m123[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m123[0m         if (!sql || typeof sql !== 'string') {
+[7m   [0m [91m             ~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m123[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m123[0m         if (!sql || typeof sql !== 'string') {
+[7m   [0m [91m             ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m123[0m:[93m14[0m - [91merror[0m[90m TS1345: [0mAn expression of type 'void' cannot be tested for truthiness.
+
+[7m123[0m         if (!sql || typeof sql !== 'string') {
+[7m   [0m [91m             ~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-23 18:37:23 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-23 22:28:00 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable 
+Error: ORA-12543: TNS:destination host unreachable
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-24 10:54:09 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0056.AREP273.PROD.OUTLOOK.COM 2026-08-24T05:24:09.449Z 08DF00BA29CCB051] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DX0P273CA0056.AREP273.PROD.OUTLOOK.COM 2026-08-24T05:24:09.449Z 08DF00BA29CCB051]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-24 12:57:27 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m236[0m:[93m48[0m - [91merror[0m[90m TS2339: [0mProperty 'PR_TYPE' does not exist on type 'ReportRow'.
+
+[7m236[0m                             <td>${escapeHtml(r.PR_TYPE || 'N/A')}</td>
+[7m   [0m [91m                                               ~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m236[0m:[93m48[0m - [91merror[0m[90m TS2339: [0mProperty 'PR_TYPE' does not exist on type 'ReportRow'.
+
+[7m236[0m                             <td>${escapeHtml(r.PR_TYPE || 'N/A')}</td>
+[7m   [0m [91m                                               ~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/ALMS/PrRegisterReport.ts[0m:[93m236[0m:[93m48[0m - [91merror[0m[90m TS2339: [0mProperty 'PR_TYPE' does not exist on type 'ReportRow'.
+
+[7m236[0m                             <td>${escapeHtml(r.PR_TYPE || 'N/A')}</td>
+[7m   [0m [91m                                               ~~~~~~~[0m
+
+    at createTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1893:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-08-25 13:08:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0013.QATP289.PROD.OUTLOOK.COM 2026-08-25T07:38:08.077Z 08DF0225E306A20C] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO0P289CA0013.QATP289.PROD.OUTLOOK.COM 2026-08-25T07:38:08.077Z 08DF0225E306A20C]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-25 13:08:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0022.QATP289.PROD.OUTLOOK.COM 2026-08-25T07:38:15.397Z 08DF025CCE837203] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [DO3P289CA0022.QATP289.PROD.OUTLOOK.COM 2026-08-25T07:38:15.397Z 08DF025CCE837203]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-25 20:53:28 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-25 21:08:13 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYP287CA0109.INDP287.PROD.OUTLOOK.COM 2026-08-25T15:38:13.544Z 08DF024F541DB177] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYP287CA0109.INDP287.PROD.OUTLOOK.COM 2026-08-25T15:38:13.544Z 08DF024F541DB177]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-25 21:08:24 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0008.INDPRD01.PROD.OUTLOOK.COM 2026-08-25T15:38:24.827Z 08DF023881F58A97] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0008.INDPRD01.PROD.OUTLOOK.COM 2026-08-25T15:38:24.827Z 08DF023881F58A97]
+    at SMTPConnection._formatError (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+2026-08-25 21:36:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-08-25 21:38:42 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: TNS:Connect timeout occurred 
+Error: ORA-12170: TNS:Connect timeout occurred
+    at async TenantManager.getCentralConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Rahul.gole\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
