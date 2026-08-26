@@ -507,7 +507,7 @@ export const insUpdHrEmpLanguages = async (
 
       BEGIN
 
-        WMSTST.PROC_INS_HR_EMP_LANGUAGES(
+        PROC_INS_HR_EMP_LANGUAGES(
 
           :p_details
 
@@ -521,7 +521,7 @@ export const insUpdHrEmpLanguages = async (
 
         p_details: {
 
-          type: "WMSTST.HR_EMP_LANGUAGES_TAB",
+          type: "HR_EMP_LANGUAGES_TAB",
 
           val: detailRows
 

@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryColumn } from 'typeorm';
 
-@Entity({ name: 'MS_PRODUCT_EDI', schema: 'WMSTST' })
+@Entity({ name: 'MS_PRODUCT_EDI' })
 export class ProductEDI {
 
     @PrimaryColumn({ name: 'PROD_CODE', type: 'varchar', length: 40 })
