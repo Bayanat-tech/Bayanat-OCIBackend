@@ -122,7 +122,7 @@ async function validateFreightInvoiceSave(
   jobRows: Record<string, any>[]
 ) {
   const header = headerRows[0];
-  const selected = jobRows.filter((row) => value(row.SELECTED, "N") === "Y");
+  const selected = jobRows.filter((row) => value(row.SELECTED, "N")?.toUpperCase() === "Y");
   if (!header) throw new Error("Freight invoice header is required.");
   if (!selected.length) throw new Error("Select at least one freight activity.");
 
@@ -273,7 +273,8 @@ function buildDetailRows(req: Request, headerRows: Record<string, unknown>[]) {
 }
 
 function buildJobRows(req: Request, headerRows: Record<string, unknown>[]) {
-  return (Array.isArray(req.body.jobSelection) ? req.body.jobSelection : []).map((j: any) => ({
+  const submittedRows = req.body.jobSelection ?? req.body.job_selection;
+  return (Array.isArray(submittedRows) ? submittedRows : []).map((j: any) => ({
     INVOICE_NO: value(j.INVOICE_NO ?? j.invoice_no),
     JOB_NO: value(j.JOB_NO ?? j.job_no),
     PRIN_CODE: value(j.PRIN_CODE ?? j.prin_code),
@@ -288,7 +289,7 @@ function buildJobRows(req: Request, headerRows: Record<string, unknown>[]) {
     QUANTITY: numberValue(j.QUANTITY ?? j.quantity, 1),
     COMPANY_CODE: value(j.COMPANY_CODE ?? j.company_code ?? headerRows[0]?.COMPANY_CODE),
     CONSOLIDATED_INVNO: value(j.CONSOLIDATED_INVNO ?? j.consolidated_invno),
-    SELECTED: value(j.SELECTED ?? j.selected, "Y"),
+    SELECTED: value(j.selected ?? j.SELECTED, "Y"),
     STORAGE_NO: value(j.STORAGE_NO ?? j.storage_no),
     SITE_IND: value(j.SITE_IND ?? j.site_ind),
     SEQ_NUMBER: numberValue(j.SEQ_NUMBER ?? j.seq_number),
