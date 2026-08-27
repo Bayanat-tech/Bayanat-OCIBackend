@@ -76,6 +76,7 @@ import {
   frtJobActivityDelete,
   frtJobActivityGet,
   frtJobActivityJobList,
+  frtJobActivityPopulateQuotation,
   frtJobActivitySave,
 } from "../../controllers/Freight/freightJobActivityProcedures";
 import {
@@ -181,6 +182,7 @@ router.post("/packlist/dimensions/save", frtPacklistDimSave);
 router.post("/job-activities/jobs", frtJobActivityJobList);
 router.post("/job-activities/get", frtJobActivityGet);
 router.post("/job-activities/save", frtJobActivitySave);
+router.post("/job-activities/populate-from-quotation", frtJobActivityPopulateQuotation);
 router.post("/job-activities/delete", frtJobActivityDelete);
 router.post("/job-activities/confirm", frtJobActivityConfirm);
 

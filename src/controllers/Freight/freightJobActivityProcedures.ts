@@ -136,6 +136,38 @@ export const frtJobActivityConfirm = async (req: Request, res: Response): Promis
   });
 };
 
+export const frtJobActivityPopulateQuotation = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const result = await connection.execute(
+      `BEGIN
+         PROC_FRT_JOB_ACTIVITY_POPULATE_QTN(
+           :p_company_code,
+           :p_prin_code,
+           :p_job_no,
+           :p_lines
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
+        p_job_no: req.body.job_no ?? req.body.JOB_NO,
+        p_lines: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const lines = await rowsFromCursor((result.outBinds as any).p_lines);
+    res.json({
+      success: true,
+      message: lines.length
+        ? `${lines.length} quotation activities populated for review`
+        : "No new quotation activities are available",
+      data: { lines },
+      totalCount: lines.length,
+    });
+  });
+};
+
 async function withConnection(res: Response, handler: (connection: Connection) => Promise<void>) {
   let connection: Connection | undefined;
   try {
