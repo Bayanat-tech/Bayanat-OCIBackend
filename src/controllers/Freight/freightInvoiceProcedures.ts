@@ -16,7 +16,11 @@ export const frtInvoiceList = async (req: Request, res: Response): Promise<void>
 export const frtInvoiceJobSelection = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const result = await runFreightInvoiceQuery(connection, req, "JOB_SELECTION");
-    const rows = await rowsFromCursor((result.outBinds as any).p_result);
+    const rows = await addFreightTaxAmounts(
+      connection,
+      await rowsFromCursor((result.outBinds as any).p_result),
+      value(req.body.company_code ?? req.body.COMPANY_CODE)
+    );
     const requestedInvoiceNo = value(req.body.invoice_no ?? req.body.INVOICE_NO);
     const seen = new Set<string>();
     const eligibleRows = rows.filter((row: any) => {
@@ -45,7 +49,11 @@ export const frtInvoiceGet = async (req: Request, res: Response): Promise<void> 
     const outBinds = result.outBinds as any;
     const headerRows = await rowsFromCursor(outBinds.p_header);
     const details = await rowsFromCursor(outBinds.p_details);
-    const jobSelection = await rowsFromCursor(outBinds.p_jobs);
+    const jobSelection = await addFreightTaxAmounts(
+      connection,
+      await rowsFromCursor(outBinds.p_jobs),
+      value(req.body.company_code ?? req.body.COMPANY_CODE)
+    );
     res.json({
       success: true,
       data: {
@@ -56,6 +64,48 @@ export const frtInvoiceGet = async (req: Request, res: Response): Promise<void> 
     });
   });
 };
+
+async function addFreightTaxAmounts(connection: Connection, rows: any[], companyCode: string | null) {
+  if (!rows.length || !companyCode) return rows;
+
+  const taxResult = await connection.execute(
+    `SELECT d.invoice_no, d.prin_code, d.job_no, d.srno, d.act_code,
+            NVL(d.tx_compnt_amt_1, 0) tx_compnt_amt_1,
+            NVL(d.tx_compnt_amt_2, 0) tx_compnt_amt_2,
+            NVL(d.tx_compnt_amt_3, 0) tx_compnt_amt_3,
+            NVL(d.tx_compnt_amt_4, 0) tx_compnt_amt_4
+       FROM TN_INVOICE_DET d
+      WHERE d.company_code = :company_code
+        AND NVL(d.flag_freight, 'N') = 'Y'`,
+    { company_code: companyCode },
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+
+  const taxes = new Map<string, any>();
+  for (const taxRow of (taxResult.rows || []) as any[]) {
+    taxes.set(invoiceLineKey(taxRow), taxRow);
+  }
+
+  return rows.map((row) => {
+    const tax = taxes.get(invoiceLineKey(row)) || {};
+    const taxAmount = [1, 2, 3, 4].reduce(
+      (sum, component) => sum + numberValue(tax[`TX_COMPNT_AMT_${component}`]),
+      0
+    );
+    const bill = numberValue(row.BILL ?? row.bill);
+    return { ...row, ...tax, TAX_AMOUNT: taxAmount, TOTAL_WITH_TAX: bill + taxAmount };
+  });
+}
+
+function invoiceLineKey(row: any) {
+  return [
+    value(row.INVOICE_NO ?? row.invoice_no),
+    value(row.PRIN_CODE ?? row.prin_code),
+    value(row.JOB_NO ?? row.job_no),
+    numberValue(row.SRNO ?? row.srno),
+    value(row.ACT_CODE ?? row.act_code),
+  ].join("|");
+}
 
 export const frtInvoiceSave = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
