@@ -20,9 +20,6 @@ const reportProcedures: Record<string, string> = {
   freight_summary: "PROC_FRT_REPORT_SUMMARY",
 };
 
-// These reports have dedicated, stable procedures whose result shapes are used by
-// the Freight React screens.  The generic PB runner is reserved for the reports
-// that need its large PowerBuilder filter matrix.
 const dedicatedReportKeys = new Set([
   "freight_profit",
   "freight_expense",
@@ -139,35 +136,41 @@ async function runPowerBuilderReport(connection: Connection, reportKey: string, 
 }
 
 async function runLegacyReport(connection: Connection, procName: string, binds: Record<string, unknown>) {
-    const result = await connection.execute(
-      `BEGIN
-         ${procName}(
-           :p_company_code,
-           :p_from_date,
-           :p_to_date,
-           :p_prin_code,
-           :p_job_no,
-           :p_transport_mode,
-           :p_job_type,
-           :p_status,
-           :p_search,
-           :p_result
-         );
-       END;`,
-      {
-        p_company_code: binds.p_company_code,
-        p_from_date: binds.p_from_date,
-        p_to_date: binds.p_to_date,
-        p_prin_code: binds.p_prin_code_from,
-        p_job_no: binds.p_job_no_from,
-        p_transport_mode: binds.p_transport_mode,
-        p_job_type: binds.p_job_type,
-        p_status: binds.p_status,
-        p_search: binds.p_search,
-        p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
-      } as oracledb.BindParameters,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+  const result = await connection.execute(
+    `BEGIN
+       ${procName}(
+         :p_company_code,
+         :p_from_date,
+         :p_to_date,
+         :p_prin_code_from,
+         :p_prin_code_to,
+         :p_div_code,
+         :p_job_no_from,
+         :p_job_no_to,
+         :p_transport_mode,
+         :p_job_type,
+         :p_status,
+         :p_search,
+         :p_result
+       );
+     END;`,
+    {
+      p_company_code: binds.p_company_code,
+      p_from_date: binds.p_from_date,
+      p_to_date: binds.p_to_date,
+      p_prin_code_from: binds.p_prin_code_from,
+      p_prin_code_to: binds.p_prin_code_to,
+      p_div_code: binds.p_div_code,
+      p_job_no_from: binds.p_job_no_from,
+      p_job_no_to: binds.p_job_no_to,
+      p_transport_mode: binds.p_transport_mode,
+      p_job_type: binds.p_job_type,
+      p_status: binds.p_status,
+      p_search: binds.p_search,
+      p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+    } as oracledb.BindParameters,
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
 
   return rowsFromCursor((result.outBinds as any).p_result);
 }
