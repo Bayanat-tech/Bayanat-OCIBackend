@@ -140,14 +140,14 @@ export const insUpdAccrualAcctSetup = async (
     await connection.execute(
       `
       BEGIN
-        WMSTST.PROC_INS_UPD_MS_HR_SEC_PAYCOMP_AC(
+        PROC_INS_UPD_MS_HR_SEC_PAYCOMP_AC(
           :p_paycomp_ac
         );
       END;
       `,
       {
         p_paycomp_ac: {
-          type: "WMSTST.MS_HR_SEC_PAYCOMP_AC_TAB",
+          type: "MS_HR_SEC_PAYCOMP_AC_TAB",
           val: bindRows,
         },
       },

@@ -45,6 +45,8 @@ export const insUpdMsApproverLevels = async (
       LEVEL3_ROLE: r.level3_role ?? null,
       LEVEL4_ROLE: r.level4_role ?? null,
       LEVEL5_ROLE: r.level5_role ?? null,
+      LEVEL6_ROLE: r.level6_role ?? null,
+      LEVEL7_ROLE: r.level7_role ?? null,
       LAST_LEVEL:
         r.last_level !== undefined &&
         r.last_level !== null &&

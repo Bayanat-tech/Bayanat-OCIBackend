@@ -157,7 +157,7 @@ router.get("/leavehistory", getLeaveHistoryHandler);
 router.get("/validateleave", newvalidateLeaveHandler);
 router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
 router.get("/leavedayscount", leaveDaysCntHandler);
-
+// router.post("/absentmemo", generateAbsentMemoDaily);
 // Exporting the router
 
 //raw sql execution route
