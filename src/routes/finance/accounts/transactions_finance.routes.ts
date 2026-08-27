@@ -95,6 +95,7 @@ import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interf
 import { exportPRRegisterReportExcel, getPRRegisterReportHtml } from "../../../controllers/ALMS/PrRegisterReport";
 import { getPoOrderRegisterReportExcel, getPoOrderRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PoOrderRegisterReport";
 import { getGrnPrintReport } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
 
 
 const router = express.Router();
@@ -170,9 +171,12 @@ router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
 router.post('/reports/getPLSummaryReport/html', getPLSummaryReportHtml);
 router.post('/reports/getPLSummaryReport/excel', getPLSummaryReportExcel);
 
-
+// -----PO and Sales Order Register Report Routes------
 router.post('/reports/PoOrderRegisterReport/html', getPoOrderRegisterReportHtml);
 router.post('/reports/PoOrderRegisterReport/excel', getPoOrderRegisterReportExcel);
+
+router.post('/reports/PurchaseOrderReport/html', getPurchaseOrderReportHtml);
+router.post('/reports/PurchaseOrderReport/excel', getPurchaseOrderReportExcel);
 
 
 
