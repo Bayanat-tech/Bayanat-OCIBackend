@@ -50,8 +50,8 @@ export const insUpdTtePOrderBulk = async (
 
   DOC_NO:
     header.doc_no != null
-      ? Number(header.doc_no)
-      : 0,
+      ? String(header.doc_no)
+      : null,
 
   DOC_DATE:
     header.doc_date
@@ -261,8 +261,8 @@ user.loginid ?? null,
 
       DOC_NO:
         d.doc_no != null
-          ? Number(d.doc_no)
-          : 0,
+          ? String(d.doc_no)
+          : null,
 
       DIV_CODE:
         d.div_code ?? null,
