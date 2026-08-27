@@ -232,25 +232,34 @@ function toActivityObject(row: Record<string, unknown>) {
     TP_EX_RATE: numberValue(row.tp_ex_rate ?? row.TP_EX_RATE),
   };
 
-  addIfPresent(activity, "TX_CAT_CODE", row.tx_cat_code ?? row.TX_CAT_CODE);
-  addIfPresent(activity, "TX_COMPNTCAT_CODE_1", row.tx_compntcat_code_1 ?? row.TX_COMPNTCAT_CODE_1);
-  addIfPresent(activity, "TX_COMPNT_PERC_1", row.tx_compnt_perc_1 ?? row.TX_COMPNT_PERC_1, true);
-  addIfPresent(activity, "TX_COMPNT_AMT_1", row.tx_compnt_amt_1 ?? row.TX_COMPNT_AMT_1, true);
-  addIfPresent(activity, "TX_COMPNT_LCURAMT_1", row.tx_compnt_lcuramt_1 ?? row.TX_COMPNT_LCURAMT_1, true);
-  addIfPresent(activity, "TX_COMPNT_1_EXPMT", row.tx_compnt_1_expmt ?? row.TX_COMPNT_1_EXPMT);
-  addIfPresent(activity, "TX_CAT_CODE_COST", row.tx_cat_code_cost ?? row.TX_CAT_CODE_COST);
-  addIfPresent(activity, "TX_COMPNTCAT_CODE_1_COST", row.tx_compntcat_code_1_cost ?? row.TX_COMPNTCAT_CODE_1_COST);
-  addIfPresent(activity, "TX_COMPNT_PERC_1_COST", row.tx_compnt_perc_1_cost ?? row.TX_COMPNT_PERC_1_COST, true);
-  addIfPresent(activity, "TX_COMPNT_AMT_1_COST", row.tx_compnt_amt_1_cost ?? row.TX_COMPNT_AMT_1_COST, true);
-  addIfPresent(activity, "TX_COMPNT_LCURAMT_1_COST", row.tx_compnt_lcuramt_1_cost ?? row.TX_COMPNT_LCURAMT_1_COST, true);
-  addIfPresent(activity, "TX_COMPNT_1_EXPMT_COST", row.tx_compnt_1_expmt_cost ?? row.TX_COMPNT_1_EXPMT_COST);
+  copyString(activity, row, "TX_CAT_CODE");
+  copyString(activity, row, "TX_CAT_CODE_COST");
+  for (let component = 1; component <= 4; component += 1) {
+    copyString(activity, row, `TX_COMPNTCAT_CODE_${component}`);
+    copyNumber(activity, row, `TX_COMPNT_PERC_${component}`);
+    copyNumber(activity, row, `TX_COMPNT_AMT_${component}`);
+    copyNumber(activity, row, `TX_COMPNT_LCURAMT_${component}`);
+    copyString(activity, row, `TX_COMPNT_${component}_EXPMT`);
+    copyString(activity, row, `TX_COMPNTCAT_CODE_${component}_COST`);
+    copyNumber(activity, row, `TX_COMPNT_PERC_${component}_COST`);
+    copyNumber(activity, row, `TX_COMPNT_AMT_${component}_COST`);
+    copyNumber(activity, row, `TX_COMPNT_LCURAMT_${component}_COST`);
+    copyString(activity, row, `TX_COMPNT_${component}_EXPMT_COST`);
+  }
 
   return activity;
 }
 
-function addIfPresent(target: Record<string, unknown>, key: string, input: unknown, numeric = false) {
-  const val = numeric ? numberValue(input) : stringValue(input);
-  if (val !== null) target[key] = val;
+function sourceValue(row: Record<string, unknown>, key: string) {
+  return row[key] ?? row[key.toLowerCase()];
+}
+
+function copyString(target: Record<string, unknown>, row: Record<string, unknown>, key: string) {
+  target[key] = stringValue(sourceValue(row, key));
+}
+
+function copyNumber(target: Record<string, unknown>, row: Record<string, unknown>, key: string) {
+  target[key] = numberValue(sourceValue(row, key));
 }
 
 function stringValue(input: unknown, fallback: string | null = null) {

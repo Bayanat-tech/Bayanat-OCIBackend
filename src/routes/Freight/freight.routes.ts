@@ -106,6 +106,7 @@ import {
   frtInvoiceSave,
 } from "../../controllers/Freight/freightInvoiceProcedures";
 import { frtInvoiceReportHtml } from "../../controllers/Freight/freightInvoiceReport";
+import { frtTaxCategoryList, frtTaxComponentList } from "../../controllers/Freight/freightTaxLookups";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
 import {
   frtAccountAttachmentList,
@@ -170,6 +171,8 @@ router.post("/job/list", frtJobList);
 router.post("/job/get", frtJobGet);
 router.post("/job/save", frtJobSave);
 router.post("/job/cancel", frtJobCancel);
+router.post("/tax/categories", frtTaxCategoryList);
+router.post("/tax/components", frtTaxComponentList);
 
 router.post("/packlist/jobs", frtPacklistJobs);
 router.post("/packlist/list", frtPacklistList);
