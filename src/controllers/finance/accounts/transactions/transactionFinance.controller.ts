@@ -470,17 +470,45 @@ async function spInsertAllChildren(
 export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Response) => {
   let conn: oracledb.Connection | undefined;
   try {
-    const { doc_id, isEditMode } = req.query;
+    const docId = String(req.query.doc_id || '').trim().toUpperCase();
+    const editMode = String(req.query.isEditMode || 'false').trim().toLowerCase() === 'true';
+    if (!docId) {
+      res.status(400).json({ success: false, message: 'doc_id is required' });
+      return;
+    }
+
     conn = await getConn(req);
-    const view = isEditMode === 'false' ? 'VW_DEFAULT_TRANSACTION_DETAILS' : 'VW_DEFAULT_TRANSACTION_EDIT';
+    const view = editMode ? 'VW_DEFAULT_TRANSACTION_EDIT' : 'VW_DEFAULT_TRANSACTION_DETAILS';
     const result = await conn.execute(
-      `SELECT * FROM ${view} WHERE company_code = :cc AND doc_id = :id`,
-      { cc: req.user.company_code, id: doc_id as string },
+      `SELECT * FROM ${view}
+       WHERE UPPER(TRIM(company_code)) = UPPER(TRIM(:cc))
+         AND UPPER(TRIM(doc_id)) = :id`,
+      { cc: req.user.company_code, id: docId },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    if (!result.rows?.length) { res.status(500).json({ success: false }); return; }
+    if (!result.rows?.length) {
+      res.json({
+        success: true,
+        data: {},
+        message: `No default transaction setup found for document type ${docId}; using form defaults`,
+      });
+      return;
+    }
     res.json({ success: true, data: normalize(result.rows)[0] });
-  } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+  } catch (err: any) {
+    console.error('Default transaction details failed:', {
+      doc_id: req.query.doc_id,
+      isEditMode: req.query.isEditMode,
+      company_code: req.user?.company_code,
+      tenant_id: getCurrentTenantId(),
+      error: err,
+    });
+    res.status(err.status ?? constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: err.message ?? 'Unable to load default transaction details',
+      oracleCode: err.errorNum ?? err.code,
+    });
+  } finally { await closeConn(conn); }
 };
 
 export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promise<void> => {
