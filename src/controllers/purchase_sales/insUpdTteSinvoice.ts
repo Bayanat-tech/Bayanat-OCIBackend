@@ -647,7 +647,7 @@ INV_NO:
 
 
       REF_DOC_NO:
-        d.ref_doc_no ?? 0,
+        d.ref_doc_no ?? null,
 
 
 
