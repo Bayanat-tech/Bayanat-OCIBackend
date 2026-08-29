@@ -83,8 +83,8 @@ export const insUpdTtePGrnBulk = async (
 
       DOC_NO:
         header.doc_no != null
-          ? Number(header.doc_no)
-          : 0,
+          ? String(header.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -206,7 +206,7 @@ export const insUpdTtePGrnBulk = async (
 
 
       REF_DOC_NO:
-        header.ref_doc_no ?? 0,
+        header.ref_doc_no ?? null,
 
 
       JOB_NO:
@@ -458,10 +458,10 @@ export const insUpdTtePGrnBulk = async (
         header.doc_type ?? null,
 
 
-      DOC_NO:
+     DOC_NO:
         d.doc_no != null
-          ? Number(d.doc_no)
-          : 0,
+          ? String(d.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -597,7 +597,7 @@ export const insUpdTtePGrnBulk = async (
 
 
       REF_DOC_NO:
-        d.ref_doc_no ?? 0,
+        d.ref_doc_no ?? null,
 
 
       REF_DOC_SERIAL:

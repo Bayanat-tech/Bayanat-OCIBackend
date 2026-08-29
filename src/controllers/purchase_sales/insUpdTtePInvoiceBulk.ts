@@ -94,8 +94,8 @@ export const insUpdTtePInvoiceBulk = async (
 
       DOC_NO:
         header.doc_no != null
-          ? Number(header.doc_no)
-          : 0,
+          ? String(header.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -485,8 +485,8 @@ INV_NO:
 
       DOC_NO:
         d.doc_no != null
-          ? Number(d.doc_no)
-          : 0,
+          ? String(d.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -649,7 +649,7 @@ INV_NO:
 
 
       REF_DOC_NO:
-        d.ref_doc_no ?? 0,
+        d.ref_doc_no ?? null,
 
 
 

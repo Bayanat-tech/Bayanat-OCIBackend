@@ -95,8 +95,8 @@ export const insUpdTteSinvoice = async (
 
       DOC_NO:
         header.doc_no != null
-          ? Number(header.doc_no)
-          : 0,
+          ? String(header.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -483,8 +483,8 @@ INV_NO:
 
       DOC_NO:
         d.doc_no != null
-          ? Number(d.doc_no)
-          : 0,
+          ? String(d.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -647,7 +647,7 @@ INV_NO:
 
 
       REF_DOC_NO:
-        d.ref_doc_no ?? 0,
+        d.ref_doc_no ?? null,
 
 
 
@@ -857,7 +857,7 @@ INV_NO:
         {
 
           type:
-            "TR_AC_HEADERPURCHASESALES_TAB",
+            "TTE_SINVOICE_HDR_TAB",
 
           val:
             [
@@ -871,7 +871,7 @@ INV_NO:
         {
 
           type:
-            "NT_TTE_SINVOICE_DET",
+            "TTE_SINVOICE_DET_TAB",
 
           val:
             
