@@ -423,7 +423,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
     rows_.push([cell(label, "groupTotal"), null, null, null, cell(value, "groupTotalNum"), null]);
     merges.push({ s: { r, c: 0 }, e: { r, c: 3 } });
   });
-
+                                                                            
   const gtRow = rows_.length;
   rows_.push([cell("Net Amount", "grandTotal"), null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null]);
   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 3 } });
