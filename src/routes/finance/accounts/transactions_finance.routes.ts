@@ -96,6 +96,7 @@ import { exportPRRegisterReportExcel, getPRRegisterReportHtml } from "../../../c
 import { getPoOrderRegisterReportExcel, getPoOrderRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PoOrderRegisterReport";
 import { getGrnPrintReport } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
+import { getSalesOrderReportExcel, getSalesOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderReport";
 
 
 const router = express.Router();
@@ -178,6 +179,10 @@ router.post('/reports/PoOrderRegisterReport/excel', getPoOrderRegisterReportExce
 router.post('/reports/PurchaseOrderReport/html', getPurchaseOrderReportHtml);
 router.post('/reports/PurchaseOrderReport/excel', getPurchaseOrderReportExcel);
 
+
+
+router.post('/reports/SalesOrderReport/html', getSalesOrderReportHtml);
+router.post('/reports/SalesOrderReport/excel', getSalesOrderReportExcel);
 
 
 
