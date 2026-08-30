@@ -101,8 +101,8 @@ export const insUpdTteSOrderBulk = async (
 
       DOC_NO:
         header.doc_no != null
-        ? Number(header.doc_no)
-        : 0,
+        ? String(header.doc_no)
+        : null,
 
 
 
@@ -253,7 +253,7 @@ export const insUpdTteSOrderBulk = async (
 
 
       REF_DOC_NO:
-        header.ref_doc_no ?? 0,
+        header.ref_doc_no ?? null,
 
 
 
@@ -504,9 +504,9 @@ export const insUpdTteSOrderBulk = async (
 
 
       DOC_NO:
-        header.doc_no != null
-        ? Number(header.doc_no)
-        : 0,
+        detail.doc_no != null
+        ? String(detail.doc_no)
+        : null,
 
 
 
@@ -687,7 +687,7 @@ export const insUpdTteSOrderBulk = async (
 
 
       REF_DOC_NO:
-        detail.ref_doc_no ?? 0,
+        detail.ref_doc_no ?? null,
 
 
 

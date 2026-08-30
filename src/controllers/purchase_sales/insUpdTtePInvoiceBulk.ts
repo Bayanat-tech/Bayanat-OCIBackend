@@ -94,15 +94,23 @@ export const insUpdTtePInvoiceBulk = async (
 
       DOC_NO:
         header.doc_no != null
-          ? Number(header.doc_no)
-          : 0,
+          ? String(header.doc_no)
+          : null,
 
 
       DOC_DATE:
         header.doc_date
           ? new Date(header.doc_date)
           : null,
+INV_NO:
+  header.inv_no != null
+    ? String(header.inv_no)
+    : null,
 
+      INV_DATE:
+        header.inv_date
+          ? new Date(header.inv_date)
+          : null,
 
 
       DIV_CODE:
@@ -405,10 +413,6 @@ export const insUpdTtePInvoiceBulk = async (
         header.warranty_uom ?? null,
 
 
-      INV_DATE:
-        header.inv_date
-          ? new Date(header.inv_date)
-          : null,
 
 
       PDO_TYPE:
@@ -458,6 +462,7 @@ export const insUpdTtePInvoiceBulk = async (
         header.user_id ?? null,
 
     GRN_NO : header.grn_no ?? null,
+    
 
 
     };
@@ -480,8 +485,8 @@ export const insUpdTtePInvoiceBulk = async (
 
       DOC_NO:
         d.doc_no != null
-          ? Number(d.doc_no)
-          : 0,
+          ? String(d.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -644,7 +649,7 @@ export const insUpdTtePInvoiceBulk = async (
 
 
       REF_DOC_NO:
-        d.ref_doc_no ?? 0,
+        d.ref_doc_no ?? null,
 
 
 

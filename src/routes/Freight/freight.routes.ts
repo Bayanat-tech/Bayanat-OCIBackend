@@ -76,6 +76,7 @@ import {
   frtJobActivityDelete,
   frtJobActivityGet,
   frtJobActivityJobList,
+  frtJobActivityPopulateQuotation,
   frtJobActivitySave,
 } from "../../controllers/Freight/freightJobActivityProcedures";
 import {
@@ -104,6 +105,8 @@ import {
   frtInvoiceList,
   frtInvoiceSave,
 } from "../../controllers/Freight/freightInvoiceProcedures";
+import { frtInvoiceReportHtml } from "../../controllers/Freight/freightInvoiceReport";
+import { frtTaxCategoryList, frtTaxComponentList } from "../../controllers/Freight/freightTaxLookups";
 import { insUpdTfEnquiryBulk } from "../../controllers/Freight/insUpdTfEnquiryBulk";
 import {
   frtAccountAttachmentList,
@@ -168,6 +171,8 @@ router.post("/job/list", frtJobList);
 router.post("/job/get", frtJobGet);
 router.post("/job/save", frtJobSave);
 router.post("/job/cancel", frtJobCancel);
+router.post("/tax/categories", frtTaxCategoryList);
+router.post("/tax/components", frtTaxComponentList);
 
 router.post("/packlist/jobs", frtPacklistJobs);
 router.post("/packlist/list", frtPacklistList);
@@ -180,6 +185,7 @@ router.post("/packlist/dimensions/save", frtPacklistDimSave);
 router.post("/job-activities/jobs", frtJobActivityJobList);
 router.post("/job-activities/get", frtJobActivityGet);
 router.post("/job-activities/save", frtJobActivitySave);
+router.post("/job-activities/populate-from-quotation", frtJobActivityPopulateQuotation);
 router.post("/job-activities/delete", frtJobActivityDelete);
 router.post("/job-activities/confirm", frtJobActivityConfirm);
 
@@ -218,6 +224,7 @@ router.post("/invoice/list", frtInvoiceList);
 router.post("/invoice/get", frtInvoiceGet);
 router.post("/invoice/job-selection", frtInvoiceJobSelection);
 router.post("/invoice/save", frtInvoiceSave);
+router.get("/invoice/report/html", frtInvoiceReportHtml);
 
 router.post("/workspace/summary", frtWorkspaceSummary);
 router.post("/workspace/job-search", frtJobSearch);

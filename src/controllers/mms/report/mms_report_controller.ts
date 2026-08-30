@@ -81,10 +81,10 @@ function buildInspectionReportSql() {
       d.created_by AS detail_created_by,
       d.updated_by AS detail_updated_by,
       d.created_at AS detail_created_at
-    FROM WMSTST.TB_OX_INSPECTION_REPORT r
-    LEFT JOIN WMSTST.TB_OX_HEADER_INSPECTION_REPORT d ON r.id = d.report_id
-    LEFT JOIN WMSTST.TB_OX_MS_HEADER_SECTION hs ON hs.header_section_id = d.header_section_id
-    LEFT JOIN WMSTST.TB_OX_MS_UNDER_SECTION us ON us.under_section_id = d.under_section_id
+    FROM TB_OX_INSPECTION_REPORT r
+    LEFT JOIN TB_OX_HEADER_INSPECTION_REPORT d ON r.id = d.report_id
+    LEFT JOIN TB_OX_MS_HEADER_SECTION hs ON hs.header_section_id = d.header_section_id
+    LEFT JOIN TB_OX_MS_UNDER_SECTION us ON us.under_section_id = d.under_section_id
     WHERE r.id = :report_id
     ORDER BY d.header_section_id, d.under_section_id, d.id`;
 }

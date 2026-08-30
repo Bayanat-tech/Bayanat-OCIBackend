@@ -20,6 +20,15 @@ const reportProcedures: Record<string, string> = {
   freight_summary: "PROC_FRT_REPORT_SUMMARY",
 };
 
+const dedicatedReportKeys = new Set([
+  "freight_profit",
+  "freight_expense",
+  "freight_revenue",
+  "freight_brokerage",
+  "deposits",
+  "container_deposit",
+]);
+
 export const frtReportRun = async (req: Request, res: Response): Promise<void> => {
   const reportKey = String(req.body.report_key ?? req.body.REPORT_KEY ?? "").toLowerCase();
   const procName = reportProcedures[reportKey];
@@ -31,15 +40,21 @@ export const frtReportRun = async (req: Request, res: Response): Promise<void> =
   await withConnection(res, async (connection) => {
     const binds = reportBinds(req);
     let rows: unknown[];
-    let source = "PROC_FRT_REPORT_RUN_PB";
-    try {
-      rows = await runPowerBuilderReport(connection, reportKey, binds);
-    } catch (error: any) {
-      const message = String(error?.message || "");
-      const canFallback = message.includes("PLS-00201") || message.includes("PLS-00306") || message.includes("PROC_FRT_REPORT_RUN_PB");
-      if (!canFallback) throw error;
+    let source: string;
+    if (dedicatedReportKeys.has(reportKey)) {
       source = procName;
       rows = await runLegacyReport(connection, procName, binds);
+    } else {
+      source = "PROC_FRT_REPORT_RUN_PB";
+      try {
+        rows = await runPowerBuilderReport(connection, reportKey, binds);
+      } catch (error: any) {
+        const message = String(error?.message || "");
+        const canFallback = message.includes("PLS-00201") || message.includes("PLS-00306") || message.includes("PROC_FRT_REPORT_RUN_PB");
+        if (!canFallback) throw error;
+        source = procName;
+        rows = await runLegacyReport(connection, procName, binds);
+      }
     }
 
     res.json({ success: true, data: rows, totalCount: rows.length, source });
@@ -121,35 +136,41 @@ async function runPowerBuilderReport(connection: Connection, reportKey: string, 
 }
 
 async function runLegacyReport(connection: Connection, procName: string, binds: Record<string, unknown>) {
-    const result = await connection.execute(
-      `BEGIN
-         ${procName}(
-           :p_company_code,
-           :p_from_date,
-           :p_to_date,
-           :p_prin_code,
-           :p_job_no,
-           :p_transport_mode,
-           :p_job_type,
-           :p_status,
-           :p_search,
-           :p_result
-         );
-       END;`,
-      {
-        p_company_code: binds.p_company_code,
-        p_from_date: binds.p_from_date,
-        p_to_date: binds.p_to_date,
-        p_prin_code: binds.p_prin_code_from,
-        p_job_no: binds.p_job_no_from,
-        p_transport_mode: binds.p_transport_mode,
-        p_job_type: binds.p_job_type,
-        p_status: binds.p_status,
-        p_search: binds.p_search,
-        p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
-      } as oracledb.BindParameters,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+  const result = await connection.execute(
+    `BEGIN
+       ${procName}(
+         :p_company_code,
+         :p_from_date,
+         :p_to_date,
+         :p_prin_code_from,
+         :p_prin_code_to,
+         :p_div_code,
+         :p_job_no_from,
+         :p_job_no_to,
+         :p_transport_mode,
+         :p_job_type,
+         :p_status,
+         :p_search,
+         :p_result
+       );
+     END;`,
+    {
+      p_company_code: binds.p_company_code,
+      p_from_date: binds.p_from_date,
+      p_to_date: binds.p_to_date,
+      p_prin_code_from: binds.p_prin_code_from,
+      p_prin_code_to: binds.p_prin_code_to,
+      p_div_code: binds.p_div_code,
+      p_job_no_from: binds.p_job_no_from,
+      p_job_no_to: binds.p_job_no_to,
+      p_transport_mode: binds.p_transport_mode,
+      p_job_type: binds.p_job_type,
+      p_status: binds.p_status,
+      p_search: binds.p_search,
+      p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+    } as oracledb.BindParameters,
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
 
   return rowsFromCursor((result.outBinds as any).p_result);
 }
