@@ -536,12 +536,15 @@ export const getChequePaymentHeader = async (req: RequestWithUser, res: Response
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
-    const result = await conn.execute(
-      `SELECT * FROM VW_CHQ_PAYMENT_HEADER
-       WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
-      { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+    const divCode = String(req.query.div_code || '').trim();
+    const query = divCode
+      ? `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt AND div_code = :dc`
+      : `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`;
+    const binds: Record<string, any> = { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type };
+    if (divCode) binds.dc = divCode;
+    const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const row = result.rows?.[0] || null;
     res.json({ success: true, data: row ? normalize([row])[0] : null });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
@@ -551,12 +554,15 @@ export const getPurchaseHeader = async (req: RequestWithUser, res: Response): Pr
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
-    const result = await conn.execute(
-      `SELECT * FROM VW_PURCHASE_HEADER
-       WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`,
-      { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+    const divCode = String(req.query.div_code || '').trim();
+    const query = divCode
+      ? `SELECT * FROM VW_PURCHASE_HEADER
+         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt AND div_code = :dc`
+      : `SELECT * FROM VW_PURCHASE_HEADER
+         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`;
+    const binds: Record<string, any> = { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type };
+    if (divCode) binds.dc = divCode;
+    const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const row = result.rows?.[0] || null;
     res.json({ success: true, data: row ? normalize([row])[0] : null });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
