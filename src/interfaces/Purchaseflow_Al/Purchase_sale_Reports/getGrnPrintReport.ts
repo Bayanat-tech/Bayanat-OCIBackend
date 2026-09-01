@@ -77,6 +77,17 @@ function amtFmt(value: unknown): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Matches the original DataWindow computed field: doc_type + '-' + doc_no.
+// Guards against double-prefixing in case doc_no already carries the doc_type
+// (seen in some test/legacy records, e.g. doc_no = "GRN2261000002").
+function formatDocNo(docType: string, docNo: string): string {
+  const dt = text(docType).trim();
+  const dn = text(docNo).trim();
+  if (!dt) return dn;
+  if (dn.toUpperCase().startsWith(dt.toUpperCase())) return dn;
+  return `${dt}-${dn}`;
+}
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -111,12 +122,12 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
     const grnResult = await conn.execute(
       `SELECT vw_erp_grn.company_code, vw_erp_grn.doc_type, vw_erp_grn.doc_no, vw_erp_grn.doc_date,
               vw_erp_grn.div_code, vw_erp_grn.div_name, vw_erp_grn.dept_code, vw_erp_grn.remarks,
-              vw_erp_grn.ref_no, vw_erp_grn.ref_date, vw_erp_grn.ac_code, vw_erp_grn.curr_code,
+              vw_erp_grn.ref_no, vw_erp_grn.ref_date, vw_erp_grn.ac_code, vw_erp_grn.ac_name, vw_erp_grn.curr_code,
               vw_erp_grn.ex_rate, vw_erp_grn.disc_hdr_percent, vw_erp_grn.disc_hdr_price,
               vw_erp_grn.payment_terms, vw_erp_grn.credit_period, vw_erp_grn.due_date,
               vw_erp_grn.party_name, vw_erp_grn.party_address, vw_erp_grn.party_phone, vw_erp_grn.party_fax,
               vw_erp_grn.inv_generated, vw_erp_grn.delivery_to, vw_erp_grn.dlvr_contact,
-              vw_erp_grn.dlvr_email, vw_erp_grn.dlvr_mobile, vw_erp_grn.dlvr_term,
+              vw_erp_grn.dlvr_email, vw_erp_grn.e_mail, vw_erp_grn.mobile_no, vw_erp_grn.dlvr_mobile, vw_erp_grn.dlvr_term,
               vw_erp_grn.ref_doc_type, vw_erp_grn.ref_doc_no, vw_erp_grn.job_no,
               vw_erp_grn.cancelled, vw_erp_grn.cancelled_dt, vw_erp_grn.approved,
               vw_erp_grn.approved_by, vw_erp_grn.approved_dt, vw_erp_grn.serial_no,
@@ -172,6 +183,7 @@ interface GrnHeader {
   doc_type: string;
   div_name: string;
   ac_code: string;
+  ac_name: string;
   party_name: string;
   party_address: string;
   party_phone: string;
@@ -181,7 +193,9 @@ interface GrnHeader {
   delivery_to: string;
   dlvr_contact: string;
   dlvr_mobile: string;
+  mobile_no: string;
   dlvr_email: string;
+  e_mail: string;
   dlvr_term: string;
   remarks: string;
   cancelled: boolean;
@@ -196,7 +210,10 @@ function buildHeader(rows: ReportRow[]): GrnHeader {
     doc_type: text(h.doc_type),
     div_name: text(h.div_name),
     ac_code: text(h.ac_code),
-    party_name: text(h.party_name),
+    ac_name: text(h.ac_name),
+    // Some GRNs are recorded against the account without a separate party_name
+    // on the header — fall back to the account/vendor name so "To" isn't blank.
+    party_name: text(h.party_name) || text(h.ac_name),
     party_address: text(h.party_address),
     party_phone: text(h.party_phone),
     party_fax: text(h.party_fax),
@@ -205,7 +222,11 @@ function buildHeader(rows: ReportRow[]): GrnHeader {
     delivery_to: text(h.delivery_to),
     dlvr_contact: text(h.dlvr_contact),
     dlvr_mobile: text(h.dlvr_mobile),
+    mobile_no: text(h.mobile_no),
+    // dlvr_email is the "deliver to" contact's email; e_mail is the vendor/account
+    // email on the view. Prefer dlvr_email when present, otherwise fall back.
     dlvr_email: text(h.dlvr_email),
+    e_mail: text(h.e_mail),
     dlvr_term: text(h.dlvr_term),
     remarks: text(h.remarks),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
@@ -234,7 +255,8 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
   const header = buildHeader(rows);
   const totals = computeTotals(rows);
 
-  const contactMobile = [header.dlvr_contact, header.dlvr_mobile].filter((v) => v).join(" / ");
+  const contactMobile = [header.dlvr_contact, header.dlvr_mobile || header.mobile_no].filter((v) => v).join(" / ");
+  const emailToShow = header.dlvr_email || header.e_mail;
 
   let bodyRows = "";
   rows.forEach((r) => {
@@ -352,7 +374,7 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
         .report-table tbody td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; word-break: break-word; }
         .report-table .right { text-align: right; }
         .report-table .amount { font-weight: 500; color: #065f46; }
-        .totals-box { margin-top: 16px; margin-left: auto; width: 320px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+        .totals-box { margin-top: 16px; margin-left: auto;margin-bottom: 60px;  width: 320px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
         .totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid #f3f4f6; }
         .totals-box .row.grand { background: #1d4ed8; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
         .remarks-box { margin-top: 16px; font-size: 12px; }
@@ -393,22 +415,22 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
             <div class="info-block">
                 <div class="label">To</div>
                 <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-                ${header.party_address ? `<div class="value-line">${escapeHtml(header.party_address)}</div>` : ""}
-                ${(header.party_phone || header.party_fax) ? `<div class="value-line">Tel: ${escapeHtml(header.party_phone)} &nbsp;&nbsp; Fax: ${escapeHtml(header.party_fax)}</div>` : ""}
+                <div class="value-line">${escapeHtml(header.party_address)}</div>
+                <div class="value-line">Tel: ${escapeHtml(header.party_phone)} &nbsp;&nbsp; Fax: ${escapeHtml(header.party_fax)}</div>
             </div>
             <div class="info-block">
                 <div class="label">GRN Details</div>
-                <div class="value-line">GRN No: <strong>${escapeHtml(header.doc_no)}</strong></div>
+                <div class="value-line">GRN No: <strong>${escapeHtml(formatDocNo(header.doc_type, header.doc_no))}</strong></div>
                 <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-                ${header.ac_code ? `<div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>` : ""}
-                ${header.ref_no ? `<div class="value-line">Ref No: ${escapeHtml(header.ref_no)} ${header.ref_date ? `(${escapeHtml(dateText(header.ref_date))})` : ""}</div>` : ""}
-                ${header.delivery_to ? `<div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>` : ""}
-                ${contactMobile ? `<div class="value-line">Contact: ${escapeHtml(contactMobile)}</div>` : ""}
-                ${header.dlvr_email ? `<div class="value-line">Email: ${escapeHtml(header.dlvr_email)}</div>` : ""}
+                <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
+                <div class="value-line">Ref No: ${escapeHtml(header.ref_no)} ${header.ref_date ? `(${escapeHtml(dateText(header.ref_date))})` : ""}</div>
+                <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
+                <div class="value-line">Contact: ${escapeHtml(contactMobile)}</div>
+                <div class="value-line">Email: ${escapeHtml(emailToShow)}</div>
             </div>
         </div>
 
-        ${header.dlvr_term ? `<div style="font-size:12px;color:#374151;margin-bottom:8px;">Delivery Terms: ${escapeHtml(header.dlvr_term)}</div>` : ""}
+        <div style="font-size:12px;color:#374151;margin-bottom:8px;">Delivery Terms: ${escapeHtml(header.dlvr_term)}</div>
 
         ${rows.length === 0 ? `
             <div style="text-align:center;padding:40px 20px;color:#6b7280;">No line items found for this GRN.</div>
@@ -421,7 +443,7 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
                         <th class="right">P. Qty</th>
                         <th class="right">LUOM</th>
                         <th class="right">L. Qty</th>
-                        <th class="right">Quantity</th>
+                        <th class="right">Quantity<br/>in LUOM</th>
                     </tr>
                 </thead>
                 <tbody>${bodyRows}</tbody>
@@ -447,9 +469,7 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
                 <div>${escapeHtml(footer.received) || "Received By"}</div>
             </div>
 
-            <div class="report-footer">
-                <span>Report: rpt_purchase_grn</span>
-            </div>
+            
         </div>
     </div>
 </body>
@@ -528,7 +548,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, cell(totals.totalQty, "grandTotalNum"), null]);
   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 3 } });
 
-  rows_.push([null, null, null, cell(text(footer.prepared) || "Prepared By", "footer"), null, cell("Powered by Bayanat Technology", "footer")]);
+ 
 
   // ── Style registration engine (identical to PO Order Report) ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
