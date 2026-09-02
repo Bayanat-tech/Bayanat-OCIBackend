@@ -18,7 +18,21 @@ const reportProcedures: Record<string, string> = {
   deposits: "PROC_FRT_REPORT_DEPOSITS",
   container_deposit: "PROC_FRT_REPORT_CONTAINER_DEPOSIT",
   freight_summary: "PROC_FRT_REPORT_SUMMARY",
+  freight_tracking: "PROC_FRT_REPORT_TRACKING_PB",
+  daily_activity_report: "PROC_FRT_REPORT_DAILY_ACTIVITY_PB",
+  etd_report: "PROC_FRT_REPORT_ETD_PB",
+  eta_report: "PROC_FRT_REPORT_ETA_PB",
+  petty_cash_report: "PROC_FRT_REPORT_PETTY_CASH_PB",
 };
+
+const powerBuilderOperationalKeys = new Set([
+  "freight_summary",
+  "freight_tracking",
+  "daily_activity_report",
+  "etd_report",
+  "eta_report",
+  "petty_cash_report",
+]);
 
 const dedicatedReportKeys = new Set([
   "freight_profit",
@@ -41,7 +55,10 @@ export const frtReportRun = async (req: Request, res: Response): Promise<void> =
     const binds = reportBinds(req);
     let rows: unknown[];
     let source: string;
-    if (dedicatedReportKeys.has(reportKey)) {
+    if (powerBuilderOperationalKeys.has(reportKey)) {
+      source = procName;
+      rows = await runPowerBuilderOperationalReport(connection, procName, binds);
+    } else if (dedicatedReportKeys.has(reportKey)) {
       source = procName;
       rows = await runLegacyReport(connection, procName, binds);
     } else {
@@ -128,6 +145,45 @@ async function runPowerBuilderReport(connection: Connection, reportKey: string, 
     {
       p_report_key: reportKey,
       ...binds,
+      p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+    } as oracledb.BindParameters,
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+  return rowsFromCursor((result.outBinds as any).p_result);
+}
+
+async function runPowerBuilderOperationalReport(connection: Connection, procName: string, binds: Record<string, unknown>) {
+  const result = await connection.execute(
+    `BEGIN
+       ${procName}(
+         :p_company_code, :p_from_date, :p_to_date,
+         :p_prin_code_from, :p_prin_code_to,
+         :p_job_no_from, :p_job_no_to,
+         :p_doc_no_from, :p_doc_no_to,
+         :p_div_code, :p_origin_port, :p_destination_port,
+         :p_transport_mode, :p_job_type, :p_status,
+         :p_report_variant, :p_cashier_id, :p_search, :p_result
+       );
+     END;`,
+    {
+      p_company_code: binds.p_company_code,
+      p_from_date: binds.p_from_date,
+      p_to_date: binds.p_to_date,
+      p_prin_code_from: binds.p_prin_code_from,
+      p_prin_code_to: binds.p_prin_code_to,
+      p_job_no_from: binds.p_job_no_from,
+      p_job_no_to: binds.p_job_no_to,
+      p_doc_no_from: binds.p_doc_no_from,
+      p_doc_no_to: binds.p_doc_no_to,
+      p_div_code: binds.p_div_code,
+      p_origin_port: binds.p_origin_port,
+      p_destination_port: binds.p_destination_port,
+      p_transport_mode: binds.p_transport_mode,
+      p_job_type: binds.p_job_type,
+      p_status: binds.p_status,
+      p_report_variant: binds.p_report_variant,
+      p_cashier_id: binds.p_cashier_id,
+      p_search: binds.p_search,
       p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
     } as oracledb.BindParameters,
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -233,6 +289,7 @@ function reportBinds(req: Request) {
     p_forwarder_code: value(body.forwarder_code),
     p_doc_ref: value(body.doc_ref),
     p_po_no: value(body.po_no),
+    p_cashier_id: value(body.cashier_id),
     p_search: value(body.search ?? body.SEARCH),
   };
 }
