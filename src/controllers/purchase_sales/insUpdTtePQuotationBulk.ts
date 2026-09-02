@@ -69,7 +69,7 @@ export const insUpdTtePQuotationBulk = async (
       DOC_NO:
         header.doc_no != null
           ? Number(header.doc_no)
-          : 0,
+          : null,
 
 
       DOC_DATE:
@@ -486,7 +486,7 @@ user.loginid ?? null,
       DOC_NO:
         d.doc_no != null
           ? Number(d.doc_no)
-          : 0,
+          : null,
 
 
       DOC_DATE:
