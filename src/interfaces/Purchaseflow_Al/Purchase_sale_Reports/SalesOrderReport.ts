@@ -153,6 +153,7 @@ interface SoHeader {
   party_phone: string;
   party_fax: string;
   payment_terms: string;
+  total_discount: number;
   disc_hdr_price: number;
   disc_hdr_percent: number;
   cancelled: boolean;
@@ -174,6 +175,7 @@ function buildHeader(rows: ReportRow[]): SoHeader {
     payment_terms: text(h.payment_terms),
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
+    total_discount: num(h.total_discount),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
     logo_url: h.logo_url || null,
   };
@@ -182,7 +184,7 @@ function buildHeader(rows: ReportRow[]): SoHeader {
 function computeTotals(rows: ReportRow[], header: SoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
   const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const discount = header.disc_hdr_price || (totalAmount * header.disc_hdr_percent) / 100;
+  const discount = header.total_discount || (totalAmount * header.total_discount) / 100;
   const exclusiveVat = totalAmount - discount;
   // NOTE: vw_erp_salesorder has no VAT column — wire real values once confirmed.
   const vatAmount = 0;
@@ -262,6 +264,9 @@ function renderHtml(rows: ReportRow[], loginId: string): string {
         .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; background: #f8fafc; }
         .info-block .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 6px; }
         .info-block .value-line { font-size: 12px; color: #111827; line-height: 1.6; }
+        .info-block .kv-line { display: flex; font-size: 12px; color: #111827; line-height: 1.8; }
+.info-block .kv-label { flex: 0 0 110px; color: #374151; }
+.info-block .kv-value { flex: 1; }
         .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
         .status-CANCELLED { background: #fee2e2; color: #dc2626; }
         .report-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
@@ -312,12 +317,12 @@ function renderHtml(rows: ReportRow[], loginId: string): string {
                 <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
             </div>
             <div class="info-block">
-                <div class="label">SO Details</div>
-                <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-                <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-                <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-                <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-            </div>
+    <div class="label">SO Details</div>
+    <div class="kv-line"><span class="kv-label">Doc No</span><span class="kv-value">: <strong>${escapeHtml(header.doc_no)}</strong></span></div>
+    <div class="kv-line"><span class="kv-label">Date</span><span class="kv-value">: ${escapeHtml(dateText(header.doc_date))}</span></div>
+    <div class="kv-line"><span class="kv-label">A/C Code</span><span class="kv-value">: ${escapeHtml(header.ac_code)}</span></div>
+    <div class="kv-line"><span class="kv-label">Payment Term</span><span class="kv-value">: ${escapeHtml(header.payment_terms)}</span></div>
+</div>
         </div>
 
         ${rows.length === 0 ? `
@@ -345,9 +350,7 @@ function renderHtml(rows: ReportRow[], loginId: string): string {
             </div>
         `}
 
-        <div class="report-footer">
-            <span>Report: rpt_sales_order</span>
-        </div>
+      
     </div>
     <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
         Powered by Bayanat Technology

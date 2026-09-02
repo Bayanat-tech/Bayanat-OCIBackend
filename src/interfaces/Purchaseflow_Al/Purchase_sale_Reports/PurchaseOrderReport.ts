@@ -77,6 +77,10 @@ function amtFmt(value: unknown): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function grossValue(r: ReportRow): number {
+  return num(r.quantity) * num(r.unit_price);
+}
+
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
@@ -153,9 +157,12 @@ interface PoHeader {
   party_phone: string;
   party_fax: string;
   payment_terms: string;
+  dlvr_term: string;
   disc_hdr_price: number;
   disc_hdr_percent: number;
+  total_discount: number;
   cancelled: boolean;
+  total_tx_compnt_amt_1: number;
   logo_url: string | null;
 }
 
@@ -172,24 +179,45 @@ function buildHeader(rows: ReportRow[]): PoHeader {
     party_phone: text(h.party_phone),
     party_fax: text(h.party_fax),
     payment_terms: text(h.payment_terms),
+    dlvr_term: text(h.dlvr_term),
     disc_hdr_price: num(h.disc_hdr_price),
     disc_hdr_percent: num(h.disc_hdr_percent),
+    total_discount: num(h.total_discount),
+    total_tx_compnt_amt_1: num(h.total_tx_compnt_amt_1),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
     logo_url: h.logo_url || null, // TODO: PROC_BUILD_DYNAMIC_SQL_PURCHASE_ORDER doesn't select logo_url yet — add the same subquery used in the register proc if you want the letterhead logo here too.
   };
 }
 
+
+
+
+// function computeTotals(rows: ReportRow[], header: PoHeader) {
+//   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
+//   //const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
+//    //const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0) + header.total_discount; // ← added
+//    const totalAmount = rows.reduce((s, r) => s + grossValue(r), 0) + header.total_discount;
+//   // const discount = header.disc_hdr_price || (totalAmount * header.disc_hdr_percent) / 100;
+//   const discount = header.total_discount || (totalAmount * header.total_discount) / 100;
+//   const exclusiveVat = totalAmount - discount;
+//   // TODO: vat_amount / tax rate not present in vw_erp_purorder — add the column(s) to
+//   // PROC_BUILD_DYNAMIC_SQL_PURCHASE_ORDER once confirmed, then wire real values here.
+//   const total_tx_compnt_amt_1 = header.total_tx_compnt_amt_1;
+//   const inclusiveVat = exclusiveVat + total_tx_compnt_amt_1;
+//   return { totalQty, totalAmount, discount, exclusiveVat, total_tx_compnt_amt_1, inclusiveVat };
+// }
+
+
 function computeTotals(rows: ReportRow[], header: PoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-  const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const discount = header.disc_hdr_price || (totalAmount * header.disc_hdr_percent) / 100;
+  const totalAmount = rows.reduce((s, r) => s + grossValue(r), 0);
+  const discount = header.total_discount || (totalAmount * header.total_discount) / 100;
   const exclusiveVat = totalAmount - discount;
-  // TODO: vat_amount / tax rate not present in vw_erp_purorder — add the column(s) to
-  // PROC_BUILD_DYNAMIC_SQL_PURCHASE_ORDER once confirmed, then wire real values here.
-  const vatAmount = 0;
-  const inclusiveVat = exclusiveVat + vatAmount;
-  return { totalQty, totalAmount, discount, exclusiveVat, vatAmount, inclusiveVat };
+  const total_tx_compnt_amt_1 = header.total_tx_compnt_amt_1;
+  const inclusiveVat = exclusiveVat + total_tx_compnt_amt_1;
+  return { totalQty, totalAmount, discount, exclusiveVat, total_tx_compnt_amt_1, inclusiveVat };
 }
+
 
 // ─── HTML renderer (same visual system as PO Order Register) ──────────────
 
@@ -213,7 +241,8 @@ function renderHtml(rows: ReportRow[], loginId: string): string {
                             <td>${escapeHtml(r.p_uom)}</td>
                             <td class="right">${qtyFmt(r.quantity)}</td>
                             <td class="right">${amtFmt(r.unit_price)}</td>
-                            <td class="right amount">${amtFmt(r.amount)}</td>
+                          
+                            <td class="right amount">${amtFmt(grossValue(r))}</td>
                             <td class="right">\u2014</td>
                         </tr>`;
     // NOTE: last column (VAT Type) is a placeholder — no vat_type/vat_code column
@@ -321,6 +350,7 @@ function renderHtml(rows: ReportRow[], loginId: string): string {
                 <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
                 <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
                 <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
+                  <div class="value-line">Delivery Term: ${escapeHtml(header.dlvr_term)}</div>
             </div>
         </div>
 
@@ -347,14 +377,10 @@ function renderHtml(rows: ReportRow[], loginId: string): string {
                 <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
                 <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
                 <div class="row"><span>Total (Exclusive VAT)</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
-                <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.vatAmount)}</span></div>
+                <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.total_tx_compnt_amt_1)}</span></div>
                 <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
             </div>
         `}
-
-        <div class="report-footer">
-            <span>Report: rpt_purchase_order</span>
-        </div>
     </div>
     <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
         Powered by Bayanat Technology
@@ -415,7 +441,8 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
       cell(text(r.p_uom), "data"),
       cell(num(r.quantity), "dataNum"),
       cell(num(r.unit_price), "dataNum"),
-      cell(num(r.amount), "dataNum"),
+      // cell(num(r.amount), "dataNum"),
+       cell(grossValue(r), "dataNum"), 
       cell("", "data"), // TODO: VAT type column not available yet
     ]);
   });
@@ -427,7 +454,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
     ["Total Amount", totals.totalAmount],
     ["Overall Discount", totals.discount],
     ["Total (Exclusive VAT)", totals.exclusiveVat],
-    ["VAT Amount", totals.vatAmount],
+    ["VAT Amount", totals.total_tx_compnt_amt_1],
   ];
   totalRows.forEach(([label, value]) => {
     const r = rows_.length;
