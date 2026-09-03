@@ -98,6 +98,7 @@ import { getGrnPrintReport } from "../../../interfaces/Purchaseflow_Al/Purchase_
 import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
 import { getSalesOrderReportExcel, getSalesOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderReport";
 import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml, getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_report";
+import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountDetailsReportHtml, getPurchaseInvoiceReportExcel, getPurchaseInvoiceReportHtml, getPurchaseInvoiceTaxReportExcel, getPurchaseInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseInvoicereports";
 //import { getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisteOld_Summary";
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
@@ -191,7 +192,18 @@ router.post('/reports/PR_RegisterOld_Summary/excel', getPrRegisterOldSummaryRepo
 router.post('/reports/PR_RegisterOld_Details/html', getPrRegisterOldDetailReportHtml);
 router.post('/reports/PR_RegisterOld_Details/excel', getPrRegisterOldDetailReportExcel);
 
+// ---------------Purchase Invoice 3 reports Routes----------------------
 
+
+router.post('/reports/PurchaseInvoice/html', getPurchaseInvoiceReportHtml);
+router.post('/reports/PurchaseInvoiceTax/html', getPurchaseInvoiceTaxReportHtml);
+router.post('/reports/PurchaseInvoiceAccountDetails/html', getPurchaseInvoiceAccountDetailsReportHtml);
+
+router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
+router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
+router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
+
+// sales order report routes
 
 router.post('/reports/SalesOrderReport/html', getSalesOrderReportHtml);
 router.post('/reports/SalesOrderReport/excel', getSalesOrderReportExcel);
