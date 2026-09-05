@@ -82,7 +82,30 @@ export const frtPacklistGet = async (req: Request, res: Response): Promise<void>
     );
 
     const rows = await rowsFromCursor((result.outBinds as any).p_result);
-    res.json({ success: true, data: rows[0] ?? null });
+    const packlist = rows[0] ?? null;
+    if (!packlist) {
+      res.json({ success: true, data: null });
+      return;
+    }
+
+    const containerResult = await connection.execute(
+      `SELECT SRNO, CONTAINER_NO, CONTAINER_TYPE, T_F, SEAL_NO,
+              VOLUME, GROSS_WEIGHT, NO_OF_PKGS, PUOM, CONTN_DESC,
+              CONTN_PICK_DATE, BL_NO
+         FROM TF_CONTAINER_DET
+        WHERE COMPANY_CODE = :p_company_code
+          AND PRIN_CODE = :p_prin_code
+          AND JOB_NO = :p_job_no
+        ORDER BY NVL(SRNO, 999999), CONTAINER_NO`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_prin_code: req.body.prin_code ?? req.body.PRIN_CODE,
+        p_job_no: req.body.job_no ?? req.body.JOB_NO,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    res.json({ success: true, data: { ...(packlist as object), CONTAINERS: containerResult.rows ?? [] } });
   });
 };
 
@@ -141,6 +164,28 @@ export const frtPacklistDimSave = async (req: Request, res: Response): Promise<v
 export const frtPacklistSave = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const pack = req.body.packlist ?? req.body;
+    const hasContainerPayload = Array.isArray(req.body.containers ?? pack.containers ?? pack.CONTAINERS);
+    const containerRows: Array<Record<string, unknown>> = hasContainerPayload
+      ? (req.body.containers ?? pack.containers ?? pack.CONTAINERS)
+      : [];
+    if (containerRows.some((row) => !value(row.container_no ?? row.CONTAINER_NO))) {
+      throw new Error("Container number is required for every container detail row.");
+    }
+    const containers = hasContainerPayload
+      ? containerRows.map(toContainerObject)
+      : [];
+    const dimensionRows = Array.isArray(req.body.dimensions) ? req.body.dimensions : null;
+    const duplicateContainers = containers
+      .map((row: Record<string, unknown>) => String(row.CONTAINER_NO).toUpperCase())
+      .filter((containerNo: string, index: number, values: string[]) => values.indexOf(containerNo) !== index);
+    if (duplicateContainers.length) {
+      throw new Error(`Duplicate container number: ${duplicateContainers[0]}`);
+    }
+    const containerSummary = containers.map((row: Record<string, unknown>) => row.CONTAINER_NO).join(",\r\n");
+    const containerVolume = sumContainerNumber(containers, "VOLUME");
+    const containerGrossWeight = sumContainerNumber(containers, "GROSS_WEIGHT");
+    const teuCount = containers.filter((row: Record<string, unknown>) => row.T_F === "T").length;
+    const feuCount = containers.filter((row: Record<string, unknown>) => row.T_F === "F").length;
     const isNewPacklist =
       pack.is_new_packlist === true ||
       pack.IS_NEW_PACKLIST === true ||
@@ -247,14 +292,14 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
         p_no_of_packings: numberValue(pack.no_of_packings ?? pack.NO_OF_PACKINGS),
         p_quantity: numberValue(pack.quantity ?? pack.QUANTITY),
         p_puom: value(pack.puom ?? pack.PUOM),
-        p_volume: numberValue(pack.volume ?? pack.VOLUME),
-        p_net_wt: numberValue(pack.net_wt ?? pack.NET_WT),
-        p_gross_wt: numberValue(pack.gross_wt ?? pack.GROSS_WT),
-        p_charge_wt: numberValue(pack.charge_wt ?? pack.CHARGE_WT ?? pack.CHARGEABLE_WT),
-        p_feus: numberValue(pack.feus ?? pack.FEUS),
-        p_teus: numberValue(pack.teus ?? pack.TEUS),
+        p_volume: numberValue(pack.volume ?? pack.VOLUME) || containerVolume || null,
+        p_net_wt: numberValue(pack.net_wt ?? pack.NET_WT) || containerGrossWeight || null,
+        p_gross_wt: numberValue(pack.gross_wt ?? pack.GROSS_WT) || containerGrossWeight || null,
+        p_charge_wt: numberValue(pack.charge_wt ?? pack.CHARGE_WT ?? pack.CHARGEABLE_WT) || containerGrossWeight || null,
+        p_feus: hasContainerPayload ? feuCount : numberValue(pack.feus ?? pack.FEUS),
+        p_teus: hasContainerPayload ? teuCount : numberValue(pack.teus ?? pack.TEUS),
         p_bl_mode: value(pack.bl_mode ?? pack.BL_MODE),
-        p_container_no: value(pack.container_no ?? pack.CONTAINER_NO),
+        p_container_no: hasContainerPayload ? value(containerSummary) : value(pack.container_no ?? pack.CONTAINER_NO),
         p_container_size: numberValue(pack.container_size ?? pack.CONTAINER_SIZE),
         p_container_type: value(pack.container_type ?? pack.CONTAINER_TYPE),
         p_vessel_name: value(pack.vessel_name ?? pack.VESSEL_NAME),
@@ -295,15 +340,93 @@ export const frtPacklistSave = async (req: Request, res: Response): Promise<void
         p_curr_code: value(pack.curr_code ?? pack.CURR_CODE),
         p_ex_rate: numberValue(pack.ex_rate ?? pack.EX_RATE),
         p_rate: numberValue(pack.rate ?? pack.RATE),
-        p_amount: numberValue(pack.amount ?? pack.AMOUNT),
+        p_amount:
+          (numberValue(pack.charge_wt ?? pack.CHARGE_WT ?? pack.CHARGEABLE_WT) ?? 0)
+          * (numberValue(pack.rate ?? pack.RATE) ?? 0),
         p_remarks: value(pack.remarks ?? pack.REMARKS),
         p_handling_info: value(pack.handling_info ?? pack.HANDLING_INFO),
         p_user_id: value(pack.user_id ?? pack.USER_ID ?? req.body.user_id ?? req.body.USER_ID),
         p_packlist_no_out: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
         p_seq_number_out: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 40 },
       },
-      { autoCommit: true }
+      { autoCommit: false }
     );
+
+    if (hasContainerPayload) {
+      const companyCode = value(pack.company_code ?? pack.COMPANY_CODE);
+      const prinCode = value(pack.prin_code ?? pack.PRIN_CODE);
+      const jobNo = value(pack.job_no ?? pack.JOB_NO);
+      await connection.execute(
+        `DELETE FROM TF_CONTAINER_DET
+          WHERE COMPANY_CODE = :p_company_code
+            AND PRIN_CODE = :p_prin_code
+            AND JOB_NO = :p_job_no`,
+        { p_company_code: companyCode, p_prin_code: prinCode, p_job_no: jobNo }
+      );
+      if (containers.length) {
+        await connection.executeMany(
+          `INSERT INTO TF_CONTAINER_DET (
+             COMPANY_CODE, PRIN_CODE, JOB_NO, SRNO, CONTAINER_NO,
+             CONTAINER_TYPE, T_F, SEAL_NO, VOLUME, GROSS_WEIGHT,
+             NO_OF_PKGS, PUOM, CONTN_DESC, CONTN_PICK_DATE, BL_NO
+           ) VALUES (
+             :COMPANY_CODE, :PRIN_CODE, :JOB_NO, :SRNO, :CONTAINER_NO,
+             :CONTAINER_TYPE, :T_F, :SEAL_NO, :VOLUME, :GROSS_WEIGHT,
+             :NO_OF_PKGS, :PUOM, :CONTN_DESC, :CONTN_PICK_DATE, :BL_NO
+           )`,
+          containers.map((row: Record<string, unknown>, index: number) => ({
+            ...row,
+            COMPANY_CODE: companyCode,
+            PRIN_CODE: prinCode,
+            JOB_NO: jobNo,
+            SRNO: index + 1,
+            BL_NO: row.BL_NO || value(pack.bl_no ?? pack.BL_NO),
+          })),
+          {
+            bindDefs: {
+              COMPANY_CODE: { type: oracledb.STRING, maxSize: 5 },
+              PRIN_CODE: { type: oracledb.STRING, maxSize: 5 },
+              JOB_NO: { type: oracledb.STRING, maxSize: 20 },
+              SRNO: { type: oracledb.NUMBER },
+              CONTAINER_NO: { type: oracledb.STRING, maxSize: 250 },
+              CONTAINER_TYPE: { type: oracledb.STRING, maxSize: 40 },
+              T_F: { type: oracledb.STRING, maxSize: 1 },
+              SEAL_NO: { type: oracledb.STRING, maxSize: 60 },
+              VOLUME: { type: oracledb.NUMBER },
+              GROSS_WEIGHT: { type: oracledb.NUMBER },
+              NO_OF_PKGS: { type: oracledb.NUMBER },
+              PUOM: { type: oracledb.STRING, maxSize: 5 },
+              CONTN_DESC: { type: oracledb.STRING, maxSize: 50 },
+              CONTN_PICK_DATE: { type: oracledb.DATE },
+              BL_NO: { type: oracledb.STRING, maxSize: 50 },
+            },
+          }
+        );
+      }
+    }
+
+    if (dimensionRows) {
+      await connection.execute(
+        `BEGIN
+           PROC_FRT_PACKLIST_DIM_SAVE(
+             :p_company_code,
+             :p_prin_code,
+             :p_job_no,
+             :p_user_id,
+             :p_lines
+           );
+         END;`,
+        {
+          p_company_code: value(pack.company_code ?? pack.COMPANY_CODE),
+          p_prin_code: value(pack.prin_code ?? pack.PRIN_CODE),
+          p_job_no: value(pack.job_no ?? pack.JOB_NO),
+          p_user_id: value(pack.user_id ?? pack.USER_ID ?? req.body.user_id ?? req.body.USER_ID),
+          p_lines: { type: "FRT_PACKLIST_DIM_TAB", val: dimensionRows.map(toDimensionObject) },
+        }
+      );
+    }
+
+    await connection.commit();
 
     res.json({
       success: true,
@@ -352,6 +475,13 @@ async function withConnection(res: Response, handler: (connection: Connection) =
     connection = await TenantManager.getConnection(tenantId);
     await handler(connection);
   } catch (error: any) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error("Freight pack list rollback error:", rollbackError);
+      }
+    }
     console.error("Freight pack list procedure error:", error);
     res.status(500).json({
       success: false,
@@ -407,4 +537,25 @@ function toDimensionObject(row: Record<string, unknown>, index: number) {
     CARGO_DETAILS: value(row.cargo_details ?? row.CARGO_DETAILS),
     PROD_DESCRIPTION: value(row.prod_description ?? row.PROD_DESCRIPTION),
   };
+}
+
+function toContainerObject(row: Record<string, unknown>, index: number) {
+  return {
+    SRNO: index + 1,
+    CONTAINER_NO: value(row.container_no ?? row.CONTAINER_NO)?.toUpperCase() ?? null,
+    CONTAINER_TYPE: value(row.container_type ?? row.CONTAINER_TYPE) ?? "STANDARD",
+    T_F: value(row.t_f ?? row.T_F) ?? "T",
+    SEAL_NO: value(row.seal_no ?? row.SEAL_NO),
+    VOLUME: numberValue(row.volume ?? row.VOLUME) ?? 0,
+    GROSS_WEIGHT: numberValue(row.gross_weight ?? row.GROSS_WEIGHT) ?? 0,
+    NO_OF_PKGS: numberValue(row.no_of_pkgs ?? row.NO_OF_PKGS),
+    PUOM: value(row.puom ?? row.PUOM),
+    CONTN_DESC: value(row.contn_desc ?? row.CONTN_DESC),
+    CONTN_PICK_DATE: toDate(row.contn_pick_date ?? row.CONTN_PICK_DATE),
+    BL_NO: value(row.bl_no ?? row.BL_NO),
+  };
+}
+
+function sumContainerNumber(rows: Array<Record<string, unknown>>, field: string) {
+  return rows.reduce((total, row) => total + (numberValue(row[field]) ?? 0), 0);
 }
