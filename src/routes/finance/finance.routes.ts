@@ -50,6 +50,7 @@ import { insUpdTnInvoiceBulk } from "../../controllers/wms/insUpdTnInvoiceBulk";
 import {insUpdMsApproverLevels} from "../../controllers/Security/insUpdMsApproverLevels.controller";
 import {insSecRoleFunctionAccessUser} from "../../controllers/Security/insSecRoleFunctionAccessUser.controller";
 import { insUpdHrEmpLanguages } from "../../controllers/HR/insUpdHrEmpLanguages";
+import { insUpdHrEmployeeDependants } from "../../controllers/HR/insUpdHrEmployeeDependants";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -169,6 +170,11 @@ router.post(
   router.post(
     "/insUpdHrEmpLanguages",
     insUpdHrEmpLanguages
+  )
+
+  router.post(
+    "/insUpdHrEmployeeDependants",
+    insUpdHrEmployeeDependants
   )
   // hr
 router.post(
