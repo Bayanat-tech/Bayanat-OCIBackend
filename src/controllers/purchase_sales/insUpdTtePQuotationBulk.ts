@@ -68,7 +68,7 @@ export const insUpdTtePQuotationBulk = async (
 
       DOC_NO:
         header.doc_no != null
-          ? Number(header.doc_no)
+          ? String(header.doc_no)
           : null,
 
 
@@ -485,7 +485,7 @@ user.loginid ?? null,
 
       DOC_NO:
         d.doc_no != null
-          ? Number(d.doc_no)
+          ? String(d.doc_no)
           : null,
 
 
@@ -614,7 +614,7 @@ user.loginid ?? null,
 
 
       REF_DOC_NO:
-        d.ref_doc_no ?? 0,
+        d.ref_doc_no ?? null,
 
 
       REF_DOC_SERIAL:

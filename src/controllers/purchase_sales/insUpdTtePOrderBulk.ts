@@ -246,7 +246,10 @@ user.loginid ?? null,
   SENTBACK_REASON:
     header.sentback_reason ?? null,
   REJECT_REASON:
-    header.reject_reason ?? null
+    header.reject_reason ?? null,
+  TX_COMPNT_1_EXPMT:
+        String(header.tx_compnt_1_expmt ?? "S"),
+
 };
     /******************************************************
      * Detail Mapping
