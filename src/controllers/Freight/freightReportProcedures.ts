@@ -18,7 +18,21 @@ const reportProcedures: Record<string, string> = {
   deposits: "PROC_FRT_REPORT_DEPOSITS",
   container_deposit: "PROC_FRT_REPORT_CONTAINER_DEPOSIT",
   freight_summary: "PROC_FRT_REPORT_SUMMARY",
+  freight_tracking: "PROC_FRT_REPORT_TRACKING_PB",
+  daily_activity_report: "PROC_FRT_REPORT_DAILY_ACTIVITY_PB",
+  etd_report: "PROC_FRT_REPORT_ETD_PB",
+  eta_report: "PROC_FRT_REPORT_ETA_PB",
+  petty_cash_report: "PROC_FRT_REPORT_PETTY_CASH_PB",
 };
+
+const powerBuilderOperationalKeys = new Set([
+  "freight_summary",
+  "freight_tracking",
+  "daily_activity_report",
+  "etd_report",
+  "eta_report",
+  "petty_cash_report",
+]);
 
 const dedicatedReportKeys = new Set([
   "freight_profit",
@@ -41,7 +55,10 @@ export const frtReportRun = async (req: Request, res: Response): Promise<void> =
     const binds = reportBinds(req);
     let rows: unknown[];
     let source: string;
-    if (dedicatedReportKeys.has(reportKey)) {
+    if (powerBuilderOperationalKeys.has(reportKey)) {
+      source = procName;
+      rows = await runPowerBuilderOperationalReport(connection, procName, binds);
+    } else if (dedicatedReportKeys.has(reportKey)) {
       source = procName;
       rows = await runLegacyReport(connection, procName, binds);
     } else {
@@ -127,7 +144,101 @@ async function runPowerBuilderReport(connection: Connection, reportKey: string, 
      END;`,
     {
       p_report_key: reportKey,
-      ...binds,
+      p_company_code: binds.p_company_code,
+      p_from_date: binds.p_from_date,
+      p_to_date: binds.p_to_date,
+      p_schedule_from_date: binds.p_schedule_from_date,
+      p_schedule_to_date: binds.p_schedule_to_date,
+      p_confirm_from_date: binds.p_confirm_from_date,
+      p_confirm_to_date: binds.p_confirm_to_date,
+      p_collection_from_date: binds.p_collection_from_date,
+      p_collection_to_date: binds.p_collection_to_date,
+      p_deposit_from_date: binds.p_deposit_from_date,
+      p_deposit_to_date: binds.p_deposit_to_date,
+      p_expiry_from_date: binds.p_expiry_from_date,
+      p_expiry_to_date: binds.p_expiry_to_date,
+      p_eta_from_date: binds.p_eta_from_date,
+      p_eta_to_date: binds.p_eta_to_date,
+      p_ata_from_date: binds.p_ata_from_date,
+      p_ata_to_date: binds.p_ata_to_date,
+      p_prin_code_from: binds.p_prin_code_from,
+      p_prin_code_to: binds.p_prin_code_to,
+      p_job_no_from: binds.p_job_no_from,
+      p_job_no_to: binds.p_job_no_to,
+      p_doc_no_from: binds.p_doc_no_from,
+      p_doc_no_to: binds.p_doc_no_to,
+      p_broker_code_from: binds.p_broker_code_from,
+      p_broker_code_to: binds.p_broker_code_to,
+      p_dept_code_from: binds.p_dept_code_from,
+      p_dept_code_to: binds.p_dept_code_to,
+      p_div_code: binds.p_div_code,
+      p_origin_port: binds.p_origin_port,
+      p_destination_port: binds.p_destination_port,
+      p_transport_mode: binds.p_transport_mode,
+      p_job_type: binds.p_job_type,
+      p_status: binds.p_status,
+      p_report_period: binds.p_report_period,
+      p_report_mode: binds.p_report_mode,
+      p_report_variant: binds.p_report_variant,
+      p_invoice_no: binds.p_invoice_no,
+      p_vessel_name: binds.p_vessel_name,
+      p_voyage_no: binds.p_voyage_no,
+      p_container_no: binds.p_container_no,
+      p_bl_no: binds.p_bl_no,
+      p_be_no: binds.p_be_no,
+      p_claim_ref: binds.p_claim_ref,
+      p_exit_bill1: binds.p_exit_bill1,
+      p_exit_bill2: binds.p_exit_bill2,
+      p_cleared_flag: binds.p_cleared_flag,
+      p_consignee_name: binds.p_consignee_name,
+      p_shipper_name: binds.p_shipper_name,
+      p_job_category: binds.p_job_category,
+      p_member_type: binds.p_member_type,
+      p_sale_type: binds.p_sale_type,
+      p_inco_terms: binds.p_inco_terms,
+      p_forwarder_code: binds.p_forwarder_code,
+      p_doc_ref: binds.p_doc_ref,
+      p_po_no: binds.p_po_no,
+      p_search: binds.p_search,
+      p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+    } as oracledb.BindParameters,
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+  return rowsFromCursor((result.outBinds as any).p_result);
+}
+
+async function runPowerBuilderOperationalReport(connection: Connection, procName: string, binds: Record<string, unknown>) {
+  const result = await connection.execute(
+    `BEGIN
+       ${procName}(
+         :p_company_code, :p_from_date, :p_to_date,
+         :p_prin_code_from, :p_prin_code_to,
+         :p_job_no_from, :p_job_no_to,
+         :p_doc_no_from, :p_doc_no_to,
+         :p_div_code, :p_origin_port, :p_destination_port,
+         :p_transport_mode, :p_job_type, :p_status,
+         :p_report_variant, :p_cashier_id, :p_search, :p_result
+       );
+     END;`,
+    {
+      p_company_code: binds.p_company_code,
+      p_from_date: binds.p_from_date,
+      p_to_date: binds.p_to_date,
+      p_prin_code_from: binds.p_prin_code_from,
+      p_prin_code_to: binds.p_prin_code_to,
+      p_job_no_from: binds.p_job_no_from,
+      p_job_no_to: binds.p_job_no_to,
+      p_doc_no_from: binds.p_doc_no_from,
+      p_doc_no_to: binds.p_doc_no_to,
+      p_div_code: binds.p_div_code,
+      p_origin_port: binds.p_origin_port,
+      p_destination_port: binds.p_destination_port,
+      p_transport_mode: binds.p_transport_mode,
+      p_job_type: binds.p_job_type,
+      p_status: binds.p_status,
+      p_report_variant: binds.p_report_variant,
+      p_cashier_id: binds.p_cashier_id,
+      p_search: binds.p_search,
       p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
     } as oracledb.BindParameters,
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -233,6 +344,7 @@ function reportBinds(req: Request) {
     p_forwarder_code: value(body.forwarder_code),
     p_doc_ref: value(body.doc_ref),
     p_po_no: value(body.po_no),
+    p_cashier_id: value(body.cashier_id),
     p_search: value(body.search ?? body.SEARCH),
   };
 }

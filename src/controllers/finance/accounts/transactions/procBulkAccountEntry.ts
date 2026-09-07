@@ -30,6 +30,22 @@ const oneChar = (value: unknown, fallback: string | null = null): string | null 
   return String(source).substring(0, 1);
 };
 
+const normalizeUniqueSerials = <T extends Record<string, any>>(rows: T[] = [], fallbackDocNo = "0"): T[] => {
+  const seen = new Set<number>();
+  return rows.map((row, index) => {
+    const rawSerial = Number(row?.serial_no ?? index + 1);
+    let nextSerial = Number.isFinite(rawSerial) && rawSerial > 0 && !seen.has(rawSerial) ? rawSerial : index + 1;
+    while (seen.has(nextSerial)) nextSerial = index + 1 + seen.size;
+    seen.add(nextSerial);
+    return {
+      ...row,
+      doc_no: row?.doc_no ?? fallbackDocNo,
+      serial_no: nextSerial,
+      dtl_sr_no: Number.isFinite(Number(row?.dtl_sr_no)) && Number(row?.dtl_sr_no) > 0 ? Number(row.dtl_sr_no) : index + 1,
+    } as T;
+  });
+};
+
 export const procBulkAccountEntry = async (
   req: Request,
   res: Response
@@ -69,6 +85,11 @@ export const procBulkAccountEntry = async (
     }
 
     connection = await TenantManager.getConnection(tenantId);
+    const safeDetails = normalizeUniqueSerials(details, String(header.doc_no || "0"));
+    const safeInvoiceDetail = normalizeUniqueSerials(invoiceDetail, String(header.doc_no || "0"));
+    const safeExpenseDetail = normalizeUniqueSerials(expenseDetail, String(header.doc_no || "0"));
+    const safeJobDetail = normalizeUniqueSerials(jobDetail, String(header.doc_no || "0"));
+
     console.log("========================>", header.doc_no);
     console.log("invoiceDetail raw:", invoiceDetail);
     console.log("invoiceDetail length:", invoiceDetail?.length);
@@ -161,7 +182,7 @@ export const procBulkAccountEntry = async (
 
         p_detail: {
           type: "TY_TR_AC_DETAIL_ACENTRY_TAB",
-          val: details.map((d: any) => ({
+          val: safeDetails.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
             DOC_NO: d.doc_no || '0',
@@ -214,7 +235,7 @@ export const procBulkAccountEntry = async (
 
         p_invdetail: {
           type: "TY_TR_AC_INVDETAIL_ACENTRY_TAB",
-          val: invoiceDetail.map((d: any) => ({
+          val: safeInvoiceDetail.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
             DOC_NO: d.doc_no || '0',
@@ -239,7 +260,7 @@ export const procBulkAccountEntry = async (
 
         p_expdetail: {
           type: "TY_TR_AC_EXPDETAIL_ACENTRY_TAB",
-          val: expenseDetail.map((d: any) => ({
+          val: safeExpenseDetail.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
             DOC_NO: d.doc_no || '0',
@@ -260,7 +281,7 @@ export const procBulkAccountEntry = async (
 
         p_jobdetail: {
           type: "TY_TR_AC_JOBDETAIL_ACENTRY_TAB",
-          val: jobDetail.map((d: any) => ({
+          val: safeJobDetail.map((d: any) => ({
             COMPANY_CODE: d.company_code,
             DOC_TYPE: d.doc_type,
             DOC_NO: d.doc_no || '0',

@@ -1,10 +1,12 @@
 import { Response } from "express";
 import oracledb from "oracledb";
 const AdmZip = require("adm-zip");
+import * as fs from "fs";
+import * as path from "path";
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
-
+// import {logo} from './btlogo.png';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
@@ -39,6 +41,24 @@ interface JobCluster {
   rows: ReportRow[];
   subAmount: number;
   subVat: number;
+}
+
+// ─── Company stamp (embedded bottom-right on the Excel export) ────────────────
+// TODO: adjust STAMP_PATH to wherever you actually keep static assets in this
+// project (e.g. alongside other logos/letterheads). Loaded once and cached —
+// if the file is missing we just skip the stamp instead of failing the export.
+const STAMP_PATH = path.resolve(__dirname, "../btlogo.png");
+let cachedStampBuffer: Buffer | null | undefined; // undefined = not attempted yet
+
+function loadStampBuffer(): Buffer | null {
+  if (cachedStampBuffer !== undefined) return cachedStampBuffer;
+  try {
+    cachedStampBuffer = fs.readFileSync(STAMP_PATH);
+  } catch (e) {
+    console.warn("Company stamp not found at", STAMP_PATH, "- exporting without it.");
+    cachedStampBuffer = null;
+  }
+  return cachedStampBuffer;
 }
 
 // ─── DB helpers (shared pattern — move to a common module if one already exists) ──
@@ -262,7 +282,7 @@ function renderHtml(rows: ReportRow[], meta: InvoiceMeta, loginId: string, autoP
     body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 13px; color: #111827;
            background: #eef1f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff;
-             padding: 10mm 12mm; border: 1px solid #c4cdd9; }
+             padding: 10mm 12mm; border: 1px solid #c4cdd9; position: relative; }
     .rpt-header { background: #1e1b4b; color: #fff; text-align: center; font-size: 15px;
                   font-weight: 700; letter-spacing: .10em; padding: 10px 16px;
                   text-transform: uppercase; border-radius: 3px 3px 0 0; }
@@ -297,10 +317,16 @@ function renderHtml(rows: ReportRow[], meta: InvoiceMeta, loginId: string, autoP
     .grandtotal-label { text-align: right; }
 
     .sign-block { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px;
-                  margin-top: 28px; page-break-inside: avoid; }
+                  margin-top: 28px; page-break-inside: avoid; position: relative; }
     .sign-label { font-size: 9.5px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
                   letter-spacing: .05em; margin-bottom: 26px; }
     .sign-line { border-bottom: 1px solid #9ca3af; height: 1px; }
+
+    /* Company stamp — sits inside the "Approved By" cell, bottom-right of the
+       sign block, contained (not overlapping the border like the BTIND one). */
+    .stamp-box { display: flex; justify-content: flex-end; align-items: flex-end;
+                 height: 80px; margin-bottom: 4px; }
+    .stamp-img { max-width: 90px; max-height: 90px; object-fit: contain; opacity: 0.9; }
 
     .rpt-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 7px;
                   display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; }
@@ -353,6 +379,9 @@ function renderHtml(rows: ReportRow[], meta: InvoiceMeta, loginId: string, autoP
       </div>
       <div>
         <div class="sign-label">Approved By</div>
+        <div class="stamp-box">
+          <img class="stamp-img" src="data:image/png;base64,__STAMP_BASE64__" alt="Company Stamp" />
+        </div>
         <div class="sign-line"></div>
       </div>
     </div>
@@ -369,7 +398,10 @@ function renderHtml(rows: ReportRow[], meta: InvoiceMeta, loginId: string, autoP
     ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
   </script>
 </body>
-</html>`;
+</html>`.replace(
+    "__STAMP_BASE64__",
+    (loadStampBuffer()?.toString("base64")) || ""
+  );
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
@@ -438,6 +470,11 @@ function buildExcelBuffer(rows: ReportRow[], meta: InvoiceMeta, loginId: string)
   }
   xlRows.push([xc("Grand Total", "grandTotal"), skip, skip, skip, skip, skip, skip, xc(`${numFmt(grandAmount)} / ${numFmt(grandVat)}`, "grandTotal")]);
 
+  // Leave a couple of blank rows of breathing room below the grand total —
+  // the stamp floats over this area, bottom-right of the sheet.
+  xlRows.push(Array(NCOLS).fill(skip));
+  xlRows.push(Array(NCOLS).fill(skip));
+
   const COL_WIDTHS = [18, 30, 14, 14, 10, 14, 10, 20];
   const colXml = COL_WIDTHS.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("");
 
@@ -481,6 +518,18 @@ function buildExcelBuffer(rows: ReportRow[], meta: InvoiceMeta, loginId: string)
     ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>`
     : "";
 
+  const stampBuffer = loadStampBuffer();
+
+  // 0-based anchor row: 2 blank rows below the grand total (already pushed
+  // above), starting at column G (index 6) so the ~1.1in square sits inside
+  // the last two columns — bottom-right of the printed sheet.
+  const stampAnchorRow0 = xlRows.length - 2; // land it on the first blank row
+  const STAMP_EMU = 1005840; // ~1.1in square, matches the stamp's ~1:1 aspect ratio
+
+  const drawingTagXml = stampBuffer
+    ? `<drawing r:id="rIdDrawing1"/>`
+    : "";
+
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -488,6 +537,7 @@ function buildExcelBuffer(rows: ReportRow[], meta: InvoiceMeta, loginId: string)
   <cols>${colXml}</cols>
   <sheetData>${sheetDataXml}</sheetData>
   ${mergeXml}
+  ${drawingTagXml}
 </worksheet>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -552,13 +602,20 @@ function buildExcelBuffer(rows: ReportRow[], meta: InvoiceMeta, loginId: string)
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>`;
 
+  const contentTypesParts = [
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>`,
+    `<Default Extension="xml"  ContentType="application/xml"/>`,
+    `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>`,
+    `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`,
+    `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>`,
+  ];
+  if (stampBuffer) {
+    contentTypesParts.push(`<Default Extension="png" ContentType="image/png"/>`);
+    contentTypesParts.push(`<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`);
+  }
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml"  ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  ${contentTypesParts.join("\n  ")}
 </Types>`;
 
   const zip = new AdmZip();
@@ -568,6 +625,53 @@ function buildExcelBuffer(rows: ReportRow[], meta: InvoiceMeta, loginId: string)
   zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
   zip.addFile("xl/worksheets/sheet1.xml",   Buffer.from(sheetXml));
   zip.addFile("xl/styles.xml",              Buffer.from(stylesXml));
+
+  if (stampBuffer) {
+    const sheetRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdDrawing1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>
+</Relationships>`;
+
+    const drawingRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdImg1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>
+</Relationships>`;
+
+    // oneCellAnchor: fixed EMU size, anchored at a single cell so the stamp
+    // stays a consistent square regardless of column widths — anchored at
+    // col G (0-based index 6), the row just below the grand total.
+    const drawingXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <xdr:oneCellAnchor>
+    <xdr:from>
+      <xdr:col>6</xdr:col><xdr:colOff>0</xdr:colOff>
+      <xdr:row>${stampAnchorRow0}</xdr:row><xdr:rowOff>0</xdr:rowOff>
+    </xdr:from>
+    <xdr:ext cx="${STAMP_EMU}" cy="${STAMP_EMU}"/>
+    <xdr:pic>
+      <xdr:nvPicPr>
+        <xdr:cNvPr id="2" name="CompanyStamp"/>
+        <xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>
+      </xdr:nvPicPr>
+      <xdr:blipFill>
+        <a:blip r:embed="rIdImg1"/>
+        <a:stretch><a:fillRect/></a:stretch>
+      </xdr:blipFill>
+      <xdr:spPr>
+        <a:xfrm><a:off x="0" y="0"/><a:ext cx="${STAMP_EMU}" cy="${STAMP_EMU}"/></a:xfrm>
+        <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+      </xdr:spPr>
+    </xdr:pic>
+    <xdr:clientData/>
+  </xdr:oneCellAnchor>
+</xdr:wsDr>`;
+
+    zip.addFile("xl/worksheets/_rels/sheet1.xml.rels", Buffer.from(sheetRels));
+    zip.addFile("xl/drawings/drawing1.xml",            Buffer.from(drawingXml));
+    zip.addFile("xl/drawings/_rels/drawing1.xml.rels", Buffer.from(drawingRels));
+    zip.addFile("xl/media/image1.png",                 stampBuffer);
+  }
+
   return zip.toBuffer();
 }
 

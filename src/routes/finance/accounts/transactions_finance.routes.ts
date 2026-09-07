@@ -94,8 +94,17 @@ import { PRPurchaseReport } from "../../../controllers/ALMS/Prpurchasereport";
 import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/Plsummaryreportpage.controller";
 import { exportPRRegisterReportExcel, getPRRegisterReportHtml } from "../../../controllers/ALMS/PrRegisterReport";
 import { getPoOrderRegisterReportExcel, getPoOrderRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PoOrderRegisterReport";
-import { getGrnPrintReport } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+
 import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
+import { getSalesOrderReportExcel, getSalesOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderReport";
+import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml, getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_report";
+import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountDetailsReportHtml, getPurchaseInvoiceReportExcel, getPurchaseInvoiceReportHtml, getPurchaseInvoiceTaxReportExcel, getPurchaseInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseInvoicereports";
+//import { getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisteOld_Summary";
+//import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
+//import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
+import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
+
 
 
 const router = express.Router();
@@ -179,10 +188,48 @@ router.post('/reports/PurchaseOrderReport/html', getPurchaseOrderReportHtml);
 router.post('/reports/PurchaseOrderReport/excel', getPurchaseOrderReportExcel);
 
 
+router.post('/reports/PR_RegisterOld_Summary/html', getPrRegisterOldSummaryReportHtml);
+router.post('/reports/PR_RegisterOld_Summary/excel', getPrRegisterOldSummaryReportExcel);
+
+
+router.post('/reports/PR_RegisterOld_Details/html', getPrRegisterOldDetailReportHtml);
+router.post('/reports/PR_RegisterOld_Details/excel', getPrRegisterOldDetailReportExcel);
+
+// ---------------Purchase Invoice 3 reports Routes----------------------
+
+
+router.post('/reports/PurchaseInvoice/html', getPurchaseInvoiceReportHtml);
+router.post('/reports/PurchaseInvoiceTax/html', getPurchaseInvoiceTaxReportHtml);
+router.post('/reports/PurchaseInvoiceAccountDetails/html', getPurchaseInvoiceAccountDetailsReportHtml);
+
+router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
+router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
+router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
+
+
+
+// sales invoice report routes-------
+router.post('/reports/SalesInvoiceReport/html', getSalesInvoiceReportHtml);
+router.post('/reports/SalesInvoiceReport/excel', getSalesInvoiceReportExcel);
+
+router.post('/reports/SalesInvoiceTaxReport/Html',getSalesInvoiceTaxReportHtml);
+router.post('/reports/SalesInvoiceTaxReport/excel',getSalesInvoiceTaxReportExcel);
+
+router.post('/reports/SalesAccountDetailsReport/html',getSalesAccountDetailsReportHtml);
+router.post('/reports/SalesAccountDetailsReport/excel',getSalesAccountDetailsReportExcel);
+
+
+// sales order report routes
+
+router.post('/reports/SalesOrderReport/html', getSalesOrderReportHtml);
+router.post('/reports/SalesOrderReport/excel', getSalesOrderReportExcel);
+
 
 
 //--------------GrnPrintReport----------------
 router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
+router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
+
 
 
 // ---------HR Reports Routes------
