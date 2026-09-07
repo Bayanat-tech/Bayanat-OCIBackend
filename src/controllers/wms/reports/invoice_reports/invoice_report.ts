@@ -12,6 +12,7 @@ import {
   decryptInvoiceToken,
   generateInvoiceQrDataUrl,
 } from "./qrToken";
+import { getStampDataUrl } from "./stampImage";
 
 const BASE_URL = process.env.BACKEND_URL || "https://yourdomain.com";
 
@@ -76,9 +77,14 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
     return;
   }
 
+  // Stamp is a static asset read from disk (not from the DB row),
+  // converted to a base64 data URI so it renders in any browser/PDF
+  // engine without needing a resolvable file path or public URL.
+  const stampDataUrl = getStampDataUrl();
+
   // Build self-contained token: company_code + rows + meta + expiry
   const token = encryptInvoiceToken({
-    company_code: company_code || "AMKSA",
+    company_code: company_code,
     exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
     data: result,
     meta: {
@@ -89,9 +95,12 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
       clientAddress: client_address,
       clientVatNo: client_vat_no,
       reportType: report_type,          // <-- NEW
+      // Not storing stampDataUrl in the token on purpose — it's a
+      // static asset, not per-invoice data, so public_invoice()
+      // re-reads it from disk (via the in-memory cache) instead of
+      // bloating the encrypted token with a repeated base64 blob.
     },
   });
-  
 
   const qrCodeDataUrl = await generateInvoiceQrDataUrl(token, BASE_URL);
 
@@ -106,8 +115,9 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
       clientVatNo: client_vat_no,
       qrCodeDataUrl,
       reportType: report_type,          // <-- NEW
+      stampDataUrl,                     // <-- NEW
     },
-    company_code || "AMKSA"
+    company_code
   );
 
   res.status(200).set("Content-Type", "text/html; charset=utf-8").send(html);
@@ -135,6 +145,11 @@ export const public_invoice = async (req: Request, res: Response): Promise<void>
     return;
   }
 
+  // Same static stamp asset, re-read (served from in-memory cache
+  // after the first read) — no database call, matching this
+  // endpoint's zero-DB design.
+  const stampDataUrl = getStampDataUrl();
+
   // Render directly from embedded data — NO database call
   const html = buildHtmlFromRows(
     payload.data,
@@ -146,6 +161,7 @@ export const public_invoice = async (req: Request, res: Response): Promise<void>
       clientAddress: payload.meta?.clientAddress,
       clientVatNo: payload.meta?.clientVatNo,
       reportType: payload.meta?.reportType,   // <-- NEW
+      stampDataUrl,                           // <-- NEW
     },
     payload.company_code
   );
