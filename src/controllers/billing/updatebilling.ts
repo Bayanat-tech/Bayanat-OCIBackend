@@ -172,6 +172,12 @@ const headerRows =
       getValue(h,"CURR_CODE"),
 
 
+    EX_RATE:
+      getValue(h,"EX_RATE")
+      ? Number(getValue(h,"EX_RATE"))
+      : null,
+
+
     INV_STATUS:
       getValue(h,"INV_STATUS"),
 

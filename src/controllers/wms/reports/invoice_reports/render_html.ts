@@ -128,6 +128,15 @@ function fmtMoney(n: number | null | undefined, decimals = 2): string {
   });
 }
 
+function getBillAmount(r: InvoiceRow): number {
+  const fc = r.fc_bill;
+  if (fc !== null && fc !== undefined && String(fc).trim() !== "") {
+    const n = Number(fc);
+    if (!Number.isNaN(n)) return n;
+  }
+  return Number(r.bill ?? 0);
+}
+
 function fmtDate(d: string | Date | null | undefined): string {
   if (!d) return "";
   const date = typeof d === "string" ? new Date(d) : d;
@@ -924,8 +933,8 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
         .filter((v) => v && String(v).trim().length > 0);
 
   const clienttax_num = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "N.A.";
-  const companytax_num = first.tax_num || first.comp_trn_no || "";
 
+const companytax_num = "27AAMCB5564D1ZK";
   function isCostRow(r: InvoiceRow): boolean {
     if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") return true;
     if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) return true;
@@ -959,7 +968,9 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
           // r.prin_ref1 ||
           // r.inv_desc2 ||
           "";
-        const amt = Number(r.bill ?? 0);
+        // const amt = Number(r.bill ?? 0);
+            const amt = getBillAmount(r);              // was: Number(r.bill ?? 0)
+
         return `
           <tr>
             <td class="c-no">${idx + 1}</td>
@@ -985,7 +996,9 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
       .map((group) => {
         const head = group[0];
         rowCounter += 1;
-        const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+        // const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+            const groupAmt = group.reduce((s, r) => s + getBillAmount(r), 0);   // was: Number(r.bill ?? 0)
+
         const headDesc = head.act_group_name || head.inv_desc || head.other_services || "";
 
         const headRow = `
@@ -1008,7 +1021,8 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
               // r.prin_ref1 ||
               // r.inv_desc2 ||
               "";
-            const subAmt = Number(r.bill ?? 0);
+            // const subAmt = Number(r.bill ?? 0);
+            const subAmt = getBillAmount(r);        
             if (group.length === 1 && !sac && subDesc === headDesc) {
               return "";
             }
@@ -1046,7 +1060,9 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
   const totalAmt = rows.reduce((s, r) => {
     if (isCostRow(r)) return s;
-    return s + Number(r.bill ?? 0);
+      return s + getBillAmount(r);                  // was: Number(r.bill ?? 0)
+
+    // return s + Number(r.bill ?? 0);
   }, 0);
 
   const printDate = fmtDate(first.invoice_date || first.user_dt);
