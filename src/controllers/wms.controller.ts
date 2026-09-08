@@ -539,32 +539,32 @@ const filter: ISearch = req.query.filter
         }
         
         // Use CountryService to fetch countries
-        const countries = await CountryService.findAll();
+        const countries = await CountryService.findAll(requestUser.company_code);
+        console.log("Fetched countries:", countries);
         
-        // Filter the results based on company_code and any search criteria
-        const filteredCountries = countries.filter(country => {
-          // Check company code match
-          if (country.company_code !== requestUser.company_code) {
-            return false;
-          }
+        // const filteredCountries = countries.filter(country => {
+        //   if (country.company_code !== requestUser.company_code) {
+        //     console.log('country2', country.company_code, requestUser.company_code);
+        //     return false;
+        //   }
           
-          // Apply additional filters if they exist
-          if (filters.country_name && !country.country_name.includes(filters.country_name)) {
-            return false;
-          }
+        //   // Apply additional filters if they exist
+        //   if (filters.country_name && !country.country_name.includes(filters.country_name)) {
+        //     return false;
+        //   }
           
-          if (filters.country_code && !country.country_code.includes(filters.country_code)) {
-            return false;
-          }
+        //   if (filters.country_code && !country.country_code.includes(filters.country_code)) {
+        //     return false;
+        //   }
           
-          return true;
-        });
+        //   return true;
+        // });
         
         // Apply pagination
         const startIndex = skip;
         const endIndex = skip + limit;
-        fetchedData = filteredCountries.slice(startIndex, endIndex);
-        totalCount = filteredCountries.length;
+        fetchedData = countries.slice(startIndex, endIndex);
+        totalCount = countries.length;
       } catch (error) {
         console.error("Error fetching countries:", error);
         fetchedData = [];
