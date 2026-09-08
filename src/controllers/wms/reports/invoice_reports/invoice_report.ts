@@ -13,6 +13,7 @@ import {
   generateInvoiceQrDataUrl,
 } from "./qrToken";
 import { getStampDataUrl } from "./stampImage";
+import { getMonthPeriodLabel } from "./dateRange";
 
 const BASE_URL = process.env.BACKEND_URL || "https://yourdomain.com";
 
@@ -21,7 +22,7 @@ const report = {
   BTIND: { parameter: "INVOICE_AMKSA", template: "BTIND" },
 };
 
-const defaultReportConfig = { parameter: "INVOICE_AMKSA", template: "AMKSA" };
+// const defaultReportConfig = { parameter: "INVOICE_AMKSA", template: "AMKSA" };
 
 const templateBuilders: Record<string, (rows: InvoiceRow[], meta: InvoiceMeta) => string> = {
   AMKSA: buildInvoiceHtmlAMKSA,
@@ -36,10 +37,38 @@ function buildHtmlFromRows(
   meta: InvoiceMeta,
   company_code: string
 ): string {
-  const companyConfig = report[company_code as keyof typeof report] || defaultReportConfig;
+  const companyConfig = report[company_code as keyof typeof report]
+  //  || defaultReportConfig;
   const templateKey = companyConfig?.template || "AMKSA";
   const buildHtml = templateBuilders[templateKey] || buildInvoiceHtmlAMKSA;
   return buildHtml(rows, meta);
+}
+
+/**
+ * Resolves the invoice period to display.
+ * Priority:
+ *   1. An explicit invoice_period passed in the request — used as-is.
+ *   2. Otherwise, derive the full calendar month (1st to last day)
+ *      from whichever date represents "the selected month" — the
+ *      invoice_date query param, or failing that the DB row's own
+ *      invoice_date / from_date.
+ *   3. "" if none of the above yield a usable date.
+ */
+function resolveInvoicePeriod(
+  explicitPeriod: string | undefined,
+  queryInvoiceDate: string | undefined,
+  firstRow: InvoiceRow | undefined
+): string {
+  if (explicitPeriod && explicitPeriod.trim()) {
+    return explicitPeriod.trim();
+  }
+  const monthSourceDate =
+    queryInvoiceDate ||
+    firstRow?.invoice_date ||
+    firstRow?.user_dt ||   // <-- ADD THIS — matches the fallback fmtDate() already uses for the printed Invoice Date
+    firstRow?.from_date ||
+    null;
+  return getMonthPeriodLabel(monthSourceDate);
 }
 
 /* ------------------------------------------------------------------ */
@@ -65,13 +94,15 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
 
   const conn = await getConn(req);
 
-  const companyConfig = report[company_code as keyof typeof report] || defaultReportConfig;
+  const companyConfig = report[company_code as keyof typeof report]
+  //  || defaultReportConfig;
   const result = await execDynamicProc<InvoiceRow>(conn, "PROC_BUILD_DYNAMIC_INVOICE", {
     parameter: companyConfig.parameter,
     code1: company_code,
     code2: prin_code,
     code3: invoice_no,
   });
+  console.log(result, "resultsssssssssssssssssssssssssssssssss")
   if (!result.length) {
     res.status(404).send("<h3>No invoice report data was found for the selected invoice.</h3>");
     return;
@@ -82,6 +113,11 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
   // engine without needing a resolvable file path or public URL.
   const stampDataUrl = getStampDataUrl();
 
+  // If no explicit invoice_period was passed, auto-fill it as the
+  // full calendar month (1st - last day) of whichever date was
+  // selected (invoice_date query param, or the row's own date).
+  const resolvedInvoicePeriod = resolveInvoicePeriod(invoice_period, invoice_date, result[0]);
+
   // Build self-contained token: company_code + rows + meta + expiry
   const token = encryptInvoiceToken({
     company_code: company_code,
@@ -90,11 +126,11 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
     meta: {
       invoiceNo: invoice_no,
       invoiceDate: invoice_date,
-      invoicePeriod: invoice_period,
+      invoicePeriod: resolvedInvoicePeriod,   // <-- now auto-filled when absent
       clientName: client_name,
       clientAddress: client_address,
       clientVatNo: client_vat_no,
-      reportType: report_type,          // <-- NEW
+      reportType: report_type,
       // Not storing stampDataUrl in the token on purpose — it's a
       // static asset, not per-invoice data, so public_invoice()
       // re-reads it from disk (via the in-memory cache) instead of
@@ -109,13 +145,13 @@ export const invoice_report = async (req: Request, res: Response): Promise<void>
     {
       invoiceNo: invoice_no,
       invoiceDate: invoice_date,
-      invoicePeriod: invoice_period,
+      invoicePeriod: resolvedInvoicePeriod,   // <-- now auto-filled when absent
       clientName: client_name,
       clientAddress: client_address,
       clientVatNo: client_vat_no,
       qrCodeDataUrl,
-      reportType: report_type,          // <-- NEW
-      stampDataUrl,                     // <-- NEW
+      reportType: report_type,
+      stampDataUrl,
     },
     company_code
   );
@@ -150,7 +186,9 @@ export const public_invoice = async (req: Request, res: Response): Promise<void>
   // endpoint's zero-DB design.
   const stampDataUrl = getStampDataUrl();
 
-  // Render directly from embedded data — NO database call
+  // The period was already resolved (explicit or auto-filled from
+  // the month) at token-creation time in invoice_report above, so
+  // we just pass it straight through here — no need to recompute.
   const html = buildHtmlFromRows(
     payload.data,
     {
@@ -160,8 +198,8 @@ export const public_invoice = async (req: Request, res: Response): Promise<void>
       clientName: payload.meta?.clientName,
       clientAddress: payload.meta?.clientAddress,
       clientVatNo: payload.meta?.clientVatNo,
-      reportType: payload.meta?.reportType,   // <-- NEW
-      stampDataUrl,                           // <-- NEW
+      reportType: payload.meta?.reportType,
+      stampDataUrl,
     },
     payload.company_code
   );
