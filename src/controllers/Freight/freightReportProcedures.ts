@@ -247,6 +247,42 @@ async function runPowerBuilderOperationalReport(connection: Connection, procName
 }
 
 async function runLegacyReport(connection: Connection, procName: string, binds: Record<string, unknown>) {
+  if (procName === "PROC_FRT_REPORT_BROKERAGE") {
+    const result = await connection.execute(
+      `BEGIN
+         ${procName}(
+           :p_company_code,
+           :p_from_date,
+           :p_to_date,
+           :p_prin_code,
+           :p_job_no,
+           :p_broker_code,
+           :p_transport_mode,
+           :p_job_type,
+           :p_status,
+           :p_search,
+           :p_result
+         );
+       END;`,
+      {
+        p_company_code: binds.p_company_code,
+        p_from_date: binds.p_from_date,
+        p_to_date: binds.p_to_date,
+        p_prin_code: binds.p_prin_code_from,
+        p_job_no: binds.p_job_no_from,
+        p_broker_code: binds.p_broker_code_from,
+        p_transport_mode: binds.p_transport_mode,
+        p_job_type: binds.p_job_type,
+        p_status: binds.p_status,
+        p_search: binds.p_search,
+        p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      } as oracledb.BindParameters,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    return rowsFromCursor((result.outBinds as any).p_result);
+  }
+
   const result = await connection.execute(
     `BEGIN
        ${procName}(
@@ -306,8 +342,11 @@ function reportBinds(req: Request) {
     p_eta_to_date: toDate(body.eta_to_date),
     p_ata_from_date: toDate(body.ata_from_date),
     p_ata_to_date: toDate(body.ata_to_date),
+    // Principal is now a multi-select on the frontend: prin_code_from carries a
+    // comma-separated list of codes (e.g. "P001,P003,P007"), matched via INSTR
+    // IN-list logic in the procedures. prin_code_to is no longer used.
     p_prin_code_from: value(body.prin_code_from ?? body.prin_code ?? body.PRIN_CODE),
-    p_prin_code_to: value(body.prin_code_to ?? body.prin_code ?? body.PRIN_CODE),
+    p_prin_code_to: null,
     p_job_no_from: value(body.job_no_from ?? body.job_no ?? body.JOB_NO),
     p_job_no_to: value(body.job_no_to ?? body.job_no ?? body.JOB_NO),
     p_doc_no_from: value(body.doc_no_from ?? body.doc_no),

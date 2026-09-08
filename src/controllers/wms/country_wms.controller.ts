@@ -155,7 +155,7 @@ export const createBulkCountries = async (req: RequestWithUser, res: Response) =
 // Export countries to CSV
 export const exportCountry = async (req: RequestWithUser, res: Response) => {
   try {
-    const fetchedData = await CountryService.findAll();
+    const fetchedData = await CountryService.findAll(req.user?.company_code);
     const filteredData = fetchedData.filter(c => c.company_code === req.user.company_code);
 
     const csvTransform = fastCsv.format({ headers: WmsCsvHeaders.MASTER.COUNTRY });

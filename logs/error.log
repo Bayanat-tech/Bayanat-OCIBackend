@@ -1545,3 +1545,1288 @@ Error: listen EADDRINUSE: address already in use :::3500
     at Server.listen (node:net:2102:7)
     at Function.listen (D:\Bayanat-OCIBackend\node_modules\express\lib\application.js:635:24)
     at startServer (D:\Bayanat-OCIBackend\index.ts:160:9)
+2026-09-08 10:51:39 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/qrToken.ts[0m:[93m3[0m:[93m20[0m - [91merror[0m[90m TS2307: [0mCannot find module 'qrcode' or its corresponding type declarations.
+
+[7m3[0m import QRCode from "qrcode";
+[7m [0m [91m                   ~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/qrToken.ts[0m:[93m3[0m:[93m20[0m - [91merror[0m[90m TS2307: [0mCannot find module 'qrcode' or its corresponding type declarations.
+
+[7m3[0m import QRCode from "qrcode";
+[7m [0m [91m                   ~~~~~~~~[0m
+
+    at createTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1943:10
+    at Object.require.extensions.<computed> [as .ts] (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1533:32)
+    at Module._load (node:internal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/wms/reports/invoice_reports/qrToken.ts[0m:[93m3[0m:[93m20[0m - [91merror[0m[90m TS2307: [0mCannot find module 'qrcode' or its corresponding type declarations.
+
+[7m3[0m import QRCode from "qrcode";
+[7m [0m [91m                   ~~~~~~~~[0m
+
+    at createTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1943:10
+    at Object.require.extensions.<computed> [as .ts] (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1533:32)
+    at Module._load (node:internal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-09-08 11:16:00 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:18:00 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:20:01 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:22:00 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:24:00 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:26:00 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:28:00 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:30:00 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:42:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=xLua7A5pS2SgrYcrWWQ0ig==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=xLua7A5pS2SgrYcrWWQ0ig==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:44:12 [[31merror[39m]: NotificationEmailScheduler failed: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 11:56:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 11:56:23 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0040.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:24.187Z 08DF0B63BF63F228] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0040.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:24.187Z 08DF0B63BF63F228]
+    at SMTPConnection._formatError (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-09-08 11:56:32 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0038.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:33.002Z 08DF0B40727D0A33] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0038.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:33.002Z 08DF0B40727D0A33]
+    at SMTPConnection._formatError (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-09-08 11:56:41 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0031.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:41.665Z 08DF0D5A0B8E159B] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0031.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:41.665Z 08DF0D5A0B8E159B]
+    at SMTPConnection._formatError (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-09-08 11:56:49 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0035.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:50.475Z 08DF0D6D26321798] 
+Error: Invalid login: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [PNYPR01CA0035.INDPRD01.PROD.OUTLOOK.COM 2026-09-08T06:26:50.475Z 08DF0D6D26321798]
+    at SMTPConnection._formatError (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\projects\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:508:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:563:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:514:3)
+2026-09-08 11:57:06 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 11:58:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 11:58:11 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:00:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:00:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:02:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:02:26 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:04:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:04:11 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:06:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:06:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:08:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:08:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:10:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:10:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:12:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:12:11 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:14:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:14:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:18:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:18:30 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:20:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:20:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:22:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:22:11 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:24:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:24:11 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:26:05 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:26:12 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:28:10 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:28:29 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:30:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:30:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:32:11 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:32:21 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:34:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:34:21 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:36:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:36:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:38:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:38:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:40:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:40:11 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:46:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:46:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:48:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:48:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:50:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:50:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:52:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 12:52:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 13:28:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=bMXPpXdjTtOi3IVvUMjxOA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=bMXPpXdjTtOi3IVvUMjxOA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:30:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=iDarIbTUQ0+5/zpBoRF1yg==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=iDarIbTUQ0+5/zpBoRF1yg==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:32:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=TVVlHiPWTZewUzxxKPBS3w==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=TVVlHiPWTZewUzxxKPBS3w==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:34:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=WgYyk+ivR/GSPbVluo+tuA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=WgYyk+ivR/GSPbVluo+tuA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:36:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=Oceb4gV7QG2fF8WwCG4rjQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=Oceb4gV7QG2fF8WwCG4rjQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:38:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=s3ukB3smRrW8aSE+WlUSLw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=s3ukB3smRrW8aSE+WlUSLw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:40:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=TNnRYjf3R7usVVB8sMMsXA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=TNnRYjf3R7usVVB8sMMsXA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:42:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=Mfa9ZHmUS5uka/ZNjGKLZg==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=Mfa9ZHmUS5uka/ZNjGKLZg==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:44:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=FkSzx7eMQ1uu3fjYlHZ3hw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=FkSzx7eMQ1uu3fjYlHZ3hw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:46:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=bbmMADCFSXi34eMaW0zUIg==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=bbmMADCFSXi34eMaW0zUIg==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:48:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=tNXoyNMCQoSkHekEMH3GhA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=tNXoyNMCQoSkHekEMH3GhA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:50:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=9YY3xW7ZS0mla2WaPLrZ0w==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=9YY3xW7ZS0mla2WaPLrZ0w==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:52:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=aKuKiE2CT36ctEq7uy6WnQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=aKuKiE2CT36ctEq7uy6WnQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 13:55:26 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 13:56:01 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 13:56:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 13:56:22 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 13:58:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 13:58:12 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:00:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:00:09 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:02:33 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:02:40 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:04:17 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/ 
+Error: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 14:06:17 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/ 
+Error: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 14:08:17 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/ 
+Error: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 14:10:17 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/ 
+Error: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 14:12:17 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/ 
+Error: ORA-12541: Cannot connect. No listener at host 10.10.0.16 port 1521.
+Help: https://docs.oracle.com/error-help/db/ora-12541/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 14:16:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:16:25 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:18:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:18:09 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:20:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:20:09 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:22:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:22:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:24:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:24:07 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:26:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:26:08 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:28:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:28:07 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:30:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:30:09 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:32:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:32:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:34:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:34:14 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 14:35:24 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/billing/updatebilling.ts[0m:[93m190[0m:[93m7[0m - [91merror[0m[90m TS18004: [0mNo value exists in scope for the shorthand property 'EXCHANGE_RATE'. Either declare one or provide an initializer.
+
+[7m190[0m       EXCHANGE_RATE
+[7m   [0m [91m      ~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/billing/updatebilling.ts[0m:[93m190[0m:[93m7[0m - [91merror[0m[90m TS18004: [0mNo value exists in scope for the shorthand property 'EXCHANGE_RATE'. Either declare one or provide an initializer.
+
+[7m190[0m       EXCHANGE_RATE
+[7m   [0m [91m      ~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1943:10
+    at Object.require.extensions.<computed> [as .ts] (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1533:32)
+    at Module._load (node:internal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/billing/updatebilling.ts[0m:[93m190[0m:[93m7[0m - [91merror[0m[90m TS18004: [0mNo value exists in scope for the shorthand property 'EXCHANGE_RATE'. Either declare one or provide an initializer.
+
+[7m190[0m       EXCHANGE_RATE
+[7m   [0m [91m      ~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1943:10
+    at Object.require.extensions.<computed> [as .ts] (C:\projects\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1533:32)
+    at Module._load (node:internal/modules/cjs/loader:1335:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+2026-09-08 15:02:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:02:23 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:05:00 [[31merror[39m]: NotificationEmailScheduler failed: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\projects\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-09-08 15:07:00 [[31merror[39m]: NotificationEmailScheduler failed: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000 
+Error: NJS-040: connection request timeout. Request exceeded "queueTimeout" of 60000
+    at Timeout.<anonymous> (C:\projects\Bayanat-OCIBackend\node_modules\oracledb\lib\pool.js:448:25)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
+2026-09-08 15:22:05 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:22:28 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:26:09 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:26:16 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:28:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:28:10 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:30:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:30:08 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:32:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:32:09 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:34:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:34:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:36:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:36:30 [[31merror[39m]: [WMSDEV_TENANT] Error in notification scheduler tenant loop: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=JiQkMEX9SvSqOU26YkVnEw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=JiQkMEX9SvSqOU26YkVnEw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:210:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:37:15 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=VYPl6BlfTSeviAhoBwKKag==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=VYPl6BlfTSeviAhoBwKKag==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:37:55 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=0XvzoVLjQlmecDAtMvzJ6w==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=0XvzoVLjQlmecDAtMvzJ6w==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:38:36 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=1hxNQH4XRv2m+NxobnlCVw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=1hxNQH4XRv2m+NxobnlCVw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 15:38:56 [[31merror[39m]: [BTSCMPRD_TENANT] Error in notification scheduler tenant loop: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=Asu5z5W/TTiJkeO5PJpsWw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=Asu5z5W/TTiJkeO5PJpsWw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:39:36 [[31merror[39m]: [MHDL_TENANT] Error in notification scheduler tenant loop: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=+GTx/yLHTZO9H4C+AH1MxA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=+GTx/yLHTZO9H4C+AH1MxA==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:40:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=sBhbNqrATvKhaGeYsJEz/g==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=sBhbNqrATvKhaGeYsJEz/g==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 15:42:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=yjg61JajSxCm+G7AK5NVsw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=yjg61JajSxCm+G7AK5NVsw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 15:46:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:46:33 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:48:20 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:48:41 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:52:51 [[31merror[39m]: NotificationEmailScheduler failed: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 65792
+Session ID: 385 Serial number: 34558
+Help: https://docs.oracle.com/error-help/db/ora-03113/ 
+Error: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 65792
+Session ID: 385 Serial number: 34558
+Help: https://docs.oracle.com/error-help/db/ora-03113/
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:335:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 15:56:25 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:57:02 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:58:22 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 15:58:56 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:02:05 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:02:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:04:01 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:04:06 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:06:01 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:06:06 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:08:05 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:08:26 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:10:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:10:07 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:12:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:12:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:14:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:14:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/ 
+Error: ORA-00942: table or view does not exist
+Help: https://docs.oracle.com/error-help/db/ora-00942/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-08 16:16:25 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=g9YjSQRZQVymhhH8elYjHQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=g9YjSQRZQVymhhH8elYjHQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
+2026-09-08 16:18:20 [[31merror[39m]: NotificationEmailScheduler failed: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=NC6r9VPNROOGvMcxuFfSrw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/ 
+Error: ORA-12170: Cannot connect. TCP connect timeout of 20s for host 10.10.0.16 port 1521. (CONNECTION_ID=NC6r9VPNROOGvMcxuFfSrw==)
+Help: https://docs.oracle.com/error-help/db/ora-12170/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.listActiveTenants (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:333:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:99:11
+    at async Timeout._onTimeout (C:\projects\Bayanat-OCIBackend\node_modules\node-cron\src\scheduler\runner.ts:100:30)
