@@ -110,6 +110,14 @@ export interface InvoiceMeta {
   clientVatNo?: string;
   qrCodeDataUrl?: string;
   reportType?: string;
+  /**
+   * Base64 data URI for the company stamp, produced by
+   * stampImage.ts's getStampDataUrl() from a static file on disk.
+   * Preferred over InvoiceRow.stamp_path — that field is kept for
+   * backward compatibility only, in case some rows do supply a
+   * usable image URL directly.
+   */
+  stampDataUrl?: string;
 }
 
 function fmtMoney(n: number | null | undefined, decimals = 2): string {
@@ -429,7 +437,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["VAT (TIN NO)", esc(companyVatNo || "")],
   ];
 
-  const stampUrl = (first.stamp_path || "").trim();
+  // Prefer the static stamp asset passed via meta (base64 data URI,
+  // produced by stampImage.ts). Fall back to first.stamp_path only
+  // for backward compatibility if some rows happen to carry a
+  // usable image URL there.
+  const stampUrl = (meta.stampDataUrl || first.stamp_path || "").trim();
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -459,6 +471,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     border: none;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   @media print {
     @page { size: A4; margin: 8mm; }
@@ -490,10 +503,8 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     .meta-label { width: 110px; }
     .table-area { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .items-table { min-width: 680px; }
-    .bank-sig-row { flex-direction: column; align-items: stretch; gap: 14px; }
-    .bank-block { max-width: 100%; }
-    .right-block { text-align: center; align-self: center; }
-    .signature-text { text-align: center; padding-top: 0; white-space: normal; }
+    .bank-sig-table, .bank-sig-table tr, .bank-sig-table td { display: block; width: 100% !important; }
+    .stamp-cell { text-align: center !important; margin-top: 14px; }
     .invoice-title { font-size: 15px; letter-spacing: 2px; }
     .company-name-fallback { font-size: 15px; }
     .footer { font-size: 9px; }
@@ -653,29 +664,34 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     padding: 4px;
   }
   .words-row .c-amt { font-weight: 700; white-space: nowrap; }
-  .bank-sig-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+  /* ── Bank / stamp block ──────────────────────────────────────────
+     Was a flex row before — flex is unreliable in many HTML→PDF
+     engines (wkhtmltopdf and friends barely support it), which is
+     what let the stamp spill past the box in the printed invoice.
+     A fixed-layout table guarantees the stamp cell can never exceed
+     its column width, in any renderer. */
+  .bank-sig-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
     margin-top: 10px;
     flex-shrink: 0;
   }
-  .bank-block { font-size: 10px; line-height: 1.45; max-width: 62%; }
+  .bank-sig-table td { vertical-align: top; padding: 0; border: none; }
+  .bank-cell { width: 62%; padding-right: 14px; }
+  .stamp-cell { width: 160px; text-align: right; }
+  .bank-block { font-size: 10px; line-height: 1.45; }
   .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
   .bank-line { margin-bottom: 1px; }
-  .right-block {
-    text-align: right;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-  }
   .stamp-img {
-    max-height: 90px;
-    max-width: 140px;
-    object-fit: contain;
     display: block;
+    margin-left: auto;
+    margin-right: 0;
+    max-height: 90px;
+    max-width: 120px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
   }
   .signature-text {
     font-weight: 700;
@@ -825,13 +841,15 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     </table>
   </div>
 
-  <div class="bank-sig-row">
-    ${bankSection}
-    <div class="right-block">
-      ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
-      <div class="signature-text">For ${esc(companyName)} COMPANY</div>
-    </div>
-  </div>
+  <table class="bank-sig-table">
+    <tr>
+      <td class="bank-cell">${bankSection}</td>
+      <td class="stamp-cell">
+        ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
+        <div class="signature-text">For ${esc(companyName)} COMPANY</div>
+      </td>
+    </tr>
+  </table>
 
   <div class="footer">
     <div>${esc(first.div_address1 || "")}</div>
@@ -1058,7 +1076,11 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     </div>`;
 
   const logoUrl = (first.company_logo || first.logo_path || "").trim();
-  const stampUrl = (first.stamp_path || "").trim();
+  // Prefer the static stamp asset passed via meta (base64 data URI,
+  // produced by stampImage.ts). Fall back to first.stamp_path only
+  // for backward compatibility if some rows happen to carry a
+  // usable image URL there.
+  const stampUrl = (meta.stampDataUrl || first.stamp_path || "").trim();
 
   const metaRows: Array<[string, string]> = [
     ["Invoice No.", esc(invoiceNo)],
@@ -1103,6 +1125,7 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     border: none;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   @media print {
     @page { size: A4; margin: 8mm; }
@@ -1134,9 +1157,8 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     .meta-label { width: 100px; }
     .table-area { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .items-table { min-width: 580px; }
-    .bank-sig-row { flex-direction: column; align-items: stretch; gap: 14px; }
-    .bank-block { max-width: 100%; }
-    .stamp-qr-block { align-self: center; min-width: auto; }
+    .bank-sig-table, .bank-sig-table tr, .bank-sig-table td { display: block; width: 100% !important; }
+    .stamp-cell { text-align: center !important; margin-top: 14px; }
     .signature-text { text-align: center; padding-top: 0; white-space: normal; }
     .invoice-title { font-size: 15px; letter-spacing: 2px; }
     .company-name-fallback { font-size: 15px; }
@@ -1278,28 +1300,32 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
   .words-row .total-label { text-align: left; }
   .words-row .total-prefix { font-size: 10px; margin-right: 4px; }
-  .bank-sig-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+  /* ── Bank / stamp block ──────────────────────────────────────────
+     Was a flex row before — flex support is unreliable across
+     HTML→PDF engines (wkhtmltopdf etc.), which is what let the stamp
+     spill past the box in the printed invoice. A fixed-layout table
+     guarantees the stamp cell can never exceed its column width. */
+  .bank-sig-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
     margin-top: 10px;
     flex-shrink: 0;
   }
-  .bank-block { font-size: 9.5px; line-height: 1.45; max-width:60%}
+  .bank-sig-table td { vertical-align: top; padding: 0; border: none; }
+  .bank-cell { width: 62%; padding-right: 14px; }
+  .stamp-cell { width: 160px; text-align: center; }
+  .bank-block { font-size: 9.5px; line-height: 1.45; }
   .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
   .bank-line { margin-bottom: 1px; }
   .export-note { margin-top: 4px; }
-  .stamp-qr-block {
-    text-align: center;
-    min-width: 160px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
   .stamp-img {
+    display: block;
+    margin: 0 auto 6px auto;
     max-height: 90px;
-    max-width: 140px;
+    max-width: 120px;
+    width: auto;
+    height: auto;
     object-fit: contain;
   }
   .signature-text {
@@ -1406,13 +1432,15 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
     </table>
   </div>
 
-  <div class="bank-sig-row">
-    ${bankSection}
-    <div class="stamp-qr-block">
-      ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
-      <div class="signature-text">${esc(companyLegal)}</div>
-    </div>
-  </div>
+  <table class="bank-sig-table">
+    <tr>
+      <td class="bank-cell">${bankSection}</td>
+      <td class="stamp-cell">
+        ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
+        <div class="signature-text">${esc(companyLegal)}</div>
+      </td>
+    </tr>
+  </table>
 
   <div class="footer">
     <div>${esc(footerAddress)}</div>

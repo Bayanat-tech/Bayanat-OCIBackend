@@ -103,6 +103,7 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
 import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
 
 
 
@@ -204,6 +205,19 @@ router.post('/reports/PurchaseInvoiceAccountDetails/html', getPurchaseInvoiceAcc
 router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
 router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
 router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
+
+
+
+// sales invoice report routes-------
+router.post('/reports/SalesInvoiceReport/html', getSalesInvoiceReportHtml);
+router.post('/reports/SalesInvoiceReport/excel', getSalesInvoiceReportExcel);
+
+router.post('/reports/SalesInvoiceTaxReport/Html',getSalesInvoiceTaxReportHtml);
+router.post('/reports/SalesInvoiceTaxReport/excel',getSalesInvoiceTaxReportExcel);
+
+router.post('/reports/SalesAccountDetailsReport/html',getSalesAccountDetailsReportHtml);
+router.post('/reports/SalesAccountDetailsReport/excel',getSalesAccountDetailsReportExcel);
+
 
 // sales order report routes
 
