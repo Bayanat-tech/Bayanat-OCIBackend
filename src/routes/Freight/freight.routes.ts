@@ -117,6 +117,7 @@ import {
   frtAttachmentRename,
   frtAttachmentSave,
 } from "../../controllers/Freight/freightAttachmentProcedures";
+import { getCompanyLogoDirect } from "../../controllers/Freight/companyLogo.controller";
 
 const router = express.Router();
 router.use(tenantMiddleware);
@@ -219,6 +220,7 @@ router.post("/attachments/rename", frtAttachmentRename);
 router.post("/attachments/delete", frtAttachmentDelete);
 
 router.post("/reports/run", frtReportRun);
+router.get("/company-logo", getCompanyLogoDirect);
 
 router.post("/invoice/list", frtInvoiceList);
 router.post("/invoice/get", frtInvoiceGet);
@@ -302,6 +304,3 @@ function enforceFreightRequestIdentity(req: Request, _res: Response, next: NextF
 
   next();
 }
-
-
-
