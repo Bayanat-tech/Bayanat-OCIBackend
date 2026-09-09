@@ -946,6 +946,7 @@ export const deleteEmployeeFiles = async (
 ): Promise<void> => {
   try {
     const { request_number, sr_no } = req.params;
+    const awsFileLocn = typeof req.query.aws_file_locn === "string" ? req.query.aws_file_locn : "";
     console.log("Deleting file:", { request_number, sr_no });
 
     if (!request_number) {
@@ -956,19 +957,26 @@ export const deleteEmployeeFiles = async (
       return;
     }
 
+    const fileFilter = awsFileLocn
+      ? "AWS_FILE_LOCN = :aws_file_locn"
+      : "SR_NO = :sr_no";
+    const fileBinds = awsFileLocn
+      ? { aws_file_locn: { val: awsFileLocn } }
+      : { sr_no: { val: Number(sr_no) } };
+
     const selectResult = await QueryExecutor.executeRawQuery(
       `
         SELECT AWS_FILE_LOCN
         FROM UPLOADED_FILES_DLTS_VH
         WHERE REQUEST_NUMBER = :request_number
           AND COMPANY_CODE = :company_code
-          AND SR_NO = :sr_no
+          AND ${fileFilter}
         FETCH FIRST 1 ROW ONLY
       `,
       {
         request_number: { val: request_number },
         company_code: { val: req.user.company_code },
-        sr_no: { val: Number(sr_no) },
+        ...fileBinds,
       }
     );
     const file = selectResult.rows?.[0] || selectResult[0];
@@ -991,12 +999,12 @@ export const deleteEmployeeFiles = async (
         DELETE FROM UPLOADED_FILES_DLTS_VH
         WHERE REQUEST_NUMBER = :request_number
           AND COMPANY_CODE = :company_code
-          AND SR_NO = :sr_no
+          AND ${fileFilter}
       `,
       {
         request_number: { val: request_number },
         company_code: { val: req.user.company_code },
-        sr_no: { val: Number(sr_no) },
+        ...fileBinds,
       }
     );
 
