@@ -101,7 +101,7 @@ import { Warehouse } from "../entity/WMS/Warehouse.entity";
 import { TiTallyDetail } from "../entity/WMS/TiTallyDetail.entity";
 import { FilesAFEntity } from "../entities/account_files.entity";
 
-oracledb.initOracleClient({ driverName: 'thin' });
+// oracledb.initOracleClient({ driverName: 'thin' });
 
 // TEMP EMERGENCY: allow skipping Oracle thick client init usin
 // g FORCE_THIN_ORACLE=1
