@@ -295,7 +295,7 @@ export const insUpdTteSinvoice = async (
 
 
       TX_COMPNT_1_EXPMT:
-        String(header.tx_compnt_1_expmt ?? "S"),
+        String(header.tx_compnt_1_expmt ?? ""),
 
 
 
@@ -463,7 +463,8 @@ INV_DATE:
         header.user_id ?? null,
 
       GRN_NO: header.grn_no ?? null,
-
+   DISCOUNT_SCOOPE:
+        header.discount_scoope ?? null,
 
     };
     //------------------------------------------------------------------
