@@ -118,7 +118,49 @@ export interface LeaveResumeDatesUpdate {
   actualResumeDate?: Date | null;
 }
 
+export interface MhdlEmployeeAccount {
+  USER_ID: string;
+  NAME: string;
+  PASSWORD: string;
+  TYPE: string;
+  EMPLOYEE_ID: string;
+}
+
 export const HrService = {
+  // Keep account credentials out of the shared HR request/error logging paths.
+  checkMhdlAccountEmployee: async (userid: string): Promise<MhdlEmployeeAccount | null> => {
+    const baseURL = process.env.MHDL_API_BASE_URL?.trim() || API_BASE_URL;
+    const apiKey = process.env.MHDL_API_KEY?.trim() || API_KEY;
+    if (!baseURL || !apiKey) throw new Error("MHDL account API is not configured");
+    let data: unknown;
+    try {
+      const response = await axios.get(`${baseURL.replace(/\/$/, "")}/api/MhdlDb/mhdl/checkMhdlAccountEmployee`, {
+        params: { p_userid: userid },
+        headers: { XApiKey: apiKey, accept: "*/*" },
+        timeout: 30000,
+        maxRedirects: 0,
+      });
+      data = response.data;
+    } catch (error: any) {
+      const failure = new Error("MHDL account verification is unavailable") as Error & { code?: string };
+      failure.code = typeof error?.code === "string" && /^[A-Z0-9_-]+$/.test(error.code)
+        ? error.code : "MHDL_API_UNAVAILABLE";
+      throw failure;
+    }
+    if (!Array.isArray(data)) throw new Error("Invalid MHDL account response");
+    if (data.length === 0) return null;
+    const user = data[0];
+    if (data.length !== 1 || !user || typeof user.USER_ID !== "string" ||
+        user.USER_ID.trim().toUpperCase() !== userid.trim().toUpperCase() ||
+        !/^M[A-Z0-9_-]*$/i.test(user.USER_ID.trim()) || user.USER_ID.trim().length > 15 ||
+        typeof user.NAME !== "string" || !user.NAME.trim() || Buffer.byteLength(user.NAME) > 400 ||
+        typeof user.PASSWORD !== "string" || !user.PASSWORD ||
+        typeof user.EMPLOYEE_ID !== "string" || !user.EMPLOYEE_ID.trim() ||
+        Buffer.byteLength(user.EMPLOYEE_ID) > 100 || user.TYPE !== "EMPLOYEE") {
+      throw new Error("Invalid MHDL employee account response");
+    }
+    return { ...user, USER_ID: user.USER_ID.trim(), EMPLOYEE_ID: user.EMPLOYEE_ID.trim() };
+  },
   
   getEmployees: async (
     name?: string,

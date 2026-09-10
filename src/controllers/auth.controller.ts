@@ -11,6 +11,7 @@ import { StructuredResult } from "../interfaces/auth.interface";
 import { RequestWithUser } from "../interfaces/common.interface";
 import { AuthService, EMAIL_NOT_FOUND_MESSAGE, OUTDATED_EMAIL_MESSAGE } from "../services/auth.service";
 import { VendorService } from "../services/vendor.service";
+import { HrService } from "../services/hr.service";
 import { TenantManager } from "../database/TenantManager";
 import { permissionsListQuery, userPermissionQuery } from "../utils/query";
 
@@ -116,12 +117,59 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
       return;
     }
 
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email.trim();
 
     console.log(`[login] STEP 1: Authenticating user '${email}'...`);
 
     // Get user with tenant info
-    let userTenant = await AuthService.getUserWithTenant(email);
+    const isMhdlEmployeeCode = /^M/i.test(email) && !email.includes("@");
+    let userTenant;
+    if (isMhdlEmployeeCode) {
+      let rootUser = await AuthService.findRootUserByIdentifier(email, true);
+      if (!rootUser) {
+        let stage = "external_verification";
+        try {
+          console.log("[login:MHDL] Central account not found; checking employee API");
+          const apiUser = await HrService.checkMhdlAccountEmployee(email);
+          if (!apiUser || password !== apiUser.PASSWORD) {
+            res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+              success: false, message: "Invalid employee code or password",
+            });
+            return;
+          }
+          stage = "database_provisioning";
+          console.log("[login:MHDL] Employee verified; provisioning account and tenant access");
+          await AuthService.createMhdlEmployee(apiUser, password);
+          stage = "reload_account";
+          rootUser = await AuthService.findRootUserByIdentifier(apiUser.USER_ID, true);
+        } catch (error: any) {
+          // Never log the API error object, response, request headers or passwords.
+          const code = typeof error?.code === "string" && /^[A-Z0-9_-]+$/.test(error.code)
+            ? error.code : "MHDL_LOGIN_FAILED";
+          console.error("[login:MHDL] First-time login failed", { stage, code });
+          res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: stage === "external_verification"
+              ? "Employee verification service is unavailable. Please try again or contact support."
+              : "Employee verified, but account setup failed. Please contact support.",
+            code,
+          });
+          return;
+        }
+      }
+      if (!rootUser || rootUser.ACTIVE_FLAG !== 'Y') {
+        res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+          success: false, message: "Employee account is inactive or unavailable",
+        });
+        return;
+      }
+      const tenantId = await TenantManager.getTenantForUser(rootUser.LOGINID);
+      if (!tenantId) throw new Error("Employee account has no default tenant mapping");
+      userTenant = { user: rootUser, tenantId };
+    } else {
+      userTenant = await AuthService.getUserWithTenant(email);
+    }
 
     if (!userTenant) {
       console.log(`[login] User not found in SEC_LOGINTEST, checking external API...`);
@@ -298,6 +346,7 @@ export const me = async (req: RequestWithUser, res: Response): Promise<void> => 
     const userWithoutPassword: any = { ...user };
     delete userWithoutPassword.USERPASS;
     delete userWithoutPassword.SEC_PASSWD;
+    delete userWithoutPassword.PASSWORD;
 
     const tenantConfig = await TenantManager.getTenantConfig(tenantId);
     const companyName = await resolveTenantCompanyName(tenantId, user.COMPANY_CODE);
