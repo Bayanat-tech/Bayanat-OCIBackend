@@ -51,6 +51,7 @@ import {insUpdMsApproverLevels} from "../../controllers/Security/insUpdMsApprove
 import {insSecRoleFunctionAccessUser} from "../../controllers/Security/insSecRoleFunctionAccessUser.controller";
 import { insUpdHrEmpLanguages } from "../../controllers/HR/insUpdHrEmpLanguages";
 import { insUpdHrEmployeeDependants } from "../../controllers/HR/insUpdHrEmployeeDependants";
+import { UpdHrEmployeeDetail } from "../../controllers/HR/UpdHrEmpoyeeDetail";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
@@ -210,6 +211,8 @@ router.post(
   router.post(
   "/insUpdHrEmployee",
   insUpdHrEmployee)
+
+  router.post("/UpdHrEmployeeDetail", UpdHrEmployeeDetail)
 
 //hr
   router.post(

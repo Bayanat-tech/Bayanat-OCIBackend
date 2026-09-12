@@ -144,7 +144,62 @@ async function runPowerBuilderReport(connection: Connection, reportKey: string, 
      END;`,
     {
       p_report_key: reportKey,
-      ...binds,
+      p_company_code: binds.p_company_code,
+      p_from_date: binds.p_from_date,
+      p_to_date: binds.p_to_date,
+      p_schedule_from_date: binds.p_schedule_from_date,
+      p_schedule_to_date: binds.p_schedule_to_date,
+      p_confirm_from_date: binds.p_confirm_from_date,
+      p_confirm_to_date: binds.p_confirm_to_date,
+      p_collection_from_date: binds.p_collection_from_date,
+      p_collection_to_date: binds.p_collection_to_date,
+      p_deposit_from_date: binds.p_deposit_from_date,
+      p_deposit_to_date: binds.p_deposit_to_date,
+      p_expiry_from_date: binds.p_expiry_from_date,
+      p_expiry_to_date: binds.p_expiry_to_date,
+      p_eta_from_date: binds.p_eta_from_date,
+      p_eta_to_date: binds.p_eta_to_date,
+      p_ata_from_date: binds.p_ata_from_date,
+      p_ata_to_date: binds.p_ata_to_date,
+      p_prin_code_from: binds.p_prin_code_from,
+      p_prin_code_to: binds.p_prin_code_to,
+      p_job_no_from: binds.p_job_no_from,
+      p_job_no_to: binds.p_job_no_to,
+      p_doc_no_from: binds.p_doc_no_from,
+      p_doc_no_to: binds.p_doc_no_to,
+      p_broker_code_from: binds.p_broker_code_from,
+      p_broker_code_to: binds.p_broker_code_to,
+      p_dept_code_from: binds.p_dept_code_from,
+      p_dept_code_to: binds.p_dept_code_to,
+      p_div_code: binds.p_div_code,
+      p_origin_port: binds.p_origin_port,
+      p_destination_port: binds.p_destination_port,
+      p_transport_mode: binds.p_transport_mode,
+      p_job_type: binds.p_job_type,
+      p_status: binds.p_status,
+      p_report_period: binds.p_report_period,
+      p_report_mode: binds.p_report_mode,
+      p_report_variant: binds.p_report_variant,
+      p_invoice_no: binds.p_invoice_no,
+      p_vessel_name: binds.p_vessel_name,
+      p_voyage_no: binds.p_voyage_no,
+      p_container_no: binds.p_container_no,
+      p_bl_no: binds.p_bl_no,
+      p_be_no: binds.p_be_no,
+      p_claim_ref: binds.p_claim_ref,
+      p_exit_bill1: binds.p_exit_bill1,
+      p_exit_bill2: binds.p_exit_bill2,
+      p_cleared_flag: binds.p_cleared_flag,
+      p_consignee_name: binds.p_consignee_name,
+      p_shipper_name: binds.p_shipper_name,
+      p_job_category: binds.p_job_category,
+      p_member_type: binds.p_member_type,
+      p_sale_type: binds.p_sale_type,
+      p_inco_terms: binds.p_inco_terms,
+      p_forwarder_code: binds.p_forwarder_code,
+      p_doc_ref: binds.p_doc_ref,
+      p_po_no: binds.p_po_no,
+      p_search: binds.p_search,
       p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
     } as oracledb.BindParameters,
     { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -192,6 +247,42 @@ async function runPowerBuilderOperationalReport(connection: Connection, procName
 }
 
 async function runLegacyReport(connection: Connection, procName: string, binds: Record<string, unknown>) {
+  if (procName === "PROC_FRT_REPORT_BROKERAGE") {
+    const result = await connection.execute(
+      `BEGIN
+         ${procName}(
+           :p_company_code,
+           :p_from_date,
+           :p_to_date,
+           :p_prin_code,
+           :p_job_no,
+           :p_broker_code,
+           :p_transport_mode,
+           :p_job_type,
+           :p_status,
+           :p_search,
+           :p_result
+         );
+       END;`,
+      {
+        p_company_code: binds.p_company_code,
+        p_from_date: binds.p_from_date,
+        p_to_date: binds.p_to_date,
+        p_prin_code: binds.p_prin_code_from,
+        p_job_no: binds.p_job_no_from,
+        p_broker_code: binds.p_broker_code_from,
+        p_transport_mode: binds.p_transport_mode,
+        p_job_type: binds.p_job_type,
+        p_status: binds.p_status,
+        p_search: binds.p_search,
+        p_result: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      } as oracledb.BindParameters,
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    return rowsFromCursor((result.outBinds as any).p_result);
+  }
+
   const result = await connection.execute(
     `BEGIN
        ${procName}(
@@ -251,8 +342,11 @@ function reportBinds(req: Request) {
     p_eta_to_date: toDate(body.eta_to_date),
     p_ata_from_date: toDate(body.ata_from_date),
     p_ata_to_date: toDate(body.ata_to_date),
+    // Principal is now a multi-select on the frontend: prin_code_from carries a
+    // comma-separated list of codes (e.g. "P001,P003,P007"), matched via INSTR
+    // IN-list logic in the procedures. prin_code_to is no longer used.
     p_prin_code_from: value(body.prin_code_from ?? body.prin_code ?? body.PRIN_CODE),
-    p_prin_code_to: value(body.prin_code_to ?? body.prin_code ?? body.PRIN_CODE),
+    p_prin_code_to: null,
     p_job_no_from: value(body.job_no_from ?? body.job_no ?? body.JOB_NO),
     p_job_no_to: value(body.job_no_to ?? body.job_no ?? body.JOB_NO),
     p_doc_no_from: value(body.doc_no_from ?? body.doc_no),

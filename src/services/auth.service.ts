@@ -1,4 +1,6 @@
 import bcrypt from "bcrypt";
+import oracledb from "oracledb";
+import type { MhdlEmployeeAccount } from "./hr.service";
 import { getRepository } from "../database/connection";
 import { User } from "../entity/User";
 import { QueryExecutor } from "../database/QueryExecutor";
@@ -17,7 +19,7 @@ export class AuthService {
     return getRepository(User);
   }
 
-  static async findRootUserByIdentifier(identifier: string): Promise<any | null> {
+  static async findRootUserByIdentifier(identifier: string, includeInactive = false): Promise<any | null> {
     const normalizedIdentifier = String(identifier || "").trim();
     if (!normalizedIdentifier) return null;
 
@@ -30,7 +32,7 @@ export class AuthService {
          OR LOWER(TRIM(NVL(CONTACT_EMAIL, ''))) = LOWER(:identifier)
          OR LOWER(TRIM(NVL(USERNAME, ''))) = LOWER(:identifier)
        )
-       AND ACTIVE_FLAG = 'Y'`,
+       ${includeInactive ? "" : "AND ACTIVE_FLAG = 'Y'"}`,
       { identifier: normalizedIdentifier }
     );
 
@@ -122,6 +124,53 @@ export class AuthService {
       console.error("Error updating password:", error);
       throw error;
     }
+  }
+
+  // Create external user
+  static async createMhdlEmployee(apiUser: MhdlEmployeeAccount, password: string): Promise<void> {
+    if (password !== apiUser.PASSWORD) throw new Error("Invalid employee password");
+    const hashedPassword = await this.hashPassword(password);
+    // Both schemas must reside in the central database. One connection makes the
+    // root account, mapping, tenant account and permissions visible atomically.
+    await oracleDb.withTransaction(async (conn) => {
+      const options = { outFormat: oracledb.OUT_FORMAT_OBJECT, autoCommit: false };
+      const registry = await conn.execute<any>(
+        `SELECT SCHEMA_NAME, CONNECTION_TYPE FROM CUSTOMERS.TENANT_REGISTRY
+         WHERE TENANT_ID = 'MHDL_TENANT' AND IS_ACTIVE = 'Y' FOR UPDATE WAIT 30`, {}, options);
+      const tenant = registry.rows?.[0];
+      if (!tenant || tenant.SCHEMA_NAME?.trim().toUpperCase() !== "MHDL" || tenant.CONNECTION_TYPE !== "SCHEMA") {
+        throw new Error("MHDL_TENANT must be an active MHDL schema tenant");
+      }
+      // The registry row lock serializes first-time provisioning across servers.
+      const existing = await conn.execute(
+        `SELECT LOGINID FROM CUSTOMERS.SEC_LOGINTEST WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid)`,
+        { loginid: apiUser.USER_ID }, options);
+      if (existing.rows?.length) return;
+
+      const binds = {
+        loginid: apiUser.USER_ID, employeeId: apiUser.EMPLOYEE_ID,
+        username: apiUser.NAME, email: `${apiUser.USER_ID}@gmail.com`, hashedPassword,
+      };
+      for (const table of ["CUSTOMERS.SEC_LOGINTEST", "MHDL.SEC_LOGIN"]) {
+        await conn.execute(
+          `INSERT INTO ${table}
+           (COMPANY_CODE, LOGINID, USERID, LOGINID1, USERNAME, EMAIL_ID, USERPASS, SEC_PASSWD, PASSWORD,
+            ACTIVE_FLAG, CREATED_BY, CREATED_AT)
+           VALUES ('BSG', :loginid, :loginid, :employeeId, :username, :email, :hashedPassword,
+                   :hashedPassword, :hashedPassword, 'Y', 'system', SYSTIMESTAMP)`, binds, options);
+      }
+      await conn.execute(
+        `INSERT INTO CUSTOMERS.USER_TENANT_MAPPING (LOGINID, TENANT_ID, IS_DEFAULT)
+         VALUES (:loginid, 'MHDL_TENANT', 'Y')`, { loginid: apiUser.USER_ID }, options);
+      await conn.execute(
+        `INSERT INTO MHDL.SEC_ROLE_FUNCTION_ACCESS_USER
+         (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE,
+          SSEARCH, SSAVEAS, SUPLOAD, SUNDO, SPRINT, SPRINTSETUP, SHELP,
+          USER_DT, USERID, CREATE_USER, CREATE_DATE)
+         VALUES ('BSG', :loginid, 77777, 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y',
+                 'Y', 'Y', 'Y', SYSDATE, :loginid, 'system', SYSDATE)`,
+        { loginid: apiUser.USER_ID }, options);
+    });
   }
 
   // Create external user
