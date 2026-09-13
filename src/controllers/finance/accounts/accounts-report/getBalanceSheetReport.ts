@@ -997,6 +997,28 @@ export const getBalanceSheetReportHtml = async (
   }
 };
 
+export const getBalanceSheetReportPdf = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { rows, params } = await loadRows(req);
+    const { sections, totals } = aggregateRows(rows);
+    const html = renderHtml(sections, totals, params);
+    const filename = `balance_sheet_${params.companyCode}_${params.asOnDate}.pdf`;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+    res.send(html);
+  } catch (error: any) {
+    console.error("Balance Sheet PDF error:", error);
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate PDF",
+    });
+  }
+};
+
 export const exportBalanceSheetReportExcel = async (
   req: Request,
   res: Response,
