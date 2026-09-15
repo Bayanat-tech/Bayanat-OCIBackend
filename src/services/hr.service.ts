@@ -123,13 +123,13 @@ LeaveDaysCount: async (params: {
     DECLARE
      v_leave_days NUMBER;
      BEGIN
-        v_leave_days := FUN_CALC_LEAVE_DAYS(
-          TO_DATE(:leaveStartDate, 'DD-MM-YYYY'),
-          TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
-          :p_leaveType,
+        v_leave_days :=FUN_CALCULATE_FINAL_LEAVE_DAYS(
           :p_company_code,
           :p_employee_code,
-          :p_half_day
+          TO_DATE(:leaveStartDate, 'DD-MM-YYYY'),
+          TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
+          :p_half_day,
+          :p_leaveType
         );
       :p_leave_days := v_leave_days;
       END;
