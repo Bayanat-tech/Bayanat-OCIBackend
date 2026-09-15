@@ -157,6 +157,48 @@ async function loadPendingPOData(req: RequestWithUser): Promise<ReportRow[]> {
   const conn = await getConn(req);
 
   try {
+    // Built dynamically: a predicate (and its bind) is only included when
+    // that filter is actually set to something specific. The previous
+    // ":param = 'All' OR column OP :param" form still forced Oracle to
+    // evaluate/bind the second branch even when the first was true — OR
+    // doesn't guarantee row-level short-circuit — so the 'All' sentinel
+    // could get implicitly converted against a numeric/date column
+    // (VW_ERP_PURORDER, unlike the newer WMS views, isn't guaranteed to
+    // have those columns as VARCHAR2), throwing ORA-01722.
+    const conditions: string[] = ["COMPANY_CODE = :companyCode"];
+    const binds: Record<string, any> = { companyCode: p.companyCode };
+
+    if (p.supplierCode !== "All") {
+      conditions.push("AC_CODE = :supplierCode");
+      binds.supplierCode = p.supplierCode;
+    }
+    if (p.productFrom !== "All") {
+      conditions.push("PROD_CODE >= :productFrom");
+      binds.productFrom = p.productFrom;
+    }
+    if (p.productTo !== "All") {
+      conditions.push("PROD_CODE <= :productTo");
+      binds.productTo = p.productTo;
+    }
+    if (p.cancelled !== "Y") {
+      conditions.push("NVL(CANCELLED, 'N') <> 'Y'");
+    }
+    if (p.docNo) {
+      conditions.push("DOC_NO = :docNo");
+      binds.docNo = p.docNo;
+    }
+    if (p.dateFrom) {
+      conditions.push("DOC_DATE >= TO_DATE(:dateFrom, 'YYYY-MM-DD')");
+      binds.dateFrom = p.dateFrom;
+    }
+    if (p.dateTo) {
+      conditions.push("DOC_DATE < TO_DATE(:dateTo, 'YYYY-MM-DD')");
+      binds.dateTo = p.dateTo;
+    }
+    conditions.push("QTY_BALANCE > 0");
+
+    const whereClause = conditions.join("\n          AND ");
+
     // Detail = line level from vw_erp_purorder
     // Summary = aggregated per document
     if (p.reportType === "Detail") {
@@ -179,28 +221,9 @@ async function loadPendingPOData(req: RequestWithUser): Promise<ReportRow[]> {
           QTY_BALANCE,
           NVL(CANCELLED, 'N') AS CANCELLED
         FROM VW_ERP_PURORDER
-        WHERE COMPANY_CODE = :companyCode
-          AND (:supplierCode = 'All' OR AC_CODE = :supplierCode)
-          AND (:productFrom = 'All' OR PROD_CODE >= :productFrom)
-          AND (:productTo = 'All' OR PROD_CODE <= :productTo)
-          AND (:cancelled = 'Y' OR NVL(CANCELLED, 'N') <> 'Y')
-          AND (:docNo = 0 OR DOC_NO = :docNo)
-          AND (:dateFrom IS NULL OR DOC_DATE >= TO_DATE(:dateFrom, 'YYYY-MM-DD'))
-          AND (:dateTo IS NULL OR DOC_DATE < TO_DATE(:dateTo, 'YYYY-MM-DD'))
-          AND QTY_BALANCE > 0
+        WHERE ${whereClause}
         ORDER BY DOC_DATE DESC, DOC_NO, PROD_CODE
       `;
-
-      const binds: Record<string, any> = {
-        companyCode: p.companyCode,
-        supplierCode: p.supplierCode,
-        productFrom: p.productFrom,
-        productTo: p.productTo,
-        cancelled: p.cancelled,
-        docNo: p.docNo,
-        dateFrom: p.dateFrom || null,
-        dateTo: p.dateTo || null,
-      };
 
       const result = await conn.execute(sql, binds, {
         outFormat: oracledb.OUT_FORMAT_OBJECT,
@@ -223,29 +246,10 @@ async function loadPendingPOData(req: RequestWithUser): Promise<ReportRow[]> {
         COUNT(*) AS NO_ITEMS,
         SUM(QTY_BALANCE) AS QTY_BALANCE
       FROM VW_ERP_PURORDER
-      WHERE COMPANY_CODE = :companyCode
-        AND (:supplierCode = 'All' OR AC_CODE = :supplierCode)
-        AND (:productFrom = 'All' OR PROD_CODE >= :productFrom)
-        AND (:productTo = 'All' OR PROD_CODE <= :productTo)
-        AND (:cancelled = 'Y' OR NVL(CANCELLED, 'N') <> 'Y')
-        AND (:docNo = 0 OR DOC_NO = :docNo)
-        AND (:dateFrom IS NULL OR DOC_DATE >= TO_DATE(:dateFrom, 'YYYY-MM-DD'))
-        AND (:dateTo IS NULL OR DOC_DATE < TO_DATE(:dateTo, 'YYYY-MM-DD'))
-        AND QTY_BALANCE > 0
+      WHERE ${whereClause}
       GROUP BY DOC_TYPE, DOC_NO, DOC_DATE
       ORDER BY DOC_DATE DESC, DOC_NO
     `;
-
-    const binds: Record<string, any> = {
-      companyCode: p.companyCode,
-      supplierCode: p.supplierCode,
-      productFrom: p.productFrom,
-      productTo: p.productTo,
-      cancelled: p.cancelled,
-      docNo: p.docNo,
-      dateFrom: p.dateFrom || null,
-      dateTo: p.dateTo || null,
-    };
 
     const result = await conn.execute(sql, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
@@ -704,4 +708,4 @@ export const exportPendingPOReportExcel = async (
       message: error.message || "Unable to export report",
     });
   }
-};  
+};

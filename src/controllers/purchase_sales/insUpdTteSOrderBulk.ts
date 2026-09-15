@@ -480,7 +480,13 @@ export const insUpdTteSOrderBulk = async (
 
 
       FLOW_CODE:
-        header.flow_code ?? "NA"
+        header.flow_code ?? "NA",
+
+        TX_COMPNT_1_EXPMT:
+        header.tx_compnt_1_expmt ?? 0,
+
+           DISCOUNT_SCOOPE:
+        header.discount_scoope ?? null,
 
 
     };

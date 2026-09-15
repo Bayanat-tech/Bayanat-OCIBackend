@@ -295,7 +295,7 @@ export const insUpdTteSinvoice = async (
 
 
       TX_COMPNT_1_EXPMT:
-        String(header.tx_compnt_1_expmt ?? "S"),
+        String(header.tx_compnt_1_expmt ?? ""),
 
 
 
@@ -409,10 +409,11 @@ INV_NO:
   header.inv_no != null
     ? String(header.inv_no)
     : null,
-      INV_DATE:
-        header.inv_date
-          ? new Date(header.inv_date)
-          : null,
+    
+INV_DATE:
+  header.inv_date
+    ? new Date(header.inv_date)
+    : null,
 
 
       PDO_TYPE:
@@ -462,7 +463,8 @@ INV_NO:
         header.user_id ?? null,
 
       GRN_NO: header.grn_no ?? null,
-
+   DISCOUNT_SCOOPE:
+        header.discount_scoope ?? null,
 
     };
     //------------------------------------------------------------------

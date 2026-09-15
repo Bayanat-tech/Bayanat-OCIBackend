@@ -15,7 +15,7 @@ export const insUpdTtePOrderBulk = async (
   let connection: oracledb.Connection | undefined;
 
   try {
-     const user = req.user as IUser; 
+    const user = req.user as IUser;
     const header = req.body?.header;
     const details = req.body?.details;
 
@@ -43,211 +43,217 @@ export const insUpdTtePOrderBulk = async (
      * Header Mapping
      ******************************************************/
     console.log("Header:api hit", header);
-  const headerRow = {
-  COMPANY_CODE: header.company_code ?? null,
+    const headerRow = {
+      COMPANY_CODE: header.company_code ?? null,
 
-  DOC_TYPE: header.doc_type ?? null,
+      DOC_TYPE: header.doc_type ?? null,
 
-  DOC_NO:
-    header.doc_no != null
-      ? String(header.doc_no)
-      : null,
+      DOC_NO:
+        header.doc_no != null
+          ? String(header.doc_no)
+          : null,
 
-  DOC_DATE:
-    header.doc_date
-      ? new Date(header.doc_date)
-      : null,
+      DOC_DATE:
+        header.doc_date
+          ? new Date(header.doc_date)
+          : null,
 
-  DIV_CODE:
-    header.div_code ?? null,
+      DIV_CODE:
+        header.div_code ?? null,
 
-  DEPT_CODE:
-    header.dept_code ?? null,
+      DEPT_CODE:
+        header.dept_code ?? null,
 
-  REMARKS:
-    header.remarks ?? null,
+      REMARKS:
+        header.remarks ?? null,
 
-  REF_NO:
-    header.ref_no ?? null,
+      REF_NO:
+        header.ref_no ?? null,
 
-  REF_DATE:
-    header.ref_date
-      ? new Date(header.ref_date)
-      : null,
+      REF_DATE:
+        header.ref_date
+          ? new Date(header.ref_date)
+          : null,
 
-  AC_CODE:
-    header.ac_code ?? null,
+      AC_CODE:
+        header.ac_code ?? null,
 
-  CURR_CODE:
-    header.curr_code ?? null,
+      CURR_CODE:
+        header.curr_code ?? null,
 
-  EX_RATE:
-    header.ex_rate ?? 1,
+      EX_RATE:
+        header.ex_rate ?? 1,
 
-  OTHER_EXPENSE_COST:
-    header.other_expense_cost ?? 0,
+      OTHER_EXPENSE_COST:
+        header.other_expense_cost ?? 0,
 
-  DISC_HDR_PERCENT:
-    header.disc_hdr_percent ?? 0,
+      DISC_HDR_PERCENT:
+        header.disc_hdr_percent ?? 0,
 
-  DISC_HDR_PRICE:
-    header.disc_hdr_price ?? 0,
+      DISC_HDR_PRICE:
+        header.disc_hdr_price ?? 0,
 
-  PAYMENT_TERMS:
-    header.payment_terms ?? null,
+      PAYMENT_TERMS:
+        header.payment_terms ?? null,
 
-  CREDIT_PERIOD:
-    header.credit_period ?? 0,
+      CREDIT_PERIOD:
+        header.credit_period ?? 0,
 
-  DUE_DATE:
-    header.due_date
-      ? new Date(header.due_date)
-      : null,
+      DUE_DATE:
+        header.due_date
+          ? new Date(header.due_date)
+          : null,
 
-  PARTY_NAME:
-    header.party_name ?? null,
+      PARTY_NAME:
+        header.party_name ?? null,
 
-  PARTY_ADDRESS:
-    header.party_address ?? null,
+      PARTY_ADDRESS:
+        header.party_address ?? null,
 
-  PARTY_PHONE:
-    header.party_phone ?? null,
+      PARTY_PHONE:
+        header.party_phone ?? null,
 
-  PARTY_FAX:
-    header.party_fax ?? null,
+      PARTY_FAX:
+        header.party_fax ?? null,
 
-  INV_GENERATED:
-    String(header.inv_generated ?? "N"),
+      INV_GENERATED:
+        String(header.inv_generated ?? "N"),
 
-  DELIVERY_TO:
-    header.delivery_to ?? null,
+      DELIVERY_TO:
+        header.delivery_to ?? null,
 
-  DLVR_CONTACT:
-    header.dlvr_contact ?? null,
+      DLVR_CONTACT:
+        header.dlvr_contact ?? null,
 
-  DLVR_EMAIL:
-    header.dlvr_email ?? null,
+      DLVR_EMAIL:
+        header.dlvr_email ?? null,
 
-  DLVR_MOBILE:
-    header.dlvr_mobile ?? null,
+      DLVR_MOBILE:
+        header.dlvr_mobile ?? null,
 
-  DLVR_TERM:
-    header.dlvr_term ?? null,
+      DLVR_TERM:
+        header.dlvr_term ?? null,
 
-  REF_DOC_TYPE:
-    header.ref_doc_type ?? null,
+      REF_DOC_TYPE:
+        header.ref_doc_type ?? null,
 
-  REF_DOC_NO:
-    header.ref_doc_no ?? null,
+      REF_DOC_NO:
+        header.ref_doc_no ?? null,
 
-  JOB_NO:
-    header.job_no ?? null,
+      JOB_NO:
+        header.job_no ?? null,
 
-  CANCELLED:
-    String(header.cancelled ?? "N"),
+      CANCELLED:
+        String(header.cancelled ?? "N"),
 
-  CANCELLED_DT:
-    header.cancelled_dt
-      ? new Date(header.cancelled_dt)
-      : null,
+      CANCELLED_DT:
+        header.cancelled_dt
+          ? new Date(header.cancelled_dt)
+          : null,
 
-  APPROVED:
-    String(header.approved ?? "N"),
+      APPROVED:
+        String(header.approved ?? "N"),
 
-  APPROVED_BY:
-    header.approved_by ?? null,
+      APPROVED_BY:
+        header.approved_by ?? null,
 
-  APPROVED_DT:
-    header.approved_dt
-      ? new Date(header.approved_dt)
-      : null,
+      APPROVED_DT:
+        header.approved_dt
+          ? new Date(header.approved_dt)
+          : null,
 
-  NO_APPR_REQD:
-    header.no_appr_reqd ?? 0,
+      NO_APPR_REQD:
+        header.no_appr_reqd ?? 0,
 
-  NO_APPR_COLLECT:
-    header.no_appr_collect ?? 0,
+      NO_APPR_COLLECT:
+        header.no_appr_collect ?? 0,
 
-  LAST_SERIAL_NO:
-    header.last_serial_no ?? 0,
+      LAST_SERIAL_NO:
+        header.last_serial_no ?? 0,
 
-  LAST_DTL_SERIAL_NO:
-    header.last_dtl_serial_no ?? 0,
+      LAST_DTL_SERIAL_NO:
+        header.last_dtl_serial_no ?? 0,
 
-  USER_ID:
-    header.user_id ?? null,
+      USER_ID:
+        header.user_id ?? null,
 
-  USER_DT:
-    header.user_dt
-      ? new Date(header.user_dt)
-      : null,
+      USER_DT:
+        header.user_dt
+          ? new Date(header.user_dt)
+          : null,
 
-  TX_CAT_CODE:
-    header.tx_cat_code ?? "N/A",
+      TX_CAT_CODE:
+        header.tx_cat_code ?? "N/A",
 
-  TX_COMPNTCAT_CODE_1:
-    header.tx_compntcat_code_1 ?? "N/A",
+      TX_COMPNTCAT_CODE_1:
+        header.tx_compntcat_code_1 ?? "N/A",
 
-  TX_COMPNTCAT_CODE_2:
-    header.tx_compntcat_code_2 ?? "N/A",
+      TX_COMPNTCAT_CODE_2:
+        header.tx_compntcat_code_2 ?? "N/A",
 
-  TX_COMPNTCAT_CODE_3:
-    header.tx_compntcat_code_3 ?? "N/A",
+      TX_COMPNTCAT_CODE_3:
+        header.tx_compntcat_code_3 ?? "N/A",
 
-  TX_COMPNTCAT_CODE_4:
-    header.tx_compntcat_code_4 ?? "N/A",
+      TX_COMPNTCAT_CODE_4:
+        header.tx_compntcat_code_4 ?? "N/A",
 
-  TX_COMPNT_HDISC_AMT_1:
-    header.tx_compnt_hdisc_amt_1 ?? 0,
+      TX_COMPNT_HDISC_AMT_1:
+        header.tx_compnt_hdisc_amt_1 ?? 0,
 
-  PURCHASE_ACTYPE:
-    header.purchase_actype ?? null,
+      PURCHASE_ACTYPE:
+        header.purchase_actype ?? null,
 
-  BUYER:
-    header.buyer ?? null,
+      BUYER:
+        header.buyer ?? null,
 
-  WO_NUMBER:
-    header.wo_number ?? null,
+      WO_NUMBER:
+        header.wo_number ?? null,
 
-  PROJECT_NAME:
-    header.project_name ?? null,
+      PROJECT_NAME:
+        header.project_name ?? null,
 
-  PR_NO:
-    header.pr_no ?? null,
+      PR_NO:
+        header.pr_no ?? null,
 
-  SCOPE_OF_WORK:
-    header.scope_of_work ?? null,
+      SCOPE_OF_WORK:
+        header.scope_of_work ?? null,
 
-  CREATED_BY:user.loginid ?? null,
+      CREATED_BY: user.loginid ?? null,
 
-  UPDATED_BY:
-user.loginid ?? null,
+      UPDATED_BY:
+        user.loginid ?? null,
 
-  FLOW_LEVEL_RUNNING:
-    header.flow_level_running ?? 0,
+      FLOW_LEVEL_RUNNING:
+        header.flow_level_running ?? 0,
 
-  LAST_ACTION:
-    header.last_action ?? null,
+      LAST_ACTION:
+        header.last_action ?? null,
 
-  FLOW_LEVEL_INITIAL:
-    header.flow_level_initial ?? 0,
+      FLOW_LEVEL_INITIAL:
+        header.flow_level_initial ?? 0,
 
-  FLOW_LEVEL_FINAL:
-    header.flow_level_final ?? 0,
+      FLOW_LEVEL_FINAL:
+        header.flow_level_final ?? 0,
 
-  FINAL_APPROVED:
-    String(header.final_approved ?? "N"),
+      FINAL_APPROVED:
+        String(header.final_approved ?? "N"),
 
-  HISTORY_SERIAL:
-    header.history_serial ?? 0,
+      HISTORY_SERIAL:
+        header.history_serial ?? 0,
 
-  NEXT_ACTION_BY:
-    header.next_action_by ?? null,
-  SENTBACK_REASON:
-    header.sentback_reason ?? null,
-  REJECT_REASON:
-    header.reject_reason ?? null
-};
+      NEXT_ACTION_BY:
+        header.next_action_by ?? null,
+      SENTBACK_REASON:
+        header.sentback_reason ?? null,
+      REJECT_REASON:
+        header.reject_reason ?? null,
+      TX_COMPNT_1_EXPMT:
+        String(header.tx_compnt_1_expmt ?? ""),
+
+      DISCOUNT_SCOOPE:
+        header.discount_scoope ?? null
+
+    };
     /******************************************************
      * Detail Mapping
      ******************************************************/

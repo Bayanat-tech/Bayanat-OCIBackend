@@ -462,6 +462,8 @@ INV_NO:
         header.user_id ?? null,
 
     GRN_NO : header.grn_no ?? null,
+          DISCOUNT_SCOOPE:
+        header.discount_scoope ?? null,
     
 
 
