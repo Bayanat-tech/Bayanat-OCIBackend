@@ -70,7 +70,6 @@ import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/account
 import { getTransactionProductReport } from "../../wms/reports/TransactionProductReport";
 import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
 import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
-import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
 import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
 import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
@@ -104,6 +103,7 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
 import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
+import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 
 
 
@@ -234,6 +234,7 @@ router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
+router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   // 👈 नया route
 
 // WMS REPORTS ROUTES
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
