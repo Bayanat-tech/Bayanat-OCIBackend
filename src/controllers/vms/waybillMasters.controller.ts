@@ -6,7 +6,7 @@ import { masterDefinitions, masterTableStatements, MasterKind, validateMaster } 
 
 const initialization = new Map<string, Promise<void>>();
 
-async function ensureMasterTables(tenantId: string) {
+export async function ensureMasterTables(tenantId: string) {
   let pending = initialization.get(tenantId);
   if (!pending) {
     pending = (async () => {

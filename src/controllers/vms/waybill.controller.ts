@@ -6,7 +6,7 @@ import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 const TABLE_NAME = "VMS_WAYBILL_REQUESTS";
 const readyTenants = new Set<string>();
 
-async function ensureTable(tenantId: string) {
+export async function ensureWaybillTable(tenantId: string) {
   if (readyTenants.has(tenantId)) return;
   await QueryExecutor.executeRawQuery(`
     BEGIN
@@ -40,7 +40,7 @@ function value(input: unknown): string {
 
 export async function listWaybillRequests(req: RequestWithUser, res: Response) {
   try {
-    await ensureTable(getCurrentTenantId() || String(req.user?.tenantId || ""));
+    await ensureWaybillTable(getCurrentTenantId() || String(req.user?.tenantId || ""));
     const result = await QueryExecutor.executeRawQuery(
       `SELECT ID, WAYBILL_LOAD_NUMBER, DESTINATION_NAME, SCHEDULED_VEHICLE,
               PICKUP_DATE, VENDOR_NAME, RIG_ID, FILE_NAME, STATUS, CREATED_AT
@@ -58,7 +58,7 @@ export async function listWaybillRequests(req: RequestWithUser, res: Response) {
 
 export async function createWaybillRequest(req: RequestWithUser, res: Response) {
   try {
-    await ensureTable(getCurrentTenantId() || String(req.user?.tenantId || ""));
+    await ensureWaybillTable(getCurrentTenantId() || String(req.user?.tenantId || ""));
     const body = req.body as Record<string, unknown>;
     const fields = {
       company_code: value(req.user?.company_code || body.company_code),

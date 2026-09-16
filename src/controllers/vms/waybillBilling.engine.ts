@@ -142,7 +142,7 @@ export function calculateRevenue(waybills: DataRow[], wells: DataRow[], rates: D
         const baseKms = amount(rate.base_kms);
         if (!nonStandard) {
           row.base_revenue = amount(rate.standard_revenue);
-          row.kms_chargeable = round3(Math.max(0, actual - baseKms - 15));
+          row.kms_chargeable = amount(round3(Math.max(0, actual - baseKms - 15)));
           row.kms_revenue = multiply(row.kms_chargeable, amount(rate.standard_kms_charge));
           row.calculation.push(`Standard: ${well!.city}; base revenue ${row.base_revenue}; Kms = max(0, ${actual} - ${baseKms} - 15); rate/Km ${rate.standard_kms_charge}.`);
         } else {
@@ -151,7 +151,7 @@ export function calculateRevenue(waybills: DataRow[], wells: DataRow[], rates: D
           const distance = amount(pairs[0].distance);
           const pairKms = Math.max(0, distance - 15);
           const diversion = settings.non_standard_kms === "DIVERSION_PLUS_PAIR" ? Math.max(0, actual - baseKms - 15) : 0;
-          row.kms_chargeable = isLead ? round3(pairKms + diversion) : 0;
+          row.kms_chargeable = isLead ? amount(round3(pairKms + diversion)) : 0;
           row.kms_revenue = multiply(row.kms_chargeable, amount(rate.non_standard_kms_charge));
           row.calculation.push(`Two-drop base rule: ${settings.non_standard_base}; selected rate city rule: ${settings.rate_city}; shared Kms charged once on waybill ID ${lead.id}.`);
           row.calculation.push(isLead ? `Kms = max(0, ${distance} - 15)${settings.non_standard_kms === "DIVERSION_PLUS_PAIR" ? ` + max(0, ${actual} - ${baseKms} - 15)` : ""}; rate/Km ${rate.non_standard_kms_charge}.` : "Shared Kms are allocated to the selected waybill; this row carries zero shared Kms.");
