@@ -44,7 +44,7 @@ function failure(error: unknown, res: Response) {
   } else if (code === 2291) {
     res.status(400).json({ success: false, message: "Create the referenced city rate or well IDs in your company first." });
   } else if (code === 2292) {
-    res.status(409).json({ success: false, message: "This city or well ID is referenced by another master entry and cannot be renamed." });
+    res.status(409).json({ success: false, message: "This city or well ID is referenced by another master entry and cannot be renamed or deleted. Update or remove the dependent master entries first." });
   } else {
     console.error("Waybill master operation failed:", error);
     res.status(500).json({ success: false, message: "Unable to process waybill master data." });
@@ -108,6 +108,30 @@ export function saveWaybillMaster(kind: MasterKind, update = false) {
         return;
       }
       res.status(update ? 200 : 201).json({ success: true, message: "Master entry saved." });
+    } catch (error) { failure(error, res); }
+  };
+}
+
+export function deleteWaybillMaster(kind: MasterKind) {
+  return async (req: RequestWithUser, res: Response) => {
+    const context = scope(req, res);
+    if (!context) return;
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      res.status(400).json({ success: false, message: "Invalid master ID." });
+      return;
+    }
+    try {
+      await ensureMasterTables(context.tenantId);
+      const result = await QueryExecutor.executeRawQuery(
+        `DELETE FROM ${masterDefinitions[kind].table} WHERE ID = :id AND COMPANY_CODE = :company_code`,
+        { id, company_code: context.companyCode },
+      );
+      if (!result.rowsAffected) {
+        res.status(404).json({ success: false, message: "Master entry not found." });
+        return;
+      }
+      res.json({ success: true, message: "Master entry deleted." });
     } catch (error) { failure(error, res); }
   };
 }

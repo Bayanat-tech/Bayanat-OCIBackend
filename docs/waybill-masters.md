@@ -1,6 +1,8 @@
 # Waybill master setup
 
-Open the vendor waybill reader and select **Manage masters**.
+Open each screen from the VMS Masters menu: `vms/masters/well_ids`, `vms/masters/revenue_table`, or `vms/masters/non_standard_kms`.
+
+Each master opens with the WMS-style listing table, search and refresh. **Add** opens an empty form dialog; row actions provide **Edit** and **Delete**. Delete requires confirmation and is blocked when dependent master entries exist. Deleting a lookup can make affected waybill calculations require reprocessing or review; saved billing audit history is retained.
 
 1. Enter **Revenue Table (Lookup)**: city, base kilometres, standard/non-standard base revenue and the two per-kilometre charges.
 2. Enter **Well IDs (Destination Lookup)**: the destination name from the waybill, its city and actual kilometres.
@@ -21,6 +23,7 @@ For each of `rates`, `wells`, `distances`:
 - `GET /api/vms/waybill-masters/{kind}` lists company entries.
 - `POST /api/vms/waybill-masters/{kind}` creates an entry.
 - `PUT /api/vms/waybill-masters/{kind}/{id}` updates a company entry.
+- `DELETE /api/vms/waybill-masters/{kind}/{id}` deletes a company entry; dependent foreign keys return a conflict rather than cascading.
 
 All routes use the existing JWT, tenant context and active-user authorization middleware. Company code is never taken from the request body. These routes inherit the existing VMS authorization model; they do not introduce a separate administrator role.
 
