@@ -122,111 +122,52 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
 
     console.log(`[login] STEP 1: Authenticating user '${email}'...`);
 
-    // Get user with tenant info
+    // Existing central accounts authenticate locally; never reprovision inactive users.
     const isMhdlEmployeeCode = /^M/i.test(email) && !email.includes("@");
-    let userTenant;
-    if (isMhdlEmployeeCode) {
-      let rootUser = await AuthService.findRootUserByIdentifier(email, true);
-      if (!rootUser) {
-        let stage = "external_verification";
-        try {
-          console.log("[login:MHDL] Central account not found; checking employee API");
-          const apiUser = await HrService.checkMhdlAccountEmployee(email);
-          if (!apiUser || password !== apiUser.PASSWORD) {
-            res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-              success: false, message: "Invalid employee code or password",
-            });
-            return;
-          }
-          stage = "database_provisioning";
-          console.log("[login:MHDL] Employee verified; provisioning account and tenant access");
-          await AuthService.createMhdlEmployee(apiUser, password);
-          stage = "reload_account";
-          rootUser = await AuthService.findRootUserByIdentifier(apiUser.USER_ID, true);
-        } catch (error: any) {
-          // Never log the API error object, response, request headers or passwords.
-          const code = typeof error?.code === "string" && /^[A-Z0-9_-]+$/.test(error.code)
-            ? error.code : "MHDL_LOGIN_FAILED";
-          console.error("[login:MHDL] First-time login failed", { stage, code });
-          res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-            success: false,
-            message: stage === "external_verification"
-              ? "Employee verification service is unavailable. Please try again or contact support."
-              : "Employee verified, but account setup failed. Please contact support.",
-            code,
-          });
-          return;
-        }
-      }
-      if (!rootUser || rootUser.ACTIVE_FLAG !== 'Y') {
-        res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-          success: false, message: "Employee account is inactive or unavailable",
-        });
-        return;
-      }
-      const tenantId = await TenantManager.getTenantForUser(rootUser.LOGINID);
-      if (!tenantId) throw new Error("Employee account has no default tenant mapping");
-      userTenant = { user: rootUser, tenantId };
-    } else {
-      userTenant = await AuthService.getUserWithTenant(email);
-    }
-
-    if (!userTenant) {
-      console.log(`[login] User not found in SEC_LOGINTEST, checking external API...`);
-      // Try external user creation
+    let rootUser = await AuthService.findRootUserByIdentifier(email, true);
+    if (!rootUser) {
+      let stage = "external_verification";
       try {
-        const apiResponse = await VendorService.checkAccountEmployee(email);
-
-        if (Array.isArray(apiResponse) && apiResponse.length > 0) {
-          const apiUser = apiResponse[0];
-          const isExternalPassValid = password === apiUser.PASSWORD;
-
-          if (!isExternalPassValid) {
-            res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-              success: false,
-              message: constants.MESSAGES.USER.INVALID_PASSWORD,
-            });
-            return;
-          }
-
-          const hashedPassword = await AuthService.hashPassword(password);
-          const newUser = await AuthService.createUserFromExternal(
-            apiUser,
-            password,
-            hashedPassword
-          );
-          
-          console.log(`[login] ✅ External user created: ${newUser.LOGINID}`);
-          
-          // For external users, use default tenant
-          userTenant = {
-            user: newUser,
-            tenantId: 'WMSTST_TENANT'
-          };
-        } else {
-          res.status(constants.STATUS_CODES.NOT_FOUND).json({
-            success: false,
-            message: "User not found",
+        const apiUser = isMhdlEmployeeCode
+          ? await HrService.checkMhdlAccountEmployee(email)
+          : (await VendorService.checkAccountEmployee(email))[0];
+        if (!apiUser || password !== apiUser.PASSWORD) {
+          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+            success: false, message: "Invalid employee code or password",
           });
           return;
         }
-      } catch (apiError: any) {
-        console.error(`[login] External API error:`, apiError.message);
+        stage = "database_provisioning";
+        if (isMhdlEmployeeCode) {
+          await AuthService.createMhdlEmployee(apiUser, password);
+        } else {
+          await AuthService.createWmsAccount(apiUser as import("../services/vendor.service").ExternalAccount, password);
+        }
+        stage = "reload_account";
+        rootUser = await AuthService.findRootUserByIdentifier(apiUser.USER_ID, true);
+      } catch (error: any) {
+        const code = typeof error?.code === "string" && /^[A-Z0-9_-]+$/.test(error.code)
+          ? error.code : "EXTERNAL_LOGIN_FAILED";
+        console.error("[login] First-time account setup failed", { stage, code });
         res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
           success: false,
-          message: "Error validating user",
+          message: stage === "external_verification"
+            ? "Account verification service is unavailable. Please try again or contact support."
+            : "Account verified, but account setup failed. Please contact support.",
+          code,
         });
         return;
       }
     }
-
-    if (!userTenant) {
-      res.status(constants.STATUS_CODES.NOT_FOUND).json({
-        success: false,
-        message: "User not found",
+    if (!rootUser || rootUser.ACTIVE_FLAG !== 'Y') {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false, message: "Account is inactive or unavailable",
       });
       return;
     }
+    const defaultTenantId = await TenantManager.getTenantForUser(rootUser.LOGINID);
+    if (!defaultTenantId) throw new Error("Account has no default tenant mapping");
+    const userTenant = { user: rootUser, tenantId: defaultTenantId };
 
     const { user, tenantId } = userTenant;
     

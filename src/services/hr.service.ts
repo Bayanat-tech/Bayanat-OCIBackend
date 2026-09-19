@@ -139,6 +139,7 @@ export const HrService = {
         headers: { XApiKey: apiKey, accept: "*/*" },
         timeout: 30000,
         maxRedirects: 0,
+        httpsAgent,
       });
       data = response.data;
     } catch (error: any) {
