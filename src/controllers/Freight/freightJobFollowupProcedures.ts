@@ -11,14 +11,24 @@ export const frtJobDocDelete = actionProc("PROC_FRT_JOB_DOC_DELETE", ["p_company
 
 export const frtJobDocSave = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
-    const docs = Array.isArray(req.body.docs) ? req.body.docs : [];
+    // Accept docs from req.body.docs OR req.body.lines (common frontend naming)
+    const rawDocs = req.body.docs ?? req.body.lines ?? req.body.data;
+    const docs = Array.isArray(rawDocs) ? rawDocs : [];
+
+    if (docs.length === 0) {
+      res.status(400).json({ success: false, message: "No document rows provided. Send docs as an array in req.body.docs" });
+      return;
+    }
+
     await connection.execute(
       `BEGIN PROC_FRT_JOB_DOC_SAVE(:p_company_code, :p_prin_code, :p_job_no, :p_user_id, :p_docs); END;`,
       {
         p_company_code: bodyValue(req, "company_code"),
-        p_prin_code: bodyValue(req, "prin_code"),
-        p_job_no: bodyValue(req, "job_no"),
-        p_user_id: bodyValue(req, "user_id"),
+        p_prin_code:    bodyValue(req, "prin_code"),
+        p_job_no:       bodyValue(req, "job_no"),
+        p_user_id:      bodyValue(req, "user_id"),
+        // FRT_JOB_DOC_OBJ has exactly 12 attributes — no PK fields.
+        // company_code/prin_code/job_no/user_id are passed as scalar params above.
         p_docs: { type: "FRT_JOB_DOC_TAB", val: docs.map(toDocObject) },
       },
       { autoCommit: true }
@@ -162,20 +172,23 @@ function bodyValue(req: Request, key: string) {
   return req.body[key] ?? req.body[key.toUpperCase()] ?? null;
 }
 
+// Exactly matches FRT_JOB_DOC_OBJ — 12 attributes confirmed in DB.
+// The SP receives company_code / prin_code / job_no / user_id as scalar params
+// and uses SYSDATE internally — do NOT add those to this object type.
 function toDocObject(row: Record<string, unknown>) {
   return {
-    DOC_NR: stringValue(row.doc_nr ?? row.DOC_NR),
-    COLLECTED: stringValue(row.collected ?? row.COLLECTED, "N"),
-    MANDATORY: stringValue(row.mandatory ?? row.MANDATORY, "N"),
-    DOC_PATH: stringValue(row.doc_path ?? row.DOC_PATH),
-    DOC_RECEIVED_DT: toDate(row.doc_received_dt ?? row.DOC_RECEIVED_DT),
-    DOC_RECEIVED_BY: stringValue(row.doc_received_by ?? row.DOC_RECEIVED_BY),
+    DOC_NR:            stringValue(row.doc_nr            ?? row.DOC_NR),
+    COLLECTED:         stringValue(row.collected         ?? row.COLLECTED,          "N"),
+    MANDATORY:         stringValue(row.mandatory         ?? row.MANDATORY,          "N"),
+    DOC_PATH:          stringValue(row.doc_path          ?? row.DOC_PATH),
+    DOC_RECEIVED_DT:   toDate(row.doc_received_dt        ?? row.DOC_RECEIVED_DT),
+    DOC_RECEIVED_BY:   stringValue(row.doc_received_by   ?? row.DOC_RECEIVED_BY),
     DOC_RECEIVED_MODE: stringValue(row.doc_received_mode ?? row.DOC_RECEIVED_MODE),
-    REMARKS: stringValue(row.remarks ?? row.REMARKS),
-    DOC_SEND_DT: toDate(row.doc_send_dt ?? row.DOC_SEND_DT),
-    DOC_SEND_BY: stringValue(row.doc_send_by ?? row.DOC_SEND_BY),
-    DOC_SEND_MODE: stringValue(row.doc_send_mode ?? row.DOC_SEND_MODE),
-    DOCUMENT_TYPE: stringValue(row.document_type ?? row.DOCUMENT_TYPE),
+    REMARKS:           stringValue(row.remarks           ?? row.REMARKS),
+    DOC_SEND_DT:       toDate(row.doc_send_dt            ?? row.DOC_SEND_DT),
+    DOC_SEND_BY:       stringValue(row.doc_send_by       ?? row.DOC_SEND_BY),
+    DOC_SEND_MODE:     stringValue(row.doc_send_mode     ?? row.DOC_SEND_MODE),
+    DOCUMENT_TYPE:     stringValue(row.document_type     ?? row.DOCUMENT_TYPE),
   };
 }
 
