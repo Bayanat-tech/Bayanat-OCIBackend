@@ -236,6 +236,37 @@ export const frtJobSave = async (req: Request, res: Response): Promise<void> => 
     );
 
     res.json({ success: true, message: "Freight job saved successfully", data: { job_no: (result.outBinds as any).p_job_no_out } });
+    const savedJobNo = (result.outBinds as any).p_job_no_out;
+    const companyCode = value(job.company_code ?? job.COMPANY_CODE);
+    const prinCode = value(job.prin_code ?? job.PRIN_CODE) || "01";
+    const userId = value(job.user_id ?? job.USER_ID ?? req.body.user_id ?? req.body.USER_ID) || "SYSTEM";
+
+    // Auto-initialize tracking for the saved freight job
+    if (savedJobNo && companyCode) {
+      try {
+        await connection.execute(
+          `BEGIN
+             PROC_TRK_SHIPMENT_INIT(
+               :p_company_code,
+               :p_prin_code,
+               :p_job_no,
+               :p_user_id
+             );
+           END;`,
+          {
+            p_company_code: companyCode,
+            p_prin_code: prinCode,
+            p_job_no: savedJobNo,
+            p_user_id: userId,
+          },
+          { autoCommit: true }
+        );
+      } catch (trkErr) {
+        console.warn("Tracker auto-init skipped or pending schema deployment for job:", savedJobNo, trkErr);
+      }
+    }
+
+    res.json({ success: true, message: "Freight job saved successfully", data: { job_no: savedJobNo } });
   });
 };
 

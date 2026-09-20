@@ -63,6 +63,16 @@ import {
   frtJobSave,
 } from "../../controllers/Freight/freightJobProcedures";
 import {
+  trkUserNav,
+  trkShipmentList,
+  trkShipmentGet,
+  trkShipmentInit,
+  trkTaskUpdate,
+  trkContainerOffload,
+  trkCheckCompletion,
+  trkCfsCreate,
+} from "../../controllers/Freight/freightTrackerProcedures";
+import {
   frtPacklistDelete,
   frtPacklistDimList,
   frtPacklistDimSave,
@@ -172,6 +182,16 @@ router.post("/job/list", frtJobList);
 router.post("/job/get", frtJobGet);
 router.post("/job/save", frtJobSave);
 router.post("/job/cancel", frtJobCancel);
+
+// ==================== SHIPMENT TRACKER (DYNAMIC WORKFLOW) ====================
+router.post("/tracker/user-nav", trkUserNav);
+router.post("/tracker/list", trkShipmentList);
+router.post("/tracker/get", trkShipmentGet);
+router.post("/tracker/init", trkShipmentInit);
+router.post("/tracker/task-update", trkTaskUpdate);
+router.post("/tracker/container-offload", trkContainerOffload);
+router.post("/tracker/check-completion", trkCheckCompletion);
+router.post("/tracker/cfs-create", trkCfsCreate);
 router.post("/tax/categories", frtTaxCategoryList);
 router.post("/tax/components", frtTaxComponentList);
 
