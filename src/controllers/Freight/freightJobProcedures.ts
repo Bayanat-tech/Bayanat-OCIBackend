@@ -235,14 +235,13 @@ export const frtJobSave = async (req: Request, res: Response): Promise<void> => 
       { autoCommit: true }
     );
 
-    res.json({ success: true, message: "Freight job saved successfully", data: { job_no: (result.outBinds as any).p_job_no_out } });
     const savedJobNo = (result.outBinds as any).p_job_no_out;
     const companyCode = value(job.company_code ?? job.COMPANY_CODE);
-    const prinCode = value(job.prin_code ?? job.PRIN_CODE) || "01";
+    const prinCode = value(job.prin_code ?? job.PRIN_CODE);
     const userId = value(job.user_id ?? job.USER_ID ?? req.body.user_id ?? req.body.USER_ID) || "SYSTEM";
 
     // Auto-initialize tracking for the saved freight job
-    if (savedJobNo && companyCode) {
+    if (savedJobNo && companyCode && prinCode) {
       try {
         await connection.execute(
           `BEGIN

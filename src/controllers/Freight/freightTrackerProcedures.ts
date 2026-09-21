@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../src/database/TenantManager";
 import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middleware";
+import { sendTrackerStageEmail } from "../../services/Freight/freightTrackerNotificationService";
 
 type Connection = oracledb.Connection;
 
@@ -15,7 +16,7 @@ const TRACKER_TABS_CONFIG = [
     title: "FFD Review",
     subtitle: "B/L & ETA Verification",
     icon: "FileText",
-    url_path: "/freight/tracker/ffd",
+    url_path: "freight/tracker/ffd",
     description: "Review Master/House B/L, Commercial Invoice, and set initial ETA & planned pull-out date.",
   },
   {
@@ -26,7 +27,7 @@ const TRACKER_TABS_CONFIG = [
     title: "PRO Permits",
     subtitle: "Ministry Inspection & Permits",
     icon: "ShieldCheck",
-    url_path: "/freight/tracker/permit",
+    url_path: "freight/tracker/permit",
     description: "Submit & track agricultural/food health inspection permits or food approvals.",
   },
   {
@@ -37,7 +38,7 @@ const TRACKER_TABS_CONFIG = [
     title: "Customs Bayan",
     subtitle: "Bayan Declaration & Duty",
     icon: "Landmark",
-    url_path: "/freight/tracker/bayan",
+    url_path: "freight/tracker/bayan",
     description: "Process customs declaration, input Bayan declaration number, and record duty fees.",
   },
   {
@@ -48,7 +49,7 @@ const TRACKER_TABS_CONFIG = [
     title: "Delivery Order (DO)",
     subtitle: "Shipping Line DO & Validity",
     icon: "Ship",
-    url_path: "/freight/tracker/do",
+    url_path: "freight/tracker/do",
     description: "Collect Delivery Order, track DO expiry date countdown, and manage revalidations.",
   },
   {
@@ -59,7 +60,7 @@ const TRACKER_TABS_CONFIG = [
     title: "CCRO / Port Police",
     subtitle: "Customs & Port Police Clearance",
     icon: "Lock",
-    url_path: "/freight/tracker/ccro",
+    url_path: "freight/tracker/ccro",
     description: "Coordinate container seal clearance with Customs Container Release Office & Port Police.",
   },
   {
@@ -70,7 +71,7 @@ const TRACKER_TABS_CONFIG = [
     title: "Transport Dispatch",
     subtitle: "Fleet & Truck Allocation",
     icon: "Truck",
-    url_path: "/freight/tracker/transport",
+    url_path: "freight/tracker/transport",
     description: "Assign company fleet or 3rd-party trucking contractors, drivers, and schedule pickups.",
   },
   {
@@ -81,7 +82,7 @@ const TRACKER_TABS_CONFIG = [
     title: "DC Offloading",
     subtitle: "Warehouse Gate & Offloading",
     icon: "Warehouse",
-    url_path: "/freight/tracker/dc",
+    url_path: "freight/tracker/dc",
     description: "Record warehouse gate-in, offloading timestamps, container condition, and empty returns.",
   },
 ];
@@ -102,27 +103,27 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Step A: Determine flow code if job_no provided
-    let effectiveFlowCode = flowCode;
+    let effectiveFlowCode = (flowCode === "CFS" || flowCode === "CFS_TRANSFER") ? "CFS" : "NORM";
     if (jobNo) {
       const jobCheck = await connection.execute(
         `SELECT NVL(JOB_FLAG, 'M') AS JOB_FLAG, NVL(JOB_TYPE, 'IMP') AS JOB_TYPE
-           FROM WMSTST.TI_JOB
+           FROM TI_JOB
           WHERE COMPANY_CODE = :company_code AND JOB_NO = :job_no`,
         { company_code: companyCode, job_no: jobNo },
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
       const jobRow: any = (jobCheck.rows as any[])?.[0];
       if (jobRow && (jobRow.JOB_FLAG === "C" || jobRow.JOB_TYPE === "CFS")) {
-        effectiveFlowCode = "CFS_TRANSFER";
+        effectiveFlowCode = "CFS";
       }
     }
 
     // Step B: Query MS_APPROVER_LEVELS for Company's configured LAST_LEVEL
     const approverLevelsResult = await connection.execute(
       `SELECT LAST_LEVEL, FLOW_CODE, LEVEL1_ROLE, LEVEL2_ROLE, LEVEL3_ROLE, LEVEL4_ROLE, LEVEL5_ROLE, LEVEL6_ROLE, LEVEL7_ROLE
-         FROM WMSTST.MS_APPROVER_LEVELS
+         FROM MS_APPROVER_LEVELS
         WHERE COMPANY_CODE = :company_code
-          AND PROCESS = 'FREIGHT_TRACKER'
+          AND PROCESS IN ('TRACKER', 'FREIGHT_TRACKER')
           AND FLOW_CODE = :flow_code`,
       { company_code: companyCode, flow_code: effectiveFlowCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -132,41 +133,48 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
     const approverConfig: any = (approverLevelsResult.rows as any[])?.[0];
     if (approverConfig && approverConfig.LAST_LEVEL) {
       lastLevel = Number(approverConfig.LAST_LEVEL);
-    } else if (effectiveFlowCode === "CFS_TRANSFER") {
+    } else if (effectiveFlowCode === "CFS") {
       lastLevel = 1;
     }
 
-    // Step C: Query User's Permissions in SEC_ROLE_FUNCTION_ACCESS_USER
+    // Step C: Query User's Permissions via SEC_MODULE_DATA & SEC_ROLE_FUNCTION_ACCESS_USER
+    // Uses URL_PATH join so SERIAL_NO is dynamically resolved (no hardcoded IDs!)
     const permissionsResult = await connection.execute(
-      `SELECT SERIAL_NO_OR_ROLE_ID, SSEARCH, SSAVE, SMODIFY, SDELETE, SUPLOAD
-         FROM WMSTST.SEC_ROLE_FUNCTION_ACCESS_USER
-        WHERE COMPANY_CODE = :company_code
-          AND LOGINID = :loginid
-          AND SERIAL_NO_OR_ROLE_ID BETWEEN 7001 AND 7007`,
+      `SELECT m.URL_PATH, m.SERIAL_NO, a.SSEARCH, a.SSAVE, a.SMODIFY, a.SDELETE, a.SUPLOAD
+         FROM SEC_MODULE_DATA m
+         LEFT JOIN SEC_ROLE_FUNCTION_ACCESS_USER a
+           ON a.SERIAL_NO_OR_ROLE_ID = m.SERIAL_NO
+          AND a.COMPANY_CODE = :company_code
+          AND a.LOGINID = :loginid
+        WHERE m.APP_CODE = 'FMS'
+          AND m.URL_PATH LIKE 'freight/tracker/%'`,
       { company_code: companyCode, loginid: loginId || "" },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const userPermsMap = new Map<number, any>();
+    const userPermsMap = new Map<string, any>();
     for (const p of (permissionsResult.rows as any[]) || []) {
-      userPermsMap.set(Number(p.SERIAL_NO_OR_ROLE_ID), p);
+      if (p.URL_PATH) {
+        userPermsMap.set(String(p.URL_PATH).toLowerCase().trim(), p);
+      }
     }
 
     // Step D: Filter tabs based on Company Level + User RBAC
     const activeTabs: any[] = [];
     const hiddenTabs: any[] = [];
 
-    // Special handling for CFS_TRANSFER: Only CCRO is active
-    if (effectiveFlowCode === "CFS_TRANSFER") {
-      const ccroConfig = TRACKER_TABS_CONFIG.find((t) => t.serial_no === 7005)!;
-      const perm = userPermsMap.get(7005);
-      const canView = perm ? perm.SSEARCH !== "N" : true;
-      const canEdit = perm ? perm.SSAVE === "Y" || perm.SMODIFY === "Y" : true;
-      const canUpload = perm ? perm.SUPLOAD === "Y" : true;
-      const canDelete = perm ? perm.SDELETE === "Y" : true;
+    // Special handling for CFS Transfer: Only CCRO is active
+    if (effectiveFlowCode === "CFS") {
+      const ccroConfig = TRACKER_TABS_CONFIG.find((t) => t.tab_id === "CCRO")!;
+      const perm = userPermsMap.get(ccroConfig.url_path.toLowerCase());
+      const canView = perm?.SSEARCH ? perm.SSEARCH !== "N" : true;
+      const canEdit = perm?.SSAVE ? (perm.SSAVE === "Y" || perm.SMODIFY === "Y") : true;
+      const canUpload = perm?.SUPLOAD ? perm.SUPLOAD === "Y" : true;
+      const canDelete = perm?.SDELETE ? perm.SDELETE === "Y" : true;
 
       const tabEntry = {
         ...ccroConfig,
+        serial_no: perm?.SERIAL_NO ?? ccroConfig.serial_no,
         canView,
         canEdit,
         canUpload,
@@ -189,17 +197,18 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
           continue;
         }
 
-        const perm = userPermsMap.get(tab.serial_no);
-        const canView = perm ? perm.SSEARCH !== "N" : true;
-        const canEdit = perm ? perm.SSAVE === "Y" || perm.SMODIFY === "Y" : true;
-        const canUpload = perm ? perm.SUPLOAD === "Y" : true;
-        const canDelete = perm ? perm.SDELETE === "Y" : true;
+        const perm = userPermsMap.get(tab.url_path.toLowerCase());
+        const canView = perm?.SSEARCH ? perm.SSEARCH !== "N" : true;
+        const canEdit = perm?.SSAVE ? (perm.SSAVE === "Y" || perm.SMODIFY === "Y") : true;
+        const canUpload = perm?.SUPLOAD ? perm.SUPLOAD === "Y" : true;
+        const canDelete = perm?.SDELETE ? perm.SDELETE === "Y" : true;
 
         const roleKey = `LEVEL${tab.flow_level}_ROLE`;
         const assignedRole = approverConfig ? approverConfig[roleKey] : null;
 
         const tabEntry = {
           ...tab,
+          serial_no: perm?.SERIAL_NO ?? tab.serial_no,
           canView,
           canEdit,
           canUpload,
@@ -270,11 +279,11 @@ export const trkShipmentList = async (req: Request, res: Response): Promise<void
 export const trkShipmentGet = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
-    const prinCode = value(req.body.prin_code ?? req.body.PRIN_CODE ?? "01");
     const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
+    const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
 
-    if (!companyCode || !jobNo) {
-      res.status(400).json({ success: false, message: "company_code and job_no are required" });
+    if (!companyCode || !jobNo || !prinCode) {
+      res.status(400).json({ success: false, message: "company_code, job_no, and valid prin_code are required" });
       return;
     }
 
@@ -340,12 +349,12 @@ export const trkShipmentGet = async (req: Request, res: Response): Promise<void>
 export const trkShipmentInit = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
-    const prinCode = value(req.body.prin_code ?? req.body.PRIN_CODE ?? "01");
     const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
+    const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
     const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "SYSTEM");
 
-    if (!companyCode || !jobNo) {
-      res.status(400).json({ success: false, message: "company_code and job_no are required" });
+    if (!companyCode || !jobNo || !prinCode) {
+      res.status(400).json({ success: false, message: "company_code, job_no, and valid prin_code are required" });
       return;
     }
 
@@ -378,11 +387,13 @@ export const trkShipmentInit = async (req: Request, res: Response): Promise<void
 // =============================================================================
 // 5. TASK UPDATE (In Progress, On Hold, Completed + Auto-evaluate Gate)
 // =============================================================================
+// 5. TASK UPDATE (In Progress, On Hold, Completed + Auto-evaluate Gate)
+// =============================================================================
 export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
-    const prinCode = value(req.body.prin_code ?? req.body.PRIN_CODE ?? "01");
     const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
+    const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
     const taskType = value(req.body.task_type ?? req.body.TASK_TYPE);
     const status = value(req.body.status ?? req.body.STATUS); // IN_PROGRESS, ON_HOLD, COMPLETED
     const holdEntity = value(req.body.hold_entity ?? req.body.HOLD_ENTITY);
@@ -391,10 +402,10 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
     const releaseRemark = value(req.body.release_remark ?? req.body.RELEASE_REMARK);
     const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "SYSTEM");
 
-    if (!companyCode || !jobNo || !taskType || !status) {
+    if (!companyCode || !jobNo || !prinCode || !taskType || !status) {
       res.status(400).json({
         success: false,
-        message: "company_code, job_no, task_type, and status are required",
+        message: "company_code, job_no, prin_code, task_type, and status are required",
       });
       return;
     }
@@ -437,7 +448,7 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
       const doDate = toDate(req.body.do_validity_date);
       if (doDate) {
         await connection.execute(
-          `UPDATE WMSTST.TRK_SHIPMENT SET DO_VALIDITY_DATE = :do_date, UPDATED_DT = SYSDATE WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job`,
+          `UPDATE TRK_SHIPMENT SET DO_VALIDITY_DATE = :do_date, UPDATED_DT = SYSDATE WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job`,
           { do_date: doDate, comp: companyCode, prin: prinCode, job: jobNo },
           { autoCommit: true }
         );
@@ -446,13 +457,27 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
 
     if (taskType === "PRO_PERMITS" && req.body.permit_ref) {
       await connection.execute(
-        `UPDATE WMSTST.TRK_SHIPMENT SET PERMIT_REF = :pref, UPDATED_DT = SYSDATE WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job`,
+        `UPDATE TRK_SHIPMENT SET PERMIT_REF = :pref, UPDATED_DT = SYSDATE WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job`,
         { pref: String(req.body.permit_ref).trim(), comp: companyCode, prin: prinCode, job: jobNo },
         { autoCommit: true }
       );
     }
 
     const isCompleted = (result.outBinds as any)?.p_is_completed === "Y";
+
+    // Trigger background email notification (non-blocking)
+    sendTrackerStageEmail(connection, {
+      companyCode,
+      prinCode,
+      jobNo,
+      taskType,
+      status: status as any,
+      holdEntity,
+      holdReason,
+      holdRemark,
+      releaseRemark,
+      actorId: userId,
+    }).catch((err) => console.warn("[trkTaskUpdate] Email notification warning:", err));
 
     res.json({
       success: true,
@@ -468,16 +493,16 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
 export const trkContainerOffload = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
-    const prinCode = value(req.body.prin_code ?? req.body.PRIN_CODE ?? "01");
     const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
+    const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
     const containerNumber = value(req.body.container_number ?? req.body.CONTAINER_NUMBER);
     const dcRemark = value(req.body.dc_remark ?? req.body.DC_REMARK);
     const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "SYSTEM");
 
-    if (!companyCode || !jobNo || !containerNumber) {
+    if (!companyCode || !jobNo || !prinCode || !containerNumber) {
       res.status(400).json({
         success: false,
-        message: "company_code, job_no, and container_number are required",
+        message: "company_code, job_no, prin_code, and container_number are required",
       });
       return;
     }
@@ -517,12 +542,12 @@ export const trkContainerOffload = async (req: Request, res: Response): Promise<
 export const trkCheckCompletion = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
-    const prinCode = value(req.body.prin_code ?? req.body.PRIN_CODE ?? "01");
     const jobNo = value(req.body.job_no ?? req.body.JOB_NO);
+    const prinCode = await resolvePrinCode(connection, companyCode, jobNo, req.body.prin_code ?? req.body.PRIN_CODE);
     const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "SYSTEM");
 
-    if (!companyCode || !jobNo) {
-      res.status(400).json({ success: false, message: "company_code and job_no are required" });
+    if (!companyCode || !jobNo || !prinCode) {
+      res.status(400).json({ success: false, message: "company_code, job_no, and valid prin_code are required" });
       return;
     }
 
@@ -562,15 +587,15 @@ export const trkCheckCompletion = async (req: Request, res: Response): Promise<v
 export const trkCfsCreate = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
-    const prinCode = value(req.body.prin_code ?? req.body.PRIN_CODE ?? "01");
+    const prinCode = value(req.body.prin_code ?? req.body.PRIN_CODE);
     const userId = value(req.body.user_id ?? req.body.USER_ID ?? (req as any).user?.loginid ?? "SYSTEM");
     const blNumber = value(req.body.bl_number ?? req.body.BL_NUMBER ?? req.body.doc_ref ?? req.body.DOC_REF);
     const custCode = value(req.body.cust_code ?? req.body.CUST_CODE);
     const portCode = value(req.body.port_code ?? req.body.PORT_CODE ?? "PORT");
     const containers = Array.isArray(req.body.containers) ? req.body.containers : [];
 
-    if (!companyCode || !custCode) {
-      res.status(400).json({ success: false, message: "company_code and cust_code are required" });
+    if (!companyCode || !prinCode || !custCode) {
+      res.status(400).json({ success: false, message: "company_code, prin_code, and cust_code are required" });
       return;
     }
 
@@ -629,7 +654,7 @@ export const trkCfsCreate = async (req: Request, res: Response): Promise<void> =
 
         if (containerNo) {
           await connection.execute(
-            `INSERT INTO WMSTST.TF_CONTAINER_DET (
+            `INSERT INTO TF_CONTAINER_DET (
                COMPANY_CODE, PRIN_CODE, JOB_NO, SRNO, CONTAINER_NO, SEAL_NO, CONTN_SIZE, CREATED_BY, CREATED_DATE
              ) VALUES (
                :p_comp, :p_prin, :p_job, :p_srno, :p_cntr, :p_seal, :p_size, :p_user, SYSDATE
@@ -728,5 +753,28 @@ function toDate(input: unknown) {
   if (input instanceof Date) return input;
   const date = new Date(String(input));
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+async function resolvePrinCode(
+  connection: Connection,
+  companyCode: string | null,
+  jobNo: string | null,
+  rawPrinCode: unknown
+): Promise<string | null> {
+  const explicit = value(rawPrinCode);
+  if (explicit) return explicit;
+  if (!companyCode || !jobNo) return null;
+
+  try {
+    const check = await connection.execute(
+      `SELECT PRIN_CODE FROM TI_JOB WHERE COMPANY_CODE = :comp AND JOB_NO = :job`,
+      { comp: companyCode, job: jobNo },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const row: any = (check.rows as any[])?.[0];
+    return row?.PRIN_CODE ? String(row.PRIN_CODE).trim() : null;
+  } catch {
+    return null;
+  }
 }
 
