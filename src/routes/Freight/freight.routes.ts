@@ -267,8 +267,17 @@ router.post(
   proc_build_dynamic_del_FREIGHT
 );
 
+// Live Milestones & Tracking Endpoints
+router.post("/tracker/user-nav", trkUserNav);
+router.post("/tracker/list", trkShipmentList);
+router.post("/tracker/get", trkShipmentGet);
+router.post("/tracker/init", trkShipmentInit);
+router.post("/tracker/task-update", trkTaskUpdate);
+router.post("/tracker/container-offload", trkContainerOffload);
+router.post("/tracker/check-completion", trkCheckCompletion);
+router.post("/tracker/cfs-create", trkCfsCreate);
 
- export default router;
+export default router;
 
 function forceRfqType(req: Request, _res: Response, next: NextFunction) {
   req.body = { ...(req.body || {}), enquiry_type: "RFQ" };
