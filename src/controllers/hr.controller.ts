@@ -105,9 +105,11 @@ export const getHrMaster = async (
       case "Pg_leave_flow_cancel":
       case "Pg_leave_flow_InProgress": {
 
-        const page = Math.max(Number(req.query.page) || 1, 1);
-        const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 10;
         const offset = (page - 1) * limit;
+
+
 
         const loginid = req.query.code as string;
 
@@ -207,30 +209,25 @@ export const getHrMaster = async (
             break;
         }
         try {
-          const fetchQuery = `
-      SELECT
-        l.REQUEST_NUMBER,
-        l.REQUEST_DATE,
-        l.EMPLOYEE_CODE,
-        l.EMPLOYEE_NAME,
-        l.LEAVE_TYPE,
-        l.LEAVE_TYPE_DESC,
-        l.LEAVE_START_DATE,
-        l.LEAVE_END_DATE,
-        l.RESUME_DATE,
-        l.LEAVE_DAYS,
-        l.REMARKS,
-        l.CREATED_BY,
-        l.IMMEDIATE_SUPERVISOR,
-        l.DEPT_HEAD,
-        l.HOD,
-        l.FINAL_APPROVED,
-        l.LAST_ACTION,
-        l.LAST_UPDATED,
-        COUNT(*) OVER() AS TOTAL_COUNT
-      FROM LEAVE_REQUEST_FLOW l
+          const countQuery = `
+      SELECT COUNT(*) as totalCount
+      FROM LEAVE_REQUEST_FLOW
       WHERE ${whereConditions}
-      ORDER BY l.REQUEST_NUMBER DESC
+    `;
+
+          console.log("Count Query:", countQuery);
+          console.log("Bind Params:", bindParams);
+
+
+         // const countResult = await oracleDb.query(countQuery, bindParams);
+
+         // const totalCount = countResult.rows[0]?.TOTALCOUNT || 0;
+
+          const fetchQuery = `
+      SELECT *
+      FROM VW_HR_LEAVE_REQUEST_FLOW
+      WHERE ${whereConditions}
+      ORDER BY request_number DESC
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     `;
 
@@ -240,17 +237,16 @@ export const getHrMaster = async (
             limit: limit
           };
 
-          console.log('fetchQuery', fetchQuery);
+  
+console.log('fetchQuery',fetchQuery);
           const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
 
-          const rows = Array.isArray(fetchedData.rows) ? fetchedData.rows : [];
-          const totalRows = Number(rows[0]?.TOTAL_COUNT ?? rows[0]?.total_count ?? 0);
 
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
             data: {
-              tableData: rows,
-              count: totalRows || totalCount,
+              tableData: fetchedData.rows,
+              count: totalCount,
             },
           });
         } catch (error) {
