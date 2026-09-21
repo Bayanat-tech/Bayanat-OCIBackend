@@ -9,7 +9,7 @@ type Connection = oracledb.Connection;
 // Configuration catalog for tracker levels & tabs
 const TRACKER_TABS_CONFIG = [
   {
-    serial_no: 7001,
+    serial_no: 539,
     flow_level: 1,
     tab_id: "FFD_REVIEW",
     task_type: "FFD_REVIEW",
@@ -20,7 +20,7 @@ const TRACKER_TABS_CONFIG = [
     description: "Review Master/House B/L, Commercial Invoice, and set initial ETA & planned pull-out date.",
   },
   {
-    serial_no: 7002,
+    serial_no: 540,
     flow_level: 2,
     tab_id: "PRO_PERMITS",
     task_type: "PRO_PERMITS",
@@ -31,7 +31,7 @@ const TRACKER_TABS_CONFIG = [
     description: "Submit & track agricultural/food health inspection permits or food approvals.",
   },
   {
-    serial_no: 7003,
+    serial_no: 541,
     flow_level: 3,
     tab_id: "CUSTOMS_BAYAN",
     task_type: "CUSTOMS_BAYAN",
@@ -42,7 +42,7 @@ const TRACKER_TABS_CONFIG = [
     description: "Process customs declaration, input Bayan declaration number, and record duty fees.",
   },
   {
-    serial_no: 7004,
+    serial_no: 542,
     flow_level: 4,
     tab_id: "SHIPPING_LINE_DO",
     task_type: "SHIPPING_LINE_DO",
@@ -53,7 +53,7 @@ const TRACKER_TABS_CONFIG = [
     description: "Collect Delivery Order, track DO expiry date countdown, and manage revalidations.",
   },
   {
-    serial_no: 7005,
+    serial_no: 543,
     flow_level: 5,
     tab_id: "CCRO",
     task_type: "CCRO",
@@ -64,7 +64,7 @@ const TRACKER_TABS_CONFIG = [
     description: "Coordinate container seal clearance with Customs Container Release Office & Port Police.",
   },
   {
-    serial_no: 7006,
+    serial_no: 544,
     flow_level: 6,
     tab_id: "TRANSPORT",
     task_type: "TRANSPORT",
@@ -75,7 +75,7 @@ const TRACKER_TABS_CONFIG = [
     description: "Assign company fleet or 3rd-party trucking contractors, drivers, and schedule pickups.",
   },
   {
-    serial_no: 7007,
+    serial_no: 545,
     flow_level: 7,
     tab_id: "DC_OFFLOAD",
     task_type: "DC_OFFLOAD",
@@ -138,7 +138,7 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Step C: Query User's Permissions via SEC_MODULE_DATA & SEC_ROLE_FUNCTION_ACCESS_USER
-    // Uses URL_PATH join so SERIAL_NO is dynamically resolved (no hardcoded IDs!)
+    // Matches by serial numbers (539-545) or URL_PATH
     const permissionsResult = await connection.execute(
       `SELECT m.URL_PATH, m.SERIAL_NO, a.SSEARCH, a.SSAVE, a.SMODIFY, a.SDELETE, a.SUPLOAD
          FROM SEC_MODULE_DATA m
@@ -146,18 +146,23 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
            ON a.SERIAL_NO_OR_ROLE_ID = m.SERIAL_NO
           AND a.COMPANY_CODE = :company_code
           AND a.LOGINID = :loginid
-        WHERE m.APP_CODE = 'FMS'
-          AND m.URL_PATH LIKE 'freight/tracker/%'`,
+        WHERE m.SERIAL_NO IN (539, 540, 541, 542, 543, 544, 545)
+           OR m.URL_PATH LIKE '%freight/tracker/%'`,
       { company_code: companyCode, loginid: loginId || "" },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    const userPermsMap = new Map<string, any>();
+    const userPermsMap = new Map<string | number, any>();
     for (const p of (permissionsResult.rows as any[]) || []) {
       if (p.URL_PATH) {
         userPermsMap.set(String(p.URL_PATH).toLowerCase().trim(), p);
       }
+      if (p.SERIAL_NO) {
+        userPermsMap.set(Number(p.SERIAL_NO), p);
+      }
     }
+
+    const isAdmin = String(loginId || "").toLowerCase() === "admin";
 
     // Step D: Filter tabs based on Company Level + User RBAC
     const activeTabs: any[] = [];
@@ -166,11 +171,11 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
     // Special handling for CFS Transfer: Only CCRO is active
     if (effectiveFlowCode === "CFS") {
       const ccroConfig = TRACKER_TABS_CONFIG.find((t) => t.tab_id === "CCRO")!;
-      const perm = userPermsMap.get(ccroConfig.url_path.toLowerCase());
-      const canView = perm?.SSEARCH ? perm.SSEARCH !== "N" : true;
-      const canEdit = perm?.SSAVE ? (perm.SSAVE === "Y" || perm.SMODIFY === "Y") : true;
-      const canUpload = perm?.SUPLOAD ? perm.SUPLOAD === "Y" : true;
-      const canDelete = perm?.SDELETE ? perm.SDELETE === "Y" : true;
+      const perm = userPermsMap.get(ccroConfig.url_path.toLowerCase()) || userPermsMap.get(ccroConfig.serial_no);
+      const canView = isAdmin || (perm?.SSEARCH === "Y");
+      const canEdit = isAdmin || (perm?.SSAVE === "Y" || perm?.SMODIFY === "Y");
+      const canUpload = isAdmin || (perm?.SUPLOAD === "Y");
+      const canDelete = isAdmin || (perm?.SDELETE === "Y");
 
       const tabEntry = {
         ...ccroConfig,
@@ -197,11 +202,11 @@ export const trkUserNav = async (req: Request, res: Response): Promise<void> => 
           continue;
         }
 
-        const perm = userPermsMap.get(tab.url_path.toLowerCase());
-        const canView = perm?.SSEARCH ? perm.SSEARCH !== "N" : true;
-        const canEdit = perm?.SSAVE ? (perm.SSAVE === "Y" || perm.SMODIFY === "Y") : true;
-        const canUpload = perm?.SUPLOAD ? perm.SUPLOAD === "Y" : true;
-        const canDelete = perm?.SDELETE ? perm.SDELETE === "Y" : true;
+        const perm = userPermsMap.get(tab.url_path.toLowerCase()) || userPermsMap.get(tab.serial_no);
+        const canView = isAdmin || (perm?.SSEARCH === "Y");
+        const canEdit = isAdmin || (perm?.SSAVE === "Y" || perm?.SMODIFY === "Y");
+        const canUpload = isAdmin || (perm?.SUPLOAD === "Y");
+        const canDelete = isAdmin || (perm?.SDELETE === "Y");
 
         const roleKey = `LEVEL${tab.flow_level}_ROLE`;
         const assignedRole = approverConfig ? approverConfig[roleKey] : null;
