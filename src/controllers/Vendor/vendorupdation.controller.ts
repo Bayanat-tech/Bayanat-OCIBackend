@@ -1692,3 +1692,64 @@ export const executeVendorInvoicePrintHandler = async (
     });
   }
 };
+
+export const bulkApprovalHandler = async (req: Request, res: Response): Promise<void> => {
+  const { company_code, doc_nos, action } = req.body;
+  const requestUser = (req as any).user;
+  const approverId = defaultString(requestUser?.loginid1 || req.body.loginid || requestUser?.loginid);
+  const MAX_BULK_DOCS = 100;
+
+  let companyCode = "";
+  try {
+    companyCode = resolveTenantCompanyCode(req, company_code);
+  } catch (error: any) {
+    res.status(403).json({ success: false, message: error.message });
+    return;
+  }
+
+  const docNos: string[] = Array.from(
+    new Set(
+      (Array.isArray(doc_nos) ? doc_nos : String(doc_nos ?? "").split(","))
+        .map((d: unknown) => String(d).trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (!companyCode || !approverId || docNos.length === 0) {
+    res.status(400).json({ success: false, message: "company_code, loginid and doc_nos are required" });
+    return;
+  }
+  if (action !== "APPROVED" && action !== "REJECTED") {
+    res.status(400).json({ success: false, message: "Invalid action (must be APPROVED or REJECTED)" });
+    return;
+  }
+  if (docNos.length > MAX_BULK_DOCS) {
+    res.status(400).json({ success: false, message: `Select at most ${MAX_BULK_DOCS} documents at a time` });
+    return;
+  }
+  // the proc concatenates doc numbers into dynamic SQL, so only digits are allowed through
+  if (docNos.some((d) => !/^\d+$/.test(d))) {
+    res.status(400).json({ success: false, message: "Invalid doc_no in request" });
+    return;
+  }
+
+  try {
+    await QueryExecutor.executeRawQuery(
+      `BEGIN PROC_VMS_FLOW_BULK_APPROVAL(:companyCode, :docNos, :loginId, :action); END;`,
+      {
+        companyCode: { val: companyCode },
+        docNos: { val: docNos.join(",") },
+        loginId: { val: approverId },
+        action: { val: action },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `${docNos.length} request(s) ${action === "APPROVED" ? "approved" : "rejected"}`,
+    });
+  } catch (err: any) {
+    console.error("Error in bulkApprovalHandler:", err);
+    res.status(500).json({ success: false, message: err.message ?? "Internal Server Error" });
+  }
+};
