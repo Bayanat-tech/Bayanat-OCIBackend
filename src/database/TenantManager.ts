@@ -22,6 +22,7 @@ interface TenantPool {
 export class TenantManager {
   private static centralPool: oracledb.Pool | null = null;
   private static tenantPools: Map<string, TenantPool> = new Map();
+  private static tenantConfigs: Map<string, TenantConfig> = new Map();
   private static initialized = false;
 
   // Initialize central connection pool
@@ -55,6 +56,9 @@ export class TenantManager {
         poolMin: 5,
         poolMax: 20,
         poolIncrement: 2,
+        poolMin: 1,
+        poolMax: 5,
+        poolIncrement: 1,
         poolTimeout: 60,
       });
 
@@ -87,10 +91,31 @@ export class TenantManager {
       console.log(`[getCentralConnection] [OK] STEP 3 SUCCESS: Connection acquired`);
       return conn;
     } catch (error) {
+    let conn: oracledb.Connection | null = null;
+    let lastErr: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        conn = await this.centralPool.getConnection();
+        break;
+      } catch (error: any) {
+        lastErr = error;
+        const msg = String(error?.message || "");
+        if (msg.includes("ORA-12516") || msg.includes("ORA-12520") || error?.code === "ORA-12516") {
+          console.warn(`[getCentralConnection] ORA-12516 listener busy (attempt ${attempt}/3). Retrying in ${attempt * 300}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+        } else {
+          throw error;
+        }
+      }
+    }
+    if (!conn) {
       console.error(`[getCentralConnection] [ERROR] STEP 3 FAILED: Failed to get connection`);
       console.error(`  - Error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
+      throw lastErr;
     }
+    console.log(`[getCentralConnection] [OK] STEP 3 SUCCESS: Connection acquired`);
+    return conn;
   }
 
   // Get tenant for user
@@ -132,6 +157,10 @@ export class TenantManager {
 
   // Get tenant configuration
   static async getTenantConfig(tenantId: string): Promise<TenantConfig> {
+    if (this.tenantConfigs.has(tenantId)) {
+      return this.tenantConfigs.get(tenantId)!;
+    }
+
     console.log(`[getTenantConfig] STEP 1: Getting central connection for tenantId: ${tenantId}...`);
     const conn = await this.getCentralConnection();
     try {
@@ -186,6 +215,7 @@ export class TenantManager {
       }
 
       console.log(`[getTenantConfig] RESULT: Tenant config loaded successfully`);
+      this.tenantConfigs.set(tenantId, config as TenantConfig);
       return config as TenantConfig;
     } catch (error) {
       console.error(`[getTenantConfig]  STEP 2 FAILED: Query execution error`);
@@ -208,6 +238,26 @@ export class TenantManager {
     
     console.log(`[getConnection] STEP 3: Acquiring connection from tenant pool...`);
     const conn = await pool.getConnection();
+    let conn: oracledb.Connection | null = null;
+    let lastErr: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        conn = await pool.getConnection();
+        break;
+      } catch (err: any) {
+        lastErr = err;
+        const msg = String(err?.message || "");
+        if (msg.includes("ORA-12516") || msg.includes("ORA-12520") || err?.code === "ORA-12516") {
+          console.warn(`[getConnection] ORA-12516 listener busy (attempt ${attempt}/3). Retrying in ${attempt * 300}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+        } else {
+          throw err;
+        }
+      }
+    }
+    if (!conn) {
+      throw lastErr;
+    }
     console.log(`[getConnection] Connection acquired`);
     
     // Set schema if needed
@@ -257,6 +307,8 @@ export class TenantManager {
         connectString: connectionString,
         poolMin: 2,
         poolMax: 10,
+        poolMin: 1,
+        poolMax: 5,
         poolIncrement: 1,
         poolTimeout: 60,
       });

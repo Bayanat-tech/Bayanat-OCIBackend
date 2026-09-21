@@ -415,6 +415,32 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
+    // Resolve exact task type stored in TRK_SHIPMENT_TASKS
+    let resolvedTaskType = taskType;
+    try {
+      const taskTypeCheck = await connection.execute(
+        `SELECT TASK_TYPE
+           FROM TRK_SHIPMENT_TASKS
+          WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job
+            AND (
+                 TASK_TYPE = :tt
+              OR (:tt IN ('PRO_PERMITS', 'PERMIT') AND TASK_TYPE IN ('PRO_PERMITS', 'PERMIT'))
+              OR (:tt IN ('CUSTOMS_BAYAN', 'BAYAN') AND TASK_TYPE IN ('CUSTOMS_BAYAN', 'BAYAN'))
+              OR (:tt IN ('SHIPPING_LINE_DO', 'DO') AND TASK_TYPE IN ('SHIPPING_LINE_DO', 'DO'))
+              OR (:tt IN ('DC_OFFLOAD', 'DC') AND TASK_TYPE IN ('DC_OFFLOAD', 'DC'))
+            )
+            AND ROWNUM = 1`,
+        { comp: companyCode, prin: prinCode, job: jobNo, tt: taskType },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const row: any = (taskTypeCheck.rows as any[])?.[0];
+      if (row?.TASK_TYPE) {
+        resolvedTaskType = String(row.TASK_TYPE).trim();
+      }
+    } catch (tErr) {
+      console.warn("[trkTaskUpdate] Task type resolution fallback:", tErr);
+    }
+
     // Call Procedure
     const result = await connection.execute(
       `BEGIN
@@ -436,7 +462,7 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
         p_company_code: companyCode,
         p_prin_code: prinCode,
         p_job_no: jobNo,
-        p_task_type: taskType,
+        p_task_type: resolvedTaskType,
         p_status: status,
         p_hold_entity: holdEntity,
         p_hold_reason: holdReason,
@@ -449,7 +475,7 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
     );
 
     // Optional metadata synchronizations
-    if (taskType === "SHIPPING_LINE_DO" && req.body.do_validity_date) {
+    if ((taskType === "SHIPPING_LINE_DO" || taskType === "DO") && req.body.do_validity_date) {
       const doDate = toDate(req.body.do_validity_date);
       if (doDate) {
         await connection.execute(
@@ -460,10 +486,16 @@ export const trkTaskUpdate = async (req: Request, res: Response): Promise<void> 
       }
     }
 
-    if (taskType === "PRO_PERMITS" && req.body.permit_ref) {
+    if ((taskType === "PRO_PERMITS" || taskType === "PERMIT") && (req.body.permit_ref || req.body.permit_not_required !== undefined)) {
+      const pref = req.body.permit_ref ? String(req.body.permit_ref).trim() : null;
+      const pnr = req.body.permit_not_required === "Y" ? "Y" : "N";
       await connection.execute(
-        `UPDATE TRK_SHIPMENT SET PERMIT_REF = :pref, UPDATED_DT = SYSDATE WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job`,
-        { pref: String(req.body.permit_ref).trim(), comp: companyCode, prin: prinCode, job: jobNo },
+        `UPDATE TRK_SHIPMENT
+            SET PERMIT_REF = NVL(:pref, PERMIT_REF),
+                PERMIT_NOT_REQUIRED = :pnr,
+                UPDATED_DT = SYSDATE
+          WHERE COMPANY_CODE = :comp AND PRIN_CODE = :prin AND JOB_NO = :job`,
+        { pref, pnr, comp: companyCode, prin: prinCode, job: jobNo },
         { autoCommit: true }
       );
     }
