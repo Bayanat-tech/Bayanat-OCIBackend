@@ -160,7 +160,6 @@ export class AuthService {
       const binds = {
         loginid,
         tenantId,
-        roleId,
         employeeId: application === 'VENDOR' ? loginid : apiUser.EMPLOYEE_ID,
         username: apiUser.NAME,
         email: schema !== 'MHDL' && 'EMAIL' in apiUser && typeof apiUser.EMAIL === 'string' && apiUser.EMAIL.includes('@')
