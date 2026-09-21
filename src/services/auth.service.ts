@@ -143,9 +143,9 @@ export class AuthService {
     if (password !== apiUser.PASSWORD) throw new Error("Invalid employee password");
     const application = apiUser.TYPE.trim().toUpperCase();
     if (application !== 'EMPLOYEE' && application !== 'VENDOR') throw new Error('Unsupported account type');
-    const roleId = application === 'EMPLOYEE' ? 77777 : 88888;
     const hashedPassword = await this.hashPassword(password);
     const loginid = String(apiUser.USER_ID).trim();
+    const allowedRoleIds: number[] = application === 'EMPLOYEE' ? [77777] : [88888];
 
     await oracleDb.withTransaction(async (conn) => {
       const options = { outFormat: oracledb.OUT_FORMAT_OBJECT, autoCommit: false };
@@ -160,7 +160,6 @@ export class AuthService {
       const binds = {
         loginid,
         tenantId,
-        roleId,
         employeeId: application === 'VENDOR' ? loginid : apiUser.EMPLOYEE_ID,
         username: apiUser.NAME,
         email: schema !== 'MHDL' && 'EMAIL' in apiUser && typeof apiUser.EMAIL === 'string' && apiUser.EMAIL.includes('@')
@@ -254,28 +253,40 @@ export class AuthService {
           { loginid, tenantId }, options);
       }
 
-      const roleExists = await conn.execute(
-        `SELECT 1 FROM ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
-         WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid) AND SERIAL_NO_OR_ROLE_ID = :roleId`,
-        { loginid, roleId }, options);
+      if (application === 'EMPLOYEE' && schema === 'WMSDEV') {
+        const extraRoleExists = await conn.execute(
+          `SELECT 1 FROM ${schema}.SEC_ROLE_MASTER WHERE ROLE_ID = 99999 AND ROWNUM = 1`,
+          {}, options);
 
-      if (roleExists.rows?.length) {
-        await conn.execute(
-          `UPDATE ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
-           SET SNEW = 'Y', SMODIFY = 'Y', SDELETE = 'Y', SSAVE = 'Y', SSEARCH = 'Y',
-               SSAVEAS = 'Y', SUPLOAD = 'Y', SUNDO = 'Y', SPRINT = 'Y', SPRINTSETUP = 'Y',
-               SHELP = 'Y', USER_DT = SYSDATE, USERID = :loginid
+        if (extraRoleExists.rows?.length) {
+          allowedRoleIds.push(99999);
+        }
+      }
+
+      for (const roleId of allowedRoleIds) {
+        const roleExists = await conn.execute(
+          `SELECT 1 FROM ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
            WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid) AND SERIAL_NO_OR_ROLE_ID = :roleId`,
           { loginid, roleId }, options);
-      } else {
-        await conn.execute(
-          `INSERT INTO ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
-           (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE,
-            SSEARCH, SSAVEAS, SUPLOAD, SUNDO, SPRINT, SPRINTSETUP, SHELP,
-            USER_DT, USERID, CREATE_USER, CREATE_DATE)
-           VALUES ('BSG', :loginid, :roleId, 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y',
-                   'Y', 'Y', 'Y', SYSDATE, :loginid, 'system', SYSDATE)`,
-          { loginid, roleId }, options);
+
+        if (roleExists.rows?.length) {
+          await conn.execute(
+            `UPDATE ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
+             SET SNEW = 'Y', SMODIFY = 'Y', SDELETE = 'Y', SSAVE = 'Y', SSEARCH = 'Y',
+                 SSAVEAS = 'Y', SUPLOAD = 'Y', SUNDO = 'Y', SPRINT = 'Y', SPRINTSETUP = 'Y',
+                 SHELP = 'Y', USER_DT = SYSDATE, USERID = :loginid
+             WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid) AND SERIAL_NO_OR_ROLE_ID = :roleId`,
+            { loginid, roleId }, options);
+        } else {
+          await conn.execute(
+            `INSERT INTO ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
+             (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE,
+              SSEARCH, SSAVEAS, SUPLOAD, SUNDO, SPRINT, SPRINTSETUP, SHELP,
+              USER_DT, USERID, CREATE_USER, CREATE_DATE)
+             VALUES ('BSG', :loginid, :roleId, 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y', 'Y',
+                     'Y', 'Y', 'Y', SYSDATE, :loginid, 'system', SYSDATE)`,
+            { loginid, roleId }, options);
+        }
       }
     });
   }
