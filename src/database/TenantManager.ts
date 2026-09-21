@@ -53,9 +53,6 @@ export class TenantManager {
         user: process.env.ORACLE_USER!,
         password: process.env.ORACLE_PASSWORD!,
         connectString: process.env.ORACLE_CONNECTION_STRING!,
-        poolMin: 5,
-        poolMax: 20,
-        poolIncrement: 2,
         poolMin: 1,
         poolMax: 5,
         poolIncrement: 1,
@@ -86,11 +83,6 @@ export class TenantManager {
     }
 
     console.log(`[getCentralConnection] STEP 3: Acquiring connection from pool...`);
-    try {
-      const conn = await this.centralPool.getConnection();
-      console.log(`[getCentralConnection] [OK] STEP 3 SUCCESS: Connection acquired`);
-      return conn;
-    } catch (error) {
     let conn: oracledb.Connection | null = null;
     let lastErr: any = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -110,8 +102,7 @@ export class TenantManager {
     }
     if (!conn) {
       console.error(`[getCentralConnection] [ERROR] STEP 3 FAILED: Failed to get connection`);
-      console.error(`  - Error: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
+      console.error(`  - Error: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`);
       throw lastErr;
     }
     console.log(`[getCentralConnection] [OK] STEP 3 SUCCESS: Connection acquired`);
@@ -237,7 +228,6 @@ export class TenantManager {
     const pool = await this.getPoolForTenant(config);
     
     console.log(`[getConnection] STEP 3: Acquiring connection from tenant pool...`);
-    const conn = await pool.getConnection();
     let conn: oracledb.Connection | null = null;
     let lastErr: any = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -305,8 +295,6 @@ export class TenantManager {
         user: config.DB_USER,
         password: config.DB_PASSWORD,
         connectString: connectionString,
-        poolMin: 2,
-        poolMax: 10,
         poolMin: 1,
         poolMax: 5,
         poolIncrement: 1,
