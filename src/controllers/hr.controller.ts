@@ -115,7 +115,7 @@ export const getHrMaster = async (
         const limit = Math.min(Math.max(requestedLimit, 1), maxLimit);
         const offset = (page - 1) * limit;
         const isCloseFlow = masters === 'Pg_leave_flow_close';
-        const sortField = String(filter?.sort?.field_name || 'REQUEST_NUMBER').toUpperCase();
+        const sortField = String(filter?.sort?.field_name || (isCloseFlow ? 'LAST_UPDATED' : 'REQUEST_NUMBER')).toUpperCase();
         const allowedSortFields: Record<string, string> = {
           REQUEST_NUMBER: 'REQUEST_NUMBER',
           REQUEST_DATE: 'REQUEST_DATE',
@@ -125,8 +125,8 @@ export const getHrMaster = async (
           EMPLOYEE_CODE: 'EMPLOYEE_CODE',
           LEAVE_TYPE: 'LEAVE_TYPE'
         };
-        const orderByColumn = allowedSortFields[sortField] || 'REQUEST_NUMBER';
-        const orderDirection = filter?.sort?.desc ? 'DESC' : 'ASC';
+        const orderByColumn = allowedSortFields[sortField] || (isCloseFlow ? 'LAST_UPDATED' : 'REQUEST_NUMBER');
+        const orderDirection = isCloseFlow ? 'DESC' : (filter?.sort?.desc ? 'DESC' : 'ASC');
 
         const loginid = req.query.code as string;
 
@@ -226,22 +226,19 @@ export const getHrMaster = async (
             break;
         }
         try {
-          const isBaseTableQuery = masters === 'Pg_leave_flow_close';
-          const fetchQuery = isBaseTableQuery
-            ? `
-                SELECT *
-                FROM LEAVE_REQUEST_FLOW
-                WHERE ${whereConditions}
-                ORDER BY ${orderByColumn} ${orderDirection}
-                OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-              `
-            : `
-                SELECT *
-                FROM VW_HR_LEAVE_REQUEST_FLOW
-                WHERE ${whereConditions}
-                ORDER BY ${orderByColumn} ${orderDirection}
-                OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-              `;
+          const fetchQuery = `
+            SELECT *
+            FROM VW_HR_LEAVE_REQUEST_FLOW
+            WHERE ${whereConditions}
+            ORDER BY ${orderByColumn} ${orderDirection}
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+          `;
+
+          const countQuery = `
+            SELECT COUNT(*) AS TOTAL_COUNT
+            FROM VW_HR_LEAVE_REQUEST_FLOW
+            WHERE ${whereConditions}
+          `;
 
           const fetchParams = {
             ...bindParams,
@@ -250,14 +247,20 @@ export const getHrMaster = async (
           };
 
           console.log('fetchQuery', fetchQuery);
-          const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
+          const [fetchedData, countData] = await Promise.all([
+            oracleDb.query(fetchQuery, fetchParams),
+            oracleDb.query(countQuery, bindParams)
+          ]);
+
           const rows = Array.isArray(fetchedData.rows) ? fetchedData.rows : [];
+          const totalCountRow = Array.isArray(countData.rows) && countData.rows.length > 0 ? countData.rows[0] : null;
+          const totalCountValue = totalCountRow ? Number(Object.values(totalCountRow)[0] ?? 0) : 0;
 
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
             data: {
               tableData: rows,
-              count: rows.length,
+              count: totalCountValue,
             },
           });
         } catch (error) {
