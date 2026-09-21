@@ -83,9 +83,13 @@ export const getHrMaster = async (
     let fetchedData: unknown[] = [], // Initialize an empty array to store fetched data
       totalCount = 0; // Initialize a variable to store the total count of data
     const paginationOptions = limit ? { offset: skip, limit: limit } : {}; // Create pagination options based on the limit
-    const filter: ISearch = req.query.filter // Extract 'filter' query parameter
-      ? JSON.parse(req.query.filter) // Parse the filter query parameter as JSON
-      : {}; // Default to an empty object if no filter is provided
+    let filter: Partial<ISearch> = {};
+    try {
+      filter = req.query.filter ? JSON.parse(String(req.query.filter)) : {};
+    } catch (err) {
+      console.warn('Invalid filter payload for HR master request:', req.query.filter);
+      filter = {};
+    }
     switch (masters) {
       // employeemaster case
       case "employeemaster": {
@@ -105,11 +109,24 @@ export const getHrMaster = async (
       case "Pg_leave_flow_cancel":
       case "Pg_leave_flow_InProgress": {
 
-        const page = Number(req.query.page) || 1;
-        const limit = Number(req.query.limit) || 10;
+        const page = Math.max(Number(req.query.page) || 1, 1);
+        const requestedLimit = Number(req.query.limit) || 10;
+        const maxLimit = masters === 'Pg_leave_flow_close' ? 20 : 100;
+        const limit = Math.min(Math.max(requestedLimit, 1), maxLimit);
         const offset = (page - 1) * limit;
-
-
+        const isCloseFlow = masters === 'Pg_leave_flow_close';
+        const sortField = String(filter?.sort?.field_name || 'REQUEST_NUMBER').toUpperCase();
+        const allowedSortFields: Record<string, string> = {
+          REQUEST_NUMBER: 'REQUEST_NUMBER',
+          REQUEST_DATE: 'REQUEST_DATE',
+          LAST_UPDATED: 'LAST_UPDATED',
+          LEAVE_START_DATE: 'LEAVE_START_DATE',
+          LEAVE_END_DATE: 'LEAVE_END_DATE',
+          EMPLOYEE_CODE: 'EMPLOYEE_CODE',
+          LEAVE_TYPE: 'LEAVE_TYPE'
+        };
+        const orderByColumn = allowedSortFields[sortField] || 'REQUEST_NUMBER';
+        const orderDirection = filter?.sort?.desc ? 'DESC' : 'ASC';
 
         const loginid = req.query.code as string;
 
@@ -209,27 +226,40 @@ export const getHrMaster = async (
             break;
         }
         try {
-          const countQuery = `
-      SELECT COUNT(*) as totalCount
-      FROM LEAVE_REQUEST_FLOW
-      WHERE ${whereConditions}
-    `;
-
-          console.log("Count Query:", countQuery);
-          console.log("Bind Params:", bindParams);
-
-
-         // const countResult = await oracleDb.query(countQuery, bindParams);
-
-         // const totalCount = countResult.rows[0]?.TOTALCOUNT || 0;
-
-          const fetchQuery = `
-      SELECT *
-      FROM VW_HR_LEAVE_REQUEST_FLOW
-      WHERE ${whereConditions}
-      ORDER BY request_number DESC
-      OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-    `;
+          const fetchQuery = isCloseFlow
+            ? `
+              SELECT
+                REQUEST_NUMBER,
+                REQUEST_DATE,
+                EMPLOYEE_CODE,
+                EMPLOYEE_NAME,
+                LEAVE_TYPE,
+                LEAVE_TYPE_DESC,
+                LEAVE_START_DATE,
+                LEAVE_END_DATE,
+                RESUME_DATE,
+                LEAVE_DAYS,
+                REMARKS,
+                CREATED_BY,
+                IMMEDIATE_SUPERVISOR,
+                DEPT_HEAD,
+                HOD,
+                FINAL_APPROVED,
+                LAST_ACTION,
+                LAST_UPDATED,
+                COUNT(*) OVER() AS TOTAL_COUNT
+              FROM LEAVE_REQUEST_FLOW
+              WHERE ${whereConditions}
+              ORDER BY ${orderByColumn} ${orderDirection}
+              OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+            `
+            : `
+              SELECT *
+              FROM VW_HR_LEAVE_REQUEST_FLOW
+              WHERE ${whereConditions}
+              ORDER BY ${orderByColumn} ${orderDirection}
+              OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+            `;
 
           const fetchParams = {
             ...bindParams,
@@ -237,16 +267,18 @@ export const getHrMaster = async (
             limit: limit
           };
 
-  
-console.log('fetchQuery',fetchQuery);
+          console.log('fetchQuery', fetchQuery);
           const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
-
+          const rows = Array.isArray(fetchedData.rows) ? fetchedData.rows : [];
+          const responseCount = isCloseFlow
+            ? Number(rows[0]?.TOTAL_COUNT ?? rows[0]?.total_count ?? 0)
+            : totalCount;
 
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
             data: {
-              tableData: fetchedData.rows,
-              count: totalCount,
+              tableData: rows,
+              count: responseCount,
             },
           });
         } catch (error) {
