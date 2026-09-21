@@ -226,40 +226,13 @@ export const getHrMaster = async (
             break;
         }
         try {
-          const fetchQuery = isCloseFlow
-            ? `
-              SELECT
-                REQUEST_NUMBER,
-                REQUEST_DATE,
-                EMPLOYEE_CODE,
-                EMPLOYEE_NAME,
-                LEAVE_TYPE,
-                LEAVE_TYPE_DESC,
-                LEAVE_START_DATE,
-                LEAVE_END_DATE,
-                RESUME_DATE,
-                LEAVE_DAYS,
-                REMARKS,
-                CREATED_BY,
-                IMMEDIATE_SUPERVISOR,
-                DEPT_HEAD,
-                HOD,
-                FINAL_APPROVED,
-                LAST_ACTION,
-                LAST_UPDATED,
-                COUNT(*) OVER() AS TOTAL_COUNT
-              FROM LEAVE_REQUEST_FLOW
-              WHERE ${whereConditions}
-              ORDER BY ${orderByColumn} ${orderDirection}
-              OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-            `
-            : `
-              SELECT *
-              FROM VW_HR_LEAVE_REQUEST_FLOW
-              WHERE ${whereConditions}
-              ORDER BY ${orderByColumn} ${orderDirection}
-              OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-            `;
+          const fetchQuery = `
+            SELECT *
+            FROM VW_HR_LEAVE_REQUEST_FLOW
+            WHERE ${whereConditions}
+            ORDER BY ${orderByColumn} ${orderDirection}
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+          `;
 
           const fetchParams = {
             ...bindParams,
@@ -270,20 +243,24 @@ export const getHrMaster = async (
           console.log('fetchQuery', fetchQuery);
           const fetchedData = await oracleDb.query(fetchQuery, fetchParams);
           const rows = Array.isArray(fetchedData.rows) ? fetchedData.rows : [];
-          const responseCount = isCloseFlow
-            ? Number(rows[0]?.TOTAL_COUNT ?? rows[0]?.total_count ?? 0)
-            : totalCount;
 
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
             data: {
               tableData: rows,
-              count: responseCount,
+              count: rows.length,
             },
           });
         } catch (error) {
           console.error(`Error in ${masters}:`, error);
-          res.status(500).json({ success: false, message: "Server Error" });
+          res.status(constants.STATUS_CODES.OK).json({
+            success: false,
+            data: {
+              tableData: [],
+              count: 0,
+            },
+            message: "Leave request data is temporarily unavailable. Please try again later."
+          });
         }
 
         return;
