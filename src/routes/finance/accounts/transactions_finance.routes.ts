@@ -104,6 +104,7 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
 import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
+import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareReportHtml, getPurchaseQuotationReportExcel, getPurchaseQuotationReportHtml, getPurchaseQuotationWithRatesReportExcel, getPurchaseQuotationWithRatesReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationReports";
 
 
 
@@ -206,6 +207,17 @@ router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
 router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
 router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
 
+//purchase 
+
+router.post('/reports/PurchaseQuotation/html', getPurchaseQuotationReportHtml);
+router.post('/reports/PurchaseQuotation/excel', getPurchaseQuotationReportExcel);
+
+router.post('/reports/PurchaseQuotationWithRates/html',getPurchaseQuotationWithRatesReportHtml);
+router.post('/reports/PurchaseQuotationWithRates/excel',getPurchaseQuotationWithRatesReportExcel);
+
+router.post('/reports/PurchaseQuotationCompare/html',getPurchaseQuotationCompareReportHtml);
+router.post('/reports/PurchaseQuotationCompare/excel',getPurchaseQuotationCompareReportExcel);
+
 
 
 // sales invoice report routes-------
@@ -217,6 +229,9 @@ router.post('/reports/SalesInvoiceTaxReport/excel',getSalesInvoiceTaxReportExcel
 
 router.post('/reports/SalesAccountDetailsReport/html',getSalesAccountDetailsReportHtml);
 router.post('/reports/SalesAccountDetailsReport/excel',getSalesAccountDetailsReportExcel);
+
+
+
 
 
 // sales order report routes
