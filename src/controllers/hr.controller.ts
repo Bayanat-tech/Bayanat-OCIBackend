@@ -226,13 +226,22 @@ export const getHrMaster = async (
             break;
         }
         try {
-          const fetchQuery = `
-            SELECT *
-            FROM VW_HR_LEAVE_REQUEST_FLOW
-            WHERE ${whereConditions}
-            ORDER BY ${orderByColumn} ${orderDirection}
-            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
-          `;
+          const isBaseTableQuery = masters === 'Pg_leave_flow_close';
+          const fetchQuery = isBaseTableQuery
+            ? `
+                SELECT *
+                FROM LEAVE_REQUEST_FLOW
+                WHERE ${whereConditions}
+                ORDER BY ${orderByColumn} ${orderDirection}
+                OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+              `
+            : `
+                SELECT *
+                FROM VW_HR_LEAVE_REQUEST_FLOW
+                WHERE ${whereConditions}
+                ORDER BY ${orderByColumn} ${orderDirection}
+                OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+              `;
 
           const fetchParams = {
             ...bindParams,
