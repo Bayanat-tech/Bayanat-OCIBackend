@@ -18,6 +18,10 @@ import { TCostbudget } from "../../interfaces/Purchaseflow/Budgetflow.interface"
 // Define interfaces for Purchase Request Header and Detail
 import { RequestWithUser } from "../../interfaces/common.interface";
 import { TBasicBrequest } from "../../interfaces/Purchaseflow/Budgetflow.interface";
+
+const paramValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
+
 interface Row {
   PROJECT_CODE: string;
   COST_CODE: string;
@@ -447,7 +451,8 @@ export const getBudgetRequest = async (
   let connection: oracledb.Connection | undefined;
 
   try {
-    const { request_number, cost_code } = req.params;
+    const request_number = paramValue(req.params.request_number);
+    const cost_code = paramValue(req.params.cost_code);
 
     if (!request_number || !cost_code) {
       return res.status(constants.STATUS_CODES.BAD_REQUEST).json({

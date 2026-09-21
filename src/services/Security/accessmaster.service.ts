@@ -184,7 +184,8 @@ export class AccessMasterService {
         queryRunner.manager.getRepository(AccessSecOperation);
 
       // Create module
-      const module = moduleRepository.create(moduleData);
+      const { company_code, ...globalModuleData } = moduleData;
+      const module = moduleRepository.create(globalModuleData);
       const savedModule = await moduleRepository.save(module);
 
       // Create operations linked to the module
@@ -192,7 +193,8 @@ export class AccessMasterService {
         operationRepository.create({
           ...opData,
           serial_no: savedModule.serial_no, // Same serial_no to establish relationship
-          company_code: savedModule.company_code,
+          // COMPANY_CODE belongs to SEC_OPERATION_MASTER, not SEC_MODULE_DATA.
+          company_code,
         })
       );
 
@@ -214,6 +216,7 @@ export class AccessMasterService {
 
   static async syncModuleOperationsTransaction(
     serial_no: number,
+    company_code: string,
     operationsData: Array<{
       snew: string;
       smodify: string;
@@ -253,7 +256,7 @@ export class AccessMasterService {
         operationRepository.create({
           ...opData,
           serial_no: module.serial_no,
-          company_code: module.company_code,
+          company_code,
         })
       );
 

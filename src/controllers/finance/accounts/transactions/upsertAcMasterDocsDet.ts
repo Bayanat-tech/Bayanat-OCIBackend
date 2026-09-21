@@ -177,3 +177,195 @@ await connection.close()
 }
 
 };
+
+export const getAcMasterDocsDet=async(
+req:Request,
+res:Response
+):Promise<void>=>{
+
+let connection:oracledb.Connection|undefined;
+
+try{
+
+const acCode=String(req.params.ac_code || req.query.ac_code || "").trim();
+const companyCode=String(req.query.company_code || "").trim();
+const loginid=String(req.query.loginid || "").trim();
+
+if(!acCode){
+    res.status(400).json({
+        success:false,
+        message:"ac_code required"
+    });
+    return;
+}
+
+let tenantId:string|undefined;
+
+try{
+    tenantId=getCurrentTenantId();
+}
+catch{}
+
+if(!tenantId && loginid){
+    tenantId=await TenantManager.getTenantForUser(loginid);
+}
+
+if(!tenantId){
+    res.status(400).json({
+        success:false,
+        message:"Tenant not found"
+    });
+    return;
+}
+
+connection=await TenantManager.getConnection(tenantId);
+
+const binds:any={ acCode };
+let companyFilter="";
+
+if(companyCode){
+    binds.companyCode=companyCode;
+    companyFilter=" AND COMPANY_CODE = :companyCode";
+}
+
+const result=await connection.execute(
+`
+SELECT
+  COMPANY_CODE,
+  AC_CODE,
+  SRNO,
+  DOC_TYPE,
+  DOC_PATH,
+  EXP_DATE,
+  MANDATORY,
+  USER_ID,
+  USER_DT,
+  DOC_NAME
+FROM MS_AC_MASTER_DOCS_DET
+WHERE AC_CODE = :acCode
+${companyFilter}
+ORDER BY SRNO DESC
+`,
+binds,
+{ outFormat: oracledb.OUT_FORMAT_OBJECT }
+);
+
+res.json({
+    success:true,
+    data:result.rows || []
+});
+
+}
+catch(err:any){
+
+console.log(err);
+
+res.status(500).json({
+    success:false,
+    message:"Load failed",
+    details:err.message
+});
+
+}
+finally{
+
+if(connection){
+    await connection.close()
+    .catch(()=>{});
+}
+
+}
+
+};
+
+export const deleteAcMasterDocsDet=async(
+req:Request,
+res:Response
+):Promise<void>=>{
+
+let connection:oracledb.Connection|undefined;
+
+try{
+
+const acCode=String(req.params.ac_code || req.body?.ac_code || "").trim();
+const srno=toNumber(req.params.srno || req.body?.srno);
+const companyCode=String(req.body?.company_code || req.query.company_code || "").trim();
+const loginid=String(req.body?.loginid || req.query.loginid || "").trim();
+
+if(!acCode || !srno){
+    res.status(400).json({
+        success:false,
+        message:"ac_code and srno required"
+    });
+    return;
+}
+
+let tenantId:string|undefined;
+
+try{
+    tenantId=getCurrentTenantId();
+}
+catch{}
+
+if(!tenantId && loginid){
+    tenantId=await TenantManager.getTenantForUser(loginid);
+}
+
+if(!tenantId){
+    res.status(400).json({
+        success:false,
+        message:"Tenant not found"
+    });
+    return;
+}
+
+connection=await TenantManager.getConnection(tenantId);
+
+const binds:any={ acCode, srno };
+let companyFilter="";
+
+if(companyCode){
+    binds.companyCode=companyCode;
+    companyFilter=" AND COMPANY_CODE = :companyCode";
+}
+
+const result=await connection.execute(
+`
+DELETE FROM MS_AC_MASTER_DOCS_DET
+WHERE AC_CODE = :acCode
+  AND SRNO = :srno
+${companyFilter}
+`,
+binds
+);
+
+await connection.commit();
+
+res.json({
+    success:true,
+    message:"Document deleted successfully",
+    rowsAffected:result.rowsAffected || 0
+});
+
+}
+catch(err:any){
+
+console.log(err);
+
+res.status(500).json({
+    success:false,
+    message:"Delete failed",
+    details:err.message
+});
+
+}
+finally{
+
+if(connection){
+    await connection.close()
+    .catch(()=>{});
+}
+
+}
+
+};

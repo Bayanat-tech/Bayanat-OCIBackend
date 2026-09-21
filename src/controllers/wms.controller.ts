@@ -539,32 +539,32 @@ const filter: ISearch = req.query.filter
         }
         
         // Use CountryService to fetch countries
-        const countries = await CountryService.findAll();
+        const countries = await CountryService.findAll(requestUser.company_code);
+        console.log("Fetched countries:", countries);
         
-        // Filter the results based on company_code and any search criteria
-        const filteredCountries = countries.filter(country => {
-          // Check company code match
-          if (country.company_code !== requestUser.company_code) {
-            return false;
-          }
+        // const filteredCountries = countries.filter(country => {
+        //   if (country.company_code !== requestUser.company_code) {
+        //     console.log('country2', country.company_code, requestUser.company_code);
+        //     return false;
+        //   }
           
-          // Apply additional filters if they exist
-          if (filters.country_name && !country.country_name.includes(filters.country_name)) {
-            return false;
-          }
+        //   // Apply additional filters if they exist
+        //   if (filters.country_name && !country.country_name.includes(filters.country_name)) {
+        //     return false;
+        //   }
           
-          if (filters.country_code && !country.country_code.includes(filters.country_code)) {
-            return false;
-          }
+        //   if (filters.country_code && !country.country_code.includes(filters.country_code)) {
+        //     return false;
+        //   }
           
-          return true;
-        });
+        //   return true;
+        // });
         
         // Apply pagination
         const startIndex = skip;
         const endIndex = skip + limit;
-        fetchedData = filteredCountries.slice(startIndex, endIndex);
-        totalCount = filteredCountries.length;
+        fetchedData = countries.slice(startIndex, endIndex);
+        totalCount = countries.length;
       } catch (error) {
         console.error("Error fetching countries:", error);
         fetchedData = [];
@@ -1034,7 +1034,7 @@ case "assetgroup":
          UPDATED_AT AS "updated_at"
        FROM MS_AC_ASSET_GROUP
        WHERE COMPANY_CODE = :1
-       ORDER BY ASSET_GROUP_CODE`,
+       ORDER BY CREATED_AT DESC`,
       [requestUser.company_code]
     );
     totalCount = rows.length;
@@ -1135,39 +1135,6 @@ break;
 }
 break;
 
-
-
-  //     case "assePrincipal":
-  //       {
-  //         let insideQuery: any = [],
-  //           outsideQuery = {
-  //             [Op.and]: [
-  //               { company_code: requestUser.company_code },
-  //               // { user_id: requestUser.loginid },
-
-  //             ],
-  //           };
-  //         outsideQuery = getSearchFilterQuery({
-  //           insideQuery,
-  //           filter: filter.search,
-  //           outsideQuery,
-  //         });
-  //         totalCount = await PrincipalWmsView.count({ where: outsideQuery });
-  //   // Fetch asset group data with optional pagination and sorting
-  //   fetchedData = await Assetgroup.findAll({
-  //     where: outsideQuery,
-  //     ...(!!filter?.sort &&
-  //       Object.keys(filter?.sort).length > 0 && {
-  //         order: [
-  //           [filter?.sort.field_name, filter.sort.desc ? "DESC" : "ASC"],
-  //         ],
-  //       }),
-  //     ...paginationOptions,
-  //   });
-  // }
-  // break;
-
-// Fetching brand data from the Brand model
 case "brand":
   {
     // Get pagination parameters
@@ -1256,7 +1223,6 @@ case "department": {
   break;
 }
 
-// Fetching supplier data from the Supplier model
 case "supplier":
   {
     // Get pagination parameters
@@ -1483,16 +1449,42 @@ case "principal":
   }
   break;
 
-// Fetching territory data from the Territory model
-// case "territory":
-//   {
-//     // Fetch territory data with company code and optional pagination
-//     (fetchedData = await Territory.findAll({
-//       where: { company_code: requestUser.company_code },
-//       ...paginationOptions,
-//     })) as unknown[] as ITerritory[];
-//   }
-//   break;
+// Fetching territory data
+case "territory":
+  {
+    let connection: oracledb.Connection | undefined;
+    try {
+      const tenantId = getCurrentTenantId() || await TenantManager.getTenantForUser(requestUser.loginid);
+      connection = await TenantManager.getConnection(tenantId);
+      const result = await connection.execute(
+        `
+        SELECT
+          company_code,
+          territory_code,
+          territory_name
+        FROM MS_TERRITORY
+        WHERE company_code = :company_code
+        ORDER BY territory_code
+        OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        `,
+        {
+          company_code: requestUser.company_code,
+          offset: skip,
+          limit,
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      fetchedData = result.rows || [];
+      totalCount = fetchedData.length;
+    } catch (error) {
+      console.error("Error fetching territories:", error);
+      fetchedData = [];
+      totalCount = 0;
+    } finally {
+      if (connection) await connection.close().catch(() => {});
+    }
+  }
+  break;
 // Fetching currency data from the Currency model
 case "currency":
   {
@@ -1593,16 +1585,42 @@ case "warehouse":
     fetchedData = warehouses.slice(skip, skip + limit);
   }
   break;
-// case "industrysector":
-//   {
-//     // Fetch industry sector data with company code and optional pagination
-//     (fetchedData = await industrysector.findAll({
-//       where: { company_code: requestUser.company_code },
-//       offset: skip,
-//       limit: limit,
-//     })) as unknown[] as IIndustrysector[];
-//   }
-//   break;
+case "industrysector":
+  {
+    let connection: oracledb.Connection | undefined;
+    try {
+      const tenantId = getCurrentTenantId() || await TenantManager.getTenantForUser(requestUser.loginid);
+      connection = await TenantManager.getConnection(tenantId);
+      const result = await connection.execute(
+        `
+        SELECT
+          company_code,
+          sector_code,
+          sector_name,
+          remarks
+        FROM MS_INDUSTRY_SECTOR
+        WHERE company_code = :company_code
+        ORDER BY sector_code
+        OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        `,
+        {
+          company_code: requestUser.company_code,
+          offset: skip,
+          limit,
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      fetchedData = result.rows || [];
+      totalCount = fetchedData.length;
+    } catch (error) {
+      console.error("Error fetching industry sectors:", error);
+      fetchedData = [];
+      totalCount = 0;
+    } finally {
+      if (connection) await connection.close().catch(() => {});
+    }
+  }
+  break;
 
 // case "costmaster":
 //   {
@@ -2889,43 +2907,43 @@ export const deleteWmsMaster = async (req: RequestWithUser, res: Response) => {
         break;
 
       // Delete product data
-      case "product":
-      {
-        // Use ProductService to delete products by prod_code(s)
-        if (ids && ids.length > 0) {
-          // Get company code from user
-          const companyCode = requestUser.company_code;
+      // case "product":
+      // {
+      //   // Use ProductService to delete products by prod_code(s)
+      //   if (ids && ids.length > 0) {
+      //     // Get company code from user
+      //     const companyCode = requestUser.company_code;
 
-          const products = await ProductService.getProductsByCodes(ids, companyCode);
+      //     const products = await ProductService.getProductsByCodes(ids, companyCode);
           
-          if (products.length > 0) {
-            // Group by prin_code and delete each group
-            const groupedByPrin: { [key: string]: string[] } = {};
+      //     if (products.length > 0) {
+      //       // Group by prin_code and delete each group
+      //       const groupedByPrin: { [key: string]: string[] } = {};
             
-            products.forEach(product => {
-              if (!groupedByPrin[product.prin_code]) {
-                groupedByPrin[product.prin_code] = [];
-              }
-              groupedByPrin[product.prin_code].push(product.prod_code);
-            });
+      //       products.forEach(product => {
+      //         if (!groupedByPrin[product.prin_code]) {
+      //           groupedByPrin[product.prin_code] = [];
+      //         }
+      //         groupedByPrin[product.prin_code].push(product.prod_code);
+      //       });
             
-            let totalDeleted = 0;
-            for (const [prinCode, prodCodes] of Object.entries(groupedByPrin)) {
-              const deleted = await ProductService.deleteProducts(
-                prodCodes,
-                prinCode,
-                companyCode
-              );
-              if (deleted) totalDeleted += prodCodes.length;
-            }
+      //       let totalDeleted = 0;
+      //       for (const [prinCode, prodCodes] of Object.entries(groupedByPrin)) {
+      //         const deleted = await ProductService.deleteProducts(
+      //           prodCodes,
+      //           prinCode,
+      //           companyCode
+      //         );
+      //         if (deleted) totalDeleted += prodCodes.length;
+      //       }
             
-            console.log(`Deleted ${totalDeleted} products via master delete`);
-          }
-        } else {
-          throw new Error("Product code(s) required");
-        }
-      }
-      break;
+      //       console.log(`Deleted ${totalDeleted} products via master delete`);
+      //     }
+      //   } else {
+      //     throw new Error("Product code(s) required");
+      //   }
+      // }
+      // break;
 
       // Delete activity group data
       case "activitygroup":

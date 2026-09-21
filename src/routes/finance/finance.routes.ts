@@ -38,15 +38,39 @@ import { procBulkAccountEntry } from "../../controllers/finance/accounts/transac
 import { upsertHrEmpEducation } from "../../controllers/HR/upsertHrEmpEducation";
 import { upsertHrEmpComponents } from "../../controllers/HR/upsertHrEmpComponents";
 import { upsertSecDivUser } from "../../models/Hr/upsertSecDivUser";
-import { upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
-import { upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
+import { deleteAcMasterDocsDet, getAcMasterDocsDet, upsertAcMasterDocsDet } from "../../controllers/finance/accounts/transactions/upsertAcMasterDocsDet";
+import { deleteVendorActivity, upsertVendorActivity } from "../../controllers/finance/accounts/transactions/upsertVendorActivity";
 import { upsertPLSetup } from "../../controllers/finance/accounts/transactions/upsertPLSetup";
 import { insUpdEmpLeaveencashment } from "../../controllers/HR/insUpdEmpLeaveencashment";
+import { insUpdGradeSalaryIncrement } from "../../controllers/HR/insUpdGradeSalaryIncrement";
+import { insUpdEmpSalaryIncrement } from "../../controllers/HR/insUpdEmpSalaryIncrement";
+import { insUpdBudgetRequestBulk } from "../../controllers/finance/accounts/transactions/insUpdBudgetRequestBulk";
+import { insLoadBudgetData } from "../../controllers/finance/accounts/transactions/insLoadBudgetData";
+import { insUpdTnInvoiceBulk } from "../../controllers/wms/insUpdTnInvoiceBulk";
+import {insUpdMsApproverLevels} from "../../controllers/Security/insUpdMsApproverLevels.controller";
+import {insSecRoleFunctionAccessUser} from "../../controllers/Security/insSecRoleFunctionAccessUser.controller";
+import { insUpdHrEmpLanguages } from "../../controllers/HR/insUpdHrEmpLanguages";
+import { insUpdHrEmployeeDependants } from "../../controllers/HR/insUpdHrEmployeeDependants";
+import { UpdHrEmployeeDetail } from "../../controllers/HR/UpdHrEmpoyeeDetail";
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
+router.post(
+  "/insUpdTnInvoiceBulk",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  insUpdTnInvoiceBulk
+);
 
+router.post(
+  "/insLoadBudgetData",
+  insLoadBudgetData);
+
+router.post(
+  "/insUpdBudgetRequestBulk",
+  insUpdBudgetRequestBulk
+);
 
 router.post(
   "/insUpdChqDepositBulk",
@@ -81,9 +105,24 @@ router.post(
   upsertAcMasterDocsDet
 );
 
+router.get(
+  "/acMasterDocsDet/:ac_code",
+  getAcMasterDocsDet
+);
+
+router.delete(
+  "/acMasterDocsDet/:ac_code/:srno",
+  deleteAcMasterDocsDet
+);
+
 router.post(
   "/upsertVendorActivity",
   upsertVendorActivity
+);
+
+router.delete(
+  "/vendorActivity/:ac_code/:srno",
+  deleteVendorActivity
 );
 
 // Account entry for BP/BR/CR/CP/DN/CN
@@ -126,11 +165,32 @@ router.post(
   "/upsertHrEmpEducation",
   upsertHrEmpEducation)
 
+
+
+
+  router.post(
+    "/insUpdHrEmpLanguages",
+    insUpdHrEmpLanguages
+  )
+
+  router.post(
+    "/insUpdHrEmployeeDependants",
+    insUpdHrEmployeeDependants
+  )
   // hr
 router.post(
   "/upsertHrEmpComponents",
   upsertHrEmpComponents)
 
+  //hr 
+
+router.post(
+  "/insUpdGradeSalaryIncrement",
+  insUpdGradeSalaryIncrement)
+
+  router.post(
+  "/insUpdEmpSalaryIncrement",
+  insUpdEmpSalaryIncrement )
 
   // hr
 router.post(
@@ -151,6 +211,8 @@ router.post(
   router.post(
   "/insUpdHrEmployee",
   insUpdHrEmployee)
+
+  router.post("/UpdHrEmployeeDetail", UpdHrEmployeeDetail)
 
 //hr
   router.post(
@@ -219,7 +281,13 @@ router.post(
   "/upsertMsAcAsset",
   upsertMsAcAsset
 );
+router.post(
 
+  "/insUpdBudgetRequestBulk",
+
+  insUpdBudgetRequestBulk
+
+);
 
 router.post(
   "/insUpdHrPayComponent",
@@ -282,7 +350,8 @@ router.post(
   "/proc_common_sql_finance",
   proc_common_sql_finance
 );
-
+router.post("/insUpdMsApproverLevels", insUpdMsApproverLevels);
+router.post("/insSecRoleFunctionAccessUser", insSecRoleFunctionAccessUser); 
  export default router;
 
 

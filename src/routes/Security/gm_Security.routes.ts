@@ -69,6 +69,9 @@ import {
   upsertTenantRegistry,
   upsertTenantUser,
 } from "../../controllers/Security/tenantadmin_security.controller";
+import {insUpdMsApproverLevels} from "../../controllers/Security/insUpdMsApproverLevels.controller";
+import {insSecRoleFunctionAccessUser} from "../../controllers/Security/insSecRoleFunctionAccessUser.controller";
+
 //-------------Accessrolesecroleapp----------------------
 
 const router = express.Router();
@@ -135,5 +138,8 @@ router.put("/tenant-registry", upsertTenantRegistry);
 
 router.post("/tenant-mapping", upsertTenantMapping);
 router.put("/tenant-mapping", upsertTenantMapping);
+
+router.post("/insUpdMsApproverLevels", insUpdMsApproverLevels);
+router.post("/insSecRoleFunctionAccessUser", insSecRoleFunctionAccessUser);
 
 export default router;

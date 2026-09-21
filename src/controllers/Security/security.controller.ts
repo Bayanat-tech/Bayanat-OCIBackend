@@ -4,6 +4,7 @@ import { IUser } from "../../interfaces/user.interface";
 import constants from "../../helpers/constants";
 import { SecurityMasterService } from "./../../services/Security/securitymaster.service";
 import { TenantAdminService } from "../../services/Security/tenantAdmin.service";
+import { SecModuleService } from "../../services/Security/secmodule.service";
 
 export const getSecMaster = async (
   req: RequestWithUser,
@@ -60,7 +61,6 @@ export const getSecMaster = async (
 
       case "sec_module_data":
         result = await SecurityMasterService.getSecModuleData(
-          requestUser.company_code,
           page,
           limit,
           sort,
@@ -119,7 +119,6 @@ export const getSecMaster = async (
 
       case "serialno":
         result = await SecurityMasterService.getSerialNo(
-          requestUser.company_code,
           page,
           limit
         );
@@ -135,9 +134,8 @@ export const getSecMaster = async (
 
       case "sec_module_dropdown":
         result = await SecurityMasterService.getSecModuleDropdown(
-          requestUser.company_code,
           page,
-          200
+          limit
         );
         break;
 
@@ -238,6 +236,11 @@ export const deleteSecMaster = async (
 
     let isDeleted = false;
     switch (master) {
+      case "sec_module_data":
+        isDeleted = await SecModuleService.deleteAndCompact(
+          ids.map(Number),
+        );
+        break;
       case "tenant_user":
         isDeleted = await TenantAdminService.deleteTenantUsers(ids);
         break;

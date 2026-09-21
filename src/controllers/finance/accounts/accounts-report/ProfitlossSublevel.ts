@@ -209,7 +209,7 @@ function buildPage(opts: {
   toDate: string;
   divisionCode: string;
   loginId: string;
-  extraMeta?: string; // e.g. PL code or AC code line
+  extraMeta?: string;
 }): string {
   const {
     title, reportName, tableHtml, drillScript = "",
@@ -370,7 +370,8 @@ function sendExcel(res: Response, buffer: Buffer, filename: string) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEVEL 2 — Account Summary
 // Columns: A/C Code | A/C Name | Debit | Credit | Closing
-// Matches PDF: p_l_level_2.pdf
+// FIXES APPLIED: doc_date < TO_DATE(:toDate)+1 (inclusive range),
+//                NVL(cancelled,'N') <> 'Y' (NULL-safe)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const L2_SQL = `
@@ -389,10 +390,10 @@ const L2_SQL = `
         TR_AC_DETAIL.ac_code      = MS_ACCODES.ac_code
     AND TR_AC_DETAIL.company_code = :companyCode
     AND TR_AC_DETAIL.doc_date    >= TO_DATE(:fromDate, 'YYYY-MM-DD')
-    AND TR_AC_DETAIL.doc_date    <  TO_DATE(:toDate,   'YYYY-MM-DD')
+    AND TR_AC_DETAIL.doc_date    <  TO_DATE(:toDate,   'YYYY-MM-DD') + 1
     AND MS_ACCODES.pl_bl_code     = :plCode
     AND TR_AC_DETAIL.doc_type    <> 'EJV'
-    AND TR_AC_DETAIL.cancelled   <> 'Y'
+    AND NVL(TR_AC_DETAIL.cancelled, 'N') <> 'Y'
     AND ('All' = :divisionCode OR TR_AC_DETAIL.div_code = :divisionCode)
   GROUP BY
     TR_AC_DETAIL.div_code,
@@ -429,7 +430,6 @@ export const getPnlDrilldownL2 = async (
       { debit: 0, credit: 0, closing: 0 }
     );
 
-    // ── Build data rows — each row clickable to drill L3 ──────────────────
     const dataRows = rows.map((r) =>
       `<tr class="data-row" data-accode="${escapeHtml(r.ac_code)}">
         <td class="center code">${escapeHtml(r.ac_code)}</td>
@@ -462,7 +462,7 @@ export const getPnlDrilldownL2 = async (
         </tfoot>
       </table>`;
 
-    // Drill L2 → L3
+    // Drill L2 -> L3
     const drillScript = `
     <script>
       (function () {
@@ -546,7 +546,6 @@ export const getPnlDrilldownL2Excel = async (
       hour: "2-digit", minute: "2-digit", hour12: false,
     });
 
-    // Style indices
     const SHD = 1, SMT = 2, STH = 3, STX = 4, SNM = 5, STL = 6, STN = 7;
 
     const colWidths = [14, 40, 16, 16, 16];
@@ -627,9 +626,9 @@ export const getPnlDrilldownL2Excel = async (
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEVEL 3 — Transaction Detail (Ledger)
-// Layout: account header row with Opening, then transaction rows, then Total/Closing
 // Columns: A/C Code | Type | Doc No. | Doc Date | Chq No. | Chq Date | Bank | Debit | Credit | Balance
-// Matches PDF: P_L_level3.pdf
+// FIXES APPLIED: doc_date < TO_DATE(:toDate)+1 (inclusive range),
+//                NVL(cancelled,'N') <> 'Y' (NULL-safe)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const L3_SQL = `
@@ -658,8 +657,8 @@ const L3_SQL = `
     AND d.company_code  = :companyCode
     AND d.ac_code       = :acCode
     AND d.doc_date     >= TO_DATE(:fromDate, 'YYYY-MM-DD')
-    AND d.doc_date     <  TO_DATE(:toDate,   'YYYY-MM-DD')
-    AND d.cancelled    <> 'Y'
+    AND d.doc_date     <  TO_DATE(:toDate,   'YYYY-MM-DD') + 1
+    AND NVL(d.cancelled, 'N') <> 'Y'
     AND d.doc_type     <> 'UJV'
     AND ('All' = :divisionCode OR d.div_code = :divisionCode)
   ORDER BY
@@ -686,12 +685,11 @@ export const getPnlDrilldownL3 = async (
     const rows = normalize(result.rows as any[]);
 
     const acName = text(rows[0]?.ac_name ?? "");
-    const opening = 0; // opening balance (always 0 in P&L context)
+    const opening = 0;
     let runBalance = opening;
     let totalDebit = 0;
     let totalCredit = 0;
 
-    // ── Transaction rows ──────────────────────────────────────────────────
     const txRows = rows.map((r) => {
       const signInd = amount(r.sign_ind);
       const lcur    = Math.abs(amount(r.lcur_amount));
@@ -735,7 +733,6 @@ export const getPnlDrilldownL3 = async (
           </tr>
         </thead>
         <tbody>
-          <!-- Account header row with Opening -->
           <tr class="ac-header">
             <td class="code bold">${escapeHtml(acCode)}</td>
             <td colspan="5" class="bold">${escapeHtml(acName)}</td>
@@ -744,16 +741,13 @@ export const getPnlDrilldownL3 = async (
             <td></td>
             <td></td>
           </tr>
-          <!-- Transaction rows -->
           ${txRows}
-          <!-- Total row -->
           <tr class="subtotal-row">
             <td colspan="7" class="right bold" style="padding-right:12px">Total :</td>
             <td class="num bold">${escapeHtml(fmtNumber(totalDebit))}</td>
             <td class="num bold">${escapeHtml(fmtNumber(totalCredit))}</td>
             <td></td>
           </tr>
-          <!-- Closing row -->
           <tr class="closing-row">
             <td colspan="7" class="right bold" style="padding-right:12px">Closing</td>
             <td class="num bold">${escapeHtml(fmtNumber(closing))}</td>

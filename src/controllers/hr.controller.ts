@@ -131,17 +131,20 @@ export const getHrMaster = async (
 
         switch (masters) {
           case "Pg_Leave_flow":
-            whereConditions = `company_code = :company_code
-                      AND (
-                          (NEXT_ACTION_BY IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_ID =  :loginid ) AND FINAL_APPROVED <> 'YES')
-                          OR
-                          (IMMEDIATE_SUPERVISOR IN (SELECT EMPLOYEE_ID FROM VW_HR_EMPLOYEE_AWARE WHERE
-EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APPROVED = 'NO')
-                      )
-                      AND LAST_ACTION <> 'REJECTED'
-                      AND LAST_ACTION <> 'CANCEL'
-                      `;
+            whereConditions = `
+              company_code = :company_code
+              AND UPPER(TRIM(NVL(LAST_ACTION, ''))) NOT IN ('REJECTED', 'CANCEL')
+              AND (
+                (NEXT_ACTION_BY = :loginid AND UPPER(TRIM(NVL(FINAL_APPROVED, 'NO'))) <> 'YES')
+                OR (UPPER(TRIM(NVL(LAST_ACTION, ''))) = 'SAVEASDRAFT' AND CREATED_BY = :loginid)
+                OR
+                (
+                  IMMEDIATE_SUPERVISOR = :loginid
+                  AND ACTUAL_RESUME_DATE IS NOT NULL
+                  AND RESUME_DATE_APPROVED = 'NO'
+                )
+              )
+            `;
             break;
           case "Pg_leave_flow_Rejected":
               whereConditions = `
@@ -179,9 +182,9 @@ EMPLOYEE_ID =  :loginid ) AND ACTUAL_RESUME_DATE IS NOT NULL AND RESUME_DATE_APP
          case "Pg_leave_flow_InProgress":
     whereConditions = `
         company_code = :company_code
-        AND LAST_ACTION <> 'REJECTED'
-        AND FINAL_APPROVED <> 'YES'
-        AND LAST_ACTION <> 'CANCEL'
+        AND UPPER(TRIM(NVL(LAST_ACTION, ''))) <> 'REJECTED'
+        AND UPPER(TRIM(NVL(FINAL_APPROVED, 'NO'))) <> 'YES'
+        AND UPPER(TRIM(NVL(LAST_ACTION, ''))) <> 'CANCEL'
         AND NEXT_ACTION_BY NOT IN (
             SELECT EMPLOYEE_ID 
             FROM VW_HR_EMPLOYEE_AWARE 

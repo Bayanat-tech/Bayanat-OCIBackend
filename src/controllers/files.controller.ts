@@ -7,12 +7,17 @@ import { oracleDb } from "../database/connection";
 import { QueryExecutor } from "../database/QueryExecutor";
 import { FilesPFService } from "../services/filesPF.service";
 import { FilesAFService } from "../services/accountfiles.service";
-import { deleteFile } from "../services/ociUpload.service";
+import { deleteFile, deleteFileFromS3 } from "../services/ociUpload.service";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
 let filesVendorService: FilesVendorService;
 let filesAFService: FilesAFService;
+
+function routeParamValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
 
 // Initialize service
 (async () => {
@@ -608,9 +613,10 @@ export const getFilesBySrNo = async (
       ORDER BY ATTACHMENT_SR_NO ASC, CREATED_AT DESC
     `;
     
+    const srNoValue = routeParamValue(sr_no);
     const params: any = {
       request_number: { val: request_number },
-      sr_no: { val: parseInt(sr_no) },
+      sr_no: { val: parseInt(srNoValue, 10) },
       company_code: { val: req.user.company_code }
     };
     
@@ -745,20 +751,27 @@ export const deleteHrVendorFiles = async (
       });
       return;
     }
-    
-    const conditions: any = {
-      requestNumber: request_number,
+    const selectSql = `
+      SELECT AWS_FILE_LOCN
+      FROM UPLOADED_FILES_DLTS_VENDOR
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+        AND NVL(SR_NO, 0) = :sr_no
+        ${attachment_sr_no !== undefined ? "AND ATTACHMENT_SR_NO = :attachment_sr_no" : ""}
+      FETCH FIRST 1 ROW ONLY
+    `;
+
+    const binds: any = {
+      request_number: { val: request_number },
+      company_code: { val: req.user.company_code },
+      sr_no: { val: Number(sr_no || 0) },
     };
-
-    if (sr_no !== undefined) {
-      conditions.srNo = sr_no;
-    }
-
     if (attachment_sr_no !== undefined) {
-      conditions.attachmentSrNo = attachment_sr_no;
+      binds.attachment_sr_no = { val: Number(attachment_sr_no) };
     }
 
-    const file = await filesVendorService.findOne(conditions);
+    const fileResult = await QueryExecutor.executeRawQuery(selectSql, binds);
+    const file = fileResult.rows?.[0] || fileResult[0];
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -768,9 +781,22 @@ export const deleteHrVendorFiles = async (
       return;
     }
 
-    const result = await filesVendorService.delete(conditions);
+    const fileLocation = file.AWS_FILE_LOCN || file.awsFileLocn;
+    if (fileLocation) {
+      await deleteFileFromS3(fileLocation);
+    }
 
-    if (result.affected === 0) {
+    const deleteSql = `
+      DELETE FROM UPLOADED_FILES_DLTS_VENDOR
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+        AND NVL(SR_NO, 0) = :sr_no
+        ${attachment_sr_no !== undefined ? "AND ATTACHMENT_SR_NO = :attachment_sr_no" : ""}
+    `;
+
+    const result = await QueryExecutor.executeRawQuery(deleteSql, binds);
+
+    if ((result.rowsAffected || 0) === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "Delete operation failed",
@@ -798,7 +824,7 @@ export const getEmployeeFiles = async (
     let { request_number } = req.params;
     const { modules } = req.query;
 
-    request_number = decodeURIComponent(request_number);
+    request_number = decodeURIComponent(routeParamValue(request_number));
 
     if (!request_number) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -808,15 +834,39 @@ export const getEmployeeFiles = async (
       return;
     }
 
-    const conditions = {
-      request_number, 
-      modules: (modules as string) || "hr",
-      company_code: req.user.company_code,
+    const sql = `
+      SELECT
+        COMPANY_CODE as "companyCode",
+        REQUEST_NUMBER as "requestNumber",
+        SR_NO as "srNo",
+        FILE_NAME as "fileName",
+        ORG_FILE_NAME as "orgFileName",
+        AWS_FILE_LOCN as "awsFileLocn",
+        FLOW_LEVEL as "flowLevel",
+        MODULES as "modules",
+        UPDATED_AT as "updatedAt",
+        UPDATED_BY as "updatedBy",
+        CREATED_BY as "createdBy",
+        CREATED_AT as "createdAt",
+        EXTENSIONS as "extensions",
+        USER_FILE_NAME as "userFileName",
+        TYPE as "type",
+        FILE_TRANSFER as "fileTransfer"
+      FROM UPLOADED_FILES_DLTS_VH
+      WHERE REQUEST_NUMBER = :request_number
+        AND COMPANY_CODE = :company_code
+        ${modules ? "AND MODULES = :modules" : ""}
+      ORDER BY NVL(SR_NO, 0) ASC, CREATED_AT DESC
+    `;
+
+    const binds: any = {
+      request_number: { val: request_number },
+      company_code: { val: req.user.company_code },
     };
+    if (modules) binds.modules = { val: String(modules) };
 
-    console.log("Searching with conditions:", conditions);
-
-    const files = await filesVHService.findAll(conditions);
+    const result = await QueryExecutor.executeRawQuery(sql, binds);
+    const files = result.rows || result || [];
 
     // Handle no records found
     if (!files || files.length === 0) {
@@ -851,17 +901,26 @@ export const editEmployeeFiles = async (
   try {
     const { aws_file_locn, request_number, user_file_name } = req.body;
 
-    const result = await filesVHService.update(
+    const result = await QueryExecutor.executeRawQuery(
+      `
+        UPDATE UPLOADED_FILES_DLTS_VH
+        SET USER_FILE_NAME = :user_file_name,
+            UPDATED_AT = SYSDATE,
+            UPDATED_BY = :updated_by
+        WHERE REQUEST_NUMBER = :request_number
+          AND COMPANY_CODE = :company_code
+          AND AWS_FILE_LOCN = :aws_file_locn
+      `,
       {
-        awsFileLocn: aws_file_locn,
-        requestNumber: request_number,
-      },
-      {
-        userFileName: user_file_name,
+        user_file_name: { val: user_file_name },
+        updated_by: { val: req.user.loginid || req.user.loginid1 || req.user.username || null },
+        request_number: { val: request_number },
+        company_code: { val: req.user.company_code },
+        aws_file_locn: { val: aws_file_locn },
       }
     );
 
-    if (result.affected === 0) {
+    if ((result.rowsAffected || 0) === 0) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
         success: false,
         message: constants.MESSAGES.FILE_NOT_FOUND,
@@ -887,6 +946,7 @@ export const deleteEmployeeFiles = async (
 ): Promise<void> => {
   try {
     const { request_number, sr_no } = req.params;
+    const awsFileLocn = typeof req.query.aws_file_locn === "string" ? req.query.aws_file_locn : "";
     console.log("Deleting file:", { request_number, sr_no });
 
     if (!request_number) {
@@ -897,10 +957,29 @@ export const deleteEmployeeFiles = async (
       return;
     }
 
-    const file = await filesVHService.findOne({
-      requestNumber: request_number,
-      srNo: sr_no,
-    });
+    const fileFilter = awsFileLocn
+      ? "AWS_FILE_LOCN = :aws_file_locn"
+      : "SR_NO = :sr_no";
+    const fileBinds = awsFileLocn
+      ? { aws_file_locn: { val: awsFileLocn } }
+      : { sr_no: { val: Number(sr_no) } };
+
+    const selectResult = await QueryExecutor.executeRawQuery(
+      `
+        SELECT AWS_FILE_LOCN
+        FROM UPLOADED_FILES_DLTS_VH
+        WHERE REQUEST_NUMBER = :request_number
+          AND COMPANY_CODE = :company_code
+          AND ${fileFilter}
+        FETCH FIRST 1 ROW ONLY
+      `,
+      {
+        request_number: { val: request_number },
+        company_code: { val: req.user.company_code },
+        ...fileBinds,
+      }
+    );
+    const file = selectResult.rows?.[0] || selectResult[0];
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -910,12 +989,26 @@ export const deleteEmployeeFiles = async (
       return;
     }
 
-    const result = await filesVHService.delete({
-      requestNumber: request_number,
-      srNo: sr_no,
-    });
+    const fileLocation = file.AWS_FILE_LOCN || file.awsFileLocn;
+    if (fileLocation) {
+      await deleteFileFromS3(fileLocation);
+    }
 
-    if (result.affected === 0) {
+    const result = await QueryExecutor.executeRawQuery(
+      `
+        DELETE FROM UPLOADED_FILES_DLTS_VH
+        WHERE REQUEST_NUMBER = :request_number
+          AND COMPANY_CODE = :company_code
+          AND ${fileFilter}
+      `,
+      {
+        request_number: { val: request_number },
+        company_code: { val: req.user.company_code },
+        ...fileBinds,
+      }
+    );
+
+    if ((result.rowsAffected || 0) === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: "Delete operation failed",

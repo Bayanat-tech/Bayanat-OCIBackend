@@ -156,23 +156,30 @@ export class SecurityMasterService {
   }
 
   static async getSecModuleData(
-    company_code: string,
     page: number = 1,
     limit: number = 20,
     sort?: { field_name: string; desc: boolean },
     searchFilter?: any
   ) {
-    const whereCondition = this.buildSearchCondition<SecModule>(
-      company_code,
-      searchFilter
-    );
-    return await this.getMasterDataWithPagination<SecModule>(
-      SecModule,
-      whereCondition,
-      page,
-      limit,
-      sort
-    );
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    // SEC_MODULE_DATA is a shared screen catalogue. Do not restrict the
+    // screen master by the logged-in user's company.
+    let where: FindOptionsWhere<SecModule> = {};
+    if (searchFilter?.field && searchFilter?.value) {
+      where = {
+        [searchFilter.field]: Like(`%${searchFilter.value}%`),
+      } as FindOptionsWhere<SecModule>;
+    }
+    const [tableData, count] = await repository.findAndCount({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      order: sort?.field_name
+        ? ({ [sort.field_name]: sort.desc ? "DESC" : "ASC" } as FindOptionsOrder<SecModule>)
+        : ({ app_code: "ASC", position: "ASC", serial_no: "ASC" } as FindOptionsOrder<SecModule>),
+    });
+    return { tableData, count };
   }
 
   static async getProjectAccess(
@@ -245,15 +252,13 @@ export class SecurityMasterService {
   }
 
   static async getSerialNo(
-    company_code: string,
-    page: number = 1,
-    limit: number = 200
+    _page: number = 1,
+    _limit: number = 200
   ) {
     await ensureCorrectSchema();
 
     const repository = getRepository(SecModule);
     const rows = await repository.find({
-      where: { company_code } as FindOptionsWhere<SecModule>,
       order: {
         app_code: "ASC",
         level1: "ASC",
@@ -263,33 +268,11 @@ export class SecurityMasterService {
       } as FindOptionsOrder<SecModule>,
     });
 
-    const level3Parents = new Set(
-      rows
-        .filter((row) => hasSecurityText(row.level3))
-        .map((row) => securityMenuKey(row.app_code, row.level1, row.level2))
-    );
-    const bySerial = new Map<number, SecModule>();
-
-    rows.forEach((row) => {
-      const hasLevel3 = hasSecurityText(row.level3);
-      const isLeafLevel2 =
-        hasSecurityText(row.level2) &&
-        !hasLevel3 &&
-        !level3Parents.has(securityMenuKey(row.app_code, row.level1, row.level2));
-
-      if (hasLevel3 || isLeafLevel2) {
-        bySerial.set(Number(row.serial_no), row);
-      }
-    });
-
-    const assignableRows = Array.from(bySerial.values()).sort(
-      (left, right) => Number(left.serial_no) - Number(right.serial_no)
-    );
-    const skip = (page - 1) * limit;
-
+    // User/role access dropdowns must receive the complete global module
+    // catalogue. Do not remove parent rows and do not apply master-page limits.
     return {
-      tableData: assignableRows.slice(skip, skip + limit),
-      count: assignableRows.length,
+      tableData: rows,
+      count: rows.length,
     };
   }
 
@@ -311,16 +294,25 @@ export class SecurityMasterService {
   }
 
   static async getSecModuleDropdown(
-    company_code: string,
-    page: number = 1,
-    limit: number = 200
+    _page: number = 1,
+    _limit: number = 100000
   ) {
-    return await this.getMasterDataWithPagination<SecModule>(
-      SecModule,
-      { company_code } as FindOptionsWhere<SecModule>,
-      page,
-      limit
+    await ensureCorrectSchema();
+    const repository = getRepository(SecModule);
+    // Use raw rows here because legacy data can contain duplicate SERIAL_NO
+    // values. TypeORM hydrates SERIAL_NO as the entity primary key and would
+    // collapse those database rows, producing incomplete dropdown options and
+    // incorrect module counts.
+    const allRows = await repository.query(
+      `SELECT *
+         FROM SEC_MODULE_DATA
+        ORDER BY APP_CODE, POSITION, SERIAL_NO`,
     );
+    const rows = Array.isArray(allRows) ? allRows : allRows?.rows || [];
+    return {
+      tableData: rows,
+      count: rows.length,
+    };
   }
 
   static async getUserDivisionAccess(
@@ -415,7 +407,6 @@ export class SecurityMasterService {
 
         case "sec_module_data":
           result = await queryRunner.manager.delete(SecModule, {
-            company_code,
             serial_no: In(ids as number[]),
           });
           break;
@@ -521,13 +512,5 @@ export class SecurityMasterService {
 
     return fieldMap[master] || "id";
   }
-}
-
-function hasSecurityText(value: unknown): boolean {
-  return String(value ?? "").trim().length > 0;
-}
-
-function securityMenuKey(...parts: unknown[]): string {
-  return parts.map((part) => String(part ?? "").trim().toLowerCase()).join("||");
 }
 

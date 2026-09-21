@@ -47,10 +47,13 @@ export const createDesignation = async (
       return;
     }
 
+    // NOTE: created_by / updated_by removed here.
+    // HrDesignation entity does NOT map those properties
+    // (table only has USER_ID / USER_DT, which aren't mapped on the entity either).
+    // Passing them to TypeORM causes:
+    // "Property 'updated_by' was not found in 'HrDesignation'"
     const newDesignation = designationRepository.create({
       ...req.body,
-      created_by: requestUser.loginid,
-      updated_by: requestUser.loginid,
     });
 
     const savedDesignation = await designationRepository.save(newDesignation);
@@ -111,14 +114,18 @@ export const updateDesignation = async (
       return;
     }
 
+    // NOTE: updated_by removed here for the same reason as createDesignation.
+    // Only fields that exist on the HrDesignation entity are updated.
     const updateResult = await designationRepository.update(
       {
         company_code: company_code,
         desg_code: desg_code,
       },
       {
-        ...req.body,
-        updated_by: requestUser.loginid,
+        desg_name: req.body.desg_name,
+        desg_short_name: req.body.desg_short_name,
+        remarks: req.body.remarks,
+        status: req.body.status,
       }
     );
 
@@ -161,11 +168,10 @@ export const createBulkDesignations = async (
     }
 
     const designationRepository = getRepository(HrDesignation);
-    
+
+    // NOTE: created_by / updated_by removed here too — same entity, same restriction.
     const designationsWithUser = req.body.map((designation: IHrDesignation) => ({
       ...designation,
-      updated_by: requestUser.loginid,
-      created_by: requestUser.loginid,
     }));
 
     // Using insert with conflict handling (similar to ignoreDuplicates)
@@ -194,7 +200,7 @@ export const exportDesignation = async (
 ) => {
   try {
     const designationRepository = getRepository(HrDesignation);
-    
+
     let fetchedData: any[] = [];
     let csvTransform: fastCsv.CsvFormatterStream<
       fastCsv.FormatterRow,

@@ -220,6 +220,8 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
 
     let toggledPackets = 0;
 
+    console.log(toggledPackets, "toggledPackets")
+
     // Get tenant-specific connection
     const tenantId = await TenantManager.getTenantForUser(loginid);
     connection = await TenantManager.getConnection(tenantId);
@@ -228,7 +230,6 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
     try {
       const updateSql = `
         UPDATE TO_BATCH
-        SET selected = 'Y'
         WHERE company_code = :company_code
           AND prin_code   = :prin_code
           AND job_no      = :job_no
@@ -250,17 +251,19 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
         // ---- FIXED procedure call ----
         await QueryExecutor.execMaybe(
           `BEGIN
-             SP_PICK_CONFIRM(
+             SP_PICK_CONFIRM_PARENT(
                :vs_company_code,
                :vs_principal_code,
                :vs_job_no,
-               SYSDATE
+               SYSDATE,
+               :vs_toggledPackets
              );
            END;`,
           {
             vs_company_code: { val: company_code },
             vs_principal_code: { val: prin_code },
-            vs_job_no: { val: job_no }
+            vs_job_no: { val: job_no },
+            vs_toggledPackets: { val: toggledPackets }
           },
           connection
         );
@@ -271,7 +274,7 @@ export const confirmorder = async (req: Request, res: Response): Promise<void> =
           SET selected = 'N'
           WHERE company_code = :company_code
             AND prin_code   = :prin_code
-            AND job_no      = :job_no
+            AND job_no      = 'xxx'
         `;
 
         await QueryExecutor.execMaybe(

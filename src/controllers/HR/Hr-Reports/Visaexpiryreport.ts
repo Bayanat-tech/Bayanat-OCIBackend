@@ -28,6 +28,16 @@ interface VisaRow {
     days_remaining:  number;
 }
 
+interface VisaReportParams {
+    parameter:  string;
+    loginid:    string;
+    division:   string;
+    department: string;
+    date_from:  string;
+    date_to:    string;
+    emp_type:   string;
+}
+
 // ─── Shared: fetch rows from DB ───────────────────────────────────────────────
 
 async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: any }> {
@@ -95,58 +105,25 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
     return { rows, connection };
 }
 
-// ─── Build HTML ───────────────────────────────────────────────────────────────
+// ─── Shared: build the Excel-compatible HTML (used only by the standalone
+//     /excel route now — the in-page toolbar button has been removed) ───────
 
-function buildVisaExpiryHTML(
-    rows: VisaRow[],
-    params: {
-        parameter:  string;
-        loginid:    string;
-        division:   string;
-        department: string;
-        date_from:  string;
-        date_to:    string;
-        emp_type:   string;
-    }
-): string {
-
-    const reportTitle = "Visa Expiry Listing Report";
-    const generatedBy = text(params.loginid) || "Unknown User";
+function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): string {
     const reportDate  = formatDateStr(new Date());
+    const generatedBy = text(params.loginid) || "Unknown User";
 
     let totalExpired  = 0;
     let totalExpiring = 0;
     let totalValid    = 0;
 
-    const tableRows = rows.map((r, i) => {
-        const daysNum = Number(r.days_remaining);
-        let rowCls = "";
-        let daysCls = "";
-        if (daysNum < 0)        { totalExpired++;  rowCls = "row-exp";  daysCls = "days-exp";  }
-        else if (daysNum <= 30) { totalExpiring++; rowCls = "row-warn"; daysCls = "days-warn"; }
-        else                    { totalValid++; }
-
-        return `
-        <tr class="${rowCls}">
-          <td class="tc">${i + 1}</td>
-          <td class="bold">${text(r.employee_code)}</td>
-          <td>${text(r.rpt_name)}</td>
-          <td>${text(r.dept_name)}</td>
-          <td class="tc">${text(r.div_name)}</td>
-          <td>${text(r.section_name)}</td>
-          <td>${text(r.desg_name)}</td>
-          <td>${text(r.sponsor_name)}</td>
-          <td class="tc mono">${formatDateStr(r.visa_valid_from)}</td>
-          <td class="tc mono ${daysCls}">${formatDateStr(r.visa_valid_to)}</td>
-          <td class="tc mono ${daysCls}">${daysNum}</td>
-        </tr>`;
-    }).join("") || `<tr><td colspan="11" class="empty">No records found.</td></tr>`;
-
-    // ── Excel export data (built server-side, embedded in page) ───────────────
     const excelRows = rows.map((r, i) => {
         const daysNum = Number(r.days_remaining);
         const bgColor = daysNum < 0 ? "#FFF5F5" : daysNum <= 30 ? "#FFFDF0" : "#FFFFFF";
         const dayColor = daysNum < 0 ? "color:#C00000;font-weight:bold" : daysNum <= 30 ? "color:#B45309;font-weight:bold" : "";
+        if (daysNum < 0) totalExpired++;
+        else if (daysNum <= 30) totalExpiring++;
+        else totalValid++;
+
         return `<tr style="background:${bgColor}">
           <td style="text-align:center">${i + 1}</td>
           <td style="font-weight:bold">${text(r.employee_code)}</td>
@@ -162,7 +139,7 @@ function buildVisaExpiryHTML(
         </tr>`;
     }).join("");
 
-    const excelHtml = `
+    return `
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:x="urn:schemas-microsoft-com:office:excel"
       xmlns="http://www.w3.org/TR/REC-html40">
@@ -223,7 +200,44 @@ function buildVisaExpiryHTML(
     </tr>
   </tfoot>
 </table>
-</body></html>`.replace(/`/g, "\\`");
+</body></html>`;
+}
+
+// ─── Build printable HTML page (toolbar / Print & Excel buttons removed) ──────
+
+function buildVisaExpiryHTML(rows: VisaRow[], params: VisaReportParams): string {
+
+    const reportTitle = "Visa Expiry Listing Report";
+    const generatedBy = text(params.loginid) || "Unknown User";
+    const reportDate  = formatDateStr(new Date());
+
+    let totalExpired  = 0;
+    let totalExpiring = 0;
+    let totalValid    = 0;
+
+    const tableRows = rows.map((r, i) => {
+        const daysNum = Number(r.days_remaining);
+        let rowCls = "";
+        let daysCls = "";
+        if (daysNum < 0)        { totalExpired++;  rowCls = "row-exp";  daysCls = "days-exp";  }
+        else if (daysNum <= 30) { totalExpiring++; rowCls = "row-warn"; daysCls = "days-warn"; }
+        else                    { totalValid++; }
+
+        return `
+        <tr class="${rowCls}">
+          <td class="tc">${i + 1}</td>
+          <td class="bold">${text(r.employee_code)}</td>
+          <td>${text(r.rpt_name)}</td>
+          <td>${text(r.dept_name)}</td>
+          <td class="tc">${text(r.div_name)}</td>
+          <td>${text(r.section_name)}</td>
+          <td>${text(r.desg_name)}</td>
+          <td>${text(r.sponsor_name)}</td>
+          <td class="tc mono">${formatDateStr(r.visa_valid_from)}</td>
+          <td class="tc mono ${daysCls}">${formatDateStr(r.visa_valid_to)}</td>
+          <td class="tc mono ${daysCls}">${daysNum}</td>
+        </tr>`;
+    }).join("") || `<tr><td colspan="11" class="empty">No records found.</td></tr>`;
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -231,7 +245,6 @@ function buildVisaExpiryHTML(
   <meta charset="utf-8"/>
   <title>${reportTitle}</title>
   <style>
-    /* ── Base ─────────────────────────────────────────────────────────── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -239,22 +252,6 @@ function buildVisaExpiryHTML(
       background: #f0f2f5;
       color: #1e293b;
     }
-
-    /* ── Toolbar ──────────────────────────────────────────────────────── */
-    .toolbar {
-      background: #1e293b;
-      padding: 8px 20px;
-      display: flex; gap: 8px; justify-content: flex-end;
-    }
-    .btn {
-      padding: 7px 18px; border: none; border-radius: 5px;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-    }
-    .btn-print { background: #3b82f6; color: #fff; }
-    .btn-excel { background: #16a34a; color: #fff; }
-    .btn:hover { opacity: 0.88; }
-
-    /* ── Page ─────────────────────────────────────────────────────────── */
     .page {
       width: 100%;
       max-width: 1180px;
@@ -264,8 +261,6 @@ function buildVisaExpiryHTML(
       box-shadow: 0 2px 16px rgba(0,0,0,0.10);
       padding: 24px 28px 20px;
     }
-
-    /* ── Report Header ────────────────────────────────────────────────── */
     .report-header {
       display: flex;
       justify-content: space-between;
@@ -285,11 +280,8 @@ function buildVisaExpiryHTML(
     .brand-block { text-align: right; white-space: nowrap; }
     .brand-name  { font-size: 20px; font-weight: 800; color: #1e3a8a; letter-spacing: 0.08em; }
     .brand-sub   { font-size: 9px;  letter-spacing: 0.25em; color: #64748b; margin-top: 2px; }
-
-    /* ── Table ────────────────────────────────────────────────────────── */
     .tbl-wrap { width: 100%; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
     thead tr { background: #1e3a8a; }
     thead th {
       color: #fff; font-weight: 700; font-size: 9px;
@@ -300,7 +292,6 @@ function buildVisaExpiryHTML(
     }
     thead th.tc { text-align: center; }
     thead th:last-child { border-right: none; }
-
     tbody td {
       padding: 7px 6px; font-size: 10.5px;
       border-bottom: 1px solid #f1f5f9;
@@ -308,20 +299,14 @@ function buildVisaExpiryHTML(
       overflow: hidden; text-overflow: ellipsis;
     }
     tbody tr:hover td { background: #eff6ff !important; }
-
-    /* ── Row colours ──────────────────────────────────────────────────── */
     tr.row-exp  td { background: #fff5f5; }
     tr.row-warn td { background: #fffdf0; }
-
-    /* ── Cell helpers ─────────────────────────────────────────────────── */
     td.tc     { text-align: center; }
     td.mono   { font-family: 'Courier New', monospace; font-size: 10px; }
     td.bold   { font-weight: 700; }
     td.days-exp  { color: #dc2626; font-weight: 700; }
     td.days-warn { color: #d97706; font-weight: 700; }
     td.empty  { text-align: center; padding: 36px; color: #94a3b8; }
-
-    /* ── Footer ───────────────────────────────────────────────────────── */
     .report-footer {
       margin-top: 14px;
       padding-top: 10px;
@@ -333,11 +318,8 @@ function buildVisaExpiryHTML(
     .dot-exp  { color: #dc2626; font-weight: 700; }
     .dot-warn { color: #d97706; font-weight: 700; }
     .dot-ok   { color: #16a34a; font-weight: 700; }
-
-    /* ── Print ────────────────────────────────────────────────────────── */
     @media print {
       body      { background: #fff; font-size: 9px; }
-      .toolbar  { display: none; }
       .page     { margin: 0; border-radius: 0; box-shadow: none;
                   padding: 14px 16px; max-width: 100%; }
       thead     { display: table-header-group; }
@@ -350,30 +332,8 @@ function buildVisaExpiryHTML(
 </head>
 <body>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button class="btn btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
-    <button class="btn btn-excel" onclick="exportExcel()">📥 Export to Excel</button>
-  </div>
-
-  <script>
-    function exportExcel() {
-      const html = \`${excelHtml}\`;
-      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = 'VisaExpiryReport_${new Date().toISOString().slice(0, 10)}.xls';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-  </script>
-
   <div class="page">
 
-    <!-- Header -->
     <div class="report-header">
       <div>
         <div class="report-title">${reportTitle}</div>
@@ -392,7 +352,6 @@ function buildVisaExpiryHTML(
       </div>
     </div>
 
-    <!-- Table -->
     <div class="tbl-wrap">
       <table>
         <colgroup>
@@ -429,7 +388,6 @@ function buildVisaExpiryHTML(
       </table>
     </div>
 
-    <!-- Footer -->
     <div class="report-footer">
       <div>
         <strong>Total Records: ${rows.length}</strong>
@@ -448,6 +406,21 @@ function buildVisaExpiryHTML(
 </html>`;
 }
 
+// ─── Shared: resolve request body into VisaReportParams ──────────────────────
+
+function resolveParams(body: any): VisaReportParams {
+    const { parameter, loginid, code2, code3, date1, date2, code9 } = body;
+    return {
+        parameter:  parameter || "Hr_Report_VISA_EXPIRY_REPORT",
+        loginid:    loginid   || "ADMIN",
+        division:   code2     || "",
+        department: code3     || "",
+        date_from:  date1     || "",
+        date_to:    date2     || "",
+        emp_type:   code9     || "A",
+    };
+}
+
 // ─── HTML Controller ──────────────────────────────────────────────────────────
 
 export const getVisaExpiryReport = async (req: Request, res: Response): Promise<void> => {
@@ -461,17 +434,7 @@ export const getVisaExpiryReport = async (req: Request, res: Response): Promise<
             return;
         }
 
-        const { parameter, loginid, code2, code3, date1, date2, code9 } = req.body;
-
-        const html = buildVisaExpiryHTML(rows, {
-            parameter:  parameter || "Hr_Report_VISA_EXPIRY_REPORT",
-            loginid:    loginid   || "ADMIN",
-            division:   code2     || "",
-            department: code3     || "",
-            date_from:  date1     || "",
-            date_to:    date2     || "",
-            emp_type:   code9     || "A",
-        });
+        const html = buildVisaExpiryHTML(rows, resolveParams(req.body));
 
         res.setHeader("Content-Type", "text/html");
         res.status(200).send(html);
@@ -479,6 +442,36 @@ export const getVisaExpiryReport = async (req: Request, res: Response): Promise<
     } catch (error: any) {
         console.error("Visa Expiry Report Error:", error);
         res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
+    } finally {
+        if (connection) try { await connection.close(); } catch (e) { console.error(e); }
+    }
+};
+
+// ─── Excel Controller ──────────────────────────────────────────────────────────
+
+export const exportVisaExpiryReportExcel = async (req: Request, res: Response): Promise<void> => {
+    let connection: any;
+    try {
+        const { rows, connection: conn } = await fetchVisaRows(req.body);
+        connection = conn;
+
+        if (!rows.length) {
+            res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+            return;
+        }
+
+        const excelHtml = buildVisaExpiryExcelHtml(rows, resolveParams(req.body));
+
+        res.setHeader("Content-Type", "application/vnd.ms-excel");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="VisaExpiryReport_${new Date().toISOString().slice(0, 10)}.xls"`
+        );
+        res.status(200).send(excelHtml);
+
+    } catch (error: any) {
+        console.error("Visa Expiry Report Excel Error:", error);
+        res.status(500).json({ success: false, message: "Unable to export report", details: error.message });
     } finally {
         if (connection) try { await connection.close(); } catch (e) { console.error(e); }
     }

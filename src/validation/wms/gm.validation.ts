@@ -222,6 +222,15 @@ export const productSchema = (data: any) => {
     pack_size: Joi.number().allow("", null),
     batch_type: Joi.number().allow("", null),
     wob: Joi.number().allow("", null),
+    user_dt: Joi.string().optional().allow(null, ''),
+    user_id: Joi.string().optional().allow(null, ''),
+    category_code: Joi.string().optional().allow(null, ''),
+    category_brand_code: Joi.string().optional().allow(null, ''),
+    updated_at: Joi.string().optional().allow(null, ''),
+    updated_by: Joi.string().optional().allow(null, ''),
+    created_by: Joi.string().optional().allow(null, ''),
+    created_at: Joi.string().optional().allow(null, ''),
+    rnum: Joi.number().optional().allow(null, ''),
   });
   return schema.validate(data);
 };
@@ -654,6 +663,8 @@ export const partnerSchema = (data: IPartner) => {
     broker_code: Joi.string().required(),
     broker_name: Joi.string().required(),
     broker_addr1: Joi.string().allow("", null),
+    broker_addr2: Joi.string().allow("", null),
+    broker_addr3: Joi.string().allow("", null),
     broker_city: Joi.string().allow("", null),
     broker_contact1: Joi.string().allow("", null),
     broker_telno1: Joi.string().allow("", null),

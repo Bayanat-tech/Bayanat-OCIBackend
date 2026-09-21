@@ -1,5 +1,6 @@
 import axios from "axios";
 import https from "https";
+import oracledb from "oracledb";
 import { LeaveRequestFlow } from "../interfaces/leaveRequestFlow.interface";
 import { oracleDb } from "../database/connection";
 import { QueryExecutor } from "../database/QueryExecutor";
@@ -117,7 +118,50 @@ export interface LeaveResumeDatesUpdate {
   actualResumeDate?: Date | null;
 }
 
+export interface MhdlEmployeeAccount {
+  USER_ID: string;
+  NAME: string;
+  PASSWORD: string;
+  TYPE: string;
+  EMPLOYEE_ID: string;
+}
+
 export const HrService = {
+  // Keep account credentials out of the shared HR request/error logging paths.
+  checkMhdlAccountEmployee: async (userid: string): Promise<MhdlEmployeeAccount | null> => {
+    const baseURL = process.env.MHDL_API_BASE_URL?.trim() || API_BASE_URL;
+    const apiKey = process.env.MHDL_API_KEY?.trim() || API_KEY;
+    if (!baseURL || !apiKey) throw new Error("MHDL account API is not configured");
+    let data: unknown;
+    try {
+      const response = await axios.get(`${baseURL.replace(/\/$/, "")}/api/MhdlDb/mhdl/checkMhdlAccountEmployee`, {
+        params: { p_userid: userid },
+        headers: { XApiKey: apiKey, accept: "*/*" },
+        timeout: 30000,
+        maxRedirects: 0,
+        httpsAgent,
+      });
+      data = response.data;
+    } catch (error: any) {
+      const failure = new Error("MHDL account verification is unavailable") as Error & { code?: string };
+      failure.code = typeof error?.code === "string" && /^[A-Z0-9_-]+$/.test(error.code)
+        ? error.code : "MHDL_API_UNAVAILABLE";
+      throw failure;
+    }
+    if (!Array.isArray(data)) throw new Error("Invalid MHDL account response");
+    if (data.length === 0) return null;
+    const user = data[0];
+    if (data.length !== 1 || !user || typeof user.USER_ID !== "string" ||
+        user.USER_ID.trim().toUpperCase() !== userid.trim().toUpperCase() ||
+        !/^M[A-Z0-9_-]*$/i.test(user.USER_ID.trim()) || user.USER_ID.trim().length > 15 ||
+        typeof user.NAME !== "string" || !user.NAME.trim() || Buffer.byteLength(user.NAME) > 400 ||
+        typeof user.PASSWORD !== "string" || !user.PASSWORD ||
+        typeof user.EMPLOYEE_ID !== "string" || !user.EMPLOYEE_ID.trim() ||
+        Buffer.byteLength(user.EMPLOYEE_ID) > 100 || user.TYPE !== "EMPLOYEE") {
+      throw new Error("Invalid MHDL employee account response");
+    }
+    return { ...user, USER_ID: user.USER_ID.trim(), EMPLOYEE_ID: user.EMPLOYEE_ID.trim() };
+  },
   
   getEmployees: async (
     name?: string,
@@ -166,17 +210,82 @@ export const HrService = {
     );
     return response.data;
   },
+
+  LeaveDaysCount: async (params: {
+    leaveStartDate: string;
+    leaveEndDate: string;
+    leaveType: string;
+    company_code: string;
+    employee_code: string;
+  }) => {
+    const { leaveStartDate, leaveEndDate, leaveType, company_code, employee_code } = params;
+
+    const query = `
+      DECLARE
+        v_leave_days NUMBER;
+      BEGIN
+        v_leave_days := FUN_CALC_LEAVE_DAYS(
+          TO_DATE(:leaveStartDate, 'DD-MM-YYYY'),
+          TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
+          :p_leaveType,
+          :p_company_code,
+          :p_employee_code
+        );
+        :p_leave_days := v_leave_days;
+      END;
+    `;
+
+    try {
+      const result = await QueryExecutor.executeRawQuery(query, {
+        leaveStartDate,
+        leaveEndDate,
+        p_leaveType: leaveType,
+        p_company_code: company_code,
+        p_employee_code: employee_code,
+        p_leave_days: {
+          dir: oracledb.BIND_OUT,
+          type: oracledb.NUMBER,
+        },
+      });
+
+      return {
+        success: true,
+        leaveStartDate,
+        leaveEndDate,
+        company_code,
+        employee_code,
+        leaveDays: (result.outBinds as any).p_leave_days,
+        leaveType,
+        message: "Leave days calculated successfully",
+      };
+    } catch (error) {
+      console.error("Error calculating leave days:", error);
+      return {
+        success: false,
+        leaveStartDate,
+        leaveEndDate,
+        company_code,
+        employee_code,
+        leaveDays: null,
+        leaveType,
+        message: "Failed to calculate leave days",
+      };
+    }
+  },
   
 
 newValidaterequest: async(params: {
   leaveStartDate: string;
+  leaveEndDate?: string;
   employeeId: string;
   leaveType: string;
+  leaveDays?: number;
 }) => {
-  const { leaveStartDate, employeeId , leaveType } = params;
+  const { leaveStartDate, employeeId, leaveType } = params;
+  const requestedDays = Number(params.leaveDays || 0);
 
   console.log("Input leaveStartDate:", leaveStartDate); // '12-11-2025' (DD-MM-YYYY)
-  const formattedDate = leaveStartDate; // Keep as '12-11-2025'
+  const formattedDate = normalizeOracleDate(leaveStartDate);
 
   const query = `
     DECLARE
@@ -238,6 +347,39 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
   }
 }
 
+function normalizeOracleDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+  return value;
+}
+
+async function buildBalanceValidation(functionResult: string | null) {
+  const leaveBalances = await getLeaveBalances(employeeId, leaveType);
+  const availableBalance = leaveBalances === null || leaveBalances === undefined ? null : Number(leaveBalances);
+  const hasRequestedDays = Number.isFinite(requestedDays) && requestedDays > 0;
+  const hasBalance = availableBalance !== null && Number.isFinite(availableBalance);
+  const isValid = !hasRequestedDays || !hasBalance || requestedDays <= Number(availableBalance);
+
+  return {
+    success: true,
+    leaveType: leaveType,
+    functionResult: functionResult || "BALANCE_FALLBACK",
+    leaveStartDate: leaveStartDate,
+    leaveEndDate: params.leaveEndDate,
+    formattedDate: formattedDate,
+    availableBalance: availableBalance,
+    requestedDays: requestedDays,
+    isValid: isValid,
+    message: !isValid
+      ? `Insufficient leave balance. Available balance: ${availableBalance}, requested days: ${requestedDays}`
+      : hasBalance
+        ? `Validation successful. Available balance: ${availableBalance}`
+        : "Validation successful"
+  };
+}
+
   try {
     // First, ensure temp table exists
     await ensureTempTableExists();
@@ -253,34 +395,11 @@ async function getLeaveBalances(employeeId: string, leaveType: string) {
     // Clean up
     await QueryExecutor.executeRawQuery(`DELETE FROM TEMP_FUNCTION_RESULT WHERE ROWNUM = 1`, {});
 
-    let leaveBalances = null;
-
-    // If function returned "OK", then get leave balances
-    if (functionResult === 'OK') {
-      leaveBalances = await getLeaveBalances(employeeId, leaveType);
-    }
-
-
-    
-
-    return {
-      success: true,
-      leaveType: leaveType,
-      functionResult: functionResult,
-      leaveStartDate: leaveStartDate,
-      formattedDate: formattedDate,
-      availableBalance: leaveBalances,
-      message: 'Validation Successful'
-    };
+    return await buildBalanceValidation(functionResult);
 
   } catch (error: any) {
     console.error("Error in newValidaterequest:", error);
-    return {
-      success: false,
-      functionResult: null,
-      leaveStartDate: leaveStartDate,
-      message: `Validation failed: ${error.message}`
-    };
+    return await buildBalanceValidation("BALANCE_FALLBACK");
   }
 },
 

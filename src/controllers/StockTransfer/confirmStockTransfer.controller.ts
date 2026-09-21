@@ -1,28 +1,35 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { TsStnService } from "../../services/WMS/TsStn.service";
+import { RequestWithTenant } from "../../middleware/tenant.middleware";
 
 /**
  * Confirm Stock Transfer
  * Calls SP_STOCK_TRANSFER_CONFIRM stored procedure
  */
-export const confirmStockTransfer = async (req: Request, res: Response) => {
+export const confirmStockTransfer = async (req: RequestWithTenant, res: Response) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
     const {
-      COMPANY_CODE, company_code,
       PRINCIPAL_CODE, principal_code,
       STN_NO, stn_no
     } = req.body;
 
     // Normalize field names (handle both uppercase and lowercase)
-    const companyCode = COMPANY_CODE || company_code;
     const principalCode = PRINCIPAL_CODE || principal_code;
     const stnNo = STN_NO || stn_no;
 
     // Validate required fields
-    if (!companyCode || !principalCode || !stnNo) {
+    if (!principalCode || !stnNo) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: company_code, principal_code, stn_no",
+        message: "Missing required fields: principal_code, stn_no",
       });
     }
 
@@ -35,7 +42,7 @@ export const confirmStockTransfer = async (req: Request, res: Response) => {
     if (!stnExists) {
       return res.status(404).json({
         success: false,
-        message: `STN ${stnNo} not found for company ${companyCode}`,
+        message: `STN ${stnNo} not found for your company`,
       });
     }
 

@@ -19,7 +19,7 @@ export class SchedulerService {
         try {
           const headersRes = await QueryExecutor.executeRawQueryForTenant(
             tenantId,
-            `SELECT * FROM TR_AC_LPO_HEADER WHERE LAST_ACTION = 'SUBMITTED' AND DATA_TRANSFER = 'N'`
+            `SELECT * FROM VMS_FLOW_HDR WHERE LAST_ACTION = 'SUBMITTED' AND DATA_TRANSFER = 'N'`
           );
 
           const unsentHeaders = headersRes.rows || headersRes;
@@ -32,7 +32,7 @@ export class SchedulerService {
               // Get and send related detail records
               const detailsRes = await QueryExecutor.executeRawQueryForTenant(
                 tenantId,
-                `SELECT * FROM TR_AC_LPO_DETAIL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+                `SELECT * FROM VMS_FLOW_DTL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
                 { companyCode: header.COMPANY_CODE, docNo: header.DOC_NO }
               );
 
@@ -45,7 +45,7 @@ export class SchedulerService {
               // Mark header as transferred for this tenant
               await QueryExecutor.executeRawQueryForTenant(
                 tenantId,
-                `UPDATE TR_AC_LPO_HEADER SET DATA_TRANSFER = 'Y' WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+                `UPDATE VMS_FLOW_HDR SET DATA_TRANSFER = 'Y' WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
                 { companyCode: header.COMPANY_CODE, docNo: header.DOC_NO }
               );
 

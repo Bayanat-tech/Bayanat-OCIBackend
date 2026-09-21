@@ -36,12 +36,13 @@ export interface ISecmaster {
 }
 
 export interface ISecmodule {
-  company_code?: string;
+    // Legacy frontend field only; SEC_MODULE_DATA is global.
+    company_code?: string;
   app_code: string;
   serial_no?: number;
   level1: string;
-  level2: string;
-  level3: string;
+  level2?: string | null;
+  level3?: string | null;
   position?: number;
   url_path: string;
   icon: string;

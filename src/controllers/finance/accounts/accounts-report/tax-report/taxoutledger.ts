@@ -18,11 +18,9 @@ const formatDateStr = (v: any) => {
   const d = new Date(v);
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
-  const formatBalance = (value: number) => {
-      return value < 0
-        ? `(${money(Math.abs(value))})`
-        : money(value);
-    };
+const formatBalance = (value: number) => {
+  return value < 0 ? `(${money(Math.abs(value))})` : money(value);
+};
 
 export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<void> => {
   let connection;
@@ -123,8 +121,8 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
 
     // ── summary row ──
     tableBodyHtml += `
-      <tr class="grand-total-row">
-        <td colspan="11" style="text-align:right"><strong>Total :</strong></td>
+      <tr class="grand-row">
+        <td colspan="12" style="text-align:right"><strong>Total :</strong></td>
         <td class="num"><strong>${formatBalance(totalInvAmount)}</strong></td>
         <td class="num"><strong>${formatBalance(totalTaxableInvAmt)}</strong></td>
         <td class="num"><strong>${formatBalance(totalTotInvAmount)}</strong></td>
@@ -140,297 +138,198 @@ export const getTaxInvoiceReport = async (req: Request, res: Response): Promise<
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
   <title>${reportTitle}</title>
   <style>
-    :root { color-scheme: light; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
-      padding: 10px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
       background: #e5e7eb;
-      color: #1f2937;
+      color: #111;
+      padding: 10px;
     }
-
     .page {
       width: 277mm;
       max-width: 277mm;
-      min-height: 190mm;
       margin: 10px auto;
-      padding: 14px;
       background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 8px 20px rgba(15,23,42,0.08);
-      box-sizing: border-box;
+      padding: 14px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
     }
 
-    /* ── brand + title ── */
-    .header-brand {
+    /* header */
+    .header {
       display: flex;
-      justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 2px solid #1e3a5f;
-      padding-bottom: 8px;
-      margin-bottom: 8px;
+      gap: 16px;
+      border-bottom: 2.5px solid #b8860b;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
     }
 
-    .report-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: #0f172a;
-    }
-
-    .brand-name {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      color: #0d4d89;
-      text-align: right;
-    }
-
-    .brand-subtitle {
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      color: #334155;
-      text-align: right;
-    }
-
-    /* ── meta block ── */
-    .header-meta {
-      border: 1px solid #cbd5e1;
+    .logo-block {
+      background: #1a5276;
+      padding: 8px 14px;
       border-radius: 4px;
-      padding: 6px 12px;
-      margin-bottom: 10px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2px 60px;
+      min-width: 150px;
+      text-align: center;
     }
+    .logo-arabic { font-size: 12px; font-weight: 700; color: #f0c040; direction: rtl; }
+    .logo-name   { font-size: 18px; font-weight: 800; color: #f0c040; letter-spacing: 0.04em; }
+    .logo-sub    { font-size: 9px; letter-spacing: 0.18em; color: #cce0f5; margin-top: 2px; }
 
-    .header-meta .row {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      font-size: 11px;
-    }
+    .meta-block { flex: 1; }
+    .meta-block table { border-collapse: collapse; }
+    .meta-block td { padding: 1.5px 6px; font-size: 11px; vertical-align: top; }
+    .meta-block .lbl { font-weight: 700; color: #333; width: 72px; }
 
-    .header-meta .lbl {
-      font-weight: 700;
-      color: #374151;
-      min-width: 55px;
-    }
+    .page-info { font-size: 10px; color: #555; white-space: nowrap; text-align: right; }
 
-    .header-meta .val { color: #111827; }
-
-    /* ── table ── */
-    .report-table {
+    /* table */
+    table.rt {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-    }
-
-    .report-table th,
-    .report-table td {
-      border: 1px solid #94a3b8;
-      padding: 4px 4px;
       font-size: 9.5px;
+    }
+    table.rt th {
+      background: #1a5276;
+      color: #fff;
+      font-weight: 600;
+      padding: 5px 4px;
+      border: 1px solid #2471a3;
+      text-align: center;
+      line-height: 1.3;
+    }
+    table.rt td {
+      border: 1px solid #d5d8dc;
+      padding: 3px 4px;
       vertical-align: middle;
       word-break: break-word;
       overflow-wrap: break-word;
     }
 
-    .report-table thead th {
-      background: #1e3a5f;
-      color: #fff;
+    tr.data-row td { background: #fff; }
+    tr.data-row:nth-child(even) td { background: #f8fafc; }
+    tr.data-row:hover td { background: #eaf2fb; }
+
+    tr.grand-row td {
+      background: #d4e6f1;
       font-weight: 700;
-      text-align: center;
-      white-space: normal;
-      line-height: 1.3;
-    }
-
-    /* column widths — 16 cols totalling 100% */
-    .report-table th:nth-child(1),  .report-table td:nth-child(1)  { width: 4%;  text-align: center; }
-    .report-table th:nth-child(2),  .report-table td:nth-child(2)  { width: 8%;  }
-    .report-table th:nth-child(3),  .report-table td:nth-child(3)  { width: 6%;  text-align: center; }
-    .report-table th:nth-child(4),  .report-table td:nth-child(4)  { width: 6%;  }
-    .report-table th:nth-child(5),  .report-table td:nth-child(5)  { width: 10%; }
-    .report-table th:nth-child(6),  .report-table td:nth-child(6)  { width: 8%;  }
-    .report-table th:nth-child(7),  .report-table td:nth-child(7)  { width: 8%;  }
-    .report-table th:nth-child(8),  .report-table td:nth-child(8)  { width: 8%;  }
-    .report-table th:nth-child(9),  .report-table td:nth-child(9)  { width: 4%;  text-align: center; }
-    .report-table th:nth-child(10), .report-table td:nth-child(10) { width: 5%;  text-align: center; }
-    .report-table th:nth-child(11), .report-table td:nth-child(11) { width: 8%;  }
-    .report-table th:nth-child(12), .report-table td:nth-child(12) { width: 7%;  text-align: right; }
-    .report-table th:nth-child(13), .report-table td:nth-child(13) { width: 8%;  text-align: right; }
-    .report-table th:nth-child(14), .report-table td:nth-child(14) { width: 7%;  text-align: right; }
-    .report-table th:nth-child(15), .report-table td:nth-child(15) { width: 6%;  text-align: right; }
-    .report-table th:nth-child(16), .report-table td:nth-child(16) { width: 10%; }
-    .report-table th:nth-child(17), .report-table td:nth-child(17) { width: 10%; }
-
-    .data-row td { background: #fff; }
-    .data-row:nth-child(even) td { background: #f8fafc; }
-    .data-row:hover td { background: #eff6ff; }
-
-    .grand-total-row td {
-      background: #1e3a5f;
-      color: #fff;
-      font-weight: 700;
+      border-top: 2px solid #1a5276;
+      color: #1a3c6e;
       font-size: 10px;
-      border-top: 2px solid #0d4d89;
     }
 
-    .num {
-      text-align: right;
-      font-family: 'Courier New', monospace;
-    }
+    .num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
 
-    /* ── summary box ── */
-    .summary-section {
-      margin-top: 14px;
-      display: flex;
-      justify-content: flex-end;
-    }
+    /* 17 cols */
+    table.rt col.c1  { width: 4%;  }
+    table.rt col.c2  { width: 10%;  }
+    table.rt col.c3  { width: 8%;  }
+    table.rt col.c4  { width: 8%;  }
+    table.rt col.c5  { width: 10%; }
+    table.rt col.c6  { width: 10%;  }
+    table.rt col.c7  { width: 10%;  }
+    table.rt col.c8  { width: 10%;  }
+    table.rt col.c9  { width: 10%;  }
+    table.rt col.c10 { width: 10%;  }
+    table.rt col.c11 { width: 10%;  }
+    table.rt col.c12 { width: 10%;  }
+    table.rt col.c13 { width: 10%;  }
+    table.rt col.c14 { width: 15%;  }
+    table.rt col.c15 { width: 15%;  }
+    table.rt col.c16 { width: 10%; }
 
-    .summary-table {
-      border-collapse: collapse;
-      min-width: 320px;
-    }
-
-    .summary-table td {
-      padding: 4px 10px;
-      font-size: 11px;
-      border: 1px solid #cbd5e1;
-    }
-
-    .summary-table .s-label {
-      font-weight: 700;
-      color: #374151;
-      text-align: right;
-      background: #f1f5f9;
-      white-space: nowrap;
-    }
-
-    .summary-table .s-value {
-      text-align: right;
-      font-family: 'Courier New', monospace;
-      font-weight: 700;
-      color: #0f172a;
-      background: #fff;
-      min-width: 110px;
-    }
-
-    /* ── footer ── */
     .footer {
-      margin-top: 10px;
+      margin-top: 12px;
+      padding-top: 6px;
+      border-top: 1px solid #d5d8dc;
+      font-size: 10px;
+      color: #777;
       text-align: center;
-      font-size: 9px;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 4px;
-      color: #64748b;
     }
-
     .no-print { margin-bottom: 10px; text-align: right; }
-
-    .button {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 18px;
-      border-radius: 999px;
-      border: none;
-      background: #0d4d89;
-      color: white;
-      font-weight: 700;
-      cursor: pointer;
-      font-size: 12px;
+    .btn {
+      padding: 7px 20px; background: #1a5276; color: #fff;
+      border: none; border-radius: 4px; font-size: 12px;
+      font-weight: 700; cursor: pointer;
     }
-
-    .button:hover { background: #1d4ed8; }
+    .btn:hover { background: #154360; }
 
     @media print {
       body { background: #fff; padding: 0; }
-      .page {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-height: 0 !important;
-        margin: 0 !important;
-        padding: 5mm !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-      }
+      .page { box-shadow: none; margin: 0; border-radius: 0; }
       .no-print { display: none; }
       thead { display: table-header-group; }
       tr { page-break-inside: avoid; break-inside: avoid; }
-      .grand-total-row { page-break-inside: avoid; break-inside: avoid; }
+      tr.grand-row { page-break-inside: avoid; break-inside: avoid; }
     }
   </style>
 </head>
 <body>
-  <div class="no-print">
-    <button class="button" onclick="window.print()">🖨 Print / Save PDF</button>
-  </div>
 
-  <div class="page">
+<div class="no-print">
+  <button class="btn" onclick="window.print()">Print / Save PDF</button>
+</div>
 
-    <div class="header-brand">
-      <div class="report-title">${reportTitle}</div>
-      <div>
-        <div class="brand-name">AL MADINA</div>
-        <div class="brand-subtitle">LOGISTICS</div>
-      </div>
+<div class="page">
+  <div class="header">
+    <div class="logo-block">
+      <div class="logo-arabic">المدينة اللوجستية</div>
+      <div class="logo-name">al madina</div>
+      <div class="logo-sub">L O G I S T I C S</div>
     </div>
-
-    <div class="header-meta">
-      <div class="row"><span class="lbl">Title :</span><span class="val">${reportTitle}</span></div>
-      <div class="row"><span class="lbl">Report :</span><span class="val">${text(parameter)}</span></div>
-      <div class="row"><span class="lbl">Date :</span><span class="val">${reportDate}</span></div>
-      <div class="row"><span class="lbl">User :</span><span class="val">${generatedBy}</span></div>
-    </div>
-
-    <table class="report-table">
-      <thead>
-        <tr>
-          <th>Doc<br/>Type</th>
-          <th>Doc No</th>
-          <th>Doc Date</th>
-          <th>Ac Code</th>
-          <th>Ac Name</th>
-          <th>Invoice /<br/>Ref No</th>
-          <th>Ref Date</th>
-          <th>Tax Reg. No.</th>
-          <th>Country</th>
-          <th>Territory</th>
-          <th>Tax<br/>Code</th>
-          <th>Tax<br/>Description</th>
-          <th class="num">Invoice<br/>Amount</th>
-          <th class="num">Taxable Invoice<br/>Amount</th>
-          <th class="num">Total Invoice<br/>Amount</th>
-          <th class="num">Tax<br/>Amount</th>
-          <th>Origin<br/>Destination</th>
-        </tr>
-      </thead>
-      <tbody>${tableBodyHtml || '<tr><td colspan="16" style="text-align:center;padding:36px 0;color:#64748b;">No records found for the selected criteria.</td></tr>'}</tbody>
-    </table>
-
-    <div class="summary-section">
-      <table class="summary-table">
-        <tr>
-          <td class="s-label">Total Invoice Amount :</td>
-          <td class="s-value">${formatBalance(totalInvAmount)}</td>
-        </tr>
-        <tr>
-          <td class="s-label">Total Invoice Amount Taxable :</td>
-          <td class="s-value">${formatBalance(totalTaxableInvAmt)}</td>
-        </tr>
-        <tr>
-          <td class="s-label">Total Tax Amount :</td>
-          <td class="s-value">${formatBalance(totalTaxAmount)}</td>
-        </tr>
+    <div class="meta-block">
+      <table>
+        <tr><td class="lbl">Title :</td><td>${reportTitle}</td></tr>
+        <tr><td class="lbl">Date :</td><td>${reportDate}</td></tr>
+        <tr><td class="lbl">User :</td><td>${generatedBy}</td></tr>
+        <tr><td class="lbl">Report :</td><td>${text(parameter)}</td></tr>
+        <tr><td class="lbl">Currency :</td><td>OMR</td></tr>
       </table>
     </div>
-
-    <div class="footer">Generated by ${generatedBy} &bull; ${reportDate} &bull; Currency: OMR</div>
+    <div class="page-info">Page 1 of 1</div>
   </div>
+
+  <table class="rt">
+    <colgroup>
+      <col class="c1"/><col class="c2"/><col class="c3"/><col class="c4"/>
+      <col class="c5"/><col class="c6"/><col class="c7"/><col class="c8"/>
+      <col class="c9"/><col class="c10"/><col class="c11"/><col class="c12"/>
+      <col class="c13"/><col class="c14"/><col class="c15"/><col class="c16"/>
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Doc<br/>Type</th>
+        <th>Doc No</th>
+        <th>Doc Date</th>
+        <th>Ac Code</th>
+        <th>Ac Name</th>
+        <th>Invoice /<br/>Ref No</th>
+        <th>Ref Date</th>
+        <th>Tax Reg. No.</th>
+        <th>Country</th>
+        <th>Territory</th>
+        <th>Tax<br/>Code</th>
+        <th>Tax<br/>Description</th>
+        <th class="num">Invoice<br/>Amount</th>
+        <th class="num">Taxable Invoice<br/>Amount</th>
+        <th class="num">Total Invoice<br/>Amount</th>
+        <th class="num">Tax<br/>Amount</th>
+       
+      </tr>
+    </thead>
+    <tbody>
+      ${tableBodyHtml || '<tr><td colspan="17" style="text-align:center;padding:36px 0;color:#888;">No records found for the selected criteria.</td></tr>'}
+    </tbody>
+  </table>
+
+  <div class="footer">Generated by ${generatedBy} &bull; ${reportDate}</div>
+</div>
+
 </body>
 </html>`;
 

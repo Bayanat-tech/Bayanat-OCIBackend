@@ -6,6 +6,9 @@ import { deleteHrMaster, getHrMaster } from "../controllers/hr.controller";
 import hrGmRoutes from "./HR/gmHr.routes";
 import employeeHrRoutes from "./HR/employeHr.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
+import { insUpdAccrualAcctSetup } from "../controllers/purchase_sales/insUpdAccrualAcctSetup";
+import { saveLeaveSlap } from "../controllers/HR/leaveSlap.controller";
+import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRecovery";
 
 // Initialize the Express router
 const router = express.Router();
@@ -50,6 +53,17 @@ router.delete(
   deleteHrMaster
 );
 
+// Accrual Account Setup — must be registered before the "/:master" catch-all
+// below, otherwise Express matches that generic route first and this never
+// gets hit.
+router.post(
+  "/insUpdAccrualAcctSetup",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  insUpdAccrualAcctSetup
+);
+
 // Define a POST API endpoint to create HR master data
 router.post(
   "/:master",
@@ -58,6 +72,22 @@ router.post(
   checkUserAuthorization,
   deleteHrMaster
 );
+
+router.post(
+  "/leaveslap/save",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  saveLeaveSlap
+);
+
+router.post(
+  "/advancesalaryrecovery/insUpd",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  insUpdHrSalaryAdvDed
+)
 
 // Export the router as the default module
 export default router;

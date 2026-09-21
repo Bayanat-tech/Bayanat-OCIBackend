@@ -341,7 +341,7 @@ function buildExcelBuffer(
   return zip.toBuffer();
 }
 
-// ─── Shared header rows (rows 1–6) ────────────────────────────────────────────
+// ─── Shared header rows (rows 1–6) — used by SUMMARY only ─────────────────────
 function buildHeaderRows(
   title: string,
   loginid: string,
@@ -391,106 +391,135 @@ function buildHeaderRows(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 1 ── OUTSTANDING DETAIL Excel builder
-//      AC grouped → inv rows → AC subtotal
+// 1 ── OUTSTANDING DETAIL Excel builder  (NEW — per-customer statement blocks,
+//      matching the new HTML/PDF layout: Doc Type / Doc No / Doc Date /
+//      Doc Ref No / Narration / Debit / Credit / running Balance)
 // ═══════════════════════════════════════════════════════════════════════════════
-function buildDetailRows(
+function buildOutstandingDetailRows(
   rows: any[],
   loginid: string,
   currCode: string,
   asOnDate: string
 ): (XlCell | null)[][] {
-  const NCOLS = 8;
-  const tableRows = buildHeaderRows(
-    `Outstanding Statement Detail as on ${asOnDate}`,
-    loginid, currCode, asOnDate, NCOLS
-  );
+  const NCOLS = 8; // Doc Type | Doc No | Doc Date | Doc Ref No | Narration | Debit | Credit | Balance
+  const tableRows: (XlCell | null)[][] = [];
+  const todayStr = formatDateStr(new Date());
 
-  // Group by ac_code
+  // ── Group by ac_code (one statement block per customer) ──────────────────
   type DetailRow = (typeof rows)[0];
-  type AcGroup = { ac_code: string; ac_name: string; cr_period: string; cr_amt: string; rows: DetailRow[] };
+  type AcGroup = {
+    ac_code: string; ac_name: string;
+    address1: string; address2: string; address3: string;
+    phone: string; email: string; fax: string; contact_person: string;
+    cr_period: string; cr_amt: string;
+    rows: DetailRow[];
+  };
   const acMap = new Map<string, AcGroup>();
 
   rows.forEach((r) => {
     const acKey = text(r.ac_code);
     if (!acMap.has(acKey)) {
       acMap.set(acKey, {
-        ac_code:   acKey,
-        ac_name:   text(r.ac_name),
-        cr_period: text(r.cr_period),
-        cr_amt:    text(r.cr_amt),
-        rows:      [],
+        ac_code:        acKey,
+        ac_name:        text(r.ac_name),
+        address1:       text(r.address1),
+        address2:       text(r.address2),
+        address3:       text(r.address3),
+        phone:          text(r.phone),
+        email:          text(r.party_email),
+        fax:            text(r.fax),
+        contact_person: text(r.contact_person),
+        cr_period:      text(r.cr_period),
+        cr_amt:         text(r.cr_amt),
+        rows:           [],
       });
     }
     acMap.get(acKey)!.rows.push(r);
   });
 
-  let grandDebit = 0, grandCredit = 0, grandBalance = 0;
+  const acEntries = Array.from(acMap.values());
 
-  acMap.forEach((ac) => {
-    // AC header row
+  acEntries.forEach((ac) => {
+    // ── Mini header (repeated per customer, like a new "page") ─────────────
+    tableRows.push([xc("AL MADINA LOGISTICS SERVICES COMPANY", "company"), ...Array(NCOLS - 1).fill(skip)]);
+    tableRows.push([xc(`Outstanding Statement as on ${asOnDate}`, "title"), ...Array(NCOLS - 1).fill(skip)]);
     tableRows.push([
-      xc(`${ac.ac_code}   ${ac.ac_name}   |   Cr Period: ${ac.cr_period}   Cr Limit: ${ac.cr_amt}`, "acHeader"),
+      xc(`Date : ${todayStr}   |   Currency : ${currCode}   |   User : ${loginid}`, "section"),
       ...Array(NCOLS - 1).fill(skip),
     ]);
+    tableRows.push(Array(NCOLS).fill(skip)); // spacer
 
-    let acDebit = 0, acCredit = 0;
+    // ── Customer block ───────────────────────────────────────────────────
+    tableRows.push([xc(`${ac.ac_code}   ${ac.ac_name}`, "acHeader"), ...Array(NCOLS - 1).fill(skip)]);
 
+    const addressLine = [ac.address1, ac.address2, ac.address3].filter((a) => a).join(", ");
+    if (addressLine) {
+      tableRows.push([xc(addressLine, "normal"), ...Array(NCOLS - 1).fill(skip)]);
+    }
+
+    tableRows.push([
+      xc(`Ph : ${ac.phone}   Email : ${ac.email}   Fax : ${ac.fax}`, "normal"),
+      ...Array(3).fill(skip),
+      xc(`Credit Period : ${ac.cr_period}`, "normal"),
+      ...Array(2).fill(skip),
+      xc(`Credit Amount : ${money(ac.cr_amt)}`, "normal"),
+    ]);
+
+    tableRows.push([xc(`Attn : ${ac.contact_person}`, "normal"), ...Array(NCOLS - 1).fill(skip)]);
+    tableRows.push(Array(NCOLS).fill(skip)); // spacer
+
+    // ── Table header ─────────────────────────────────────────────────────
+    tableRows.push([
+      xc("Doc Type",     "tableHead"),
+      xc("Doc No.",      "tableHead"),
+      xc("Doc Date",     "tableHead"),
+      xc("Doc Ref No.",  "tableHead"),
+      xc("Narration",    "tableHead"),
+      xc("Debit",        "tableHead"),
+      xc("Credit",       "tableHead"),
+      xc("Balance",      "tableHead"),
+    ]);
+
+    // ── Transaction rows — running balance per customer ────────────────────
+    let runningBalance = 0;
     ac.rows.forEach((r) => {
-      const amount  = num(r.amount);
-      const debit   = amount > 0 ? amount : 0;
-      const credit  = amount < 0 ? Math.abs(amount) : 0;
-      const balance = debit - credit;
-
-      acDebit  += debit;
-      acCredit += credit;
+      const amount = num(r.amount);
+      const debit  = amount > 0 ? amount : 0;
+      const credit = amount < 0 ? Math.abs(amount) : 0;
+      runningBalance += debit - credit;
 
       tableRows.push([
-        xc(text(r.div_code),  "normal"),
-        xc(text(r.ac_code),   "normal"),
-        xc(text(r.ac_name),   "normal"),
-        xc(text(r.cr_period), "normal"),
-        xc(num(r.cr_amt),     "numData"),
-        xc(formatBalance(debit),             "numData"),
-        xc(formatBalance(credit),            "numData"),
-        xc(formatBalance(balance),           balance < 0 ? "negNum" : "numData"),
+        xc(text(r.doc_type), "normal"),
+        xc(text(r.inv_no),   "normal"),
+        xc(formatDateStr(r.inv_date), "normal"),
+        xc(text(r.doc_no),   "normal"),
+        xc(text(r.remarks),  "normal"),
+        xc(formatBalance(debit),  "numData"),
+        xc(formatBalance(credit), "numData"),
+        xc(formatBalance(runningBalance), runningBalance < 0 ? "negNum" : "numData"),
       ]);
     });
 
-    const acBalance = acDebit - acCredit;
-    grandDebit   += acDebit;
-    grandCredit  += acCredit;
-    grandBalance += acBalance;
+    if (ac.rows.length === 0) {
+      tableRows.push([
+        xc("No outstanding records found.", "normal"),
+        ...Array(NCOLS - 1).fill(skip),
+      ]);
+    }
 
-    // AC subtotal row
-    tableRows.push([
-      xc(`${ac.ac_code} — ${ac.ac_name} Total`, "acTotal"),
-      ...Array(4).fill(xc("", "acTotal")),
-      xc(formatBalance(acDebit),   "acTotalNum"),
-      xc(formatBalance(acCredit),  "acTotalNum"),
-      xc(formatBalance(acBalance), acBalance < 0 ? "negTotalNum" : "acTotalNum"),
-    ]);
-
-    // Spacer
+    // ── Spacer between customer blocks ─────────────────────────────────────
+    tableRows.push(Array(NCOLS).fill(skip));
     tableRows.push(Array(NCOLS).fill(skip));
   });
 
-  // Grand total
-  if (rows.length > 0) {
-    tableRows.push([
-      xc("Total", "grandTotal"),
-      ...Array(4).fill(xc("", "grandTotal")),
-      xc(formatBalance(grandDebit),   "grandTotalNum"),
-      xc(formatBalance(grandCredit),  "grandTotalNum"),
-      xc(formatBalance(grandBalance), grandBalance < 0 ? "negTotalNum" : "grandTotalNum"),
-    ]);
-  }
+  // ── End of report ──────────────────────────────────────────────────────
+  tableRows.push([xc("End of Report", "section"), ...Array(NCOLS - 1).fill(skip)]);
 
   return tableRows;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 2 ── OUTSTANDING SUMMARY Excel builder
+// 2 ── OUTSTANDING SUMMARY Excel builder  (UNCHANGED)
 //      Flat rows (one per ac_code) → grand total
 // ═══════════════════════════════════════════════════════════════════════════════
 function buildSummaryRows(
@@ -547,9 +576,10 @@ function buildSummaryRows(
 // CONTROLLERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const COL_WIDTHS = [8, 14, 26, 10, 14, 14, 14, 16];
+const DETAIL_COL_WIDTHS  = [10, 18, 12, 16, 32, 14, 14, 16]; // Doc Type|No|Date|Ref|Narration|Debit|Credit|Balance
+const SUMMARY_COL_WIDTHS = [8, 14, 26, 10, 14, 14, 14, 16];  // Div|Ac Code|A/C Name|Cr Period|Cr Amt|Debit|Credit|Balance
 
-// ── 1. Outstanding Detail ─────────────────────────────────────────────────────
+// ── 1. Outstanding Detail (NEW per-customer statement format) ────────────────
 export const exportOutstandingDetailExcel = async (req: Request, res: Response): Promise<void> => {
   let connection;
   try {
@@ -557,13 +587,13 @@ export const exportOutstandingDetailExcel = async (req: Request, res: Response):
     const { rows, connection: conn } = await fetchRows(req, "Account_Report_Outstanding_Detail");
     connection = conn;
 
-    const tableRows = buildDetailRows(
+    const tableRows = buildOutstandingDetailRows(
       rows,
       text(loginid) || "ADMIN",
       text(code5) || "OMR",
-      text(code6)
+      formatDateStr(code6) || text(code6)
     );
-    const buffer = buildExcelBuffer(tableRows, COL_WIDTHS, "Outstanding Detail");
+    const buffer = buildExcelBuffer(tableRows, DETAIL_COL_WIDTHS, "Outstanding Detail");
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="OutstandingDetail.xlsx"`);
@@ -576,7 +606,7 @@ export const exportOutstandingDetailExcel = async (req: Request, res: Response):
   }
 };
 
-// ── 2. Outstanding Summary ────────────────────────────────────────────────────
+// ── 2. Outstanding Summary (UNCHANGED) ────────────────────────────────────────
 export const exportOutstandingSummaryExcel = async (req: Request, res: Response): Promise<void> => {
   let connection;
   try {
@@ -590,7 +620,7 @@ export const exportOutstandingSummaryExcel = async (req: Request, res: Response)
       text(code5) || "OMR",
       text(code6)
     );
-    const buffer = buildExcelBuffer(tableRows, COL_WIDTHS, "Outstanding Summary");
+    const buffer = buildExcelBuffer(tableRows, SUMMARY_COL_WIDTHS, "Outstanding Summary");
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="OutstandingSummary.xlsx"`);

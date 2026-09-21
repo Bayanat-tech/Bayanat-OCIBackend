@@ -1,0 +1,1474 @@
+// invoice.types.ts or in your render_html.ts
+export interface InvoiceRow {
+  prin_code: string | null;
+  client_name: string | null;
+  company_name: string | null;
+  cust_code: string | null;
+  from_date: string | null;
+  to_date: string | null;
+  inv_to: string | null;
+  job_no: string | null;
+  prin_ref1: string | null;
+  prin_ref2: string | null;
+  inv_desc2: string | null;
+  invoice_no: string | null;
+  invoice_date: string | null;
+  curr_code: string | null;
+  srno: number;
+  inv_desc: string | null;
+  other_services: string | null;
+  quantity: number | null;
+  bill_rate: number | null;
+  bill: number | null;
+  company_code: string | null;
+  inv_desc1: string | null;
+  prin_addr1: string | null;
+  prin_addr2: string | null;
+  prin_addr3: string | null;
+  prin_addr4: string | null;
+  prin_city: string | null;
+  prin_telno1: string | null;
+  prin_email1: string | null;
+  prin_faxno1: string | null;
+  act_group_name: string | null;
+  activity_group_code: string | null;
+  c_srno: number;
+  invno_prefixed: string | null;
+  remarks: string | null;
+  inv_print_count: number;
+  inv_printed: string | null;
+  inv_grp_print_count: number;
+  inv_grp_printed: string | null;
+  fc_bill: string | null;
+  ex_rate: number;
+  address1: string | null;
+  address2: string | null;
+  address3: string | null;
+  email: string | null;
+  fax_no: string | null;
+  tel_no: string | null;
+  bank_name: string | null;
+  ac_code: string | null;
+  reference_no: string | null;
+  bank_address: string | null;
+  swift_code: string | null;
+  company_short_name: string | null;
+  signatory_1: string | null;
+  signatory_2: string | null;
+  city: string | null;
+  country: string | null;
+  inv_amount: number | null;
+  discount: string | null;
+  div_name: string | null;
+  div_short_name: string | null;
+  div_address1: string | null;
+  div_address2: string | null;
+  div_address3: string | null;
+  phone: string | null;
+  fax: string | null;
+  bank_name_inv: string | null;
+  ac_code_inv: string | null;
+  reference_no_inv: string | null;
+  bank_address_inv: string | null;
+  swift_code_inv: string | null;
+  invoice_to: string | null;
+  sort_order: number;
+  salesman: string | null;
+  user_id: string | null;
+  user_dt: Date | null;
+  salesman_code: string | null;
+  prin_trn_no: string | null;
+  comp_trn_no: string | null;
+  tot_vat_amt: number | null;
+  tx_compnt_perc_1: number | null;
+  tx_compnt_amt_1: number | null;
+  tx_compnt_lcuramt_1: number | null;
+  tx_compnt_1_expamt: string | null;
+  due_date: string | null;
+  onl_remrks: string | null;
+  div_code: string | null;
+  logo_path?: string | null;
+  company_logo?: string | null;
+  cust_vat_no?: string | null;
+  customer_rep?: string | null;
+  billing_rep?: string | null;
+  is_cost?: boolean | string | null;
+  row_source?: string | null;
+  sac_code?: string | null;
+  tax_num?: string | null;
+  lut_arn?: string | null;
+  stamp_path?: string | null;
+  crn?: string | null;
+}
+
+export interface InvoiceMeta {
+  invoiceNo?: string;
+  invoiceDate?: string;
+  invoicePeriod?: string;
+  clientName?: string;
+  clientAddress?: string;
+  clientVatNo?: string;
+  qrCodeDataUrl?: string;
+  reportType?: string;
+  /**
+   * Base64 data URI for the company stamp, produced by
+   * stampImage.ts's getStampDataUrl() from a static file on disk.
+   * Preferred over InvoiceRow.stamp_path — that field is kept for
+   * backward compatibility only, in case some rows do supply a
+   * usable image URL directly.
+   */
+  stampDataUrl?: string;
+}
+
+function fmtMoney(n: number | null | undefined, decimals = 2): string {
+  const v = Number(n ?? 0);
+  return v.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function getBillAmount(r: InvoiceRow): number {
+  const fc = r.fc_bill;
+  if (fc !== null && fc !== undefined && String(fc).trim() !== "") {
+    const n = Number(fc);
+    if (!Number.isNaN(n)) return n;
+  }
+  return Number(r.bill ?? 0);
+}
+
+function fmtDate(d: string | Date | null | undefined): string {
+  if (!d) return "";
+  const date = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(date.getTime())) return "";
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function esc(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  return String(v)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+const ONES = [
+  "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+  "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+  "Seventeen", "Eighteen", "Nineteen",
+];
+const TENS = [
+  "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety",
+];
+
+function threeDigitsToWords(n: number): string {
+  let s = "";
+  if (n >= 100) {
+    s += ONES[Math.floor(n / 100)] + " Hundred ";
+    n %= 100;
+  }
+  if (n >= 20) {
+    s += TENS[Math.floor(n / 10)] + " ";
+    n %= 10;
+  }
+  if (n > 0) {
+    s += ONES[n] + " ";
+  }
+  return s.trim();
+}
+
+function integerToWords(num: number): string {
+  if (num === 0) return "Zero";
+  const groups = [
+    { value: 1_000_000_000, label: "Billion" },
+    { value: 1_000_000, label: "Million" },
+    { value: 1_000, label: "Thousand" },
+    { value: 1, label: "" },
+  ];
+  let n = Math.floor(num);
+  let words = "";
+  for (const g of groups) {
+    const count = Math.floor(n / g.value);
+    if (count > 0) {
+      words += `${threeDigitsToWords(count)} ${g.label} `.trim() + " ";
+      n %= g.value;
+    }
+  }
+  return words.replace(/\s+/g, " ").trim();
+}
+
+const CURRENCY_NAMES: Record<string, { major: string; minor: string }> = {
+  OMR: { major: "OMANI RIAL", minor: "BAISA" },
+  SAR: { major: "SAUDI RIYAL", minor: "HALALA" },
+  AED: { major: "UAE DIRHAM", minor: "FILS" },
+  USD: { major: "US DOLLAR", minor: "CENT" },
+  QAR: { major: "QATARI RIYAL", minor: "DIRHAM" },
+  KWD: { major: "KUWAITI DINAR", minor: "FILS" },
+  BHD: { major: "BAHRAINI DINAR", minor: "FILS" },
+};
+
+function amountInWords(amount: number, currCode: string | null | undefined, minorDigits = 2): string {
+  const code = (currCode || "").toUpperCase();
+  const names = CURRENCY_NAMES[code] || { major: code || "CURRENCY", minor: "CENTS" };
+  const whole = Math.floor(amount);
+  const fractionScale = Math.pow(10, minorDigits);
+  const fraction = Math.round((amount - whole) * fractionScale);
+  const wholeWords = integerToWords(whole);
+  const fracWords = fraction > 0 ? ` and ${names.minor} ${integerToWords(fraction)}` : "";
+  return `${names.major} - ${wholeWords}${fracWords} only`.replace(/\s+/g, " ");
+}
+
+/* ------------------------------------------------------------------ */
+/*  AMKSA builder                                                     */
+/* ------------------------------------------------------------------ */
+export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}): string {
+  if (!rows || rows.length === 0) {
+    return `<html><body><p style="font-family:Arial;padding:40px;text-align:center;color:#999;">No invoice data found.</p></body></html>`;
+  }
+
+  const first = rows[0];
+  const remark1 = first.inv_desc1 || "";
+  const remark2 = first.inv_desc2 || "";
+  const currCode =
+    first.curr_code ||
+    (first.company_code === "AMKSA" || first.country === "KSA" ? "SAR" : "") ||
+    "";
+
+  const companyName = first.company_name;
+
+  const billToName = first.client_name || "";
+  const billToAddressLines = meta.clientAddress
+    ? [meta.clientAddress]
+    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city]
+        .filter((v) => v && String(v).trim().length > 0);
+
+  function isCostRow(r: InvoiceRow): boolean {
+    if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") {
+      return true;
+    }
+    if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) {
+      return true;
+    }
+    const source = (r.row_source || "").toLowerCase();
+    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) {
+      return true;
+    }
+    const text = [r.act_group_name, r.activity_group_code, r.inv_desc, r.other_services, r.remarks]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    if (/\bcost\b|_cost|cost_/.test(text)) {
+      return true;
+    }
+    return false;
+  }
+
+  const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
+
+  let itemRowsHtml = "";
+
+  if (isActivityWise) {
+    /* ---------- flat / activity-wise ---------- */
+    const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+    itemRowsHtml = flatRows
+      .map((r, idx) => {
+        const desc = r.inv_desc || r.other_services || r.act_group_name || "";
+        const price = Number(r.bill_rate ?? 0);
+        const qty = r.quantity ?? "";
+        const beforeTax = Number(r.bill ?? 0);
+        const vatPerc = r.tx_compnt_perc_1 ?? "";
+        const vatAmt = Number(r.tx_compnt_amt_1 ?? 0);
+        const withVat = beforeTax + vatAmt;
+        return `
+          <tr>
+            <td class="c-no">${idx + 1}</td>
+            <td class="c-desc">${esc(desc)}</td>
+            <td class="c-price">${fmtMoney(price, 2)}</td>
+            <td class="c-qty">${qty}</td>
+            <td class="c-amt">${fmtMoney(beforeTax, 2)}</td>
+            <td class="c-vat">${vatPerc}</td>
+            <td class="c-amt">${fmtMoney(vatAmt, 2)}</td>
+            <td class="c-amt">${fmtMoney(withVat, 2)}</td>
+          </tr>`;
+      })
+      .join("");
+  } else {
+    /* ---------- grouped (default) – now also 8 columns ---------- */
+    const grouped = new Map<number, InvoiceRow[]>();
+    for (const r of rows) {
+      if (isCostRow(r)) continue;
+      if (r.bill == null || Number(r.bill) === 0) continue;
+      const key = r.srno ?? 0;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(r);
+    }
+
+    let rowCounter = 0;
+    itemRowsHtml = Array.from(grouped.values())
+      .map((group) => {
+        const head = group[0];
+        rowCounter += 1;
+
+        const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+        const groupVat = group.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
+        const groupWithVat = groupAmt + groupVat;
+
+        // Prefer a rate/qty from the first row when the group is a single activity
+        const price = group.length === 1 ? Number(head.bill_rate ?? 0) : 0;
+        const qty   = group.length === 1 ? (head.quantity ?? "") : "";
+        const vatPerc = head.tx_compnt_perc_1 ?? "";
+
+        const groupDesc =
+          (head.act_group_name || "").trim() ||
+          head.inv_desc ||
+          head.other_services ||
+          "Service";
+
+        // Main group header row (always 8 cells)
+        const headRow = `
+          <tr>
+            <td class="c-no"></td>
+            <td colspan="7" class="c-desc"><strong>${esc(groupDesc)}</strong></td>
+          </tr>`;
+
+        // Sub-activity rows (also 8 cells)
+        const subRows = group
+          .map((r) => {
+            const activityDesc =
+              (r as any).activity?.trim() ||
+              r.inv_desc ||
+              r.other_services ||
+              groupDesc;
+
+            // Skip the sub-row when it would just duplicate the header
+            if (
+              group.length === 1 &&
+              activityDesc.trim().toUpperCase() === groupDesc.trim().toUpperCase()
+            ) {
+              return "";
+            }
+
+            const subPrice = Number(r.bill_rate ?? 0);
+            const subQty   = r.quantity ?? "";
+            const subAmt   = Number(r.bill ?? 0);
+            const subVat   = Number(r.tx_compnt_amt_1 ?? 0);
+            const subWith  = subAmt + subVat;
+            const subVatP  = r.tx_compnt_perc_1 ?? "";
+
+            return `
+              <tr class="sub-row">
+                <td class="c-no">${r.c_srno ?? ""}</td>
+                <td class="c-desc sub-desc">${esc(activityDesc)}</td>
+                <td class="c-price">${subPrice ? fmtMoney(subPrice, 2) : ""}</td>
+                <td class="c-qty">${subQty}</td>
+                <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
+                <td class="c-vat">${subVatP}</td>
+                <td class="c-amt">${fmtMoney(subVat, 2)}</td>
+                <td class="c-amt">${fmtMoney(subWith, 2)}</td>
+              </tr>`;
+          })
+          .join("");
+
+        return headRow + subRows;
+      })
+      .join("");
+  }
+
+  const FIXED_FILLERS = 28;
+  const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
+    .map(
+      () =>
+        `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-price"></td><td class="c-qty"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`
+    )
+    .join("");
+  const fillerRowsHtml =
+    fixedFillerHtml +
+    `
+        <tr class="spacer-row">
+          <td class="c-no"></td>
+          <td class="c-desc"></td>
+          <td class="c-price"></td>
+          <td class="c-qty"></td>
+          <td class="c-amt"></td>
+          <td class="c-vat"></td>
+          <td class="c-amt"></td>
+          <td class="c-amt"></td>
+        </tr>`;
+
+  const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+  const totalBeforeVat = billableRows.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+  const totalVat = billableRows.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
+  const totalAfterVat = totalBeforeVat + totalVat;
+
+  const printDate = fmtDate(first.invoice_date || first.user_dt);
+  const dueDate = fmtDate(first.due_date);
+  const invoiceNo = meta.invoiceNo || first.invoice_no || "";
+  const invoicePeriod =
+    meta.invoicePeriod ||
+    (first.from_date && first.to_date ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}` : "");
+  const vatNo = first.prin_trn_no || "";
+  const companyVatNo = first.comp_trn_no || "";
+
+  const bankName = first.bank_name
+  const acCode = first.ac_code_inv || first.ac_code || "";
+  const refNo = first.reference_no_inv || first.reference_no || "";
+  const bankAddr = first.bank_address_inv || first.bank_address || "";
+  const companyForBank = companyName; // or first.div_name / first.div_short_name
+  const swiftCode = first.swift_code || first.swift_code_inv || "";
+
+  const bankSection =
+    bankName || acCode || refNo || bankAddr
+      ? `
+    <div class="bank-block">
+      <div class="bank-title">Bank Details</div>
+      ${bankName ? `<div class="bank-line">Bank Name: ${esc(bankName)}</div>` : ""}
+      <div class="bank-line">A/C Name: ${esc(companyForBank)} COMPANY</div>
+      ${acCode ? `<div class="bank-line">A/C No.-${esc(acCode)}</div>` : ""}
+      ${refNo ? `<div class="bank-line">Ref No.- ${esc(refNo)}</div>` : ""}
+      ${swiftCode ? `<div class="bank-line">SWIFT Code: ${esc(swiftCode)}</div>` : ""}
+      ${bankAddr ? `<div class="bank-line">Bank Address: ${esc(bankAddr)}</div>` : ""}
+      <div class="bank-line">--</div>
+      ${remark1 ? `<div class="bank-line export-note">${esc(remark1)}</div>` : ""}
+      ${remark2 ? `<div class="bank-line export-note">${esc(remark2)}</div>` : ""}
+    </div>`
+      : "";
+  const metaRows: Array<[string, string]> = [
+    ["Invoice No.", esc(invoiceNo)],
+    ["Invoice Date", printDate],
+    ...(invoicePeriod ? ([["Invoice Period", invoicePeriod]] as Array<[string, string]>) : []),
+    ...(dueDate ? ([["Due Date", dueDate]] as Array<[string, string]>) : []),
+    ["Currency", esc(currCode)],
+    ["Sales Rep", esc(first.salesman || "")],
+    ["Billing Rep", esc(first.user_id || "")],
+    ["VAT (TIN NO)", esc(companyVatNo || "")],
+  ];
+
+  // Prefer the static stamp asset passed via meta (base64 data URI,
+  // produced by stampImage.ts). Fall back to first.stamp_path only
+  // for backward compatibility if some rows happen to carry a
+  // usable image URL there.
+  const stampUrl = (meta.stampDataUrl || first.stamp_path || "").trim();
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tax Invoice ${esc(invoiceNo)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    background: #e8e8e8;
+    color: #000;
+    padding: 12px;
+  }
+  .invoice-wrapper {
+    max-width: 794px;
+    width: 100%;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 12px 18px 8px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    height: 1122px;
+    min-height: 1122px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  @media print {
+    @page { size: A4; margin: 8mm; }
+    html, body { height: 100%; background: #fff; padding: 0; margin: 0; }
+    .invoice-wrapper {
+      box-shadow: none;
+      max-width: 100%;
+      width: 100%;
+      height: 100vh;
+      min-height: 100vh;
+      border: none;
+      padding: 6px 10px;
+      page-break-after: always;
+    }
+    .no-print { display: none !important; }
+  }
+  @media screen and (max-width: 768px) {
+    body { padding: 4px; background: #fff; font-size: 12px; }
+    .invoice-wrapper {
+      padding: 8px 10px;
+      height: auto;
+      min-height: auto;
+      box-shadow: none;
+      max-width: 100%;
+    }
+    .top-info { flex-direction: column; }
+    .to-block { flex: none; padding: 4px 0; max-width: 100%; }
+    .meta-block { flex: none; padding: 4px 0; }
+    .meta-label { width: 110px; }
+    .table-area { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .items-table { min-width: 680px; }
+    .bank-sig-table, .bank-sig-table tr, .bank-sig-table td { display: block; width: 100% !important; }
+    .stamp-cell { text-align: center !important; margin-top: 14px; }
+    .invoice-title { font-size: 15px; letter-spacing: 2px; }
+    .company-name-fallback { font-size: 15px; }
+    .footer { font-size: 9px; }
+    .qr-top img { width: 50px; height: 50px; }
+  }
+  .no-print { text-align: right; margin-bottom: 8px; }
+  .no-print button {
+    padding: 6px 20px; background: #1a2c5e; color: #fff; border: none;
+    border-radius: 4px; font-size: 12px; cursor: pointer;
+  }
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2px;
+    flex-shrink: 0;
+  }
+  .logo-img {
+    max-height: 80px;
+    max-width: 220px;
+    object-fit: contain;
+    display: block;
+  }
+  .company-name-fallback { font-size: 18px; font-weight: 700; color: #1a2c5e; }
+  .company-tagline {
+    font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #222;
+    margin: 2px 0 6px 0;
+  }
+  .qr-top {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qr-top img {
+    width: 58px;
+    height: 58px;
+    display: block;
+  }
+  .qr-top .qr-label {
+    font-size: 7px;
+    color: #444;
+    margin-top: 2px;
+  }
+  .invoice-title {
+    text-align: center; font-size: 18px; font-weight: 700;
+    letter-spacing: 4px; margin-bottom: 6px; flex-shrink: 0;
+  }
+  .top-info {
+    display: flex;
+    border: none;
+    flex-shrink: 0;
+  }
+  .to-block { flex: 1.2; padding: 6px 10px 6px 0; border: none; }
+  .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
+  .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
+  .to-line { font-size: 10px; line-height: 1.5; border: none; max-width: 280px; }
+  .meta-block { flex: 1; padding: 6px 0 6px 10px; border: none; }
+  .meta-row { display: flex; font-size: 10px; line-height: 1.5; }
+  .meta-label { width: 120px; color: #000; }
+  .meta-colon { width: 10px; }
+  .meta-value { font-weight: 600; flex: 1; }
+  .table-area {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 4px;
+  }
+  .items-table {
+    width: 100%;
+    height: 100%;
+    border-collapse: collapse;
+    border: 1px solid #000;
+    font-size: 10px;
+    table-layout: fixed;
+  }
+  .items-table th,
+  .items-table td {
+    border: 1px solid #000;
+    padding: 2px 4px;
+    vertical-align: top;
+    overflow: hidden;
+  }
+  .items-table thead th {
+    background: #eef2f6;
+    font-weight: 700;
+    font-size: 10.5px;
+    text-align: center;
+    vertical-align: middle;
+  }
+.c-no  { width: 28px;  text-align: center; padding-left: 2px; padding-right: 2px; }
+.c-desc { width: auto; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
+.c-price {
+  width: 80px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-left: 2px;
+  padding-right: 4px;
+}
+.c-qty {
+  width: 40px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.c-amt {
+  width: 90px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-left: 2px;
+  padding-right: 4px;
+}
+.c-vat { width: 26px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
+  .c-vat { width: 26px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
+  .sub-row td { border: 1px solid #000; }
+  .sub-desc { padding-left: 14px; color: #222; }
+  .sub-amt { color: #222; }
+  .total-prefix { font-size: 8.5px; font-weight: 700; margin-right: 2px; }
+  .filler-row td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    height: 14px;
+    padding: 0 5px;
+  }
+  .spacer-row td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    height: 100%;
+    min-height: 40px;
+    padding: 0;
+    vertical-align: top;
+  }
+  .legend-row td {
+    font-size: 8.5px;
+    color: #222;
+    border: 1px solid #000;
+    vertical-align: middle;
+    padding: 2px 4px;
+  }
+  .words-row .total-label {
+    text-align: left;
+    font-weight: 700;
+    font-size: 9.5px;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+  .words-row td {
+    border: 1px solid #000;
+    border-top: 2px solid #000;
+    font-weight: 700;
+    vertical-align: middle;
+    padding: 4px;
+  }
+  .words-row .c-amt { font-weight: 700; white-space: nowrap; }
+  /* ── Bank / stamp block ──────────────────────────────────────────
+     Was a flex row before — flex is unreliable in many HTML→PDF
+     engines (wkhtmltopdf and friends barely support it), which is
+     what let the stamp spill past the box in the printed invoice.
+     A fixed-layout table guarantees the stamp cell can never exceed
+     its column width, in any renderer. */
+  .bank-sig-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-top: 10px;
+    flex-shrink: 0;
+  }
+  .bank-sig-table td { vertical-align: top; padding: 0; border: none; }
+  .bank-cell { width: 62%; padding-right: 14px; }
+  .stamp-cell { width: 160px; text-align: right; }
+  .bank-block { font-size: 10px; line-height: 1.45; }
+  .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
+  .bank-line { margin-bottom: 1px; }
+  .stamp-img {
+    display: block;
+    margin-left: auto;
+    margin-right: 0;
+    max-height: 90px;
+    max-width: 120px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+  .signature-text {
+    font-weight: 700;
+    font-size: 11px;
+    text-align: right;
+    white-space: nowrap;
+    padding-top: 4px;
+  }
+  .footer {
+    margin-top: 8px;
+    padding-top: 6px;
+    border: none;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .footer .addr-line { font-weight: 400; margin-top: 2px; }
+  .footer .disclaimer {
+    font-weight: 400;
+    font-size: 8.5px;
+    color: #222;
+    border: none;
+    margin-top: 4px;
+    text-align: left;
+    padding-top: 2px;
+  }
+  .logo-company-block {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .company-details-next-to-logo {
+    font-size: 10px;
+    line-height: 1.4;
+    padding-top: 4px;
+  }
+  .company-name-next {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1a2c5e;
+    margin-bottom: 2px;
+  }
+  .company-addr-line {
+    font-size: 9.5px;
+    color: #222;
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()">🖨️ Print / Save PDF</button>
+</div>
+
+<div class="invoice-wrapper">
+
+    <div class="masthead">
+      <div class="logo-company-block">
+        ${
+          (() => {
+            const logoUrl = (first.company_logo || first.logo_path || "").trim();
+            if (logoUrl) {
+              return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
+            }
+            return `<div class="company-name-fallback">${esc(companyName)}</div>`;
+          })()
+        }
+        <div class="company-details-next-to-logo">
+          <div class="company-name-next">${esc(companyName)} COMPANY</div>
+          ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
+          ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
+          ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
+          ${first.city ? `<div class="company-addr-line">City: ${esc(first.city)}</div>` : ""}
+          ${first.email ? `<div class="company-addr-line">e-mail: ${esc(first.email)}</div>` : ""}
+          ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
+          <div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>
+        </div>
+      </div>
+      ${meta.qrCodeDataUrl ? `
+      <div class="qr-top">
+        <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
+        <div class="qr-label">Scan to view online</div>
+      </div>` : ""}
+    </div>
+  <div class="invoice-title">TAX INVOICE</div>
+
+  <div class="top-info">
+    <div class="to-block">
+      <div class="to-label">To :</div>
+      <div class="to-name">${esc(billToName)} Company</div>
+      ${billToAddressLines.map((l) => `<div class="to-line">${esc(l)}</div>`).join("")}
+      ${first.prin_telno1 ? `<div class="to-line">Ph. ${esc(first.prin_telno1)}</div>` : ""}
+      ${first.prin_faxno1 ? `<div class="to-line">Fax: ${esc(first.prin_faxno1)}</div>` : ""}
+      ${first.prin_email1 ? `<div class="to-line">e-Mail : ${esc(first.prin_email1)}</div>` : ""}
+      <div class="to-line">VAT (TIN No) : ${esc(vatNo)}</div>
+    </div>
+    <div class="meta-block">
+      ${metaRows
+        .map(
+          ([label, value]) => `
+      <div class="meta-row">
+        <div class="meta-label">${label}</div>
+        <div class="meta-colon">${label ? ":" : ""}</div>
+        <div class="meta-value">${value}</div>
+      </div>`
+        )
+        .join("")}
+    </div>
+  </div>
+
+  <div class="table-area">
+    <table class="items-table">
+      <colgroup>
+        <col style="width:28px" />
+        <col />
+        <col style="width:80px" />
+        <col style="width:40px" />
+        <col style="width:90px" />
+        <col style="width:26px" />
+        <col style="width:90px" />
+        <col style="width:90px" />
+      </colgroup>
+<thead>
+  <tr>
+    <th class="c-no">SR No</th>
+    <th class="c-desc">Description</th>
+    <th class="c-price">Price</th>
+    <th class="c-qty">Qty</th>
+    <th class="c-amt">Total<br/>Before Tax</th>
+    <th class="c-vat">VAT<br/>%</th>
+    <th class="c-amt">VAT<br/>Amount</th>
+    <th class="c-amt">Total<br/>With VAT</th>
+  </tr>
+</thead>
+      <tbody>
+        ${itemRowsHtml}
+        ${fillerRowsHtml}
+        <tr class="words-row">
+          <td class="total-label" colspan="4">${esc(amountInWords(totalAfterVat, currCode, 2))}</td>
+          <td class="c-amt">${fmtMoney(totalBeforeVat, 2)}</td>
+          <td class="c-vat"></td>
+          <td class="c-amt">${fmtMoney(totalVat, 2)}</td>
+          <td class="c-amt">${fmtMoney(totalAfterVat, 2)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <table class="bank-sig-table">
+    <tr>
+      <td class="bank-cell">${bankSection}</td>
+      <td class="stamp-cell">
+        ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
+        <div class="signature-text">For ${esc(companyName)} COMPANY</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="footer">
+    <div>${esc(first.div_address1 || "")}</div>
+    <div class="addr-line">
+      ${first.phone ? `Tel: ${esc(first.phone)}` : ""}${first.fax ? ` ; Fax: ${esc(first.fax)}` : ""}
+    </div>
+    <div class="disclaimer">
+      This is a digitally signed Tax Invoice generated electronically by ${esc(companyName)}.<br/>
+      No physical signature is required. The authenticity of this document can be verified using the QR code (if present) or by contacting the issuer.
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>`;
+}
+
+function amountInWordsBTIND(amount: number, currCode: string | null | undefined): string {
+  const code = (currCode || "USD").toUpperCase();
+  const majorNames: Record<string, string> = {
+    USD: "US DOLLARS",
+    INR: "INDIAN RUPEES",
+    OMR: "OMANI RIALS",
+    SAR: "SAUDI RIYALS",
+    AED: "UAE DIRHAMS",
+    EUR: "EUROS",
+    GBP: "POUNDS STERLING",
+  };
+  const minorNames: Record<string, string> = {
+    USD: "CENTS",
+    INR: "PAISE",
+    OMR: "BAISA",
+    SAR: "HALALAS",
+    AED: "FILS",
+    EUR: "CENTS",
+    GBP: "PENCE",
+  };
+  const major = majorNames[code] || `${code}`;
+  const minor = minorNames[code] || "CENTS";
+  const whole = Math.floor(amount);
+  const fraction = Math.round((amount - whole) * 100);
+  const wholeWords = integerToWords(whole);
+  const fracWords = fraction > 0 ? ` and ${minor} ${integerToWords(fraction)}` : "";
+  return `${major} - ${wholeWords}${fracWords} only`.replace(/\s+/g, " ");
+}
+
+/* ------------------------------------------------------------------ */
+/*  BTIND builder                                                     */
+/* ------------------------------------------------------------------ */
+export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}): string {
+  if (!rows || rows.length === 0) {
+    return `<html><body><p style="font-family:Arial;padding:40px;text-align:center;color:#999;">No invoice data found.</p></body></html>`;
+  }
+
+  const first = rows[0];
+  const remark1 = first.inv_desc1 || "";
+  const remark2 = first.inv_desc2 || "";
+  const currCode = (first.curr_code || "USD").toUpperCase();
+  const currSymbol = currCode === "USD" ? "$" : currCode === "INR" ? "₹" : currCode;
+
+  const companyName =
+    (first.div_short_name || first.div_name || first.company_short_name || "BAYANAT TECHNOLOGY PRIVATE LTD").trim();
+  const companyTagline = "BAYANAT TECHNOLOGY PVT.LTD";
+  const companyLegal = "BAYANAT TECHNOLOGY PVT LTD (INDIA)";
+
+  const billToName =
+    first.client_name ||  "";
+  const billToAddressLines = meta.clientAddress
+    ? [meta.clientAddress]
+    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city]
+        .filter((v) => v && String(v).trim().length > 0);
+
+  const clienttax_num = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "N.A.";
+
+const companytax_num = "27AAMCB5564D1ZK";
+  function isCostRow(r: InvoiceRow): boolean {
+    if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") return true;
+    if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) return true;
+    const source = (r.row_source || "").toLowerCase();
+    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) {
+      return true;
+    }
+    const text = [r.act_group_name, r.activity_group_code, r.inv_desc, r.other_services, r.remarks]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return /\bcost\b|_cost|cost_/.test(text);
+  }
+
+  const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
+
+  let itemRowsHtml = "";
+
+  if (isActivityWise) {
+    /* ---------- flat / activity-wise ---------- */
+    const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+    itemRowsHtml = flatRows
+      .map((r, idx) => {
+        const desc = r.inv_desc || r.other_services || r.act_group_name || "";
+        const sac =
+          r.sac_code 
+          ||
+          // (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
+          //   ? r.activity_group_code
+          //   : "") ||
+          // r.prin_ref1 ||
+          // r.inv_desc2 ||
+          "";
+        // const amt = Number(r.bill ?? 0);
+            const amt = getBillAmount(r);              // was: Number(r.bill ?? 0)
+
+        return `
+          <tr>
+            <td class="c-no">${idx + 1}</td>
+            <td class="c-desc">${esc(desc)}</td>
+            <td class="c-sac">${esc(sac)}</td>
+            <td class="c-amt">${fmtMoney(amt, 2)}</td>
+          </tr>`;
+      })
+      .join("");
+  } else {
+    /* ---------- grouped (default) ---------- */
+    const grouped = new Map<number, InvoiceRow[]>();
+    for (const r of rows) {
+      if (isCostRow(r)) continue;
+      if (r.bill == null || Number(r.bill) === 0) continue;
+      const key = r.srno ?? 0;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(r);
+    }
+
+    let rowCounter = 0;
+    itemRowsHtml = Array.from(grouped.values())
+      .map((group) => {
+        const head = group[0];
+        rowCounter += 1;
+        // const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
+            const groupAmt = group.reduce((s, r) => s + getBillAmount(r), 0);   // was: Number(r.bill ?? 0)
+
+        const headDesc = head.act_group_name || head.inv_desc || head.other_services || "";
+
+        const headRow = `
+          <tr>
+            <td class="c-no">${rowCounter}</td>
+            <td class="c-desc"><strong>${esc(headDesc)}</strong></td>
+            <td class="c-sac"></td>
+            <td class="c-amt">${fmtMoney(groupAmt, 2)}</td>
+          </tr>`;
+
+        const subRows = group
+          .map((r) => {
+            const subDesc = r.inv_desc || r.other_services || headDesc;
+            const sac =
+              r.sac_code
+               ||
+              // (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
+              //   ? r.activity_group_code
+              //   : "") ||
+              // r.prin_ref1 ||
+              // r.inv_desc2 ||
+              "";
+            // const subAmt = Number(r.bill ?? 0);
+            const subAmt = getBillAmount(r);        
+            if (group.length === 1 && !sac && subDesc === headDesc) {
+              return "";
+            }
+            return `
+          <tr class="sub-row">
+            <td class="c-no">${r.c_srno ?? ""}</td>
+            <td class="c-desc sub-desc">${esc(subDesc)}</td>
+            <td class="c-sac">${esc(sac)}</td>
+            <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
+          </tr>`;
+          })
+          .join("");
+
+        return headRow + subRows;
+      })
+      .join("");
+  }
+
+  const FIXED_FILLERS = 18;
+  const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
+    .map(
+      () =>
+        `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-sac"></td><td class="c-amt"></td></tr>`
+    )
+    .join("");
+  const fillerRowsHtml =
+    fixedFillerHtml +
+    `
+        <tr class="spacer-row">
+          <td class="c-no"></td>
+          <td class="c-desc"></td>
+          <td class="c-sac"></td>
+          <td class="c-amt"></td>
+        </tr>`;
+
+  const totalAmt = rows.reduce((s, r) => {
+    if (isCostRow(r)) return s;
+      return s + getBillAmount(r);                  // was: Number(r.bill ?? 0)
+
+    // return s + Number(r.bill ?? 0);
+  }, 0);
+
+  const printDate = fmtDate(first.invoice_date || first.user_dt);
+  const dueDate = fmtDate(first.due_date);
+  const invoiceNo = meta.invoiceNo || first.invoice_no || first.invno_prefixed || "";
+  const invoicePeriod =
+    meta.invoicePeriod ||
+    (first.from_date && first.to_date ? `${fmtDate(first.from_date)} - ${fmtDate(first.to_date)}` : "");
+
+  const bankName = first.bank_name_inv || first.bank_name || "";
+  const acCode = first.ac_code_inv || first.ac_code || "";
+  const bankAddr = first.bank_address_inv || first.bank_address || "";
+  const swift = first.swift_code_inv || first.swift_code || "";
+
+  const bankSection = `
+    <div class="bank-block">
+      <div class="bank-title">Bank Details</div>
+      ${bankName ? `<div class="bank-line">${esc(bankName)}</div>` : ""}
+      ${acCode ? `<div class="bank-line">${esc(acCode)}</div>` : ""}
+      <div class="bank-line">For ${esc(companyName)}</div>
+      ${bankAddr ? `<div class="bank-line">${esc(bankAddr)}</div>` : ""}
+      ${swift ? `<div class="bank-line">${esc(swift)}</div>` : ""}
+      --
+      <div class="bank-line">All Cheques to be favour of ${esc(companyLegal)}</div>
+      <div class="bank-line export-note">${esc(remark1)}</div>
+      <div class="bank-line export-note">${esc(remark2)}</div>
+    </div>`;
+
+  const logoUrl = (first.company_logo || first.logo_path || "").trim();
+  // Prefer the static stamp asset passed via meta (base64 data URI,
+  // produced by stampImage.ts). Fall back to first.stamp_path only
+  // for backward compatibility if some rows happen to carry a
+  // usable image URL there.
+  const stampUrl = (meta.stampDataUrl || first.stamp_path || "").trim();
+
+  const metaRows: Array<[string, string]> = [
+    ["Invoice No.", esc(invoiceNo)],
+    ["Invoice Date", printDate],
+    ["Invoice Period", invoicePeriod],
+    ["Due Date", dueDate],
+    ["Currency", esc(currCode)],
+    ["Sales Rep", esc(first.salesman || "")],
+    ["Bill Rep", esc(first.user_id)],
+    ["GSTIN", esc(companytax_num)],
+  ];
+
+  const footerAddress =
+    first.div_address1 ||
+    "BAYANAT TECHNOLOGY PVT LTD (INDIA) 706 LOTUS TRADE CENTRE KL WALAWALKAR MARG SAHAKAR NGR ,ANDHERI WEST MUMBAI";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tax Invoice ${esc(invoiceNo)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    background: #e8e8e8;
+    color: #000;
+    padding: 12px;
+  }
+  .invoice-wrapper {
+    max-width: 794px;
+    width: 100%;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 14px 18px 10px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    height: 1122px;
+    min-height: 1122px;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  @media print {
+    @page { size: A4; margin: 8mm; }
+    html, body { height: 100%; background: #fff; padding: 0; margin: 0; }
+    .invoice-wrapper {
+      box-shadow: none;
+      max-width: 100%;
+      width: 100%;
+      height: 100vh;
+      min-height: 100vh;
+      border: none;
+      padding: 6px 10px;
+      page-break-after: always;
+    }
+    .no-print { display: none !important; }
+  }
+  @media screen and (max-width: 768px) {
+    body { padding: 4px; background: #fff; font-size: 12px; }
+    .invoice-wrapper {
+      padding: 8px 10px;
+      height: auto;
+      min-height: auto;
+      box-shadow: none;
+      max-width: 100%;
+    }
+    .top-info { flex-direction: column; }
+    .to-block { flex: none; padding: 4px 0; max-width: 100%; }
+    .meta-block { flex: none; padding: 4px 0; }
+    .meta-label { width: 100px; }
+    .table-area { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .items-table { min-width: 580px; }
+    .bank-sig-table, .bank-sig-table tr, .bank-sig-table td { display: block; width: 100% !important; }
+    .stamp-cell { text-align: center !important; margin-top: 14px; }
+    .signature-text { text-align: center; padding-top: 0; white-space: normal; }
+    .invoice-title { font-size: 15px; letter-spacing: 2px; }
+    .company-name-fallback { font-size: 15px; }
+    .footer { font-size: 9px; }
+    .qr-top img { width: 50px; height: 50px; }
+  }
+  .no-print { text-align: right; margin-bottom: 8px; }
+  .no-print button {
+    padding: 6px 20px; background: #1a2c5e; color: #fff; border: none;
+    border-radius: 4px; font-size: 12px; cursor: pointer;
+  }
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
+  .logo-img {
+    max-height: 70px;
+    max-width: 280px;
+    object-fit: contain;
+    display: block;
+  }
+  .company-name-fallback {
+    font-size: 16px; font-weight: 700; color: #1a2c5e; letter-spacing: 1px;
+  }
+  .company-tagline {
+    font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555;
+    margin: 2px 0 4px 0;
+    text-align: left;
+  }
+  .qr-top {
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qr-top img {
+    width: 58px;
+    height: 58px;
+    display: block;
+  }
+  .qr-top .qr-label {
+    font-size: 7px;
+    color: #444;
+    margin-top: 2px;
+  }
+  .invoice-title {
+    text-align: center; font-size: 16px; font-weight: 700;
+    letter-spacing: 2px; margin: 6px 0 4px 0; flex-shrink: 0;
+  }
+  .title-rule {
+    border: none; border-top: 2px solid #000; margin: 0 0 6px 0; flex-shrink: 0;
+  }
+  .top-info {
+    display: flex;
+    border: none;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+  }
+  .to-block { flex: 1.25; padding: 4px 10px 4px 0; }
+  .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
+  .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
+  .to-line {
+    font-size: 10px; line-height: 1.45;
+    border-bottom: 1px solid #bbb; max-width: 200px; min-height: 14px;
+  }
+  .meta-block { flex: 1; padding: 4px 0 4px 12px; }
+  .meta-row { display: flex; font-size: 10px; line-height: 1.5; }
+  .meta-label { width: 110px; color: #000; }
+  .meta-colon { width: 10px; }
+  .meta-value { font-weight: 600; flex: 1; }
+  .page-line {
+    text-align: right; font-size: 9px; margin-top: 2px; color: #222;
+  }
+  .table-area {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 2px;
+  }
+  .items-table {
+    width: 100%;
+    height: 100%;
+    border-collapse: collapse;
+    border: 1px solid #000;
+    font-size: 10px;
+    table-layout: fixed;
+  }
+  .items-table th,
+  .items-table td {
+    border: 1px solid #000;
+    padding: 2px 5px;
+    vertical-align: top;
+    overflow: hidden;
+  }
+  .items-table thead th {
+    background: #f0f0f0;
+    font-weight: 700;
+    font-size: 9.5px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .c-no  { width: 22px; text-align: center; }
+  .c-desc { text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
+  .c-sac { width: 120px; text-align: center; white-space: nowrap; }
+  .c-amt {
+    width: 110px;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .sub-desc { padding-left: 18px; color: #222; }
+  .sub-amt { color: #222; }
+  .filler-row td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    height: 14px;
+    padding: 0 5px;
+  }
+  .spacer-row td {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
+    height: 100%;
+    min-height: 20px;
+    padding: 0;
+  }
+  .words-row td {
+    border: 1px solid #000;
+    border-top: 2px solid #000;
+    font-weight: 700;
+    vertical-align: middle;
+    padding: 5px;
+    font-size: 10px;
+  }
+  .words-row .total-label { text-align: left; }
+  .words-row .total-prefix { font-size: 10px; margin-right: 4px; }
+  /* ── Bank / stamp block ──────────────────────────────────────────
+     Was a flex row before — flex support is unreliable across
+     HTML→PDF engines (wkhtmltopdf etc.), which is what let the stamp
+     spill past the box in the printed invoice. A fixed-layout table
+     guarantees the stamp cell can never exceed its column width. */
+  .bank-sig-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-top: 10px;
+    flex-shrink: 0;
+  }
+  .bank-sig-table td { vertical-align: top; padding: 0; border: none; }
+  .bank-cell { width: 62%; padding-right: 14px; }
+  .stamp-cell { width: 160px; text-align: center; }
+  .bank-block { font-size: 9.5px; line-height: 1.45; }
+  .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
+  .bank-line { margin-bottom: 1px; }
+  .export-note { margin-top: 4px; }
+  .stamp-img {
+    display: block;
+    margin: 0 auto 6px auto;
+    max-height: 90px;
+    max-width: 120px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+  .signature-text {
+    font-weight: 700;
+    font-size: 10px;
+    text-align: center;
+    margin-top: 4px;
+  }
+  .footer {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #000;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .footer .addr-line { font-weight: 400; margin-top: 2px; font-size: 8.5px; }
+  .footer .disclaimer {
+    font-weight: 400;
+    font-size: 8px;
+    color: #222;
+    margin-top: 4px;
+    text-align: left;
+    padding-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()">🖨️ Print / Save PDF</button>
+</div>
+
+<div class="invoice-wrapper">
+
+  <div class="masthead">
+    <div>
+      ${
+        logoUrl
+          ? `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`
+          : `<div class="company-name-fallback">${esc(companyName)}</div>`
+      }
+      <div class="company-tagline">${esc(companyTagline)}</div>
+    </div>
+    ${meta.qrCodeDataUrl ? `
+    <div class="qr-top">
+      <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
+      <div class="qr-label">Scan to view online</div>
+    </div>` : ""}
+  </div>
+  <div class="invoice-title">TAX INVOICE</div>
+  <hr class="title-rule" />
+
+  <div class="top-info">
+    <div class="to-block">
+      <div class="to-label">To :</div>
+      <div class="to-name">${esc(billToName)}</div>
+      ${billToAddressLines.map((l) => `<div class="to-line">${esc(l)}</div>`).join("")}
+      ${first.prin_telno1 ? `<div class="to-line">Ph. ${esc(first.prin_telno1)}</div>` : ""}
+      ${first.prin_faxno1 ? `<div class="to-line">Fax. ${esc(first.prin_faxno1)}</div>` : ""}
+      ${first.prin_email1 ? `<div class="to-line">e-Mail : ${esc(first.prin_email1)}</div>` : ""}
+      <div class="to-line">GSTIN: ${esc(clienttax_num)}</div>
+    </div>
+    <div class="meta-block">
+      ${metaRows
+        .map(
+          ([label, value]) => `
+      <div class="meta-row">
+        <div class="meta-label">${label}</div>
+        <div class="meta-colon">:</div>
+        <div class="meta-value">${value}</div>
+      </div>`
+        )
+        .join("")}
+    </div>
+  </div>
+
+  <div class="table-area">
+    <table class="items-table">
+      <colgroup>
+        <col style="width:22px" />
+        <col />
+        <col style="width:120px" />
+        <col style="width:110px" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="c-no">No.</th>
+          <th class="c-desc">Description</th>
+          <th class="c-sac">Service Accounting<br/>Code (SAC)</th>
+          <th class="c-amt">Amount (${esc(currSymbol)})</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemRowsHtml}
+        ${fillerRowsHtml}
+        <tr class="words-row">
+          <td class="total-label" colspan="2">${esc(amountInWordsBTIND(totalAmt, currCode))}</td>
+          <td style="text-align:right;font-weight:700;"><span class="total-prefix">Total :</span></td>
+          <td class="c-amt">${fmtMoney(totalAmt, 2)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <table class="bank-sig-table">
+    <tr>
+      <td class="bank-cell">${bankSection}</td>
+      <td class="stamp-cell">
+        ${stampUrl ? `<img class="stamp-img" src="${esc(stampUrl)}" alt="Stamp" />` : ""}
+        <div class="signature-text">${esc(companyLegal)}</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="footer">
+    <div>${esc(footerAddress)}</div>
+    <div class="disclaimer">
+      Details mentioned in this document is deemed accurate as per BAYANAT TECHNOLOGY PVT LTD billing records related to activities mentioned in this document.<br/>
+      Disputes (if any) to be copied to BAYANAT TECHNOLOGY PVT LTD in writing within 72 hours from Invoice date or else BAYANAT TECHNOLOGY PVT LTD will not be obligated to attend to it.<br/>
+      Electronic document, Signature not required
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>`;
+}

@@ -23,6 +23,7 @@ export const withTenantContext = () => [
 ];
 
 import freight from "./src/routes/Freight/freight.routes"
+import purchaseSalesRoutes from "./src/routes/purchase_sales/purchase_sales.routes";
 import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
 import authRoutes from "./src/routes/auth.routes";
@@ -43,9 +44,9 @@ import pamsRoutes from "./src/routes/pams.routes";
 import supportRoutes from "./src/routes/support.routes";
 
 import almsRoutes from "./src/routes/alms.routes";
-
+import mmsRoutes from "./src/routes/mms_routes";
+import gmHrRoutes from "./src/routes/HR/gmHr.routes";
 //----------------routes-------------
-
 app.use("/api/files", fileRoutes);
 
 app.use("/api/auth", authRoutes);
@@ -55,6 +56,8 @@ app.use("/api/reports", boldReportsRoutes);
 app.use("/api/security", secRoutes);
 
 app.use("/api/hr", hrRoutes);
+app.use("/api/gm/hr", gmHrRoutes);
+app.use("/api/ems", hrRoutes);
 
 app.use("/api/pf", pfRoutes);
 
@@ -77,6 +80,8 @@ app.use("/api/finance", financeRoutes);
 
 app.use("/api/freight", freight);
 
+app.use("/api/purchase-sales", purchaseSalesRoutes);
+
 app.use("/api/alms/", almsRoutes);
 
 app.use("/api/wms", wmsRoutes);
@@ -84,6 +89,7 @@ app.use("/api/wms", wmsRoutes);
 app.use("/api/user", editLangrouter);
 
 app.use("/api/support", supportRoutes);
+app.use("/api/mms", mmsRoutes); 
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {

@@ -47,6 +47,7 @@ export class SecmasterService {
   }
 
   static async createUser(userData: {
+    loginid: string;
     company_code: string;
     contact_no: string;
     email_id: string;
@@ -63,9 +64,8 @@ export class SecmasterService {
       ...userData,
       userpass: hashedPassword,
       SEC_PASSWD: hashedPassword,
-      loginid: userData.username,
-      user_id: userData.username,
-      user_code: userData.username,
+      user_id: userData.loginid,
+      user_code: userData.loginid,
       created_at: new Date(),
     });
 
@@ -86,6 +86,9 @@ export class SecmasterService {
       updateData.userpass = await bcrypt.hash(updateData.userpass, 12);
       updateData.SEC_PASSWD = updateData.userpass;
     }
+
+    updateData.user_id = loginid;
+    updateData.user_code = loginid;
  
     if ("id" in updateData) {
       delete updateData.id;

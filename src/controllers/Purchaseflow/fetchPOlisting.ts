@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { oracleDb } from "../../database/connection";
 
+const paramValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
+
 /**
  * Fetches the PO listing for a given purchase request
  */
@@ -14,7 +17,7 @@ export const fetchPOlisting = async (
   try {
     console.log("✅ fetchPOlisting API called");
 
-    const { request_number } = req.params;
+    const request_number = paramValue(req.params.request_number);
 
     if (!request_number) {
       res.status(400).json({ success: false, message: "❌ request_number is required" });

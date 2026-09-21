@@ -127,33 +127,53 @@ export class ProductService {
   }
 
   static async updateProduct(
-    prod_code: string,
-    company_code: string,
-    updateData: Partial<Product>
-  ): Promise<boolean> {
-    const repository = this.getProductRepository();
-    const result = await repository.update(
-      { prod_code, company_code },
-      { ...updateData, updated_at: new Date() }
-    );
-    return result.affected ? result.affected > 0 : false;
-  }
+      prod_code: string,
+      company_code: string,
+      prin_code: string,
+      group_code: string,
+      brand_code: string,
+      updateData: Partial<Product>
+    ): Promise<boolean> {
+      try {
+        const repository = this.getProductRepository();
+          const {
+          prod_code: _prodCode,
+          company_code: _companyCode,
+          prin_code: _prinCode,
+          group_code: _groupCode,
+          brand_code: _brandCode,
+          ...safeUpdateData
+        } = updateData;
+        const result = await repository.update(
+          { prod_code, company_code, prin_code, group_code, brand_code },
+          { ...safeUpdateData, updated_at: new Date() }
+        );
+        return (result.affected ?? 0) > 0;
+      } catch (err) {
+        console.error('ProductService.updateProduct failed:', err);
+        throw err;
+      }
+    }
 
-  static async deleteProducts(
-    prod_codes: string[],
-    prin_code: string,
-    company_code: string
-  ): Promise<boolean> {
-    const repository = this.getProductRepository();
-    console.log(`Deleting products: ${JSON.stringify(prod_codes)} for prin_code: ${prin_code}, company_code: ${company_code}`);
-    const result = await repository.delete({
-      prod_code: In(prod_codes),
-      prin_code,
-      company_code,
-    });
-    console.log(`Deleted ${result.affected || 0} products`);
-    return result.affected ? result.affected > 0 : false;
-  }
+    static async deleteProduct(
+      prod_code: string,
+      prin_code: string,
+      company_code: string,
+      group_code: string,
+      brand_code: string
+    ): Promise<boolean> {
+      const repository = this.getProductRepository();
+
+      const result = await repository.delete({
+        prod_code,
+        prin_code,
+        company_code,
+        group_code,
+        brand_code,
+      });
+
+      return (result.affected ?? 0) > 0;
+    }
 
   static async getProductsByCodes(
     prod_codes: string[],
@@ -175,10 +195,15 @@ export class ProductService {
 
   static async checkProductExists(
     prod_code: string,
-    company_code: string
+    company_code: string,
+    prin_code: string,
+    group_code: string,
+    brand_code: string
   ): Promise<boolean> {
     const repository = this.getProductRepository();
-    const count = await repository.count({ where: { prod_code, company_code } });
+    const count = await repository.count({
+      where: { prod_code, company_code, prin_code, group_code, brand_code },
+    });
     return count > 0;
   }
 

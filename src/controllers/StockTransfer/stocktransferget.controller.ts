@@ -1,14 +1,22 @@
 // controllers/StockTransfer/stocktransferget.controller.ts
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import { TsStnService } from "../../services/WMS/TsStn.service";
 import { TsStndetailService } from "../../services/WMS/TsStndetail.service";
+import { RequestWithTenant } from "../../middleware/tenant.middleware";
 
-export const createSTNDetail = async (req: Request, res: Response) => {
+export const createSTNDetail = async (req: RequestWithTenant, res: Response) => {
   try {
-    // Handle both uppercase and lowercase field names
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
+    // Handle both uppercase and lowercase field names (company_code no longer accepted from body)
     const {
-      COMPANY_CODE, company_code,
       PRIN_CODE, prin_code,
       STN_NO, stn_no,
       SERIAL_NO, serial_no,
@@ -65,29 +73,23 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       CARTON_NO_TO, carton_no_to,
       PALLET_ID_FROM, pallet_id_from,
       PALLET_ID_TO, pallet_id_to,
-      
     } = req.body;
 
-    // Normalize values (prefer uppercase)
-    const companyCode = COMPANY_CODE || company_code;
     const prinCode = PRIN_CODE || prin_code;
     const stnNo = STN_NO || stn_no;
     let serialNo = SERIAL_NO || serial_no;
 
-    // Validate required fields
-    if (!companyCode || !prinCode || !stnNo) {
+    if (!prinCode || !stnNo) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: company_code, prin_code, stn_no",
+        message: "Missing required fields: prin_code, stn_no",
       });
     }
 
-    // Validate quantity fields - qty_puom is REQUIRED and must be > 0
     const qtyPuom = QTY_PUOM !== undefined ? QTY_PUOM : qty_puom;
     const qtyLuom = QTY_LUOM !== undefined ? QTY_LUOM : qty_luom;
     const qty = QUANTITY !== undefined ? QUANTITY : quantity;
 
-    // qty_puom is mandatory for stock transfer processing
     if (qtyPuom === undefined || qtyPuom === null || qtyPuom <= 0) {
       return res.status(400).json({
         success: false,
@@ -95,22 +97,18 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       });
     }
 
-    // Auto-generate serial_no if not provided
     if (!serialNo) {
       try {
-        console.log("🔍 Calling getNextSerialNo...");
         serialNo = await TsStndetailService.getNextSerialNo({
           stn_no: Number(stnNo),
           company_code: companyCode,
         });
-        console.log("✅ getNextSerialNo returned:", serialNo);
       } catch (error) {
-        console.error("❌ Error in getNextSerialNo:", error);
+        console.error("Error in getNextSerialNo:", error);
         throw error;
       }
     }
 
-    // Check if STNDETAIL already exists
     const exists = await TsStndetailService.checkStndetailExists({
       company_code: companyCode,
       prin_code: prinCode,
@@ -125,7 +123,6 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       });
     }
 
-    // Prepare STNDETAIL data
     const stnDetailData: any = {
       company_code: companyCode,
       prin_code: prinCode,
@@ -143,7 +140,6 @@ export const createSTNDetail = async (req: Request, res: Response) => {
       multi_series: (MULTI_SERIES || multi_series) || "N",
     };
 
-    // Add optional fields if provided (normalize case)
     const prodCode = PROD_CODE || prod_code;
     const jobNo = JOB_NO || job_no;
     const containerNo = CONTAINER_NO || container_no;
@@ -176,7 +172,7 @@ export const createSTNDetail = async (req: Request, res: Response) => {
     const expDateTo = EXP_DATE_TO || exp_date_to;
     const expDateFrom = EXP_DATE_FROM || exp_date_from;
     const mfgDateTo = MFG_DATE_TO || mfg_date_to;
-    const mfgDateFrom = MFG_DATE_FROM || mfg_date_from
+    const mfgDateFrom = MFG_DATE_FROM || mfg_date_from;
     const lotNoTo = LOT_NO_TO || lot_no_to;
     const batchNoFrom = BATCH_NO_FROM || batch_no_from;
     const batchNoTo = BATCH_NO_TO || batch_no_to;
@@ -186,9 +182,9 @@ export const createSTNDetail = async (req: Request, res: Response) => {
     const palletIdFrom = PALLET_ID_FROM || pallet_id_from;
     const palletIdTo = PALLET_ID_TO || pallet_id_to;
 
-if (expDateFrom) stnDetailData.exp_date_from = new Date(expDateFrom); 
-if (mfgDateTo)   stnDetailData.mfg_date_to   = new Date(mfgDateTo);  
-if (mfgDateFrom) stnDetailData.mfg_date_from = new Date(mfgDateFrom);
+    if (expDateFrom) stnDetailData.exp_date_from = new Date(expDateFrom);
+    if (mfgDateTo) stnDetailData.mfg_date_to = new Date(mfgDateTo);
+    if (mfgDateFrom) stnDetailData.mfg_date_from = new Date(mfgDateFrom);
     if (prodCode) stnDetailData.prod_code = prodCode;
     if (jobNo) stnDetailData.job_no = jobNo;
     if (containerNo) stnDetailData.container_no = containerNo;
@@ -231,7 +227,6 @@ if (mfgDateFrom) stnDetailData.mfg_date_from = new Date(mfgDateFrom);
     if (palletIdFrom) stnDetailData.pallet_id_from = palletIdFrom;
     if (palletIdTo) stnDetailData.pallet_id_to = palletIdTo;
 
-    // Create STNDETAIL record
     const newSTNDetail = await TsStndetailService.createStndetail(stnDetailData);
 
     res.status(201).json({
@@ -253,17 +248,17 @@ if (mfgDateFrom) stnDetailData.mfg_date_from = new Date(mfgDateFrom);
   }
 };
 
-export const createSTN = async (req: Request, res: Response) => {
+export const createSTN = async (req: RequestWithTenant, res: Response) => {
   try {
-    const { prin_code, description, stn_date, user_id, company_code } = req.body;
-
-    // Validate required fields
-    if (!company_code) {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
       return res.status(400).json({
         success: false,
-        message: "Missing required field: company_code",
+        message: "company_code not found on authenticated user",
       });
     }
+
+    const { prin_code, description, stn_date, user_id } = req.body;
 
     if (!prin_code) {
       return res.status(400).json({
@@ -279,19 +274,17 @@ export const createSTN = async (req: Request, res: Response) => {
       });
     }
 
-    // Prepare STN data
     const stnData = {
-      company_code,
+      company_code: companyCode,
       prin_code,
       description: description || null,
-      stn_date: stn_date ? new Date(stn_date) : new Date(), 
+      stn_date: stn_date ? new Date(stn_date) : new Date(),
       user_id,
       allocated: "N",
       confirmed: "N",
       user_dt: new Date(),
     };
 
-    // Create STN record (stn_no will be generated by trigger)
     const newSTN = await TsStnService.createStn(stnData);
 
     res.status(201).json({
@@ -309,9 +302,18 @@ export const createSTN = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllStockTransfers = async (req: Request, res: Response) => {
+export const getAllStockTransfers = async (req: RequestWithTenant, res: Response) => {
   try {
-    const stockTransfers = await TsStnService.findAllWithPrincipalName();
+    const companyCode = req.user?.company_code;
+
+    if (!companyCode) {
+      return res.status(400).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
+    const stockTransfers = await TsStnService.findAllWithPrincipalName(companyCode);
 
     res.status(200).json({
       success: true,
@@ -327,37 +329,33 @@ export const getAllStockTransfers = async (req: Request, res: Response) => {
     });
   }
 };
-export const getTSSTNWithDetails = async (req: Request, res: Response) => {
-  const { stn_no, company_code, prin_code } = req.query;
 
-  console.log("Received query parameters:", { stn_no, company_code, prin_code });
+export const getTSSTNWithDetails = async (req: RequestWithTenant, res: Response) => {
+  const companyCode = req.user?.company_code;
+  const { stn_no, prin_code } = req.query;
 
-  if (!company_code) {
+  if (!companyCode) {
     return res.status(400).json({
       success: false,
-      message: "Missing required query parameter: company_code",
+      message: "company_code not found on authenticated user",
     });
   }
 
   try {
-    // Fetch TS_STN Header
     let header;
     if (stn_no) {
-      // When stn_no is provided, fetch specific STN record
       const singleHeader = await TsStnService.findById({
         stn_no: Number(stn_no),
-        company_code: company_code as string
+        company_code: companyCode,
       });
       header = singleHeader ? [singleHeader] : [];
     } else if (prin_code) {
-      // When only prin_code is provided, fetch all STNs for that prin_code
       header = await TsStnService.findByCompanyAndPrinCode({
-        company_code: company_code as string,
-        prin_code: prin_code as string
+        company_code: companyCode,
+        prin_code: prin_code as string,
       });
     } else {
-      // When only company_code is provided, fetch all STNs for that company
-      header = await TsStnService.findByCompanyCode(company_code as string);
+      header = await TsStnService.findByCompanyCode(companyCode);
     }
 
     if (!header.length) {
@@ -367,54 +365,32 @@ export const getTSSTNWithDetails = async (req: Request, res: Response) => {
       });
     }
 
-    // Fetch TS_STNDETAIL Items - now handles multiple headers
     let details: any[] = [];
     if (stn_no) {
-      // Single STN case
       if (prin_code) {
-        console.log("🔍 Fetching details with stn_no and prin_code:", {
-          stn_no: Number(stn_no),
-          company_code,
-          prin_codes: [prin_code]
-        });
         details = await TsStndetailService.findByStnAndMultiplePrinCodes({
           stn_no: Number(stn_no),
-          company_code: company_code as string,
-          prin_codes: [prin_code as string]
+          company_code: companyCode,
+          prin_codes: [prin_code as string],
         });
-        console.log("📦 Received details:", details.length, "records");
       } else {
-        console.log("🔍 Fetching details with stn_no only:", {
-          stn_no: Number(stn_no),
-          company_code
-        });
         details = await TsStndetailService.findByStnNo({
           stn_no: Number(stn_no),
-          company_code: company_code as string
+          company_code: companyCode,
         });
-        console.log("📦 Received details:", details.length, "records");
       }
     } else if (prin_code) {
-      // Multiple STNs with same prin_code - fetch details for all
-      const stnNos = header.map((h: any) => h.stn_no);
-      if (stnNos.length > 0) {
-        details = await TsStndetailService.findByCompanyAndPrinCode({
-          company_code: company_code as string,
-          prin_code: prin_code as string
-        });
-      }
+      details = await TsStndetailService.findByCompanyAndPrinCode({
+        company_code: companyCode,
+        prin_code: prin_code as string,
+      });
     } else {
-      // All STNs for company - fetch all details for that company
-      details = await TsStndetailService.findByCompanyCode(company_code as string);
+      details = await TsStndetailService.findByCompanyCode(companyCode);
     }
 
-    // Always return header + details
     res.status(200).json({
       success: true,
-      data: {
-        header,
-        details
-      },
+      data: { header, details },
     });
   } catch (error) {
     console.error("Error fetching TS_STN data:", error);
@@ -425,20 +401,27 @@ export const getTSSTNWithDetails = async (req: Request, res: Response) => {
     });
   }
 };
-export const editSTN = async (req: Request, res: Response) => {
+
+export const editSTN = async (req: RequestWithTenant, res: Response) => {
   try {
-    const { stn_no, company_code } = req.params;
+    const companyCode = req.user?.company_code;
+    const { stn_no } = req.params;
     const updateData = req.body;
 
-    // Validate required parameters
-    if (!stn_no || !company_code) {
+    if (!companyCode) {
       return res.status(400).json({
         success: false,
-        message: "Missing required path parameters: stn_no and company_code",
+        message: "company_code not found on authenticated user",
       });
     }
 
-    // Validate that stn_no is a number
+    if (!stn_no) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required path parameter: stn_no",
+      });
+    }
+
     const stnNoNumber = Number(stn_no);
     if (isNaN(stnNoNumber)) {
       return res.status(400).json({
@@ -447,20 +430,18 @@ export const editSTN = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if STN exists before updating
     const stnExists = await TsStnService.checkStnExists({
       stn_no: stnNoNumber,
-      company_code: company_code as string,
+      company_code: companyCode,
     });
 
     if (!stnExists) {
       return res.status(404).json({
         success: false,
-        message: `STN record with stn_no ${stn_no} and company_code ${company_code} not found`,
+        message: `STN record with stn_no ${stn_no} not found for your company`,
       });
     }
 
-    // Prepare update data (only allow specific fields to be updated)
     const allowedFields = [
       'prin_code',
       'description',
@@ -468,19 +449,17 @@ export const editSTN = async (req: Request, res: Response) => {
       'allocated',
       'confirmed',
       'cancelled',
-      'date_cancelled'
+      'date_cancelled',
     ];
 
     const sanitizedUpdateData: any = {};
 
-    // Only include allowed fields that are present in the request body
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
         sanitizedUpdateData[field] = updateData[field];
       }
     }
 
-    // Handle date fields conversion
     if (sanitizedUpdateData.stn_date) {
       sanitizedUpdateData.stn_date = new Date(sanitizedUpdateData.stn_date);
     }
@@ -489,15 +468,12 @@ export const editSTN = async (req: Request, res: Response) => {
       sanitizedUpdateData.date_cancelled = new Date(sanitizedUpdateData.date_cancelled);
     }
 
-    // Add update timestamp
     sanitizedUpdateData.user_dt = new Date();
 
-    // Update the user_id if provided in the update data
     if (updateData.user_id) {
       sanitizedUpdateData.user_id = updateData.user_id;
     }
 
-    // Check if no valid fields to update
     if (Object.keys(sanitizedUpdateData).length === 0) {
       return res.status(400).json({
         success: false,
@@ -505,20 +481,15 @@ export const editSTN = async (req: Request, res: Response) => {
       });
     }
 
-    // Perform the update
     const updated = await TsStnService.updateStn(
-      {
-        stn_no: stnNoNumber,
-        company_code: company_code as string,
-      },
+      { stn_no: stnNoNumber, company_code: companyCode },
       sanitizedUpdateData
     );
 
     if (updated) {
-      // Fetch the updated record to return
       const updatedSTN = await TsStnService.findById({
         stn_no: stnNoNumber,
-        company_code: company_code as string,
+        company_code: companyCode,
       });
 
       res.status(200).json({
@@ -541,5 +512,3 @@ export const editSTN = async (req: Request, res: Response) => {
     });
   }
 };
-
-// Optional: Add a separate controller for updating STN details if needed

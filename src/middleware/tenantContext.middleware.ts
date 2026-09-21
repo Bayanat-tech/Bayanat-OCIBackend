@@ -61,10 +61,6 @@ export async function tenantContextMiddleware(
     
     console.log(`[tenantContextMiddleware] CONTEXT SET: loginid=${req.user!.loginid}, tenant=${tenantId}, schema=${tenantId.split('_')[0]}`);
     
-    (global as any).__currentRequestContext = tenantContext;
-
-    tenantContextStorage.enterWith(tenantContext);
-    
     // ✨ CRITICAL: Switch TypeORM schema to tenant schema and WAIT before proceeding
     console.log(`[tenantContextMiddleware] STEP 3: Switching TypeORM schema to tenant (awaiting)...`);
     try {
@@ -88,14 +84,7 @@ export async function tenantContextMiddleware(
     }
     
     // ✨ Clear global context when response finishes to prevent memory leaks
-    res.on('finish', () => {
-      if ((global as any).__currentRequestContext?.tenantId === tenantId) {
-        (global as any).__currentRequestContext = undefined;
-      }
-    });
-    
-    // Now safe to call next() since schema switch awaited
-    next();
+    tenantContextStorage.run(tenantContext, () => next());
   } catch (error: any) {
     console.error(`[tenantContextMiddleware]  ERROR:`, error.message);
     res.status(500).json({
@@ -116,10 +105,6 @@ export function getCurrentTenantContext(): TenantContext | undefined {
   
   // ✨ FALLBACK: If AsyncLocalStorage fails, try to get from global request context
   // This handles the case where Express switches async contexts on next()
-  if ((global as any).__currentRequestContext) {
-    return (global as any).__currentRequestContext;
-  }
-  
   return undefined;
 }
 

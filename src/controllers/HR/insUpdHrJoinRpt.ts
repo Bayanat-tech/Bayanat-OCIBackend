@@ -18,6 +18,12 @@ export const insUpdHrJoinRpt = async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // ★ guardrail so EMPLOYEE_ID never reaches Oracle as NULL
+    if (!header.cand_no) {
+      res.status(400).json({ success: false, message: "cand_no (Employee/Candidate No) is required" });
+      return;
+    }
+
     const tenantId = getCurrentTenantId();
     if (!tenantId) {
       res.status(400).json({ success: false, message: "Tenant not found" });
@@ -61,13 +67,13 @@ export const insUpdHrJoinRpt = async (req: Request, res: Response): Promise<void
 
     // ================= DETAILS =================
     const detailRows = details.map((d: any) => ({
-      EMPLOYEE_ID: d.employee_id ?? null,
+      EMPLOYEE_ID: d.employee_id ?? header.cand_no,
       PAY_COMP_ID: d.pay_comp_id ?? null,
       PAY_COMP_AMT: Number(d.pay_comp_amt ?? 0),
       PAY_COMP_PERC: Number(d.pay_comp_perc ?? 0),
       PAY_COMP_AMT_OLD: Number(d.pay_comp_amt_old ?? 0),
       ENTERED_ON: d.entered_on ? new Date(d.entered_on) : new Date(),
-      ENTERED_BY: d.entered_by ?? null,
+     ENTERED_BY: d.entered_by ?? d.user_id ?? header.user_id ?? null,
       VERIFIED_ON: d.verified_on ? new Date(d.verified_on) : null,
       VERIFIED_BY: d.verified_by ?? null,
       APPROVED_ON: d.approved_on ? new Date(d.approved_on) : null,
@@ -100,7 +106,7 @@ export const insUpdHrJoinRpt = async (req: Request, res: Response): Promise<void
     // ================= CALL PROCEDURE =================
     await connection.execute(
       `BEGIN
-         WMSTST.PROC_INS_UPD_HR_JOIN(:p_header, :p_details);
+         PROC_INS_UPD_HR_JOIN(:p_header, :p_details);
        END;`,
       {
         p_header: { type: "HR_JOIN_RPT_TAB", val: [headerRow] },

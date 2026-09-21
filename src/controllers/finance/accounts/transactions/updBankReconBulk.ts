@@ -56,7 +56,8 @@ export const updBankReconBulk = async (
             DOC_NO: d.doc_no,
             CHEQUE_NO: d.cheque_no,
             RECON_IND: d.recon_ind,
-            RECON_DATE: d.recon_date ? new Date(d.recon_date) : null
+            RECON_DATE: d.recon_date ? new Date(d.recon_date) : null,
+            COMPANY_CODE: d.company_code,
           }))
         }
       }

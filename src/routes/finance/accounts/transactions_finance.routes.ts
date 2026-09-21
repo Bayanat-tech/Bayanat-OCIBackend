@@ -15,7 +15,7 @@ import {
   exportFinanceDocumentReportExcel,
   getFinanceDocumentReportHtml
 } from "../../../controllers/finance/accounts/transactions/financeDocumentReport.controller";
-import { exportBalanceSheetReportExcel, getBalanceSheetReportHtml } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
+import { exportBalanceSheetReportExcel, getBalanceSheetReportHtml, getBalanceSheetReportPdf } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -52,6 +52,7 @@ import { getLedgerWithDetailsReport } from "../../../controllers/finance/account
 import { getLedgerWithOppositeEntryReport } from "../../../controllers/finance/accounts/accounts-report/ledgerwithoppositeentryreport";
 import { getSummaryDumpReport } from "../../../controllers/finance/accounts/accounts-report/summarydumpreport";
 import { getBalanceSheetDrilldownAc, getBalanceSheetDrilldownAcExcel, getBalanceSheetDrilldownDetail, getBalanceSheetDrilldownDetailExcel } from "../../../controllers/finance/accounts/accounts-report/balanceSheetDrilldown.controller";
+
 import { getDetailDumpReport } from "../../../controllers/finance/accounts/accounts-report/detaildumpreport";
 import { getAccountPayeeWiseReport } from "../../../controllers/finance/accounts/accounts-report/accountpayeewisereport";
 import { getChequeDateWiseReport } from "../../../controllers/finance/accounts/accounts-report/chequedatewisereport";
@@ -69,7 +70,6 @@ import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/account
 import { getTransactionProductReport } from "../../wms/reports/TransactionProductReport";
 import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
 import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
-import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
 import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
 import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
@@ -84,6 +84,27 @@ import { exportDueDetailExcel, exportDueSummaryExcel, exportInvDetailExcel, expo
 import { exportAcStatementExcel } from "../../../controllers/finance/accounts/accounts-report/Acstatementexcel";
 import { exportOutstandingDetailExcel, exportOutstandingSummaryExcel } from "../../../controllers/finance/accounts/accounts-report/Outstandingexcel";
 import { exportLedgerWithDetailsExcel } from "../../../controllers/finance/accounts/accounts-report/ledgerwithdetailsexcels";
+import { getTransactionWithoutTransfersReport } from "../../wms/reports/Transactionwithouttransfersreport";
+import { exportTransactionWithoutTransfersExcel } from "../../wms/reports/WithoutTrasactionExcel";
+import { getGrnSummaryReportExcel, getGrnSummaryReportHtml } from "../../../controllers/wms/reports/GrnSummaryreport.controller";
+import { CapexApprovalReport } from "../../../controllers/ALMS/CapexApprovalReport";
+import { exportCapexApprovalExcel } from "../../../controllers/ALMS/Capexapprovalexcel";
+import { PRPurchaseReport } from "../../../controllers/ALMS/Prpurchasereport";
+import { getPLSummaryReportExcel, getPLSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/Plsummaryreportpage.controller";
+import { exportPRRegisterReportExcel, getPRRegisterReportHtml } from "../../../controllers/ALMS/PrRegisterReport";
+import { getPoOrderRegisterReportExcel, getPoOrderRegisterReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PoOrderRegisterReport";
+
+import { getPurchaseOrderReportExcel, getPurchaseOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport";
+import { getSalesOrderReportExcel, getSalesOrderReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesOrderReport";
+import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml, getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_report";
+import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountDetailsReportHtml, getPurchaseInvoiceReportExcel, getPurchaseInvoiceReportHtml, getPurchaseInvoiceTaxReportExcel, getPurchaseInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseInvoicereports";
+//import { getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisteOld_Summary";
+//import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
+//import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
+import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
+import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
+
 
 
 const router = express.Router();
@@ -118,14 +139,20 @@ router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
 router.post('/reports/ledger-with-details/excel', exportLedgerWithDetailsExcel);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
 router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
+router.post('/reports/balance-sheet/pdf', getBalanceSheetReportPdf);
 router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
+router.post('/reports/getBalanceSheetReport/pdf', getBalanceSheetReportPdf);
 router.post('/reports/getBalanceSheetReport/excel', exportBalanceSheetReportExcel);
 router.post('/report/balancesheet/html', getBalanceSheetReportHtml);
+router.post('/report/balancesheet/pdf', getBalanceSheetReportPdf);
 router.post('/report/balancesheet/excel', exportBalanceSheetReportExcel);
 router.post('/report/balancesheet/drilldown/ac', getBalanceSheetDrilldownAc);
 router.post('/report/balancesheet/drilldown/ac/excel', getBalanceSheetDrilldownAcExcel);
 router.post('/report/balancesheet/drilldown/detail', getBalanceSheetDrilldownDetail);
 router.post('/report/balancesheet/drilldown/detail/excel', getBalanceSheetDrilldownDetailExcel);
+
+
+
 
 router.post('/reports/summary-dump/html', getSummaryDumpReport);
 router.post('/reports/detail-dump/html', getDetailDumpReport);
@@ -150,13 +177,75 @@ router.post('/reports/cheque-date-wise/excel', exportChequeDateWiseExcel);
 router.post('/reports/getProfitLossReport/html', getProfitLossReportHtml);
 router.post('/reports/getProfitLossReport/excel', getProfitLossReportExcel);
 
+
+
+//--------PL(PROFIT AND LOSS) ANALYSIS REPORTS ROUTES------
+router.post('/reports/getPLSummaryReport/html', getPLSummaryReportHtml);
+router.post('/reports/getPLSummaryReport/excel', getPLSummaryReportExcel);
+
+// -----PO and Sales Order Register Report Routes------
+router.post('/reports/PoOrderRegisterReport/html', getPoOrderRegisterReportHtml);
+router.post('/reports/PoOrderRegisterReport/excel', getPoOrderRegisterReportExcel);
+
+router.post('/reports/PurchaseOrderReport/html', getPurchaseOrderReportHtml);
+router.post('/reports/PurchaseOrderReport/excel', getPurchaseOrderReportExcel);
+
+
+router.post('/reports/PR_RegisterOld_Summary/html', getPrRegisterOldSummaryReportHtml);
+router.post('/reports/PR_RegisterOld_Summary/excel', getPrRegisterOldSummaryReportExcel);
+
+
+router.post('/reports/PR_RegisterOld_Details/html', getPrRegisterOldDetailReportHtml);
+router.post('/reports/PR_RegisterOld_Details/excel', getPrRegisterOldDetailReportExcel);
+
+// ---------------Purchase Invoice 3 reports Routes----------------------
+
+
+router.post('/reports/PurchaseInvoice/html', getPurchaseInvoiceReportHtml);
+router.post('/reports/PurchaseInvoiceTax/html', getPurchaseInvoiceTaxReportHtml);
+router.post('/reports/PurchaseInvoiceAccountDetails/html', getPurchaseInvoiceAccountDetailsReportHtml);
+
+router.post('/reports/PurchaseInvoice/excel', getPurchaseInvoiceReportExcel);
+router.post('/reports/PurchaseInvoiceTax/excel', getPurchaseInvoiceTaxReportExcel);
+router.post('/reports/PurchaseInvoiceAccountDetails/excel', getPurchaseInvoiceAccountDetailsReportExcel);
+
+
+
+// sales invoice report routes-------
+router.post('/reports/SalesInvoiceReport/html', getSalesInvoiceReportHtml);
+router.post('/reports/SalesInvoiceReport/excel', getSalesInvoiceReportExcel);
+
+router.post('/reports/SalesInvoiceTaxReport/Html',getSalesInvoiceTaxReportHtml);
+router.post('/reports/SalesInvoiceTaxReport/excel',getSalesInvoiceTaxReportExcel);
+
+router.post('/reports/SalesAccountDetailsReport/html',getSalesAccountDetailsReportHtml);
+router.post('/reports/SalesAccountDetailsReport/excel',getSalesAccountDetailsReportExcel);
+
+
+// sales order report routes
+
+router.post('/reports/SalesOrderReport/html', getSalesOrderReportHtml);
+router.post('/reports/SalesOrderReport/excel', getSalesOrderReportExcel);
+
+
+
+//--------------GrnPrintReport----------------
+router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
+router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
+
+
+
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
+router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   // 👈 नया route
 
 // WMS REPORTS ROUTES
-
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
+
+//inbound Grn Summary report
+router.post('/reports/GrnSummaryReport/html', getGrnSummaryReportHtml);
+router.post('/reports/GrnSummaryReport/excel', getGrnSummaryReportExcel);
 
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
@@ -169,7 +258,10 @@ router.post('/reports/tax-vat-out-ledger-summary/excel', exportTaxInvoiceSummary
 // -----------------------------WMS Reports Routes----------------------
 router.post('/reports/wms-joblisting/html', getJobListingReport);
 router.post('/reports/wms-TransactionProductReport/html', getTransactionProductReport);
+router.post('/reports/wms-TransactionProductWithoutTransfersReport/html', getTransactionWithoutTransfersReport);
+
 router.post('/reports/wms-exportTransactionProductExcel/excel', exportTransactionProductExcel);
+router.post('/reports/wms-exportTransactionWithoutTransfersExcel/excel', exportTransactionWithoutTransfersExcel);
 
 router.post('/reports/wms-joblisting', exportJobListingExcel);
 
@@ -193,6 +285,17 @@ router.post('/reports/OutstandingSummaryReport/html',OutstandingSummaryReport);
 router.post("/reports/AcStatement/excel", exportAcStatementExcel);
 router.post("/reports/OutstandingDetail/excel",  exportOutstandingDetailExcel);
 router.post("/reports/OutstandingSummary/excel", exportOutstandingSummaryExcel);
+
+
+
+// ALMS report 1) Capex Approval Report and Excel 2) PR Purchase report and excel
+router.post('/reports/CapexApprovalReport/html', CapexApprovalReport);
+router.post('/reports/CapexApprovalReport/excel', exportCapexApprovalExcel);
+router.post('/reports/PRPurchaseReport/html',PRPurchaseReport);
+router.post('/reports/PrRegisterReport/html', getPRRegisterReportHtml);
+router.post('/reports/PrRegisterReport/excel', exportPRRegisterReportExcel);
+
+
 
 
 

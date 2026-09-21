@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import TenantManager from "../../../database/TenantManager";
-// import TenantManager from "../../../../database/TenantManager";
-// import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -12,155 +11,156 @@ const text = (v: any) => (v == null ? "" : String(v));
 const num = (v: any) => Number(v) || 0;
 
 const formatDateStr = (v: any) => {
-    if (!v) return "00-00-0000";
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return String(v);
-    return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+  if (!v) return "00-00-0000";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
 };
 
 const formatDateOracle = (v: any) => {
-    if (!v) return "";
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return String(v);
-    const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-    return `${String(d.getDate()).padStart(2,"0")}-${months[d.getMonth()]}-${d.getFullYear()}`;
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  return `${String(d.getDate()).padStart(2, "0")}-${months[d.getMonth()]}-${d.getFullYear()}`;
 };
 
 const qtyFmt = (v: any) => {
-    const n = num(v);
-    return n === 0 ? "0" : n.toLocaleString("en-US");
+  const n = num(v);
+  return n === 0 ? "0" : n.toLocaleString("en-US");
 };
 
 // ─── Controller ───────────────────────────────────────────────────────────────
 
 export const getTransactionProductReport = async (req: Request, res: Response): Promise<void> => {
-    let connection;
-    try {
-        /*
-         * Frontend sends:
-         *   loginid       → loginid
-         *   code1         → company_code
-         *   code2         → prin_code
-         *   code3         → prod_from
-         *   code4         → prod_to
-         *   code5         → site_from
-         *   code6         → site_to
-         *   code7         → location_from
-         *   code8         → location_to
-         *   code9         → cust_from
-         *   code10        → cust_to
-         *   code11        → lot_from
-         *   code12        → lot_to
-         *   code13        → batch_from
-         *   code14        → batch_to
-         *   code15        → model_number (All or specific)
-         *   code16        → pallet_from
-         *   code17        → pallet_to
-         *   date1         → exp_date_from  (DD-MON-YYYY)
-         *   date2         → exp_date_to    (DD-MON-YYYY)
-         *   date3         → txn_date_from  (DD-MON-YYYY)
-         *   date4         → txn_date_to    (DD-MON-YYYY)
-         */
+  let connection;
+  try {
+    /*
+     * Frontend sends:
+     *   loginid       → loginid
+     *   code1         → company_code
+     *   code2         → prin_code
+     *   code3         → prod_from
+     *   code4         → prod_to
+     *   code5         → site_from
+     *   code6         → site_to
+     *   code7         → location_from
+     *   code8         → location_to
+     *   code9         → cust_from
+     *   code10        → cust_to
+     *   code11        → lot_from
+     *   code12        → lot_to
+     *   code13        → batch_from
+     *   code14        → batch_to
+     *   code15        → model_number (All or specific)
+     *   code16        → pallet_from
+     *   code17        → pallet_to
+     *   date1         → exp_date_from  (DD-MON-YYYY)
+     *   date2         → exp_date_to    (DD-MON-YYYY)
+     *   date3         → txn_date_from  (DD-MON-YYYY)
+     *   date4         → txn_date_to    (DD-MON-YYYY)
+     */
 
-        const {
-    loginid,
+    const {
+      loginid,
 
-    code1,
-    code2,
-    code3,
-    code4,
-    code5,
-    code6,
-    code7,
-    code8,
-    code9,
-    code10,
-    code11,
-    code12,
-    code13,
-    code14,
-    code15,
-    code16,
-    code17,
-    code18,
-    code19,
-    code20,
+      code1,
+      code2,
+      code3,
+      code4,
+      code5,
+      code6,
+      code7,
+      code8,
+      code9,
+      code10,
+      code11,
+      code12,
+      code13,
+      code14,
+      code15,
+      code16,
+      code17,
+      code18,
+      code19,
+      code20,
 
-    number1,
-    number2,
-    number3,
-    number4,
+      number1,
+      number2,
+      number3,
+      number4,
 
-    date1,
-    date2,
-    date3,
-    date4,
+      date1,
+      date2,
+      date3,
+      date4,
 
-    groupedOn  
-} = req.body;
+      groupedOn
+    } = req.body;
 
-        const parameter = "WMS_Stock_TRANSACTION_PRODUCT_REPORT";
+    const parameter = "WMS_Stock_TRANSACTION_PRODUCT_REPORT";
 
-        // ── Tenant / connection ───────────────────────────────────────────
-        let tenantId = getCurrentTenantId();
-        if (!tenantId && loginid) {
-            tenantId = await TenantManager.getTenantForUser(loginid);
-        }
-        if (!tenantId) {
-            res.status(400).json({ success: false, message: "Tenant not found" });
-            return;
-        }
-        connection = await TenantManager.getConnection(tenantId);
+    // ── Tenant / connection ───────────────────────────────────────────
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && loginid) {
+      tenantId = await TenantManager.getTenantForUser(loginid);
+    }
+    if (!tenantId) {
+      res.status(400).json({ success: false, message: "Tenant not found" });
+      return;
+    }
+    connection = await TenantManager.getConnection(tenantId);
 
-        // ── Binds ─────────────────────────────────────────────────────────
-        const binds: any = {
-  parameter,
-  loginid: loginid || "ADMIN",
+    // ── Binds ─────────────────────────────────────────────────────────
+    const binds: any = {
+      parameter,
+      loginid: loginid || "ADMIN",
 
-  code1: code1 || null,
-  code2: code2 || null,
-  code3: code3 || null,
-  code4: code4 || null,
-  code5: code5 || null,
-  code6: code6 || null,
-  code7: code7 || null,
-  code8: code8 || null,
-  code9: code9 || null,
-  code10: code10 || null,
-  code11: code11 || null,
-  code12: code12 || null,
-  code13: code13 || null,
-  code14: code14 || null,
+      code1: code1 || null,
+      code2: code2 || null,
+      code3: code3 || null,
+      code4: code4 || null,
+      code5: code5 || null,
+      code6: code6 || null,
+      code7: code7 || null,
+      code8: code8 || null,
+      code9: code9 || null,
+      code10: code10 || null,
+      code11: code11 || null,
+      code12: code12 || null,
+      code13: code13 || null,
+      code14: code14 || null,
 
-  // 🔥 IMPORTANT: always bind even if not used
-  code15: null, // MODEL_NUMBER not used
-  code16: null, // PALLET_ID from
-  code17: null, // PALLET_ID to
+      // 🔥 IMPORTANT: always bind even if not used
+      code15: null, // MODEL_NUMBER not used
+      code16: null, // PALLET_ID from
+      code17: null, // PALLET_ID to
 
-  code18: null,
-  code19: null,
-  code20: null,
+      code18: null,
+      code19: null,
+      code20: null,
 
-  number1: null,
-  number2: null,
-  number3: null,
-  number4: null,
+      number1: null,
+      number2: null,
+      number3: null,
+      number4: null,
 
-  date1: date1 || null,
-  date2: date2 || null,
-  date3: date3 || null,
-  date4: date4 || null,
+      date1: date1 || null,
+      date2: date2 || null,
+      date3: date3 || null,
+      date4: date4 || null,
 
-  out_sql: {
-    dir: oracledb.BIND_OUT,
-    type: oracledb.STRING,
-    maxSize: 32767,
-  },
-};
+      out_sql: {
+        dir: oracledb.BIND_OUT,
+        type: oracledb.STRING,
+        maxSize: 32767,
+      },
+    };
+    console.log("code2:", code2);
 
-        // ── Execute procedure → dynamic SQL ───────────────────────────────
-        const result = await connection.execute(
-            `DECLARE
+    // ── Execute procedure → dynamic SQL ───────────────────────────────
+    const result = await connection.execute(
+      `DECLARE
                v_sql VARCHAR2(32767);
              BEGIN
                PROC_BUILD_DYNAMIC_SQL_COMMON20(
@@ -175,68 +175,96 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
                );
                :out_sql := v_sql;
              END;`,
-            binds
-        );
+      binds
+    );
 
-        const rawSql = (result.outBinds as any).out_sql;
-        if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
+    const rawSql = (result.outBinds as any).out_sql;
+    if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
 
-        console.log("Dynamic SQL generated:👍", rawSql);
+    console.log("Dynamic SQL generated:👍", rawSql);
 
-        // ── Execute dynamic SQL ───────────────────────────────────────────
-        const dataResult = await connection.execute(rawSql, [], {
-            outFormat: oracledb.OUT_FORMAT_OBJECT,
+    // ── Execute dynamic SQL ───────────────────────────────────────────
+    const dataResult = await connection.execute(rawSql, [], {
+      outFormat: oracledb.OUT_FORMAT_OBJECT,
+    });
+
+    // Lowercase all Oracle column names
+    const rows = (dataResult.rows as any[]).map((row) =>
+      Object.keys(row).reduce((acc: any, key) => {
+        acc[key.toLowerCase()] = row[key];
+        return acc;
+      }, {})
+    );
+
+    // ── Group rows by prod_code ───────────────────────────────────────
+  
+    type TxnRow = (typeof rows)[0] & {
+      _running_p?: number;
+      _running_l?: number;
+    };
+    type ProdGroup = {
+      prod_code: string;
+      prod_name: string;
+      p_uom: string;
+      l_uom: string;
+      uppp: any;
+      pqty_op_balance: number;
+      lqty_op_balance: number;
+      rows: TxnRow[];
+    };
+
+    const prodMap = new Map<string, ProdGroup>();
+
+    rows.forEach((r) => {
+      const key = text(r.prod_code);
+      if (!prodMap.has(key)) {
+        prodMap.set(key, {
+          prod_code: key,
+          prod_name: text(r.prod_name),
+          p_uom: text(r.p_uom),
+          l_uom: text(r.l_uom),
+          uppp: r.uppp,
+          pqty_op_balance: num(r.pqty_op_balance),
+          lqty_op_balance: num(r.lqty_op_balance),
+          rows: [],
         });
+      }
+      prodMap.get(key)!.rows.push(r);
+    });
 
-        // Lowercase all Oracle column names
-        const rows = (dataResult.rows as any[]).map((row) =>
-            Object.keys(row).reduce((acc: any, key) => {
-                acc[key.toLowerCase()] = row[key];
-                return acc;
-            }, {})
-        );
+    // Closing balance
+    prodMap.forEach((prod) => {
+      let runningPQty = prod.pqty_op_balance;
+      let runningLQty = prod.lqty_op_balance;
+      prod.rows.forEach((r) => {
+        runningPQty += num(r.quantity);
+        runningLQty += 0;
+        r._running_p = runningPQty;
+        r._running_l = runningLQty;
+      });
+    });
 
-        // ── Group rows by prod_code ───────────────────────────────────────
-        type TxnRow = (typeof rows)[0];
-        type ProdGroup = {
-            prod_code: string;
-            prod_name: string;
-            p_uom: string;
-            l_uom: string;
-            uppp: any;
-            pqty_op_balance: number;
-            lqty_op_balance: number;
-            rows: TxnRow[];
-        };
 
-        const prodMap = new Map<string, ProdGroup>();
+    // ✅ Opening balance
+    prodMap.forEach((prod) => {
+      const earliestRow = prod.rows.reduce((earliest, r) => {
+        if (!earliest) return r;
+        return text(r.sort_date) < text(earliest.sort_date) ? r : earliest;
+      }, prod.rows[0]);
 
-        rows.forEach((r) => {
-            const key = text(r.prod_code);
-            if (!prodMap.has(key)) {
-                prodMap.set(key, {
-                    prod_code:       key,
-                    prod_name:       text(r.prod_name),
-                    p_uom:           text(r.p_uom),
-                    l_uom:           text(r.l_uom),
-                    uppp:            r.uppp,
-                    pqty_op_balance: num(r.pqty_op_balance),
-                    lqty_op_balance: num(r.lqty_op_balance),
-                    rows:            [],
-                });
-            }
-            prodMap.get(key)!.rows.push(r);
-        });
+      prod.pqty_op_balance = num(earliestRow?.pqty_op_balance);
+      prod.lqty_op_balance = num(earliestRow?.lqty_op_balance);
+    });
 
-        // ── Principal name (from first row) ───────────────────────────────
-        const principalCode = rows.length > 0 ? text(rows[0].prin_code) : text(code2);
+    // ── Principal name (from first row) ───────────────────────────────
+    const principalCode = rows.length > 0 ? text(rows[0].prin_code) : text(code2);
 
-        // ── Build HTML body ───────────────────────────────────────────────
-        let tableBodyHtml = "";
+    // ── Build HTML body ───────────────────────────────────────────────
+    let tableBodyHtml = "";
 
-        prodMap.forEach((prod) => {
-            // ── Product header row ────────────────────────────────────────
-            tableBodyHtml += `
+    prodMap.forEach((prod) => {
+      // ── Product header row ────────────────────────────────────────
+      tableBodyHtml += `
             <tr class="prod-header-row">
               <td colspan="2">
                 <strong>${prod.prod_code}</strong>
@@ -254,13 +282,13 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
               <td colspan="9"></td>
             </tr>`;
 
-            prod.rows.forEach((r) => {
-                const qty      = num(r.quantity);
-                const pCl      = num(r.pqty_cl_balance);
-                const lCl      = num(r.lqty_cl_balance);
+      prod.rows.forEach((r) => {
+        const qty = num(r.quantity);
+        const pCl = num(r._running_p);
+        const lCl = num(r._running_l);
 
-                // Row 1: main transaction line
-                tableBodyHtml += `
+        // Row 1: main transaction line
+        tableBodyHtml += `
                 <tr class="detail-row-1">
                   <td class="date-cell">${formatDateStr(r.txn_date)}</td>
                   <td class="ref-cell">${text(r.doc_ref)}</td>
@@ -294,14 +322,14 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
                     ${text(r.batch_no) ? `&nbsp;&nbsp; Batch: ${text(r.batch_no)}` : ""}
                   </td>
                 </tr>`;
-            });
+      });
 
-            // ── Closing balance row ───────────────────────────────────────
-            const lastRow = prod.rows[prod.rows.length - 1];
-            const finalPCl = lastRow ? num(lastRow.pqty_cl_balance) : prod.pqty_op_balance;
-            const finalLCl = lastRow ? num(lastRow.lqty_cl_balance) : prod.lqty_op_balance;
+      // ── Closing balance row ───────────────────────────────────────
+      const lastRow = prod.rows[prod.rows.length - 1];
+      const finalPCl = lastRow ? num(lastRow._running_p) : prod.pqty_op_balance;
+      const finalLCl = lastRow ? num(lastRow._running_l) : prod.lqty_op_balance;
 
-            tableBodyHtml += `
+      tableBodyHtml += `
             <tr class="closing-row">
               <td colspan="5" style="text-align:right;padding-right:12px;">
                 <strong>Closing Balance :</strong>
@@ -313,14 +341,14 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
               <td colspan="4"></td>
             </tr>
             <tr><td colspan="13" style="height:8px;border:none;"></td></tr>`;
-        });
+    });
 
-        // ── Report date/time ──────────────────────────────────────────────
-        const now = new Date();
-        const reportDateTime = `${String(now.getDate()).padStart(2,"0")}/${String(now.getMonth()+1).padStart(2,"0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")} ${now.getHours() >= 12 ? "PM" : "AM"}`;
+    // ── Report date/time ──────────────────────────────────────────────
+    const now = new Date();
+    const reportDateTime = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")} ${now.getHours() >= 12 ? "PM" : "AM"}`;
 
-        // ─── Final HTML ───────────────────────────────────────────────────
-        const reportHtml = `<!DOCTYPE html>
+    // ─── Final HTML ───────────────────────────────────────────────────
+    const reportHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
@@ -449,8 +477,8 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
   <table class="report-table">
     <thead>
       <tr>
-        <th rowspan="2" style="width:80px;">Product<br/><span style="font-weight:400;font-size:10px;">TXN Date</span></th>
-        <th rowspan="2" style="width:80px;"><span style="font-weight:400;font-size:10px;">MFG Date</span><br/><span style="font-weight:400;font-size:10px;">EXP Date</span></th>
+        <th rowspan="2" style="width:80px;">Product<br/><span style="font-weight:400;font-size:10px;">MFG Date</span></th>
+        <th rowspan="2" style="width:80px;"><span style="font-weight:400;font-size:10px;">TXN Date</span><br/><span style="font-weight:400;font-size:10px;">EXP Date</span></th>
         <th rowspan="2" style="width:120px;">Container No.<br/>/Order No./Job No</th>
         <th rowspan="2" style="width:80px;">Doc. Ref.</th>
         <th rowspan="2" style="width:50px;">Site</th>
@@ -487,19 +515,19 @@ export const getTransactionProductReport = async (req: Request, res: Response): 
 </body>
 </html>`;
 
-        res.setHeader("Content-Type", "text/html");
-        res.status(200).send(reportHtml);
+    res.setHeader("Content-Type", "text/html");
+    res.status(200).send(reportHtml);
 
-    } catch (error: any) {
-        console.error("Transaction Product Report Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Unable to generate report",
-            details: error.message,
-        });
-    } finally {
-        if (connection) {
-            try { await connection.close(); } catch (e) { console.error("Connection close error:", e); }
-        }
+  } catch (error: any) {
+    console.error("Transaction Product Report Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Unable to generate report",
+      details: error.message,
+    });
+  } finally {
+    if (connection) {
+      try { await connection.close(); } catch (e) { console.error("Connection close error:", e); }
     }
+  }
 };

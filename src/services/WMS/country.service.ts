@@ -21,9 +21,9 @@ export class CountryService {
   }
 
 
-  static async findAll(): Promise<CountryMaster[]> {
+  static async findAll(company_code: string): Promise<CountryMaster[]> {
     const repository = this.getCountryRepository();
-     return await repository.find();
+    return await repository.find({ where: { company_code: company_code } });
   }
 
   static async findByCode(country_code: string): Promise<CountryMaster | null> {

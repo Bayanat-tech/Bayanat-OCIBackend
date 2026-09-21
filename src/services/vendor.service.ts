@@ -5,6 +5,15 @@ import { getRepository } from "../database/connection";
 import { Vendor } from "../entity/Vendor";
 import { QueryExecutor } from "../database/QueryExecutor";
 
+export interface ExternalAccount {
+  USER_ID: string;
+  NAME: string;
+  PASSWORD: string;
+  TYPE: 'EMPLOYEE' | 'VENDOR';
+  EMPLOYEE_ID: string;
+  EMAIL?: unknown;
+}
+
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
@@ -240,6 +249,15 @@ export class VendorService {
         data: response.data,
       });
 
+      if (response.status < 200 || response.status >= 300) {
+        const responseMessage =
+          response.data?.message ||
+          response.data?.error ||
+          response.statusText ||
+          `HTTP ${response.status}`;
+        throw new Error(`File-transfer API rejected the request: ${responseMessage}`);
+      }
+
       return response.data;
     } catch (error: any) {
       // Log detailed error information
@@ -345,11 +363,43 @@ export class VendorService {
     }
   }
 
+  static async callAwareVmsEntry(
+    companyCode: string,
+    docNo: string,
+    userName: string = "SYSTEM"
+  ) {
+    try {
+      console.log(
+        `Calling PROC_AWARE_VMS_ENTRY for Company: ${companyCode}, Doc No: ${docNo}`
+      );
+
+      await oracleDb.query(
+        `BEGIN
+           WMSDEV.PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
+         END;`,
+        {
+          companyCode: { val: companyCode },
+          docNo: { val: Number(docNo) },
+          userName: { val: userName },
+        }
+      );
+
+      console.log("PROC_AWARE_VMS_ENTRY executed successfully");
+      return {
+        success: true,
+        message: "Data transferred via Oracle procedure",
+      };
+    } catch (error: any) {
+      console.error("Error in callAwareVmsEntry:", error);
+      throw new Error(`Oracle procedure failed: ${error.message}`);
+    }
+  }
+
   // FIXED: Use oracleDb instead of sequelize
   static async updateDataTransferFlag(companyCode: string, docNo: string) {
     try {
       const result = await QueryExecutor.executeRawQuery(
-        `UPDATE TR_AC_LPO_HEADER
+        `UPDATE VMS_FLOW_HDR
          SET DATA_TRANSFER = 'Y'
          WHERE COMPANY_CODE = :companyCode 
          AND DOC_NO = :docNo`,
@@ -365,25 +415,42 @@ export class VendorService {
     }
   }
 
-  static async checkAccountEmployee(userId: string) {
+  static async checkAccountEmployee(userId: string): Promise<ExternalAccount[]> {
     try {
-      const response = await axiosInstance.get(
-        "/VENDOR_SYSTEM_/checkAccountEmployee",
-        {
-          params: { p_userid: userId },
-        }
-      );
-      return response.data;
-    } catch (error: any) {
-      console.error("Error in checkAccountEmployee:", error.message);
-      if (error.response?.status === 401) {
-        throw new Error(
-          "Unauthorized access to external system. Please check API credentials."
-        );
+      const baseURL = process.env.NET_API_BASE_URL?.trim();
+      const apiKey = process.env.NET_API_KEY?.trim();
+      if (!baseURL || !apiKey) throw new Error('Account API is not configured');
+      // Bypass shared interceptors, which log headers and external response data.
+      const response = await axios.get(`${baseURL.replace(/\/$/, '')}/VENDOR_SYSTEM_/checkAccountEmployee`, {
+        params: { p_userid: userId },
+        headers: { XApiKey: apiKey, accept: '*/*' },
+        timeout: 30000,
+        maxRedirects: 0,
+        httpsAgent,
+      });
+      if (!Array.isArray(response.data)) throw new Error('Invalid account response');
+      if (!response.data.length) return [];
+      const account = response.data[0];
+      const type = typeof account?.TYPE === 'string' ? account.TYPE.trim().toUpperCase() : '';
+      if (response.data.length !== 1 || typeof account?.USER_ID !== 'string' ||
+          account.USER_ID.trim().toUpperCase() !== userId.trim().toUpperCase() ||
+          !account.USER_ID.trim() || Buffer.byteLength(account.USER_ID.trim()) > 15 ||
+          typeof account.NAME !== 'string' || !account.NAME.trim() || Buffer.byteLength(account.NAME) > 400 ||
+          typeof account.PASSWORD !== 'string' || !account.PASSWORD ||
+          (type !== 'EMPLOYEE' && type !== 'VENDOR') ||
+          (type === 'EMPLOYEE' && (!/^20/.test(account.USER_ID.trim()) ||
+            typeof account.EMPLOYEE_ID !== 'string' || !account.EMPLOYEE_ID.trim() ||
+            Buffer.byteLength(account.EMPLOYEE_ID) > 100)) ||
+          (typeof account.EMAIL === 'string' && Buffer.byteLength(account.EMAIL) > 400)) {
+        throw new Error('Invalid employee or vendor account response');
       }
-      throw new Error(
-        `Failed to fetch account employee info: ${error.message}`
-      );
+      return [{ ...account, TYPE: type, USER_ID: account.USER_ID.trim(),
+        EMPLOYEE_ID: type === 'EMPLOYEE' ? account.EMPLOYEE_ID.trim() : account.USER_ID.trim() }];
+    } catch (error: any) {
+      const failure = new Error('Employee/vendor account verification failed') as Error & { code?: string };
+      failure.code = typeof error?.code === 'string' && /^[A-Z0-9_-]+$/.test(error.code)
+        ? error.code : 'ACCOUNT_API_FAILED';
+      throw failure;
     }
   }
 

@@ -195,7 +195,7 @@ export const proc_build_dynamic_ins_upd_common = async (
       DECLARE
         v_sql CLOB;
       BEGIN
-        WMSTST.PROC_BUILD_DYNAMIC_INS_UPD_common(
+        PROC_BUILD_DYNAMIC_INS_UPD_common(
           :parameter,
           :loginid,
 

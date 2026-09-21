@@ -19,6 +19,10 @@ import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 
+function paramValue(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
 
 // Get account tree structure
 export const getAcTree = async (req: RequestWithUser, res: Response) => {
@@ -110,7 +114,7 @@ export const getLevel2AcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params;
+    const ac_code = paramValue(req.params.ac_code);
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -309,7 +313,7 @@ export const updateLevel2AcTreeNode = async (
 
   try {
     const { company_code, loginid } = req.user;
-    const { ac_code } = req.params; // l3_code
+    const ac_code = paramValue(req.params.ac_code); // l3_code
     const { l1_code, l2_description } = req.body;
     const tenantId = getCurrentTenantId();
     
@@ -431,7 +435,7 @@ export const deleteLevel2AcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params; // L2_CODE
+    const ac_code = paramValue(req.params.ac_code); // L2_CODE
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -528,7 +532,7 @@ export const deleteLevel3AcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params; // L2_CODE
+    const ac_code = paramValue(req.params.ac_code); // L2_CODE
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -625,7 +629,7 @@ export const deleteLevel4AcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params; // L2_CODE
+    const ac_code = paramValue(req.params.ac_code); // L2_CODE
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -722,7 +726,7 @@ export const deleteLevel5AcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params; // L2_CODE
+    const ac_code = paramValue(req.params.ac_code); // L2_CODE
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -802,7 +806,7 @@ export const getLevel3AcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params;
+    const ac_code = paramValue(req.params.ac_code);
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -1006,7 +1010,7 @@ export const updateLevel3AcTreeNode = async (
 
   try {
     const { company_code, loginid } = req.user;
-    const { ac_code } = req.params; // l3_code
+    const ac_code = paramValue(req.params.ac_code); // l3_code
     const { l2_code, l3_description } = req.body;
     const tenantId = getCurrentTenantId();
     
@@ -1133,7 +1137,7 @@ export const getLevel4AcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params;
+    const ac_code = paramValue(req.params.ac_code);
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -1325,7 +1329,7 @@ export const updateLevel4AcTreeNode = async (
 
   try {
     const { company_code, loginid } = req.user;
-    const { ac_code } = req.params;
+    const ac_code = paramValue(req.params.ac_code);
     const { l3_code, l4_description, l4_type, l4_job, l4_bill, l4_dept } = req.body;
     const tenantId = getCurrentTenantId();
     
@@ -1447,7 +1451,7 @@ export const updateLevel4AcTreeNode = async (
 // ) => {
 //   try {
 //     const requestUser: IUser = req.user;
-//     const { ac_code } = req.params;
+//     const ac_code = paramValue(req.params.ac_code);
 //     const accountData = await Account.findOne({
 //       where: { company_code: requestUser.company_code, ac_code },
 //     });
@@ -1477,7 +1481,7 @@ export const getAccountChildrenAcTreeNode = async (
 
   try {
     const { company_code } = req.user;
-    const { ac_code } = req.params;
+    const ac_code = paramValue(req.params.ac_code);
     const tenantId = getCurrentTenantId();
     
     if (!tenantId) {
@@ -1772,7 +1776,7 @@ export const createAccountChildrenAcTreeNode = async (
 // ) => {
 //   try {
 //     const requestUser: IUser = req.user;
-//     const { ac_code } = req.params;
+//     const ac_code = paramValue(req.params.ac_code);
 //     const { error } = accountFinanceSchema(req.body);
 
 //     // Validate request body
@@ -1856,7 +1860,7 @@ export const updateAccountChildrenAcTreeNode = async (
 
   try {
     const { company_code, loginid } = req.user;
-    const { ac_code } = req.params;
+    const ac_code = paramValue(req.params.ac_code);
     const { l4_code, files, ...data } = req.body;
     const tenantId = getCurrentTenantId();
     
@@ -2190,7 +2194,7 @@ export const saveFile = async (
 export const getVendorActivities = async (req: RequestWithUser, res: Response): Promise<void> => {
   let connection;
   try {
-    const { ac_code } = req.query;
+    const ac_code = paramValue(req.query.ac_code as string | string[] | undefined);
     const { company_code } = req.user;       
     
     const tenantId = getCurrentTenantId();
@@ -2505,3 +2509,4 @@ export const getVendorActivities = async (req: RequestWithUser, res: Response): 
 //     await queryRunner.release();
 //   }
 // };
+

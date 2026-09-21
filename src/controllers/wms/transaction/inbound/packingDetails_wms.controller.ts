@@ -1,9 +1,7 @@
 // Import required dependencies and types
 import { Response } from "express";
-import {
-  ISearch,
-  RequestWithUser,
-} from "../../../../interfaces/common.interface";
+import { ISearch } from "../../../../interfaces/common.interface";
+import { RequestWithTenant } from "../../../../middleware/tenant.middleware";
 import { IUser } from "../../../../interfaces/user.interface";
 import { packingDetailsSchema } from "../../../../validation/wms/transaction/inbound.validation";
 import constants from "../../../../helpers/constants";
@@ -17,14 +15,23 @@ import { getSearchFilterQuery } from "../../../../helpers/functions";
 import { Like } from "typeorm";
 
 // Get a single packing detail by prin_code, packdet_no and job_no
-export const getPackingDetail = async (req: RequestWithUser, res: Response) => {
+export const getPackingDetail = async (req: RequestWithTenant, res: Response) => {
   try {
     console.log("i am here packing details ...............");
     const { prin_code, packdet_no, job_no } = req.query;
 
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     // Find packing details record
     const packingDetails = await PackingDetailsService.findOne({
-      company_code: req.user.company_code,
+      company_code: COMPANY_CODE,
       prin_code: prin_code as string,
       job_no: job_no as string,
       packdet_no: Number(packdet_no),
@@ -42,7 +49,7 @@ export const getPackingDetail = async (req: RequestWithUser, res: Response) => {
     // Get associated product info
     const productInfo = await ProductService.findByCodeAndCompany(
       packingDetails.prod_code,
-      req.user.company_code
+      COMPANY_CODE
     );
 
     // Return packing details with product info
@@ -66,17 +73,26 @@ export const getPackingDetail = async (req: RequestWithUser, res: Response) => {
 
 // Create a new packing item
 export const createPackingItem = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    const requestUser: IUser = req.user;
-console.log('inside createPackingItem1a');
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+    const requestUser = req.user as IUser;
+
+    console.log('inside createPackingItem1a');
     // Validate request body
     const { error } = packingDetailsSchema(
       req.body,
       false,
-      requestUser.company_code
+      COMPANY_CODE
     );
     if (error) {
       res
@@ -84,12 +100,12 @@ console.log('inside createPackingItem1a');
         .json({ success: false, message: error.message });
       return;
     }
-console.log('inside createPackingItem1b');
+    console.log('inside createPackingItem1b');
     // Validate product code if provided
     if (!!req.body.prod_code) {
       const productResponse = await ProductService.findByCodeAndCompany(
         req.body.prod_code,
-        requestUser.company_code
+        COMPANY_CODE
       );
       console.log('inside createPackingItem1c');
       if (!productResponse) {
@@ -100,12 +116,12 @@ console.log('inside createPackingItem1b');
         return;
       }
     }
-console.log('inside createPackingItem1d');
+    console.log('inside createPackingItem1d');
     // Validate country code if provided  
     if (!!req.body.country_code) {
       const countryResponse = await WarehouseService.findByCountryCode({
         country_code: req.body.country_code,
-        company_code: requestUser.company_code,
+        company_code: COMPANY_CODE,
       });
       console.log('inside createPackingItem1e');
       if (!countryResponse) {
@@ -116,13 +132,13 @@ console.log('inside createPackingItem1d');
         return;
       }
     }
-console.log('inside createPackingItem1f');
+    console.log('inside createPackingItem1f');
     // Create packing details record
     const response = await PackingDetailsService.create({
       ...req.body,
-      company_code: requestUser.company_code,
+      company_code: COMPANY_CODE,
     });
-console.log('inside createPackingItem2');
+    console.log('inside createPackingItem2');
     if (!response) {
       res
         .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
@@ -143,129 +159,146 @@ console.log('inside createPackingItem2');
   }
 };
 
-    // Update an existing packing item
-    export const updatePackingItem = async (
-      req: RequestWithUser,
-      res: Response
-    ) => {
-      try {
-        console.log('inside createPackingItem3');
-        const requestUser: IUser = req.user;
-        const { packdet_no } = req.params;
-        const { prin_code, job_no } = req.query;
+// Update an existing packing item
+export const updatePackingItem = async (
+  req: RequestWithTenant,
+  res: Response
+) => {
+  try {
+    console.log('inside createPackingItem3');
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
 
-        // Validate packdet_no is a valid number
-        if (!packdet_no || isNaN(Number(packdet_no))) {
-          res.status(constants.STATUS_CODES.BAD_REQUEST).json({
-            success: false,
-            message: "Invalid packdet_no parameter",
-          });
-          return;
-        }
+    const { packdet_no } = req.params;
+    const { prin_code, job_no } = req.query;
 
-        const packdetNoNumber = Number(packdet_no);
+    // Validate packdet_no is a valid number
+    if (!packdet_no || isNaN(Number(packdet_no))) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Invalid packdet_no parameter",
+      });
+      return;
+    }
 
-        // Validate request body
-        const { error } = packingDetailsSchema(
-          req.body,
-          false,
-          requestUser.company_code
-        );
-        if (error) {
-          res
-            .status(constants.STATUS_CODES.BAD_REQUEST)
-            .json({ success: false, message: error.message });
-          return;
-        }
+    const packdetNoNumber = Number(packdet_no);
 
-        // Check if packing details exists
-        const packingResponse = await PackingDetailsService.findOne({
-          company_code: requestUser.company_code,
-          packdet_no: packdetNoNumber, // Use the validated number
-          prin_code: prin_code as string,
-          job_no: job_no as string,
+    // Validate request body
+    const { error } = packingDetailsSchema(
+      req.body,
+      false,
+      COMPANY_CODE
+    );
+    if (error) {
+      res
+        .status(constants.STATUS_CODES.BAD_REQUEST)
+        .json({ success: false, message: error.message });
+      return;
+    }
+
+    // Check if packing details exists
+    const packingResponse = await PackingDetailsService.findOne({
+      company_code: COMPANY_CODE,
+      packdet_no: packdetNoNumber, // Use the validated number
+      prin_code: prin_code as string,
+      job_no: job_no as string,
+    });
+    
+    if (!packingResponse) {
+      res.status(constants.STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Packing " + constants.MESSAGES.NOT_FOUND,
+      });
+      return;
+    }
+
+    // Validate product code if provided
+    if (!!req.body?.prod_code) {
+      const productResponse = await ProductService.findByCodeAndCompany(
+        req.body.prod_code,
+        COMPANY_CODE
+      );
+      if (!productResponse) {
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: "Product " + constants.MESSAGES.NOT_FOUND,
         });
-        
-        if (!packingResponse) {
-          res.status(constants.STATUS_CODES.NOT_FOUND).json({
-            success: false,
-            message: "Packing " + constants.MESSAGES.NOT_FOUND,
-          });
-          return;
-        }
-
-        // Validate product code if provided
-        if (!!req.body?.prod_code) {
-          const productResponse = await ProductService.findByCodeAndCompany(
-            req.body.prod_code,
-            requestUser.company_code
-          );
-          if (!productResponse) {
-            res.status(constants.STATUS_CODES.NOT_FOUND).json({
-              success: false,
-              message: "Product " + constants.MESSAGES.NOT_FOUND,
-            });
-            return;
-          }
-        }
-
-        // Validate country code if provided
-        if (!!req.body?.country_code) {
-          const countryResponse = await WarehouseService.findByCountryCode({
-            country_code: req.body.country_code,
-            company_code: requestUser.company_code,
-          });
-          if (!countryResponse) {
-            res.status(constants.STATUS_CODES.NOT_FOUND).json({
-              success: false,
-              message: "Country " + constants.MESSAGES.NOT_FOUND,
-            });
-            return;
-          }
-        }
-
-        // Update packing details - ensure we're using the correct packdet_no
-        const response = await PackingDetailsService.update(
-          {
-            company_code: requestUser.company_code,
-            packdet_no: packdetNoNumber, // Use validated number here
-            prin_code: prin_code as string,
-            job_no: job_no as string,
-          },
-          {
-            ...req.body,
-            packdet_no: packdetNoNumber, // Use validated number here too
-          }
-        );
-
-        if (!response) {
-          res
-            .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
-            .json({ success: false, message: "Failed to update packing details" });
-          return;
-        }
-
-        res.status(constants.STATUS_CODES.OK).json({
-          success: true,
-          message: "Packing Details " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
-        });
-        return;
-      } catch (error: any) {
-        console.error('Update packing item error:', error); // Add logging
-        res
-          .status(constants.STATUS_CODES.BAD_REQUEST)
-          .json({ success: false, message: error.message });
         return;
       }
-    };  
+    }
+
+    // Validate country code if provided
+    if (!!req.body?.country_code) {
+      const countryResponse = await WarehouseService.findByCountryCode({
+        country_code: req.body.country_code,
+        company_code: COMPANY_CODE,
+      });
+      if (!countryResponse) {
+        res.status(constants.STATUS_CODES.NOT_FOUND).json({
+          success: false,
+          message: "Country " + constants.MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+    }
+
+    // Update packing details - ensure we're using the correct packdet_no
+    const response = await PackingDetailsService.update(
+      {
+        company_code: COMPANY_CODE,
+        packdet_no: packdetNoNumber, // Use validated number here
+        prin_code: prin_code as string,
+        job_no: job_no as string,
+      },
+      {
+        ...req.body,
+        packdet_no: packdetNoNumber, // Use validated number here too
+      }
+    );
+
+    if (!response) {
+      res
+        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+        .json({ success: false, message: "Failed to update packing details" });
+      return;
+    }
+
+    res.status(constants.STATUS_CODES.OK).json({
+      success: true,
+      message: "Packing Details " + constants.MESSAGES.UPDATED_SUCCESSFULLY,
+    });
+    return;
+  } catch (error: any) {
+    console.error('Update packing item error:', error); // Add logging
+    res
+      .status(constants.STATUS_CODES.BAD_REQUEST)
+      .json({ success: false, message: error.message });
+    return;
+  }
+};  
+
 // Delete one or multiple packing items based on provided details
 export const deletePackingItem = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ): Promise<any> => {
   try {
     const { packing_details } = req.body;
-    const requestUser = req.user;
+
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      return res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
     // Validate that at least one item is provided for deletion
     if (packing_details.length === 0) {
       return res.status(400).json({
@@ -284,7 +317,7 @@ export const deletePackingItem = async (
         prin_code: packingDetail.prin_code,
         job_no: packingDetail.job_no,
         packdet_no: packingDetail.packdet_no,
-        company_code: requestUser.company_code,
+        company_code: COMPANY_CODE,
       })
     );
 
@@ -304,11 +337,18 @@ export const deletePackingItem = async (
 
 // Create multiple packing details records in bulk
 export const createBulkPAckingDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    const requestUser: IUser = req.user;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
 
     // Add user info to each record
     req.body = req.body.map((packingDetails: IPackingDetails[]) => ({
@@ -316,7 +356,7 @@ export const createBulkPAckingDetails = async (
         acc[constants.CSVFIELDNAME.PACKING_DETAILS[index]] = value;
         return acc;
       }, {}),
-      company_code: requestUser.company_code,
+      company_code: COMPANY_CODE,
     }));
 
     // Bulk create records, ignoring duplicates
@@ -337,24 +377,35 @@ export const createBulkPAckingDetails = async (
 
 // Export packing details to CSV file
 export const exportPackingDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    let csvTransform: fastCsv.CsvFormatterStream<
-      fastCsv.FormatterRow,
-      fastCsv.FormatterRow
-    >;
+    let csvTransform: fastCsv.CsvFormatterStream<any, any>;
     let fetchedData: any[] = [];
 
-    // Parse filter from query params
-    const filter: ISearch = req.query.filter
-      ? JSON.parse(req.query.filter)
-      : {};
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
+    // Parse filter from query params (handle various req.query types)
+    const filter: ISearch = (() => {
+      const f = req.query.filter;
+      let str: any;
+      if (typeof f === "string") str = f;
+      else if (Array.isArray(f)) str = f[0];
+      else if (f != null) str = JSON.stringify(f);
+      return str ? JSON.parse(str) : ({} as ISearch);
+    })();
 
     // Build query with company code and search filters
     let whereConditions: any = {
-      company_code: req.user.company_code,
+      company_code: COMPANY_CODE,
     };
 
     // Apply search filters if provided using the helper function
@@ -411,7 +462,7 @@ export const exportPackingDetails = async (
 };
 
 export const addReceivingDetails = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
@@ -421,8 +472,16 @@ export const addReceivingDetails = async (
       body: req.body,
       user: req.user?.user_id
     });
-    
-    const requestUser: IUser = req.user;
+
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+
     const { prin_code, job_no, packdet_no } = req.query;
     const { qty1_arrived, qty2_arrived } = req.body;
     
@@ -484,7 +543,7 @@ export const addReceivingDetails = async (
     
     // Check if packing details exists - USE THE CONVERTED NUMBER
     const packingDetails = await PackingDetailsService.findOne({
-      company_code: requestUser.company_code,
+      company_code: COMPANY_CODE,
       prin_code: prin_code as string,
       job_no: job_no as string,
       packdet_no: packdetNoNum,
@@ -515,7 +574,7 @@ export const addReceivingDetails = async (
     // Update receiving details - USE THE CONVERTED NUMBER
     const response = await PackingDetailsService.updateReceivingDetails(
       {
-        company_code: requestUser.company_code,
+        company_code: COMPANY_CODE,
         prin_code: prin_code as string,
         job_no: job_no as string,
         packdet_no: packdetNoNum,
@@ -534,7 +593,7 @@ export const addReceivingDetails = async (
 
     // Fetch updated record to return
     const updatedPackingDetails = await PackingDetailsService.findOne({
-      company_code: requestUser.company_code,
+      company_code: COMPANY_CODE,
       prin_code: prin_code as string,
       job_no: job_no as string,
       packdet_no: packdetNoNum,
@@ -558,13 +617,23 @@ export const addReceivingDetails = async (
     });
   }
 };
+
 // Update clearance status to 'Y' for packing details
 export const updateClearanceStatus = async (
-  req: RequestWithUser,
+  req: RequestWithTenant,
   res: Response
 ) => {
   try {
-    const requestUser: IUser = req.user;
+    const COMPANY_CODE = req.user?.company_code;
+    if (!COMPANY_CODE) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+      return;
+    }
+    const requestUser = req.user as IUser;
+
     const { company_code, prin_code, job_no, packdet_no } = req.body;
 
     // Validate required parameters
@@ -577,7 +646,7 @@ export const updateClearanceStatus = async (
     }
 
     // Verify company code matches the authenticated user
-    if (company_code !== requestUser.company_code) {
+    if (company_code !== COMPANY_CODE) {
       res.status(constants.STATUS_CODES.FORBIDDEN).json({
         success: false,
         message: "Company code does not match authenticated user",

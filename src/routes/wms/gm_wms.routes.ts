@@ -46,7 +46,7 @@ import {
   createProduct, // For creating new products
   updateProduct, // For updating product details
   importExcelProducts,
-  deleteProducts,
+  deleteProduct,
   importProductsJSON,
   uploadProductEDI,
   getProductEDI,
@@ -370,7 +370,7 @@ router.post("/location/delete", deleteLocations as unknown as express.RequestHan
 // Product Routes - Handle product management
   router.post("/product", createProduct); // Create new product
   router.put("/product", updateProduct); // Update existing product
-  router.delete("/product", deleteProducts); // Update existing product
+  router.delete("/delproduct", deleteProduct);
   router.post(
     "/product/import-excel",
     upload.single("file"),
@@ -550,5 +550,6 @@ router.post("/locationtype/bulk", createBulkLocationType); // Create multiple lo
 router.get("/locationtype", getAllLocationTypes); // Get all location types as JSON
 
 router.post("/siteMaster", updateSiteMaster); 
+router.put("/siteMaster", updateSiteMaster);
 
 export default router;

@@ -1,38 +1,41 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { TsStnService } from "../../services/WMS/TsStn.service";
 import { TsStndetailService } from "../../services/WMS/TsStndetail.service";
 import { AppDataSource } from "../../database/connection";
+import { RequestWithTenant } from "../../middleware/tenant.middleware";
 
 /**
  * Process Stock Transfer
  * Calls SP_WM_TRANSFER_PROCESS stored procedure
  */
 
-
-export const processStockTransfer = async (req: Request, res: Response) => {
+export const processStockTransfer = async (req: RequestWithTenant, res: Response) => {
   try {
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      return res.status(400).json({
+        success: false,
+        message: "company_code not found on authenticated user",
+      });
+    }
+
     const {
-      COMPANY_CODE, company_code,
       PRIN_CODE, prin_code,
       STN_NO, stn_no,
       USER_ID, user_id
     } = req.body;
 
-    // Normalize field names (handle both uppercase and lowercase)
-    const companyCode = COMPANY_CODE || company_code;
     const prinCode = PRIN_CODE || prin_code;
     const stnNo = STN_NO || stn_no;
     const userId = USER_ID || user_id;
 
-    // Validate required fields
-    if (!companyCode || !prinCode || !stnNo || !userId) {
+    if (!prinCode || !stnNo || !userId) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: company_code, prin_code, stn_no, user_id",
+        message: "Missing required fields: prin_code, stn_no, user_id",
       });
     }
 
-    // Validate STN exists
     const stnExists = await TsStnService.checkStnExists({
       stn_no: Number(stnNo),
       company_code: companyCode,
@@ -41,11 +44,10 @@ export const processStockTransfer = async (req: Request, res: Response) => {
     if (!stnExists) {
       return res.status(404).json({
         success: false,
-        message: `STN ${stnNo} not found for company ${companyCode}`,
+        message: `STN ${stnNo} not found for your company`,
       });
     }
 
-    // Validate that STN has details with valid quantities
     console.log("🔍 Checking STN Details for STN_NO:", stnNo);
     const stnDetails = await TsStndetailService.findByStnNo({
       stn_no: Number(stnNo),
@@ -59,7 +61,6 @@ export const processStockTransfer = async (req: Request, res: Response) => {
       });
     }
 
-    // Validate that at least one detail has valid qty_puom
     const validDetails = stnDetails.filter(
       (detail: any) => detail.qty_puom && detail.qty_puom > 0
     );
@@ -73,7 +74,6 @@ export const processStockTransfer = async (req: Request, res: Response) => {
 
     console.log(`✅ STN ${stnNo} has ${validDetails.length} valid details out of ${stnDetails.length}`);
 
-    // Log before calling stored procedure
     console.log("📞 Calling SP_WM_TRANSFER_PROCESS with params:", {
       company_code: companyCode,
       prin_code: prinCode,
@@ -81,7 +81,6 @@ export const processStockTransfer = async (req: Request, res: Response) => {
       user_id: userId,
     });
 
-    // Call stored procedure
     await TsStnService.processStockTransfer({
       company_code: companyCode,
       prin_code: prinCode,
@@ -101,15 +100,14 @@ export const processStockTransfer = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error processing stock transfer:", error);
-    
-    // Parse Oracle constraint errors
+
     let userFriendlyMessage = "Failed to process stock transfer";
     if (error.message && error.message.includes("QTYA_GREATOR_0")) {
       userFriendlyMessage = "STN Detail has invalid quantities. Ensure qty_puom (Primary UOM Quantity) is greater than 0";
     } else if (error.message && error.message.includes("ORA-02290")) {
       userFriendlyMessage = "Data constraint violation. Check that all required quantity fields are valid";
     }
-    
+
     return res.status(500).json({
       success: false,
       message: userFriendlyMessage,
@@ -118,19 +116,24 @@ export const processStockTransfer = async (req: Request, res: Response) => {
   }
 };
 
-export const updateStockTransfer = async (req: Request, res: Response) => {
+export const updateStockTransfer = async (req: RequestWithTenant, res: Response) => {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
   await queryRunner.startTransaction();
 
   try {
-    const body = req.body;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({ success: false, message: "company_code not found on authenticated user" });
+    }
 
-    const companyCode = body.COMPANY_CODE || body.company_code;
+    const body = req.body;
     const stnNo = body.STN_NO || body.stn_no;
 
-    if (!companyCode || !stnNo) {
-      return res.status(400).json({ success: false, message: "company_code and stn_no are required" });
+    if (!stnNo) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({ success: false, message: "stn_no is required" });
     }
 
     const stn = await queryRunner.manager.query(
@@ -139,10 +142,12 @@ export const updateStockTransfer = async (req: Request, res: Response) => {
     );
 
     if (!stn.length) {
+      await queryRunner.rollbackTransaction();
       return res.status(404).json({ success: false, message: `STN ${stnNo} not found` });
     }
 
     if (stn[0].CONFIRMED === "Y") {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({ success: false, message: "Cannot edit confirmed stock transfer" });
     }
 
@@ -232,6 +237,7 @@ export const updateStockTransfer = async (req: Request, res: Response) => {
       const keyNumber = body.KEY_NUMBER || body.key_number;
 
       if (!keyNumber) {
+        await queryRunner.rollbackTransaction();
         return res.status(400).json({ success: false, message: "KEY_NUMBER required to update detail row" });
       }
 
@@ -262,20 +268,25 @@ export const updateStockTransfer = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteStockTransfer = async (req: Request, res: Response) => {
+export const deleteStockTransfer = async (req: RequestWithTenant, res: Response) => {
   const queryRunner = AppDataSource.createQueryRunner();
   await queryRunner.connect();
   await queryRunner.startTransaction();
 
   try {
-    const body = req.body;
+    const companyCode = req.user?.company_code;
+    if (!companyCode) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({ success: false, message: "company_code not found on authenticated user" });
+    }
 
-    const companyCode = body.COMPANY_CODE || body.company_code;
+    const body = req.body;
     const stnNo = body.STN_NO || body.stn_no;
     const keyNumber = body.KEY_NUMBER || body.key_number;
 
-    if (!companyCode || !stnNo) {
-      return res.status(400).json({ success: false, message: "company_code and stn_no are required" });
+    if (!stnNo) {
+      await queryRunner.rollbackTransaction();
+      return res.status(400).json({ success: false, message: "stn_no is required" });
     }
 
     // 🔍 Check STN exists
@@ -285,11 +296,13 @@ export const deleteStockTransfer = async (req: Request, res: Response) => {
     );
 
     if (!stn.length) {
+      await queryRunner.rollbackTransaction();
       return res.status(404).json({ success: false, message: `STN ${stnNo} not found` });
     }
 
     // 🚫 Prevent delete if confirmed
     if (stn[0].CONFIRMED === "Y") {
+      await queryRunner.rollbackTransaction();
       return res.status(400).json({ success: false, message: "Cannot delete confirmed stock transfer" });
     }
 
@@ -301,6 +314,7 @@ export const deleteStockTransfer = async (req: Request, res: Response) => {
       );
 
       if (!detail.length) {
+        await queryRunner.rollbackTransaction();
         return res.status(404).json({ success: false, message: `Detail row with KEY_NUMBER ${keyNumber} not found` });
       }
 
@@ -308,19 +322,6 @@ export const deleteStockTransfer = async (req: Request, res: Response) => {
         `DELETE FROM TS_STNDETAIL WHERE COMPANY_CODE = :1 AND STN_NO = :2 AND KEY_NUMBER = :3`,
         [companyCode, stnNo, keyNumber]
       );
-
-      // Check if any detail rows remain — if not, delete header too
-      const remaining = await queryRunner.manager.query(
-        `SELECT COUNT(*) AS CNT FROM TS_STNDETAIL WHERE COMPANY_CODE = :1 AND STN_NO = :2`,
-        [companyCode, stnNo]
-      );
-
-      // if (remaining[0].CNT === 0 || remaining[0].cnt === 0) {
-      //   await queryRunner.manager.query(
-      //     `DELETE FROM TS_STN WHERE COMPANY_CODE = :1 AND STN_NO = :2`,
-      //     [companyCode, stnNo]
-      //   );
-      // }
 
       await queryRunner.commitTransaction();
       return res.status(200).json({ success: true, message: `Detail row ${keyNumber} deleted successfully` });
@@ -331,11 +332,6 @@ export const deleteStockTransfer = async (req: Request, res: Response) => {
         `DELETE FROM TS_STNDETAIL WHERE COMPANY_CODE = :1 AND STN_NO = :2`,
         [companyCode, stnNo]
       );
-
-      // await queryRunner.manager.query(
-      //   `DELETE FROM TS_STN WHERE COMPANY_CODE = :1 AND STN_NO = :2`,
-      //   [companyCode, stnNo]
-      // );
 
       await queryRunner.commitTransaction();
       return res.status(200).json({ success: true, message: `STN ${stnNo} and all its details deleted successfully` });

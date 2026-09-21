@@ -1,4 +1,3 @@
-import { oracleDb } from "./../../../src/database/connection";
 import { QueryExecutor } from "../../database/QueryExecutor";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
@@ -125,6 +124,10 @@ export const postLpoRequestHandler = async (
       INVOICE_NUMBER: defaultString(req.body.INVOICE_NUMBER),
       INVOICE_DATE: defaultDate(req.body.INVOICE_DATE),
       REF_DOC_NO: defaultString(req.body.REF_DOC_NO),
+      PARTY_NAME: defaultString(req.body.AC_NAME ?? req.body.PARTY_NAME),
+      PARTY_ADDRESS: defaultString(req.body.ADDRESS ?? req.body.PARTY_ADDRESS),
+      PARTY_PHONE: defaultString(req.body.PHONE ?? req.body.PARTY_PHONE),
+      PARTY_FAX: defaultString(req.body.FAX ?? req.body.PARTY_FAX),
       items:
         req.body.items?.map((item: DetailsTVendor) => ({
           ...item,
@@ -229,7 +232,50 @@ async function sendDataToDotNetAPI(
         transaction
       );
     }
+    // Header/detail transfer is handled by the Oracle procedure. The direct
+    console.log(
+      `Calling Oracle procedure PROC_AWARE_VMS_ENTRY for DOC_NO: ${docNo}`
+    );
+    try {
+      await VendorService.callAwareVmsEntry(companyCode, docNo, "SYSTEM");
+      console.log(
+        `Oracle procedure executed successfully for DOC_NO: ${docNo}`
+      );
+    } catch (spError: any) {
+      console.error(
+        `Oracle procedure PROC_AWARE_VMS_ENTRY failed for ${companyCode}/${docNo}:`,
+        spError
+      );
 
+      const apiMessage = spError?.message || String(spError);
+      const notifPayload = {
+        event: "VENDOR_SP_ERROR",
+        message: `Stored procedure PROC_AWARE_VMS_ENTRY failed for Document ${docNo} (Company: ${companyCode}). Error: ${apiMessage}`,
+        subject: "Vendor SP Transfer Failed",
+        request_user:
+          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        cc: "prem@bayanattechnology.com",
+        htmlMessage: `
+          <h3>Vendor SP Transfer Failed</h3>
+          <p><strong>Company:</strong> ${escapeHtml(companyCode)}</p>
+          <p><strong>Document No:</strong> ${escapeHtml(docNo)}</p>
+          <pre>${escapeHtml(apiMessage)}</pre>
+        `,
+      };
+
+      try {
+        await notifyUser(notifPayload);
+      } catch (notifErr) {
+        console.error("notifyUser failed for SP error:", notifErr);
+      }
+
+      throw spError;
+    }
+
+    await VendorService.updateDataTransferFlag(companyCode, docNo);
+    console.log(`Successfully completed data transfer for DOC_NO: ${docNo}`);
+
+    /*
     // Fetch all columns from TR_AC_LPO_HEADER
     const headerResult = await execMaybe(
       `SELECT 
@@ -274,8 +320,8 @@ async function sendDataToDotNetAPI(
         NVL(REF_DOC1, '') AS REF_DOC1,
         NVL(REF_DOC2, '') AS REF_DOC2,
         NVL(REF_DOC3, '') AS REF_DOC3
-      FROM TR_AC_LPO_HEADER
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES'`,
+      FROM VMS_FLOW_HDR
+      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES' AND NEXT_ACTION_BY = 'APPROVED'`,
       {
         companyCode: { val: companyCode },
         docNo: { val: docNo },
@@ -324,8 +370,8 @@ async function sendDataToDotNetAPI(
         NVL(DIV_CODE, '') AS DIV_CODE,
         NVL(TX_CAT_CODE, '') AS TX_CAT_CODE,
         NVL(TX_COMPNTCAT_CODE_1, '') AS TX_COMPNTCAT_CODE_1
-      FROM TR_AC_LPO_DETAIL
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
+      FROM VMS_FLOW_DTL
+      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND NEXT_ACTION_BY = 'APPROVED'`,
       {
         companyCode: { val: companyCode },
         docNo: { val: docNo },
@@ -428,6 +474,7 @@ async function sendDataToDotNetAPI(
     // Update DATA_TRANSFER flag
     await VendorService.updateDataTransferFlag(companyCode, docNo);
     console.log("Successfully updated data transfer flag");
+    */
   } catch (error) {
     console.error("Error in sendDataToDotNetAPI:", error);
     throw error;
@@ -500,7 +547,7 @@ async function upsertLpoRequest(data: TVendorMain, req: Request) {
     // Fetch the latest FINAL_APPROVED from the database
     const result: any = await QueryExecutor.execMaybe(
       `SELECT FINAL_APPROVED
-       FROM TR_AC_LPO_HEADER 
+       FROM VMS_FLOW_HDR
        WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
       {
         companyCode: { val: data.COMPANY_CODE },
@@ -548,7 +595,7 @@ async function upsertLpoRequestHeader(
 
   const rowsResult = await QueryExecutor.execMaybe(
     `SELECT COUNT(*) as cnt 
-     FROM TR_AC_LPO_HEADER 
+     FROM VMS_FLOW_HDR
      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo `,
     {
       companyCode: { val: company_code },
@@ -565,7 +612,7 @@ async function upsertLpoRequestHeader(
 
   if (isNew) {
     const insertQuery = `
-      INSERT INTO TR_AC_LPO_HEADER (
+      INSERT INTO VMS_FLOW_HDR (
         INVOICE_NUMBER, INVOICE_DATE, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, 
         AC_CODE, REF_NO, REF_DATE, REMARKS, CURR_CODE, EX_RATE, CANCELED, 
         CREATE_USER, EDIT_USER, CREATE_DATE, EDIT_DATE, LAST_SERIAL_NO, 
@@ -681,7 +728,7 @@ async function upsertLpoRequestHeader(
     await QueryExecutor.execMaybe(insertQuery, replacements, connection);
   } else {
     const updateQuery = `
-      UPDATE TR_AC_LPO_HEADER SET 
+      UPDATE VMS_FLOW_HDR SET 
         REF_DOC1 = :refdoc1,
         REF_DOC2 = :refdoc2,
         REF_DOC3 = :refdoc3,
@@ -694,6 +741,11 @@ async function upsertLpoRequestHeader(
         REMARKS = :remarks,
         CURR_CODE = :currCode, 
         EX_RATE = :exRate, 
+        PARTY_NAME = :partyName,
+        PARTY_ADDRESS = :partyAddress,
+        PARTY_PHONE = :partyPhone,
+        PARTY_FAX = :partyFax,
+        DIV_CODE = :divCode,  
       
         EDIT_USER = :editUser, 
         EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
@@ -713,7 +765,11 @@ async function upsertLpoRequestHeader(
       remarks: { val: defaultString(data.REMARKS) },
       currCode: { val: defaultString(data.CURR_CODE) },
       exRate: { val: data.EX_RATE ?? 0 },
-     
+      partyName: { val: defaultString(data.PARTY_NAME ?? data.PARTY_NAME) },
+      partyAddress: { val: defaultString(data.PARTY_ADDRESS ?? data.PARTY_ADDRESS) },
+      partyPhone: { val: defaultString(data.PARTY_PHONE ?? data.PARTY_PHONE) },
+      partyFax: { val: defaultString(data.PARTY_FAX ?? data.PARTY_FAX) },
+      divCode: { val: defaultString(data.DIV_CODE) },
       editUser: { val: defaultString(data.EDIT_USER) },
       editDate: { val: formatDateForOracle(new Date()) },
       companyCode: { val: company_code },
@@ -740,7 +796,7 @@ async function upsertLpoRequestDetails(
   console.log("inside detail companyCode:", companyCode);
 
   await QueryExecutor.execMaybe(
-    `DELETE FROM TR_AC_LPO_DETAIL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND HEADER_AC_CODE = :headerAcCode`,
+    `DELETE FROM VMS_FLOW_DTL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND HEADER_AC_CODE = :headerAcCode`,
     {
       companyCode: { val: companyCode },
       docNo: { val: key_doc_no },
@@ -761,7 +817,7 @@ async function upsertLpoRequestDetails(
     }
 
     const insertQuery = `
-    INSERT INTO TR_AC_LPO_DETAIL (ITEM_REMARK,
+    INSERT INTO VMS_FLOW_DTL (ITEM_REMARK,
       SERIAL_NO, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, AC_CODE,
       HEADER_AC_CODE, REMARKS, AMOUNT, SIGN_IND, CURR_CODE,
       EX_RATE, LCUR_AMOUNT, CANCELLED, JOB_NO, DEPT_CODE, QTY,
@@ -940,29 +996,10 @@ export const executeRawSql = async (
 
     rawSql = rawSql.replace(/\bLEVEL\b(?=\s*[><=])/g, '"LEVEL"');
 
-    // Modify the SQL to format dates if they're not already formatted
-    if (
-      rawSql.toLowerCase().includes("select") &&
-      !rawSql.toLowerCase().includes("to_char")
-    ) {
-      const dateColumns = [
-        "DOC_DATE",
-        "INVOICE_DATE",
-        "CREATE_DATE",
-        "EDIT_DATE",
-        "REF_DATE",
-        "DUE_DATE",
-      ];
-      for (const col of dateColumns) {
-        const regex = new RegExp(`\\b${col}\\b(?![^,]*TO_CHAR)`, "g");
-        rawSql = rawSql.replace(
-          regex,
-          `TO_CHAR(${col}, 'DD-MM-YYYY') as ${col}`
-        );
-      }
-    }
-
-    console.log("Executing modified rawSql:", rawSql);
+    console.log("Executing rawSql:", rawSql);
+    console.log("====================");
+    console.log(rawSql);
+    console.log("====================");
     const result = await QueryExecutor.executeRawQuery(rawSql);
     const rows = result.rows || result;
 
@@ -1173,6 +1210,7 @@ export const saveFileVendorHR = async (
   try {
     for (const file of files) {
       const { org_file_name, sr_no } = file;
+      const safeSrNo = sr_no === undefined || sr_no === null || sr_no === "" ? 0 : Number(sr_no);
 
       // Check for duplicates (now checking with SR_NO too)
       const duplicateCheckResult = await QueryExecutor.executeRawQuery(
@@ -1184,7 +1222,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: sr_no || null },
+          sr_no: { val: safeSrNo },
         }
       );
 
@@ -1225,7 +1263,7 @@ export const saveFileVendorHR = async (
         {
           company_code: { val: company_code || null },
           request_number: { val: request_number },
-          sr_no: { val: sr_no || null },  
+          sr_no: { val: safeSrNo },
           file_name: { val: file_name || null },
           extensions: { val: extensions || null },
           org_file_name: { val: org_file_name || null },
@@ -1252,7 +1290,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: sr_no || null },
+          sr_no: { val: safeSrNo },
         }
       );
 
@@ -1324,8 +1362,8 @@ export async function processSubmittedRecords(
       // Fetch all submitted records
       const recordsResult = await QueryExecutor.executeRawQuery(
         `SELECT COMPANY_CODE, DOC_NO 
-         FROM TR_AC_LPO_HEADER 
-         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y'
+         FROM VMS_FLOW_HDR
+         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y' AND NEXT_ACTION_BY = 'APPROVED'
          FETCH FIRST 1 ROWS ONLY`
       );
       records = recordsResult.rows || recordsResult;
@@ -1390,7 +1428,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
 
   try {
     const existingResult = await QueryExecutor.executeRawQuery(
-      "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
+      "SELECT DOC_NO FROM VMS_FLOW_HDR WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
       { doc_no: { val: doc_no }, company_code: { val: tenantCompanyCode } }
     );
     const existing = existingResult.rows?.[0] || existingResult[0];
@@ -1403,7 +1441,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
 
     // Optional: add separator only when existing value is non-empty
     const query = `
-      UPDATE TR_AC_LPO_HEADER
+      UPDATE VMS_FLOW_HDR
          SET FLOW_LEVEL = :flow_level,
              ${historyField} = CASE
                WHEN NVL(TRIM(${historyField}), '') = '' THEN :remarks

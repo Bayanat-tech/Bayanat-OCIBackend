@@ -10,29 +10,48 @@ import { gradeSchema } from "../../validation/HR/hrgrade.validation";
 import { In } from "typeorm";
 import { HrGrade } from "../../models/Hr/hr_grade";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function getNextGradeCode(companyCode: string): Promise<string> {
+  const gradeRepository = getRepository(HrGrade);
+
+  // Find the highest numeric grade_code for this company
+  const result = await gradeRepository
+    .createQueryBuilder("g")
+    .select("MAX(TO_NUMBER(g.grade_code))", "maxCode")
+    .where("g.company_code = :companyCode", { companyCode })
+    .andWhere("REGEXP_LIKE(g.grade_code, '^[0-9]+$')")
+    .getRawOne<{ maxCode: number | null }>();
+
+  const next = (result?.maxCode ?? 0) + 1;
+  return String(next).padStart(3, "0");
+}
+
+// ─── Create ───────────────────────────────────────────────────────────────────
+
 export const createGrade = async (req: RequestWithUser, res: Response) => {
   try {
     const requestUser: IUser = req.user;
 
     const { error } = gradeSchema(req.body, requestUser.company_code, false);
     if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
+      res.status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
     }
 
-    const { grade_code, company_code } = req.body;
+    const { company_code } = req.body;
     const gradeRepository = getRepository(HrGrade);
 
-    const grade = await gradeRepository.findOne({
-      where: {
-        company_code: company_code,
-        grade_code: grade_code,
-      },
+    // Generate grade_code server-side — never trust a blank value from the client
+    const grade_code = await getNextGradeCode(company_code);
+
+    // Defensive check: generated code must not already exist (race condition)
+    const existing = await gradeRepository.findOne({
+      where: { company_code, grade_code },
     });
 
-    if (grade) {
+    if (existing) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
         message: constants.MESSAGES.GRADE_HR.GRADE_ALREADY_EXISTS,
@@ -42,6 +61,8 @@ export const createGrade = async (req: RequestWithUser, res: Response) => {
 
     const newGrade = gradeRepository.create({
       ...req.body,
+      grade_code,               // use generated code, not the blank from client
+      company_code,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
     });
@@ -49,8 +70,7 @@ export const createGrade = async (req: RequestWithUser, res: Response) => {
     const savedGrade = await gradeRepository.save(newGrade);
 
     if (!savedGrade) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: "Error while creating grade" });
       return;
     }
@@ -58,13 +78,15 @@ export const createGrade = async (req: RequestWithUser, res: Response) => {
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.GRADE_HR.GRADE_CREATED_SUCCESSFULLY,
+      data: { grade_code },     // ← frontend GradeDialog reads this back
     });
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
+    res.status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
   }
 };
+
+// ─── Update ───────────────────────────────────────────────────────────────────
 
 export const updateGrade = async (req: RequestWithUser, res: Response) => {
   try {
@@ -72,8 +94,7 @@ export const updateGrade = async (req: RequestWithUser, res: Response) => {
 
     const { error } = gradeSchema(req.body, requestUser.company_code, false);
     if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
+      res.status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
     }
@@ -82,10 +103,7 @@ export const updateGrade = async (req: RequestWithUser, res: Response) => {
     const gradeRepository = getRepository(HrGrade);
 
     const grade = await gradeRepository.findOne({
-      where: {
-        company_code: company_code,
-        grade_code: grade_code,
-      },
+      where: { company_code, grade_code },
     });
 
     if (!grade) {
@@ -97,19 +115,12 @@ export const updateGrade = async (req: RequestWithUser, res: Response) => {
     }
 
     const updateResult = await gradeRepository.update(
-      {
-        company_code: company_code,
-        grade_code: grade_code,
-      },
-      {
-        ...req.body,
-        updated_by: requestUser.loginid,
-      }
+      { company_code, grade_code },
+      { ...req.body, updated_by: requestUser.loginid },
     );
 
     if (updateResult.affected === 0) {
-      res
-        .status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
+      res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR)
         .json({ success: false, message: "Error while updating grade" });
       return;
     }
@@ -117,13 +128,15 @@ export const updateGrade = async (req: RequestWithUser, res: Response) => {
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
       message: constants.MESSAGES.GRADE_HR.GRADE_UPDATED_SUCCESSFULLY,
+      data: { grade_code },     // ← consistent response shape
     });
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
+    res.status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
   }
 };
+
+// ─── Bulk create ──────────────────────────────────────────────────────────────
 
 export const createBulkGrades = async (req: RequestWithUser, res: Response) => {
   try {
@@ -131,27 +144,25 @@ export const createBulkGrades = async (req: RequestWithUser, res: Response) => {
 
     const { error } = gradeSchema(req.body, requestUser.company_code, true);
     if (error) {
-      res
-        .status(constants.STATUS_CODES.BAD_REQUEST)
+      res.status(constants.STATUS_CODES.BAD_REQUEST)
         .json({ success: false, message: error.message });
       return;
     }
 
     const gradeRepository = getRepository(HrGrade);
-    
+
     const gradesWithUser = req.body.map((grade: IHrGrade) => ({
       ...grade,
       updated_by: requestUser.loginid,
       created_by: requestUser.loginid,
     }));
 
-    // Using insert with conflict handling (similar to ignoreDuplicates)
     await gradeRepository
       .createQueryBuilder()
       .insert()
       .into(HrGrade)
       .values(gradesWithUser)
-      .orIgnore() // This handles the ignoreDuplicates behavior
+      .orIgnore()
       .execute();
 
     res.status(constants.STATUS_CODES.OK).json({
@@ -159,41 +170,29 @@ export const createBulkGrades = async (req: RequestWithUser, res: Response) => {
       message: "Grade " + constants.MESSAGES.IMPORTED_SUCCESSFULLY,
     });
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
+    res.status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
   }
 };
 
+// ─── Export ───────────────────────────────────────────────────────────────────
+
 export const exportGrade = async (req: RequestWithUser, res: Response) => {
   try {
     const gradeRepository = getRepository(HrGrade);
-    
-    let fetchedData: any[] = [];
-    let csvTransform: fastCsv.CsvFormatterStream<
-      fastCsv.FormatterRow,
-      fastCsv.FormatterRow
-    >;
 
-    fetchedData = await gradeRepository.find({
+    const fetchedData = await gradeRepository.find({
       where: { company_code: req.user.company_code },
     });
 
-    csvTransform = fastCsv.format({
+    const csvTransform = fastCsv.format({
       headers: HrCsvHeaders.MASTERS.GRADE,
     });
 
-    // Set headers for CSV response before streaming
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="grade.csv"`);
 
-    // Write data to the CSV stream
-    fetchedData.forEach((eachData) => {
-      // TypeORM entities are already plain objects, no need for get({ plain: true })
-      csvTransform.write(eachData);
-    });
-
-    // End the CSV stream and pipe it to the response
+    fetchedData.forEach((row) => csvTransform.write(row));
     csvTransform.end();
     csvTransform.pipe(res);
   } catch (error: any) {
@@ -201,6 +200,8 @@ export const exportGrade = async (req: RequestWithUser, res: Response) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+// ─── Delete ───────────────────────────────────────────────────────────────────
 
 export const deleteGrades = async (req: RequestWithUser, res: Response) => {
   try {
@@ -215,10 +216,10 @@ export const deleteGrades = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const deleteResult = await gradeRepository.delete({
-      grade_code: In(gradesCode),
+   const deleteResult = await gradeRepository.delete({
+  company_code: req.user.company_code,
+  grade_code: In(gradesCode),
     });
-
     if (deleteResult.affected === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
         success: false,
@@ -232,8 +233,7 @@ export const deleteGrades = async (req: RequestWithUser, res: Response) => {
       message: constants.MESSAGES.GRADE_HR.GRADE_DELETED_SUCCESSFULLY,
     });
   } catch (error: any) {
-    res
-      .status(constants.STATUS_CODES.BAD_REQUEST)
+    res.status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
   }
 };

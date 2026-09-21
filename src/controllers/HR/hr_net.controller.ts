@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { HrService } from "../../services/hr.service";
 
+const paramValue = (value: string | string[] | undefined): string =>
+  Array.isArray(value) ? value[0] ?? "" : value ?? "";
+
 export const getEmployeesHandler = async (req: Request, res: Response) => {
   try {
     console.log('in getEmployeesHandler')
@@ -16,9 +19,27 @@ export const getEmployeesHandler = async (req: Request, res: Response) => {
   }
 };
 
+export const leaveDaysCntHandler = async (req: Request, res: Response) => {
+  try {
+    const { leaveStartDate, leaveEndDate, leaveType, company_code, employee_code } = req.query;
+
+    const data = await HrService.LeaveDaysCount({
+      leaveStartDate: leaveStartDate as string,
+      leaveEndDate: leaveEndDate as string,
+      leaveType: leaveType as string,
+      company_code: company_code as string,
+      employee_code: employee_code as string,
+    });
+
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const getLeaveBalanceHandler = async (req: Request, res: Response) => {
   try {
-    const { employeeId } = req.params;
+    const employeeId = paramValue(req.params.employeeId);
     const data = await HrService.getLeaveBalance(employeeId);
     res.json(data);
   } catch (error: any) {
@@ -28,7 +49,7 @@ export const getLeaveBalanceHandler = async (req: Request, res: Response) => {
 
 export const getLeaveEntitleHandler = async (req: Request, res: Response) => {
   try {
-    const { employeeId } = req.params;
+    const employeeId = paramValue(req.params.employeeId);
     const data = await HrService.getLeaveEntitle(employeeId);
     res.json(data);
   } catch (error: any) {
@@ -94,13 +115,15 @@ export const validateLeaveHandler = async (req: Request, res: Response) => {
 export const newvalidateLeaveHandler = async (req: Request, res: Response) => {
   try {
     const {
-      leaveStartDate,employeeId,leaveType
+      leaveStartDate, leaveEndDate, employeeId, leaveType, leaveDays
     } = req.query;
 
     const data = await HrService.newValidaterequest({
       leaveStartDate: leaveStartDate as string,
+      leaveEndDate: leaveEndDate as string,
       employeeId: employeeId as string,
       leaveType: leaveType as string,
+      leaveDays: Number(leaveDays || 0),
 
     });
 

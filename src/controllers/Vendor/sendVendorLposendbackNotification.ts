@@ -59,7 +59,7 @@ async function getVendorEmail(docNo: string, connection?: any): Promise<string |
   };
 
   const acCodeRes = await execMaybe(
-    `SELECT AC_CODE FROM TR_AC_LPO_HEADER WHERE DOC_NO = :docNo`,
+    `SELECT AC_CODE FROM VMS_FLOW_HDR WHERE DOC_NO = :docNo`,
     { docNo: { val: docNo } },
     connection
   );
@@ -78,7 +78,7 @@ async function getHistories(companyCode: string, docNo: string, connection?: any
   const r = await QueryExecutor.execMaybe(
     `SELECT NVL(SENDBACK_HISTORY,'') AS SENDBACK_HISTORY,
             NVL(REJECT_HISTORY,'') AS REJECT_HISTORY
-       FROM TR_AC_LPO_HEADER
+       FROM VMS_FLOW_HDR
       WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
     { companyCode: { val: companyCode }, docNo: { val: docNo } },
     connection

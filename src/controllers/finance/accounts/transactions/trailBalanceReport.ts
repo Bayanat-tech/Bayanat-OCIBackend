@@ -172,7 +172,7 @@ async function execDynamicProc(
     DECLARE
       v_sql CLOB;
     BEGIN
-      WMSTST.PROC_BUILD_DYNAMIC_SQL_COMMON(
+      PROC_BUILD_DYNAMIC_SQL_COMMON(
         :parameter, :loginid,
         :code1, :code2, :code3, :code4,
         :number1, :number2, :number3, :number4,

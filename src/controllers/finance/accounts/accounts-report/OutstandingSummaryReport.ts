@@ -132,6 +132,8 @@ export const OutstandingSummaryReport = async (req: Request, res: Response): Pro
             outFormat: oracledb.OUT_FORMAT_OBJECT,
         });
 
+         console.log("rawsql------======:", rawSql);
+
         const rows = (dataResult.rows as any[]).map((row) =>
             Object.keys(row).reduce((acc: any, key) => {
                 acc[key.toLowerCase()] = row[key];

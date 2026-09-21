@@ -189,9 +189,20 @@ export const uploadAFToS3 = async (req: any, res: any) => {
 // };
 
 export const deleteFileFromS3 = async (awsFileLocation: string) => {
+  let key = awsFileLocation;
+  const bucketName = constants.OCI_S3_COMPATIBILITY.BUCKET_NAME;
+  const endpoint = constants.OCI_S3_COMPATIBILITY.ENDPOINT;
+
+  if (endpoint && key.startsWith(endpoint)) {
+    key = key.substring(endpoint.length).replace(/^\/+/, "");
+  }
+  if (bucketName && key.startsWith(`${bucketName}/`)) {
+    key = key.substring(bucketName.length + 1);
+  }
+
   const params = {
     Bucket: constants.OCI_S3_COMPATIBILITY.BUCKET_NAME,
-    Key: awsFileLocation,
+    Key: key,
   };
 
   try {
