@@ -4,13 +4,10 @@ import constants from "../helpers/constants";
 import { ISearch, RequestWithUser } from "../interfaces/common.interface";
 import { IUser } from "../interfaces/user.interface";
 
-// Import HR-related interfaces
 import { IHrBank } from "../interfaces/Hr/hr_bank";
-
 
 import { In, FindOptionsWhere, FindManyOptions } from "typeorm";
 
-// Import models
 import { getSearchFilterQuery } from "../helpers/functions";
 import { HrAirport } from "../models/Hr/hr_airport";
 import { HrBank } from "../models/Hr/hr_bank";
@@ -31,6 +28,121 @@ import { HrSponsor } from "../models/Hr/hr_sponsor";
 import { HrViewEmp } from "../views/hr/hr_view_employee";
 import { oracleDb, TypeORMService } from "../database/connection";
 
+
+const ALLOWED_SORT_FIELDS: Record<string, string> = {
+  REQUEST_NUMBER: 'REQUEST_NUMBER',
+  REQUEST_DATE: 'REQUEST_DATE',
+  LAST_UPDATED: 'LAST_UPDATED',
+  LEAVE_START_DATE: 'LEAVE_START_DATE',
+  LEAVE_END_DATE: 'LEAVE_END_DATE',
+  LEAVE_TYPE: 'LEAVE_TYPE',
+  LEAVE_TYPE_DESC: 'LEAVE_TYPE_DESC',
+  EMPLOYEE_CODE: 'EMPLOYEE_CODE',
+  EMPLOYEE_NAME_DISPLAY: 'EMPLOYEE_NAME_DISPLAY',
+  NEXT_ACTION_BY_NAME: 'NEXT_ACTION_BY_NAME',
+  REMARKS: 'REMARKS'
+};
+
+const ALLOWED_FILTER_COLUMNS = new Set<string>([
+  'REQUEST_NUMBER',
+  'REQUEST_DATE',
+  'LAST_UPDATED',
+  'LEAVE_START_DATE',
+  'LEAVE_END_DATE',
+  'LEAVE_TYPE',
+  'LEAVE_TYPE_DESC',
+  'EMPLOYEE_CODE',
+  'EMPLOYEE_NAME_DISPLAY',
+  'NEXT_ACTION_BY_NAME',
+  'REMARKS'
+]);
+
+function buildFilterSql(
+  search: any
+): { sql: string; binds: Record<string, any> } {
+  const clauses: string[] = [];
+  const binds: Record<string, any> = {};
+  if (!Array.isArray(search)) return { sql: '', binds };
+
+  search.forEach((group: any, gi: number) => {
+    if (!Array.isArray(group)) return;
+    group.forEach((clause: any, ci: number) => {
+      const col = String(clause?.field_name ?? '').toUpperCase();
+      if (!ALLOWED_FILTER_COLUMNS.has(col)) return; // 🔒 whitelist
+
+      const key = `f_${gi}_${ci}`;
+      const op = String(clause?.operator ?? 'equals').toLowerCase();
+      const val = clause?.field_value;
+
+      switch (op) {
+        case 'contains':
+          clauses.push(`UPPER(${col}) LIKE :${key}`);
+          binds[key] = `%${String(val).toUpperCase()}%`;
+          break;
+        case 'not_contains':
+          clauses.push(`UPPER(${col}) NOT LIKE :${key}`);
+          binds[key] = `%${String(val).toUpperCase()}%`;
+          break;
+        case 'starts_with':
+          clauses.push(`UPPER(${col}) LIKE :${key}`);
+          binds[key] = `${String(val).toUpperCase()}%`;
+          break;
+        case 'ends_with':
+          clauses.push(`UPPER(${col}) LIKE :${key}`);
+          binds[key] = `%${String(val).toUpperCase()}`;
+          break;
+        case 'equals':
+          clauses.push(`UPPER(${col}) = :${key}`);
+          binds[key] = String(val).toUpperCase();
+          break;
+        case 'not_equals':
+          clauses.push(`UPPER(${col}) <> :${key}`);
+          binds[key] = String(val).toUpperCase();
+          break;
+        case 'gt':
+          clauses.push(`${col} > :${key}`);
+          binds[key] = val;
+          break;
+        case 'gte':
+          clauses.push(`${col} >= :${key}`);
+          binds[key] = val;
+          break;
+        case 'lt':
+          clauses.push(`${col} < :${key}`);
+          binds[key] = val;
+          break;
+        case 'lte':
+          clauses.push(`${col} <= :${key}`);
+          binds[key] = val;
+          break;
+        case 'between': {
+          const from = Array.isArray(val) ? val[0] : val;
+          const to   = Array.isArray(val) ? val[1] : val;
+          clauses.push(`${col} BETWEEN :${key}_from AND :${key}_to`);
+          binds[`${key}_from`] = from;
+          binds[`${key}_to`]   = to;
+          break;
+        }
+        case 'is_null':
+          clauses.push(`${col} IS NULL`);
+          break;
+        case 'is_not_null':
+          clauses.push(`${col} IS NOT NULL`);
+          break;
+        default:
+          break;
+      }
+    });
+  });
+
+  return {
+    sql: clauses.length ? ` AND (${clauses.join(' AND ')})` : '',
+    binds
+  };
+}
+
+
+
 async function queryEntityWithFilters(
   entityClass: any,
   companyCode: string,
@@ -39,22 +151,17 @@ async function queryEntityWithFilters(
 ): Promise<{ data: any[]; count: number }> {
   const repo = TypeORMService.getRepository(entityClass);
 
-  // Build where conditions
   const where: FindOptionsWhere<any> = { company_code: companyCode };
 
-  // Apply search filter if exists
   if (filter?.search) {
-    // // You'll need to update getSearchFilterQuery for TypeORM
     Object.assign(where, getSearchFilterQuery(filter.search));
   }
 
-  // Build find options
   const findOptions: FindManyOptions<any> = {
     where,
     ...paginationOptions
   };
 
-  // Apply sorting
   if (filter?.sort && Object.keys(filter.sort).length > 0) {
     findOptions.order = {
       [filter.sort.field_name]: filter.sort.desc ? "DESC" : "ASC"
@@ -65,24 +172,20 @@ async function queryEntityWithFilters(
   return { data, count };
 }
 
-
 export const getHrMaster = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
-  //---------------- Get Data based on master name -------------
-
   try {
-    // Extract parameters from the request
-    const { masters } = req.params; // Extract 'masters' parameter from the request
-    const requestUser: IUser = req.user; // Get the user making the request
-    const uniqueCode = req.query.code; // Extract 'code' query parameter from the request
-    const page = Number(req.query.page) || 1; // Extract 'page' query parameter, default to 1
-    const limit = Number(req.query.limit) || 10; // Extract 'limit' query parameter, default to 10
-    const skip = Number(page * limit - limit); // Calculate the offset for pagination
-    let fetchedData: unknown[] = [], // Initialize an empty array to store fetched data
-      totalCount = 0; // Initialize a variable to store the total count of data
-    const paginationOptions = limit ? { offset: skip, limit: limit } : {}; // Create pagination options based on the limit
+    const { masters } = req.params;
+    const requestUser: IUser = req.user;
+    const uniqueCode = req.query.code;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = Number(page * limit - limit);
+    let fetchedData: unknown[] = [],
+      totalCount = 0;
+    const paginationOptions = limit ? { offset: skip, limit: limit } : {};
     let filter: Partial<ISearch> = {};
     try {
       filter = req.query.filter ? JSON.parse(String(req.query.filter)) : {};
@@ -90,8 +193,8 @@ export const getHrMaster = async (
       console.warn('Invalid filter payload for HR master request:', req.query.filter);
       filter = {};
     }
+
     switch (masters) {
-      // employeemaster case
       case "employeemaster": {
         const result = await queryEntityWithFilters(
           HrViewEmp,
@@ -103,6 +206,10 @@ export const getHrMaster = async (
         totalCount = result.count;
         break;
       }
+
+      // ---------------------------------------------------------------
+      //  🔧 UPDATED: all leave-flow cases now honour filter + sort
+      // ---------------------------------------------------------------
       case "Pg_Leave_flow":
       case "Pg_leave_flow_Rejected":
       case "Pg_leave_flow_close":
@@ -115,21 +222,16 @@ export const getHrMaster = async (
         const limit = Math.min(Math.max(requestedLimit, 1), maxLimit);
         const offset = (page - 1) * limit;
         const isCloseFlow = masters === 'Pg_leave_flow_close';
-        const sortField = String(filter?.sort?.field_name || (isCloseFlow ? 'LAST_UPDATED' : 'REQUEST_NUMBER')).toUpperCase();
-        const allowedSortFields: Record<string, string> = {
-          REQUEST_NUMBER: 'REQUEST_NUMBER',
-          REQUEST_DATE: 'REQUEST_DATE',
-          LAST_UPDATED: 'LAST_UPDATED',
-          LEAVE_START_DATE: 'LEAVE_START_DATE',
-          LEAVE_END_DATE: 'LEAVE_END_DATE',
-          EMPLOYEE_CODE: 'EMPLOYEE_CODE',
-          LEAVE_TYPE: 'LEAVE_TYPE'
-        };
-        const orderByColumn = allowedSortFields[sortField] || (isCloseFlow ? 'LAST_UPDATED' : 'REQUEST_NUMBER');
-        const orderDirection = isCloseFlow ? 'DESC' : (filter?.sort?.desc ? 'DESC' : 'ASC');
+
+        // ---- SORT (honours filter.sort.desc from the grid) ----
+        const requestedSort = String(filter?.sort?.field_name ?? '').toUpperCase();
+        const orderByColumn = ALLOWED_SORT_FIELDS[requestedSort] ?? 'REQUEST_DATE';
+        const orderDirection =
+          !requestedSort || !ALLOWED_SORT_FIELDS[requestedSort]
+            ? 'DESC'                                              // fallback case
+            : filter?.sort?.desc === false ? 'ASC' : 'DESC';
 
         const loginid = req.query.code as string;
-
 
         if (!requestUser?.company_code || !loginid) {
           console.error("Missing company_code or loginid");
@@ -144,124 +246,132 @@ export const getHrMaster = async (
 
         let whereConditions = "";
 
-
         switch (masters) {
           case "Pg_Leave_flow":
-
             whereConditions = `
-  company_code = :company_code
-  AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
-  AND (
-        (NEXT_ACTION_BY = :loginid AND FINAL_APPROVED <> 'YES')
-        OR (
-            IMMEDIATE_SUPERVISOR = :loginid
-            AND ACTUAL_RESUME_DATE IS NOT NULL
-            AND RESUME_DATE_APPROVED = 'NO'
-            AND FINAL_APPROVED <> 'YES'
-        )
-      )
-  `;
+              company_code = :company_code
+              AND LAST_ACTION NOT IN ('REJECTED', 'CANCEL')
+              AND (
+                    (NEXT_ACTION_BY = :loginid AND FINAL_APPROVED <> 'YES')
+                    OR (
+                        IMMEDIATE_SUPERVISOR = :loginid
+                        AND ACTUAL_RESUME_DATE IS NOT NULL
+                        AND RESUME_DATE_APPROVED = 'NO'
+                        AND FINAL_APPROVED <> 'YES'
+                    )
+                  )
+            `;
             break;
           case "Pg_leave_flow_Rejected":
-              whereConditions = `
-  company_code = :company_code
-  AND LAST_ACTION = 'REJECTED'
-  AND (
-        CREATED_BY = :loginid
-        OR IMMEDIATE_SUPERVISOR = :loginid
-        OR HOD = :loginid
-        OR DEPT_HEAD = :loginid
-  )`;
-
+            whereConditions = `
+              company_code = :company_code
+              AND LAST_ACTION = 'REJECTED'
+              AND (
+                    CREATED_BY = :loginid
+                    OR IMMEDIATE_SUPERVISOR = :loginid
+                    OR HOD = :loginid
+                    OR DEPT_HEAD = :loginid
+              )`;
             break;
           case "Pg_leave_flow_close":
-           whereConditions = `
-  company_code = :company_code
-  AND FINAL_APPROVED = 'YES'
-  AND LAST_ACTION <> 'CANCEL'
-  AND (
-        CREATED_BY = :loginid
-        OR IMMEDIATE_SUPERVISOR = :loginid
-        OR HOD = :loginid
-        OR DEPT_HEAD = :loginid
-  )`;
-
+            whereConditions = `
+              company_code = :company_code
+              AND FINAL_APPROVED = 'YES'
+              AND LAST_ACTION <> 'CANCEL'
+              AND (
+                    CREATED_BY = :loginid
+                    OR IMMEDIATE_SUPERVISOR = :loginid
+                    OR HOD = :loginid
+                    OR DEPT_HEAD = :loginid
+              )`;
             break;
           case "Pg_leave_flow_cancel":
-              whereConditions = `
-  company_code = :company_code
-  AND LAST_ACTION = 'CANCEL'
-  AND (
-        CREATED_BY = :loginid
-        )
-`;
+            whereConditions = `
+              company_code = :company_code
+              AND LAST_ACTION = 'CANCEL'
+              AND (
+                    CREATED_BY = :loginid
+              )`;
             break;
-         case "Pg_leave_flow_InProgress":
-    whereConditions = `
-        company_code = :company_code
-        AND LAST_ACTION <> 'REJECTED'
-        AND FINAL_APPROVED <> 'YES'
-        AND LAST_ACTION <> 'CANCEL'
-        AND NEXT_ACTION_BY NOT IN (
-            SELECT EMPLOYEE_ID 
-            FROM VW_HR_EMPLOYEE_AWARE 
-            WHERE EMPLOYEE_ID = :loginid
-        )
-        AND (
-            :loginid IN (
-                SELECT NEXT_ACTION_BY 
-                FROM LEAVE_REQUEST_FLOW_HISTRY
-            )
-            OR CREATED_BY = :loginid
-        )
-        AND (
-            CREATED_BY = :loginid 
-            OR HOD = :loginid 
-            OR DEPT_HEAD = :loginid 
-            OR IMMEDIATE_SUPERVISOR = :loginid
-        )
-    `;
-
-
+          case "Pg_leave_flow_InProgress":
+            whereConditions = `
+              company_code = :company_code
+              AND LAST_ACTION <> 'REJECTED'
+              AND FINAL_APPROVED <> 'YES'
+              AND LAST_ACTION <> 'CANCEL'
+              AND NEXT_ACTION_BY NOT IN (
+                  SELECT EMPLOYEE_ID
+                  FROM VW_HR_EMPLOYEE_AWARE
+                  WHERE EMPLOYEE_ID = :loginid
+              )
+              AND (
+                  :loginid IN (
+                      SELECT NEXT_ACTION_BY
+                      FROM LEAVE_REQUEST_FLOW_HISTRY
+                  )
+                  OR CREATED_BY = :loginid
+              )
+              AND (
+                  CREATED_BY = :loginid
+                  OR HOD = :loginid
+                  OR DEPT_HEAD = :loginid
+                  OR IMMEDIATE_SUPERVISOR = :loginid
+              )`;
             break;
         }
+
+        // ---- FILTER (built from filter.search; empty array → no clause) ----
+        const { sql: filterSql, binds: filterBinds } = buildFilterSql(
+          (filter as any)?.search
+        );
+
+        const finalWhere = whereConditions + filterSql;
+        const finalBinds = { ...bindParams, ...filterBinds };
+
         try {
           const fetchQuery = `
             SELECT *
-            FROM VW_HR_LEAVE_REQUEST_FLOW
-            WHERE ${whereConditions}
+            FROM VW_LEAVE_REQUEST_FLOW_DTL
+            WHERE ${finalWhere}
             ORDER BY ${orderByColumn} ${orderDirection}
             OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
           `;
 
           const countQuery = `
             SELECT COUNT(*) AS TOTAL_COUNT
-            FROM VW_HR_LEAVE_REQUEST_FLOW
-            WHERE ${whereConditions}
+            FROM VW_LEAVE_REQUEST_FLOW_DTL
+            WHERE ${finalWhere}
           `;
 
           const fetchParams = {
-            ...bindParams,
+            ...finalBinds,
             offset: offset,
             limit: limit
           };
 
           console.log('fetchQuery', fetchQuery);
+          console.log('fetchParams', fetchParams);
+
           const [fetchedData, countData] = await Promise.all([
             oracleDb.query(fetchQuery, fetchParams),
-            oracleDb.query(countQuery, bindParams)
+            oracleDb.query(countQuery, finalBinds) // ⚠️ finalBinds, not bindParams
           ]);
 
           const rows = Array.isArray(fetchedData.rows) ? fetchedData.rows : [];
-          const totalCountRow = Array.isArray(countData.rows) && countData.rows.length > 0 ? countData.rows[0] : null;
-          const totalCountValue = totalCountRow ? Number(Object.values(totalCountRow)[0] ?? 0) : 0;
+          const totalCountRow =
+            Array.isArray(countData.rows) && countData.rows.length > 0
+              ? countData.rows[0]
+              : null;
+          const totalCountValue = totalCountRow
+            ? Number(Object.values(totalCountRow)[0] ?? 0)
+            : 0;
 
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
             data: {
               tableData: rows,
-              count: totalCountValue,
-            },
+              count: totalCountValue
+            }
           });
         } catch (error) {
           console.error(`Error in ${masters}:`, error);
@@ -269,7 +379,7 @@ export const getHrMaster = async (
             success: false,
             data: {
               tableData: [],
-              count: 0,
+              count: 0
             },
             message: "Leave request data is temporarily unavailable. Please try again later."
           });
@@ -281,7 +391,9 @@ export const getHrMaster = async (
       case "Leaveflow_request": {
         const request_number = req.query.code as string;
 
-        const whereConditions = `company_code = :company_code ${request_number ? 'AND request_number = :request_number' : ''}`;
+        const whereConditions = `company_code = :company_code ${
+          request_number ? 'AND request_number = :request_number' : ''
+        }`;
 
         const bindParams: any = {
           company_code: requestUser.company_code
@@ -290,27 +402,27 @@ export const getHrMaster = async (
         if (request_number) {
           bindParams.request_number = request_number;
         }
-        
+
         try {
           const fetchQuery = `
-      SELECT *
-      FROM VW_HR_LEAVE_REQUEST_FLOW
-      WHERE ${whereConditions}
-      ORDER BY request_number ASC
-    `;
+            SELECT *
+            FROM VW_HR_LEAVE_REQUEST_FLOW
+            WHERE ${whereConditions}
+            ORDER BY request_number ASC
+          `;
           console.log("Leaveflow_request Query:", fetchQuery);
           console.log("Leaveflow_request Params:", bindParams);
-          
+
           const fetchedData = await oracleDb.query(fetchQuery, bindParams);
 
-          console.log("fetchedData.rows", fetchedData.rows)
-        
+          console.log("fetchedData.rows", fetchedData.rows);
+
           res.status(constants.STATUS_CODES.OK).json({
             success: true,
             data: {
               tableData: fetchedData.rows,
-              count: fetchedData.rows.length,
-            },
+              count: fetchedData.rows.length
+            }
           });
           return;
         } catch (error) {
@@ -339,7 +451,6 @@ export const getHrMaster = async (
         break;
       }
 
-      // hrSection case
       case "hrSection": {
         const result = await queryEntityWithFilters(
           HrSection,
@@ -352,7 +463,6 @@ export const getHrMaster = async (
         break;
       }
 
-      // grademaster case
       case "grademaster": {
         const result = await queryEntityWithFilters(
           HrGrade,
@@ -365,7 +475,6 @@ export const getHrMaster = async (
         break;
       }
 
-      // designation case
       case "designation": {
         const result = await queryEntityWithFilters(
           HrDesignation,
@@ -522,56 +631,40 @@ export const getHrMaster = async (
         break;
       }
 
-      // bank case
       case "bank": {
-        // Get TypeORM repository
         const bankRepo = TypeORMService.getRepository(HrBank);
 
-        // Fetch bank data with pagination using TypeORM
         const [data, count] = await bankRepo.findAndCount({
           where: { company_code: requestUser.company_code },
-          ...paginationOptions,
+          ...paginationOptions
         });
 
         fetchedData = data as unknown[] as IHrBank[];
         totalCount = count;
       }
         break;
+    }
 
-
-    }// Return a successful response with the fetched data
     res.status(constants.STATUS_CODES.OK).json({
-      // Indicate that the operation was successful
       success: true,
-      // Return the fetched data along with the total count
       data: {
-        // Table data contains the fetched records
         tableData: fetchedData,
-        // Count represents the total number of records
         count: fetchedData?.length
-      },
+      }
     });
     return;
   } catch (error: any) {
-    // Log the error for debugging purposes
     console.error(error);
 
-    // Return an error response with a generic error message
     res.status(constants.STATUS_CODES.INTERNAL_SERVER_ERROR).json({
-      // Indicate that the operation was unsuccessful
       success: false,
-      // Return a generic error message
-      message: "Error occurred while fetching data",
+      message: "Error occurred while fetching data"
     });
   }
 };
 
-
-
 // Delete master data with optional pagination based on the `master` type.
 export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
-
-
   try {
     const { master } = req.params;
     const requestUser: IUser = req.user;
@@ -580,7 +673,6 @@ export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
     if (!ids || ids.length === 0) {
       throw new Error("IDs are required");
     }
-
 
     switch (master) {
       case "bank": {
@@ -643,7 +735,7 @@ export const deleteHrMaster = async (req: RequestWithUser, res: Response) => {
 
     res.status(constants.STATUS_CODES.OK).json({
       success: true,
-      message: `${master} is successfully deleted`,
+      message: `${master} is successfully deleted`
     });
     return;
   } catch (error: any) {
