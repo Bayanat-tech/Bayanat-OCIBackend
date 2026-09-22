@@ -4,6 +4,7 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -183,173 +184,151 @@ function groupByStatus(rows: ReportRow[]): { groups: StatusGroup[]; grandAmount:
   return { groups, grandAmount };
 }
 
-// ─── HTML renderer (Purchase Summary Report visual style, per PDF sample) ──
+// ─── HTML renderer (Purchase Summary Report — shared report_common shell) ──
 
 const REPORT_TITLE = "PURCHASE SUMMARY REPORT";
 const REPORT_NAME = "rep_pfs_txns_datewise";
 
-function renderHtml(rows: ReportRow[], loginId: string): string {
+/** Shared extra CSS for both Summary and Details reports (shared header/footer/table CSS from report_common) */
+const PR_REGISTER_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+    letter-spacing: 0.5px;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.5;
+  }
+  .doc-title-row .print-meta strong {
+    color: #334155;
+  }
+
+  .status-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    break-inside: avoid;
+  }
+  .status-header {
+    padding: 8px 14px;
+    background: #0b4ca1;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  table.data-table.grouped {
+    border-top: none;
+  }
+  .subtotal-row td {
+    background: #eef2f7;
+    font-weight: 700;
+    color: #1e3a8a;
+  }
+
+  .grand-total-box {
+    margin-top: 16px;
+    margin-left: auto;
+    width: 280px;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .grand-total-box .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+  }
+`;
+
+/** Body only – no full HTML document */
+function renderSummaryBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  const headerLogo = rows.length > 0 ? rows[0].logo_url || null : null;
   const { groups, grandAmount } = groupByStatus(rows);
 
-  let bodyHtml = "";
+  const groupsHtml = groups
+    .map((g) => {
+      const lineRows = g.rows
+        .map(
+          (r) => `
+        <tr>
+          <td>${escapeHtml(r.request_number)}</td>
+          <td>${escapeHtml(dateText(r.request_date))}</td>
+          <td>${escapeHtml(r.create_user)}</td>
+          <td>${escapeHtml(r.description)}</td>
+          <td>${escapeHtml(r.curr_code)}</td>
+          <td class="right">${rateFmt(r.currency_rate)}</td>
+          <td class="right amount">${amtFmt(r.amount)}</td>
+        </tr>`
+        )
+        .join("");
 
-  groups.forEach((g) => {
-    bodyHtml += `
-            <div class="status-block">
-                <div class="status-header">Purchase Status: ${escapeHtml(g.status)}</div>
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Request No</th>
-                            <th>Request Date</th>
-                            <th>Create User</th>
-                            <th>Description</th>
-                            <th>Currency</th>
-                            <th class="right">EX Rate</th>
-                            <th class="right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
+      return `
+      <div class="status-block">
+        <div class="status-header">Purchase Status: ${escapeHtml(g.status)}</div>
+        <table class="data-table grouped">
+          <thead>
+            <tr>
+              <th>Request No</th>
+              <th>Request Date</th>
+              <th>Create User</th>
+              <th>Description</th>
+              <th>Currency</th>
+              <th class="right">EX Rate</th>
+              <th class="right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lineRows}
+            <tr class="subtotal-row">
+              <td colspan="6">Total Amount for ${escapeHtml(g.status)}</td>
+              <td class="right">${amtFmt(g.amountTotal)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+    })
+    .join("");
 
-    g.rows.forEach((r) => {
-      bodyHtml += `
-                        <tr>
-                            <td>${escapeHtml(r.request_number)}</td>
-                            <td>${escapeHtml(dateText(r.request_date))}</td>
-                            <td>${escapeHtml(r.create_user)}</td>
-                            <td>${escapeHtml(r.description)}</td>
-                            <td>${escapeHtml(r.curr_code)}</td>
-                            <td class="right">${rateFmt(r.currency_rate)}</td>
-                            <td class="right amount">${amtFmt(r.amount)}</td>
-                        </tr>`;
-    });
-
-    bodyHtml += `
-                        <tr class="subtotal-row">
-                            <td colspan="6">Total Amount for ${escapeHtml(g.status)}</td>
-                            <td class="right">${amtFmt(g.amountTotal)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>`;
-  });
-
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>${escapeHtml(REPORT_TITLE)}</title>
-    <style>
-        @media print {
-            @page { size: A4 landscape; margin: 8mm; }
-            .no-print { display: none !important; }
-            .report-container { box-shadow: none !important; border: none !important; }
-            .status-block { break-inside: avoid; }
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-        }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-meta-left { font-size: 11px; color: #6b7280; line-height: 1.7; }
-        .report-meta-left strong { color: #374151; }
-        .report-title-area { display: flex; align-items: center; justify-content: center; gap: 12px; text-align: center; flex: 1; }
-        .logo-img { max-height: 46px; max-width: 110px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .status-block { border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
-        .status-header {
-            padding: 8px 16px; background: #1e3a8a; color: #fff;
-            font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
-        }
-        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .report-table thead th {
-            background: #f3f4f6; padding: 8px 14px; text-align: left; font-weight: 600; color: #374151;
-            border-bottom: 2px solid #d1d5db; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-        }
-        .report-table tbody td { padding: 7px 14px; border-bottom: 1px solid #f3f4f6; }
-        .report-table tbody tr:hover td { background: #f8fafc; }
-        .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 500; color: #065f46; }
-        .subtotal-row td { background: #eef2f7; font-weight: 700; color: #1e3a8a; padding: 7px 14px; }
-        .report-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 14px; margin-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;
-        }
-        .grand-total-area { display: flex; align-items: center; gap: 12px; }
-        .grand-total-label { font-size: 13px; font-weight: 600; color: #374151; }
-        .grand-total-value { font-size: 18px; font-weight: 700; color: #065f46; }
-        .empty-state { text-align: center; padding: 40px 20px; color: #6b7280; }
-        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
-        @media print {
-            .report-header { border-bottom-color: #000; }
-            .status-header { background: #333 !important; }
-            .report-table thead th { background: #e5e7eb !important; }
-            .report-container { border-radius: 0; padding: 10mm; }
-        }
-    </style>
-</head>
-<body>
-    <div class="report-container">
-        <div class="report-header">
-            <div class="report-meta-left">
-                <div><strong>Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>User:</strong> ${escapeHtml(loginId)}</div>
-                <div><strong>Report:</strong> ${escapeHtml(REPORT_NAME)}</div>
-            </div>
-            <div class="report-title-area">
-                ${headerLogo ? `<img src="${escapeHtml(headerLogo)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div class="report-title">${escapeHtml(REPORT_TITLE)}</div>
-            </div>
-            <div style="width:140px;"></div>
-        </div>
-
-        ${rows.length === 0 ? `
-            <div class="empty-state">
-                <div class="icon">\ud83d\udcc4</div>
-                <div>No records found for the selected filters.</div>
-            </div>
-        ` : `
-            ${bodyHtml}
-
-            <div class="report-footer">
-                <span>Report: ${escapeHtml(REPORT_NAME)}</span>
-                <div class="grand-total-area">
-                    <span class="grand-total-label">Grand Total Amount</span>
-                    <span class="grand-total-value">${amtFmt(grandAmount)}</span>
-                </div>
-            </div>
-        `}
+  return `
+    <div class="doc-title-row">
+      <h1>${escapeHtml(REPORT_TITLE)}</h1>
+      <div class="print-meta">
+        <div><strong>Date:</strong> ${escapeHtml(printDateTime)}</div>
+        <div><strong>User:</strong> ${escapeHtml(loginId)}</div>
+        <div><strong>Report:</strong> ${escapeHtml(REPORT_NAME)}</div>
+      </div>
     </div>
-    <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
-        Powered by Bayanat Technology
-    </div>
-</body>
-</html>`;
+
+    ${
+      rows.length === 0
+        ? `<div class="empty">No records found for the selected filters.</div>`
+        : `
+      ${groupsHtml}
+
+      <div class="grand-total-box">
+        <div class="row"><span>Grand Total Amount</span><span>${amtFmt(grandAmount)}</span></div>
+      </div>`
+    }
+  `;
 }
 
 // ─── Excel builder (raw OOXML, same styling engine as PO Order Register) ──
@@ -734,170 +713,81 @@ function groupByRequest(rows: ReportRow[]): { groups: RequestGroup[]; grandAmoun
 
 const DETAILS_REPORT_TITLE = "PURCHASE DETAILS REPORT";
 
-function renderDetailsHtml(rows: ReportRow[], loginId: string): string {
+/** Body only – no full HTML document */
+function renderDetailsBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  const headerLogo = rows.length > 0 ? rows[0].logo_url || null : null;
   const { groups, grandAmount } = groupByRequest(rows);
 
-  let bodyHtml = "";
+  const groupsHtml = groups
+    .map((g) => {
+      const lineRows = g.rows
+        .map(
+          (r) => `
+        <tr>
+          <td>${escapeHtml(r.sr_no)}</td>
+          <td>${escapeHtml(r.item_code)}</td>
+          <td>${escapeHtml(r.item_desp)}</td>
+          <td class="right">${amtFmt(r.item_rate)}</td>
+          <td class="right">${amtFmt(r.item_qty)}</td>
+          <td>${escapeHtml(r.curr_code)}</td>
+          <td class="right">${rateFmt(r.currency_rate)}</td>
+          <td class="right amount">${amtFmt(r.amount)}</td>
+        </tr>`
+        )
+        .join("");
 
-  groups.forEach((g) => {
-    bodyHtml += `
-            <div class="status-block">
-                <div class="status-header">Request No. ${escapeHtml(g.request_number)} &nbsp;&bull;&nbsp; ${escapeHtml(dateText(g.request_date))} &nbsp;&bull;&nbsp; ${escapeHtml(g.purch_status)}</div>
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Sr No</th>
-                            <th>Item Code</th>
-                            <th>Item Description</th>
-                            <th class="right">Rate</th>
-                            <th class="right">Qty</th>
-                            <th>Currency</th>
-                            <th class="right">EX Rate</th>
-                            <th class="right">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
+      return `
+      <div class="status-block">
+        <div class="status-header">Request No. ${escapeHtml(g.request_number)} &nbsp;&bull;&nbsp; ${escapeHtml(dateText(g.request_date))} &nbsp;&bull;&nbsp; ${escapeHtml(g.purch_status)}</div>
+        <table class="data-table grouped">
+          <thead>
+            <tr>
+              <th>Sr No</th>
+              <th>Item Code</th>
+              <th>Item Description</th>
+              <th class="right">Rate</th>
+              <th class="right">Qty</th>
+              <th>Currency</th>
+              <th class="right">EX Rate</th>
+              <th class="right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lineRows}
+            <tr class="subtotal-row">
+              <td colspan="7">Total Amount for ${escapeHtml(g.request_number)}</td>
+              <td class="right">${amtFmt(g.amountTotal)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+    })
+    .join("");
 
-    g.rows.forEach((r) => {
-      bodyHtml += `
-                        <tr>
-                            <td>${escapeHtml(r.sr_no)}</td>
-                            <td>${escapeHtml(r.item_code)}</td>
-                            <td>${escapeHtml(r.item_desp)}</td>
-                            <td class="right">${amtFmt(r.item_rate)}</td>
-                            <td class="right">${amtFmt(r.item_qty)}</td>
-                            <td>${escapeHtml(r.curr_code)}</td>
-                            <td class="right">${rateFmt(r.currency_rate)}</td>
-                            <td class="right amount">${amtFmt(r.amount)}</td>
-                        </tr>`;
-    });
-
-    bodyHtml += `
-                        <tr class="subtotal-row">
-                            <td colspan="7">Total Amount for ${escapeHtml(g.request_number)}</td>
-                            <td class="right">${amtFmt(g.amountTotal)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>`;
-  });
-
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>${escapeHtml(DETAILS_REPORT_TITLE)}</title>
-    <style>
-        @media print {
-            @page { size: A4 landscape; margin: 8mm; }
-            .no-print { display: none !important; }
-            .report-container { box-shadow: none !important; border: none !important; }
-            .status-block { break-inside: avoid; }
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-        }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-meta-left { font-size: 11px; color: #6b7280; line-height: 1.7; }
-        .report-meta-left strong { color: #374151; }
-        .report-title-area { display: flex; align-items: center; justify-content: center; gap: 12px; text-align: center; flex: 1; }
-        .logo-img { max-height: 46px; max-width: 110px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .status-block { border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
-        .status-header {
-            padding: 8px 16px; background: #1e3a8a; color: #fff;
-            font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
-        }
-        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .report-table thead th {
-            background: #f3f4f6; padding: 8px 14px; text-align: left; font-weight: 600; color: #374151;
-            border-bottom: 2px solid #d1d5db; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-        }
-        .report-table tbody td { padding: 7px 14px; border-bottom: 1px solid #f3f4f6; }
-        .report-table tbody tr:hover td { background: #f8fafc; }
-        .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 500; color: #065f46; }
-        .subtotal-row td { background: #eef2f7; font-weight: 700; color: #1e3a8a; padding: 7px 14px; }
-        .report-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 14px; margin-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;
-        }
-        .grand-total-area { display: flex; align-items: center; gap: 12px; }
-        .grand-total-label { font-size: 13px; font-weight: 600; color: #374151; }
-        .grand-total-value { font-size: 18px; font-weight: 700; color: #065f46; }
-        .empty-state { text-align: center; padding: 40px 20px; color: #6b7280; }
-        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
-        @media print {
-            .report-header { border-bottom-color: #000; }
-            .status-header { background: #333 !important; }
-            .report-table thead th { background: #e5e7eb !important; }
-            .report-container { border-radius: 0; padding: 10mm; }
-        }
-    </style>
-</head>
-<body>
-    <div class="report-container">
-        <div class="report-header">
-            <div class="report-meta-left">
-                <div><strong>Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>User:</strong> ${escapeHtml(loginId)}</div>
-                <div><strong>Report:</strong> ${escapeHtml(REPORT_NAME)}</div>
-            </div>
-            <div class="report-title-area">
-               ${headerLogo ? `<img src="${escapeHtml(headerLogo)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div class="report-title">${escapeHtml(DETAILS_REPORT_TITLE)}</div>
-            </div>
-            <div style="width:140px;"></div>
-        </div>
-
-        ${rows.length === 0 ? `
-            <div class="empty-state">
-                <div class="icon">\ud83d\udcc4</div>
-                <div>No records found for the selected filters.</div>
-            </div>
-        ` : `
-            ${bodyHtml}
-
-            <div class="report-footer">
-                <span>Report: ${escapeHtml(REPORT_NAME)}</span>
-                <div class="grand-total-area">
-                    <span class="grand-total-label">Grand Total Amount</span>
-                    <span class="grand-total-value">${amtFmt(grandAmount)}</span>
-                </div>
-            </div>
-        `}
+  return `
+    <div class="doc-title-row">
+      <h1>${escapeHtml(DETAILS_REPORT_TITLE)}</h1>
+      <div class="print-meta">
+        <div><strong>Date:</strong> ${escapeHtml(printDateTime)}</div>
+        <div><strong>User:</strong> ${escapeHtml(loginId)}</div>
+        <div><strong>Report:</strong> ${escapeHtml(REPORT_NAME)}</div>
+      </div>
     </div>
-    <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
-        Powered by Bayanat Technology
-    </div>
-</body>
-</html>`;
+
+    ${
+      rows.length === 0
+        ? `<div class="empty">No records found for the selected filters.</div>`
+        : `
+      ${groupsHtml}
+
+      <div class="grand-total-box">
+        <div class="row"><span>Grand Total Amount</span><span>${amtFmt(grandAmount)}</span></div>
+      </div>`
+    }
+  `;
 }
 
 function buildDetailsExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
@@ -1247,8 +1137,33 @@ export const getPrRegisterOldSummaryReportHtml = async (req: RequestWithUser, re
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
     }
+
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: REPORT_NAME,
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderSummaryBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: REPORT_TITLE,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PR_REGISTER_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("PR Register Old Summary HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -1282,8 +1197,33 @@ export const getPrRegisterOldDetailReportHtml = async (req: RequestWithUser, res
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
     }
+
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: REPORT_NAME,
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderDetailsBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: DETAILS_REPORT_TITLE,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PR_REGISTER_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderDetailsHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("PR Register Old Detail HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });

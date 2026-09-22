@@ -1,11 +1,10 @@
-
-
 import { Response } from "express";
 import oracledb from "oracledb";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -163,12 +162,11 @@ interface PoGroup {
   doc_date: any;
   ac_name: string;
   cancelled: boolean;
-  logo_url: string | null;
   rows: ReportRow[];
   qtyTotal: number;
 }
 
-function groupByPo(rows: ReportRow[]): { groups: PoGroup[]; grandQty: number; headerLogo: string | null } {
+function groupByPo(rows: ReportRow[]): { groups: PoGroup[]; grandQty: number } {
   const byDoc = new Map<string, PoGroup>();
   const order: string[] = [];
 
@@ -180,7 +178,6 @@ function groupByPo(rows: ReportRow[]): { groups: PoGroup[]; grandQty: number; he
         doc_date: r.doc_date,
         ac_name: text(r.ac_name),
         cancelled: text(r.cancelled).toUpperCase() === "Y",
-        logo_url: r.logo_url || null,
         rows: [],
         qtyTotal: 0,
       });
@@ -193,187 +190,193 @@ function groupByPo(rows: ReportRow[]): { groups: PoGroup[]; grandQty: number; he
 
   const groups = order.map((k) => byDoc.get(k)!);
   const grandQty = groups.reduce((s, g) => s + g.qtyTotal, 0);
-  const headerLogo = rows.length > 0 ? rows[0].logo_url || null : null;
 
-  return { groups, grandQty, headerLogo };
+  return { groups, grandQty };
 }
 
-// ─── HTML renderer (PR Register visual style) ──────────────────────────────
+// ─── HTML renderer (same visual system as Purchase Order report) ──────────
 
 const REPORT_TITLE = "Purchase Orders";
 const REPORT_SUBTITLE = "Order Register";
 
-function renderHtml(rows: ReportRow[], loginId: string): string {
+/** PO Register-only layout CSS (shared header/footer/table CSS comes from report_common) */
+const PO_REGISTER_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+  }
+  .status-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
+
+  .po-group {
+    margin-bottom: 16px;
+    break-inside: avoid;
+  }
+  .po-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+  }
+  .po-group-header .doc-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    display: block;
+  }
+  .po-group-header .supplier-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  table.data-table.grouped {
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+  }
+
+  .subtotal-row td {
+    background: #eef2f7;
+    font-weight: 700;
+    color: #1e3a8a;
+  }
+
+  .grand-total-box {
+    margin-top: 16px;
+    margin-left: auto;
+    width: 260px;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .grand-total-box .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+  }
+`;
+
+/** Body only – no full HTML document */
+function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
 
-  const { groups, grandQty, headerLogo } = groupByPo(rows);
+  const { groups, grandQty } = groupByPo(rows);
 
-  let bodyHtml = "";
+  const groupsHtml = groups
+    .map((g) => {
+      const lineRows = g.rows
+        .map(
+          (r) => `
+        <tr>
+          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
+          <td>${escapeHtml(dateText(r.doc_date))}</td>
+          <td>${escapeHtml(r.remarks)}</td>
+          <td class="right amount">${qtyFmt(r.quantity)}</td>
+          <td>${escapeHtml(r.l_uom)}</td>
+        </tr>`
+        )
+        .join("");
 
-  groups.forEach((g) => {
-    bodyHtml += `
-            <div class="group-container">
-                <div class="group-header">
-                    <div class="group-header-left">
-                        <div>
-                            <span class="group-label">Doc No. ${escapeHtml(g.doc_no)} &nbsp;&bull;&nbsp; Doc Date ${escapeHtml(dateText(g.doc_date))}</span>
-                            <span class="group-name">${escapeHtml(g.ac_name)}</span>
-                            ${g.cancelled ? `<div class="group-status"><span class="status-badge status-CANCELLED">Cancelled</span></div>` : ""}
-                        </div>
-                    </div>
-                </div>
-                <table class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Required Date</th>
-                            <th>Remarks</th>
-                            <th class="right">P.O Qty</th>
-                            <th>UOM</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-    g.rows.forEach((r) => {
-      bodyHtml += `
-                        <tr>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
-                            <td>${escapeHtml(dateText(r.doc_date))}</td>
-                            <td>${escapeHtml(r.remarks)}</td>
-                            <td class="right amount">${qtyFmt(r.quantity)}</td>
-                            <td>${escapeHtml(r.l_uom)}</td>
-                        </tr>`;
-    });
-
-    bodyHtml += `
-                        <tr class="subtotal-row">
-                            <td colspan="3">Total Qty for ${escapeHtml(g.doc_no)}</td>
-                            <td class="right">${qtyFmt(g.qtyTotal)}</td>
-                            <td></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>`;
-  });
-
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>${escapeHtml(REPORT_TITLE)}</title>
-    <style>
-        @media print {
-            @page { size: A4 portrait; margin: 8mm; }
-            .no-print { display: none !important; }
-            .report-container { box-shadow: none !important; border: none !important; }
-            .group-container { break-inside: avoid; }
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-        }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-title-area { display: flex; align-items: center; gap: 14px; }
-        .logo-img { max-height: 50px; max-width: 120px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .report-subtitle { font-size: 12px; color: #6b7280; font-weight: 400; letter-spacing: 0.5px; }
-        .report-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.6; }
-        .report-meta strong { color: #374151; }
-        .group-container { border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
-        .group-header { display: flex; align-items: center; padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
-        .group-header-left { display: flex; align-items: center; gap: 12px; }
-        .group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; display: block; }
-        .group-name { font-size: 14px; font-weight: 600; color: #111827; }
-        .group-status { margin-top: 4px; }
-        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .report-table thead th {
-            background: #f3f4f6; padding: 8px 14px; text-align: left; font-weight: 600; color: #374151;
-            border-bottom: 2px solid #d1d5db; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-        }
-        .report-table tbody td { padding: 7px 14px; border-bottom: 1px solid #f3f4f6; }
-        .report-table tbody tr:hover td { background: #f8fafc; }
-        .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 500; color: #065f46; }
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
-        .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-        .subtotal-row td { background: #eef2f7; font-weight: 700; color: #1e3a8a; padding: 7px 14px; }
-        .report-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 14px; margin-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;
-        }
-        .grand-total-area { display: flex; align-items: center; gap: 12px; }
-        .grand-total-label { font-size: 13px; font-weight: 600; color: #374151; }
-        .grand-total-value { font-size: 18px; font-weight: 700; color: #065f46; }
-        .empty-state { text-align: center; padding: 40px 20px; color: #6b7280; }
-        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
-        @media print {
-            .report-header { border-bottom-color: #000; }
-            .group-header { background: #f0f0f0 !important; }
-            .report-table thead th { background: #e5e7eb !important; }
-            .report-container { border-radius: 0; padding: 10mm; }
-        }
-    </style>
-</head>
-<body>
-    <div class="report-container">
-        <div class="report-header">
-            <div class="report-title-area">
-                ${headerLogo ? `<img src="${escapeHtml(headerLogo)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div>
-                    <div class="report-title">${escapeHtml(REPORT_TITLE)}</div>
-                    <div class="report-subtitle">${escapeHtml(REPORT_SUBTITLE)}</div>
-                </div>
-            </div>
-            <div class="report-meta">
-                <div><strong>Print Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>Print User:</strong> ${escapeHtml(loginId)}</div>
-            </div>
+      return `
+      <div class="po-group">
+        <div class="po-group-header">
+          <div>
+            <span class="doc-label">Doc No. ${escapeHtml(g.doc_no)} &bull; Doc Date ${escapeHtml(dateText(g.doc_date))}</span>
+            <span class="supplier-name">${escapeHtml(g.ac_name)}${
+        g.cancelled ? `<span class="status-badge status-CANCELLED">Cancelled</span>` : ""
+      }</span>
+          </div>
         </div>
+        <table class="data-table grouped">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Required Date</th>
+              <th>Remarks</th>
+              <th class="right">P.O Qty</th>
+              <th>UOM</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lineRows}
+            <tr class="subtotal-row">
+              <td colspan="3">Total Qty for ${escapeHtml(g.doc_no)}</td>
+              <td class="right">${qtyFmt(g.qtyTotal)}</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+    })
+    .join("");
 
-        ${rows.length === 0 ? `
-            <div class="empty-state">
-                <div class="icon">\ud83d\udcc4</div>
-                <div>No records found for the selected filters.</div>
-            </div>
-        ` : `
-            ${bodyHtml}
+  return `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(REPORT_TITLE)}</h1>
+        <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)}</div>
+      </div>
+      <div class="print-meta">
+        <div>Print Date: ${escapeHtml(printDateTime)}</div>
+        <div>Print User: ${escapeHtml(loginId)}</div>
+      </div>
+    </div>
 
-            <div class="report-footer">
-                <span>Report: rpt_po_order_register</span>
-                <div class="grand-total-area">
-                    <span class="grand-total-label">Grand Total Qty</span>
-                    <span class="grand-total-value">${qtyFmt(grandQty)}</span>
-                </div>
-            </div>
-        `}
-    </div>
-    <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
-        Powered by Bayanat Technology
-    </div>
-</body>
-</html>`;
+    ${
+      rows.length === 0
+        ? `<div class="empty">No records found for the selected filters.</div>`
+        : `
+      ${groupsHtml}
+
+      <div class="grand-total-box">
+        <div class="row"><span>Grand Total Qty</span><span>${qtyFmt(grandQty)}</span></div>
+      </div>`
+    }
+  `;
 }
 
 // ─── Excel builder (raw OOXML, PR-style styling engine) ───────────────────
@@ -719,8 +722,33 @@ export const getPoOrderRegisterReportHtml = async (req: RequestWithUser, res: Re
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
     }
+
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "rpt_po_order_register",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderPoRegisterBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: `${REPORT_TITLE} - ${REPORT_SUBTITLE}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PO_REGISTER_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("PO Order Register HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
