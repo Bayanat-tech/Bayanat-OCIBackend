@@ -3941,3 +3941,243 @@ Error: Invalid login: 535 5.7.3 Authentication unsuccessful [AUXP273CA0055.AREP2
     at TLSSocket.emit (node:domain:489:12)
     at addChunk (node:internal/streams/readable:561:12)
     at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-09-22 11:31:20 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m31[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m31[0m d
+[7m  [0m [91m~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m260[0m:[93m18[0m - [91merror[0m[90m TS2304: [0mCannot find name 'getConn'.
+
+[7m260[0m     conn = await getConn(req);
+[7m   [0m [91m                 ~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m261[0m:[93m26[0m - [91merror[0m[90m TS18048: [0m'conn' is possibly 'undefined'.
+
+[7m261[0m     const result = await conn.execute(
+[7m   [0m [91m                         ~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m305[0m:[93m11[0m - [91merror[0m[90m TS2304: [0mCannot find name 'closeConn'.
+
+[7m305[0m     await closeConn(conn);
+[7m   [0m [91m          ~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m31[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m31[0m d
+[7m  [0m [91m~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m260[0m:[93m18[0m - [91merror[0m[90m TS2304: [0mCannot find name 'getConn'.
+
+[7m260[0m     conn = await getConn(req);
+[7m   [0m [91m                 ~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m261[0m:[93m26[0m - [91merror[0m[90m TS18048: [0m'conn' is possibly 'undefined'.
+
+[7m261[0m     const result = await conn.execute(
+[7m   [0m [91m                         ~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m305[0m:[93m11[0m - [91merror[0m[90m TS2304: [0mCannot find name 'closeConn'.
+
+[7m305[0m     await closeConn(conn);
+[7m   [0m [91m          ~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m31[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m31[0m d
+[7m  [0m [91m~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m260[0m:[93m18[0m - [91merror[0m[90m TS2304: [0mCannot find name 'getConn'.
+
+[7m260[0m     conn = await getConn(req);
+[7m   [0m [91m                 ~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m261[0m:[93m26[0m - [91merror[0m[90m TS18048: [0m'conn' is possibly 'undefined'.
+
+[7m261[0m     const result = await conn.execute(
+[7m   [0m [91m                         ~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m305[0m:[93m11[0m - [91merror[0m[90m TS2304: [0mCannot find name 'closeConn'.
+
+[7m305[0m     await closeConn(conn);
+[7m   [0m [91m          ~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-22 11:31:44 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m32[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m32[0m d
+[7m  [0m [91m~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m32[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m32[0m d
+[7m  [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m32[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m32[0m d
+[7m  [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-22 11:32:00 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m30[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m30[0m d
+[7m  [0m [91m~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m30[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m30[0m d
+[7m  [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m30[0m:[93m1[0m - [91merror[0m[90m TS2304: [0mCannot find name 'd'.
+
+[7m30[0m d
+[7m  [0m [91m~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-22 11:34:10 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0008.AREP273.PROD.OUTLOOK.COM 2026-09-22T06:04:10.230Z 08DF16FA9E272F89] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0008.AREP273.PROD.OUTLOOK.COM 2026-09-22T06:04:10.230Z 08DF16FA9E272F89]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-09-22 11:42:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-09-22T06:12:07.645Z 08DF183A62BB200A] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0012.QATP289.PROD.OUTLOOK.COM 2026-09-22T06:12:07.645Z 08DF183A62BB200A]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-09-22 11:52:09 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0062.AREP273.PROD.OUTLOOK.COM 2026-09-22T06:22:08.985Z 08DF18262A9A8215] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0062.AREP273.PROD.OUTLOOK.COM 2026-09-22T06:22:08.985Z 08DF18262A9A8215]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-09-22 11:59:36 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m292[0m:[93m7[0m - [91merror[0m[90m TS2304: [0mCannot find name 'COMMON_REPORT_CSS'.
+
+[7m292[0m     ${COMMON_REPORT_CSS}
+[7m   [0m [91m      ~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m292[0m:[93m7[0m - [91merror[0m[90m TS2304: [0mCannot find name 'COMMON_REPORT_CSS'.
+
+[7m292[0m     ${COMMON_REPORT_CSS}
+[7m   [0m [91m      ~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m292[0m:[93m7[0m - [91merror[0m[90m TS2304: [0mCannot find name 'COMMON_REPORT_CSS'.
+
+[7m292[0m     ${COMMON_REPORT_CSS}
+[7m   [0m [91m      ~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-22 12:02:00 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12516: TNS:listener could not find available handler with matching protocol stack 
+Error: ORA-12516: TNS:listener could not find available handler with matching protocol stack
+    at async Function.getPoolForTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async Function.getConnection (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async Function.executeInTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-09-22 12:12:04 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: NJS-500: connection to Oracle Database was closed or broken
+ORA-12537: TNS:connection closed 
+Error: NJS-500: connection to Oracle Database was closed or broken
+ORA-12537: TNS:connection closed
+    at async Function.getPoolForTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async Function.getConnection (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async Function.executeInTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25

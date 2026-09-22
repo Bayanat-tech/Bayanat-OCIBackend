@@ -144,7 +144,10 @@ export const REPORT_FOOTER_CSS = `
 /** Common CSS for all HTML reports (tables, groups, print, sheet) */
 export const COMMON_REPORT_CSS = `
   @page { size: A4; margin: 12mm; }
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  }
   body {
     margin: 0;
     color: #0f172a;
@@ -245,16 +248,74 @@ export const COMMON_REPORT_CSS = `
   }
 
   @media print {
-    body { background: white; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: white;
+    }
+
     .actions, .viewerbar, .no-print { display: none !important; }
-    .sheet, .paper { padding: 0; border: 0; box-shadow: none; max-width: none; }
-    table.report-shell { page-break-inside: auto; }
-    table.report-shell thead { display: table-header-group; }
-    table.report-shell tfoot { display: table-footer-group; }
-    table.data-table tr { page-break-inside: avoid; }
+
+    .sheet,
+    .paper {
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+      max-width: none;
+      height: 100%;
+      min-height: 100%;
+    }
+
+    /* Force the shell table to fill the page so tfoot sits at the bottom */
+    table.report-shell {
+      height: 100%;
+      min-height: 100%;
+      page-break-inside: auto;
+    }
+
+    table.report-shell thead {
+      display: table-header-group;
+    }
+
+    table.report-shell tfoot {
+      display: table-footer-group;
+    }
+
+    /* This helps push the footer to the bottom on short pages */
+    table.report-shell tbody {
+      height: 100%;
+    }
+
+    table.report-shell > tbody > tr,
+    table.report-shell > tbody > tr > td {
+      height: 100%;
+      vertical-align: top;
+    }
+
+    table.data-table tr {
+      page-break-inside: avoid;
+    }
+
+    /* Page border on every printed page */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 1.5px solid #0b4ca1;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Keep footer clean */
+    .report-footer {
+      margin-top: 0;
+      padding-top: 6px;
+    }
   }
 `;
-
 /* ------------------------------------------------------------------ */
 /*  reportHeader – logo left, name + each address line full width      */
 /* ------------------------------------------------------------------ */
@@ -350,12 +411,11 @@ export function reportFooter(options: ReportFooterOptions = {}): string {
 
   const printed = printDateTimeNow();
   const left = extraLeft || `Print: ${escapeHtml(printed)}${userName ? ` | User: ${escapeHtml(userName)}` : ""}`;
-  const right = extraRight || `Report: ${escapeHtml(reportName)} | Powered by Bayanat Technology`;
+  const right = extraRight || `Report: ${escapeHtml(reportName)} | ${escapeHtml(endLabel)}`;
 
   return `
     <div class="report-footer">
       <div class="footer-left">${left}</div>
-      <div class="footer-center">${escapeHtml(endLabel)}</div>
       <div class="footer-right">${right}</div>
     </div>`;
 }

@@ -189,8 +189,6 @@ async function loadReportData(req: RequestWithUser, docType: string, docNo: stri
 
 /** Finance-only CSS (document layout – not shared) */
 const FINANCE_EXTRA_CSS = `
-  body { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #0f172a; }
-
   .doc-title-row {
     display: flex;
     justify-content: space-between;
@@ -372,10 +370,6 @@ function renderFinanceBody(
         <h1>${escapeHtml(titleFor(docType))}</h1>
         <div class="doc-sub">${escapeHtml(header.doc_no || "")}</div>
       </div>
-      <div class="print-meta">
-        <div>Print Date: ${escapeHtml(printAt)}</div>
-        <div>Print User: ${escapeHtml(printUser || "—")}</div>
-      </div>
     </div>
 
     <section class="summary">
@@ -426,11 +420,6 @@ function renderFinanceBody(
         <tr class="grand"><td>Grand Total ${escapeHtml(currency)}</td><td class="num">${money(total)}</td></tr>
       </table>
     </div>
-
-    <section class="sign">
-      <div class="line">Customer's Signature</div>
-      <div class="line">For ${escapeHtml(companyName)}</div>
-    </section>
   `;
 }
 
