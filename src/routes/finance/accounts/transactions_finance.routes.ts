@@ -15,7 +15,7 @@ import {
   exportFinanceDocumentReportExcel,
   getFinanceDocumentReportHtml
 } from "../../../controllers/finance/accounts/transactions/financeDocumentReport.controller";
-import { exportBalanceSheetReportExcel, getBalanceSheetReportHtml } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
+import { exportBalanceSheetReportExcel, getBalanceSheetReportHtml, getBalanceSheetReportPdf } from "../../../controllers/finance/accounts/accounts-report/getBalanceSheetReport";
 import {
   getChequeDetail,
   getChequePaymentDetail,
@@ -70,7 +70,6 @@ import { getTaxInvoiceSummaryReport } from "../../../controllers/finance/account
 import { getTransactionProductReport } from "../../wms/reports/TransactionProductReport";
 import { getJobListingReport } from "../../../controllers/wms/reports/stockCriteria/joblistingreport";
 import { exportJobListingExcel } from "../../../controllers/wms/reports/stockCriteria/joblistingexcel";
-import { getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getDnSummaryReportExcel, getDnSummaryReportHtml } from "../../../controllers/wms/reports/Dnsummaryreport";
 import { getDrilldownAc, getDrilldownAcExcel, getDrilldownDetail, getDrilldownDetailExcel, getDrilldownL2, getDrilldownL2Excel, getDrilldownL3, getDrilldownL3Excel, getDrilldownL4, getDrilldownL4Excel } from "../../../controllers/finance/accounts/transactions/trailBalanceSubLevel";
 import { getProfitLossReportExcel, getProfitLossReportHtml } from "../../../controllers/finance/accounts/accounts-report/Profitlossreport";
@@ -105,6 +104,7 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
 import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareReportHtml, getPurchaseQuotationReportExcel, getPurchaseQuotationReportHtml, getPurchaseQuotationWithRatesReportExcel, getPurchaseQuotationWithRatesReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationReports";
+import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 
 
 
@@ -140,9 +140,12 @@ router.post('/reports/ledger-with-details/html', getLedgerWithDetailsReport);
 router.post('/reports/ledger-with-details/excel', exportLedgerWithDetailsExcel);
 router.post('/reports/ledger-opposite-entry/html', getLedgerWithOppositeEntryReport);
 router.post('/reports/balance-sheet/html', getBalanceSheetReportHtml);
+router.post('/reports/balance-sheet/pdf', getBalanceSheetReportPdf);
 router.post('/reports/getBalanceSheetReport/html', getBalanceSheetReportHtml);
+router.post('/reports/getBalanceSheetReport/pdf', getBalanceSheetReportPdf);
 router.post('/reports/getBalanceSheetReport/excel', exportBalanceSheetReportExcel);
 router.post('/report/balancesheet/html', getBalanceSheetReportHtml);
+router.post('/report/balancesheet/pdf', getBalanceSheetReportPdf);
 router.post('/report/balancesheet/excel', exportBalanceSheetReportExcel);
 router.post('/report/balancesheet/drilldown/ac', getBalanceSheetDrilldownAc);
 router.post('/report/balancesheet/drilldown/ac/excel', getBalanceSheetDrilldownAcExcel);
@@ -249,6 +252,7 @@ router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
+router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   // 👈 नया route
 
 // WMS REPORTS ROUTES
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);

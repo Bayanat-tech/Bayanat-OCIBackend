@@ -349,10 +349,10 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
     return `
       <tr class="data-row">
         ${extraCells}
-        <td>${escapeHtml(row.prod_code)}</td>
-        <td>${escapeHtml(row.prod_name)}</td>
-        <td class="center">${escapeHtml(row.primary_uom)}</td>
-        <td class="center">${escapeHtml(row.leat_uom)}</td>
+        <td></td>
+        <td></td>
+        <td class="center"></td>
+        <td class="center"></td>
         <td class="num">${fmtNumber(num(row.upp))}</td>
         <td class="num">${fmtNumber(num(row.volume))}</td>
         ${siteCell}
@@ -378,7 +378,6 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
   const renderProductBlock = (prodRows: ReportRow[]): string => {
     if (!prodRows.length) return "";
     const first = prodRows[0];
-    const pQty  = sumQty(prodRows);
     const lines = prodRows.map(renderProductRow).join("");
 
     return `
@@ -391,11 +390,7 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
           <span class="uom">Leat UOM : ${escapeHtml(first.leat_uom)}</span>
         </td>
       </tr>
-      ${lines}
-      <tr class="subtotal-row">
-        <td class="subtotal-label" colspan="${labelColspan}">Product Total :</td>
-        ${qtySubtotalCells(pQty)}
-      </tr>`;
+      ${lines}`;
   };
 
   const byProductCode = (group: ReportRow[]): ReportRow[][] =>
@@ -418,13 +413,11 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
       const byBrand = groupRowsBy(prinRows, (r) => text(r.brand_code));
       byBrand.forEach((brandRows, brandCode) => {
         const brandName = text(brandRows[0]?.brand_name);
-        const brandQty  = sumQty(brandRows);
         bodyHtml += `
           <tr class="group-header">
             <td colspan="${totalLeafs}">Brand : ${escapeHtml(brandCode)} | ${escapeHtml(brandName)}</td>
           </tr>`;
         byProductCode(brandRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
-        bodyHtml += `<tr class="group-total-row"><td class="subtotal-label" colspan="${labelColspan}">Brand Total :</td>${qtySubtotalCells(brandQty)}</tr>`;
       });
 
     } else if (groupBy === "principal_product") {
@@ -434,34 +427,28 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
       const byGroup = groupRowsBy(prinRows, (r) => text(r.prod_group_code));
       byGroup.forEach((grpRows, grpCode) => {
         const grpName = text(grpRows[0]?.prod_group_name);
-        const grpQty  = sumQty(grpRows);
         bodyHtml += `
           <tr class="group-header">
             <td colspan="${totalLeafs}">Product Group : ${escapeHtml(grpCode)} | ${escapeHtml(grpName)}</td>
           </tr>`;
         byProductCode(grpRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
-        bodyHtml += `<tr class="group-total-row"><td class="subtotal-label" colspan="${labelColspan}">Product Group Total :</td>${qtySubtotalCells(grpQty)}</tr>`;
       });
 
     } else if (groupBy === "site_location") {
       const bySite = groupRowsBy(prinRows, (r) => text(r.site_code));
       bySite.forEach((siteRows, siteCode) => {
-        const siteQty = sumQty(siteRows);
         bodyHtml += `
           <tr class="site-header">
             <td colspan="${totalLeafs}">Site : ${escapeHtml(siteCode)}</td>
           </tr>`;
         const byLoc = groupRowsBy(siteRows, (r) => text(r.location_code));
         byLoc.forEach((locRows, locationCode) => {
-          const locQty = sumQty(locRows);
           bodyHtml += `
             <tr class="location-header">
               <td colspan="${totalLeafs}">Site : ${escapeHtml(siteCode)} | Location : ${escapeHtml(locationCode)}</td>
             </tr>`;
           byProductCode(locRows).forEach((p) => { bodyHtml += renderProductBlock(p); });
-          bodyHtml += `<tr class="group-total-row"><td class="subtotal-label" colspan="${labelColspan}">Site &amp; Location Total :</td>${qtySubtotalCells(locQty)}</tr>`;
         });
-        bodyHtml += `<tr class="site-total-row"><td class="subtotal-label" colspan="${labelColspan}">Site Total :</td>${qtySubtotalCells(siteQty)}</tr>`;
       });
 
     } else {
@@ -1025,7 +1012,7 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     const siteVal = includeSiteCol ? [text(row.site_code)] : [];
     const cells   = [
       ...extras,
-      text(row.prod_code), text(row.prod_name), text(row.primary_uom), text(row.leat_uom),
+      "", "", "", "",
       num(row.upp), num(row.volume),
       ...siteVal,
       num(row.qty_rcvd),
@@ -1045,7 +1032,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   const renderProductXl = (prodRows: ReportRow[]) => {
     if (!prodRows.length) return;
     const first = prodRows[0];
-    const pQty  = sumQty(prodRows);
     const pHRow = sheetData.length;
     addRow(
       [`Product : ${first.prod_code} | ${first.prod_name}   Primary UOM: ${first.primary_uom}   Leat UOM: ${first.leat_uom}`,
@@ -1054,7 +1040,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     );
     merges.push({ s: { r: pHRow, c: 0 }, e: { r: pHRow, c: COL_COUNT - 1 } });
     prodRows.forEach(addProductRow);
-    addTotalRow("Product Total :", pQty, styles.subtotal, styles.subtotalNum, styles.subtotalStockQtyL);
   };
 
   // ── Build data sections
@@ -1076,7 +1061,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
         const brandName = text(brandRows[0]?.brand_name);
         addSectionRow(`Brand : ${brandCode} | ${brandName}`, styles.group);
         byProdCode(brandRows).forEach(renderProductXl);
-        addTotalRow("Brand Total :", sumQty(brandRows), styles.groupTotal, styles.groupTotalNum, styles.groupTotalStockQtyL);
       });
     } else if (groupBy === "principal_product") {
       byProdCode(prinRows).forEach(renderProductXl);
@@ -1085,7 +1069,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
         const grpName = text(grpRows[0]?.prod_group_name);
         addSectionRow(`Product Group : ${grpCode} | ${grpName}`, styles.group);
         byProdCode(grpRows).forEach(renderProductXl);
-        addTotalRow("Product Group Total :", sumQty(grpRows), styles.groupTotal, styles.groupTotalNum, styles.groupTotalStockQtyL);
       });
     } else if (groupBy === "site_location") {
       groupRowsBy(prinRows, (r) => text(r.site_code)).forEach((siteRows, siteCode) => {
@@ -1098,9 +1081,7 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
           );
           merges.push({ s: { r: locRow, c: 0 }, e: { r: locRow, c: COL_COUNT - 1 } });
           byProdCode(locRows).forEach(renderProductXl);
-          addTotalRow("Site & Location Total :", sumQty(locRows), styles.groupTotal, styles.groupTotalNum, styles.groupTotalStockQtyL);
         });
-        addTotalRow("Site Total :", sumQty(siteRows), styles.siteTotal, styles.siteTotalNum, styles.siteTotalStockQtyL);
       });
     } else {
       byProdCode(prinRows).forEach(renderProductXl);
@@ -1295,7 +1276,7 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   ${numFmtsXml}
   ${fontsXml}
-  ${fillsXml}
+  ${fillsXml} 
   ${bordersXml}
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   ${cellXfsXml}

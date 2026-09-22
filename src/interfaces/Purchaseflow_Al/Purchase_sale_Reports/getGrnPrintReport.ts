@@ -78,8 +78,6 @@ function amtFmt(value: unknown): string {
 }
 
 // Matches the original DataWindow computed field: doc_type + '-' + doc_no.
-// Guards against double-prefixing in case doc_no already carries the doc_type
-// (seen in some test/legacy records, e.g. doc_no = "GRN2261000002").
 function formatDocNo(docType: string, docNo: string): string {
   const dt = text(docType).trim();
   const dn = text(docNo).trim();
@@ -91,8 +89,6 @@ function formatDocNo(docType: string, docNo: string): string {
 // ─── Param extraction ───────────────────────────────────────────────────────
 
 function extractParams(req: RequestWithUser): ReqParams {
-  // Accept params from either the request body (POST) or query string (GET),
-  // so the same handlers can be linked to directly from the printed report.
   const b = req.body || {};
   const q = (req.query || {}) as Record<string, any>;
   return {
@@ -104,11 +100,6 @@ function extractParams(req: RequestWithUser): ReqParams {
 }
 
 // ─── Data loader ────────────────────────────────────────────────────────────
-// GRN doesn't go through PROC_BUILD_DYNAMIC_SQL like PO — it queries
-// vw_erp_grn directly, plus side queries for terms and footer signatures.
-// Logo is pulled the same way PO does it: a correlated subquery on
-// ms_hr_division.comp_logo joined by div_code, added right into the
-// main SELECT — no separate round-trip needed.
 
 interface GrnData {
   rows: ReportRow[];
@@ -211,8 +202,6 @@ function buildHeader(rows: ReportRow[]): GrnHeader {
     div_name: text(h.div_name),
     ac_code: text(h.ac_code),
     ac_name: text(h.ac_name),
-    // Some GRNs are recorded against the account without a separate party_name
-    // on the header — fall back to the account/vendor name so "To" isn't blank.
     party_name: text(h.party_name) || text(h.ac_name),
     party_address: text(h.party_address),
     party_phone: text(h.party_phone),
@@ -223,8 +212,6 @@ function buildHeader(rows: ReportRow[]): GrnHeader {
     dlvr_contact: text(h.dlvr_contact),
     dlvr_mobile: text(h.dlvr_mobile),
     mobile_no: text(h.mobile_no),
-    // dlvr_email is the "deliver to" contact's email; e_mail is the vendor/account
-    // email on the view. Prefer dlvr_email when present, otherwise fall back.
     dlvr_email: text(h.dlvr_email),
     e_mail: text(h.e_mail),
     dlvr_term: text(h.dlvr_term),
@@ -241,10 +228,23 @@ function computeTotals(rows: ReportRow[]) {
   return { totalPQty, totalLQty, totalQty };
 }
 
-// ─── HTML renderer (same visual system as PO Order Report) ────────────────
+// ─── HTML renderer ──────────────────────────────────────────────────────────
 
 const REPORT_TITLE = "Goods Receipt Note";
 const REPORT_SUBTITLE = "GRN Document";
+
+// Renders a label:value pair as a <table> row (not CSS grid) — this is the
+// most reliably-aligned approach across Chrome print/PDF renderers.
+// Every row across both info blocks shares the same first-column width,
+// so colons line up vertically no matter how long the label text is.
+function infoRow(label: string, value: string, boldValue = false): string {
+  const v = escapeHtml(value) || "&nbsp;";
+  return `<tr>
+        <td class="info-label">${escapeHtml(label)}</td>
+        <td class="info-colon">:</td>
+        <td class="info-value">${boldValue ? `<strong>${v}</strong>` : v}</td>
+      </tr>`;
+}
 
 function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
   const { rows, terms, footer } = data;
@@ -259,15 +259,16 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
   const emailToShow = header.dlvr_email || header.e_mail;
 
   let bodyRows = "";
-  rows.forEach((r) => {
+  rows.forEach((r, i) => {
     bodyRows += `
                         <tr>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td class="right">${escapeHtml(r.p_uom)}</td>
-                            <td class="right">${qtyFmt(r.qty_puom)}</td>
-                            <td class="right">${escapeHtml(r.l_uom)}</td>
-                            <td class="right">${qtyFmt(r.qty_luom)}</td>
-                            <td class="right amount">${qtyFmt(r.quantity)}</td>
+                            <td class="c-sno">${i + 1}</td>
+                            <td class="c-desc">${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+                            <td class="c-uom">${escapeHtml(r.p_uom)}</td>
+                            <td class="c-qty right">${qtyFmt(r.qty_puom)}</td>
+                            <td class="c-uom">${escapeHtml(r.l_uom)}</td>
+                            <td class="c-qty right">${qtyFmt(r.qty_luom)}</td>
+                            <td class="c-qty right amount">${qtyFmt(r.quantity)}</td>
                         </tr>`;
   });
 
@@ -282,43 +283,31 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
     <meta charset="utf-8"/>
     <title>${escapeHtml(REPORT_TITLE)} ${escapeHtml(header.doc_no)}</title>
     <style>
-        /* Single layout used for both on-screen preview and PDF/print output —
-           deliberately NOT relying on @media print to restructure the page,
-           since the PDF renderer does not reliably honour that switch.
-           Page margins come from .report-container padding; @page margin is
-           zeroed so the two don't stack and double the whitespace. */
-        @page { size: A4 portrait; margin: 0; }
         * { box-sizing: border-box; }
-        html, body {
-            height: 100%;
-        }
+        html, body { height: 100%; }
         body {
             margin: 0;
-            padding: 0;
+            padding: 20px;
             font-family: Arial, Helvetica, sans-serif;
             font-size: 12px;
-            background: #ffffff;
+            background: #f3f4f6;
             color: #111827;
         }
         .report-container {
-            width: 100%;
-            max-width: 210mm;      /* A4 width, so it reads correctly both on screen and in PDF */
+            max-width: 1100px;
             margin: 0 auto;
             background: #ffffff;
-            padding: 15mm 12mm;    /* acts as the page margin */
-            min-height: 100vh;     /* fills one page so the footer can anchor to the bottom */
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 24px 28px;
+            min-height: calc(100vh - 40px);
             display: flex;
             flex-direction: column;
         }
-        .report-body {
-            flex: 0 0 auto;
-        }
+        .report-body { flex: 0 0 auto; }
         .report-footer-block {
-            margin-top: auto;      /* pins signatures + footer line to the bottom of the page */
+            margin-top: auto;      /* pins signatures to the bottom of the page */
             padding-top: 24px;
-        }
-        @media print {
-            .no-print { display: none !important; }
         }
         .action-toolbar {
             display: flex;
@@ -326,8 +315,7 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
             gap: 10px;
             margin-bottom: 16px;
         }
-        .action-toolbar button,
-        .action-toolbar .btn {
+        .action-toolbar button {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -338,7 +326,6 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
             font-family: inherit;
             cursor: pointer;
             border: none;
-            text-decoration: none;
             transition: background 0.15s ease;
         }
         .btn-pdf { background: #1d4ed8; color: #fff; }
@@ -357,35 +344,104 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
         .report-subtitle { font-size: 12px; color: #6b7280; font-weight: 400; letter-spacing: 0.5px; }
         .report-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.6; }
         .report-meta strong { color: #374151; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; margin-bottom: 18px; }
-        .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; background: #f8fafc; }
-        .info-block .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 6px; }
-        .info-block .value-line { font-size: 12px; color: #111827; line-height: 1.6; }
+
+        /* ── Info blocks: real <table> rows so label/colon/value always align ── */
+        .info-grid { display: table; table-layout: fixed; width: 100%; margin-bottom: 18px; border-spacing: 24px 0; }
+        .info-grid-row { display: table-row; }
+        .info-block-cell { display: table-cell; width: 50%; vertical-align: top; }
+        .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; background: #f8fafc; height: 100%; }
+        .info-block .label {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+            color: #6b7280; font-weight: 700; margin: 0 0 8px 0;
+            border-bottom: 1px solid #e5e7eb; padding-bottom: 6px;
+        }
+        .info-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .info-table td { padding: 2px 0; vertical-align: top; line-height: 1.7; }
+        .info-label { width: 92px; color: #6b7280; font-weight: 500; white-space: nowrap; }
+        .info-colon { width: 10px; color: #6b7280; padding: 0 4px !important; }
+        .info-value { color: #111827; font-weight: 500; word-break: break-word; }
+        .info-value strong { color: #1e3a8a; }
+
         .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
         .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; table-layout: fixed; }
-        .report-table thead th {
-            background: #f3f4f6; padding: 8px 10px; text-align: left; font-weight: 600; color: #374151;
-            border-bottom: 2px solid #d1d5db; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em;
-            white-space: nowrap;
+
+        /* ── Item table: tight, single line per item ── */
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+            margin-top: 4px;
+            table-layout: fixed;
         }
-        .report-table thead th:first-child { width: auto; }
-        .report-table thead th:not(:first-child) { width: 90px; }
-        .report-table tbody td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; word-break: break-word; }
+        .report-table thead th {
+            background: #1d4ed8; color: #fff; padding: 7px 8px; text-align: left; font-weight: 600;
+            font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+        }
+        .report-table tbody td {
+            padding: 6px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .report-table tbody tr:nth-child(even) { background: #fafbfc; }
         .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 500; color: #065f46; }
-        .totals-box { margin-top: 16px; margin-left: auto;margin-bottom: 60px;  width: 320px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-        .totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid #f3f4f6; }
-        .totals-box .row.grand { background: #1d4ed8; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
-        .remarks-box { margin-top: 16px; font-size: 12px; }
+        .report-table .amount { font-weight: 600; color: #065f46; }
+        .c-sno   { width: 40px; text-align: center; }
+        .c-desc  { width: auto; white-space: normal; }
+        .c-uom   { width: 40px; }
+        .c-qty   { width: 85px; }
+
+        .totals-box {
+    margin-top: 14px;
+    margin-left: auto;
+    width: 300px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.totals-box .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    font-size: 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+    .totals-box .row span:last-child {
+    width: 85px;
+    min-width: 85px;
+    text-align: right;
+    padding-right: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+       .totals-box .row.grand {
+    background: #1d4ed8;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    border-bottom: none;
+}
+        .remarks-box { margin-top: 14px; font-size: 12px; }
         .remarks-box .label { font-weight: 600; margin-right: 4px; color: #374151; }
-        .terms-section { margin-top: 10px; font-size: 11px; color: #6b7280; }
+        .terms-section { margin-top: 8px; font-size: 11px; color: #6b7280; }
         .term-line { margin-bottom: 2px; }
         .footer-sign { display: flex; justify-content: space-between; text-align: center; font-size: 11px; color: #6b7280; }
         .footer-sign div { border-top: 1px solid #d1d5db; padding-top: 6px; width: 20%; }
-        .report-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 14px; margin-top: 40px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;
+
+        @media print {
+            @page { size: A4 portrait; margin: 10mm; }
+            .no-print { display: none !important; }
+            html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; background: #fff; }
+            .report-container {
+                width: 100%; min-height: 277mm; margin: 0; padding: 10mm;
+                border-radius: 0; box-shadow: none; border: none;
+                display: flex; flex-direction: column;
+            }
+            .report-body { flex: 0 0 auto; }
+            .report-footer-block { margin-top: auto; padding-top: 24px; page-break-inside: avoid; }
+            .report-header { border-bottom-color: #000; }
+            .report-table thead th { background: #1d4ed8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .footer-sign div { border-top: 1px solid #000; }
         }
     </style>
 </head>
@@ -412,25 +468,35 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
         </div>
 
         <div class="info-grid">
-            <div class="info-block">
-                <div class="label">To</div>
-                <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-                <div class="value-line">${escapeHtml(header.party_address)}</div>
-                <div class="value-line">Tel: ${escapeHtml(header.party_phone)} &nbsp;&nbsp; Fax: ${escapeHtml(header.party_fax)}</div>
-            </div>
-            <div class="info-block">
-                <div class="label">GRN Details</div>
-                <div class="value-line">GRN No: <strong>${escapeHtml(formatDocNo(header.doc_type, header.doc_no))}</strong></div>
-                <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-                <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-                <div class="value-line">Ref No: ${escapeHtml(header.ref_no)} ${header.ref_date ? `(${escapeHtml(dateText(header.ref_date))})` : ""}</div>
-                <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
-                <div class="value-line">Contact: ${escapeHtml(contactMobile)}</div>
-                <div class="value-line">Email: ${escapeHtml(emailToShow)}</div>
+            <div class="info-grid-row">
+                <div class="info-block-cell">
+                    <div class="info-block">
+                        <div class="label">To</div>
+                        <table class="info-table">
+                            ${infoRow("Name", header.party_name, true)}
+                            ${infoRow("Address", header.party_address)}
+                            ${infoRow("Tel", header.party_phone)}
+                            ${infoRow("Fax", header.party_fax)}
+                        </table>
+                    </div>
+                </div>
+                <div class="info-block-cell">
+                    <div class="info-block">
+                        <div class="label">GRN Details</div>
+                        <table class="info-table">
+                            ${infoRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
+                            ${infoRow("Date", dateText(header.doc_date))}
+                            ${infoRow("A/C Code", header.ac_code)}
+                            ${infoRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
+                            ${infoRow("Deliver To", header.delivery_to)}
+                            ${infoRow("Contact", contactMobile)}
+                            ${infoRow("Email", emailToShow)}
+                            ${infoRow("Delivery Term", header.dlvr_term)}
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <div style="font-size:12px;color:#374151;margin-bottom:8px;">Delivery Terms: ${escapeHtml(header.dlvr_term)}</div>
 
         ${rows.length === 0 ? `
             <div style="text-align:center;padding:40px 20px;color:#6b7280;">No line items found for this GRN.</div>
@@ -438,12 +504,13 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
             <table class="report-table">
                 <thead>
                     <tr>
-                        <th>Product / Description</th>
-                        <th class="right">PUOM</th>
-                        <th class="right">P. Qty</th>
-                        <th class="right">LUOM</th>
-                        <th class="right">L. Qty</th>
-                        <th class="right">Quantity<br/>in LUOM</th>
+                        <th class="c-sno">S.No.</th>
+                        <th class="c-desc">Product / Description</th>
+                        <th class="c-uom">PUOM</th>
+                        <th class="c-qty right">P. Qty</th>
+                        <th class="c-uom">LUOM</th>
+                        <th class="c-qty right">L. Qty</th>
+                        <th class="c-qty right">Qty in LUOM</th>
                     </tr>
                 </thead>
                 <tbody>${bodyRows}</tbody>
@@ -468,15 +535,13 @@ function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
                 <div>${escapeHtml(footer.approved) || "Approved By"}</div>
                 <div>${escapeHtml(footer.received) || "Received By"}</div>
             </div>
-
-            
         </div>
     </div>
 </body>
 </html>`;
 }
 
-// ─── Excel builder (same raw-OOXML engine as PO Order Report) ─────────────
+// ─── Excel builder ──────────────────────────────────────────────────────────
 
 function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   const { rows, footer } = data;
@@ -491,7 +556,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   const header = buildHeader(rows);
   const totals = computeTotals(rows);
 
-  const COL_COUNT = 6; // Product/Description, PUOM, P.Qty, LUOM, L.Qty, Quantity
+  const COL_COUNT = 7; // S.No, Product/Description, PUOM, P.Qty, LUOM, L.Qty, Quantity
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -500,29 +565,30 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null]);
+  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
-  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-  merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 5 } });
+  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 6 } });
 
   rows_.push([
-    cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null,
+    cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null,
     cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
   ]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 2 } });
-  merges.push({ s: { r: 2, c: 3 }, e: { r: 2, c: 5 } });
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
+  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: 6 } });
 
-  rows_.push([null, null, null, null, null, null]);
+  rows_.push([null, null, null, null, null, null, null]);
 
   rows_.push([
-    cell("Product / Description", "header"), cell("PUOM", "header"), cell("P. Qty", "header"),
-    cell("LUOM", "header"), cell("L. Qty", "header"), cell("Quantity", "header"),
+    cell("S.No", "header"), cell("Product / Description", "header"), cell("PUOM", "header"),
+    cell("P. Qty", "header"), cell("LUOM", "header"), cell("L. Qty", "header"), cell("Quantity", "header"),
   ]);
 
-  rows.forEach((r) => {
+  rows.forEach((r, i) => {
     rows_.push([
+      cell(i + 1, "data"),
       cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
       cell(text(r.p_uom), "data"),
       cell(num(r.qty_puom), "dataNum"),
@@ -532,7 +598,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     ]);
   });
 
-  rows_.push([null, null, null, null, null, null]);
+  rows_.push([null, null, null, null, null, null, null]);
 
   const totalRows: [string, number][] = [
     ["Total P. Qty", totals.totalPQty],
@@ -540,17 +606,15 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   ];
   totalRows.forEach(([label, value]) => {
     const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, cell(value, "groupTotalNum"), null]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 3 } });
+    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
+    merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
   });
 
   const gtRow = rows_.length;
-  rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, cell(totals.totalQty, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 3 } });
+  rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, cell(totals.totalQty, "grandTotalNum"), null]);
+  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
 
- 
-
-  // ── Style registration engine (identical to PO Order Report) ──
+  // ── Style registration engine ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }
   interface BorderDef { top?: string; bottom?: string; left?: string; right?: string; }
@@ -596,7 +660,6 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.000",
     },
-    footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
 
   const fonts: FontDef[] = [{}];

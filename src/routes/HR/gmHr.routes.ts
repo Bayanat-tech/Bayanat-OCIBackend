@@ -74,6 +74,7 @@ import { HrAirport } from "../../models/Hr/hr_airport";
 import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
 import {insUpdHRHolidayCalendarBulk} from "../../controllers/HR/holiday_calendar_hr.controller";
 import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
+import { mhupsertLeaveApprovalHandler } from "../../controllers/HR/MHDL/mh_leave_approval";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -142,6 +143,7 @@ router.post("/employeestatus", upsertHrSimpleMaster(HrEmpStatus, ["company_code"
 router.put("/employeestatus", upsertHrSimpleMaster(HrEmpStatus, ["company_code", "empstatus_code"]));
 
 router.put("/upsertLeaveApprovalHandler", upsertLeaveApprovalHandler);
+router.put("/mhupsertLeaveApprovalHandler", mhupsertLeaveApprovalHandler); 
 
 // Save file route
 router.post("/saveFile", (req, res, next) => {

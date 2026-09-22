@@ -8,6 +8,7 @@ import employeeHrRoutes from "./HR/employeHr.routes";
 import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import { insUpdAccrualAcctSetup } from "../controllers/purchase_sales/insUpdAccrualAcctSetup";
 import { saveLeaveSlap } from "../controllers/HR/leaveSlap.controller";
+import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRecovery";
 
 // Initialize the Express router
 const router = express.Router();
@@ -79,6 +80,14 @@ router.post(
   checkUserAuthorization,
   saveLeaveSlap
 );
+
+router.post(
+  "/advancesalaryrecovery/insUpd",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  insUpdHrSalaryAdvDed
+)
 
 // Export the router as the default module
 export default router;
