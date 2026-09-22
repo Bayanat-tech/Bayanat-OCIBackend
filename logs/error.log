@@ -3547,3 +3547,397 @@ TSError: ⨯ Unable to compile TypeScript:
     at Module.load (node:internal/modules/cjs/loader:1441:32)
     at Function._load (node:internal/modules/cjs/loader:1263:12)
     at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 16:25:47 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m693[0m:[93m69[0m - [91merror[0m[90m TS2554: [0mExpected 3 arguments, but got 4.
+
+[7m693[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m                                                                    ~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m693[0m:[93m69[0m - [91merror[0m[90m TS2554: [0mExpected 3 arguments, but got 4.
+
+[7m693[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m                                                                    ~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m693[0m:[93m69[0m - [91merror[0m[90m TS2554: [0mExpected 3 arguments, but got 4.
+
+[7m693[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m                                                                    ~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 16:34:36 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../database/TenantManager' or its corresponding type declarations.
+
+[7m2[0m import TenantManager from "../../../../database/TenantManager";
+[7m [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../middleware/tenantContext.middleware' or its corresponding type declarations.
+
+[7m3[0m import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+[7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../interfaces/common.interface' or its corresponding type declarations.
+
+[7m4[0m import { RequestWithUser } from "../../../../interfaces/common.interface";
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../database/TenantManager' or its corresponding type declarations.
+
+[7m2[0m import TenantManager from "../../../../database/TenantManager";
+[7m [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../middleware/tenantContext.middleware' or its corresponding type declarations.
+
+[7m3[0m import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+[7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../interfaces/common.interface' or its corresponding type declarations.
+
+[7m4[0m import { RequestWithUser } from "../../../../interfaces/common.interface";
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../database/TenantManager' or its corresponding type declarations.
+
+[7m2[0m import TenantManager from "../../../../database/TenantManager";
+[7m [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../middleware/tenantContext.middleware' or its corresponding type declarations.
+
+[7m3[0m import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+[7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../interfaces/common.interface' or its corresponding type declarations.
+
+[7m4[0m import { RequestWithUser } from "../../../../interfaces/common.interface";
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 16:35:07 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../database/TenantManager' or its corresponding type declarations.
+
+[7m2[0m import TenantManager from "../../../../database/TenantManager";
+[7m [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../middleware/tenantContext.middleware' or its corresponding type declarations.
+
+[7m3[0m import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+[7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../interfaces/common.interface' or its corresponding type declarations.
+
+[7m4[0m import { RequestWithUser } from "../../../../interfaces/common.interface";
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../database/TenantManager' or its corresponding type declarations.
+
+[7m2[0m import TenantManager from "../../../../database/TenantManager";
+[7m [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../middleware/tenantContext.middleware' or its corresponding type declarations.
+
+[7m3[0m import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+[7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../interfaces/common.interface' or its corresponding type declarations.
+
+[7m4[0m import { RequestWithUser } from "../../../../interfaces/common.interface";
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/common/report_common.ts[0m:[93m2[0m:[93m27[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../database/TenantManager' or its corresponding type declarations.
+
+[7m2[0m import TenantManager from "../../../../database/TenantManager";
+[7m [0m [91m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m3[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../middleware/tenantContext.middleware' or its corresponding type declarations.
+
+[7m3[0m import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+[7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/controllers/common/report_common.ts[0m:[93m4[0m:[93m33[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../../../interfaces/common.interface' or its corresponding type declarations.
+
+[7m4[0m import { RequestWithUser } from "../../../../interfaces/common.interface";
+[7m [0m [91m                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 16:42:35 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2304: [0mCannot find name 'REPORT_FONT_FAMILY'.
+
+[7m242[0m     body { font-family: ${REPORT_FONT_FAMILY}; }
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2304: [0mCannot find name 'REPORT_FONT_FAMILY'.
+
+[7m242[0m     body { font-family: ${REPORT_FONT_FAMILY}; }
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m242[0m:[93m27[0m - [91merror[0m[90m TS2304: [0mCannot find name 'REPORT_FONT_FAMILY'.
+
+[7m242[0m     body { font-family: ${REPORT_FONT_FAMILY}; }
+[7m   [0m [91m                          ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 16:53:10 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m10[0m:[93m29[0m - [91merror[0m[90m TS2305: [0mModule '"../../../common/report_common"' has no exported member 'REPORT_FONT_FAMILY'.
+
+[7m10[0m import { COMMON_REPORT_CSS, REPORT_FONT_FAMILY, REPORT_HEADER_CSS, reportHeader } from "../../../common/report_common";
+[7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m10[0m:[93m29[0m - [91merror[0m[90m TS2305: [0mModule '"../../../common/report_common"' has no exported member 'REPORT_FONT_FAMILY'.
+
+[7m10[0m import { COMMON_REPORT_CSS, REPORT_FONT_FAMILY, REPORT_HEADER_CSS, reportHeader } from "../../../common/report_common";
+[7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m10[0m:[93m29[0m - [91merror[0m[90m TS2305: [0mModule '"../../../common/report_common"' has no exported member 'REPORT_FONT_FAMILY'.
+
+[7m10[0m import { COMMON_REPORT_CSS, REPORT_FONT_FAMILY, REPORT_HEADER_CSS, reportHeader } from "../../../common/report_common";
+[7m  [0m [91m                            ~~~~~~~~~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 16:57:12 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m703[0m:[93m14[0m - [91merror[0m[90m TS2552: [0mCannot find name 'renderHtml'. Did you mean 'headerHtml'?
+
+[7m703[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+  [96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m700[0m:[93m11[0m
+    [7m700[0m     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    [7m   [0m [96m          ~~~~~~~~~~[0m
+    'headerHtml' is declared here.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m703[0m:[93m14[0m - [91merror[0m[90m TS2552: [0mCannot find name 'renderHtml'. Did you mean 'headerHtml'?
+
+[7m703[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+  [96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m700[0m:[93m11[0m
+    [7m700[0m     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    [7m   [0m [96m          ~~~~~~~~~~[0m
+    'headerHtml' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m703[0m:[93m14[0m - [91merror[0m[90m TS2552: [0mCannot find name 'renderHtml'. Did you mean 'headerHtml'?
+
+[7m703[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+  [96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m700[0m:[93m11[0m
+    [7m700[0m     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    [7m   [0m [96m          ~~~~~~~~~~[0m
+    'headerHtml' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 16:58:10 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m705[0m:[93m14[0m - [91merror[0m[90m TS2552: [0mCannot find name 'renderHtml'. Did you mean 'headerHtml'?
+
+[7m705[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+  [96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m702[0m:[93m11[0m
+    [7m702[0m     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    [7m   [0m [96m          ~~~~~~~~~~[0m
+    'headerHtml' is declared here.
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m705[0m:[93m14[0m - [91merror[0m[90m TS2552: [0mCannot find name 'renderHtml'. Did you mean 'headerHtml'?
+
+[7m705[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+  [96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m702[0m:[93m11[0m
+    [7m702[0m     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    [7m   [0m [96m          ~~~~~~~~~~[0m
+    'headerHtml' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m705[0m:[93m14[0m - [91merror[0m[90m TS2552: [0mCannot find name 'renderHtml'. Did you mean 'headerHtml'?
+
+[7m705[0m     res.send(renderHtml(data, docType, req.query.print !== "false", headerHtml));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+  [96msrc/controllers/finance/accounts/transactions/financeDocumentReport.controller.ts[0m:[93m702[0m:[93m11[0m
+    [7m702[0m     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    [7m   [0m [96m          ~~~~~~~~~~[0m
+    'headerHtml' is declared here.
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-21 17:32:10 [[31merror[39m]: uncaughtException: ⨯ Unable to compile TypeScript:
+[96msrc/interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport.ts[0m:[93m780[0m:[93m14[0m - [91merror[0m[90m TS2304: [0mCannot find name 'renderHtml'.
+
+[7m780[0m     res.send(renderHtml(rows, params.loginid));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport.ts[0m:[93m780[0m:[93m14[0m - [91merror[0m[90m TS2304: [0mCannot find name 'renderHtml'.
+
+[7m780[0m     res.send(renderHtml(rows, params.loginid));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) 
+TSError: ⨯ Unable to compile TypeScript:
+[96msrc/interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseOrderReport.ts[0m:[93m780[0m:[93m14[0m - [91merror[0m[90m TS2304: [0mCannot find name 'renderHtml'.
+
+[7m780[0m     res.send(renderHtml(rows, params.loginid));
+[7m   [0m [91m             ~~~~~~~~~~[0m
+
+    at createTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1839:10
+    at Object.require.extensions.<computed> [as .ts] (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+2026-09-22 11:24:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [AUXP273CA0055.AREP273.PROD.OUTLOOK.COM 2026-09-22T05:54:07.116Z 08DF170032ADB85F] 
+Error: Invalid login: 535 5.7.3 Authentication unsuccessful [AUXP273CA0055.AREP273.PROD.OUTLOOK.COM 2026-09-22T05:54:07.116Z 08DF170032ADB85F]
+    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
+    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
+    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
+    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
+    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
+    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
+    at TLSSocket.emit (node:events:519:28)
+    at TLSSocket.emit (node:domain:489:12)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
