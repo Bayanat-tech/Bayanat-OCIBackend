@@ -1,9 +1,14 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import oracledb from "oracledb";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -228,9 +233,84 @@ async function loadPnlRows(
   return normalize(result.rows as any[]) as PnlRow[];
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+// ─── HTML body (report_common) ────────────────────────────────────────────────
 
-function renderPnlHtml(
+/**
+ * P&L-only CSS. Only truly report-specific rules live here — anything
+ * COMMON_REPORT_CSS already provides (padding, font-size, bold weight,
+ * alignment) is reused via shared classes (.strong, .group-title, .num,
+ * .center, .muted) directly in the markup below instead of being redefined.
+ */
+const PNL_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 10px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.55;
+  }
+  .doc-title-row .doc-meta b { color: #0f172a; }
+
+  .drill-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px 10px;
+    margin-bottom: 8px;
+  }
+
+  table.pnl-table { margin-top: 4px; }
+  table.pnl-table col.c0 { width: 18%; }
+  table.pnl-table col.c1 { width: 62%; }
+  table.pnl-table col.c2 { width: 20%; }
+
+  /* Section banner (INCOME / EXPENSES) — the one genuinely unique color in this table */
+  table.pnl-table tr.section-row td {
+    background: #0b4ca1;
+    color: #fff;
+    letter-spacing: .04em;
+    border-bottom: 0;
+  }
+
+  /* Hierarchy indentation only — font-size/padding/weight come from .group-title / td defaults */
+  table.pnl-table tbody tr.data-row td { padding-left: 24px; }
+
+  /* Totals reuse the shared .strong + .num classes; only the separating borders are report-specific */
+  table.pnl-table tr.group-total td { border-top: 1px solid #cbd5e1; }
+  table.pnl-table tr.section-total td {
+    border-top: 1px solid #475569;
+    border-bottom: 1px solid #475569;
+  }
+
+  /* Net profit/loss banner — unique large blue block, everything else reuses .strong/.num */
+  table.pnl-table tr.net-row td {
+    font-size: 12.5px;
+    padding: 9px 6px;
+    background: #0b4ca1;
+    color: #fff;
+    border: 0;
+  }
+
+  table.pnl-table tr.data-row:hover td { background: #f0f9f5; cursor: pointer; }
+`;
+
+function renderPnlBody(
   groups: GroupedHeader[],
   params: {
     companyCode: string;
@@ -240,11 +320,6 @@ function renderPnlHtml(
     loginId: string;
   }
 ): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
   const income = groups.filter((g) => g.s_order === 1);
   const expense = groups.filter((g) => g.s_order === 2);
   const totalIncome = income.reduce((s, g) => s + g.total, 0);
@@ -263,9 +338,6 @@ function renderPnlHtml(
       var DIVISION_CODE = ${escapeJs(params.divisionCode)};
 
       document.querySelectorAll("tbody tr[data-plcode]").forEach(function (tr) {
-        tr.style.cursor = "pointer";
-        tr.addEventListener("mouseenter", function () { tr.style.background = "#f0f9f5"; });
-        tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
         tr.addEventListener("click", function () {
           var plCode = tr.getAttribute("data-plcode");
           window.parent.postMessage({
@@ -288,31 +360,33 @@ function renderPnlHtml(
     sectionTotal: number
   ): string {
     let html = "";
-    html += `<tr class="section-row"><td colspan="3">${escapeHtml(sectionLabel)}</td></tr>`;
+    // .strong is the shared bold-text class from report_common
+    html += `<tr class="section-row"><td colspan="3" class="strong">${escapeHtml(sectionLabel)}</td></tr>`;
 
     for (const g of sectionGroups) {
-      html += `<tr class="group-row"><td colspan="3">${escapeHtml(g.h_name)}</td></tr>`;
+      // .group-title is the shared group-header style (bg, padding, weight) from report_common
+      html += `<tr><td colspan="3" class="group-title">${escapeHtml(g.h_name)}</td></tr>`;
 
       for (const r of g.rows) {
         html +=
           `<tr class="data-row" data-plcode="${escapeHtml(r.pl_code)}">` +
-          `<td class="code">${escapeHtml(r.pl_code)}</td>` +
-          `<td class="desc">${escapeHtml(r.pl_name)}</td>` +
+          `<td>${escapeHtml(r.pl_code)}</td>` +
+          `<td>${escapeHtml(r.pl_name)}</td>` +
           `<td class="num">${escapeHtml(fmtNumber(amount(r.lcur_amount)))}</td>` +
           `</tr>`;
       }
 
       html +=
         `<tr class="group-total">` +
-        `<td colspan="2">Total ${escapeHtml(g.h_name)}</td>` +
-        `<td class="num">${escapeHtml(fmtNumber(g.total))}</td>` +
+        `<td colspan="2" class="strong">Total ${escapeHtml(g.h_name)}</td>` +
+        `<td class="num strong">${escapeHtml(fmtNumber(g.total))}</td>` +
         `</tr>`;
     }
 
     html +=
       `<tr class="section-total">` +
-      `<td colspan="2">TOTAL ${escapeHtml(sectionLabel)}</td>` +
-      `<td class="num">${escapeHtml(fmtNumber(sectionTotal))}</td>` +
+      `<td colspan="2" class="strong">TOTAL ${escapeHtml(sectionLabel)}</td>` +
+      `<td class="num strong">${escapeHtml(fmtNumber(sectionTotal))}</td>` +
       `</tr>`;
 
     return html;
@@ -324,154 +398,48 @@ function renderPnlHtml(
 
   const netRow =
     `<tr class="net-row">` +
-    `<td colspan="2">NET ${net >= 0 ? "PROFIT" : "LOSS"}</td>` +
-    `<td class="num">${escapeHtml(fmtNumber(Math.abs(net)))}</td>` +
+    `<td colspan="2" class="strong">NET ${net >= 0 ? "PROFIT" : "LOSS"}</td>` +
+    `<td class="num strong">${escapeHtml(fmtNumber(Math.abs(net)))}</td>` +
     `</tr>`;
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>Profit &amp; Loss</title>
-  <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 12px; color: #000;
-      background: #fff;
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    }
-    .sheet {
-      width: 210mm; min-height: 297mm;
-      margin: 0 auto; background: #fff;
-      padding: 8mm;
-      border: 1px solid #000;
-    }
-    .logo-area { margin-bottom: 12px; }
-    .divider-thick { border-top: 2px solid #000; margin: 8px 0 5px; }
-    .divider-thin  { border-top: 1px solid #000; margin: 5px 0 10px; }
-    .meta-row { display: flex; align-items: baseline; font-size: 12px; margin-bottom: 3px; }
-    .meta-label { font-weight: 700; width: 80px; flex-shrink: 0; }
-    .drill-hint {
-      font-size: 10px; color: #000; background: #fff;
-      border: 1px solid #000; border-radius: 0;
-      padding: 4px 10px; margin-bottom: 8px;
-      display: inline-flex; align-items: center; gap: 6px;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    col.c0 { width: 18%; } col.c1 { width: 62%; } col.c2 { width: 20%; }
-    thead tr.th-main th {
-      background: #fff; color: #000; font-weight: 700;
-      font-size: 11px; padding: 6px 10px; text-align: left;
-      border: 1px solid #000;
-    }
-    thead tr.th-main th.num { text-align: right; }
-    tr.section-row td {
-      background: #fff; color: #000; font-weight: 700;
-      font-size: 12px; padding: 5px 10px;
-      border: 1px solid #000;
-      letter-spacing: .03em;
-    }
-    tr.group-row td {
-      background: #fff; color: #000; font-weight: 700;
-      font-size: 12px; padding: 4px 10px 4px 20px;
-      border-bottom: 1px solid #000;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-    }
-    tbody tr.data-row td {
-      padding: 3px 10px 3px 30px;
-      border-bottom: 1px solid #ccc;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-      color: #000; font-size: 11px;
-      vertical-align: top;
-    }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: "Courier New", monospace; }
-    td.code { font-weight: 600; }
-    tr.group-total td {
-      background: #fff; padding: 3px 10px; font-size: 11px;
-      font-weight: 700; color: #000;
-      border-bottom: 1px solid #000;
-      border-left: 1px solid #000;
-      border-right: 1px solid #000;
-    }
-    tr.section-total td {
-      background: #fff; padding: 5px 10px; font-size: 12px;
-      font-weight: 700; color: #000;
-      border: 1px solid #000;
-    }
-    tr.net-row td {
-      background: #fff; color: #000; font-weight: 700;
-      font-size: 13px; padding: 8px 10px;
-      border: 2px solid #000;
-    }
-    .end-of-report {
-      text-align: center; margin-top: 12px; margin-bottom: 6px;
-      font-size: 11px; border-top: 1px solid #000; padding-top: 6px; color: #000;
-    }
-    .report-footer {
-      display: flex; justify-content: space-between;
-      font-size: 10px; color: #000;
-      border-top: 1px solid #000; padding-top: 4px; margin-top: 6px;
-    }
-    @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
-      .drill-hint { display: none !important; }
-      thead { display: table-header-group; }
-      tr.section-row, tr.group-row { break-after: avoid; }
-      tr.group-total, tr.section-total, tr.net-row { break-before: avoid; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="logo-area">
-      <svg width="180" height="56" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
-        <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
-        <text x="16" y="46" font-family="Arial" font-size="26" font-weight="700" fill="#d4a017">al madina المدينة</text>
-        <text x="16" y="72" font-family="Arial" font-size="15" font-weight="400" fill="#d4a017" letter-spacing="4">LOGISTICS اللوجستية</text>
-        <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
-      </svg>
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+
+  return `
+    <div class="doc-title-row">
+      <h1>Profit &amp; Loss Report</h1>
+      <div class="doc-meta">
+        <div><b>Period:</b> ${escapeHtml(dateText(params.fromDate))} &ndash; ${escapeHtml(dateText(params.toDate))}</div>
+        <div><b>Division:</b> ${escapeHtml(params.divisionCode)}</div>
+        <div><b>Printed:</b> ${escapeHtml(printDateTime)}</div>
+      </div>
     </div>
-    <div class="divider-thick"></div>
-    <div class="meta-row"><span class="meta-label">Title :</span><span>Profit &amp; Loss Report</span></div>
-    <div class="meta-row"><span class="meta-label">Period :</span><span>${escapeHtml(dateText(params.fromDate))} &ndash; ${escapeHtml(dateText(params.toDate))}</span></div>
-    <div class="meta-row"><span class="meta-label">Division :</span><span>${escapeHtml(params.divisionCode)}</span></div>
-    <div class="meta-row"><span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span></div>
-    <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(params.loginId)}</span></div>
-    <div class="divider-thin"></div>
+
     <div class="drill-hint">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
       Click any row to drill down to account detail
     </div>
-    <table>
+
+    <table class="data-table pnl-table">
       <colgroup><col class="c0"/><col class="c1"/><col class="c2"/></colgroup>
       <thead>
-        <tr class="th-main">
+        <tr>
           <th>Code</th>
           <th>Description</th>
           <th class="num">Amount (OMR)</th>
         </tr>
       </thead>
       <tbody>
-        ${bodyRows || '<tr><td colspan="3" style="text-align:center;padding:40px;color:#000;border:1px solid #000">No records found for the selected criteria.</td></tr>'}
+        ${bodyRows || '<tr><td colspan="3" class="center muted">No records found for the selected criteria.</td></tr>'}
         ${netRow}
       </tbody>
     </table>
-    <div class="end-of-report">End of Report</div>
-    <div class="report-footer">
-      <span>Report: Profit &amp; Loss</span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </div>
-  ${drillScript}
-</body>
-</html>`;
+    ${drillScript}
+  `;
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
@@ -692,11 +660,6 @@ function buildXlsxZip(sheetXml: string, stylesXml: string, sheetName: string): B
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
-function sendHtml(res: Response, html: string) {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.send(html);
-}
-
 function sendExcel(res: Response, buffer: Buffer, filename: string) {
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
@@ -721,15 +684,33 @@ export const getProfitLossReportHtml = async (
     }
 
     const groups = groupByHeader(rawRows);
-    const html = renderPnlHtml(groups, {
+    const userName = req.user?.loginid ?? "";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderPnlBody(groups, {
       companyCode,
       fromDate,
       toDate,
       divisionCode,
-      loginId: req.user?.loginid ?? "",
+      loginId: userName,
+    });
+    const footerHtml = reportFooter({
+      reportName: "Profit & Loss Report",
+      userName,
+      endLabel: "Powered by Bayanat Technology",
     });
 
-    sendHtml(res, html);
+    const html = buildReportDocument({
+      title: `Profit & Loss Report - ${companyCode} (${fromDate} to ${toDate})`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PNL_EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+    });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   } catch (error: any) {
     console.error("P&L HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });

@@ -4,6 +4,7 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
 // This is the backend counterpart of PLSummaryPage.tsx (frontend).
 
@@ -15,6 +16,7 @@ type ReportRow = Record<string, any>;
 
 interface ReqParams {
   loginid:      string;
+  company_code: string;
   fromdate:     string; // "All" or "YYYY-MM-DD"
   todate:       string;
   docno:        string; // "0" = all
@@ -90,6 +92,7 @@ function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
     loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    company_code: text(b.company_code),
     fromdate:     text(b.fromdate) || "All",
     todate:       text(b.todate) || "All",
     docno:        text(b.docno) || "0",
@@ -335,7 +338,7 @@ function buildReportLines(mode: ReportMode, rows: ReportRow[]): { lines: ReportL
   return { lines, columns };
 }
 
-// ─── HTML renderer ──────────────────────────────────────────────────────────
+// ─── HTML renderer (built entirely on the shared report shell) ────────────
 
 const MODE_TITLES: Record<ReportMode, string> = {
   invoicewise: "P&L Summary Report - Invoice wise",
@@ -345,22 +348,34 @@ const MODE_TITLES: Record<ReportMode, string> = {
   groupcustomerwise: "P&L Summary Report - Group-Customer wise",
 };
 
-function renderHtml(mode: ReportMode, lines: ReportLine[], columns: ColumnDef[], loginId: string): string {
-  const printDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-  const ncols = columns.length;
+// A couple of small, purely layout-level rules (section / subtotal / grand
+// total row treatment, landscape page size) that the shared CSS doesn't
+// define for a group-and-total style report. Everything else — fonts,
+// table borders, header, footer, print rules, .data-table look — comes
+// straight from COMMON_REPORT_CSS via buildReportDocument.
+const PL_EXTRA_CSS = `
+  /* This report reads better in landscape given the column count */
+  @page { size: A4 landscape; margin: 10mm 12mm; }
 
-  const headerCells = columns.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
+  .pl-title { font-size: 13px; font-weight: 800; color: #0b4ca1; text-align: center; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  table.data-table tr.section-row td { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 11px; padding: 5px 8px; border-bottom: none; }
+  table.data-table tr.subtotal-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 10.5px; padding: 5px 8px; }
+  table.data-table tr.grand-total td { background: #0b4ca1; color: #fff; font-weight: 800; font-size: 12px; padding: 7px 8px; border-top: 2px solid #08386f; border-bottom: none; }
+  table.data-table tbody tr.data-row:nth-child(even) td { background: #f8fafc; }
+`;
+
+function renderHtmlTable(lines: ReportLine[], columns: ColumnDef[]): string {
+  const ncols = columns.length;
+  const headerCells = columns.map((c) => `<th class="${c.align === "right" ? "right" : ""}">${escapeHtml(c.label)}</th>`).join("");
 
   const rowsHtml = lines.map((line) => {
     if (line.kind === "section") {
       return `<tr class="section-row"><td colspan="${ncols}">${escapeHtml(line.label)}</td></tr>`;
     }
     if (line.kind === "subtotal") {
-      const cells = (line.cells || []).map((c, i) => `<td class="${columns[i]?.align === "right" ? "num" : ""}">${escapeHtml(c)}</td>`).join("");
-      return `<tr class="subtotal-row"><td>${escapeHtml(line.label)}</td>${cells.slice(0)}</tr>`.replace(
-        `<td>${escapeHtml(line.label)}</td>${cells}`,
-        `<td colspan="${Math.max(1, ncols - 3)}">${escapeHtml(line.label)}</td>${(line.cells || []).slice(-3).map((c) => `<td class="num">${escapeHtml(c)}</td>`).join("")}`
-      );
+      const last3 = (line.cells || []).slice(-3);
+      return `<tr class="subtotal-row"><td colspan="${Math.max(1, ncols - 3)}">${escapeHtml(line.label)}</td>${last3.map((c) => `<td class="num">${escapeHtml(c)}</td>`).join("")}</tr>`;
     }
     if (line.kind === "grandtotal") {
       const last3 = (line.cells || []).slice(-3);
@@ -371,57 +386,41 @@ function renderHtml(mode: ReportMode, lines: ReportLine[], columns: ColumnDef[],
     return `<tr class="data-row">${cells}</tr>`;
   }).join("");
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(MODE_TITLES[mode])}</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 12px; color: #111827; background: #eef1f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .sheet { width: 277mm; min-height: 190mm; margin: 18px auto; background: #fff; padding: 10mm 12mm; border: 1px solid #c4cdd9; border-radius: 4px; }
-    .rpt-header { background: #1e3a5f; color: #fff; text-align: center; font-size: 14px; font-weight: 700; letter-spacing: .08em; padding: 10px 16px; text-transform: uppercase; border-radius: 3px 3px 0 0; }
-    .rpt-meta { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 10px; font-size: 10px; color: #4b5563; }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    thead tr th { background: #1e3a5f; color: #fff; font-weight: 700; font-size: 10px; padding: 7px 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); }
-    thead tr th:last-child { border-right: none; }
-    thead tr th.left { text-align: left; } thead tr th.right { text-align: right; }
-    tr.section-row td { background: #1e3a5f; color: #fff; font-weight: 700; font-size: 11px; padding: 5px 10px; }
-    tbody tr.data-row td { padding: 4px 10px; border-bottom: 1px solid #e5e7eb; color: #374151; font-size: 11px; }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    tr.subtotal-row td { background: #c8d4e4; padding: 4px 10px; font-size: 11px; font-weight: 700; color: #1e3a5f; }
-    tr.grand-total td { background: #1e3a5f; color: #fff; font-weight: 700; font-size: 12px; padding: 8px 10px; border-top: 2px solid #162d4a; }
-    .rpt-footer { margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px; display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; }
-    @media print { body { background: #fff; } .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; } thead { display: table-header-group; } }
-  </style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="rpt-header">${escapeHtml(MODE_TITLES[mode])}</div>
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
-    </div>
-    <table class="rpt-table">
+  return `
+    <table class="data-table">
       <thead><tr>${headerCells}</tr></thead>
       <tbody>${rowsHtml}</tbody>
-    </table>
-    <div class="rpt-footer">
-      <span>Report Name : <code>P&amp;L Summary Report</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </div>
-  <script>
-    window.addEventListener("message", function(e) { if (e.data === "print") window.print(); });
-  </script>
-</body>
-</html>`;
+    </table>`;
 }
 
-// ─── Excel builder (raw OOXML, same style system as DN Summary) ───────────
+async function renderHtml(mode: ReportMode, lines: ReportLine[], columns: ColumnDef[], loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
+  // ── Shared company header (logo + name + address), same as every other report ──
+  const headerHtml = await reportHeader({ company_code: p.company_code, req });
+
+  const bodyHtml = `
+    <div class="pl-title">${escapeHtml(MODE_TITLES[mode])}</div>
+    <div class="group">
+      ${renderHtmlTable(lines, columns)}
+    </div>`;
+
+  // ── Shared footer (print date / user / report name) ──
+  const footerHtml = reportFooter({
+    reportName: MODE_TITLES[mode],
+    userName: loginId,
+  });
+
+  // ── Assemble the whole page using the same shell every other report uses ──
+  return buildReportDocument({
+    title: MODE_TITLES[mode],
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: PL_EXTRA_CSS,
+    showPrintButton: true,
+  });
+}
+
+// ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
 
 const STYLE_ID = { header: 1, section: 2, value: 3, numValue: 4, subtotal: 5, numSubtotal: 6, grand: 7, numGrand: 8 } as const;
 type StyleKey = keyof typeof STYLE_ID;
@@ -592,7 +591,7 @@ export const getPLSummaryReportHtml = async (req: RequestWithUser, res: Response
     }
     const { lines, columns } = buildReportLines(params.mode, rows);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(params.mode, lines, columns, params.loginid));
+    res.send(await renderHtml(params.mode, lines, columns, params.loginid, params, req));
   } catch (error: any) {
     console.error("P&L Summary HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
