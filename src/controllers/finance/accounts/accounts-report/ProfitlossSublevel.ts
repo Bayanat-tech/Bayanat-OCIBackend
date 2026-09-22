@@ -215,18 +215,12 @@ function renderDrilldownBody(opts: {
     fromDate, toDate, divisionCode, drillScript = "",
   } = opts;
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
   return `
     <div class="doc-title-row">
       <h1>${escapeHtml(title)}</h1>
       <div class="doc-meta">
         <div><b>Period:</b> ${escapeHtml(dateText(fromDate))} &ndash; ${escapeHtml(dateText(toDate))}</div>
         <div><b>Division:</b> ${escapeHtml(divisionCode)}</div>
-        <div><b>Printed:</b> ${escapeHtml(printDateTime)}</div>
       </div>
     </div>
 

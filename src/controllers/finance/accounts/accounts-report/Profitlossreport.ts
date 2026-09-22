@@ -402,18 +402,15 @@ function renderPnlBody(
     `<td class="num strong">${escapeHtml(fmtNumber(Math.abs(net)))}</td>` +
     `</tr>`;
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
+  // NOTE: "Printed" date/time is intentionally NOT shown here anymore — the
+  // shared report footer (reportFooter, below) already prints it, so this
+  // meta block only needs Period + Division.
   return `
     <div class="doc-title-row">
       <h1>Profit &amp; Loss Report</h1>
       <div class="doc-meta">
         <div><b>Period:</b> ${escapeHtml(dateText(params.fromDate))} &ndash; ${escapeHtml(dateText(params.toDate))}</div>
         <div><b>Division:</b> ${escapeHtml(params.divisionCode)}</div>
-        <div><b>Printed:</b> ${escapeHtml(printDateTime)}</div>
       </div>
     </div>
 
