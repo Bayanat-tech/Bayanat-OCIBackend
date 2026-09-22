@@ -257,8 +257,43 @@ const GRN_EXTRA_CSS = `
   .grn-totals { width: 260px; margin-left: auto; margin-top: 10px; border-collapse: collapse; }
   .grn-totals td { padding: 5px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; }
   .grn-totals tr.grand td { background: #0b4ca1; color: #fff; font-weight: 800; font-size: 12px; border-bottom: none; }
-  .grn-sign { display: flex; justify-content: space-between; text-align: center; font-size: 10px; color: #64748b; margin-top: 26px; }
-  .grn-sign div { border-top: 1px solid #94a3b8; padding-top: 6px; width: 20%; }
+ .grn-sign {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 22px;
+  text-align: center;
+  page-break-inside: avoid;
+  font-size: 10px;
+}
+
+.sign-box {
+  width: 23%;
+  min-height: 70px;
+}
+
+.sign-space {
+  height: 32px;
+}
+
+.sign-line {
+  width: 100%;
+  border-top: 1px solid #64748b;
+  margin-bottom: 6px;
+}
+
+.sign-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.sign-name {
+  font-size: 9px;
+  color: #64748b;
+  margin-top: 3px;
+}
+ 
 `;
 
 async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
@@ -359,31 +394,56 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
     : "";
 
   // ── Signature strip ──
-  const signHtml = `
-    <div class="grn-sign">
-      <div>${escapeHtml(footer.prepared) || "Prepared By"}</div>
-      <div>${escapeHtml(footer.verified) || "Verified By"}</div>
-      <div>${escapeHtml(footer.approved) || "Approved By"}</div>
-      <div>${escapeHtml(footer.received) || "Received By"}</div>
-    </div>`;
+ const signHtml = `
+  <div class="grn-sign">
 
-  const bodyHtml = `
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Prepared By</div>
+    </div>
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Checked By</div>
+    </div>
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Approved By</div>
+    </div>
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Receiver's Name &amp; Signature</div>
+    </div>
+
+  </div>`;
+
+ const bodyHtml = `
     ${detailsHtml}
+
     <div class="group">
       <div class="group-title">Items</div>
       ${itemsHtml}
     </div>
+
     ${remarksHtml}
-    ${termsHtml}
-    ${signHtml}`;
+    ${termsHtml}`;
 
   // ── Shared footer (print date / user / report name) ──
-  const footerHtml = reportFooter({
+  const footerHtml = `
+  ${signHtml}
+
+  ${reportFooter({
     reportName: REPORT_TITLE,
     userName: loginId,
     endLabel: "End of GRN",
-  });
-
+  })}
+`;
   // ── Assemble the whole page using the same shell every other report uses ──
   return buildReportDocument({
     title: `${REPORT_TITLE} ${header.doc_no}`,
