@@ -357,7 +357,7 @@ export class VendorService {
     
     const result = await oracleDb.query(
       `BEGIN
-         WMSDEV.PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
+        PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
        END;`,
       {
         companyCode: { val: companyCode },
