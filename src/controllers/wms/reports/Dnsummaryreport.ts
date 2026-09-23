@@ -263,21 +263,32 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
 // Everything else — fonts, table borders, header, footer, print rules,
 // .data-table look — comes straight from COMMON_REPORT_CSS via
 // buildReportDocument. No CSS is duplicated from report_common.ts here.
+//
+// ★ FIX: COMMON_REPORT_CSS ships its own generic `.data-table tbody tr td`
+//   / zebra-striping rules, and depending on where buildReportDocument
+//   concatenates extraCss (before vs after the shared block) those generic
+//   rules can win on source order even when they're less specific. Every
+//   selector below is now scoped through the `.dn-report` wrapper (bumping
+//   specificity above anything in COMMON_REPORT_CSS) AND carries `!important`
+//   on the actual visual properties, so this report's row coloring can never
+//   be silently overridden regardless of injection order or future edits to
+//   the shared stylesheet. The bodyHtml wrapper div below was given the
+//   `dn-report` class to match.
 const DN_EXTRA_CSS = `
   /* This report reads better in landscape given the column count */
   @page { size: A4 landscape; margin: 10mm 12mm; }
 
-  .dn-title { font-size: 13px; font-weight: 800; color: #0b4ca1; text-align: center; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .dn-report .dn-title { font-size: 13px; font-weight: 800; color: #0b4ca1 !important; text-align: center; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
 
-  table.data-table tr.prin-row td { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 11px; padding: 6px 8px; border-bottom: none; }
-  table.data-table tr.group-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px; padding: 5px 8px 5px 20px; }
-  table.data-table tr.prod-row td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; padding: 4px 8px 4px 32px; }
-  table.data-table tbody tr.data-row td:first-child { padding-left: 40px; }
-  table.data-table tbody tr.data-row:nth-child(even) td { background: #f8fafc; }
-  table.data-table tr.prod-total td { background: #eef2f7; font-weight: 700; font-size: 10.5px; color: #334155; }
-  table.data-table tr.group-total td { background: #dbe6f6; font-weight: 700; font-size: 11px; color: #0b4ca1; }
-  table.data-table tr.prin-total td { background: #c7d8f0; font-weight: 700; font-size: 11px; color: #0b4ca1; }
-  table.data-table tr.grand-total td { background: #0b4ca1; color: #fff; font-weight: 800; font-size: 12px; padding: 8px; border-top: 2px solid #08386f; border-bottom: none; }
+  .dn-report table.data-table tr.prin-row td { background: #0b4ca1 !important; color: #fff !important; font-weight: 700; font-size: 11px; padding: 6px 8px; border-bottom: none; }
+  .dn-report table.data-table tr.group-row td { background: #dbe6f6 !important; color: #0b4ca1 !important; font-weight: 700; font-size: 11px; padding: 5px 8px 5px 20px; }
+  .dn-report table.data-table tr.prod-row td { background: #eef2f7 !important; color: #334155 !important; font-weight: 700; font-size: 10.5px; padding: 4px 8px 4px 32px; }
+  .dn-report table.data-table tbody tr.data-row td:first-child { padding-left: 40px; }
+  .dn-report table.data-table tbody tr.data-row:nth-child(even) td { background: #f8fafc !important; }
+  .dn-report table.data-table tr.prod-total td { background: #eef2f7 !important; font-weight: 700; font-size: 10.5px; color: #334155 !important; }
+  .dn-report table.data-table tr.group-total td { background: #dbe6f6 !important; font-weight: 700; font-size: 11px; color: #0b4ca1 !important; }
+  .dn-report table.data-table tr.prin-total td { background: #c7d8f0 !important; font-weight: 700; font-size: 11px; color: #0b4ca1 !important; }
+  .dn-report table.data-table tr.grand-total td { background: #0b4ca1 !important; color: #fff !important; font-weight: 800; font-size: 12px; padding: 8px; border-top: 2px solid #08386f; border-bottom: none; }
 `;
 
 // Listens for the parent React page's print trigger (postMessage). Injected
@@ -385,10 +396,15 @@ async function renderHtml(
 
   const { tableHtml } = renderDnTable(prins);
 
+  // ★ FIX: wrapped in `dn-report` so DN_EXTRA_CSS selectors (now scoped via
+  //   `.dn-report ...`) actually match and win specificity against
+  //   COMMON_REPORT_CSS's generic `.data-table` rules.
   const bodyHtml = `
-    <div class="dn-title">${escapeHtml(reportTitle)}</div>
-    <div class="group">
-      ${tableHtml}
+    <div class="dn-report">
+      <div class="dn-title">${escapeHtml(reportTitle)}</div>
+      <div class="group">
+        ${tableHtml}
+      </div>
     </div>`;
 
   // ── Shared footer (print date / user / report name) ──

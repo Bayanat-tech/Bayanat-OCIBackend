@@ -282,8 +282,6 @@ const VISA_EXTRA_CSS = `
 `;
 
 function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
-    const reportDate = formatDateStr(new Date());
-
     let totalExpired  = 0;
     let totalExpiring = 0;
     let totalValid    = 0;
@@ -320,7 +318,6 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
         <div><b>Division:</b> ${escapeHtml(params.division) || "All"}</div>
         <div><b>Department:</b> ${escapeHtml(params.department) || "All"}</div>
         <div><b>Emp. Type:</b> ${params.emp_type === "A" ? "Active Employees" : "All Employees"}</div>
-        <div><b>Printed:</b> ${escapeHtml(reportDate)}</div>
       </div>
     </div>
 
