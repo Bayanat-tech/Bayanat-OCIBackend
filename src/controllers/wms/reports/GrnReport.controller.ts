@@ -4,6 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
+
+// ─── Shared report building blocks ─────────────────────────────────────────
+// Adjust this import path to wherever reportHeader / reportFooter /
+// buildReportDocument actually live in your project.
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -110,7 +116,6 @@ function fmtUomTotals(map: UomTotals, primaryUom?: string): string {
   const keys = Object.keys(map);
   if (keys.length === 0) return "—";
 
-  // Put primaryUom first if provided
   const ordered = primaryUom
     ? [primaryUom, ...keys.filter(k => k !== primaryUom)]
     : keys;
@@ -147,8 +152,6 @@ function fmtShortExcessCell(
 
   if (diffPuom === 0 && diffLuom === 0) return { text: "—", cls: "" };
 
-  // Drive the Short/Excess label off the primary UOM diff; fall back to L_UOM
-  // if the primary UOM diff happens to be zero.
   const driver  = diffPuom !== 0 ? diffPuom : diffLuom;
   const isExcess = driver < 0;
   const prefix  = isExcess ? "Excess: +" : "Short: -";
@@ -158,6 +161,12 @@ function fmtShortExcessCell(
   if (diffLuom !== 0 && lUom) parts.push(`${numFmt(Math.abs(diffLuom))} ${lUom}`.trim());
 
   return { text: `${prefix}${parts.join(" / ")}`, cls: isExcess ? "excess" : "short" };
+}
+
+/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
+function withPostMessagePrintListener(html: string): string {
+  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
+  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -238,12 +247,10 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
     const pg = groupMap[groupKey].products[prodKey];
     pg.rows.push(r);
 
-    // Always accumulate PUOM
     addUom(pg.recvByPuom, pUom, qtyPuom);
     addUom(pg.damByPuom,  pUom, qtyPuomDam);
     addUom(pg.expByPuom,  pUom, qtyPuomExp);
 
-    // L_UOM rule: only if qty > 0
     if (qtyLuom    !== 0) addUom(pg.recvByLuom, lUom, qtyLuom);
     if (qtyLuomDam !== 0) addUom(pg.damByLuom,  lUom, qtyLuomDam);
     if (qtyLuomExp !== 0) addUom(pg.expByLuom,  lUom, qtyLuomExp);
@@ -261,34 +268,129 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
   }));
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+// ─── Extra CSS specific to this report ─────────────────────────────────────
+// Landscape A4 + the flat job-header block + the grouped GRN table with
+// Short/Excess coloring. The shared COMMON_REPORT_CSS ships a portrait
+// @page and a generic .data-table — this report overrides both.
 
-function renderHtml(
-  groups:      GroupSection[],
-  firstRow:    ReportRow | null,
-  jobNo:       string,
-  prinCode:    string,
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
+const GRN_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 10mm 12mm; }
+  .paper { max-width: 277mm; }
+
+  /* ── Flat job header block (label : value, no box) ── */
+  .job-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 16px;
+    margin-bottom: 10px;
+    padding: 8px 0 10px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+  }
+  .job-col { display: flex; flex-direction: column; gap: 3px; }
+  .job-row { display: flex; align-items: baseline; gap: 6px; line-height: 1.6; }
+  .job-label { font-size: 10.5px; color: #6b7280; white-space: nowrap; }
+  .job-label::after { content: ":"; }
+  .job-value { font-size: 11px; font-weight: 700; color: #111827; }
+  .job-value.nil { font-weight: 400; color: #9ca3af; }
+
+  /* ── Grouped data table ── */
+  table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+  col.c0  { width: 8%;  } col.c1  { width: 8%;  } col.c2  { width: 9%;  }
+  col.c3  { width: 9%;  } col.c4  { width: 7%;  } col.c5  { width: 7%;  }
+  col.c6  { width: 14%; } col.c7  { width: 11%; }
+  col.c8  { width: 14%; } col.c9  { width: 13%; }
+
+  thead tr.th-group th {
+    background: #1e3a5f; color: #fff; font-weight: 700;
+    font-size: 10px; padding: 6px 10px; text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+  }
+  thead tr.th-group th:last-child { border-right: none; }
+  thead tr.th-sub th {
+    background: #162d4a; color: #cbd5e1; font-weight: 600;
+    font-size: 9.5px; padding: 5px 10px; text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.10);
+    white-space: nowrap;
+  }
+  thead tr.th-sub th.num { text-align: right; }
+
+  tr.group-row td {
+    background: #1e3a5f; color: #fff; font-weight: 700;
+    font-size: 11px; padding: 5px 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  tr.prod-row td {
+    background: #e8ecf2; color: #1e3a5f; font-weight: 700;
+    font-size: 11px; padding: 4px 10px 4px 22px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid #d5dce8;
+  }
+  tr.prod-row td.prod-asn {
+    background: #e8ecf2; color: #374151; font-weight: 600;
+    padding-left: 10px; text-align: right; font-size: 10.5px;
+  }
+
+  tbody tr.data-row td {
+    padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
+    color: #374151; font-size: 11px;
+    white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
+    vertical-align: top;
+  }
+  tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
+  td.dim    { color: #9ca3af !important; font-weight: 400; }
+  td.short  { color: #dc2626 !important; font-weight: 700; }
+  td.excess { color: #16a34a !important; font-weight: 700; }
+
+  tr.group-total td {
+    background: #d5dce8; padding: 5px 10px; font-size: 11px;
+    font-weight: 700; color: #1e3a5f; white-space: nowrap;
+  }
+  tr.grand-total td {
+    background: #1e3a5f; color: #fff; font-weight: 700;
+    font-size: 12px; padding: 8px 10px;
+    border-top: 2px solid #162d4a;
+  }
+
+  @media print {
+    /* Keep section headers attached to their first data row */
+    tr.group-row,
+    tr.prod-row {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+    /* Keep totals attached to the group above them */
+    tr.group-total,
+    tr.grand-total {
+      break-before: avoid;
+      page-break-before: avoid;
+    }
+  }
+`;
+
+// ─── HTML body renderer ─────────────────────────────────────────────────────
+// Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
+// from reportCommon supply the company header, footer and page shell.
+
+function renderBodyHtml(
+  groups:   GroupSection[],
+  firstRow: ReportRow | null,
+  jobNo:    string,
+  prinCode: string
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-
   const r = firstRow || {};
 
-  // ── Grand-level UOM totals ────────────────────────────────────────────────
   const grandRecvPuom = mergeUomTotals(...groups.map(g => g.recvByPuom));
   const grandRecvLuom = mergeUomTotals(...groups.map(g => g.recvByLuom));
   const grandDamPuom  = mergeUomTotals(...groups.map(g => g.damByPuom));
   const grandDamLuom  = mergeUomTotals(...groups.map(g => g.damByLuom));
 
-  // Total (Good + Damaged) = recv + dam per UOM
   const grandTotalPuom = mergeUomTotals(grandRecvPuom, grandDamPuom);
   const grandTotalLuom = mergeUomTotals(grandRecvLuom, grandDamLuom);
 
-  // ── Build body rows ────────────────────────────────────────────────────────
   let bodyRows = "";
 
   for (const gs of groups) {
@@ -298,11 +400,9 @@ function renderHtml(
       </tr>`;
 
     for (const pg of gs.products) {
-      // Determine primary UOM for this product (first row's P_UOM)
       const pUom = text(pg.rows[0]?.p_uom || "");
       const lUom = text(pg.rows[0]?.l_uom || "");
 
-      // ASN expected qty string for the product header
       const asnStr = fmtUomTotals(pg.expByPuom, pUom)
         + (Object.keys(pg.expByLuom).length ? " " + fmtUomTotals(pg.expByLuom, lUom) : "");
 
@@ -312,7 +412,6 @@ function renderHtml(
           <td colspan="3" class="prod-asn">ASN Qty : ${escapeHtml(asnStr)}</td>
         </tr>`;
 
-      // Data rows
       for (const dr of pg.rows) {
         const qtyPuom    = parseFloat(String(dr.qtypuom))          || 0;
         const qtyLuom    = parseFloat(String(dr.qtyluom))          || 0;
@@ -321,18 +420,13 @@ function renderHtml(
         const drPuom     = text(dr.p_uom);
         const drLuom     = text(dr.l_uom);
 
-        // 1) Qty Received: QTYPUOM P_UOM [/ QTYLUOM L_UOM if != 0]
         const recvStr = fmtQtyCell(qtyPuom, drPuom, qtyLuom, drLuom);
-
-        // 2) Qty Damaged: QTYPUOM_DAM P_UOM [/ QTYLUOM_DAM L_UOM if != 0]
         const damStr  = fmtQtyCell(qtyPuomDam, drPuom, qtyLuomDam, drLuom);
 
-        // 3) Total (Good + Damaged): (QTYPUOM + QTYPUOM_DAM) P_UOM [/ (QTYLUOM + QTYLUOM_DAM) L_UOM if != 0]
         const totalPuomQty = qtyPuom + qtyPuomDam;
         const totalLuomQty = qtyLuom + qtyLuomDam;
         const totalStr = fmtQtyCell(totalPuomQty, drPuom, totalLuomQty, drLuom);
 
-        // 4) Short / Excess
         const qtyPuomExp = parseFloat(String(dr.qtypuom_expected)) || 0;
         const qtyLuomExp = parseFloat(String(dr.qtyluom_expected)) || 0;
         const shortExcess = fmtShortExcessCell(qtyPuomExp, qtyPuom, drPuom, qtyLuomExp, qtyLuom, drLuom);
@@ -351,9 +445,8 @@ function renderHtml(
             <td class="num${shortExcess.cls ? " " + shortExcess.cls : ""}">${escapeHtml(shortExcess.text)}</td>
           </tr>`;
       }
-    } // ← closes "for (const pg of gs.products)"
+    }
 
-    // Group total
     const gsTotalPuom = mergeUomTotals(gs.recvByPuom, gs.damByPuom);
     const gsTotalLuom = mergeUomTotals(gs.recvByLuom, gs.damByLuom);
 
@@ -365,9 +458,8 @@ function renderHtml(
         <td class="num">${escapeHtml(fmtUomTotals(gsTotalPuom))}${Object.keys(gsTotalLuom).length ? " " + escapeHtml(fmtUomTotals(gsTotalLuom)) : ""}</td>
         <td></td>
       </tr>`;
-  } // ← closes "for (const gs of groups)"
+  }
 
-  // Grand total row
   const grandRow = `
     <tr class="grand-total">
       <td colspan="6">Grand Total</td>
@@ -377,176 +469,8 @@ function renderHtml(
       <td></td>
     </tr>`;
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(jobNo)}</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 277mm;
-      min-height: 190mm;
-      margin: 0 auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-    }
-
-    /* ── Report header banner ── */
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 6px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-
-    /* ── Job header block (flat label : value, no box) ── */
-    .job-header {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0 16px;
-      margin-bottom: 10px;
-      padding: 8px 0 10px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 11px;
-    }
-    .job-col { display: flex; flex-direction: column; gap: 3px; }
-    .job-row { display: flex; align-items: baseline; gap: 6px; line-height: 1.6; }
-    .job-label {
-      font-size: 10.5px;
-      color: #6b7280;
-      white-space: nowrap;
-    }
-    .job-label::after { content: ":"; }
-    .job-value {
-      font-size: 11px;
-      font-weight: 700;
-      color: #111827;
-    }
-    .job-value.nil { font-weight: 400; color: #9ca3af; }
-
-    /* ── Data table ── */
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
-    col.c0  { width: 8%;  } col.c1  { width: 8%;  } col.c2  { width: 9%;  }
-    col.c3  { width: 9%;  } col.c4  { width: 7%;  } col.c5  { width: 7%;  }
-    col.c6  { width: 14%; } col.c7  { width: 11%; }
-    col.c8  { width: 14%; } col.c9  { width: 13%; }
-
-    thead tr.th-group th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 6px 10px; text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-    }
-    thead tr.th-group th:last-child { border-right: none; }
-    thead tr.th-sub th {
-      background: #162d4a; color: #cbd5e1; font-weight: 600;
-      font-size: 9.5px; padding: 5px 10px; text-align: left;
-      border-right: 1px solid rgba(255,255,255,0.10);
-      white-space: nowrap;
-    }
-    thead tr.th-sub th.num { text-align: right; }
-
-    tr.group-row td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    tr.prod-row td {
-      background: #e8ecf2; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 4px 10px 4px 22px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid #d5dce8;
-    }
-    tr.prod-row td.prod-asn {
-      background: #e8ecf2; color: #374151; font-weight: 600;
-      padding-left: 10px; text-align: right; font-size: 10.5px;
-    }
-
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
-      vertical-align: top;
-    }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    td.dim  { color: #9ca3af !important; font-weight: 400; }
-    td.short  { color: #dc2626 !important; font-weight: 700; }
-    td.excess { color: #16a34a !important; font-weight: 700; }
-
-    tr.group-total td {
-      background: #d5dce8; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
-    }
-
-    /* ── Footer ── */
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code {
-      font-family: "Courier New", monospace; font-size: 9px; color: #6b7280;
-    }
-
-    @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      thead { display: table-header-group; }
-
-      /* Keep section headers attached to their first data row */
-      tr.group-row,
-      tr.prod-row {
-        break-after: avoid;
-        page-break-after: avoid;
-      }
-
-      /* Keep totals attached to the group above them */
-      tr.group-total,
-      tr.grand-total {
-        break-before: avoid;
-        page-break-before: avoid;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-
-    <!-- ── Report title banner ── -->
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-
-    <!-- ── Print meta row ── -->
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
-    </div>
-
-    <!-- ── Job header block (flat, no box) ── -->
+  return `
     <div class="job-header">
-
       <div class="job-col">
         <div class="job-row">
           <span class="job-label">Job Number</span>
@@ -603,10 +527,8 @@ function renderHtml(
           <span class="job-value${r.prin_ref1 ? "" : " nil"}">${r.prin_ref1 ? escapeHtml(text(r.prin_ref1)) : "&nbsp;"}</span>
         </div>
       </div>
+    </div>
 
-    </div><!-- /job-header -->
-
-    <!-- ── Data table ── -->
     <table class="rpt-table">
       <colgroup>
         <col class="c0"/><col class="c1"/><col class="c2"/>
@@ -640,25 +562,47 @@ function renderHtml(
         ${grandRow}
       </tbody>
     </table>
+  `;
+}
 
-    <!-- ── Page footer ── -->
-    <div class="rpt-footer">
-      <span>Report Name : <code>${escapeHtml(jobNo)}</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
+/**
+ * Assembles the full document via buildReportDocument(), using the shared
+ * company reportHeader() and reportFooter(). Kept async because reportHeader
+ * hits the DB for company name / address / logo.
+ */
+async function renderHtml(
+  req: RequestWithUser,
+  groups: GroupSection[],
+  firstRow: ReportRow | null,
+  jobNo: string,
+  prinCode: string,
+  reportTitle: string,
+  loginId: string,
+  autoPrint: boolean
+): Promise<string> {
+  const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
+  const bodyHtml   = renderBodyHtml(groups, firstRow, jobNo, prinCode);
+  const footerHtml = reportFooter({
+    reportName: reportTitle,
+    userName: loginId,
+    extraLeft: `Report Name: ${escapeHtml(jobNo)}`,
+  });
 
-  </main>
-  <script>
-    window.addEventListener("message", (e) => {
-      if (e.data === "print") window.print();
-    });
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-  </script>
-</body>
-</html>`;
+  const html = buildReportDocument({
+    title: `${reportTitle} - ${jobNo}`,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: GRN_EXTRA_CSS,
+    autoPrint,
+    showPrintButton: !autoPrint,
+  });
+
+  return withPostMessagePrintListener(html);
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
+// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
 
 const STYLE_ID = {
   default:        0,
@@ -690,11 +634,9 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
   const skip = null;
   const rows: Row[] = [];
 
-  // Title
   rows.push([xc(`Goods Receipt Note — Job ${jobNo} / ${prinCode}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
-  // Column headers
   rows.push([
     xc("Mfg. Date",              "header"),
     xc("Exp. Date",              "header"),
@@ -747,7 +689,6 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
       }
     }
 
-    // Group total
     const gsTotalPuom = mergeUomTotals(gs.recvByPuom, gs.damByPuom);
     const gsTotalLuom = mergeUomTotals(gs.recvByLuom, gs.damByLuom);
     const gsTotalStr  = fmtUomTotals(gsTotalPuom) + (Object.keys(gsTotalLuom).length ? " / " + fmtUomTotals(gsTotalLuom) : "");
@@ -765,7 +706,6 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
     ]);
   }
 
-  // ── Grand-level UOM totals ────────────────────────────────────────────────
   const grandRecvPuom  = mergeUomTotals(...groups.map(g => g.recvByPuom));
   const grandRecvLuom  = mergeUomTotals(...groups.map(g => g.recvByLuom));
   const grandDamPuom   = mergeUomTotals(...groups.map(g => g.damByPuom));
@@ -792,7 +732,6 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Merge ranges
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -952,8 +891,9 @@ export const getGrnReportHtml = async (
     const groups = groupRows(rows);
     const first  = rows[0] ?? null;
 
+    const html = await renderHtml(req, groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(html);
   } catch (error: any) {
     console.error("GRN HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -977,7 +917,7 @@ export const getGrnReportPdf = async (
     const groups      = groupRows(rows);
     const first       = rows[0] ?? null;
     const reportTitle = "Goods Receipt Note";
-    const html = renderHtml(groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
+    const html = await renderHtml(req, groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", `inline; filename="GRN_${jobNo}.pdf"`);
