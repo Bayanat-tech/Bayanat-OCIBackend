@@ -249,51 +249,89 @@ function kvRow(label: string, value: string, strongValue = false): string {
 // that the shared CSS doesn't define. Everything else (fonts, colors, table
 // borders, header, footer, print rules) comes straight from COMMON_REPORT_CSS.
 const GRN_EXTRA_CSS = `
+  /* Force print / PDF engines to keep background colors (fixes grey
+     "Total Quantity" row losing its blue background on print/PDF). */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   .grn-two-col { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
   .grn-two-col > tbody > tr > td { border: 0; padding: 0; vertical-align: top; width: 50%; }
   .grn-two-col > tbody > tr > td:first-child { padding-right: 10px; }
   .grn-two-col > tbody > tr > td:last-child { padding-left: 10px; }
   .grn-status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; background: #fee2e2; color: #dc2626; margin-top: 4px; }
+
   .grn-totals { width: 260px; margin-left: auto; margin-top: 10px; border-collapse: collapse; }
   .grn-totals td { padding: 5px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; }
-  .grn-totals tr.grand td { background: #0b4ca1; color: #fff; font-weight: 800; font-size: 12px; border-bottom: none; }
- .grn-sign {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  margin-top: 22px;
-  text-align: center;
-  page-break-inside: avoid;
-  font-size: 10px;
-}
+  .grn-totals tr.grand td { background: #0b4ca1 !important; color: #fff !important; font-weight: 800; font-size: 12px; border-bottom: none; }
 
-.sign-box {
-  width: 23%;
-  min-height: 70px;
-}
+  /* ── Items table: fixed layout with widths pinned per column via
+     nth-child (more reliable across HTML→PDF renderers than <colgroup>). ── */
+  .grn-items-table { table-layout: fixed; width: 100%; }
 
-.sign-space {
-  height: 32px;
-}
+  .grn-items-table th:nth-child(1),
+  .grn-items-table td:nth-child(1) { width: 36px; white-space: nowrap; }
 
-.sign-line {
-  width: 100%;
-  border-top: 1px solid #64748b;
-  margin-bottom: 6px;
-}
+  .grn-items-table th:nth-child(2),
+  .grn-items-table td:nth-child(2) {
+    width: auto;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
 
-.sign-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: #334155;
-}
+  .grn-items-table th:nth-child(3),
+  .grn-items-table td:nth-child(3) { width: 50px; }
 
-.sign-name {
-  font-size: 9px;
-  color: #64748b;
-  margin-top: 3px;
-}
- 
+  .grn-items-table th:nth-child(4),
+  .grn-items-table td:nth-child(4) { width: 80px; text-align: right; }
+
+  .grn-items-table th:nth-child(5),
+  .grn-items-table td:nth-child(5) { width: 50px; }
+
+  .grn-items-table th:nth-child(6),
+  .grn-items-table td:nth-child(6) { width: 80px; text-align: right; }
+
+  .grn-items-table th:nth-child(7),
+  .grn-items-table td:nth-child(7) { width: 95px; text-align: right; }
+
+  .grn-sign {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 22px;
+    text-align: center;
+    page-break-inside: avoid;
+    font-size: 10px;
+  }
+
+  .sign-box {
+    width: 23%;
+    min-height: 70px;
+  }
+
+  .sign-space {
+    height: 32px;
+  }
+
+  .sign-line {
+    width: 100%;
+    border-top: 1px solid #64748b;
+    margin-bottom: 6px;
+  }
+
+  .sign-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  .sign-name {
+    font-size: 9px;
+    color: #64748b;
+    margin-top: 3px;
+  }
 `;
 
 async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
@@ -359,16 +397,16 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
     });
 
     itemsHtml = `
-      <table class="data-table">
+      <table class="data-table grn-items-table">
         <thead>
           <tr>
-            <th style="width:36px;">S.No.</th>
-            <th>Product / Description</th>
-            <th style="width:50px;">PUOM</th>
-            <th style="width:80px;">P. Qty</th>
-            <th style="width:50px;">LUOM</th>
-            <th style="width:80px;">L. Qty</th>
-            <th style="width:90px;">Qty in LUOM</th>
+            <th>S.No.</th>
+            <th style="text-align:left;">Product / Description</th>
+            <th>PUOM</th>
+            <th>P. Qty</th>
+            <th>LUOM</th>
+            <th>L. Qty</th>
+            <th>Qty in LUOM</th>
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
@@ -394,7 +432,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
     : "";
 
   // ── Signature strip ──
- const signHtml = `
+  const signHtml = `
   <div class="grn-sign">
 
     <div class="sign-box">
@@ -423,7 +461,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
 
   </div>`;
 
- const bodyHtml = `
+  const bodyHtml = `
     ${detailsHtml}
 
     <div class="group">
