@@ -5,7 +5,7 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
-
+import { buildReportDocument, reportFooter, reportHeader } from "../../../common/report_common";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TLevel = "l2" | "l3" | "l4";
@@ -198,7 +198,7 @@ async function execDynamicProc(
     throw Object.assign(new Error("Procedure returned no SQL"), { status: 400 });
 
   console.log(`Trial Balance Dynamic SQL [${apiParameter}]:`, dynamicSql);
-  
+
   const dataResult = await conn.execute(dynamicSql, [], {
     outFormat: oracledb.OUT_FORMAT_OBJECT,
   });
@@ -269,14 +269,77 @@ async function loadAcData(
   }
 }
 
-// ─── HTML Renderer ────────────────────────────────────────────────────────────
+// ─── HTML Renderer (common header / footer / CSS) ─────────────────────────────
 
-function renderHtml(
-  rows:        ReportRow[],
-  config:      { codeField: string; codeHeader: string; drillLevel: DrillLevel },
-  params:      { companyCode: string; fromDate: string; toDate: string; loginId: string; divisionCode?: string },
-  autoPrint:   boolean,
-): string {
+/** Extra CSS specific to Trial Balance (totals row, drill hint, etc.) */
+const TB_EXTRA_CSS = `
+  .tb-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+  }
+  .tb-meta {
+    font-size: 10.5px;
+    color: #334155;
+    margin: 0 0 8px 0;
+  }
+  .tb-meta span { margin-right: 14px; }
+  .drill-hint {
+    font-size: 10px;
+    color: #0b4ca1;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 4px 10px;
+    margin-bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  table.data-table tbody tr[data-code] {
+    cursor: pointer;
+  }
+  table.data-table tbody tr[data-code]:hover {
+    background: #f0f9ff;
+  }
+  tr.total-row td {
+    border-top: 2px solid #0f172a;
+    border-bottom: 2px solid #0f172a;
+    font-weight: 800;
+    background: #f8fafc;
+    padding: 5px;
+  }
+  tr.total-row td.empty {
+    border: 0;
+    background: transparent;
+  }
+  .end-of-report {
+    text-align: center;
+    margin-top: 12px;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+  }
+  @media print {
+    .drill-hint { display: none !important; }
+  }
+`;
+
+async function renderHtml(
+  rows:   ReportRow[],
+  config: { codeField: string; codeHeader: string; drillLevel: DrillLevel },
+  params: {
+    companyCode:  string;
+    fromDate:     string;
+    toDate:       string;
+    loginId:      string;
+    divisionCode?: string;
+  },
+  req: RequestWithUser,
+  autoPrint: boolean,
+): Promise<string> {
   const totals = rows.reduce(
     (acc, row) => ({
       opening: acc.opening + amount(row.opening),
@@ -291,13 +354,9 @@ function renderHtml(
   const fromDateDisplay = dateText(firstRow.from_date ?? params.fromDate);
   const toDateDisplay   = dateText(firstRow.to_date   ?? params.toDate);
   const title           = text(firstRow.title)
-    || `Group 1 ( TB ) for the Period ${fromDateDisplay} – ${toDateDisplay}`;
+    || `Trial Balance`;
   const reportName      = text(firstRow.report) || `rpt_ac_trailbalance_${config.codeField}`;
   const username        = text(firstRow.username) || params.loginId;
-  const printDateTime   = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
 
   // Map drill level to the field name used in the postMessage payload
   const CODE_FIELD_MAP: Record<string, string> = {
@@ -321,8 +380,9 @@ function renderHtml(
     )
     .join("");
 
-  // Drill-down script — only injected when there is a next level
-  const drillScript = config.drillLevel ? `
+  // Drill-down script — only when there is a next level
+  const drillScript = config.drillLevel
+    ? `
   <script>
     (function () {
       var DRILL_LEVEL   = ${escapeJs(config.drillLevel)};
@@ -330,12 +390,9 @@ function renderHtml(
       var FROM_DATE     = ${escapeJs(params.fromDate)};
       var TO_DATE       = ${escapeJs(params.toDate)};
       var DIVISION_CODE = ${escapeJs(params.divisionCode ?? "")};
-      var CODE_FIELD    = ${escapeJs(CODE_FIELD_MAP[config.drillLevel] ?? config.codeField)};
+      var CODE_FIELD    = ${escapeJs(CODE_FIELD_MAP[config.drillLevel!] ?? config.codeField)};
 
       document.querySelectorAll("tbody tr[data-code]").forEach(function (tr) {
-        tr.style.cursor = "pointer";
-        tr.addEventListener("mouseenter", function () { tr.style.background = "#f0f9f5"; });
-        tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
         tr.addEventListener("click", function () {
           var code = tr.getAttribute("data-code");
           window.parent.postMessage({
@@ -351,169 +408,72 @@ function renderHtml(
         });
       });
     })();
-  </script>` : "";
+  </script>`
+    : "";
 
-  const drillHint = config.drillLevel ? `
-    <div style="
-      font-size:10px; color:#1a5f4a; background:#f0f9f5;
-      border:1px solid #a7d7c5; border-radius:4px;
-      padding:4px 10px; margin-bottom:8px;
-      display:inline-flex; align-items:center; gap:6px;
-    ">
+  const drillHint = config.drillLevel
+    ? `
+    <div class="drill-hint no-print">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
       Click any row to drill down
-    </div>` : "";
+    </div>`
+    : "";
 
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    @page { size: A4 portrait; margin: 10mm; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-      color: #000;
-      background: #eef2f7;
-    }
-    .sheet {
-      width: 210mm;
-      min-height: 297mm;
-      margin: 0 auto;
-      background: #fff;
-      padding: 8mm;
-      border: 1px solid #aab7c8;
-    }
-    .logo-area { margin-bottom: 16px; }
-    .divider-thick { border-top: 2px solid #000; margin: 10px 0 6px; }
-    .divider-thin  { border-top: 1px solid #000; margin: 6px 0 10px; }
-    .meta-row { display: flex; align-items: baseline; font-size: 12px; margin-bottom: 3px; }
-    .meta-label { font-weight: 700; width: 60px; flex-shrink: 0; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
-    th {
-      border: 1px solid #000;
-      padding: 3px 8px;
-      text-align: center;
-      font-weight: 700;
-      background: #fff;
-    }
-    th.right { text-align: right; }
-    td { border: 1px solid #ccc; padding: 2px 8px; }
-    td.center { text-align: center; }
-    td.left   { text-align: left; }
-    td.num    { text-align: right; font-variant-numeric: tabular-nums; }
-    tr.total-row td {
-      border: 2px solid #000;
-      font-weight: 700;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-    tr.total-row td.empty { border: 1px solid #ccc; }
-    .end-of-report {
-      text-align: center;
-      margin-top: 16px;
-      margin-bottom: 8px;
-      font-size: 12px;
-      border-top: 1px solid #ccc;
-      padding-top: 8px;
-    }
-    .report-footer {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: #666;
-      border-top: 1px solid #ccc;
-      padding-top: 6px;
-      margin-top: 8px;
-    }
-    .actions { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
-    .actions button {
-      border: 1px solid #cbd5e1;
-      background: white;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    @media print {
-      body { background: white; }
-      .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; }
-      .actions { display: none; }
-      .drill-hint { display: none !important; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-      tbody tr { page-break-inside: avoid; }
-      .print-footer {
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        padding: 6px 24px;
-        border-top: 1px solid #ccc;
-        background: #fff;
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
-        color: #666;
-      }
-      .print-body-padding { padding-bottom: 40px !important; }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-    <div class="logo-area">
-      <svg width="180" height="56" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
-        <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
-        <text x="16" y="46" font-family="Arial" font-size="26" font-weight="700" fill="#d4a017">al madina المدينة</text>
-        <text x="16" y="72" font-family="Arial" font-size="15" font-weight="400" fill="#d4a017" letter-spacing="4">LOGISTICS اللوجستية</text>
-        <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
-      </svg>
+  const bodyHtml = `
+    <div class="tb-title">${escapeHtml(title)}</div>
+    <div class="tb-meta">
+      <span><strong>Period:</strong> ${escapeHtml(fromDateDisplay)} – ${escapeHtml(toDateDisplay)}</span>
     </div>
-    <div class="divider-thick"></div>
-    <div class="meta-row"><span class="meta-label">Title :</span><span>${escapeHtml(title)}</span></div>
-    <div class="meta-row"><span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span></div>
-    <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(username)}</span></div>
-    <div class="divider-thin"></div>
-    <div class="print-body-padding">
-      ${drillHint}
-      <table>
-        <thead>
-          <tr>
-            <th style="width:80px">${escapeHtml(config.codeHeader)}</th>
-            <th>Account Name</th>
-            <th class="right">Opening</th>
-            <th class="right">Debit Amount</th>
-            <th class="right">Credit Amount</th>
-            <th class="right">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${dataRows || `<tr><td colspan="6" class="center" style="color:#666">No data found</td></tr>`}
-        </tbody>
-        <tfoot>
-          <tr class="total-row">
-            <td class="empty" colspan="2"></td>
-            <td>${escapeHtml(fmtNumber(totals.opening))}</td>
-            <td>${escapeHtml(fmtNumber(totals.debit))}</td>
-            <td>${escapeHtml(fmtNumber(totals.credit))}</td>
-            <td>${escapeHtml(fmtNumber(totals.amount))}</td>
-          </tr>
-        </tfoot>
-      </table>
-      <div class="end-of-report">End of Report</div>
-    </div>
-    <div class="report-footer print-footer">
-      <span>Report: ${escapeHtml(reportName)}</span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </main>
-  ${drillScript}
-</body>
-</html>`;
+    ${drillHint}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:80px">${escapeHtml(config.codeHeader)}</th>
+          <th>Account Name</th>
+          <th class="right" style="width:110px">Opening</th>
+          <th class="right" style="width:110px">Debit Amount</th>
+          <th class="right" style="width:110px">Credit Amount</th>
+          <th class="right" style="width:110px">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${dataRows || `<tr><td colspan="6" class="center muted">No data found</td></tr>`}
+      </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td class="empty" colspan="2"></td>
+          <td class="num">${escapeHtml(fmtNumber(totals.opening))}</td>
+          <td class="num">${escapeHtml(fmtNumber(totals.debit))}</td>
+          <td class="num">${escapeHtml(fmtNumber(totals.credit))}</td>
+          <td class="num">${escapeHtml(fmtNumber(totals.amount))}</td>
+        </tr>
+      </tfoot>
+    </table>
+    ${drillScript}
+  `;
+
+  const headerHtml = await reportHeader({
+    company_code: params.companyCode,
+    req,
+  });
+
+  const footerHtml = reportFooter({
+    reportName,
+    userName: username,
+    endLabel: "End of report",
+  });
+
+  return buildReportDocument({
+    title,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: TB_EXTRA_CSS,
+    autoPrint: false, // dialog handles print; avoid auto-print inside iframe
+    showPrintButton: false, // dialog has its own print button
+  });
 }
 
 // ─── Excel Builder ────────────────────────────────────────────────────────────
@@ -521,13 +481,13 @@ function renderHtml(
 const excelStyles = {
   title: {
     font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "1A5F4A" } },
+    fill: { fgColor: { rgb: "0B4CA1" } },
     alignment: { horizontal: "center", vertical: "center" },
     border: {
-      top:    { style: "thin", color: { rgb: "1A5F4A" } },
-      bottom: { style: "thin", color: { rgb: "1A5F4A" } },
-      left:   { style: "thin", color: { rgb: "1A5F4A" } },
-      right:  { style: "thin", color: { rgb: "1A5F4A" } },
+      top:    { style: "thin", color: { rgb: "0B4CA1" } },
+      bottom: { style: "thin", color: { rgb: "0B4CA1" } },
+      left:   { style: "thin", color: { rgb: "0B4CA1" } },
+      right:  { style: "thin", color: { rgb: "0B4CA1" } },
     },
   },
   meta: {
@@ -536,13 +496,13 @@ const excelStyles = {
   },
   tableHead: {
     font: { bold: true, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "1A5F4A" } },
+    fill: { fgColor: { rgb: "0B4CA1" } },
     alignment: { horizontal: "center", vertical: "center" },
     border: {
-      top:    { style: "thin", color: { rgb: "1A5F4A" } },
-      bottom: { style: "thin", color: { rgb: "1A5F4A" } },
-      left:   { style: "thin", color: { rgb: "1A5F4A" } },
-      right:  { style: "thin", color: { rgb: "1A5F4A" } },
+      top:    { style: "thin", color: { rgb: "0B4CA1" } },
+      bottom: { style: "thin", color: { rgb: "0B4CA1" } },
+      left:   { style: "thin", color: { rgb: "0B4CA1" } },
+      right:  { style: "thin", color: { rgb: "0B4CA1" } },
     },
   },
   normal: {
@@ -633,7 +593,7 @@ function buildExcelSheet(
   const fromDateDisplay = dateText(firstRow.from_date ?? params.fromDate);
   const toDateDisplay   = dateText(firstRow.to_date   ?? params.toDate);
   const title           = text(firstRow.title)
-    || `Group 1 ( TB ) for the Period ${fromDateDisplay} – ${toDateDisplay}`;
+    || `Trial Balance for the Period ${fromDateDisplay} – ${toDateDisplay}`;
   const reportName      = text(firstRow.report) || `rpt_ac_trailbalance_${config.codeField}`;
   const username        = text(firstRow.username) || params.loginId;
   const printDateTime   = new Date().toLocaleString("en-GB", {
@@ -642,7 +602,7 @@ function buildExcelSheet(
   });
 
   const sheetRows: any[][] = [
-    ["al madina LOGISTICS - Trial Balance Report", "", "", "", "", ""],
+    ["Trial Balance Report", "", "", "", "", ""],
     [],
     ["Title :",   title,         "", "", "", ""],
     ["Date :",    printDateTime,  "", "", "", ""],
@@ -789,17 +749,17 @@ function workbookBufferFromSheet(ws: XLSX.WorkSheet): Buffer {
   <fills count="5">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1A5F4A"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF8F8F8"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="5">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF1A5F4A"/></left>
-      <right style="thin"><color rgb="FF1A5F4A"/></right>
-      <top style="thin"><color rgb="FF1A5F4A"/></top>
-      <bottom style="thin"><color rgb="FF1A5F4A"/></bottom>
+      <left style="thin"><color rgb="FF0B4CA1"/></left>
+      <right style="thin"><color rgb="FF0B4CA1"/></right>
+      <top style="thin"><color rgb="FF0B4CA1"/></top>
+      <bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
       <diagonal/>
     </border>
     <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
@@ -961,7 +921,7 @@ export const getTrialBalanceReportHtml = async (
     );
 
     const config = LEVEL_CONFIG[params.level];
-    const html   = renderHtml(
+    const html   = await renderHtml(
       rows,
       config,
       {
@@ -971,6 +931,7 @@ export const getTrialBalanceReportHtml = async (
         loginId:      req.user?.loginid ?? "",
         divisionCode: params.divisionCode,
       },
+      req,
       req.query.print !== "false",
     );
 
@@ -1045,7 +1006,7 @@ export const getAcTrialBalanceReportHtml = async (
     );
 
     const config = AC_FORMAT_CONFIG[params.reportFormat];
-    const html   = renderHtml(
+    const html   = await renderHtml(
       rows,
       config,
       {
@@ -1055,6 +1016,7 @@ export const getAcTrialBalanceReportHtml = async (
         loginId:      req.user?.loginid ?? "",
         divisionCode: params.divisionCode,
       },
+      req,
       req.query.print !== "false",
     );
 
