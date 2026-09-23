@@ -242,7 +242,7 @@ const SALES_INVOICE_EXTRA_CSS = `
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4px 16px;
+    gap: 16px 100px;
     margin-bottom: 14px;
   }
   .info-block {
@@ -297,10 +297,7 @@ function printMetaHtml(title: string, subtitle: string, printDateTime: string, l
         <h1>${escapeHtml(title)}</h1>
         <div class="doc-sub">${escapeHtml(subtitle)}</div>
       </div>
-      <div class="print-meta">
-        <div>Print Date: ${escapeHtml(printDateTime)}</div>
-        <div>Print User: ${escapeHtml(loginId)}</div>
-      </div>
+     
     </div>`;
 }
 
@@ -419,7 +416,7 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
     ${printMetaHtml("Sales Invoice (Tax)", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
 
     <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
+        ${partyInfoBlockHtml(header)}
       <div class="info-block">
         <div class="label">Invoice Details</div>
         <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
@@ -429,6 +426,7 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
         ${header.salesman_code ? `<div class="value-line">Sold By: ${escapeHtml(header.salesman_code)}</div>` : ""}
         <div class="value-line">Company TRN No: ${escapeHtml(header.company_trn_no)}</div>
       </div>
+      
     </div>
 
     <table class="data-table">

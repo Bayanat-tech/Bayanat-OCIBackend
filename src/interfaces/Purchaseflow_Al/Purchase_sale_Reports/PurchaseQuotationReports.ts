@@ -4,6 +4,7 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -160,7 +161,6 @@ interface PurchaseQuotationHeader {
   dlvr_email: string;
   disc_hdr_price: number;
   curr_code: string;
-  logo_url: string | null;
 }
 
 function buildPurchaseQuotationHeader(rows: ReportRow[]): PurchaseQuotationHeader {
@@ -183,142 +183,135 @@ function buildPurchaseQuotationHeader(rows: ReportRow[]): PurchaseQuotationHeade
     dlvr_email: text(h.dlvr_email),
     disc_hdr_price: num(h.disc_hdr_price),
     curr_code: text(h.curr_code) || "QAR",
-    logo_url: h.logo_url || null,
   };
 }
 
-// ─── Shared visual system (identical classes/colors to SalesInvoiceReports.ts) ──
+// ─── Shared visual system (identical extra CSS across all 3 reports) ──────
 
-const SHARED_STYLES = `
-        @media print {
-            @page { size: A4 portrait; margin: 8mm; }
-            .no-print { display: none !important; }
-            .report-container { box-shadow: none !important; border: none !important; }
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-        }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-title-area { display: flex; align-items: center; gap: 14px; }
-        .logo-img { max-height: 50px; max-width: 120px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .report-subtitle { font-size: 12px; color: #6b7280; font-weight: 400; letter-spacing: 0.5px; }
-        .report-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.6; }
-        .report-meta strong { color: #374151; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; margin-bottom: 18px; }
-        .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; background: #f8fafc; }
-        .info-block .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 6px; }
-        .info-block .value-line { font-size: 12px; color: #111827; line-height: 1.6; }
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
-        .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-        .report-table thead th {
-            background: #f3f4f6; padding: 8px 10px; text-align: left; font-weight: 600; color: #374151;
-            border-bottom: 2px solid #d1d5db; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em;
-        }
-        .report-table tbody td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; }
-        .report-table .right { text-align: right; }
-        .report-table .center { text-align: center; }
-        .report-table .amount { font-weight: 500; color: #065f46; }
-        .totals-box { margin-top: 16px; margin-left: auto; width: 320px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-        .totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid #f3f4f6; }
-        .totals-box .row.grand { background: #1d4ed8; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
-        .report-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 14px; margin-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;
-        }
-        @media print {
-            .report-header { border-bottom-color: #000; }
-            .report-table thead th { background: #e5e7eb !important; }
-            .report-container { border-radius: 0; padding: 10mm; }
-        }
+/** Report-specific layout CSS (shared header/footer/table CSS comes from report_common) */
+const PQ_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .info-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: #f8fafc;
+  }
+  .info-block .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .info-block .value-line {
+    font-size: 12px;
+    color: #0f172a;
+    line-height: 1.55;
+  }
+
+  .totals-box {
+    margin-top: 16px;
+    margin-left: auto;
+    width: 300px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .totals-box .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 14px;
+    font-size: 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .totals-box .row.grand {
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    border-bottom: none;
+  }
+
+  table.data-table.compare th,
+  table.data-table.compare td {
+    font-size: 10.5px;
+    padding: 6px 6px;
+  }
 `;
 
-function reportHeaderHtml(title: string, subtitle: string, header: { logo_url: string | null }, printDateTime: string, loginId: string): string {
+function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
   return `
-        <div class="report-header">
-            <div class="report-title-area">
-                ${header.logo_url ? `<img src="${escapeHtml(header.logo_url)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div>
-                    <div class="report-title">${escapeHtml(title)}</div>
-                    <div class="report-subtitle">${escapeHtml(subtitle)}</div>
-                </div>
-            </div>
-            <div class="report-meta">
-                <div><strong>Print Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>Print User:</strong> ${escapeHtml(loginId)}</div>
-            </div>
-        </div>`;
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="doc-sub">${escapeHtml(subtitle)}</div>
+      </div>
+      
+    </div>`;
 }
 
 function partyInfoBlockHtml(header: PurchaseQuotationHeader): string {
   return `
-            <div class="info-block">
-                <div class="label">To</div>
-                <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-                <div class="value-line">${escapeHtml(header.party_address)}</div>
-                <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-                <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-                ${header.dlvr_contact ? `<div class="value-line">Contact: ${escapeHtml(header.dlvr_contact)}</div>` : ""}
-                ${header.dlvr_email ? `<div class="value-line">Email: ${escapeHtml(header.dlvr_email)}</div>` : ""}
-            </div>`;
+      <div class="info-block">
+        <div class="label">To</div>
+        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+        <div class="value-line">${escapeHtml(header.party_address)}</div>
+        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+        ${header.dlvr_contact ? `<div class="value-line">Contact: ${escapeHtml(header.dlvr_contact)}</div>` : ""}
+        ${header.dlvr_email ? `<div class="value-line">Email: ${escapeHtml(header.dlvr_email)}</div>` : ""}
+      </div>`;
 }
 
 function quotationDetailsBlockHtml(header: PurchaseQuotationHeader): string {
   return `
-            <div class="info-block">
-                <div class="label">Quotation Details</div>
-                <div class="value-line">Quotation No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-                <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-                <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-                <div class="value-line">Quot Ref: ${escapeHtml(header.quotation_refno)}</div>
-                <div class="value-line">Ref No: ${escapeHtml(header.ref_no)}</div>
-                <div class="value-line">Ref Date: ${escapeHtml(dateText(header.ref_date))}</div>
-                <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
-            </div>`;
-}
-
-function printFooterHtml(): string {
-  return `
-    <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
-        Powered by Bayanat Technology
-    </div>`;
-}
-
-function emptyStateHtml(title: string): string {
-  return `<!doctype html>
-<html><head><meta charset="utf-8"/><title>${escapeHtml(title)}</title></head>
-<body style="font-family:sans-serif;padding:40px;color:#6b7280;text-align:center;">
-  No records found for the selected document.
-</body></html>`;
+      <div class="info-block">
+        <div class="label">Quotation Details</div>
+        <div class="value-line">Quotation No: <strong>${escapeHtml(header.doc_no)}</strong></div>
+        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
+        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
+        <div class="value-line">Quot Ref: ${escapeHtml(header.quotation_refno)}</div>
+        <div class="value-line">Ref No: ${escapeHtml(header.ref_no)}</div>
+        <div class="value-line">Ref Date: ${escapeHtml(dateText(header.ref_date))}</div>
+        <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
+      </div>`;
 }
 
 // ─── Report 1: Quotation ────────────────────────────────────────────────────
 
-function renderPurchaseQuotationHtml(rows: ReportRow[], loginId: string): string {
-  if (!rows.length) return emptyStateHtml("Quotation");
-
+/** Body only – no full HTML document */
+function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
@@ -329,73 +322,62 @@ function renderPurchaseQuotationHtml(rows: ReportRow[], loginId: string): string
   const overallDiscount = header.disc_hdr_price;
   const grandTotal = totalAmount - overallDiscount;
 
-  let bodyRows = "";
-  rows.forEach((r) => {
-    bodyRows += `
-                        <tr>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td class="center">${escapeHtml(r.p_uom)}</td>
-                            <td class="right">${qtyFmt(r.qty_puom)}</td>
-                            <td class="center">${escapeHtml(r.l_uom)}</td>
-                            <td class="right">${qtyFmt(r.qty_luom)}</td>
-                            <td class="right">${qtyFmt(r.quantity)}</td>
-                            <td class="right">${amtFmt(r.unit_price)}</td>
-                            <td class="right">${amtFmt(r.disc_percent)}%</td>
-                            <td class="right">${amtFmt(r.disc_price)}</td>
-                            <td class="right amount">${amtFmt(r.amount)}</td>
-                        </tr>`;
-  });
+  const bodyRows = rows
+    .map(
+      (r) => `
+      <tr>
+        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+        <td class="center">${escapeHtml(r.p_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_puom)}</td>
+        <td class="center">${escapeHtml(r.l_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_luom)}</td>
+        <td class="right">${qtyFmt(r.quantity)}</td>
+        <td class="right">${amtFmt(r.unit_price)}</td>
+        <td class="right">${amtFmt(r.disc_percent)}%</td>
+        <td class="right">${amtFmt(r.disc_price)}</td>
+        <td class="right amount">${amtFmt(r.amount)}</td>
+      </tr>`
+    )
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Quotation ${escapeHtml(header.doc_no)}</title>
-    <style>${SHARED_STYLES}</style>
-</head>
-<body>
-    <div class="report-container">
-        ${reportHeaderHtml("Quotation", `Purchase Quotation — ${header.div_name}`, header, printDateTime, loginId)}
+  return `
+    ${docTitleRowHtml("Quotation", `Purchase Quotation — ${header.div_name}`, printDateTime, loginId)}
 
-        <div class="info-grid">
-            ${partyInfoBlockHtml(header)}
-            ${quotationDetailsBlockHtml(header)}
-        </div>
-
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Product / Description</th>
-                    <th class="center">P Uom</th>
-                    <th class="right">P Qty</th>
-                    <th class="center">L Uom</th>
-                    <th class="right">L Qty</th>
-                    <th class="right">Quantity in LUOM</th>
-                    <th class="right">Unit Rate</th>
-                    <th class="right">Disc %</th>
-                    <th class="right">Disc Amt</th>
-                    <th class="right">Amount</th>
-                </tr>
-            </thead>
-            <tbody>${bodyRows}</tbody>
-        </table>
-
-        <div class="totals-box">
-            <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
-            <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-            <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
-        </div>
+    <div class="info-grid">
+      ${partyInfoBlockHtml(header)}
+      ${quotationDetailsBlockHtml(header)}
     </div>
-    ${printFooterHtml()}
-</body>
-</html>`;
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Product / Description</th>
+          <th class="center">P Uom</th>
+          <th class="right">P Qty</th>
+          <th class="center">L Uom</th>
+          <th class="right">L Qty</th>
+          <th class="right">Quantity in LUOM</th>
+          <th class="right">Unit Rate</th>
+          <th class="right">Disc %</th>
+          <th class="right">Disc Amt</th>
+          <th class="right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+
+    <div class="totals-box">
+      <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
+    </div>
+  `;
 }
 
 // ─── Report 2: Quotation With Rates ─────────────────────────────────────────
 
-function renderPurchaseQuotationWithRatesHtml(rows: ReportRow[], loginId: string): string {
-  if (!rows.length) return emptyStateHtml("Quotation");
-
+/** Body only – no full HTML document */
+function renderPurchaseQuotationWithRatesBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
@@ -407,147 +389,117 @@ function renderPurchaseQuotationWithRatesHtml(rows: ReportRow[], loginId: string
   const overallDiscount = header.disc_hdr_price;
   const grandTotal = totalAmount - overallDiscount + totalTax;
 
-  let bodyRows = "";
-  rows.forEach((r) => {
-    bodyRows += `
-                        <tr>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td class="center">${escapeHtml(r.p_uom)}</td>
-                            <td class="right">${qtyFmt(r.qty_puom)}</td>
-                            <td class="center">${escapeHtml(r.l_uom)}</td>
-                            <td class="right">${qtyFmt(r.qty_luom)}</td>
-                            <td class="right">${qtyFmt(r.quantity)}</td>
-                            <td class="right">${amtFmt(r.unit_price)}</td>
-                            <td class="right">${amtFmt(r.disc_percent)}%</td>
-                            <td class="right">${amtFmt(r.disc_price)}</td>
-                            <td class="right amount">${amtFmt(r.amount)}</td>
-                        </tr>`;
-  });
+  const bodyRows = rows
+    .map(
+      (r) => `
+      <tr>
+        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+        <td class="center">${escapeHtml(r.p_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_puom)}</td>
+        <td class="center">${escapeHtml(r.l_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_luom)}</td>
+        <td class="right">${qtyFmt(r.quantity)}</td>
+        <td class="right">${amtFmt(r.unit_price)}</td>
+        <td class="right">${amtFmt(r.disc_percent)}%</td>
+        <td class="right">${amtFmt(r.disc_price)}</td>
+        <td class="right amount">${amtFmt(r.amount)}</td>
+      </tr>`
+    )
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Quotation With Rates ${escapeHtml(header.doc_no)}</title>
-    <style>${SHARED_STYLES}</style>
-</head>
-<body>
-    <div class="report-container">
-        ${reportHeaderHtml("Quotation", `Purchase Quotation With Rates — ${header.div_name}`, header, printDateTime, loginId)}
+  return `
+    ${docTitleRowHtml("Quotation", `Purchase Quotation With Rates — ${header.div_name}`, printDateTime, loginId)}
 
-        <div class="info-grid">
-            ${partyInfoBlockHtml(header)}
-            ${quotationDetailsBlockHtml(header)}
-        </div>
-
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Product / Description</th>
-                    <th class="center">P Uom</th>
-                    <th class="right">P Qty</th>
-                    <th class="center">L Uom</th>
-                    <th class="right">L Qty</th>
-                    <th class="right">Quantity in LUOM</th>
-                    <th class="right">Unit Rate</th>
-                    <th class="right">Disc %</th>
-                    <th class="right">Disc Amt</th>
-                    <th class="right">Amount</th>
-                </tr>
-            </thead>
-            <tbody>${bodyRows}</tbody>
-        </table>
-
-        <div class="totals-box">
-            <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
-            <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-            <div class="row"><span>TAX Amt</span><span>${amtFmt(totalTax)}</span></div>
-            <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
-        </div>
+    <div class="info-grid">
+      ${partyInfoBlockHtml(header)}
+      ${quotationDetailsBlockHtml(header)}
     </div>
-    ${printFooterHtml()}
-</body>
-</html>`;
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Product / Description</th>
+          <th class="center">P Uom</th>
+          <th class="right">P Qty</th>
+          <th class="center">L Uom</th>
+          <th class="right">L Qty</th>
+          <th class="right">Quantity in LUOM</th>
+          <th class="right">Unit Rate</th>
+          <th class="right">Disc %</th>
+          <th class="right">Disc Amt</th>
+          <th class="right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+
+    <div class="totals-box">
+      <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
+      <div class="row"><span>TAX Amt</span><span>${amtFmt(totalTax)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
+    </div>
+  `;
 }
 
 // ─── Report 3: Compare Quotations ───────────────────────────────────────────
 
-function renderCompareQuotationHtml(rows: ReportRow[], loginId: string): string {
-  if (!rows.length) return emptyStateHtml("Compare Quotations");
-
+/** Body only – no full HTML document */
+function renderCompareQuotationBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  let bodyRows = "";
-  rows.forEach((r) => {
-    bodyRows += `
-                        <tr>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
-                            <td class="right">${qtyFmt(r.quantity)}</td>
-                            <td>${escapeHtml(r.quot_no1)}</td>
-                            <td>${escapeHtml(r.ac_code1)} ${escapeHtml(r.ac_name1)}</td>
-                            <td class="right">${r.quot_price1 != null ? amtFmt(r.quot_price1) : ""}</td>
-                            <td>${escapeHtml(r.quot_no2)}</td>
-                            <td>${escapeHtml(r.ac_code2)} ${escapeHtml(r.ac_name2)}</td>
-                            <td class="right">${r.quot_price2 != null ? amtFmt(r.quot_price2) : ""}</td>
-                            <td>${escapeHtml(r.quot_no3)}</td>
-                            <td>${escapeHtml(r.ac_code3)} ${escapeHtml(r.ac_name3)}</td>
-                            <td class="right">${r.quot_price3 != null ? amtFmt(r.quot_price3) : ""}</td>
-                            <td>${escapeHtml(r.quot_no4)}</td>
-                            <td>${escapeHtml(r.ac_code4)} ${escapeHtml(r.ac_name4)}</td>
-                            <td class="right">${r.quot_price4 != null ? amtFmt(r.quot_price4) : ""}</td>
-                            <td>${escapeHtml(r.quot_no5)}</td>
-                            <td>${escapeHtml(r.ac_code5)} ${escapeHtml(r.ac_name5)}</td>
-                            <td class="right">${r.quot_price5 != null ? amtFmt(r.quot_price5) : ""}</td>
-                        </tr>`;
-  });
+  const bodyRows = rows
+    .map(
+      (r) => `
+      <tr>
+        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
+        <td class="right">${qtyFmt(r.quantity)}</td>
+        <td>${escapeHtml(r.quot_no1)}</td>
+        <td>${escapeHtml(r.ac_code1)} ${escapeHtml(r.ac_name1)}</td>
+        <td class="right">${r.quot_price1 != null ? amtFmt(r.quot_price1) : ""}</td>
+        <td>${escapeHtml(r.quot_no2)}</td>
+        <td>${escapeHtml(r.ac_code2)} ${escapeHtml(r.ac_name2)}</td>
+        <td class="right">${r.quot_price2 != null ? amtFmt(r.quot_price2) : ""}</td>
+        <td>${escapeHtml(r.quot_no3)}</td>
+        <td>${escapeHtml(r.ac_code3)} ${escapeHtml(r.ac_name3)}</td>
+        <td class="right">${r.quot_price3 != null ? amtFmt(r.quot_price3) : ""}</td>
+        <td>${escapeHtml(r.quot_no4)}</td>
+        <td>${escapeHtml(r.ac_code4)} ${escapeHtml(r.ac_name4)}</td>
+        <td class="right">${r.quot_price4 != null ? amtFmt(r.quot_price4) : ""}</td>
+        <td>${escapeHtml(r.quot_no5)}</td>
+        <td>${escapeHtml(r.ac_code5)} ${escapeHtml(r.ac_name5)}</td>
+        <td class="right">${r.quot_price5 != null ? amtFmt(r.quot_price5) : ""}</td>
+      </tr>`
+    )
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Compare Quotations</title>
-    <style>${SHARED_STYLES}
-        .report-table.compare th, .report-table.compare td { font-size: 10.5px; padding: 6px 6px; }
-    </style>
-</head>
-<body>
-    <div class="report-container">
-        <div style="border-bottom:2px solid #1d4ed8;padding-bottom:14px;margin-bottom:16px;">
-            <div class="report-title">COMPARE QUOTATIONS</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;">
-                <div><strong>Date</strong> : ${escapeHtml(printDateTime)}</div>
-                <div><strong>User</strong> : ${escapeHtml(loginId)}</div>
-                <div style="color:#9ca3af;">Report : rpt_pquotation_compare</div>
-            </div>
-        </div>
+  return `
+    ${docTitleRowHtml("Compare Quotations", "Report — rpt_pquotation_compare", printDateTime, loginId)}
 
-        <table class="report-table compare">
-            <thead>
-                <tr>
-                    <th rowspan="2">Product</th>
-                    <th rowspan="2">Qty</th>
-                    <th colspan="3" class="center">Supplier 1</th>
-                    <th colspan="3" class="center">Supplier 2</th>
-                    <th colspan="3" class="center">Supplier 3</th>
-                    <th colspan="3" class="center">Supplier 4</th>
-                    <th colspan="3" class="center">Supplier 5</th>
-                </tr>
-                <tr>
-                    <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
-                    <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
-                    <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
-                    <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
-                    <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
-                </tr>
-            </thead>
-            <tbody>${bodyRows}</tbody>
-        </table>
-    </div>
-    ${printFooterHtml()}
-</body>
-</html>`;
+    <table class="data-table compare">
+      <thead>
+        <tr>
+          <th rowspan="2">Product</th>
+          <th rowspan="2">Qty</th>
+          <th colspan="3" class="center">Supplier 1</th>
+          <th colspan="3" class="center">Supplier 2</th>
+          <th colspan="3" class="center">Supplier 3</th>
+          <th colspan="3" class="center">Supplier 4</th>
+          <th colspan="3" class="center">Supplier 5</th>
+        </tr>
+        <tr>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  `;
 }
 
 // ─── Route handlers (HTML) ──────────────────────────────────────────────────
@@ -556,8 +508,37 @@ export const getPurchaseQuotationReportHtml = async (req: RequestWithUser, res: 
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseQuotationData(req, params, "PQ_QUOTATION_19082026");
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No records found for the selected document." });
+      return;
+    }
+
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "Quotation",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderPurchaseQuotationBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: `Quotation ${buildPurchaseQuotationHeader(rows).doc_no}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PQ_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderPurchaseQuotationHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("Purchase Quotation report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -568,8 +549,37 @@ export const getPurchaseQuotationWithRatesReportHtml = async (req: RequestWithUs
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseQuotationData(req, params, "PQ_WTH_RATES_19082026");
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No records found for the selected document." });
+      return;
+    }
+
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "Quotation With Rates",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderPurchaseQuotationWithRatesBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: `Quotation With Rates ${buildPurchaseQuotationHeader(rows).doc_no}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PQ_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderPurchaseQuotationWithRatesHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("Purchase Quotation With Rates report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -580,8 +590,37 @@ export const getPurchaseQuotationCompareReportHtml = async (req: RequestWithUser
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseQuotationData(req, params, "PQ_COMPARE QUOTATION_19082026");
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No records found for the selected document." });
+      return;
+    }
+
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "rpt_pquotation_compare",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderCompareQuotationBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: "Compare Quotations",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PQ_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderCompareQuotationHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("Compare Quotation report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });

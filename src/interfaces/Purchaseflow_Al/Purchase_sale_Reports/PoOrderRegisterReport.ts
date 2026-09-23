@@ -360,10 +360,7 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
         <h1>${escapeHtml(REPORT_TITLE)}</h1>
         <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)}</div>
       </div>
-      <div class="print-meta">
-        <div>Print Date: ${escapeHtml(printDateTime)}</div>
-        <div>Print User: ${escapeHtml(loginId)}</div>
-      </div>
+     
     </div>
 
     ${
