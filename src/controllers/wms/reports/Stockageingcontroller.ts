@@ -4,6 +4,11 @@ import * as XLSX from "xlsx";
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import TenantManager from "../../../database/TenantManager";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 const AdmZip = require("adm-zip");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +37,7 @@ interface AgeingParams {
   prodCode: string[];
   age1: number; age2: number; age3: number; age4: number; age5: number;
   groupBy: TGroupBy;
+  companyCode: string;
 }
 
 const DEFAULT_AGES: [number, number, number, number, number] = [30, 60, 90, 120, 150];
@@ -130,7 +136,9 @@ function parseAgeingParams(req: RequestWithUser): AgeingParams {
     : groupByRaw === "principal" ? "principal"
     : "product_group";
 
-  return { prinCode, deptCode, prodCode, age1, age2, age3, age4, age5, groupBy };
+  const companyCode = req.user?.company_code || text(req.query.company_code) || "";
+
+  return { prinCode, deptCode, prodCode, age1, age2, age3, age4, age5, groupBy, companyCode };
 }
 
 function bucketLabels(p: AgeingParams): string[] {
@@ -154,16 +162,16 @@ async function loadAgeingData(
 
   try {
     const prinBinds = params.prinCode.includes("All") ? [] : params.prinCode.map((_, i) => `:prin${i}`);
-const deptBinds = params.deptCode.includes("All") ? [] : params.deptCode.map((_, i) => `:dept${i}`);
-const prodBinds = params.prodCode.includes("All") ? [] : params.prodCode.map((_, i) => `:prod${i}`);
+    const deptBinds = params.deptCode.includes("All") ? [] : params.deptCode.map((_, i) => `:dept${i}`);
+    const prodBinds = params.prodCode.includes("All") ? [] : params.prodCode.map((_, i) => `:prod${i}`);
 
-const whereParts = [
-  prinBinds.length ? `PRIN_CODE IN (${prinBinds.join(",")})` : "",
-  deptBinds.length ? `DEPT_CODE IN (${deptBinds.join(",")})` : "",
-  prodBinds.length ? `PROD_CODE IN (${prodBinds.join(",")})` : "",
-].filter(Boolean);
+    const whereParts = [
+      prinBinds.length ? `PRIN_CODE IN (${prinBinds.join(",")})` : "",
+      deptBinds.length ? `DEPT_CODE IN (${deptBinds.join(",")})` : "",
+      prodBinds.length ? `PROD_CODE IN (${prodBinds.join(",")})` : "",
+    ].filter(Boolean);
 
-const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+    const whereSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
     const ageExpr = "(TRUNC(SYSDATE) - TRUNC(TXN_DATE))";
     const bucketCase = (col: string, alias: string) => `
@@ -252,18 +260,83 @@ function sumBuckets(rows: AgeingRow[], metric: TMetric): AgeBuckets {
   return acc;
 }
 
-// ─── HTML Renderer ────────────────────────────────────────────────────────────
+// ─── Column count ─────────────────────────────────────────────────────────────
 
 const COL_COUNT = 8; // Product + 6 buckets + Total
 
-function renderAgeingHtml(
-  rows: AgeingRow[], params: AgeingParams, metric: TMetric,
-  loginId: string, reportTitle: string,
+// ─── Ageing-only CSS (extraCss for buildReportDocument) ───────────────────────
+//
+// Keeps the box-shadow repaint fallback (on top of the plain print-color-adjust
+// fix used in Stock Summary/GRN) since this report leans on heavier row
+// coloring than either of those — the box-shadow trick is what actually fixed
+// the earlier print-color bugs on this report.
+
+const STOCK_AGEING_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  table.ageing-table th { background: #1d4ed8 !important; color: #fff; box-shadow: inset 0 0 0 1000px #1d4ed8; }
+  table.ageing-table th.total-col-hdr { background: #0f3460 !important; box-shadow: inset 0 0 0 1000px #0f3460; }
+  table.ageing-table td.total-col { font-weight: 700; background: #eff6ff; box-shadow: inset 0 0 0 1000px #eff6ff; }
+  table.ageing-table td.subtotal-label { text-align: right; font-weight: 700; padding-right: 8px; }
+  table.ageing-table td.principal-label { text-align: left; font-weight: 700; padding-right: 8px; }
+
+  tr.principal-header td {
+    background: #1d4ed8;
+    box-shadow: inset 0 0 0 1000px #1d4ed8;
+    color: #fff;
+    font-weight: 700;
+    padding: 4px 6px;
+  }
+  tr.group-header td {
+    background: #dbeafe;
+    box-shadow: inset 0 0 0 1000px #dbeafe;
+    font-weight: 700;
+    padding: 3px 6px;
+  }
+  tr.data-row td { background: #fff; }
+  tr.product-total-row td {
+    background: #e0f2fe;
+    box-shadow: inset 0 0 0 1000px #e0f2fe;
+    font-weight: 700;
+    border-top: 1px solid #7dd3fc;
+  }
+  tr.group-total-row td {
+    background: #fffde7;
+    box-shadow: inset 0 0 0 1000px #fffde7;
+    font-weight: 700;
+    border-top: 1px solid #999;
+  }
+  tr.principal-total-row td {
+    background: #bfdbfe;
+    box-shadow: inset 0 0 0 1000px #bfdbfe;
+    font-weight: 700;
+    border-top: 2px solid #1d4ed8;
+  }
+  tr.grand-total-row td {
+    background: #1d4ed8;
+    box-shadow: inset 0 0 0 1000px #1d4ed8;
+    color: #fff;
+    font-weight: 700;
+    border-top: 2px solid #1e3a8a;
+  }
+
+  .filter-criteria {
+    font-size: 10px;
+    font-style: italic;
+    color: #555;
+    margin-top: 8px;
+  }
+`;
+
+// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+
+function renderAgeingBody(
+  rows: AgeingRow[], params: AgeingParams, metric: TMetric, reportTitle: string,
 ): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
   const labels = bucketLabels(params);
 
   const bucketCells = (b: AgeBuckets): string => `
@@ -313,34 +386,34 @@ function renderAgeingHtml(
   };
 
   const byPrin = groupRowsBy(rows, (r) => r.prin_code);
-  let bodyHtml = "";
+  let bodyRowsHtml = "";
 
   byPrin.forEach((prinRows, prinCode) => {
     const prinName = text(prinRows[0]?.prin_name);
     if (params.groupBy !== "principal") {
-      bodyHtml += `
+      bodyRowsHtml += `
       <tr class="principal-header">
         <td colspan="${COL_COUNT}">${escapeHtml(prinCode)} &nbsp;|&nbsp; ${escapeHtml(prinName)}</td>
       </tr>`;
     }
 
     if (params.groupBy === "principal") {
-      bodyHtml += renderPrincipalSummaryRow(prinRows, prinCode);
+      bodyRowsHtml += renderPrincipalSummaryRow(prinRows, prinCode);
     } else if (params.groupBy === "product") {
-      bodyHtml += renderProductRows(prinRows);
+      bodyRowsHtml += renderProductRows(prinRows);
     } else {
       const byGroup = groupRowsBy(prinRows, (r) => r.group_code);
       byGroup.forEach((grpRows, grpCode) => {
         const grpName = text(grpRows[0]?.group_name);
-        bodyHtml += `
+        bodyRowsHtml += `
           <tr class="group-header">
             <td colspan="${COL_COUNT}">${escapeHtml(grpCode)} &nbsp;|&nbsp; ${escapeHtml(grpName)}</td>
           </tr>`;
 
-        bodyHtml += renderProductRows(grpRows);
+        bodyRowsHtml += renderProductRows(grpRows);
 
         const grpTotal = sumBuckets(grpRows, metric);
-        bodyHtml += `
+        bodyRowsHtml += `
           <tr class="group-total-row">
             <td class="subtotal-label">Total For ${escapeHtml(grpCode)} | ${escapeHtml(grpName)} :</td>
             ${bucketCells(grpTotal)}
@@ -350,7 +423,7 @@ function renderAgeingHtml(
 
     if (params.groupBy !== "principal") {
       const prinTotal = sumBuckets(prinRows, metric);
-      bodyHtml += `
+      bodyRowsHtml += `
         <tr class="principal-total-row">
           <td class="subtotal-label">Total For ${escapeHtml(prinName)} :</td>
           ${bucketCells(prinTotal)}
@@ -360,227 +433,37 @@ function renderAgeingHtml(
 
   const grandTotal = sumBuckets(rows, metric);
 
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)}</title>
-  <style>
-    /* ── Base layout ───────────────────────────────────────────────────── */
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; font-family: Arial, sans-serif; font-size: 9px; color: #000;
-      background: #eef2f7;
-    }
-    .sheet { width: 100%; margin: 0 auto; background: #fff; padding: 10px 12px; }
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(reportTitle)}</h1></div>
+    </div>
 
-    .report-title {
-      text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 3px;
-      margin-bottom: 5px; color: #fff;
-      background-color: #1d4ed8;
-      /* box-shadow keeps the fill in print even when background-color is stripped */
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-      padding: 6px 0;
-    }
-    .report-meta {
-      display: flex; justify-content: space-between; font-size: 9px;
-      margin-bottom: 8px; color: #333;
-    }
+    <table class="data-table ageing-table">
+      <thead>
+        <tr>
+          <th>${escapeHtml(params.groupBy === "principal" ? "Principal" : "Product")}</th>
+          ${labels.map((l) => `<th>${escapeHtml(l)}</th>`).join("")}
+          <th class="total-col-hdr">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bodyRowsHtml || `<tr><td colspan="${COL_COUNT}" class="center muted">No data found</td></tr>`}
+      </tbody>
+      <tfoot>
+        <tr class="grand-total-row">
+          <td class="subtotal-label">Grand Total :</td>
+          ${bucketCells(grandTotal)}
+        </tr>
+      </tfoot>
+    </table>
 
-    /* ── Table base ────────────────────────────────────────────────────── */
-    table { width: 100%; border-collapse: collapse; font-size: 9px; }
-    th {
-      background-color: #1d4ed8;
-      border: 1px solid #1e3a8a; padding: 5px 4px;
-      text-align: center; font-weight: 700; color: #fff;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    th.total-col-hdr {
-      background-color: #0f3460;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    td { border: 1px solid #cbd5e1; padding: 3px 5px; vertical-align: top; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    td.total-col { font-weight: 700; background-color: #eff6ff; }
-    td.subtotal-label { text-align: right; font-weight: 700; padding-right: 8px; }
-    td.principal-label { text-align: left; font-weight: 700; padding-right: 8px; }
-
-
-    /* ── Row types ─────────────────────────────────────────────────────── */
-    tr.principal-header td {
-      background-color: #1d4ed8;
-      color: #fff;
-      font-weight: 700;
-      border: 1px solid #1d4ed8;
-      padding: 4px 6px;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    tr.group-header td {
-      background-color: #dbeafe;
-      font-weight: 700;
-      border: 1px solid #93c5fd;
-      padding: 3px 6px;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    tr.data-row td { background-color: #fff; }
-    tr.product-total-row td {
-      background-color: #e0f2fe;
-      font-weight: 700;
-      border-top: 1px solid #7dd3fc;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    tr.group-total-row td {
-      background-color: #fffde7;
-      font-weight: 700;
-      border-top: 1px solid #999;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    tr.principal-total-row td {
-      background-color: #bfdbfe;
-      font-weight: 700;
-      border-top: 2px solid #1d4ed8;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    tr.grand-total-row td {
-      background-color: #1d4ed8;
-      color: #fff;
-      font-weight: 700;
-      font-size: 9.5px;
-      border: 2px solid #1e3a8a;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    .filter-criteria {
-      font-size: 8px; font-style: italic; color: #555; margin-top: 8px;
-    }
-    .report-footer {
-      display: flex; justify-content: space-between; font-size: 8px; color: #666;
-      margin-top: 6px; border-top: 1px solid #ccc; padding-top: 3px;
-    }
-
-    /* ── Print overrides ───────────────────────────────────────────────────
-       Three-layer defence against browsers stripping backgrounds in print:
-       1. -webkit-print-color-adjust / print-color-adjust: exact  (set above
-          on every coloured element individually — most reliable approach)
-       2. The @media print block forces it globally as a last resort.
-       3. box-shadow: inset 0 0 0 1000px repaint — treated as a foreground
-          paint op so it survives even the most aggressive stripping.
-          White-text rows also get an explicit color:#fff here.
-    ─────────────────────────────────────────────────────────────────── */
-    @media print {
-      @page { size: A4 landscape; margin: 8mm; }
-
-      /* Global force — some Chromium versions need this at the page level */
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
-      }
-
-      html, body { background: white; font-size: 10px; }
-      .sheet { padding: 0; }
-      .actions { display: none !important; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-
-      /* ── Dark-blue rows — repaint via box-shadow + keep text white ── */
-      .report-title {
-        background-color: #1d4ed8 !important;
-        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
-        color: #fff !important;
-      }
-      th {
-        background-color: #1d4ed8 !important;
-        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
-        color: #fff !important;
-      }
-      th.total-col-hdr {
-        background-color: #0f3460 !important;
-        box-shadow: inset 0 0 0 1000px #0f3460 !important;
-        color: #fff !important;
-      }
-      tr.principal-header td {
-        background-color: #1d4ed8 !important;
-        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
-        color: #fff !important;
-      }
-      tr.grand-total-row td {
-        background-color: #1d4ed8 !important;
-        box-shadow: inset 0 0 0 1000px #1d4ed8 !important;
-        color: #fff !important;
-      }
-
-      /* ── Light-colour rows — repaint via box-shadow ── */
-      tr.group-header td {
-        background-color: #dbeafe !important;
-        box-shadow: inset 0 0 0 1000px #dbeafe !important;
-      }
-      tr.product-total-row td {
-        background-color: #e0f2fe !important;
-        box-shadow: inset 0 0 0 1000px #e0f2fe !important;
-      }
-      tr.group-total-row td {
-        background-color: #fffde7 !important;
-        box-shadow: inset 0 0 0 1000px #fffde7 !important;
-      }
-      tr.principal-total-row td {
-        background-color: #bfdbfe !important;
-        box-shadow: inset 0 0 0 1000px #bfdbfe !important;
-      }
-      td.total-col {
-        background-color: #eff6ff !important;
-        box-shadow: inset 0 0 0 1000px #eff6ff !important;
-      }
-    }
-  </style>
-</head>
-<body>
-<main class="sheet">
-  <div class="report-title">${escapeHtml(reportTitle)}</div>
-  <div class="report-meta">
-    <span>Print Date : ${printDateTime}</span>
-    <span>Print User : ${escapeHtml(loginId)}</span>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>${escapeHtml(params.groupBy === "principal" ? "Principal" : "Product")}</th>
-        ${labels.map((l) => `<th>${escapeHtml(l)}</th>`).join("")}
-        <th class="total-col-hdr">Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${bodyHtml || `<tr><td colspan="${COL_COUNT}" style="text-align:center;color:#666;padding:20px">No data found</td></tr>`}
-    </tbody>
-    <tfoot>
-      <tr class="grand-total-row">
-        <td class="subtotal-label">Grand Total :</td>
-        ${bucketCells(grandTotal)}
-      </tr>
-    </tfoot>
-  </table>
-  <div class="filter-criteria">
-    Filter Criteria : Principal Code: [${params.prinCode.join(", ")}], Department Code: [${params.deptCode.join(", ")}], Product Code: [${params.prodCode.join(", ")}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]
-  </div>
-  <div class="report-footer">
-    <span>Report: rpt_stock_ageing_${metric}</span>
-    <span>Powered by Bayanat Technology</span>
-  </div>
-</main>
-</body>
-</html>`;
+    <div class="filter-criteria">
+      Filter Criteria : Principal Code: [${escapeHtml(params.prinCode.join(", "))}], Department Code: [${escapeHtml(params.deptCode.join(", "))}], Product Code: [${escapeHtml(params.prodCode.join(", "))}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]
+    </div>
+  `;
 }
 
-// ─── Excel Builder ────────────────────────────────────────────────────────────
+// ─── Excel Builder (unchanged — full OOXML style engine) ──────────────────────
 
 function buildAgeingExcelBuffer(
   rows: AgeingRow[], params: AgeingParams, metric: TMetric,
@@ -905,7 +788,25 @@ function buildAgeingExcelBuffer(
 async function handleHtml(req: RequestWithUser, res: Response, metric: TMetric, reportTitle: string) {
   try {
     const { rows, params } = await loadAgeingData(req);
-    const html = renderAgeingHtml(rows, params, metric, req.user?.loginid ?? "", reportTitle);
+    const loginId = text(req.user?.loginid);
+
+    const headerHtml = await reportHeader({ company_code: params.companyCode, req });
+    const bodyHtml    = renderAgeingBody(rows, params, metric, reportTitle);
+    const footerHtml  = reportFooter({
+      reportName: `rpt_stock_ageing_${metric}`,
+      userName: loginId,
+      endLabel: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: reportTitle,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: STOCK_AGEING_EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
