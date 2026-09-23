@@ -104,27 +104,42 @@ async function loadJobData(
   jobNo: string,
   prinCode: string
 ): Promise<ReportRow> {
-  const conn = await getConn(req);
-  try {
-    const result = await conn.execute(
-      `SELECT *
-       FROM VW_BOWM_JOBTXNOUB
-       WHERE COMPANY_CODE = '${req.user.company_code}'
-         AND job_no    = :job_no
-         AND prin_code = :prin_code
-         AND job_type = 'EXP'`,
-      { job_no: jobNo, prin_code: prinCode },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    const rows = normalize(result.rows as any[]);
-    if (!rows.length)
-      throw Object.assign(new Error("Job not found"), { status: 404 });
-    return rows[0];
-  } finally {
-    await closeConn(conn);
-  }
+  // TEMPORARY MOCK DATA – remove after testing
+  return {
+    company_code: "BSG",
+    job_no: jobNo || "TESTJOB001",
+    prin_code: prinCode || "PRIN01",
+    dept_code: "WH",
+    job_class: "N",
+    doc_ref: "DOC-12345",
+    description1: "Test outbound job description",
+    description2: "Second line description",
+    prin_ref1: "PRIN-REF-001",
+    prin_ref2: "OTHER-REF-002",
+    remarks: "This is a test remark for the report",
+    cancel_date: null,
+    canceled_by: null,
+    created_by: "Admin",
+    transport_mode: "SEA",
+    transport_mode_desc: "Sea Freight",
+    port_code: "AEJEA",
+    etd: "2026-09-20",
+    schedule_date: "2026-09-25",
+    curr_code: "USD",
+    ex_rate: 3.6725,
+    job_date: "2026-09-15",
+    order_date: "2026-09-16",
+    ordered: "Y",
+    picked_date: "2026-09-17",
+    picked: "Y",
+    confirm_date: "2026-09-18",
+    confirmed: "Y",
+    invoice_date: null,
+    invoiced: "N",
+    complete_date: null,
+    completed: "N",
+  };
 }
-
 // ─── HTML renderer ────────────────────────────────────────────────────────────
 
 function renderHtml(

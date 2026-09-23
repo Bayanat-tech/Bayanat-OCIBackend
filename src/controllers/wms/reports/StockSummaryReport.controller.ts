@@ -1,16 +1,19 @@
 import { Response } from "express";
 import oracledb from "oracledb";
 import * as XLSX from "xlsx";
-import { RequestWithUser } from "../../../interfaces/common.interface";
-import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
-import TenantManager from "../../../database/TenantManager";
 const AdmZip = require("adm-zip");
-
+import TenantManager from "../../../database/TenantManager";
+import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
+import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type TGroupBy = "group_brand" | "principal_product" | "product_group" | "site_location" | "";
-
 type ReportRow = Record<string, any>;
 
 // ─── DB Helpers ───────────────────────────────────────────────────────────────
@@ -138,8 +141,17 @@ function parseParams(req: RequestWithUser) {
   const prinCode     = toArr(req.body.prin_code);
   const locationCode = toArr(req.body.location_code);
   const groupBy      = text(req.body.group_by) as TGroupBy;
+  const companyCode  = req.user?.company_code || text(req.query.company_code) || "";
 
-  return { prodCode, siteCode, prinCode, locationCode, groupBy };
+  return {
+    prodCode,
+    siteCode,
+    prinCode,
+    locationCode,
+    groupBy,
+    companyCode,
+    loginId: text(req.user?.loginid || (req.user as any)?.username || ""),
+  };
 }
 
 // ─── Data Loader ─────────────────────────────────────────────────────────────
@@ -303,29 +315,75 @@ function getColSpec(groupBy: TGroupBy): ColSpec {
 //   [11] Leat
 //   [12] Stock Qty in L Units
 
-// ─── HTML Renderer ────────────────────────────────────────────────────────────
+// ─── Stock Summary-only CSS (extraCss for buildReportDocument) ───────────────
 
-function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
+const STOCK_SUMMARY_EXTRA_CSS = `
+  /* Force print / PDF engines to keep background colors (matches the fix
+     used in the GRN report — otherwise the colored header/total rows below
+     lose their backgrounds on print or PDF export). */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 
+  table.data-table th.sub-qty { background: #185FA5; }
+  table.data-table th.stock-qty-l-hdr { background: #0b4ca1; }
+  table.data-table td.stock-qty-l { font-weight: 800; color: #0b4ca1; }
+  tr.principal-header td {
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 800;
+    padding: 5px 8px;
+  }
+  tr.group-header td,
+  tr.site-header td,
+  tr.location-header td {
+    background: #f1f5f9;
+    font-weight: 700;
+    border-top: 2px solid #0b4ca1;
+    padding: 4px 8px;
+  }
+  tr.location-header td { padding-left: 16px; }
+  tr.product-header td {
+    background: #eff6ff;
+    font-weight: 700;
+    padding: 3px 8px;
+  }
+  tr.product-header .uom {
+    font-weight: normal;
+    font-size: 10px;
+    color: #64748b;
+  }
+  tr.principal-total-row td {
+    background: #e0e7ff;
+    font-weight: 800;
+    border-top: 2px solid #0b4ca1;
+  }
+  tr.grand-total-row td {
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 800;
+    border-top: 2px solid #0b4ca1;
+  }
+  td.subtotal-label { text-align: right; font-weight: 700; padding-right: 8px; }
+`;
+
+// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+
+function renderStockSummaryBody(rows: ReportRow[], groupBy: TGroupBy): string {
   const colSpec        = getColSpec(groupBy);
   const includeSiteCol = groupBy !== "site_location";
 
   const textLeafs  = 6 + (includeSiteCol ? 1 : 0);
-  // Qty Available=2, Qty Picked=2, Stock Qty L=1
   const totalLeafs   = colSpec.extraColCount + textLeafs + 1 /* rcvd */ + 2 /* avl */ + 2 /* picked */ + 1 /* stock qty l */;
   const labelColspan = colSpec.extraColCount + textLeafs;
 
-  // Grand totals accumulators
   let grandRcvd = 0;
   let grandPPicked = 0, grandLPicked = 0;
   let grandPAvl = 0, grandLAvl = 0;
   let grandStockQtyLUnits = 0;
 
-  // ── Single product data row
   const renderProductRow = (row: ReportRow): string => {
     const rcvd    = num(row.qty_rcvd);
     const ppicked = num(row.pqty_picked);
@@ -338,13 +396,13 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
     grandPPicked        += ppicked;
     grandLPicked        += lpicked;
     grandPAvl           += pavl;
-    grandLAvl           += lavl;
+    grandLAvl            += lavl;
     grandStockQtyLUnits += stockQtyL;
 
     const extraCells = colSpec.extraCellsHtml(row)
       .map((v) => `<td>${escapeHtml(v)}</td>`)
       .join("");
-    const siteCell = includeSiteCol ? `<td>${escapeHtml(row.site_code)}</td>` : "";
+    const siteCell = includeSiteCol ? `<td class="center">${escapeHtml(row.site_code)}</td>` : "";
 
     return `
       <tr class="data-row">
@@ -365,7 +423,6 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
       </tr>`;
   };
 
-  // ── Subtotal cells: rcvd + avl(2) + picked(2) + stockQtyL(1)
   const qtySubtotalCells = (q: QtyTotals): string => `
     <td class="num">${fmtNumber(q.rcvd)}</td>
     <td class="num">${fmtNumber(q.pavl)}</td>
@@ -374,7 +431,6 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
     <td class="num">${fmtNumber(q.lpicked)}</td>
     <td class="num stock-qty-l">${fmtNumber(q.stockQtyLUnits)}</td>`;
 
-  // ── Product block
   const renderProductBlock = (prodRows: ReportRow[]): string => {
     if (!prodRows.length) return "";
     const first = prodRows[0];
@@ -471,228 +527,48 @@ function renderHtml(rows: ReportRow[], groupBy: TGroupBy, loginId: string): stri
     .join("");
   const siteHeaderCell1 = includeSiteCol ? `<th rowspan="2">Site</th>` : "";
 
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>Stock Summary Report</title>
-  <style>
-    @media print {
-      @page { size: A3 landscape; margin: 8mm; }
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      font-size: 8px;
-      color: #000;
-      background: #eef2f7;
-      overflow-x: hidden;
-      overflow-y: auto;
-    }
-    .sheet {
-      width: 100%;
-      max-width: 100%;
-      margin: 0 auto;
-      background: #fff;
-      padding: 10px 12px;
-      overflow-x: auto;
-    }
-    .report-title {
-      text-align: center;
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 3px;
-      margin-bottom: 5px;
-      color: #fafcfeff;
-      background: #1d4ed8;
-      padding: 4px 0;
-    }
-    .report-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 8px;
-      margin-bottom: 6px;
-      color: #333;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 7.5px;
-      table-layout: auto;
-    }
-    th {
-      background: #1d4ed8;
-      border: 1px solid #1e3a8a;
-      padding: 3px 3px;
-      text-align: center;
-      font-weight: 700;
-      white-space: normal;
-      word-break: break-word;
-      color: #ffffff;
-    }
-    th.parent-qty {
-      background: #1e40af;
-      border-bottom: 2px solid #93c5fd;
-    }
-    th.sub-qty {
-      background: #2563eb;
-      font-size: 7px;
-    }
-    th.stock-qty-l-hdr {
-      background: #0f3460;
-      font-size: 7px;
-      font-weight: 700;
-    }
-    td {
-      border: 1px solid #cbd5e1;
-      padding: 1px 3px;
-      vertical-align: top;
-      word-break: break-word;
-    }
-    td.num    { text-align: right; font-variant-numeric: tabular-nums; }
-    td.center { text-align: center; }
-    td.subtotal-label { text-align: right; font-weight: 700; padding-right: 6px; }
-    th.stock-qty-l-hdr {
-  background: #1d4ed8;   /* was #0f3460 */
-  font-size: 7.5px;      /* was 7px */
-  font-weight: 700;
-}
-    tr.principal-header td {
-      background: #1d4ed8;
-      color: #fff;
-      font-weight: 700;
-      border: 1px solid #1d4ed8;
-      padding: 3px 5px;
-    }
-    tr.group-header td,
-    tr.site-header td,
-    tr.location-header td {
-      background: #dbeafe;
-      font-weight: 700;
-      border: 1px solid #93c5fd;
-      padding: 2px 5px;
-    }
-    tr.location-header td {
-      background: #eff6ff;
-      padding-left: 12px;
-    }
-    tr.product-header td {
-      background: #eff6ff;
-      font-weight: 700;
-      border: 1px solid #bfdbfe;
-      padding: 2px 5px;
-    }
-    tr.product-header .uom {
-      font-weight: normal;
-      font-size: 7.5px;
-      color: #444;
-    }
-    tr.data-row td { background: #fff; }
-    tr.subtotal-row td {
-      background: #fffde7;
-      font-weight: 700;
-      border-top: 1px solid #999;
-    }
-    tr.subtotal-row td.num { text-align: right; }
-    tr.group-total-row td {
-      background: #dbeafe;
-      font-weight: 700;
-      border-top: 1px solid #2563eb;
-    }
-    tr.group-total-row td.num { text-align: right; }
-    tr.site-total-row td {
-      background: #bfdbfe;
-      font-weight: 700;
-      border-top: 1px solid #1d4ed8;
-    }
-    tr.site-total-row td.num { text-align: right; }
-    tr.principal-total-row td {
-      background: #93c5fd;
-      font-weight: 700;
-      border-top: 2px solid #1e40af;
-    }
-    tr.principal-total-row td.num { text-align: right; }
-    tr.grand-total-row td {
-      background: #1d4ed8;
-      color: #fff;
-      font-weight: 700;
-      font-size: 8px;
-      border: 2px solid #1e3a8a;
-    }
-    tr.grand-total-row td.num { text-align: right; }
-    .report-footer {
-      display: flex;
-      justify-content: space-between;
-      font-size: 7.5px;
-      color: #666;
-      margin-top: 6px;
-      border-top: 1px solid #ccc;
-      padding-top: 3px;
-    }
-    @media print {
-      html, body { background: white; overflow: visible; font-size: 10px; }
-      .sheet { width: auto; min-width: 420mm; padding: 6mm; overflow: visible; }
-      table { font-size: 9px; }
-      th, td { white-space: nowrap; }
-      .actions { display: none !important; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-    }
-  </style>
-</head>
-<body>
-<main class="sheet">
-  <div class="report-title">S t o c k &nbsp; S u m m a r y &nbsp; R e p o r t</div>
-  <div class="report-meta">
-    <span>Print Date : ${printDateTime}</span>
-    <span>Print User : ${escapeHtml(loginId)}</span>
-  </div>
-  <table>
-    <thead>
-      <!-- Row 1: parent-level headers -->
-      <tr>
-        ${extraHeaderCells1}
-        <th rowspan="2">Product Code</th>
-        <th rowspan="2">Product Name</th>
-        <th rowspan="2">Primary UOM</th>
-        <th rowspan="2">Leat UOM</th>
-        <th rowspan="2">UPP</th>
-        <th rowspan="2">Volume</th>
-        ${siteHeaderCell1}
-        <th rowspan="2">Qty Rcvd</th>
-        <th colspan="2">Qty Available</th>
-        <th colspan="2">Qty Picked</th>
-        <th rowspan="2">Stock Qty in L Units</th>
-      </tr>
-      <!-- Row 2: sub-column leaf headers -->
-      <tr>
-        <th class="sub-qty">Primary</th>
-        <th class="sub-qty">Leat</th>
-        <th class="sub-qty">Primary</th>
-        <th class="sub-qty">Leat</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${bodyHtml || `<tr><td colspan="${totalLeafs}" style="text-align:center;color:#666;padding:20px">No data found</td></tr>`}
-    </tbody>
-    <tfoot>
-      <tr class="grand-total-row">
-        <td class="subtotal-label" colspan="${labelColspan}">${grandTotalLabel}</td>
-        ${qtySubtotalCells(grandQty)}
-      </tr>
-    </tfoot>
-  </table>
-  <div class="report-footer">
-    <span>Report: rpt_stock_summary</span>
-    <span>Powered by Bayanat Technology</span>
-  </div>
-</main>
-</body>
-</html>`;
+  return `
+    <div class="doc-title-row">
+      <div><h1>Stock Summary Report</h1></div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          ${extraHeaderCells1}
+          <th rowspan="2">Product Code</th>
+          <th rowspan="2">Product Name</th>
+          <th rowspan="2">Primary UOM</th>
+          <th rowspan="2">Leat UOM</th>
+          <th rowspan="2">UPP</th>
+          <th rowspan="2">Volume</th>
+          ${siteHeaderCell1}
+          <th rowspan="2">Qty Rcvd</th>
+          <th colspan="2">Qty Available</th>
+          <th colspan="2">Qty Picked</th>
+          <th rowspan="2" class="stock-qty-l-hdr">Stock Qty in L Units</th>
+        </tr>
+        <tr>
+          <th class="sub-qty">Primary</th>
+          <th class="sub-qty">Leat</th>
+          <th class="sub-qty">Primary</th>
+          <th class="sub-qty">Leat</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bodyHtml || `<tr><td colspan="${totalLeafs}" class="center muted">No data found</td></tr>`}
+      </tbody>
+      <tfoot>
+        <tr class="grand-total-row">
+          <td class="subtotal-label" colspan="${labelColspan}">${grandTotalLabel}</td>
+          ${qtySubtotalCells(grandQty)}
+        </tr>
+      </tfoot>
+    </table>
+  `;
 }
 
-// ─── Excel Builder ────────────────────────────────────────────────────────────
+// ─── Excel Builder (unchanged — full OOXML style engine) ──────────────────────
 
 function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string): Buffer {
   const printDateTime = new Date().toLocaleString("en-GB", {
@@ -869,7 +745,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   const includeSiteCol = groupBy !== "site_location";
 
   const TEXT_FIXED = 6 + (includeSiteCol ? 1 : 0);
-  // Qty Available=2, Qty Picked=2, Stock Qty L=1
   const COL_COUNT  = colSpec.extraColCount + TEXT_FIXED + 1 /* rcvd */ + 2 /* avl */ + 2 /* picked */ + 1 /* stock qty l */;
   const E          = colSpec.extraColCount;
 
@@ -894,7 +769,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   const allStyle = (style: any) =>
     Object.fromEntries(Array.from({ length: COL_COUNT }, (_, i) => [i, style]));
 
-  // ── Title
   const titleR = sheetData.length;
   addRow(
     ["S t o c k   S u m m a r y   R e p o r t", ...Array(COL_COUNT - 1).fill("")],
@@ -902,7 +776,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   );
   merges.push({ s: { r: titleR, c: 0 }, e: { r: titleR, c: COL_COUNT - 1 } });
 
-  // ── Meta
   const metaR = sheetData.length;
   addRow(
     [`Print Date: ${printDateTime}`, "", `Print User: ${loginId}`, ...Array(COL_COUNT - 3).fill("")],
@@ -911,10 +784,8 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   merges.push({ s: { r: metaR, c: 0 }, e: { r: metaR, c: 1 } });
   merges.push({ s: { r: metaR, c: 2 }, e: { r: metaR, c: COL_COUNT - 1 } });
 
-  // ── Blank spacer
   addRow(Array(COL_COUNT).fill(""), {});
 
-  // ── Header row 1
   const h1Row = sheetData.length;
   const h1Cells  = Array(COL_COUNT).fill("");
   const h1Styles: Record<number, any> = {};
@@ -941,7 +812,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
 
   addRow(h1Cells, h1Styles);
 
-  // ── Header row 2
   const h2Row = sheetData.length;
   const h2Cells  = Array(COL_COUNT).fill("");
   const h2Styles: Record<number, any> = {};
@@ -958,18 +828,13 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   });
   addRow(h2Cells, h2Styles);
 
-  // Row-span merges for h1Row (spans both header rows)
   for (let c = 0; c < E + TEXT_FIXED + 1 /* rcvd */; c++) {
     merges.push({ s: { r: h1Row, c }, e: { r: h2Row, c } });
   }
-  // Stock Qty in L Units spans 2 rows
   merges.push({ s: { r: h1Row, c: idxStockQtyL }, e: { r: h2Row, c: idxStockQtyL } });
 
-  // Parent qty group merges: Avl=2 cols, Picked=2 cols
   merges.push({ s: { r: h1Row, c: idxPAvl    }, e: { r: h1Row, c: idxLAvl    } });
   merges.push({ s: { r: h1Row, c: idxPPicked }, e: { r: h1Row, c: idxLPicked } });
-
-  // ── Section / total row helpers
 
   const addSectionRow = (label: string, style: any) => {
     const r = sheetData.length;
@@ -1004,9 +869,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     if (labelColspan > 1) merges.push({ s: { r, c: 0 }, e: { r, c: labelColspan - 1 } });
   };
 
-
-
-  // ── Product data row helper
   const addProductRow = (row: ReportRow) => {
     const extras  = colSpec.extraCellsHtml(row);
     const siteVal = includeSiteCol ? [text(row.site_code)] : [];
@@ -1028,7 +890,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     addRow(cells, styleMap);
   };
 
-  // ── Product block helper
   const renderProductXl = (prodRows: ReportRow[]) => {
     if (!prodRows.length) return;
     const first = prodRows[0];
@@ -1042,7 +903,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     prodRows.forEach(addProductRow);
   };
 
-  // ── Build data sections
   const byPrincipal = groupRowsBy(rows, (r) => text(r.prin_code));
   const byProdCode  = (g: ReportRow[]) => Array.from(groupRowsBy(g, (r) => text(r.prod_code)).values());
 
@@ -1087,7 +947,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
       byProdCode(prinRows).forEach(renderProductXl);
     }
 
-    // Principal total
     addTotalRow("Principal Total :", prinQty, styles.grandTotalLabel, styles.grandTotal, styles.grandTotalStockQtyL);
     const lastIdx = sheetData.length - 1;
     for (let i = 0; i < COL_COUNT; i++) {
@@ -1096,17 +955,14 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     }
   });
 
-  // ── Grand Total
   const grandLabel = groupBy === "site_location" ? "Total :" : "Grand Total :";
   addTotalRow(grandLabel, sumQty(rows), styles.grandTotalLabel, styles.grandTotal, styles.grandTotalStockQtyL);
 
-  // ── Footer
   addRow(
     ["", ...Array(COL_COUNT - 2).fill(""), "Powered by Bayanat Technology"],
     { [COL_COUNT - 1]: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } } } },
   );
 
-  // ── Build worksheet
   const ws      = XLSX.utils.aoa_to_sheet(sheetData);
   ws["!merges"] = merges;
   ws["!cols"]   = Array.from({ length: COL_COUNT }, (_, i) => {
@@ -1122,8 +978,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     return { wch: 12 };
   });
   ws["!rows"] = sheetData.map((_, i) => ({ hpt: i === 0 ? 24 : i <= 3 ? 18 : 14 }));
-
-  // ── Style engine
 
   interface FontDef   { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef   { color?: string; }
@@ -1187,7 +1041,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
     });
   });
 
-  // ── Sheet XML
   const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
   let sheetXmlData = "";
   for (let r2 = range.s.r; r2 <= range.e.r; r2++) {
@@ -1223,7 +1076,6 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
   ${mergeFinal}
 </worksheet>`;
 
-  // ── styles.xml
   const numFmtsXml = numFmts.length
     ? `<numFmts count="${numFmts.length}">${numFmts.map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`).join("")}</numFmts>`
     : "";
@@ -1327,7 +1179,24 @@ export const getStockSummaryReportHtml = async (
   try {
     const params = parseParams(req);
     const rows   = await loadStockData(req);
-    const html   = renderHtml(rows, params.groupBy, req.user?.loginid ?? "");
+
+    const headerHtml = await reportHeader({ company_code: params.companyCode, req });
+    const bodyHtml    = renderStockSummaryBody(rows, params.groupBy);
+    const footerHtml  = reportFooter({
+      reportName: "rpt_stock_summary",
+      userName: params.loginId,
+      endLabel: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: "Stock Summary Report",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: STOCK_SUMMARY_EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
@@ -1346,7 +1215,7 @@ export const exportStockSummaryReportExcel = async (
   try {
     const params   = parseParams(req);
     const rows     = await loadStockData(req);
-    const buffer   = buildExcelBuffer(rows, params.groupBy, req.user?.loginid ?? "");
+    const buffer   = buildExcelBuffer(rows, params.groupBy, params.loginId);
     const filename = `stock_summary_report_${new Date().toISOString().slice(0, 10)}.xlsx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
