@@ -1,31 +1,10 @@
-import { QueryExecutor } from "../../database/QueryExecutor";
+import { oracleDb } from "./../../../src/database/connection";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
 import { Request, Response } from "express";
 import { VendorService } from "../../services/vendor.service";
 import {sendVendorLpoNotifications} from "./sendVendorLpoNotifications";
 import {sendVendorLposendbackNotification} from "./sendVendorLposendbackNotification";
 import { notifyUser } from "../../../src/helpers/functions";
-import TenantManager from "./../../../src/database/TenantManager";
-import { getCurrentTenantId } from "./../../../src/middleware/tenantContext.middleware";
-
-function resolveTenantCompanyCode(req: Request, provided?: unknown): string {
-  const requestUser = (req as any).user;
-  const tokenCompanyCode = defaultString(
-    requestUser?.company_code || requestUser?.COMPANY_CODE
-  );
-  const providedCompanyCode = defaultString(provided);
-
-  if (tokenCompanyCode) {
-    if (providedCompanyCode && providedCompanyCode !== tokenCompanyCode) {
-      throw new Error(
-        "Requested company_code does not match authenticated tenant company."
-      );
-    }
-    return tokenCompanyCode;
-  }
-
-  return providedCompanyCode;
-}
 
 function formatDateForOracle(date: unknown): string | null {
   if (!date) return null;
@@ -103,31 +82,21 @@ export const postLpoRequestHandler = async (
   req: Request<LpoParams>,
   res: Response
 ): Promise<void> => {
-  try {
-    const companyCode = resolveTenantCompanyCode(
-      req,
-      req.body.COMPANY_CODE || req.body.company_code || req.params.company_code
-    );
-    if (!companyCode) {
-      res.status(400).json({ success: false, message: "company_code is required" });
-      return;
-    }
+  const { company_code, doc_no } = req.params;
 
+  try {
     const sanitizedData: TVendorMain = {
       ...req.body,
-      COMPANY_CODE: companyCode,
+      COMPANY_CODE: defaultString(req.body.COMPANY_CODE),
       DOC_NO: defaultString(req.body.DOC_NO),
       DOC_DATE: defaultDate(req.body.DOC_DATE),
+      ACCOUNT_DATE: defaultDate(req.body.ACCOUNT_DATE),
       AC_CODE: defaultString(req.body.AC_CODE),
       REMARKS: req.body.REMARKS == null ? "" : String(req.body.REMARKS),
       LAST_ACTION: defaultString(req.body.LAST_ACTION),
       INVOICE_NUMBER: defaultString(req.body.INVOICE_NUMBER),
       INVOICE_DATE: defaultDate(req.body.INVOICE_DATE),
       REF_DOC_NO: defaultString(req.body.REF_DOC_NO),
-      PARTY_NAME: defaultString(req.body.AC_NAME ?? req.body.PARTY_NAME),
-      PARTY_ADDRESS: defaultString(req.body.ADDRESS ?? req.body.PARTY_ADDRESS),
-      PARTY_PHONE: defaultString(req.body.PHONE ?? req.body.PARTY_PHONE),
-      PARTY_FAX: defaultString(req.body.FAX ?? req.body.PARTY_FAX),
       items:
         req.body.items?.map((item: DetailsTVendor) => ({
           ...item,
@@ -136,7 +105,7 @@ export const postLpoRequestHandler = async (
         })) ?? [],
     };
 
-    const result = await upsertLpoRequest(sanitizedData, req);
+    const result = await upsertLpoRequest(sanitizedData);
     console.log("result", result);
 
     res.status(200).json({
@@ -159,101 +128,115 @@ async function sendDataToDotNetAPI(
   docNo: string,
   transaction: any = null
 ) {
-  // Small helper: use provided transaction/connection when present, otherwise run tenant-aware query
-  const execMaybe = async (sql: string, binds: any = {}, conn?: any) => {
-    if (conn && typeof conn.execute === "function") {
-      return await conn.execute(sql, binds, { outFormat: require("oracledb").OUT_FORMAT_OBJECT });
-    }
-    return await QueryExecutor.executeRawQuery(sql, binds);
-  };
-
   try {
-    const fileDataResult = await execMaybe(
+    // =============================================
+    // PART 1: SEND ONLY FILES TO .NET API
+    // =============================================
+    const fileDataResult = await oracleDb.query(
       `SELECT 
-        REQUEST_NUMBER, SR_NO, ORG_FILE_NAME, AWS_FILE_LOCN, EXTENSIONS, USER_FILE_NAME, ATTACHMENT_SR_NO
+        REQUEST_NUMBER, 
+        SR_NO, 
+        ORG_FILE_NAME, 
+        AWS_FILE_LOCN, 
+        EXTENSIONS, 
+        USER_FILE_NAME, 
+        ATTACHMENT_SR_NO
       FROM UPLOADED_FILES_DLTS_VENDOR
-      WHERE REQUEST_NUMBER = :docNo AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
+      WHERE REQUEST_NUMBER = :docNo 
+      AND (FILE_TRANSFER != 'Y' OR FILE_TRANSFER IS NULL)`,
       { docNo: { val: docNo } },
       transaction
     );
     const fileData: any[] = fileDataResult.rows || fileDataResult;
 
-    // Send file data to .NET API
+    // Send each file to .NET API
+    let filesSentSuccessfully = 0;
     for (const file of fileData) {
       try {
         await VendorService.insertUploadedFile(file);
+        filesSentSuccessfully++;
+        console.log(`✅ File sent successfully: ${file.ORG_FILE_NAME} (SR_NO: ${file.SR_NO})`);
       } catch (error: any) {
-        console.error(`Failed to send file data for DOC_NO: ${docNo}`, error);
-
-        // Extract detailed error info from AxiosError
+        console.error(`❌ Failed to send file: ${file.ORG_FILE_NAME}`, error);
+        
+        // Send notification but don't stop - files are not critical for main data transfer
         const apiError = error?.response?.data ?? error;
-        const apiMessage =
-          (apiError && (apiError.message || apiError.error)) ||
-          error?.message ||
-          String(error);
+        const apiMessage = (apiError && (apiError.message || apiError.error)) || error?.message || String(error);
 
         const notifPayload = {
-          event: "VENDOR_API_ERROR",
-          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
+          event: "VENDOR_API_FILE_ERROR",
+          message: `Failed to upload file to .NET API for Document No: ${docNo}.\nFile: ${file.ORG_FILE_NAME}\nError: ${apiMessage}`,
           subject: "Vendor API File Upload Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
+          request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
           cc: "prem@bayanattechnology.com",
           htmlMessage: `
             <h3>Vendor API File Upload Failed</h3>
             <p><strong>Document No:</strong> ${docNo}</p>
+            <p><strong>File Name:</strong> ${escapeHtml(file.ORG_FILE_NAME)}</p>
             <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
-            <p><strong>API Response:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
-            <p><strong>File Details:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(file, null, 2))}</pre>
           `,
         };
 
         try {
-          console.log("notifyUser payload (file upload):", notifPayload);
-          const notifResult: any = await notifyUser(notifPayload);
-          console.log("notifyUser result (file upload):", notifResult);
+          await notifyUser(notifPayload);
         } catch (notifErr) {
-          console.error("notifyUser failed (file upload):", notifErr);
+          console.error("notifyUser failed:", notifErr);
         }
-        return;
       }
     }
 
-    if (fileData.length > 0) {
-      await execMaybe(
-        `UPDATE UPLOADED_FILES_DLTS_VENDOR
-         SET FILE_TRANSFER = 'Y' 
-         WHERE REQUEST_NUMBER = :requestNumber`,
-        {
-          requestNumber: { val: docNo },
-        },
-        transaction
-      );
+    // Update FILE_TRANSFER flag for successfully sent files
+    if (filesSentSuccessfully > 0) {
+      try {
+        console.log(`Updating FILE_TRANSFER for REQUEST_NUMBER=${docNo}. Files found: ${fileData.length}`);
+        console.log(`File details:`, fileData.map(f => ({ SR_NO: f.SR_NO, ORG_FILE_NAME: f.ORG_FILE_NAME, ATTACHMENT_SR_NO: f.ATTACHMENT_SR_NO })));
+
+        const parsedDocNo = Number(docNo);
+        const requestNumberBind = !isNaN(parsedDocNo) ? { requestNumber: { val: parsedDocNo } } : { requestNumber: { val: docNo } };
+
+        const updateResult: any = await oracleDb.query(
+          `UPDATE UPLOADED_FILES_DLTS_VENDOR
+           SET FILE_TRANSFER = 'Y' 
+           WHERE REQUEST_NUMBER = :requestNumber 
+           AND NVL(FILE_TRANSFER,'N') != 'Y'`,
+          requestNumberBind,
+          transaction
+        );
+
+        const rowsAffected = updateResult?.rowsAffected ?? updateResult?.rows?.length;
+        console.log(`Updated FILE_TRANSFER flag. rowsAffected=${rowsAffected}`, updateResult);
+
+        // Verification select to show current flags
+        try {
+          const verify = await oracleDb.query(
+            `SELECT SR_NO, ORG_FILE_NAME, NVL(FILE_TRANSFER,'N') AS FILE_TRANSFER FROM UPLOADED_FILES_DLTS_VENDOR WHERE REQUEST_NUMBER = :requestNumber`,
+            requestNumberBind
+          );
+          console.log(`Verification rows for REQUEST_NUMBER=${docNo}:`, verify.rows || verify);
+        } catch (verErr) {
+          console.error('Error verifying FILE_TRANSFER rows:', verErr);
+        }
+      } catch (err) {
+        console.error('Error updating FILE_TRANSFER flags:', err);
+      }
     }
-    // Header/detail transfer is handled by the Oracle procedure. The direct
-    console.log(
-      `Calling Oracle procedure PROC_AWARE_VMS_ENTRY for DOC_NO: ${docNo}`
-    );
+
+    // =============================================
+    // PART 2: CALL ORACLE PROCEDURE FOR HEADER/DETAIL
+    // =============================================
+    console.log(` Calling Oracle procedure PROC_AWARE_VMS_ENTRY for DOC_NO: ${docNo}`);
     try {
-      await VendorService.callAwareVmsEntry(companyCode, docNo, "SYSTEM");
-      console.log(
-        `Oracle procedure executed successfully for DOC_NO: ${docNo}`
-      );
+      await VendorService.callAwareVmsEntry(companyCode, docNo, 'SYSTEM');
+      console.log(` Oracle procedure executed successfully for DOC_NO: ${docNo}`);
     } catch (spError: any) {
-      console.error(
-        `Oracle procedure PROC_AWARE_VMS_ENTRY failed for ${companyCode}/${docNo}:`,
-        spError
-      );
+      console.error(`Oracle procedure PROC_AWARE_VMS_ENTRY failed for ${companyCode}/${docNo}:`, spError);
 
       const apiMessage = spError?.message || String(spError);
       const notifPayload = {
         event: "VENDOR_SP_ERROR",
         message: `Stored procedure PROC_AWARE_VMS_ENTRY failed for Document ${docNo} (Company: ${companyCode}). Error: ${apiMessage}`,
         subject: "Vendor SP Transfer Failed",
-        request_user:
-          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
+        request_user: "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com",
         cc: "prem@bayanattechnology.com",
         htmlMessage: `
           <h3>Vendor SP Transfer Failed</h3>
@@ -272,209 +255,12 @@ async function sendDataToDotNetAPI(
       throw spError;
     }
 
+    // =============================================
+    // PART 3: UPDATE DATA_TRANSFER FLAG
+    // =============================================
     await VendorService.updateDataTransferFlag(companyCode, docNo);
-    console.log(`Successfully completed data transfer for DOC_NO: ${docNo}`);
-
-    /*
-    // Fetch all columns from TR_AC_LPO_HEADER
-    const headerResult = await execMaybe(
-      `SELECT 
-        NVL(COMPANY_CODE, '') AS COMPANY_CODE,
-        NVL(DOC_NO, '') AS DOC_NO,
-        TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DOC_DATE,
-        NVL(AC_CODE, '') AS AC_CODE,
-        NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
-        NVL(REF_NO, '') AS REF_NO,
-        TO_CHAR(REF_DATE, 'YYYY-MM-DD') AS REF_DATE,
-        NVL(REMARKS, '') AS REMARKS,
-        NVL(CURR_CODE, '') AS CURR_CODE,
-        NVL(EX_RATE, 0) AS EX_RATE,
-        NVL(CANCELED, 'N') AS CANCELED,
-        NVL(CREATE_USER, '') AS CREATE_USER,
-        NVL(EDIT_USER, '') AS EDIT_USER,
-        TO_CHAR(CREATE_DATE, 'YYYY-MM-DD') AS CREATE_DATE,
-        TO_CHAR(EDIT_DATE, 'YYYY-MM-DD') AS EDIT_DATE,
-        NVL(LAST_SERIAL_NO, 0) AS LAST_SERIAL_NO,
-        NVL(PAYMENT_TERMS, '') AS PAYMENT_TERMS,
-        NVL(CREDIT_PERIOD, 0) AS CREDIT_PERIOD,
-        TO_CHAR(DUE_DATE, 'YYYY-MM-DD') AS DUE_DATE,
-        NVL(REF_DOC_NO, '') AS REF_DOC_NO,
-        NVL(REF_DOC_TYPE, '') AS REF_DOC_TYPE,
-        NVL(PARTY_NAME, '') AS PARTY_NAME,
-        NVL(PARTY_ADDRESS, '') AS PARTY_ADDRESS,
-        NVL(PARTY_PHONE, '') AS PARTY_PHONE,
-        NVL(PARTY_FAX, '') AS PARTY_FAX,
-        NVL(INV_GENERATED, 'N') AS INV_GENERATED,
-        NVL(DELIVERY_TO, '') AS DELIVERY_TO,
-        NVL(DLVR_CONTACT, '') AS DLVR_CONTACT,
-        NVL(DLVR_EMAIL, '') AS DLVR_EMAIL,
-        NVL(DLVR_MOBILE, '') AS DLVR_MOBILE,
-        NVL(DLVR_TERM, '') AS DLVR_TERM,
-        NVL(DIV_CODE, '') AS DIV_CODE,
-        NVL(CASH_IND, 'N') AS CASH_IND,
-        NVL(APP_REF_NO, '') AS APP_REF_NO,
-        NVL(LAST_ACTION, '') AS LAST_ACTION,
-        NVL(INVOICE_NUMBER, '') AS INVOICE_NUMBER,
-        TO_CHAR(INVOICE_DATE, 'YYYY-MM-DD') AS INVOICE_DATE,
-        NVL(PDO_TYPE, '') AS PDO_TYPE,
-        NVL(REF_DOC1, '') AS REF_DOC1,
-        NVL(REF_DOC2, '') AS REF_DOC2,
-        NVL(REF_DOC3, '') AS REF_DOC3
-      FROM VMS_FLOW_HDR
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND FINAL_APPROVED = 'YES' AND NEXT_ACTION_BY = 'APPROVED'`,
-      {
-        companyCode: { val: companyCode },
-        docNo: { val: docNo },
-      },
-      transaction
-    );
-    const headerData = headerResult.rows?.[0] || headerResult[0];
-
-    if (!headerData) {
-      console.warn(`No header data found for DOC_NO: ${docNo}`);
-      return;
-    }
-
-    // Clean header data 
-    const cleanedHeaderData = VendorService.cleanDetail(headerData);
-
-    // Fetch all columns from TR_AC_LPO_DETAIL
-    const detailResult = await execMaybe(
-      `SELECT 
-        NVL(ITEM_REMARK, '') AS ITEM_REMARK,
-        NVL(COMPANY_CODE, '') AS COMPANY_CODE,
-        NVL(DOC_TYPE, 'DEFAULT_DOC_TYPE') AS DOC_TYPE,
-        NVL(DOC_NO, '') AS DOC_NO,
-        NVL(SERIAL_NO, 1) AS SERIAL_NO,
-        DOC_DATE AS DOC_DATE,
-        NVL(AC_CODE, '') AS AC_CODE,
-        NVL(HEADER_AC_CODE, 'DEFAULT_HEADER') AS HEADER_AC_CODE,
-        NVL(REMARKS, '') AS REMARKS,
-        NVL(AMOUNT, 0) AS AMOUNT,
-        NVL(SIGN_IND, 0) AS SIGN_IND,
-        NVL(CURR_CODE, '') AS CURR_CODE,
-        NVL(EX_RATE, 0) AS EX_RATE,
-        NVL(LCUR_AMOUNT, 0) AS LCUR_AMOUNT,
-        NVL(CANCELLED, 'N') AS CANCELLED,
-        NVL(JOB_NO, '') AS JOB_NO,
-        NVL(DEPT_CODE, '') AS DEPT_CODE,
-        NVL(QTY, 0) AS QTY,
-        NVL(PRICE, 0) AS PRICE,
-        NVL(UOM, '') AS UOM,
-        NVL(REF_DOC_TYPE, '') AS REF_DOC_TYPE,
-        NVL(REF_DOC_NO, '') AS REF_DOC_NO,
-        NVL(PROD_CODE, '') AS PROD_CODE,
-        NVL(QTY_RCV, 0) AS QTY_RCV,
-        NVL(OTHER_REMARKS, '') AS OTHER_REMARKS,
-        NVL(AMOUNT_RCV, 0) AS AMOUNT_RCV,
-        NVL(DIV_CODE, '') AS DIV_CODE,
-        NVL(TX_CAT_CODE, '') AS TX_CAT_CODE,
-        NVL(TX_COMPNTCAT_CODE_1, '') AS TX_COMPNTCAT_CODE_1
-      FROM VMS_FLOW_DTL
-      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND NEXT_ACTION_BY = 'APPROVED'`,
-      {
-        companyCode: { val: companyCode },
-        docNo: { val: docNo },
-      },
-      transaction
-    );
-    const detailData: any[] = detailResult.rows || detailResult;
-    // Clean detail data
-    const cleanedDetailData = detailData.map((detail) =>
-      VendorService.cleanDetail(detail)
-    );
-
-    // Log the payload for debugging
-    console.log("Sending Header Data:", cleanedHeaderData);
-    console.log("Sending Detail Data:", cleanedDetailData);
-
-    // Send detail rows
-    for (const detail of cleanedDetailData) {
-      try {
-        await VendorService.insertAcDetail(detail);
-      } catch (error: any) {
-        console.error(`Failed to send detail for DOC_NO: ${docNo}`, error);
-
-        // Send email notification for detail API failure
-        const apiError = error?.response?.data ?? error;
-        const apiMessage =
-          (apiError && (apiError.message || apiError.error)) ||
-          error?.message ||
-          String(error);
-
-        const notifPayload = {
-          event: "VENDOR_API_ERROR",
-          message: `Failed to send detail data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
-          subject: "Vendor API Detail Data Failed",
-          request_user:
-            "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
-          cc: "prem@bayanattechnology.com",
-          htmlMessage: `
-            <h3>Vendor API Detail Data Failed</h3>
-            <p><strong>Document No:</strong> ${docNo}</p>
-            <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
-            <p><strong>API Response:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
-            <p><strong>Detail Data:</strong></p>
-            <pre>${escapeHtml(JSON.stringify(detail, null, 2))}</pre>
-          `,
-        };
-
-        try {
-          console.log("notifyUser payload (detail failure):", notifPayload);
-          const notifResult: any = await notifyUser(notifPayload);
-          console.log("notifyUser result (detail failure):", notifResult);
-        } catch (notifErr) {
-          console.error("notifyUser failed (detail failure):", notifErr);
-        }
-        return;
-      }
-    }
-
-    // Send header data
-    try {
-      await VendorService.insertAcHeader(cleanedHeaderData);
-    } catch (error: any) {
-      console.error(`Failed to send header for DOC_NO: ${docNo}`, error);
-
-      const apiError = error?.response?.data ?? error;
-      const apiMessage =
-        (apiError && (apiError.message || apiError.error)) ||
-        error?.message ||
-        String(error);
-
-      const notifPayload = {
-        event: "VENDOR_API_ERROR",
-        message: `Failed to send header data to .NET API for Document No: ${docNo}.\nError: ${apiMessage}`,
-        subject: "Vendor API Header Data Failed",
-        request_user:
-          "Sagar.b@bayanattechnology.com,Sandeep.dandekar@bayanattechnology.com,prem@bayanattechnology.com",
-        cc: "prem@bayanattechnology.com",
-        htmlMessage: `
-          <h3>Vendor API Header Data Failed</h3>
-          <p><strong>Document No:</strong> ${docNo}</p>
-          <p><strong>Error Message:</strong> ${escapeHtml(apiMessage)}</p>
-          <p><strong>API Response:</strong></p>
-          <pre>${escapeHtml(JSON.stringify(apiError, null, 2))}</pre>
-          <p><strong>Header Data:</strong></p>
-          <pre>${escapeHtml(JSON.stringify(cleanedHeaderData, null, 2))}</pre>
-        `,
-      };
-
-      try {
-        console.log("notifyUser payload (header failure):", notifPayload);
-        const notifResult: any = await notifyUser(notifPayload);
-        console.log("notifyUser result (header failure):", notifResult);
-      } catch (notifErr) {
-        console.error("notifyUser failed (header failure):", notifErr);
-      }
-      return;
-    }
-
-    // Update DATA_TRANSFER flag
-    await VendorService.updateDataTransferFlag(companyCode, docNo);
-    console.log("Successfully updated data transfer flag");
-    */
+    console.log(`Successfully completed all data transfer for DOC_NO: ${docNo}`);
+    
   } catch (error) {
     console.error("Error in sendDataToDotNetAPI:", error);
     throw error;
@@ -493,24 +279,11 @@ function escapeHtml(input: any): string {
     .replace(/'/g, "&#039;");
 }
 
-async function upsertLpoRequest(data: TVendorMain, req: Request) {
+async function upsertLpoRequest(data: TVendorMain) {
   let connection: any;
   let committed = false;
   try {
-    let tenantId = getCurrentTenantId();
-    if (!tenantId) {
-      console.warn("[upsertLpoRequest] Tenant context not available, resolving from user...");
-      const loginid = (req as any).user?.loginid || (req as any).loginid;
-      if (!loginid) {
-        throw new Error("[upsertLpoRequest] Cannot determine user loginid");
-      }
-      tenantId = await TenantManager.getTenantForUser(loginid);
-    }
-    if (!tenantId) {
-      throw new Error("[upsertLpoRequest] Unable to determine tenant database");
-    }
-    
-    connection = await TenantManager.getConnection(tenantId);
+    connection = await oracleDb.getConnection();
     await connection.execute("BEGIN NULL; END;"); 
 
     const isAddMode = !data.DOC_NO;
@@ -520,7 +293,7 @@ async function upsertLpoRequest(data: TVendorMain, req: Request) {
     const requestNumber = await upsertLpoRequestHeader(data, connection);
 
     if (isAddMode) {
-      const codeResult: any = await QueryExecutor.execMaybe(
+      const codeResult: any = await oracleDb.query(
         `SELECT code FROM GT_SESSION_INFO WHERE session_id = SYS_CONTEXT('USERENV','SESSIONID') AND ROWNUM = 1`,
         {},
         connection
@@ -545,7 +318,7 @@ async function upsertLpoRequest(data: TVendorMain, req: Request) {
     committed = true;
 
     // Fetch the latest FINAL_APPROVED from the database
-    const result: any = await QueryExecutor.execMaybe(
+    const result: any = await oracleDb.query(
       `SELECT FINAL_APPROVED
        FROM VMS_FLOW_HDR
        WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo`,
@@ -593,7 +366,7 @@ async function upsertLpoRequestHeader(
   const doc_no = defaultString(data.DOC_NO);
   const ac_code = defaultString(data.AC_CODE);
 
-  const rowsResult = await QueryExecutor.execMaybe(
+  const rowsResult = await oracleDb.query(
     `SELECT COUNT(*) as cnt 
      FROM VMS_FLOW_HDR
      WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo `,
@@ -613,7 +386,7 @@ async function upsertLpoRequestHeader(
   if (isNew) {
     const insertQuery = `
       INSERT INTO VMS_FLOW_HDR (
-        INVOICE_NUMBER, INVOICE_DATE, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, 
+        INVOICE_NUMBER, INVOICE_DATE, COMPANY_CODE, DOC_TYPE, DOC_NO, DOC_DATE, ACCOUNT_DATE, 
         AC_CODE, REF_NO, REF_DATE, REMARKS, CURR_CODE, EX_RATE, CANCELED, 
         CREATE_USER, EDIT_USER, CREATE_DATE, EDIT_DATE, LAST_SERIAL_NO, 
         PAYMENT_TERMS, CREDIT_PERIOD, DUE_DATE, REF_DOC_NO, REF_DOC_TYPE,
@@ -629,6 +402,7 @@ async function upsertLpoRequestHeader(
         :docType,
         :docNo,
         TO_DATE(:docDate, 'YYYY-MM-DD'),
+        TO_DATE(:accountDate, 'YYYY-MM-DD'),
         :acCode,
         :refNo,
         CASE WHEN :refDate IS NOT NULL THEN TO_DATE(:refDate, 'YYYY-MM-DD') ELSE NULL END,
@@ -723,15 +497,19 @@ async function upsertLpoRequestHeader(
            refdoc1: { val: defaultString(data.REF_DOC1) },
             refdoc2: { val: defaultString(data.REF_DOC2) },
              refdoc3: { val: defaultString(data.REF_DOC3) },
+             accountDate: { val: formatDateForOracle(data.ACCOUNT_DATE) },
     };
 
-    await QueryExecutor.execMaybe(insertQuery, replacements, connection);
+    await oracleDb.query(insertQuery, replacements, connection);
   } else {
     const updateQuery = `
       UPDATE VMS_FLOW_HDR SET 
         REF_DOC1 = :refdoc1,
         REF_DOC2 = :refdoc2,
         REF_DOC3 = :refdoc3,
+        ACCOUNT_DATE = CASE WHEN :accountDate IS NOT NULL 
+                      THEN TO_DATE(:accountDate, 'YYYY-MM-DD') 
+                      ELSE ACCOUNT_DATE END,
         INVOICE_NUMBER = :invoiceNumber, 
         INVOICE_DATE = TO_DATE(:invoiceDate, 'YYYY-MM-DD'),
         LAST_ACTION = :lastAction,
@@ -741,11 +519,6 @@ async function upsertLpoRequestHeader(
         REMARKS = :remarks,
         CURR_CODE = :currCode, 
         EX_RATE = :exRate, 
-        PARTY_NAME = :partyName,
-        PARTY_ADDRESS = :partyAddress,
-        PARTY_PHONE = :partyPhone,
-        PARTY_FAX = :partyFax,
-        DIV_CODE = :divCode,  
       
         EDIT_USER = :editUser, 
         EDIT_DATE = TO_DATE(:editDate, 'YYYY-MM-DD')
@@ -756,6 +529,7 @@ async function upsertLpoRequestHeader(
          refdoc1: { val: defaultString(data.REF_DOC1) },
             refdoc2: { val: defaultString(data.REF_DOC2) },
              refdoc3: { val: defaultString(data.REF_DOC3) },
+             accountDate: { val: formatDateForOracle(data.ACCOUNT_DATE) },
       invoiceNumber: { val: defaultString(data.INVOICE_NUMBER) },
       invoiceDate: { val: formatDateForOracle(data.INVOICE_DATE) },
       lastAction: { val: defaultString(data.LAST_ACTION) },
@@ -765,11 +539,7 @@ async function upsertLpoRequestHeader(
       remarks: { val: defaultString(data.REMARKS) },
       currCode: { val: defaultString(data.CURR_CODE) },
       exRate: { val: data.EX_RATE ?? 0 },
-      partyName: { val: defaultString(data.PARTY_NAME ?? data.PARTY_NAME) },
-      partyAddress: { val: defaultString(data.PARTY_ADDRESS ?? data.PARTY_ADDRESS) },
-      partyPhone: { val: defaultString(data.PARTY_PHONE ?? data.PARTY_PHONE) },
-      partyFax: { val: defaultString(data.PARTY_FAX ?? data.PARTY_FAX) },
-      divCode: { val: defaultString(data.DIV_CODE) },
+     
       editUser: { val: defaultString(data.EDIT_USER) },
       editDate: { val: formatDateForOracle(new Date()) },
       companyCode: { val: company_code },
@@ -777,7 +547,7 @@ async function upsertLpoRequestHeader(
       docNo: { val: doc_no },
     };
 
-    await QueryExecutor.execMaybe(updateQuery, updateReplacements, connection);
+    await oracleDb.query(updateQuery, updateReplacements, connection);
   }
   await sendVendorLpoNotifications({ companyCode: company_code, docNo: doc_no }, connection);
   return data.DOC_NO ?? "";
@@ -795,7 +565,7 @@ async function upsertLpoRequestDetails(
   console.log("inside detail", key_doc_no);
   console.log("inside detail companyCode:", companyCode);
 
-  await QueryExecutor.execMaybe(
+  await oracleDb.query(
     `DELETE FROM VMS_FLOW_DTL WHERE COMPANY_CODE = :companyCode AND DOC_NO = :docNo AND HEADER_AC_CODE = :headerAcCode`,
     {
       companyCode: { val: companyCode },
@@ -806,7 +576,8 @@ async function upsertLpoRequestDetails(
   );
 
   for (const item of items) {
-    if (
+    console.log('inside item loop ', item.QTY);
+   /* if (
       (last_action === "SUBMITTED" || last_action === "APPROVED") &&
       (!item.QTY || item.QTY <= 0)
     ) {
@@ -814,7 +585,7 @@ async function upsertLpoRequestDetails(
         `Skipping insert for SERIAL_NO=${item.SERIAL_NO} due to QTY=${item.QTY} and last_action=${last_action}`
       );
       continue;
-    }
+    }*/
 
     const insertQuery = `
     INSERT INTO VMS_FLOW_DTL (ITEM_REMARK,
@@ -923,7 +694,7 @@ async function upsertLpoRequestDetails(
     };
 
     try {
-      await QueryExecutor.execMaybe(insertQuery, replacements, connection);
+      await oracleDb.query(insertQuery, replacements, connection);
     } catch (error) {
       console.error("Insert error details:", {
         error,
@@ -945,6 +716,7 @@ function formatResultDates(row: any): any {
     "EDIT_DATE",
     "REF_DATE",
     "DUE_DATE",
+    "ACCOUNT_DATE", 
   ];
 
   const formattedRow = { ...row };
@@ -987,7 +759,7 @@ export const executeRawSql = async (
   res: Response
 ): Promise<void> => {
   try {
-    let rawSql: string = req.body?.raw_sql || req.body?.sql || req.query?.sql;
+    let rawSql: string = req.body?.raw_sql || req.query?.sql;
 
     if (!rawSql || typeof rawSql !== "string") {
       res.status(400).json({ error: "Missing or invalid raw SQL string" });
@@ -996,11 +768,30 @@ export const executeRawSql = async (
 
     rawSql = rawSql.replace(/\bLEVEL\b(?=\s*[><=])/g, '"LEVEL"');
 
-    console.log("Executing rawSql:", rawSql);
-    console.log("====================");
-    console.log(rawSql);
-    console.log("====================");
-    const result = await QueryExecutor.executeRawQuery(rawSql);
+    // Modify the SQL to format dates if they're not already formatted
+    if (
+      rawSql.toLowerCase().includes("select") &&
+      !rawSql.toLowerCase().includes("to_char")
+    ) {
+      const dateColumns = [
+        "DOC_DATE",
+        "INVOICE_DATE",
+        "CREATE_DATE",
+        "EDIT_DATE",
+        "REF_DATE",
+        "DUE_DATE",
+      ];
+      for (const col of dateColumns) {
+        const regex = new RegExp(`\\b${col}\\b(?![^,]*TO_CHAR)`, "g");
+        rawSql = rawSql.replace(
+          regex,
+          `TO_CHAR(${col}, 'DD-MM-YYYY') as ${col}`
+        );
+      }
+    }
+
+    console.log("Executing modified rawSql:", rawSql);
+    const result = await oracleDb.query(rawSql);
     const rows = result.rows || result;
 
     // Format dates in the result
@@ -1028,12 +819,7 @@ export const getAccountsList = async (
 ): Promise<void> => {
   try {
     const { company_code, ac_code } = req.query as Record<string, string>;
-    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
-    if (!tenantCompanyCode) {
-      res.status(400).json({ success: false, message: "company_code is required" });
-      return;
-    }
-    const accounts = await VendorService.getAccountsList(tenantCompanyCode, ac_code);
+    const accounts = await VendorService.getAccountsList(company_code, ac_code);
     res.status(200).json({ success: true, data: accounts });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -1058,13 +844,8 @@ export const getPendingLPOList = async (
 ): Promise<void> => {
   const { company_code, ac_code } = req.query as Record<string, string>;
   try {
-    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
-    if (!tenantCompanyCode || !ac_code) {
-      res.status(400).json({ success: false, message: "company_code and ac_code are required" });
-      return;
-    }
     const lpoList = await VendorService.getPendingLPOList(
-      tenantCompanyCode,
+      company_code,
       ac_code
     );
     res.status(200).json({ success: true, data: lpoList });
@@ -1082,13 +863,8 @@ export const getPendingLPODetail = async (
     string
   >;
   try {
-    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
-    if (!tenantCompanyCode || !ac_code || !doc_no) {
-      res.status(400).json({ success: false, message: "company_code, ac_code and doc_no are required" });
-      return;
-    }
     const lpoDetail = await VendorService.getPendingLPODetail(
-      tenantCompanyCode,
+      company_code,
       ac_code,
       doc_no
     );
@@ -1143,13 +919,8 @@ export const getPartyAccountStatement = async (
     req.query as Record<string, string>;
 
   try {
-    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
-    if (!tenantCompanyCode || !ac_code) {
-      res.status(400).json({ success: false, message: "company_code and ac_code are required" });
-      return;
-    }
     const data = await VendorService.getPartyAccountStatement(
-      tenantCompanyCode,
+      company_code,
       ac_code,
       doc_date_from,
       doc_date_to
@@ -1168,18 +939,132 @@ export const getPartyOutstanding = async (
   const { company_code, ac_code } = req.query as Record<string, string>;
 
   try {
-    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
-    if (!tenantCompanyCode || !ac_code) {
-      res.status(400).json({ success: false, message: "company_code and ac_code are required" });
-      return;
-    }
-    const data = await VendorService.getPartyOutstanding(tenantCompanyCode, ac_code);
+    const data = await VendorService.getPartyOutstanding(company_code, ac_code);
     res.status(200).json({ success: true, data });
   } catch (err: any) {
     console.error("Error in getPartyOutstanding:", err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+//save attachment
+// export const saveFileVendorHR = async (
+//   req: Request,
+//   res: Response
+// ): Promise<Response | void> => {
+//   const { request_number, files } = req.body;
+
+//   if (!request_number) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "request_number is required.",
+//     });
+//   }
+
+//   if (!files || !Array.isArray(files) || files.length === 0) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "files must be a non-empty array.",
+//     });
+//   }
+
+//   const duplicateRecords: string[] = [];
+//   const successfulRecords: { org_file_name: string; sr_no: number }[] = [];
+
+//   try {
+//     for (const file of files) {
+//       const { org_file_name } = file;
+
+//       const duplicateCheckResult = await oracleDb.query(
+//         `SELECT COUNT(*) AS COUNT 
+//          FROM UPLOADED_FILES_DLTS_VH 
+//          WHERE request_number = :request_number AND org_file_name = :org_file_name`,
+//         {
+//           request_number: { val: request_number },
+//           org_file_name: { val: org_file_name },
+//         }
+//       );
+
+//       const count = duplicateCheckResult.rows?.[0]?.COUNT || 0;
+
+//       if (count > 0) {
+//         duplicateRecords.push(org_file_name);
+//         continue;
+//       }
+
+//       const {
+//         company_code,
+//         file_name,
+//         extensions,
+//         aws_file_locn,
+//         flow_level,
+//         modules,
+//         updated_by,
+//         created_by,
+//         user_file_name,
+//       } = file;
+
+//       await oracleDb.query(
+//         `INSERT INTO UPLOADED_FILES_DLTS_VH (
+//           company_code, request_number, file_name, extensions, org_file_name,
+//           aws_file_locn, flow_level, modules, updated_by, created_by, 
+//           user_file_name, created_at, updated_at
+//         ) VALUES (
+//           :company_code, :request_number, :file_name, :extensions, :org_file_name,
+//           :aws_file_locn, :flow_level, :modules, :updated_by, :created_by,
+//           :user_file_name, SYSDATE, SYSDATE
+//         )`,
+//         {
+//           company_code: { val: company_code || null },
+//           request_number: { val: request_number },
+//           file_name: { val: file_name || null },
+//           extensions: { val: extensions || null },
+//           org_file_name: { val: org_file_name || null },
+//           aws_file_locn: { val: aws_file_locn || null },
+//           flow_level: { val: flow_level || null },
+//           modules: { val: modules || null },
+//           updated_by: { val: updated_by || null },
+//           created_by: { val: created_by || null },
+//           user_file_name: { val: user_file_name || null },
+//         }
+//       );
+
+//       // Fetch SR_NO
+//       const srNoResult = await oracleDb.query(
+//         `SELECT SR_NO 
+//          FROM UPLOADED_FILES_DLTS_VH 
+//          WHERE request_number = :request_number 
+//          AND org_file_name = :org_file_name 
+//          ORDER BY created_at DESC 
+//          FETCH FIRST 1 ROW ONLY`,
+//         {
+//           request_number: { val: request_number },
+//           org_file_name: { val: org_file_name },
+//         }
+//       );
+
+//       const sr_no = srNoResult.rows?.[0]?.SR_NO;
+//       if (sr_no) {
+//         successfulRecords.push({ org_file_name, sr_no });
+//       }
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "File data processed successfully.",
+//       data: {
+//         successfulRecords,
+//         duplicateRecords,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error storing file data:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "An error occurred while storing file data.",
+//       error: error instanceof Error ? error.message : String(error),
+//     });
+//   }
+// };
 export const saveFileVendorHR = async (
   req: Request,
   res: Response
@@ -1210,10 +1095,9 @@ export const saveFileVendorHR = async (
   try {
     for (const file of files) {
       const { org_file_name, sr_no } = file;
-      const safeSrNo = sr_no === undefined || sr_no === null || sr_no === "" ? 0 : Number(sr_no);
 
       // Check for duplicates (now checking with SR_NO too)
-      const duplicateCheckResult = await QueryExecutor.executeRawQuery(
+      const duplicateCheckResult = await oracleDb.query(
         `SELECT COUNT(*) AS COUNT 
          FROM UPLOADED_FILES_DLTS_VENDOR 
          WHERE request_number = :request_number 
@@ -1222,7 +1106,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: safeSrNo },
+          sr_no: { val: sr_no || null },
         }
       );
 
@@ -1248,7 +1132,7 @@ export const saveFileVendorHR = async (
       } = file;
 
       // INSERT with all columns including the new ones
-      await QueryExecutor.executeRawQuery(
+      await oracleDb.query(
         `INSERT INTO UPLOADED_FILES_DLTS_VENDOR (
           company_code, request_number, sr_no, file_name, extensions, 
           org_file_name, aws_file_locn, flow_level, modules, updated_by, 
@@ -1263,7 +1147,7 @@ export const saveFileVendorHR = async (
         {
           company_code: { val: company_code || null },
           request_number: { val: request_number },
-          sr_no: { val: safeSrNo },
+          sr_no: { val: sr_no || null },  
           file_name: { val: file_name || null },
           extensions: { val: extensions || null },
           org_file_name: { val: org_file_name || null },
@@ -1279,7 +1163,7 @@ export const saveFileVendorHR = async (
       );
 
       // Fetch both SR_NO and ATTACHMENT_SR_NO
-      const result = await QueryExecutor.executeRawQuery(
+      const result = await oracleDb.query(
         `SELECT SR_NO, ATTACHMENT_SR_NO 
          FROM UPLOADED_FILES_DLTS_VENDOR 
          WHERE request_number = :request_number 
@@ -1290,7 +1174,7 @@ export const saveFileVendorHR = async (
         {
           request_number: { val: request_number },
           org_file_name: { val: org_file_name },
-          sr_no: { val: safeSrNo },
+          sr_no: { val: sr_no || null },
         }
       );
 
@@ -1332,13 +1216,8 @@ export const getInvoiceStatusHandler = async (
     req.query as Record<string, string>;
 
   try {
-    const tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
-    if (!tenantCompanyCode || !ac_code || !po_date_from || !po_date_to) {
-      res.status(400).json({ success: false, message: "company_code, ac_code, po_date_from and po_date_to are required" });
-      return;
-    }
     const data = await VendorService.getInvoiceStatus(
-      tenantCompanyCode,
+      company_code,
       ac_code,
       po_date_from,
       po_date_to
@@ -1360,13 +1239,12 @@ export async function processSubmittedRecords(
       records = [{ COMPANY_CODE: companyCode, DOC_NO: docNo }];
     } else {
       // Fetch all submitted records
-      const recordsResult = await QueryExecutor.executeRawQuery(
+      records = await oracleDb.query(
         `SELECT COMPANY_CODE, DOC_NO 
          FROM VMS_FLOW_HDR
-         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y' AND NEXT_ACTION_BY = 'APPROVED'
+         WHERE FINAL_APPROVED = 'YES' AND DATA_TRANSFER != 'Y'
          FETCH FIRST 1 ROWS ONLY`
       );
-      records = recordsResult.rows || recordsResult;
     }
 
     for (const record of records) {
@@ -1402,18 +1280,103 @@ export const getTmpAcHeaderWithErpDocNoHandler = async (
   }
 };
 
+// export const updateLpoStatusHandler = async (
+//   req: Request,
+//   res: Response
+// ): Promise<void> => {
+//   const { doc_no, company_code, flow_level, remarks, action } = req.body;
+
+//   console.log("Updating LPO status:", {
+//     doc_no,
+//     company_code,
+//     flow_level,
+//     remarks,
+//     action,
+//   });
+
+//   if (
+//     !doc_no ||
+//     !company_code ||
+//     typeof flow_level !== "number" ||
+//     !remarks ||
+//     !action
+//   ) {
+//     res.status(400).json({
+//       success: false,
+//       message:
+//         "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
+//     });
+//     return;
+//   }
+
+//   if (action !== "SENTBACK" && action !== "REJECTED") {
+//     res.status(400).json({
+//       success: false,
+//       message: "Invalid action (must be SENTBACK or REJECTED)",
+//     });
+//     return;
+//   }
+
+//   try {
+//     // Check if record exists
+//     const existingResult = await oracleDb.query(
+//       "SELECT DOC_NO FROM TR_AC_LPO_HEADER WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
+//       {
+//         doc_no: { val: doc_no },
+//         company_code: { val: company_code },
+//       }
+//     );
+
+//     const existing = existingResult.rows?.[0] || existingResult[0];
+
+//     if (!existing) {
+//       res.status(404).json({
+//         success: false,
+//         message: "LPO not found with the provided DOC_NO and COMPANY_CODE",
+//       });
+//       return;
+//     }
+
+//     const historyField =
+//       action === "SENTBACK" ? "SENDBACK_HISTORY" : "REJECT_HISTORY";
+
+//     const query = `
+//       UPDATE TR_AC_LPO_HEADER
+//       SET
+//         FLOW_LEVEL = :flow_level,
+//         ${historyField} = COALESCE(${historyField}, '') || ' | ' || :remarks,
+//         LAST_ACTION = :action
+//       WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
+//     `;
+
+//     const updateResult = await oracleDb.query(query, {
+//       flow_level: { val: flow_level },
+//       remarks: { val: remarks },
+//       action: { val: action },
+//       doc_no: { val: doc_no },
+//       company_code: { val: company_code },
+//     });
+
+//     const affectedRows = updateResult.rowsAffected || 0;
+
+//     res.json({
+//       success: true,
+//       message: `LPO marked as ${action.toLowerCase()}`,
+//       affectedRows: affectedRows,
+//     });
+//   } catch (err: any) {
+//     console.error("Error in updateLpoStatusHandler:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: err.message ?? "Internal Server Error",
+//     });
+//   }
+// };
+
 export const updateLpoStatusHandler = async (req: Request, res: Response): Promise<void> => {
   const { doc_no, company_code, flow_level, remarks, action } = req.body;
-  let tenantCompanyCode = "";
 
-  try {
-    tenantCompanyCode = resolveTenantCompanyCode(req, company_code);
-  } catch (error: any) {
-    res.status(403).json({ success: false, message: error.message });
-    return;
-  }
-
-  if (!doc_no || !tenantCompanyCode || typeof flow_level !== "number" || !remarks || !action) {
+  if (!doc_no || !company_code || typeof flow_level !== "number" || !remarks || !action) {
     res.status(400).json({
       success: false,
       message: "Missing required parameters: doc_no, company_code, flow_level, remarks, action",
@@ -1427,9 +1390,9 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
   }
 
   try {
-    const existingResult = await QueryExecutor.executeRawQuery(
+    const existingResult = await oracleDb.query(
       "SELECT DOC_NO FROM VMS_FLOW_HDR WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code",
-      { doc_no: { val: doc_no }, company_code: { val: tenantCompanyCode } }
+      { doc_no: { val: doc_no }, company_code: { val: company_code } }
     );
     const existing = existingResult.rows?.[0] || existingResult[0];
     if (!existing) {
@@ -1451,12 +1414,12 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
        WHERE DOC_NO = :doc_no AND COMPANY_CODE = :company_code
     `;
 
-    const updateResult = await QueryExecutor.executeRawQuery(query, {
+    const updateResult = await oracleDb.query(query, {
       flow_level: { val: flow_level },
       remarks: { val: remarks },   
       action: { val: action },
       doc_no: { val: doc_no },
-      company_code: { val: tenantCompanyCode },
+      company_code: { val: company_code },
     });
 
     // ✅ Send emails now
@@ -1464,7 +1427,7 @@ export const updateLpoStatusHandler = async (req: Request, res: Response): Promi
       {
         action,
         docNo: doc_no,
-        companyCode: tenantCompanyCode,
+        companyCode: company_code,
         flowLevel: flow_level,
       }
     );
@@ -1503,7 +1466,7 @@ export const executeRawSqlbody = async (
     console.log("Final WHERE string:", cleanWhere);
     console.log("Final UPDATE values string:", cleanUpdate);
 
-    const procResult = await QueryExecutor.executeRawQuery(
+    const procResult = await oracleDb.query(
       `BEGIN SP_CREATE_SQL_change(:query_parameter, :query_where, :query_updatevalues, :out_sql); END;`,
       {
         query_parameter,
@@ -1526,7 +1489,7 @@ export const executeRawSqlbody = async (
     rawSql = rawSql.trim().replace(/;$/, "");
     console.log("Generated rawSql:", rawSql);
 
-    const result = await QueryExecutor.execMaybe(rawSql);
+    const result = await oracleDb.query(rawSql);
     const rows = result.rows || result;
 
     res.json({
@@ -1594,7 +1557,7 @@ export const proc_build_dynamic_sql = async (
     `;
 
     // 2️⃣ Execute the stored procedure using your wrapper
-    const procResult = await QueryExecutor.executeRawQuery(plsql, {
+    const procResult = await oracleDb.query(plsql, {
       parameter,
       code1,
       code2,
@@ -1623,7 +1586,7 @@ export const proc_build_dynamic_sql = async (
     console.log("Generated SQL:", rawSql);
 
     // 3️⃣ Execute the returned dynamic SQL
-    const execResult = await QueryExecutor.executeRawQuery(rawSql);
+    const execResult = await oracleDb.query(rawSql);
 
     const rows = execResult.rows || execResult;
 
@@ -1670,7 +1633,7 @@ export const executeVendorInvoicePrintHandler = async (
       END;
     `;
 
-    await QueryExecutor.executeRawQuery(
+    await oracleDb.query(
       plsql,
       {
         companyCode: { val: COMPANY_CODE },
@@ -1690,66 +1653,5 @@ export const executeVendorInvoicePrintHandler = async (
       message: "Failed to execute procedure",
       details: error?.message || String(error),
     });
-  }
-};
-
-export const bulkApprovalHandler = async (req: Request, res: Response): Promise<void> => {
-  const { company_code, doc_nos, action } = req.body;
-  const requestUser = (req as any).user;
-  const approverId = defaultString(requestUser?.loginid1 || req.body.loginid || requestUser?.loginid);
-  const MAX_BULK_DOCS = 100;
-
-  let companyCode = "";
-  try {
-    companyCode = resolveTenantCompanyCode(req, company_code);
-  } catch (error: any) {
-    res.status(403).json({ success: false, message: error.message });
-    return;
-  }
-
-  const docNos: string[] = Array.from(
-    new Set(
-      (Array.isArray(doc_nos) ? doc_nos : String(doc_nos ?? "").split(","))
-        .map((d: unknown) => String(d).trim())
-        .filter(Boolean)
-    )
-  );
-
-  if (!companyCode || !approverId || docNos.length === 0) {
-    res.status(400).json({ success: false, message: "company_code, loginid and doc_nos are required" });
-    return;
-  }
-  if (action !== "APPROVED" && action !== "REJECTED") {
-    res.status(400).json({ success: false, message: "Invalid action (must be APPROVED or REJECTED)" });
-    return;
-  }
-  if (docNos.length > MAX_BULK_DOCS) {
-    res.status(400).json({ success: false, message: `Select at most ${MAX_BULK_DOCS} documents at a time` });
-    return;
-  }
-  // the proc concatenates doc numbers into dynamic SQL, so only digits are allowed through
-  if (docNos.some((d) => !/^\d+$/.test(d))) {
-    res.status(400).json({ success: false, message: "Invalid doc_no in request" });
-    return;
-  }
-
-  try {
-    await QueryExecutor.executeRawQuery(
-      `BEGIN PROC_VMS_FLOW_BULK_APPROVAL(:companyCode, :docNos, :loginId, :action); END;`,
-      {
-        companyCode: { val: companyCode },
-        docNos: { val: docNos.join(",") },
-        loginId: { val: approverId },
-        action: { val: action },
-      }
-    );
-
-    res.status(200).json({
-      success: true,
-      message: `${docNos.length} request(s) ${action === "APPROVED" ? "approved" : "rejected"}`,
-    });
-  } catch (err: any) {
-    console.error("Error in bulkApprovalHandler:", err);
-    res.status(500).json({ success: false, message: err.message ?? "Internal Server Error" });
   }
 };

@@ -3,16 +3,6 @@ import https from "https";
 import { oracleDb } from "../database/connection";
 import { getRepository } from "../database/connection";
 import { Vendor } from "../entity/Vendor";
-import { QueryExecutor } from "../database/QueryExecutor";
-
-export interface ExternalAccount {
-  USER_ID: string;
-  NAME: string;
-  PASSWORD: string;
-  TYPE: 'EMPLOYEE' | 'VENDOR';
-  EMPLOYEE_ID: string;
-  EMAIL?: unknown;
-}
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -43,7 +33,10 @@ axiosInstance.interceptors.request.use(
       config.headers["XApiKey"] = API_KEY;
     }
 
+    // Log headers and full request info for debugging
+    const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
     console.log("Final Request Headers:", config.headers);
+    console.log("Final Request:", (config.method || "GET").toUpperCase(), fullUrl, "params:", config.params, "data:", config.data);
     return config;
   },
   (error) => Promise.reject(error)
@@ -51,8 +44,11 @@ axiosInstance.interceptors.request.use(
 
 axiosInstance.interceptors.response.use(
   (response) => {
+    console.log("Response URL:", response.config?.url);
+    console.log("Response Full URL:", `${response.config?.baseURL || ""}${response.config?.url || ""}`);
     console.log("Response Headers:", response.headers);
     console.log("Response Status:", response.status);
+    console.log("Response Data:", response.data);
     return response;
   },
   (error) => {
@@ -249,15 +245,6 @@ export class VendorService {
         data: response.data,
       });
 
-      if (response.status < 200 || response.status >= 300) {
-        const responseMessage =
-          response.data?.message ||
-          response.data?.error ||
-          response.statusText ||
-          `HTTP ${response.status}`;
-        throw new Error(`File-transfer API rejected the request: ${responseMessage}`);
-      }
-
       return response.data;
     } catch (error: any) {
       // Log detailed error information
@@ -363,42 +350,33 @@ export class VendorService {
     }
   }
 
-  static async callAwareVmsEntry(
-    companyCode: string,
-    docNo: string,
-    userName: string = "SYSTEM"
-  ) {
-    try {
-      console.log(
-        `Calling PROC_AWARE_VMS_ENTRY for Company: ${companyCode}, Doc No: ${docNo}`
-      );
-
-      await oracleDb.query(
-        `BEGIN
-           WMSDEV.PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
-         END;`,
-        {
-          companyCode: { val: companyCode },
-          docNo: { val: Number(docNo) },
-          userName: { val: userName },
-        }
-      );
-
-      console.log("PROC_AWARE_VMS_ENTRY executed successfully");
-      return {
-        success: true,
-        message: "Data transferred via Oracle procedure",
-      };
-    } catch (error: any) {
-      console.error("Error in callAwareVmsEntry:", error);
-      throw new Error(`Oracle procedure failed: ${error.message}`);
-    }
+  // Add this method to your VendorService class
+  static async callAwareVmsEntry(companyCode: string, docNo: string, userName: string = 'SYSTEM') {
+  try {
+    console.log(`Calling PROC_AWARE_VMS_ENTRY for Company: ${companyCode}, Doc No: ${docNo}`);
+    
+    const result = await oracleDb.query(
+      `BEGIN
+         WMSDEV.PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
+       END;`,
+      {
+        companyCode: { val: companyCode },
+        docNo: { val: Number(docNo) },
+        userName: { val: userName },
+      }
+    );
+    
+    console.log(`PROC_AWARE_VMS_ENTRY executed successfully`);
+    return { success: true, message: "Data transferred via Oracle procedure" };
+  } catch (error: any) {
+    console.error("Error in callAwareVmsEntry:", error);
+    throw new Error(`Oracle procedure failed: ${error.message}`);
   }
-
+  }
   // FIXED: Use oracleDb instead of sequelize
   static async updateDataTransferFlag(companyCode: string, docNo: string) {
     try {
-      const result = await QueryExecutor.executeRawQuery(
+      const result = await oracleDb.query(
         `UPDATE VMS_FLOW_HDR
          SET DATA_TRANSFER = 'Y'
          WHERE COMPANY_CODE = :companyCode 
@@ -415,42 +393,51 @@ export class VendorService {
     }
   }
 
-  static async checkAccountEmployee(userId: string): Promise<ExternalAccount[]> {
+  static async checkAccountEmployee(userId: string) {
     try {
-      const baseURL = process.env.NET_API_BASE_URL?.trim();
-      const apiKey = process.env.NET_API_KEY?.trim();
-      if (!baseURL || !apiKey) throw new Error('Account API is not configured');
-      // Bypass shared interceptors, which log headers and external response data.
-      const response = await axios.get(`${baseURL.replace(/\/$/, '')}/VENDOR_SYSTEM_/checkAccountEmployee`, {
+      const endpoint = API_BASE_URL && API_BASE_URL.includes("/api/")
+        ? "/api/VENDOR_SYSTEM_/checkAccountEmployee"
+        : "/VENDOR_SYSTEM_/checkAccountEmployee";
+
+      const response = await axiosInstance.get(endpoint, {
         params: { p_userid: userId },
-        headers: { XApiKey: apiKey, accept: '*/*' },
-        timeout: 30000,
-        maxRedirects: 0,
-        httpsAgent,
       });
-      if (!Array.isArray(response.data)) throw new Error('Invalid account response');
-      if (!response.data.length) return [];
-      const account = response.data[0];
-      const type = typeof account?.TYPE === 'string' ? account.TYPE.trim().toUpperCase() : '';
-      if (response.data.length !== 1 || typeof account?.USER_ID !== 'string' ||
-          account.USER_ID.trim().toUpperCase() !== userId.trim().toUpperCase() ||
-          !account.USER_ID.trim() || Buffer.byteLength(account.USER_ID.trim()) > 15 ||
-          typeof account.NAME !== 'string' || !account.NAME.trim() || Buffer.byteLength(account.NAME) > 400 ||
-          typeof account.PASSWORD !== 'string' || !account.PASSWORD ||
-          (type !== 'EMPLOYEE' && type !== 'VENDOR') ||
-          (type === 'EMPLOYEE' && (!/^20/.test(account.USER_ID.trim()) ||
-            typeof account.EMPLOYEE_ID !== 'string' || !account.EMPLOYEE_ID.trim() ||
-            Buffer.byteLength(account.EMPLOYEE_ID) > 100)) ||
-          (typeof account.EMAIL === 'string' && Buffer.byteLength(account.EMAIL) > 400)) {
-        throw new Error('Invalid employee or vendor account response');
-      }
-      return [{ ...account, TYPE: type, USER_ID: account.USER_ID.trim(),
-        EMPLOYEE_ID: type === 'EMPLOYEE' ? account.EMPLOYEE_ID.trim() : account.USER_ID.trim() }];
+      return response.data;
     } catch (error: any) {
-      const failure = new Error('Employee/vendor account verification failed') as Error & { code?: string };
-      failure.code = typeof error?.code === 'string' && /^[A-Z0-9_-]+$/.test(error.code)
-        ? error.code : 'ACCOUNT_API_FAILED';
-      throw failure;
+      console.error("Error in checkAccountEmployee:", error.message);
+      if (error.response?.status === 401) {
+        throw new Error(
+          "Unauthorized access to external system. Please check API credentials."
+        );
+      }
+      throw new Error(
+        `Failed to fetch account employee info: ${error.message}`
+      );
+    }
+  }
+
+  // Jasra-specific check (used for JASRA employees)
+  static async checkJasraAccountEmployee(userId: string) {
+    try {
+      // Ensure '/api' path segment is included if baseURL doesn't contain it
+      const endpoint = API_BASE_URL && API_BASE_URL.includes("/api/")
+        ? "/JasraDb/jasra/checkJasraAccountEmployee"
+        : "/api/JasraDb/jasra/checkJasraAccountEmployee";
+
+      const response = await axiosInstance.get(endpoint, {
+        params: { p_userid: userId },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error("Error in checkJasraAccountEmployee:", error.message);
+      if (error.response?.status === 401) {
+        throw new Error(
+          "Unauthorized access to Jasra external system. Please check API credentials."
+        );
+      }
+      throw new Error(
+        `Failed to fetch Jasra account employee info: ${error.message}`
+      );
     }
   }
 
