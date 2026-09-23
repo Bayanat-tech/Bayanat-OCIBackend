@@ -18,7 +18,6 @@ import {
   executeRawSqlbody,
   proc_build_dynamic_sql,
   executeVendorInvoicePrintHandler,
-  bulkApprovalHandler
 } from "./vendorupdation.controller";
 import { getVendorrequest } from "./getVendorrequest";
 
@@ -42,6 +41,5 @@ router.get("/tmp-ac-header-with-erp-doc", getTmpAcHeaderWithErpDocNoHandler);
 router.post("/createVendor", createVendor);
 router.post("/updateLpoStatus", updateLpoStatusHandler);
 router.post("/executeVendorInvoicePrintHandler",executeVendorInvoicePrintHandler);
-router.post("/bulkApprovalHandler", bulkApprovalHandler);
 
 export default router;

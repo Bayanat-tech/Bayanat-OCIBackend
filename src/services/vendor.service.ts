@@ -8,6 +8,15 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 
+export interface ExternalAccount {
+  USER_ID: string;
+  NAME: string;
+  PASSWORD: string;
+  TYPE: string;
+  EMAIL?: string;
+  EMPLOYEE_ID?: string;
+}
+
 const API_BASE_URL = process.env.NET_API_BASE_URL?.trim();
 const API_KEY = process.env.NET_API_KEY?.trim();
 
