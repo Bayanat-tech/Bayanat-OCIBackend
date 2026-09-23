@@ -4,6 +4,11 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -104,145 +109,121 @@ function parseCommon(req: RequestWithUser) {
   return { companyCode, fromDate, toDate, divisionCode };
 }
 
-// ─── Shared page shell ────────────────────────────────────────────────────────
+// ─── Drilldown-only CSS (document layout — not shared, same convention as   ───
+// ─── the Level-1 P&L report and the finance-doc report)                    ───
 
-const PAGE_CSS = `
+/**
+ * Drilldown-only CSS. Only genuinely report-specific rules live here — bold
+ * weight now comes from the shared .strong class in report_common instead of
+ * being redefined per row-type; left-align is kept here only because
+ * report_common has no .left utility (just .right/.center/.num).
+ *
+ * FIX (title/meta overlap on L3): .doc-title-row now wraps instead of
+ * squeezing the meta block onto the same line as a long title. h1 is
+ * allowed to shrink/wrap (flex: 1 1 auto; min-width: 0) and .doc-meta is
+ * pinned to its own width on the right (flex: 0 0 auto; white-space: nowrap),
+ * wrapping to its own line via flex-wrap when the title is too long.
+ */
+const DRILLDOWN_EXTRA_CSS = `
+  /* These drilldown tables (A/C summary, ledger) are wide — print landscape */
   @page { size: A4 landscape; margin: 10mm; }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: Arial, sans-serif; font-size: 11px; color: #000;
-    background: #fff;
-    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 4px 0 10px 0;
   }
-  .sheet {
-    min-width: 260mm; margin: 14px auto; background: #fff;
-    padding: 8mm 10mm; border: 1px solid #000; border-radius: 0;
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #0b4ca1;
+    flex: 1 1 auto;
+    min-width: 0;
+    word-wrap: break-word;
   }
-  .logo-area { margin-bottom: 10px; }
-  .divider-thick { border-top: 2px solid #000; margin: 7px 0 4px; }
-  .divider-thin  { border-top: 1px solid #000; margin: 4px 0 8px; }
-  .meta-grid {
-    display: grid; grid-template-columns: auto 1fr auto 1fr;
-    gap: 2px 8px; font-size: 11px; margin-bottom: 6px;
+  .doc-title-row .doc-meta {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.55;
   }
-  .meta-label { font-weight: 700; white-space: nowrap; }
+  .doc-title-row .doc-meta b { color: #0f172a; }
+
   .drill-hint {
-    font-size: 10px; color: #000; background: #fff;
-    border: 1px solid #000; border-radius: 0;
-    padding: 4px 10px; margin-bottom: 8px;
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px 10px;
+    margin-bottom: 8px;
   }
-  table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  th {
-    border: 1px solid #000; padding: 4px 8px;
-    font-weight: 700; background: #fff; color: #000;
+
+  /* report_common has no left-align utility — only .right/.center/.num */
+  table.data-table.ledger-table th.left,
+  table.data-table.ledger-table td.left { text-align: left; }
+  table.data-table td.code { font-family: "Courier New", monospace; font-size: 10px; }
+
+  /* Only unique colors/backgrounds/borders here — bold comes from the shared .strong class */
+  table.data-table tr.ac-header td {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-top: 2px solid #475569;
+    border-bottom: 1px solid #475569;
   }
-  th.left  { text-align: left; }
-  th.right { text-align: right; }
-  th.center { text-align: center; }
-  td { border: 1px solid #000; padding: 3px 8px; vertical-align: top; }
-  td.center { text-align: center; }
-  td.left   { text-align: left; }
-  td.num    { text-align: right; font-variant-numeric: tabular-nums; font-family: "Courier New", monospace; }
-  td.code   { font-family: monospace; font-size: 10px; }
-  td.bold   { font-weight: 700; }
-  tr.ac-header td {
-    background: #fff; font-weight: 700; color: #000;
-    border-top: 2px solid #000; border-bottom: 1px solid #000;
-    padding: 4px 8px;
+  table.data-table tr.subtotal-row td { border-top: 1px solid #475569; }
+  table.data-table tr.closing-row td {
+    border-top: 1px solid #475569;
+    background: #f8fafc;
   }
-  tr.subtotal-row td {
-    background: #fff; font-weight: 700;
-    border-top: 1px solid #000;
+  table.data-table tr.grand-total-row td {
+    font-size: 11px;
+    color: #fff;
+    background: #0b4ca1;
+    border-top: 2px solid #0b4ca1;
+    border-bottom: 2px solid #0b4ca1;
   }
-  tr.closing-row td {
-    background: #fff; font-weight: 700;
-    border-top: 1px solid #000;
+  table.data-table tr.total-row td {
+    background: #f1f5f9;
+    border-top: 2px solid #475569;
   }
-  tr.grand-total-row td {
-    background: #fff; color: #000; font-weight: 700;
-    font-size: 12px; border-top: 2px solid #000;
-    border-bottom: 2px solid #000;
-  }
-  tr.total-row td {
-    border: 2px solid #000; font-weight: 700; background: #fff;
-  }
-  tr.total-row td.empty { border: 1px solid #000; background: #fff; }
-  tr.data-row:hover td { background: #f5f5f5; cursor: pointer; }
-  .balance-neg { color: #000; font-weight: 700; }
-  .end-of-report {
-    text-align: center; margin-top: 10px; margin-bottom: 4px;
-    font-size: 10px; border-top: 1px solid #000; padding-top: 5px; color: #000;
-  }
-  .report-footer {
-    display: flex; justify-content: space-between;
-    font-size: 10px; color: #000;
-    border-top: 1px solid #000; padding-top: 4px; margin-top: 4px;
-  }
-  @media print {
-    body { background: #fff; }
-    .sheet { border: none; margin: 0; width: auto; padding: 0; border-radius: 0; }
-    .drill-hint { display: none !important; }
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    tbody tr { page-break-inside: avoid; }
-  }
+  table.data-table tr.data-row:hover td { background: #f0f9f5; cursor: pointer; }
+  .balance-neg { color: #b91c1c; }
 `;
 
-const LOGO_SVG = `
- <svg width="160" height="50" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
-        <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
-        <text x="16" y="46" font-family="Arial" font-size="26" font-weight="700" fill="#d4a017">al madina المدينة</text>
-        <text x="16" y="72" font-family="Arial" font-size="15" font-weight="400" fill="#d4a017" letter-spacing="4">LOGISTICS اللوجستية</text>
-        <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
-      </svg>`;
-
-function buildPage(opts: {
+function renderDrilldownBody(opts: {
   title: string;
-  reportName: string;
   tableHtml: string;
-  drillScript?: string;
   showDrillHint?: boolean;
   hintText?: string;
-  companyCode: string;
   fromDate: string;
   toDate: string;
   divisionCode: string;
-  loginId: string;
-  extraMeta?: string;
+  drillScript?: string;
 }): string {
   const {
-    title, reportName, tableHtml, drillScript = "",
-    showDrillHint = false, hintText = "",
-    fromDate, toDate, divisionCode, loginId, extraMeta = "",
+    title, tableHtml, showDrillHint = false, hintText = "",
+    fromDate, toDate, divisionCode, drillScript = "",
   } = opts;
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(title)}</title>
-  <style>${PAGE_CSS}</style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="logo-area">${LOGO_SVG}</div>
-    <div class="divider-thick"></div>
-    <div class="meta-grid">
-      <span class="meta-label">Title :</span><span>${escapeHtml(title)}</span>
-      <span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span>
-      <span class="meta-label">Period :</span><span>${escapeHtml(dateText(fromDate))} &ndash; ${escapeHtml(dateText(toDate))}</span>
-      <span class="meta-label">User :</span><span>${escapeHtml(loginId)}</span>
-      <span class="meta-label">Division :</span><span>${escapeHtml(divisionCode)}</span>
-      <span class="meta-label">Report :</span><span>${escapeHtml(reportName)}</span>
-      ${extraMeta}
+  return `
+    <div class="doc-title-row">
+      <h1>${escapeHtml(title)}</h1>
+      <div class="doc-meta">
+        <div><b>Period:</b> ${escapeHtml(dateText(fromDate))} &ndash; ${escapeHtml(dateText(toDate))}</div>
+        <div><b>Division:</b> ${escapeHtml(divisionCode)}</div>
+      </div>
     </div>
-    <div class="divider-thin"></div>
+
     ${showDrillHint ? `
     <div class="drill-hint">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -250,16 +231,10 @@ function buildPage(opts: {
       </svg>
       ${escapeHtml(hintText)}
     </div>` : ""}
+
     ${tableHtml}
-    <div class="end-of-report">End of Report</div>
-    <div class="report-footer">
-      <span>Report: ${escapeHtml(reportName)}</span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </div>
-  ${drillScript}
-</body>
-</html>`;
+    ${drillScript}
+  `;
 }
 
 // ─── XLSX styles ──────────────────────────────────────────────────────────────
@@ -353,11 +328,6 @@ function buildXlsxZip(sheetXml: string, stylesXml: string, sheetName: string): B
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
-function sendHtml(res: Response, html: string) {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.send(html);
-}
-
 function sendExcel(res: Response, buffer: Buffer, filename: string) {
   res.setHeader(
     "Content-Type",
@@ -436,28 +406,28 @@ export const getPnlDrilldownL2 = async (
         <td class="left">${escapeHtml(r.ac_name)}</td>
         <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
         <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
-        <td class="num bold">${escapeHtml(fmtNumber(amount(r.closing_amount)))}</td>
+        <td class="num strong">${escapeHtml(fmtNumber(amount(r.closing_amount)))}</td>
       </tr>`
-    ).join("") || `<tr><td colspan="5" class="center" style="color:#000;padding:20px">No data found</td></tr>`;
+    ).join("") || `<tr><td colspan="5" class="center muted">No data found</td></tr>`;
 
     const tableHtml = `
-      <table>
+      <table class="data-table ledger-table">
         <thead>
           <tr>
-            <th class="center" style="width:120px">A/C Code</th>
+            <th style="width:120px">A/C Code</th>
             <th class="left">A/C Name</th>
-            <th class="right" style="width:130px">Debit</th>
-            <th class="right" style="width:130px">Credit</th>
-            <th class="right" style="width:130px">Closing</th>
+            <th class="num" style="width:130px">Debit</th>
+            <th class="num" style="width:130px">Credit</th>
+            <th class="num" style="width:130px">Closing</th>
           </tr>
         </thead>
         <tbody>${dataRows}</tbody>
         <tfoot>
           <tr class="total-row">
-            <td class="empty" colspan="2" style="text-align:left;padding-left:10px;font-weight:700"></td>
-            <td class="num bold">${escapeHtml(fmtNumber(totals.debit))}</td>
-            <td class="num bold">${escapeHtml(fmtNumber(totals.credit))}</td>
-            <td class="num bold">${escapeHtml(fmtNumber(totals.closing))}</td>
+            <td colspan="2"></td>
+            <td class="num strong">${escapeHtml(fmtNumber(totals.debit))}</td>
+            <td class="num strong">${escapeHtml(fmtNumber(totals.credit))}</td>
+            <td class="num strong">${escapeHtml(fmtNumber(totals.closing))}</td>
           </tr>
         </tfoot>
       </table>`;
@@ -489,23 +459,36 @@ export const getPnlDrilldownL2 = async (
     </script>`;
 
     const title = `Profit & Loss for the Period ${dateText(fromDate)} - ${dateText(toDate)} ( Division : ${divisionCode}) (${plCode})`;
+    const userName = req.user?.loginid ?? "";
 
-    sendHtml(
-      res,
-      buildPage({
-        title,
-        reportName: "rpt_profit_loss",
-        tableHtml,
-        drillScript,
-        showDrillHint: true,
-        hintText: "Click any row to drill down to transaction detail",
-        companyCode,
-        fromDate,
-        toDate,
-        divisionCode,
-        loginId: req.user?.loginid ?? "",
-      })
-    );
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderDrilldownBody({
+      title,
+      tableHtml,
+      showDrillHint: true,
+      hintText: "Click any row to drill down to transaction detail",
+      fromDate,
+      toDate,
+      divisionCode,
+      drillScript,
+    });
+    const footerHtml = reportFooter({
+      reportName: "rpt_profit_loss",
+      userName,
+      endLabel: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `P&L Account Summary - ${plCode}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: DRILLDOWN_EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+    });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   } catch (error: any) {
     console.error("P&L Drilldown L2 error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message });
@@ -699,7 +682,7 @@ export const getPnlDrilldownL3 = async (
       totalDebit   += debit;
       totalCredit  += credit;
 
-      const balClass = runBalance < 0 ? " balance-neg" : "";
+      const balClass = runBalance < 0 ? " balance-neg strong" : "";
       return `<tr>
         <td class="center code">${escapeHtml(text(r.doc_no ?? ""))}</td>
         <td class="center">${escapeHtml(text(r.doc_type))}</td>
@@ -712,78 +695,89 @@ export const getPnlDrilldownL3 = async (
         <td class="num">${credit > 0 ? escapeHtml(fmtNumber(credit)) : ""}</td>
         <td class="num${balClass}">${escapeHtml(fmtNumber(runBalance))}</td>
       </tr>`;
-    }).join("") || `<tr><td colspan="10" class="center" style="color:#000;padding:20px">No transactions found</td></tr>`;
+    }).join("") || `<tr><td colspan="10" class="center muted">No transactions found</td></tr>`;
 
     const closing = runBalance;
 
     const tableHtml = `
-      <table>
+      <table class="data-table ledger-table">
         <thead>
           <tr>
-            <th class="center" style="width:90px">A/C Code</th>
-            <th class="center" style="width:45px">Type</th>
-            <th class="center" style="width:70px">Doc No.</th>
-            <th class="center" style="width:82px">Doc Date</th>
-            <th class="center" style="width:75px">Chq No.</th>
-            <th class="center" style="width:82px">Chq Date</th>
+            <th style="width:90px">A/C Code</th>
+            <th style="width:45px">Type</th>
+            <th style="width:70px">Doc No.</th>
+            <th style="width:82px">Doc Date</th>
+            <th style="width:75px">Chq No.</th>
+            <th style="width:82px">Chq Date</th>
             <th class="left">Bank</th>
-            <th class="right" style="width:100px">Debit</th>
-            <th class="right" style="width:100px">Credit</th>
-            <th class="right" style="width:110px">Balance</th>
+            <th class="num" style="width:100px">Debit</th>
+            <th class="num" style="width:100px">Credit</th>
+            <th class="num" style="width:110px">Balance</th>
           </tr>
         </thead>
         <tbody>
           <tr class="ac-header">
-            <td class="code bold">${escapeHtml(acCode)}</td>
-            <td colspan="5" class="bold">${escapeHtml(acName)}</td>
-            <td class="center bold">Opening</td>
-            <td class="num bold">${escapeHtml(fmtNumber(opening))}</td>
+            <td class="code strong">${escapeHtml(acCode)}</td>
+            <td colspan="5" class="strong">${escapeHtml(acName)}</td>
+            <td class="center strong">Opening</td>
+            <td class="num strong">${escapeHtml(fmtNumber(opening))}</td>
             <td></td>
             <td></td>
           </tr>
           ${txRows}
           <tr class="subtotal-row">
-            <td colspan="7" class="right bold" style="padding-right:12px">Total :</td>
-            <td class="num bold">${escapeHtml(fmtNumber(totalDebit))}</td>
-            <td class="num bold">${escapeHtml(fmtNumber(totalCredit))}</td>
+            <td colspan="7" class="right strong" style="padding-right:12px">Total :</td>
+            <td class="num strong">${escapeHtml(fmtNumber(totalDebit))}</td>
+            <td class="num strong">${escapeHtml(fmtNumber(totalCredit))}</td>
             <td></td>
           </tr>
           <tr class="closing-row">
-            <td colspan="7" class="right bold" style="padding-right:12px">Closing</td>
-            <td class="num bold">${escapeHtml(fmtNumber(closing))}</td>
+            <td colspan="7" class="right strong" style="padding-right:12px">Closing</td>
+            <td class="num strong">${escapeHtml(fmtNumber(closing))}</td>
             <td></td>
             <td></td>
           </tr>
         </tbody>
         <tfoot>
           <tr class="grand-total-row">
-            <td colspan="6" class="bold" style="padding-left:12px">Grand Total :</td>
+            <td colspan="6" class="strong" style="padding-left:12px">Grand Total :</td>
             <td></td>
-            <td class="num bold">${escapeHtml(fmtNumber(totalDebit))}</td>
-            <td class="num bold">${escapeHtml(fmtNumber(totalCredit))}</td>
+            <td class="num strong">${escapeHtml(fmtNumber(totalDebit))}</td>
+            <td class="num strong">${escapeHtml(fmtNumber(totalCredit))}</td>
             <td></td>
           </tr>
         </tfoot>
       </table>`;
 
-    const title = `Profit & Loss for the Period ${dateText(fromDate)} - ${dateText(toDate)} ( Division : ${divisionCode}) (Ledger of${acCode})`;
+    const title = `Profit & Loss for the Period ${dateText(fromDate)} - ${dateText(toDate)} ( Division : ${divisionCode}) (Ledger of ${acCode})`;
+    const userName = req.user?.loginid ?? "";
 
-    sendHtml(
-      res,
-      buildPage({
-        title,
-        reportName: "rpt_profit_loss",
-        tableHtml,
-        drillScript: "",
-        showDrillHint: false,
-        companyCode,
-        fromDate,
-        toDate,
-        divisionCode,
-        loginId: req.user?.loginid ?? "",
-        extraMeta: `<span class="meta-label">Currency :</span><span>OMR</span><span></span><span></span>`,
-      })
-    );
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderDrilldownBody({
+      title,
+      tableHtml,
+      showDrillHint: false,
+      fromDate,
+      toDate,
+      divisionCode,
+    });
+    const footerHtml = reportFooter({
+      reportName: "rpt_profit_loss",
+      userName,
+      endLabel: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `P&L Ledger - ${acCode}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: DRILLDOWN_EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+    });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   } catch (error: any) {
     console.error("P&L Drilldown L3 error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message });

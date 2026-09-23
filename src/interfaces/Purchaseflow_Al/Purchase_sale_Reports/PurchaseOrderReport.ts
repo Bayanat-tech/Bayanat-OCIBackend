@@ -4,6 +4,7 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -189,25 +190,6 @@ function buildHeader(rows: ReportRow[]): PoHeader {
   };
 }
 
-
-
-
-// function computeTotals(rows: ReportRow[], header: PoHeader) {
-//   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-//   //const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-//    //const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0) + header.total_discount; // ← added
-//    const totalAmount = rows.reduce((s, r) => s + grossValue(r), 0) + header.total_discount;
-//   // const discount = header.disc_hdr_price || (totalAmount * header.disc_hdr_percent) / 100;
-//   const discount = header.total_discount || (totalAmount * header.total_discount) / 100;
-//   const exclusiveVat = totalAmount - discount;
-//   // TODO: vat_amount / tax rate not present in vw_erp_purorder — add the column(s) to
-//   // PROC_BUILD_DYNAMIC_SQL_PURCHASE_ORDER once confirmed, then wire real values here.
-//   const total_tx_compnt_amt_1 = header.total_tx_compnt_amt_1;
-//   const inclusiveVat = exclusiveVat + total_tx_compnt_amt_1;
-//   return { totalQty, totalAmount, discount, exclusiveVat, total_tx_compnt_amt_1, inclusiveVat };
-// }
-
-
 function computeTotals(rows: ReportRow[], header: PoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
   const totalAmount = rows.reduce((s, r) => s + grossValue(r), 0);
@@ -224,169 +206,219 @@ function computeTotals(rows: ReportRow[], header: PoHeader) {
 const REPORT_TITLE = "Purchase Order";
 const REPORT_SUBTITLE = "PO Document";
 
-function renderHtml(rows: ReportRow[], loginId: string): string {
+/** PO-only layout CSS (shared header/footer/table CSS comes from report_common) */
+const PO_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+  }
+  .status-badge {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .info-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: #f8fafc;
+  }
+  .info-block .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .info-block .value-line {
+    font-size: 12px;
+    color: #0f172a;
+    line-height: 1.55;
+  }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  table.data-table thead th {
+    background: #f1f5f9;
+    color: #334155;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 0;
+    border-bottom: 1px solid #cbd5e1;
+  }
+  table.data-table thead th.right { text-align: right; }
+  table.data-table tbody td {
+    padding: 7px 10px;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+  }
+  table.data-table .right { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table .amount { font-weight: 600; color: #065f46; }
+
+  .totals-box {
+    margin-top: 16px;
+    margin-left: auto;
+    width: 300px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .totals-box .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 14px;
+    font-size: 12px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .totals-box .row.grand {
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    border-bottom: none;
+  }
+  .empty-lines {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+  }
+`;
+
+/** Body only – no full HTML document */
+function renderPoBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
 
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
-  let bodyRows = "";
-  rows.forEach((r, i) => {
-    bodyRows += `
-                        <tr>
-                            <td>${i + 1}</td>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td>${escapeHtml(r.p_uom)}</td>
-                            <td class="right">${qtyFmt(r.quantity)}</td>
-                            <td class="right">${amtFmt(r.unit_price)}</td>
-                          
-                            <td class="right amount">${amtFmt(grossValue(r))}</td>
-                            <td class="right">\u2014</td>
-                        </tr>`;
-    // NOTE: last column (VAT Type) is a placeholder — no vat_type/vat_code column
-    // currently returned by the view; wire it once confirmed.
-  });
+  const bodyRows = rows
+    .map(
+      (r, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${
+        r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""
+      }</td>
+      <td>${escapeHtml(r.p_uom)}</td>
+      <td class="right">${qtyFmt(r.quantity)}</td>
+      <td class="right">${amtFmt(r.unit_price)}</td>
+      <td class="right amount">${amtFmt(grossValue(r))}</td>
+      <td class="right">\u2014</td>
+    </tr>`
+    )
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>${escapeHtml(REPORT_TITLE)} ${escapeHtml(header.doc_no)}</title>
-    <style>
-        @media print {
-            @page { size: A4 portrait; margin: 8mm; }
-            .no-print { display: none !important; }
-            .report-container { box-shadow: none !important; border: none !important; }
+  return `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(REPORT_TITLE)}</h1>
+        <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}</div>
+        ${
+          header.cancelled
+            ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>`
+            : ""
         }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-        }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-title-area { display: flex; align-items: center; gap: 14px; }
-        .logo-img { max-height: 50px; max-width: 120px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .report-subtitle { font-size: 12px; color: #6b7280; font-weight: 400; letter-spacing: 0.5px; }
-        .report-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.6; }
-        .report-meta strong { color: #374151; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; margin-bottom: 18px; }
-        .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; background: #f8fafc; }
-        .info-block .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 6px; }
-        .info-block .value-line { font-size: 12px; color: #111827; line-height: 1.6; }
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
-        .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-        .report-table thead th {
-            background: #f3f4f6; padding: 8px 14px; text-align: left; font-weight: 600; color: #374151;
-            border-bottom: 2px solid #d1d5db; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-        }
-        .report-table tbody td { padding: 7px 14px; border-bottom: 1px solid #f3f4f6; }
-        .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 500; color: #065f46; }
-        .totals-box { margin-top: 16px; margin-left: auto; width: 320px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-        .totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid #f3f4f6; }
-        .totals-box .row.grand { background: #1d4ed8; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
-        .report-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 14px; margin-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;
-        }
-        @media print {
-            .report-header { border-bottom-color: #000; }
-            .report-table thead th { background: #e5e7eb !important; }
-            .report-container { border-radius: 0; padding: 10mm; }
-        }
-    </style>
-</head>
-<body>
-    <div class="report-container">
-        <div class="report-header">
-            <div class="report-title-area">
-                ${header.logo_url ? `<img src="${escapeHtml(header.logo_url)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div>
-                    <div class="report-title">${escapeHtml(REPORT_TITLE)}</div>
-                    <div class="report-subtitle">${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}</div>
-                    ${header.cancelled ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>` : ""}
-                </div>
-            </div>
-            <div class="report-meta">
-                <div><strong>Print Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>Print User:</strong> ${escapeHtml(loginId)}</div>
-            </div>
-        </div>
-
-        <div class="info-grid">
-            <div class="info-block">
-                <div class="label">To</div>
-                <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-                <div class="value-line">${escapeHtml(header.party_address)}</div>
-                <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-                <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-            </div>
-            <div class="info-block">
-                <div class="label">PO Details</div>
-                <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-                <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-                <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-                <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-                  <div class="value-line">Delivery Term: ${escapeHtml(header.dlvr_term)}</div>
-            </div>
-        </div>
-
-        ${rows.length === 0 ? `
-            <div style="text-align:center;padding:40px 20px;color:#6b7280;">No line items found for this PO.</div>
-        ` : `
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>S.No.</th>
-                        <th>Product / Description</th>
-                        <th>Unit</th>
-                        <th class="right">Qty</th>
-                        <th class="right">Unit Rate</th>
-                        <th class="right">Gross Value</th>
-                        <th class="right">VAT Type</th>
-                    </tr>
-                </thead>
-                <tbody>${bodyRows}</tbody>
-            </table>
-
-            <div class="totals-box">
-                <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
-                <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
-                <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
-                <div class="row"><span>Total (Exclusive VAT)</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
-                <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.total_tx_compnt_amt_1)}</span></div>
-                <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
-            </div>
-        `}
+      </div>
+      <div class="print-meta">
+        <div>Print Date: ${escapeHtml(printDateTime)}</div>
+        <div>Print User: ${escapeHtml(loginId)}</div>
+      </div>
     </div>
-    <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
-        Powered by Bayanat Technology
+
+    <div class="info-grid">
+      <div class="info-block">
+        <div class="label">To</div>
+        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+        <div class="value-line">${escapeHtml(header.party_address)}</div>
+        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+      </div>
+      <div class="info-block">
+        <div class="label">PO Details</div>
+        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
+        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
+        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
+        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
+        <div class="value-line">Delivery Term: ${escapeHtml(header.dlvr_term)}</div>
+      </div>
     </div>
-</body>
-</html>`;
+
+    ${
+      rows.length === 0
+        ? `<div class="empty-lines">No line items found for this PO.</div>`
+        : `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Product / Description</th>
+            <th>Unit</th>
+            <th class="right">Qty</th>
+            <th class="right">Unit Rate</th>
+            <th class="right">Gross Value</th>
+            <th class="right">VAT Type</th>
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+
+      <div class="totals-box">
+        <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
+        <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
+        <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
+        <div class="row"><span>Total (Exclusive VAT)</span><span>${amtFmt(totals.exclusiveVat)}</span></div>
+        <div class="row"><span>VAT Amount</span><span>${amtFmt(totals.total_tx_compnt_amt_1)}</span></div>
+        <div class="row grand"><span>Total (Inclusive VAT)</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
+      </div>`
+    }
+  `;
 }
 
 // ─── Excel builder (same raw-OOXML engine as PO Order Register) ───────────
@@ -726,11 +758,39 @@ export const getPurchaseOrderReportHtml = async (req: RequestWithUser, res: Resp
       res.status(200).json({ success: false, message: "No data found for this PO." });
       return;
     }
+
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: REPORT_TITLE,
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderPoBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: `${REPORT_TITLE} ${buildHeader(rows).doc_no}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PO_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("Purchase Order Report HTML error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate report",
+    });
   }
 };
 

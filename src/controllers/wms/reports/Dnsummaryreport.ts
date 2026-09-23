@@ -4,6 +4,7 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -251,248 +252,168 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
   }));
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
-// NOTE: No action-bar rendered here — Print & Excel buttons live on the React
-//       parent page and communicate with this iframe via postMessage / API call.
+// ─── HTML renderer (built entirely on the shared report shell) ────────────
+// NOTE: the shared shell's own "Print / Save PDF" button is hidden here
+// (showPrintButton: false) because Print & Excel buttons live on the React
+// parent page and communicate with this iframe via postMessage — that
+// listener is appended below, after buildReportDocument assembles the page.
 
-function renderHtml(
-  prins:       PrinSection[],
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
-): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+// A couple of small, purely layout-level rules (4-level hierarchy row
+// shading, landscape page size) that the shared CSS doesn't define.
+// Everything else — fonts, table borders, header, footer, print rules,
+// .data-table look — comes straight from COMMON_REPORT_CSS via
+// buildReportDocument. No CSS is duplicated from report_common.ts here.
+const DN_EXTRA_CSS = `
+  /* This report reads better in landscape given the column count */
+  @page { size: A4 landscape; margin: 10mm 12mm; }
 
+  .dn-title { font-size: 13px; font-weight: 800; color: #0b4ca1; text-align: center; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  table.data-table tr.prin-row td { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 11px; padding: 6px 8px; border-bottom: none; }
+  table.data-table tr.group-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px; padding: 5px 8px 5px 20px; }
+  table.data-table tr.prod-row td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; padding: 4px 8px 4px 32px; }
+  table.data-table tbody tr.data-row td:first-child { padding-left: 40px; }
+  table.data-table tbody tr.data-row:nth-child(even) td { background: #f8fafc; }
+  table.data-table tr.prod-total td { background: #eef2f7; font-weight: 700; font-size: 10.5px; color: #334155; }
+  table.data-table tr.group-total td { background: #dbe6f6; font-weight: 700; font-size: 11px; color: #0b4ca1; }
+  table.data-table tr.prin-total td { background: #c7d8f0; font-weight: 700; font-size: 11px; color: #0b4ca1; }
+  table.data-table tr.grand-total td { background: #0b4ca1; color: #fff; font-weight: 800; font-size: 12px; padding: 8px; border-top: 2px solid #08386f; border-bottom: none; }
+`;
+
+// Listens for the parent React page's print trigger (postMessage). Injected
+// as-is into the final document since buildReportDocument only exposes an
+// "autoPrint" hook, not an arbitrary extra-script slot.
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function(e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
+
+function renderDnTable(prins: PrinSection[]): { tableHtml: string; grandQty: number; grandVolume: number } {
   const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
-
-  const autoPrintScript = autoPrint
-    ? "window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 300); });"
-    : "";
 
   let bodyRows = "";
 
   for (const ps of prins) {
-    bodyRows += "<tr class=\"prin-row\"><td colspan=\"8\">" +
-      escapeHtml(ps.prinCode) + (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") +
-      "</td></tr>";
+    bodyRows += `<tr class="prin-row"><td colspan="8">${escapeHtml(ps.prinCode)}${ps.prinName ? " | " + escapeHtml(ps.prinName) : ""}</td></tr>`;
 
     for (const gs of ps.groups) {
-      bodyRows += "<tr class=\"group-row\"><td colspan=\"8\">Group : " +
-        escapeHtml(gs.groupName) + "</td></tr>";
+      bodyRows += `<tr class="group-row"><td colspan="8">Group : ${escapeHtml(gs.groupName)}</td></tr>`;
 
       for (const prd of gs.prods) {
-        bodyRows += "<tr class=\"prod-row\"><td colspan=\"8\">" +
-          escapeHtml(prd.prodCode) + (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") +
-          "</td></tr>";
+        bodyRows += `<tr class="prod-row"><td colspan="8">${escapeHtml(prd.prodCode)}${prd.prodName ? " | " + escapeHtml(prd.prodName) : ""}</td></tr>`;
 
         for (const dr of prd.rows) {
           const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
           const volume = parseFloat(String(dr.volume)) || 0;
           bodyRows +=
-            "<tr class=\"data-row\">" +
-            "<td>" + escapeHtml(dr.dn_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.dn_date ?? dr.receipt_date)) + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date)) + "</td>" +
-            "<td>" + escapeHtml(dr.job_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.customer || dr.cust_code || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.container_no || "\u2014") + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(qty)) + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(volume, 3)) + "</td>" +
-            "</tr>";
+            `<tr class="data-row">` +
+            `<td>${escapeHtml(dr.dn_no || "\u2014")}</td>` +
+            `<td>${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>` +
+            `<td>${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>` +
+            `<td>${escapeHtml(dr.job_no || "\u2014")}</td>` +
+            `<td>${escapeHtml(dr.customer || dr.cust_code || "\u2014")}</td>` +
+            `<td>${escapeHtml(dr.container_no || "\u2014")}</td>` +
+            `<td class="num">${escapeHtml(numFmt(qty))}</td>` +
+            `<td class="num">${escapeHtml(numFmt(volume, 3))}</td>` +
+            `</tr>`;
         }
 
         bodyRows +=
-          "<tr class=\"prod-total\">" +
-          "<td colspan=\"6\">Total For " + escapeHtml(prd.prodCode) +
-          (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalQty)) + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalVolume, 3)) + "</td>" +
-          "</tr>";
+          `<tr class="prod-total">` +
+          `<td colspan="6">Total For ${escapeHtml(prd.prodCode)}${prd.prodName ? " | " + escapeHtml(prd.prodName) : ""}</td>` +
+          `<td class="num">${escapeHtml(numFmt(prd.totalQty))}</td>` +
+          `<td class="num">${escapeHtml(numFmt(prd.totalVolume, 3))}</td>` +
+          `</tr>`;
       }
 
       bodyRows +=
-        "<tr class=\"group-total\">" +
-        "<td colspan=\"6\">Total For " + escapeHtml(gs.groupName) + "</td>" +
-        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalQty)) + "</td>" +
-        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalVolume, 3)) + "</td>" +
-        "</tr>";
+        `<tr class="group-total">` +
+        `<td colspan="6">Total For ${escapeHtml(gs.groupName)}</td>` +
+        `<td class="num">${escapeHtml(numFmt(gs.totalQty))}</td>` +
+        `<td class="num">${escapeHtml(numFmt(gs.totalVolume, 3))}</td>` +
+        `</tr>`;
     }
 
     bodyRows +=
-      "<tr class=\"prin-total\">" +
-      "<td colspan=\"6\">Total For " + escapeHtml(ps.prinCode) +
-      (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") + "</td>" +
-      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalQty)) + "</td>" +
-      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalVolume, 3)) + "</td>" +
-      "</tr>";
+      `<tr class="prin-total">` +
+      `<td colspan="6">Total For ${escapeHtml(ps.prinCode)}${ps.prinName ? " | " + escapeHtml(ps.prinName) : ""}</td>` +
+      `<td class="num">${escapeHtml(numFmt(ps.totalQty))}</td>` +
+      `<td class="num">${escapeHtml(numFmt(ps.totalVolume, 3))}</td>` +
+      `</tr>`;
   }
 
   const grandRow =
-    "<tr class=\"grand-total\">" +
-    "<td colspan=\"6\">Grand Total</td>" +
-    "<td class=\"num\">" + escapeHtml(numFmt(grandQty)) + "</td>" +
-    "<td class=\"num\">" + escapeHtml(numFmt(grandVolume, 3)) + "</td>" +
-    "</tr>";
+    `<tr class="grand-total">` +
+    `<td colspan="6">Grand Total</td>` +
+    `<td class="num">${escapeHtml(numFmt(grandQty))}</td>` +
+    `<td class="num">${escapeHtml(numFmt(grandVolume, 3))}</td>` +
+    `</tr>`;
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)}</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 277mm; min-height: 190mm;
-      margin: 18px auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-      border-radius: 4px;
-    }
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 8px;
-      border-bottom: 1px solid #e2e8f0;
-      margin-bottom: 10px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    col.c0 { width: 9%;  } col.c1 { width: 10%; } col.c2 { width: 10%; }
-    col.c3 { width: 14%; } col.c4 { width: 13%; } col.c5 { width: 15%; }
-    col.c6 { width: 15%; } col.c7 { width: 14%; }
-    thead tr.th-main th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 7px 10px; text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
-    }
-    thead tr.th-main th:last-child { border-right: none; }
-    thead tr.th-main th.left { text-align: left; }
-    thead tr.th-main th.num  { text-align: right; }
-    tr.prin-row td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-    tr.group-row td {
-      background: #dce4ef; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 4px 10px 4px 20px;
-      border-bottom: 1px solid #c8d4e4;
-    }
-    tr.prod-row td {
-      background: #fef3c7; color: #92400e; font-weight: 700;
-      font-size: 10px; padding: 3px 10px 3px 32px;
-      border-bottom: 1px solid #fde68a;
-    }
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: normal; word-wrap: break-word; vertical-align: top;
-    }
-    tbody tr.data-row td:first-child { padding-left: 40px; }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    tr.prod-total td {
-      background: #fde68a; padding: 3px 10px; font-size: 10px;
-      font-weight: 700; color: #78350f; white-space: nowrap;
-    }
-    tr.group-total td {
-      background: #c8d4e4; padding: 4px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.prin-total td {
-      background: #a8b8d0; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #0f2040; white-space: nowrap;
-    }
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
-    }
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
-    @media print {
-      body   { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
-      thead  { display: table-header-group; }
-      tr.prin-row, tr.group-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
-      tr.prod-total, tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
-    }
-  </style>
-</head>
-<body>
-
-  <div class="sheet">
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;
-            Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
-    </div>
-
-    <table class="rpt-table" id="dnTable">
-      <colgroup>
-        <col class="c0"/><col class="c1"/><col class="c2"/>
-        <col class="c3"/><col class="c4"/><col class="c5"/>
-        <col class="c6"/><col class="c7"/>
-      </colgroup>
+  const tableHtml = `
+    <table class="data-table">
       <thead>
-        <tr class="th-main">
-          <th class="left">DN No</th>
+        <tr>
+          <th>DN No</th>
           <th>DN Date</th>
           <th>Confirm Date</th>
-          <th class="left">Job No</th>
-          <th class="left">Customer</th>
-          <th class="left">Container No</th>
-          <th class="num">Qty</th>
-          <th class="num">Volume</th>
+          <th>Job No</th>
+          <th>Customer</th>
+          <th>Container No</th>
+          <th class="right">Qty</th>
+          <th class="right">Volume</th>
         </tr>
       </thead>
-      <tbody>
-        ${bodyRows}
-        ${grandRow}
-      </tbody>
-    </table>
+      <tbody>${bodyRows}${grandRow}</tbody>
+    </table>`;
 
-    <div class="rpt-footer">
-      <span>Report Name : <code>Delivery Note Summary</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </div>
-
-  <script>
-    // Listen for print trigger from parent React page via postMessage
-    window.addEventListener("message", function(e) {
-      if (e.data === "print") window.print();
-    });
-
-    ${autoPrintScript}
-  </script>
-</body>
-</html>`;
+  return { tableHtml, grandQty, grandVolume };
 }
 
-// ─── Excel builder ────────────────────────────────────────────────────────────
+async function renderHtml(
+  prins:       PrinSection[],
+  reportTitle: string,
+  loginId:     string,
+  companyCode: string,
+  req:         RequestWithUser,
+  autoPrint:   boolean
+): Promise<string> {
+  // ── Shared company header (logo + name + address), same as every other report ──
+  const headerHtml = await reportHeader({ company_code: companyCode, req });
+
+  const { tableHtml } = renderDnTable(prins);
+
+  const bodyHtml = `
+    <div class="dn-title">${escapeHtml(reportTitle)}</div>
+    <div class="group">
+      ${tableHtml}
+    </div>`;
+
+  // ── Shared footer (print date / user / report name) ──
+  const footerHtml = reportFooter({
+    reportName: "Delivery Note Summary",
+    userName: loginId,
+  });
+
+  // ── Assemble the whole page using the same shell every other report uses ──
+  const doc = buildReportDocument({
+    title: reportTitle,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: DN_EXTRA_CSS,
+    showPrintButton: false,
+    autoPrint,
+  });
+
+  // Inject the postMessage print listener (parent React page still drives
+  // print via postMessage regardless of the autoPrint flag).
+  return doc.replace("</body>", `${PRINT_LISTENER_SCRIPT}\n</body>`);
+}
+
+// ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
 
 const STYLE_ID = {
   default:       0,
@@ -744,13 +665,20 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
 // when the page mounts — asks the SQL-builder proc for the entire dataset.
 // The proc already treats the literal "All" (case-insensitive) as "skip this
 // filter," so this is the single source of truth for that contract.
+//
+// ★ FIX: company_code now falls back to req.user?.company_code when the
+//   caller doesn't send one explicitly (same pattern already used by the
+//   P&L drilldown controller's parseCommon). Previously an empty
+//   company_code was passed straight to reportHeader(), which had nothing
+//   to look up and silently rendered no header.
 function extractParams(req: RequestWithUser) {
   const src = { ...req.query, ...req.body };
   return {
-    loginid:  text(req.user?.loginid),
-    prinCode: normalizeFilter(src.code2),
-    fromdate: normalizeFilter(src.code3),
-    todate:   normalizeFilter(src.code4),
+    loginid:      text(req.user?.loginid),
+    company_code: text(src.company_code || req.user?.company_code),
+    prinCode:     normalizeFilter(src.code2),
+    fromdate:     normalizeFilter(src.code3),
+    todate:       normalizeFilter(src.code4),
   };
 }
 
@@ -775,7 +703,7 @@ export const getDnSummaryReportHtml = async (
 
     const prins = groupRows(rows);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint));
+    res.send(await renderHtml(prins, reportTitle, params.loginid, params.company_code, req, autoPrint));
   } catch (error: any) {
     console.error("DN Summary HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -796,7 +724,7 @@ export const getDnSummaryReportPdf = async (
     }
 
     const prins = groupRows(rows);
-    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true);
+    const html  = await renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, params.company_code, req, true);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", "inline; filename=\"DN_Summary.pdf\"");

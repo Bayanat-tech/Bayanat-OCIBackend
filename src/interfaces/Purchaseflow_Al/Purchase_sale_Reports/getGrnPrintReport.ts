@@ -4,6 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
+
+// ─── Shared report shell (header / footer / css / document wrapper) ───────
+// NOTE: adjust this relative path to wherever ReportCommon.ts actually lives
+// in your project (it's the file that exports reportHeader / reportFooter /
+// buildReportDocument / COMMON_REPORT_CSS).
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -127,10 +133,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
               vw_erp_grn.uppp, vw_erp_grn.quantity, vw_erp_grn.amount, vw_erp_grn.required_dt,
               vw_erp_grn.sign_ind, vw_erp_grn.qty_processed, vw_erp_grn.det_cancel,
               vw_erp_grn.det_cancel_date, vw_erp_grn.unit_price, vw_erp_grn.disc_price,
-              vw_erp_grn.disc_percent,
-              (SELECT hr.comp_logo
-                 FROM ms_hr_division hr
-                WHERE hr.div_code = vw_erp_grn.div_code) AS logo_url
+              vw_erp_grn.disc_percent
        FROM vw_erp_grn
        WHERE company_code = :company_code
          AND doc_type = :doc_type
@@ -190,7 +193,6 @@ interface GrnHeader {
   dlvr_term: string;
   remarks: string;
   cancelled: boolean;
-  logo_url: string | null;
 }
 
 function buildHeader(rows: ReportRow[]): GrnHeader {
@@ -217,7 +219,6 @@ function buildHeader(rows: ReportRow[]): GrnHeader {
     dlvr_term: text(h.dlvr_term),
     remarks: text(h.remarks),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
-    logo_url: h.logo_url ? String(h.logo_url) : null,
   };
 }
 
@@ -228,320 +229,271 @@ function computeTotals(rows: ReportRow[]) {
   return { totalPQty, totalLQty, totalQty };
 }
 
-// ─── HTML renderer ──────────────────────────────────────────────────────────
+// ─── HTML renderer (built entirely on the shared report shell) ────────────
 
 const REPORT_TITLE = "Goods Receipt Note";
-const REPORT_SUBTITLE = "GRN Document";
 
-// Renders a label:value pair as a <table> row (not CSS grid) — this is the
-// most reliably-aligned approach across Chrome print/PDF renderers.
-// Every row across both info blocks shares the same first-column width,
-// so colons line up vertically no matter how long the label text is.
-function infoRow(label: string, value: string, boldValue = false): string {
+// A key/value line rendered as a <tr> inside a .data-table so it inherits
+// the exact same borders/spacing/font as every other report on the shared
+// shell — no bespoke "info-table" CSS needed anymore.
+function kvRow(label: string, value: string, strongValue = false): string {
   const v = escapeHtml(value) || "&nbsp;";
   return `<tr>
-        <td class="info-label">${escapeHtml(label)}</td>
-        <td class="info-colon">:</td>
-        <td class="info-value">${boldValue ? `<strong>${v}</strong>` : v}</td>
+        <td class="muted" style="width:100px;white-space:nowrap;">${escapeHtml(label)}</td>
+        <td style="width:12px;">:</td>
+        <td class="${strongValue ? "strong" : ""}">${v}</td>
       </tr>`;
 }
 
-function renderHtml(data: GrnData, loginId: string, p: ReqParams): string {
-  const { rows, terms, footer } = data;
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
+// A couple of small, purely layout-level rules (two-column split, status chip)
+// that the shared CSS doesn't define. Everything else (fonts, colors, table
+// borders, header, footer, print rules) comes straight from COMMON_REPORT_CSS.
+const GRN_EXTRA_CSS = `
+  /* Force print / PDF engines to keep background colors (fixes grey
+     "Total Quantity" row losing its blue background on print/PDF). */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 
+  .grn-two-col { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
+  .grn-two-col > tbody > tr > td { border: 0; padding: 0; vertical-align: top; width: 50%; }
+  .grn-two-col > tbody > tr > td:first-child { padding-right: 10px; }
+  .grn-two-col > tbody > tr > td:last-child { padding-left: 10px; }
+  .grn-status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; background: #fee2e2; color: #dc2626; margin-top: 4px; }
+
+  .grn-totals { width: 260px; margin-left: auto; margin-top: 10px; border-collapse: collapse; }
+  .grn-totals td { padding: 5px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; }
+  .grn-totals tr.grand td { background: #0b4ca1 !important; color: #fff !important; font-weight: 800; font-size: 12px; border-bottom: none; }
+
+  /* ── Items table: fixed layout with widths pinned per column via
+     nth-child (more reliable across HTML→PDF renderers than <colgroup>). ── */
+  .grn-items-table { table-layout: fixed; width: 100%; }
+
+  .grn-items-table th:nth-child(1),
+  .grn-items-table td:nth-child(1) { width: 36px; white-space: nowrap; }
+
+  .grn-items-table th:nth-child(2),
+  .grn-items-table td:nth-child(2) {
+    width: auto;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .grn-items-table th:nth-child(3),
+  .grn-items-table td:nth-child(3) { width: 50px; }
+
+  .grn-items-table th:nth-child(4),
+  .grn-items-table td:nth-child(4) { width: 80px; text-align: right; }
+
+  .grn-items-table th:nth-child(5),
+  .grn-items-table td:nth-child(5) { width: 50px; }
+
+  .grn-items-table th:nth-child(6),
+  .grn-items-table td:nth-child(6) { width: 80px; text-align: right; }
+
+  .grn-items-table th:nth-child(7),
+  .grn-items-table td:nth-child(7) { width: 95px; text-align: right; }
+
+  .grn-sign {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 22px;
+    text-align: center;
+    page-break-inside: avoid;
+    font-size: 10px;
+  }
+
+  .sign-box {
+    width: 23%;
+    min-height: 70px;
+  }
+
+  .sign-space {
+    height: 32px;
+  }
+
+  .sign-line {
+    width: 100%;
+    border-top: 1px solid #64748b;
+    margin-bottom: 6px;
+  }
+
+  .sign-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  .sign-name {
+    font-size: 9px;
+    color: #64748b;
+    margin-top: 3px;
+  }
+`;
+
+async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
+  const { rows, terms, footer } = data;
   const header = buildHeader(rows);
   const totals = computeTotals(rows);
 
   const contactMobile = [header.dlvr_contact, header.dlvr_mobile || header.mobile_no].filter((v) => v).join(" / ");
   const emailToShow = header.dlvr_email || header.e_mail;
 
-  let bodyRows = "";
-  rows.forEach((r, i) => {
-    bodyRows += `
-                        <tr>
-                            <td class="c-sno">${i + 1}</td>
-                            <td class="c-desc">${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td class="c-uom">${escapeHtml(r.p_uom)}</td>
-                            <td class="c-qty right">${qtyFmt(r.qty_puom)}</td>
-                            <td class="c-uom">${escapeHtml(r.l_uom)}</td>
-                            <td class="c-qty right">${qtyFmt(r.qty_luom)}</td>
-                            <td class="c-qty right amount">${qtyFmt(r.quantity)}</td>
-                        </tr>`;
-  });
+  // ── Shared company header (logo + name + address), same as every other report ──
+  const headerHtml = await reportHeader({ company_code: p.company_code, req });
 
-  let termsHtml = "";
-  terms.forEach((t) => {
-    termsHtml += `<div class="term-line">${escapeHtml(t.term)}</div>`;
-  });
-
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>${escapeHtml(REPORT_TITLE)} ${escapeHtml(header.doc_no)}</title>
-    <style>
-        * { box-sizing: border-box; }
-        html, body { height: 100%; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-            min-height: calc(100vh - 40px);
-            display: flex;
-            flex-direction: column;
-        }
-        .report-body { flex: 0 0 auto; }
-        .report-footer-block {
-            margin-top: auto;      /* pins signatures to the bottom of the page */
-            padding-top: 24px;
-        }
-        .action-toolbar {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .action-toolbar button {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            transition: background 0.15s ease;
-        }
-        .btn-pdf { background: #1d4ed8; color: #fff; }
-        .btn-pdf:hover { background: #1e40af; }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-title-area { display: flex; align-items: center; gap: 14px; }
-        .logo-img { max-height: 50px; max-width: 120px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .report-subtitle { font-size: 12px; color: #6b7280; font-weight: 400; letter-spacing: 0.5px; }
-        .report-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.6; }
-        .report-meta strong { color: #374151; }
-
-        /* ── Info blocks: real <table> rows so label/colon/value always align ── */
-        .info-grid { display: table; table-layout: fixed; width: 100%; margin-bottom: 18px; border-spacing: 24px 0; }
-        .info-grid-row { display: table-row; }
-        .info-block-cell { display: table-cell; width: 50%; vertical-align: top; }
-        .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; background: #f8fafc; height: 100%; }
-        .info-block .label {
-            font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-            color: #6b7280; font-weight: 700; margin: 0 0 8px 0;
-            border-bottom: 1px solid #e5e7eb; padding-bottom: 6px;
-        }
-        .info-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .info-table td { padding: 2px 0; vertical-align: top; line-height: 1.7; }
-        .info-label { width: 92px; color: #6b7280; font-weight: 500; white-space: nowrap; }
-        .info-colon { width: 10px; color: #6b7280; padding: 0 4px !important; }
-        .info-value { color: #111827; font-weight: 500; word-break: break-word; }
-        .info-value strong { color: #1e3a8a; }
-
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
-        .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-
-        /* ── Item table: tight, single line per item ── */
-        .report-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11.5px;
-            margin-top: 4px;
-            table-layout: fixed;
-        }
-        .report-table thead th {
-            background: #1d4ed8; color: #fff; padding: 7px 8px; text-align: left; font-weight: 600;
-            font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
-        }
-        .report-table tbody td {
-            padding: 6px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: top;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-        .report-table tbody tr:nth-child(even) { background: #fafbfc; }
-        .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 600; color: #065f46; }
-        .c-sno   { width: 40px; text-align: center; }
-        .c-desc  { width: auto; white-space: normal; }
-        .c-uom   { width: 40px; }
-        .c-qty   { width: 85px; }
-
-        .totals-box {
-    margin-top: 14px;
-    margin-left: auto;
-    width: 300px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.totals-box .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 8px;
-    font-size: 12px;
-    border-bottom: 1px solid #f3f4f6;
-}
-    .totals-box .row span:last-child {
-    width: 85px;
-    min-width: 85px;
-    text-align: right;
-    padding-right: 0;
-    font-variant-numeric: tabular-nums;
-}
-
-       .totals-box .row.grand {
-    background: #1d4ed8;
-    color: #fff;
-    font-weight: 700;
-    font-size: 13px;
-    border-bottom: none;
-}
-        .remarks-box { margin-top: 14px; font-size: 12px; }
-        .remarks-box .label { font-weight: 600; margin-right: 4px; color: #374151; }
-        .terms-section { margin-top: 8px; font-size: 11px; color: #6b7280; }
-        .term-line { margin-bottom: 2px; }
-        .footer-sign { display: flex; justify-content: space-between; text-align: center; font-size: 11px; color: #6b7280; }
-        .footer-sign div { border-top: 1px solid #d1d5db; padding-top: 6px; width: 20%; }
-
-        @media print {
-            @page { size: A4 portrait; margin: 10mm; }
-            .no-print { display: none !important; }
-            html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; background: #fff; }
-            .report-container {
-                width: 100%; min-height: 277mm; margin: 0; padding: 10mm;
-                border-radius: 0; box-shadow: none; border: none;
-                display: flex; flex-direction: column;
-            }
-            .report-body { flex: 0 0 auto; }
-            .report-footer-block { margin-top: auto; padding-top: 24px; page-break-inside: avoid; }
-            .report-header { border-bottom-color: #000; }
-            .report-table thead th { background: #1d4ed8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .footer-sign div { border-top: 1px solid #000; }
-        }
-    </style>
-</head>
-<body>
-    <div class="report-container">
-        <div class="action-toolbar no-print">
-            <button type="button" class="btn-pdf" onclick="window.print()">🖨️ Save as PDF</button>
-        </div>
-
-        <div class="report-body">
-        <div class="report-header">
-            <div class="report-title-area">
-                ${header.logo_url ? `<img src="${escapeHtml(header.logo_url)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div>
-                    <div class="report-title">${escapeHtml(REPORT_TITLE)}</div>
-                    <div class="report-subtitle">${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}</div>
-                    ${header.cancelled ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>` : ""}
-                </div>
-            </div>
-            <div class="report-meta">
-                <div><strong>Print Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>Print User:</strong> ${escapeHtml(loginId)}</div>
-            </div>
-        </div>
-
-        <div class="info-grid">
-            <div class="info-grid-row">
-                <div class="info-block-cell">
-                    <div class="info-block">
-                        <div class="label">To</div>
-                        <table class="info-table">
-                            ${infoRow("Name", header.party_name, true)}
-                            ${infoRow("Address", header.party_address)}
-                            ${infoRow("Tel", header.party_phone)}
-                            ${infoRow("Fax", header.party_fax)}
-                        </table>
-                    </div>
-                </div>
-                <div class="info-block-cell">
-                    <div class="info-block">
-                        <div class="label">GRN Details</div>
-                        <table class="info-table">
-                            ${infoRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
-                            ${infoRow("Date", dateText(header.doc_date))}
-                            ${infoRow("A/C Code", header.ac_code)}
-                            ${infoRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
-                            ${infoRow("Deliver To", header.delivery_to)}
-                            ${infoRow("Contact", contactMobile)}
-                            ${infoRow("Email", emailToShow)}
-                            ${infoRow("Delivery Term", header.dlvr_term)}
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        ${rows.length === 0 ? `
-            <div style="text-align:center;padding:40px 20px;color:#6b7280;">No line items found for this GRN.</div>
-        ` : `
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th class="c-sno">S.No.</th>
-                        <th class="c-desc">Product / Description</th>
-                        <th class="c-uom">PUOM</th>
-                        <th class="c-qty right">P. Qty</th>
-                        <th class="c-uom">LUOM</th>
-                        <th class="c-qty right">L. Qty</th>
-                        <th class="c-qty right">Qty in LUOM</th>
-                    </tr>
-                </thead>
-                <tbody>${bodyRows}</tbody>
+  // ── Party / GRN details, two data-tables side by side ──
+  const detailsHtml = `
+    <table class="grn-two-col">
+      <tbody>
+        <tr>
+          <td>
+            <div class="group-title">To</div>
+            <table class="data-table">
+              ${kvRow("Name", header.party_name, true)}
+              ${kvRow("Address", header.party_address)}
+              ${kvRow("Tel", header.party_phone)}
+              ${kvRow("Fax", header.party_fax)}
             </table>
+          </td>
+          <td>
+            <div class="group-title">GRN Details</div>
+            <table class="data-table">
+              ${kvRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
+              ${kvRow("Date", dateText(header.doc_date))}
+              ${kvRow("A/C Code", header.ac_code)}
+              ${kvRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
+              ${kvRow("Deliver To", header.delivery_to)}
+              ${kvRow("Contact", contactMobile)}
+              ${kvRow("Email", emailToShow)}
+              ${kvRow("Delivery Term", header.dlvr_term)}
+            </table>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
 
-            <div class="totals-box">
-                <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
-                <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
-                <div class="row grand"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
-            </div>
-        `}
+  // ── Line items, using the shared data-table look exactly like every other report ──
+  let itemsHtml: string;
+  if (!rows.length) {
+    itemsHtml = `<div class="empty">No line items found for this GRN.</div>`;
+  } else {
+    let bodyRows = "";
+    rows.forEach((r, i) => {
+      bodyRows += `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td class="center">${escapeHtml(r.p_uom)}</td>
+          <td class="num">${qtyFmt(r.qty_puom)}</td>
+          <td class="center">${escapeHtml(r.l_uom)}</td>
+          <td class="num">${qtyFmt(r.qty_luom)}</td>
+          <td class="num strong">${qtyFmt(r.quantity)}</td>
+        </tr>`;
+    });
 
-        ${header.remarks ? `<div class="remarks-box"><span class="label">Remarks:</span>${escapeHtml(header.remarks)}</div>` : ""}
+    itemsHtml = `
+      <table class="data-table grn-items-table">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th style="text-align:left;">Product / Description</th>
+            <th>PUOM</th>
+            <th>P. Qty</th>
+            <th>LUOM</th>
+            <th>L. Qty</th>
+            <th>Qty in LUOM</th>
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+      <table class="grn-totals">
+        <tbody>
+          <tr><td>Total P. Qty</td><td class="num">${qtyFmt(totals.totalPQty)}</td></tr>
+          <tr><td>Total L. Qty</td><td class="num">${qtyFmt(totals.totalLQty)}</td></tr>
+          <tr class="grand"><td>Total Quantity</td><td class="num">${qtyFmt(totals.totalQty)}</td></tr>
+        </tbody>
+      </table>`;
+  }
 
-        ${termsHtml ? `<div class="terms-section">${termsHtml}</div>` : ""}
-        </div>
+  // ── Remarks / terms ──
+  const remarksHtml = header.remarks
+    ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>`
+    : "";
 
-        <div class="report-footer-block">
-            <div class="footer-sign">
-                <div>${escapeHtml(footer.prepared) || "Prepared By"}</div>
-                <div>${escapeHtml(footer.verified) || "Verified By"}</div>
-                <div>${escapeHtml(footer.approved) || "Approved By"}</div>
-                <div>${escapeHtml(footer.received) || "Received By"}</div>
-            </div>
-        </div>
+  const termsHtml = terms.length
+    ? `<div class="group"><div class="group-title">Terms</div>${terms
+        .map((t) => `<div class="muted">${escapeHtml(t.term)}</div>`)
+        .join("")}</div>`
+    : "";
+
+  // ── Signature strip ──
+  const signHtml = `
+  <div class="grn-sign">
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Prepared By</div>
     </div>
-</body>
-</html>`;
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Checked By</div>
+    </div>
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Approved By</div>
+    </div>
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Receiver's Name &amp; Signature</div>
+    </div>
+
+  </div>`;
+
+  const bodyHtml = `
+    ${detailsHtml}
+
+    <div class="group">
+      <div class="group-title">Items</div>
+      ${itemsHtml}
+    </div>
+
+    ${remarksHtml}
+    ${termsHtml}`;
+
+  // ── Shared footer (print date / user / report name) ──
+  const footerHtml = `
+  ${signHtml}
+
+  ${reportFooter({
+    reportName: REPORT_TITLE,
+    userName: loginId,
+    endLabel: "End of GRN",
+  })}
+`;
+  // ── Assemble the whole page using the same shell every other report uses ──
+  return buildReportDocument({
+    title: `${REPORT_TITLE} ${header.doc_no}`,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: GRN_EXTRA_CSS,
+    showPrintButton: true,
+  });
 }
 
-// ─── Excel builder ──────────────────────────────────────────────────────────
+// ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
 
 function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   const { rows, footer } = data;
@@ -872,7 +824,7 @@ export const getGrnPrintReport = async (req: RequestWithUser, res: Response): Pr
       return;
     }
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(data, params.loginid, params));
+    res.send(await renderHtml(data, params.loginid, params, req));
   } catch (error: any) {
     console.error("GRN Report HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate GRN report" });

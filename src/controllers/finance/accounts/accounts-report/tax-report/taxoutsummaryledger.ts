@@ -2,6 +2,10 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../../middleware/tenantContext.middleware";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../../common/report_common";
+import { RequestWithUser } from "../../../../../interfaces/common.interface";
+import { escapeHtml } from "../../../../purchase_sales/report/common/formatters";
+
 
 const money = (v: any) => {
   const n = Number(v);
@@ -20,10 +24,47 @@ const formatDateStr = (v: any) => {
 };
 
 const formatBalance = (value: number) => {
-  return value < 0
-    ? `(${money(Math.abs(value))})`
-    : money(value);
+  return value < 0 ? `(${money(Math.abs(value))})` : money(value);
 };
+
+/* ------------------------------------------------------------------ */
+/*  Extra CSS – only what is specific to this report                   */
+/* ------------------------------------------------------------------ */
+const EXTRA_CSS = `
+  .report-meta {
+    display: flex;
+    justify-content: flex-start;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+  }
+  .meta-table { border-collapse: collapse; }
+  .meta-table td { padding: 2px 8px 2px 0; vertical-align: top; font-size: 11px; }
+  .meta-label { font-weight: 700; color: #64748b; min-width: 70px; white-space: nowrap; }
+
+  table.data-table col.c1 { width: 15%; }
+  table.data-table col.c2 { width: 37%; }
+  table.data-table col.c3 { width: 16%; }
+  table.data-table col.c4 { width: 16%; }
+  table.data-table col.c5 { width: 16%; }
+
+  tr.data-row:nth-child(even) td { background: #f8fafc; }
+  tr.data-row:hover td { background: #eaf2fb; }
+
+  tr.grand-row td {
+    background: #d4e6f1;
+    font-weight: 700;
+    border-top: 2px solid #0b4ca1;
+    color: #1a3c6e;
+    font-size: 10.5px;
+  }
+
+  .num-mono { font-family: 'Courier New', monospace; white-space: nowrap; }
+
+  @media print {
+    tr.grand-row { page-break-inside: avoid; break-inside: avoid; }
+  }
+`;
 
 export const getTaxInvoiceSummaryReport = async (req: Request, res: Response): Promise<void> => {
   let connection;
@@ -85,7 +126,6 @@ export const getTaxInvoiceSummaryReport = async (req: Request, res: Response): P
     let totalInvAmount     = 0;
     let totalTaxableInvAmt = 0;
     let totalTaxAmount     = 0;
-
     let tableBodyHtml = "";
 
     rows.forEach((r) => {
@@ -99,238 +139,83 @@ export const getTaxInvoiceSummaryReport = async (req: Request, res: Response): P
 
       tableBodyHtml += `
         <tr class="data-row">
-          <td>${text(r.ac_code)}</td>
-          <td>${text(r.ac_name)}</td>
-          <td class="num">${formatBalance(invAmount)}</td>
-          <td class="num">${formatBalance(taxableInvAmt)}</td>
-          <td class="num">${formatBalance(taxAmount)}</td>
+          <td>${escapeHtml(r.ac_code)}</td>
+          <td>${escapeHtml(r.ac_name)}</td>
+          <td class="num num-mono">${formatBalance(invAmount)}</td>
+          <td class="num num-mono">${formatBalance(taxableInvAmt)}</td>
+          <td class="num num-mono">${formatBalance(taxAmount)}</td>
         </tr>`;
     });
 
-    // ── total row — 5 cols: 2 label + 3 numeric ──
     tableBodyHtml += `
       <tr class="grand-row">
-        <td colspan="2" style="text-align:right"><strong>Total :</strong></td>
-        <td class="num"><strong>${formatBalance(totalInvAmount)}</strong></td>
-        <td class="num"><strong>${formatBalance(totalTaxableInvAmt)}</strong></td>
-        <td class="num"><strong>${formatBalance(totalTaxAmount)}</strong></td>
+        <td colspan="2" class="right"><strong>Total :</strong></td>
+        <td class="num num-mono"><strong>${formatBalance(totalInvAmount)}</strong></td>
+        <td class="num num-mono"><strong>${formatBalance(totalTaxableInvAmt)}</strong></td>
+        <td class="num num-mono"><strong>${formatBalance(totalTaxAmount)}</strong></td>
       </tr>`;
 
-    const reportTitle  = `Tax Register Summary Report`;
-    const generatedBy  = text(loginid) || "Unknown User";
-    const reportDate   = formatDateStr(new Date());
+    const reportTitle = `Tax Register Summary Report`;
+    const generatedBy = text(loginid) || "Unknown User";
+    const reportDate  = formatDateStr(new Date());
 
-    const reportHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${reportTitle}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 11px;
-      background: #e5e7eb;
-      color: #111;
-      padding: 10px;
-    }
-    .page {
-      width: 200mm;
-      max-width: 200mm;
-      margin: 10px auto;
-      background: #fff;
-      padding: 14px 16px;
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    }
+    // ── Shared company header (logo + name + address from ms_company) ──
+    // company_code comes from code1, same slot the dynamic-SQL procedure uses
+    const companyHeaderHtml = await reportHeader({
+      company_code: text(code1),
+      req: req as RequestWithUser,
+    });
 
-    /* header */
-    .header {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      border-bottom: 2.5px solid #b8860b;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-    }
+    const headerHtml = `
+      ${companyHeaderHtml}
+      <div class="report-meta">
+        <table class="meta-table">
+          <tr><td class="meta-label">Title :</td><td><strong>${escapeHtml(reportTitle)}</strong></td></tr>
+          <tr><td class="meta-label">Date :</td><td>${escapeHtml(reportDate)}</td></tr>
+          <tr><td class="meta-label">User :</td><td>${escapeHtml(generatedBy)}</td></tr>
+          <tr><td class="meta-label">Report :</td><td>${escapeHtml(text(parameter))}</td></tr>
+          <tr><td class="meta-label">Currency :</td><td>OMR</td></tr>
+        </table>
+      </div>`;
 
-    .logo-block {
-      background: #1a5276;
-      padding: 8px 14px;
-      border-radius: 4px;
-      min-width: 150px;
-      text-align: center;
-    }
-    .logo-arabic { font-size: 12px; font-weight: 700; color: #f0c040; direction: rtl; }
-    .logo-name   { font-size: 18px; font-weight: 800; color: #f0c040; letter-spacing: 0.04em; }
-    .logo-sub    { font-size: 9px; letter-spacing: 0.18em; color: #cce0f5; margin-top: 2px; }
+    const bodyHtml = `
+      <table class="data-table">
+        <colgroup>
+          <col class="c1"/><col class="c2"/><col class="c3"/>
+          <col class="c4"/><col class="c5"/>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Ac Code</th>
+            <th>Ac Name</th>
+            <th class="num">Invoice<br/>Amount</th>
+            <th class="num">Taxable Invoice<br/>Amount</th>
+            <th class="num">Tax<br/>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${
+            tableBodyHtml ||
+            '<tr><td colspan="5" style="text-align:center;padding:36px 0;color:#888;">No records found for the selected criteria.</td></tr>'
+          }
+        </tbody>
+      </table>`;
 
-    .meta-block { flex: 1; }
-    .meta-block table { border-collapse: collapse; }
-    .meta-block td { padding: 1.5px 6px; font-size: 11px; vertical-align: top; }
-    .meta-block .lbl { font-weight: 700; color: #333; width: 72px; }
+    const footerHtml = reportFooter({
+      reportName: reportTitle,
+      userName: generatedBy,
+    });
 
-    .page-info { font-size: 10px; color: #555; white-space: nowrap; text-align: right; }
-
-    /* table */
-    table.rt {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 10.5px;
-    }
-    table.rt th {
-      background: #1a5276;
-      color: #fff;
-      font-weight: 600;
-      padding: 5px;
-      border: 1px solid #2471a3;
-      text-align: center;
-      line-height: 1.3;
-    }
-    table.rt td {
-      border: 1px solid #d5d8dc;
-      padding: 4px 6px;
-      vertical-align: middle;
-      word-break: break-word;
-      overflow-wrap: break-word;
-    }
-
-    tr.data-row td { background: #fff; }
-    tr.data-row:nth-child(even) td { background: #f8fafc; }
-    tr.data-row:hover td { background: #eaf2fb; }
-
-    tr.grand-row td {
-      background: #d4e6f1;
-      font-weight: 700;
-      border-top: 2px solid #1a5276;
-      color: #1a3c6e;
-      font-size: 10.5px;
-    }
-
-    .num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
-
-    /* 5 columns */
-    table.rt col.c1 { width: 15%; }
-    table.rt col.c2 { width: 37%; }
-    table.rt col.c3 { width: 16%; }
-    table.rt col.c4 { width: 16%; }
-    table.rt col.c5 { width: 16%; }
-
-    .summary-section {
-      margin-top: 14px;
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    .summary-table {
-      border-collapse: collapse;
-      min-width: 320px;
-    }
-
-    .summary-table td {
-      padding: 4px 10px;
-      font-size: 11px;
-      border: 1px solid #d5d8dc;
-    }
-
-    .summary-table .s-label {
-      font-weight: 700;
-      color: #374151;
-      text-align: right;
-      background: #eaf0fb;
-      white-space: nowrap;
-    }
-
-    .summary-table .s-value {
-      text-align: right;
-      font-family: 'Courier New', monospace;
-      font-weight: 700;
-      color: #1a3c6e;
-      background: #fff;
-      min-width: 110px;
-    }
-
-    .footer {
-      margin-top: 12px;
-      padding-top: 6px;
-      border-top: 1px solid #d5d8dc;
-      font-size: 10px;
-      color: #777;
-      text-align: center;
-    }
-    .no-print { margin-bottom: 10px; text-align: right; }
-    .btn {
-      padding: 7px 20px; background: #1a5276; color: #fff;
-      border: none; border-radius: 4px; font-size: 12px;
-      font-weight: 700; cursor: pointer;
-    }
-    .btn:hover { background: #154360; }
-
-    @media print {
-      body { background: #fff; padding: 0; }
-      .page { box-shadow: none; margin: 0; border-radius: 0; }
-      .no-print { display: none; }
-      thead { display: table-header-group; }
-      tr { page-break-inside: avoid; break-inside: avoid; }
-      tr.grand-row { page-break-inside: avoid; break-inside: avoid; }
-    }
-  </style>
-</head>
-<body>
-
-<div class="no-print">
-  <button class="btn" onclick="window.print()">Print / Save PDF</button>
-</div>
-
-<div class="page">
-  <div class="header">
-    <div class="logo-block">
-      <div class="logo-arabic">المدينة اللوجستية</div>
-      <div class="logo-name">al madina</div>
-      <div class="logo-sub">L O G I S T I C S</div>
-    </div>
-    <div class="meta-block">
-      <table>
-        <tr><td class="lbl">Title :</td><td>${reportTitle}</td></tr>
-        <tr><td class="lbl">Date :</td><td>${reportDate}</td></tr>
-        <tr><td class="lbl">User :</td><td>${generatedBy}</td></tr>
-        <tr><td class="lbl">Report :</td><td>${text(parameter)}</td></tr>
-        <tr><td class="lbl">Currency :</td><td>OMR</td></tr>
-      </table>
-    </div>
-    <div class="page-info">Page 1 of 1</div>
-  </div>
-
-  <table class="rt">
-    <colgroup>
-      <col class="c1"/><col class="c2"/><col class="c3"/>
-      <col class="c4"/><col class="c5"/>
-    </colgroup>
-    <thead>
-      <tr>
-        <th>Ac Code</th>
-        <th>Ac Name</th>
-        <th class="num">Invoice<br/>Amount</th>
-        <th class="num">Taxable Invoice<br/>Amount</th>
-        <th class="num">Tax<br/>Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${tableBodyHtml || '<tr><td colspan="5" style="text-align:center;padding:36px 0;color:#888;">No records found for the selected criteria.</td></tr>'}
-    </tbody>
-  </table>
-
-  <div class="footer">Generated by ${generatedBy} &bull; ${reportDate}</div>
-</div>
-
-</body>
-</html>`;
+    const reportHtml = buildReportDocument({
+      title: reportTitle,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: EXTRA_CSS,
+    });
 
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(reportHtml);
-
   } catch (error: any) {
     console.error("Tax Invoice Summary Report Error:", error);
     res.status(500).json({
