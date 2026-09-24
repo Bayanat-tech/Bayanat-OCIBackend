@@ -257,6 +257,17 @@ const GRN_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
+  /* Report title shown inside the body (same look as the other reports) */
+  .grn-report-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0b4ca1;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 2px 0 8px 0;
+  }
+
   .grn-two-col { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
   .grn-two-col > tbody > tr > td { border: 0; padding: 0; vertical-align: top; width: 50%; }
   .grn-two-col > tbody > tr > td:first-child { padding-right: 10px; }
@@ -461,7 +472,10 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
 
   </div>`;
 
+  // ── Body: report title first, then details / items / remarks / terms ──
   const bodyHtml = `
+    <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
+
     ${detailsHtml}
 
     <div class="group">
