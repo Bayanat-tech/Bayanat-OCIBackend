@@ -219,7 +219,14 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 // ─── Report-only CSS (document layout — not shared, same convention as the ───
 // ─── P&L and finance-doc reports)                                          ───
 
+// ★ FIX: report needs to print/preview in landscape — this table has 11
+//   columns and was cramped in portrait. `@page { size: A4 landscape; }`
+//   controls the actual print/PDF page orientation (same pattern used by
+//   the DN Summary report). Scoped margins kept tight since the table is
+//   wide relative to page width.
 const VISA_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 10mm 12mm; }
+
   .doc-title-row {
     display: flex;
     justify-content: space-between;
