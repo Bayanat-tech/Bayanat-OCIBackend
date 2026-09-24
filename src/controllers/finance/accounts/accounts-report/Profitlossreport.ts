@@ -157,13 +157,7 @@ function parseCommon(req: RequestWithUser) {
   return { companyCode, fromDate, toDate, divisionCode };
 }
 
-// ─── Level-1 SQL ──────────────────────────────────────────────────────────────
-// FIXES APPLIED:
-//   1. String concatenation -> bind parameters (was vulnerable to SQL injection)
-//   2. d.doc_date < TO_DATE(:toDate) -> < TO_DATE(:toDate) + 1 (inclusive range;
-//      previously fromDate === toDate always produced zero rows)
-//   3. d.cancelled <> 'Y' -> NVL(d.cancelled,'N') <> 'Y' (rows with NULL
-//      cancelled were silently excluded, since NULL <> 'Y' evaluates to NULL/false)
+// ─── Level-1 SQL (unchanged) ────────────────────────────────────────────────
 
 async function loadPnlRows(
   conn: oracledb.Connection,
@@ -236,25 +230,41 @@ async function loadPnlRows(
 // ─── HTML body (report_common) ────────────────────────────────────────────────
 
 /**
- * P&L-only CSS. Only truly report-specific rules live here — anything
- * COMMON_REPORT_CSS already provides (padding, font-size, bold weight,
- * alignment) is reused via shared classes (.strong, .group-title, .num,
- * .center, .muted) directly in the markup below instead of being redefined.
+ * P&L CSS — body table now uses the SAME format as the P&L sublevel (L2/L3)
+ * drilldown tables:
+ *
+ *   <table class="data-table ledger-table">
+ *     <thead>  column headings (left / num alignment, fixed widths)
+ *     <tbody>  section-row / ac-header (group) / data-row / subtotal-row / total-row
+ *     <tfoot>  grand-total-row  (NET PROFIT / LOSS)
+ *   </table>
+ *
+ * Class names and colors are taken straight from DRILLDOWN_EXTRA_CSS so the
+ * three levels look identical. Bold comes from the shared .strong class in
+ * report_common; left-align is defined here because report_common has no
+ * .left utility (only .right/.center/.num).
  */
 const PNL_EXTRA_CSS = `
   .doc-title-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
     margin: 4px 0 10px 0;
   }
   .doc-title-row h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 800;
     color: #0b4ca1;
+    flex: 1 1 auto;
+    min-width: 0;
+    word-wrap: break-word;
   }
   .doc-title-row .doc-meta {
+    flex: 0 0 auto;
+    white-space: nowrap;
     text-align: right;
     font-size: 10.5px;
     color: #475569;
@@ -275,39 +285,61 @@ const PNL_EXTRA_CSS = `
     margin-bottom: 8px;
   }
 
-  table.pnl-table { margin-top: 4px; }
-  table.pnl-table col.c0 { width: 18%; }
-  table.pnl-table col.c1 { width: 62%; }
-  table.pnl-table col.c2 { width: 20%; }
+  /* report_common has no left-align utility — only .right/.center/.num */
+  table.data-table.ledger-table th.left,
+  table.data-table.ledger-table td.left { text-align: left; }
+  table.data-table td.code { font-family: "Courier New", monospace; font-size: 10px; }
 
-  /* Section banner (INCOME / EXPENSES) — the one genuinely unique color in this table */
-  table.pnl-table tr.section-row td {
+  /* Section banner (INCOME / EXPENSES) — the one blue banner row in the body */
+  table.data-table tr.section-row td {
     background: #0b4ca1;
     color: #fff;
     letter-spacing: .04em;
+    border-top: 2px solid #0b4ca1;
     border-bottom: 0;
   }
 
-  /* Hierarchy indentation only — font-size/padding/weight come from .group-title / td defaults */
-  table.pnl-table tbody tr.data-row td { padding-left: 24px; }
-
-  /* Totals reuse the shared .strong + .num classes; only the separating borders are report-specific */
-  table.pnl-table tr.group-total td { border-top: 1px solid #cbd5e1; }
-  table.pnl-table tr.section-total td {
-    border-top: 1px solid #475569;
+  /* Group heading row — same look as the L3 "ac-header" row */
+  table.data-table tr.ac-header td {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-top: 2px solid #475569;
     border-bottom: 1px solid #475569;
   }
 
-  /* Net profit/loss banner — unique large blue block, everything else reuses .strong/.num */
-  table.pnl-table tr.net-row td {
-    font-size: 12.5px;
-    padding: 9px 6px;
-    background: #0b4ca1;
-    color: #fff;
-    border: 0;
+  /* Group total / section total — same as L3 subtotal / closing rows */
+  table.data-table tr.subtotal-row td { border-top: 1px solid #475569; }
+  table.data-table tr.closing-row td {
+    border-top: 1px solid #475569;
+    background: #f8fafc;
+  }
+  table.data-table tr.total-row td {
+    background: #f1f5f9;
+    border-top: 2px solid #475569;
   }
 
-  table.pnl-table tr.data-row:hover td { background: #f0f9f5; cursor: pointer; }
+  /* NET PROFIT / LOSS — lives in <tfoot>, same as L3 grand-total-row */
+  table.data-table tr.grand-total-row td {
+    font-size: 11px;
+    color: #fff;
+    background: #0b4ca1;
+    border-top: 2px solid #0b4ca1;
+    border-bottom: 2px solid #0b4ca1;
+  }
+
+  table.data-table tr.data-row:hover td { background: #f0f9f5; cursor: pointer; }
+  .balance-neg { color: #b91c1c; }
+
+  /* ── Print: headings must not be stranded at the bottom of a page ── */
+  @media print {
+    table.data-table tr.section-row,
+    table.data-table tr.ac-header {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    table.data-table thead { display: table-header-group; }
+    table.data-table tfoot { display: table-footer-group; }
+  }
 `;
 
 function renderPnlBody(
@@ -354,38 +386,38 @@ function renderPnlBody(
     })();
   </script>`;
 
+  // Renders the <tbody> rows for one section (INCOME or EXPENSES)
   function renderSection(
     sectionGroups: GroupedHeader[],
     sectionLabel: string,
     sectionTotal: number
   ): string {
     let html = "";
-    // .strong is the shared bold-text class from report_common
+
     html += `<tr class="section-row"><td colspan="3" class="strong">${escapeHtml(sectionLabel)}</td></tr>`;
 
     for (const g of sectionGroups) {
-      // .group-title is the shared group-header style (bg, padding, weight) from report_common
-      html += `<tr><td colspan="3" class="group-title">${escapeHtml(g.h_name)}</td></tr>`;
+      html += `<tr class="ac-header"><td colspan="3" class="strong">${escapeHtml(g.h_name)}</td></tr>`;
 
       for (const r of g.rows) {
         html +=
           `<tr class="data-row" data-plcode="${escapeHtml(r.pl_code)}">` +
-          `<td>${escapeHtml(r.pl_code)}</td>` +
-          `<td>${escapeHtml(r.pl_name)}</td>` +
+          `<td class="center code">${escapeHtml(r.pl_code)}</td>` +
+          `<td class="left">${escapeHtml(r.pl_name)}</td>` +
           `<td class="num">${escapeHtml(fmtNumber(amount(r.lcur_amount)))}</td>` +
           `</tr>`;
       }
 
       html +=
-        `<tr class="group-total">` +
-        `<td colspan="2" class="strong">Total ${escapeHtml(g.h_name)}</td>` +
+        `<tr class="subtotal-row">` +
+        `<td colspan="2" class="right strong" style="padding-right:12px">Total ${escapeHtml(g.h_name)} :</td>` +
         `<td class="num strong">${escapeHtml(fmtNumber(g.total))}</td>` +
         `</tr>`;
     }
 
     html +=
-      `<tr class="section-total">` +
-      `<td colspan="2" class="strong">TOTAL ${escapeHtml(sectionLabel)}</td>` +
+      `<tr class="total-row">` +
+      `<td colspan="2" class="right strong" style="padding-right:12px">TOTAL ${escapeHtml(sectionLabel)} :</td>` +
       `<td class="num strong">${escapeHtml(fmtNumber(sectionTotal))}</td>` +
       `</tr>`;
 
@@ -396,15 +428,15 @@ function renderPnlBody(
   if (income.length) bodyRows += renderSection(income, "INCOME", totalIncome);
   if (expense.length) bodyRows += renderSection(expense, "EXPENSES", totalExpense);
 
-  const netRow =
-    `<tr class="net-row">` +
-    `<td colspan="2" class="strong">NET ${net >= 0 ? "PROFIT" : "LOSS"}</td>` +
+  // NET row goes into <tfoot> — same pattern as L3's grand-total-row
+  const netFootRow =
+    `<tr class="grand-total-row">` +
+    `<td colspan="2" class="strong" style="padding-left:12px">NET ${net >= 0 ? "PROFIT" : "LOSS"} :</td>` +
     `<td class="num strong">${escapeHtml(fmtNumber(Math.abs(net)))}</td>` +
     `</tr>`;
 
-  // NOTE: "Printed" date/time is intentionally NOT shown here anymore — the
-  // shared report footer (reportFooter, below) already prints it, so this
-  // meta block only needs Period + Division.
+  // NOTE: "Printed" date/time is not shown here — the shared report footer
+  // (reportFooter) already prints it.
   return `
     <div class="doc-title-row">
       <h1>Profit &amp; Loss Report</h1>
@@ -421,25 +453,26 @@ function renderPnlBody(
       Click any row to drill down to account detail
     </div>
 
-    <table class="data-table pnl-table">
-      <colgroup><col class="c0"/><col class="c1"/><col class="c2"/></colgroup>
+    <table class="data-table ledger-table">
       <thead>
         <tr>
-          <th>Code</th>
-          <th>Description</th>
-          <th class="num">Amount (OMR)</th>
+          <th style="width:120px">Code</th>
+          <th class="left">Description</th>
+          <th class="num" style="width:150px">Amount (OMR)</th>
         </tr>
       </thead>
       <tbody>
         ${bodyRows || '<tr><td colspan="3" class="center muted">No records found for the selected criteria.</td></tr>'}
-        ${netRow}
       </tbody>
+      <tfoot>
+        ${netFootRow}
+      </tfoot>
     </table>
     ${drillScript}
   `;
 }
 
-// ─── Excel builder ────────────────────────────────────────────────────────────
+// ─── Excel builder (unchanged) ─────────────────────────────────────────────
 
 function buildPnlExcel(
   groups: GroupedHeader[],
@@ -614,7 +647,7 @@ function buildPnlExcel(
   return buildXlsxZip(sheetXml, stylesXml, "Profit & Loss");
 }
 
-// ─── XLSX zip builder ─────────────────────────────────────────────────────────
+// ─── XLSX zip builder (unchanged) ──────────────────────────────────────────
 
 function buildXlsxZip(sheetXml: string, stylesXml: string, sheetName: string): Buffer {
   const safe = sheetName.replace(/[\\/?*[\]]/g, "_").substring(0, 31);
@@ -655,7 +688,7 @@ function buildXlsxZip(sheetXml: string, stylesXml: string, sheetName: string): B
   return zip.toBuffer();
 }
 
-// ─── Response helpers ─────────────────────────────────────────────────────────
+// ─── Response helpers (unchanged) ──────────────────────────────────────────
 
 function sendExcel(res: Response, buffer: Buffer, filename: string) {
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
