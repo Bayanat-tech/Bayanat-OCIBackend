@@ -22,11 +22,17 @@ import {
   exportPendingPOReportExcel,
 } from "../../controllers/wms/reports/pendingPurchaseOrderReport.controller";
 import { exportSalesDocReportExcel, getSalesDocReportHtml } from "../../controllers/purchase_sales/report/controller";
+import { insertQuotationComparison } from "../../controllers/purchase_sales/insertQuotationComparison";
 
 const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
+
+router.post(
+  "/insertQuotationComparison",
+  insertQuotationComparison
+);
 router.post(
   "/insUpdTtePOrderBulk",
   insUpdTtePOrderBulk
@@ -98,6 +104,7 @@ router.post(
   "/reports/pending-po/excel",
   exportPendingPOReportExcel
 );
+
 
 router.post("/reports/sales/:reportType",       getSalesDocReportHtml);
 router.post("/reports/sales/:reportType/excel", exportSalesDocReportExcel);
