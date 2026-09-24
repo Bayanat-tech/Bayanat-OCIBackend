@@ -219,7 +219,14 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 // ─── Report-only CSS (document layout — not shared, same convention as the ───
 // ─── P&L and finance-doc reports)                                          ───
 
+// ★ FIX: report needs to print/preview in landscape — this table has 11
+//   columns and was cramped in portrait. `@page { size: A4 landscape; }`
+//   controls the actual print/PDF page orientation (same pattern used by
+//   the DN Summary report). Scoped margins kept tight since the table is
+//   wide relative to page width.
 const VISA_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 10mm 12mm; }
+
   .doc-title-row {
     display: flex;
     justify-content: space-between;
@@ -282,8 +289,6 @@ const VISA_EXTRA_CSS = `
 `;
 
 function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
-    const reportDate = formatDateStr(new Date());
-
     let totalExpired  = 0;
     let totalExpiring = 0;
     let totalValid    = 0;
@@ -320,7 +325,6 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
         <div><b>Division:</b> ${escapeHtml(params.division) || "All"}</div>
         <div><b>Department:</b> ${escapeHtml(params.department) || "All"}</div>
         <div><b>Emp. Type:</b> ${params.emp_type === "A" ? "Active Employees" : "All Employees"}</div>
-        <div><b>Printed:</b> ${escapeHtml(reportDate)}</div>
       </div>
     </div>
 
