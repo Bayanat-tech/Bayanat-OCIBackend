@@ -389,10 +389,7 @@ function printMetaHtml(title: string, subtitle: string, printDateTime: string, l
         <h1>${escapeHtml(title)}</h1>
         <div class="doc-sub">${escapeHtml(subtitle)}</div>
       </div>
-      <div class="print-meta">
-        <div>Print Date: ${escapeHtml(printDateTime)}</div>
-        <div>Print User: ${escapeHtml(loginId)}</div>
-      </div>
+     
     </div>`;
 }
 

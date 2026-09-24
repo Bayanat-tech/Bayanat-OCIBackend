@@ -201,6 +201,7 @@ const REPORT_SUBTITLE = "Order Register";
 
 /** PO Register-only layout CSS (shared header/footer/table CSS comes from report_common) */
 const PO_REGISTER_EXTRA_CSS = `
+    @page { size: A4 landscape; margin: 12mm; }
   .doc-title-row {
     display: flex;
     justify-content: space-between;
