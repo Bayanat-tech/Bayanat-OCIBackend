@@ -6,6 +6,11 @@ import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
+// ─── Shared report shell (header / footer / css / document wrapper) ───────
+// NOTE: adjust this relative path to wherever ReportCommon.ts actually lives
+// in your project (it's the file that exports reportHeader / reportFooter /
+// buildReportDocument / COMMON_REPORT_CSS).
+
 // ─── Types ────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
@@ -227,231 +232,285 @@ function computeTotals(rows: ReportRow[]) {
   return { totalPQty, totalLQty, totalQty };
 }
 
-// ─── Layout CSS — same visual system as PO Order Register / Sales Invoice,
-//     plus the GRN's table-based label:value alignment and signature row ──
+// ─── HTML renderer (built entirely on the shared report shell) ────────────
 
 const REPORT_TITLE = "Goods Receipt Note";
-const REPORT_SUBTITLE = "GRN Document";
 
-const GRN_EXTRA_CSS = `
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-  }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-  }
-  .status-badge {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    vertical-align: middle;
-  }
-  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-
-  /* Info blocks: real <table> rows so label/colon/value always align */
-  .info-grid { display: table; table-layout: fixed; width: 100%; margin-bottom: 14px; border-spacing: 16px 0; }
-  .info-grid-row { display: table-row; }
-  .info-block-cell { display: table-cell; width: 50%; vertical-align: top; }
-  .info-block { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; background: #f8fafc; height: 100%; }
-  .info-block .label {
-    font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: #64748b; font-weight: 700; margin: 0 0 8px 0;
-    border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;
-  }
-  .info-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .info-table td { padding: 2px 0; vertical-align: top; line-height: 1.7; }
-  .info-label { width: 92px; color: #64748b; font-weight: 500; white-space: nowrap; }
-  .info-colon { width: 10px; color: #64748b; padding: 0 4px !important; }
-  .info-value { color: #0f172a; font-weight: 500; word-break: break-word; }
-  .info-value strong { color: #0b4ca1; }
-
-  .c-sno   { width: 40px; text-align: center; }
-  .c-desc  { width: auto; white-space: normal; }
-  .c-uom   { width: 40px; }
-  .c-qty   { width: 85px; }
-
-  .totals-box {
-    margin-top: 14px;
-    margin-left: auto;
-    width: 300px;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .totals-box .row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 14px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-top: none;
-    font-size: 12px;
-  }
-  .totals-box .row:first-child { border-top: 1px solid #e2e8f0; border-radius: 10px 10px 0 0; }
-  .totals-box .row.grand {
-    background: #0b4ca1;
-    color: #fff;
-    font-weight: 700;
-    font-size: 13px;
-    border: none;
-    border-radius: 0 0 10px 10px;
-  }
-
-  .remarks-box { margin-top: 14px; font-size: 12px; }
-  .remarks-box .label { font-weight: 600; margin-right: 4px; color: #374151; }
-  .terms-section { margin-top: 8px; font-size: 11px; color: #64748b; }
-  .term-line { margin-bottom: 2px; }
-
-  .footer-sign { display: flex; justify-content: space-between; text-align: center; font-size: 11px; color: #64748b; margin-top: 24px; }
-  .footer-sign div { border-top: 1px solid #cbd5e1; padding-top: 6px; width: 20%; }
-`;
-
-function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string, cancelled: boolean): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}${cancelled ? `<span class="status-badge status-CANCELLED">Cancelled</span>` : ""}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-     
-    </div>`;
-}
-
-// Renders a label:value pair as a <table> row (not CSS grid) — this is the
-// most reliably-aligned approach across Chrome print/PDF renderers.
-function infoRow(label: string, value: string, boldValue = false): string {
+// A key/value line rendered as a <tr> inside a .data-table so it inherits
+// the exact same borders/spacing/font as every other report on the shared
+// shell — no bespoke "info-table" CSS needed anymore.
+function kvRow(label: string, value: string, strongValue = false): string {
   const v = escapeHtml(value) || "&nbsp;";
   return `<tr>
-        <td class="info-label">${escapeHtml(label)}</td>
-        <td class="info-colon">:</td>
-        <td class="info-value">${boldValue ? `<strong>${v}</strong>` : v}</td>
+        <td class="muted" style="width:100px;white-space:nowrap;">${escapeHtml(label)}</td>
+        <td style="width:12px;">:</td>
+        <td class="${strongValue ? "strong" : ""}">${v}</td>
       </tr>`;
 }
 
-// ─── Body ───────────────────────────────────────────────────────────────────
+// A couple of small, purely layout-level rules (two-column split, status chip)
+// that the shared CSS doesn't define. Everything else (fonts, colors, table
+// borders, header, footer, print rules) comes straight from COMMON_REPORT_CSS.
+const GRN_EXTRA_CSS = `
+  /* Force print / PDF engines to keep background colors (fixes grey
+     "Total Quantity" row losing its blue background on print/PDF). */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 
-function renderGrnBody(data: GrnData, loginId: string): string {
+  /* Report title shown inside the body (same look as the other reports) */
+  .grn-report-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0b4ca1;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 2px 0 8px 0;
+  }
+
+  .grn-two-col { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
+  .grn-two-col > tbody > tr > td { border: 0; padding: 0; vertical-align: top; width: 50%; }
+  .grn-two-col > tbody > tr > td:first-child { padding-right: 10px; }
+  .grn-two-col > tbody > tr > td:last-child { padding-left: 10px; }
+  .grn-status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; background: #fee2e2; color: #dc2626; margin-top: 4px; }
+
+  .grn-totals { width: 260px; margin-left: auto; margin-top: 10px; border-collapse: collapse; }
+  .grn-totals td { padding: 5px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; }
+  .grn-totals tr.grand td { background: #0b4ca1 !important; color: #fff !important; font-weight: 800; font-size: 12px; border-bottom: none; }
+
+  /* ── Items table: fixed layout with widths pinned per column via
+     nth-child (more reliable across HTML→PDF renderers than <colgroup>). ── */
+  .grn-items-table { table-layout: fixed; width: 100%; }
+
+  .grn-items-table th:nth-child(1),
+  .grn-items-table td:nth-child(1) { width: 36px; white-space: nowrap; }
+
+  .grn-items-table th:nth-child(2),
+  .grn-items-table td:nth-child(2) {
+    width: auto;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .grn-items-table th:nth-child(3),
+  .grn-items-table td:nth-child(3) { width: 50px; }
+
+  .grn-items-table th:nth-child(4),
+  .grn-items-table td:nth-child(4) { width: 80px; text-align: right; }
+
+  .grn-items-table th:nth-child(5),
+  .grn-items-table td:nth-child(5) { width: 50px; }
+
+  .grn-items-table th:nth-child(6),
+  .grn-items-table td:nth-child(6) { width: 80px; text-align: right; }
+
+  .grn-items-table th:nth-child(7),
+  .grn-items-table td:nth-child(7) { width: 95px; text-align: right; }
+
+  .grn-sign {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 22px;
+    text-align: center;
+    page-break-inside: avoid;
+    font-size: 10px;
+  }
+
+  .sign-box {
+    width: 23%;
+    min-height: 70px;
+  }
+
+  .sign-space {
+    height: 32px;
+  }
+
+  .sign-line {
+    width: 100%;
+    border-top: 1px solid #64748b;
+    margin-bottom: 6px;
+  }
+
+  .sign-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  .sign-name {
+    font-size: 9px;
+    color: #64748b;
+    margin-top: 3px;
+  }
+`;
+
+async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
   const { rows, terms, footer } = data;
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
   const header = buildHeader(rows);
   const totals = computeTotals(rows);
 
   const contactMobile = [header.dlvr_contact, header.dlvr_mobile || header.mobile_no].filter((v) => v).join(" / ");
   const emailToShow = header.dlvr_email || header.e_mail;
 
-  const bodyRows = rows
-    .map(
-      (r, i) => `
+  // ── Shared company header (logo + name + address), same as every other report ──
+  const headerHtml = await reportHeader({ company_code: p.company_code, req });
+
+  // ── Party / GRN details, two data-tables side by side ──
+  const detailsHtml = `
+    <table class="grn-two-col">
+      <tbody>
         <tr>
-          <td class="c-sno">${i + 1}</td>
-          <td class="c-desc">${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-          <td class="c-uom">${escapeHtml(r.p_uom)}</td>
-          <td class="c-qty right">${qtyFmt(r.qty_puom)}</td>
-          <td class="c-uom">${escapeHtml(r.l_uom)}</td>
-          <td class="c-qty right">${qtyFmt(r.qty_luom)}</td>
-          <td class="c-qty right amount">${qtyFmt(r.quantity)}</td>
-        </tr>`
-    )
-    .join("");
-
-  const termsHtml = terms.map((t) => `<div class="term-line">${escapeHtml(t.term)}</div>`).join("");
-
-  return `
-    ${printMetaHtml(REPORT_TITLE, `${REPORT_SUBTITLE} — ${header.div_name}`, printDateTime, loginId, header.cancelled)}
-
-    <div class="info-grid">
-      <div class="info-grid-row">
-        <div class="info-block-cell">
-          <div class="info-block">
-            <div class="label">To</div>
-            <table class="info-table">
-              ${infoRow("Name", header.party_name, true)}
-              ${infoRow("Address", header.party_address)}
-              ${infoRow("Tel", header.party_phone)}
-              ${infoRow("Fax", header.party_fax)}
+          <td>
+            <div class="group-title">To</div>
+            <table class="data-table">
+              ${kvRow("Name", header.party_name, true)}
+              ${kvRow("Address", header.party_address)}
+              ${kvRow("Tel", header.party_phone)}
+              ${kvRow("Fax", header.party_fax)}
             </table>
-          </div>
-        </div>
-        <div class="info-block-cell">
-          <div class="info-block">
-            <div class="label">GRN Details</div>
-            <table class="info-table">
-              ${infoRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
-              ${infoRow("Date", dateText(header.doc_date))}
-              ${infoRow("A/C Code", header.ac_code)}
-              ${infoRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
-              ${infoRow("Deliver To", header.delivery_to)}
-              ${infoRow("Contact", contactMobile)}
-              ${infoRow("Email", emailToShow)}
-              ${infoRow("Delivery Term", header.dlvr_term)}
+          </td>
+          <td>
+            <div class="group-title">GRN Details</div>
+            <table class="data-table">
+              ${kvRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
+              ${kvRow("Date", dateText(header.doc_date))}
+              ${kvRow("A/C Code", header.ac_code)}
+              ${kvRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
+              ${kvRow("Deliver To", header.delivery_to)}
+              ${kvRow("Contact", contactMobile)}
+              ${kvRow("Email", emailToShow)}
+              ${kvRow("Delivery Term", header.dlvr_term)}
             </table>
-          </div>
-        </div>
-      </div>
-    </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
 
-    ${
-      rows.length === 0
-        ? `<div class="empty">No line items found for this GRN.</div>`
-        : `
-      <table class="data-table">
+  // ── Line items, using the shared data-table look exactly like every other report ──
+  let itemsHtml: string;
+  if (!rows.length) {
+    itemsHtml = `<div class="empty">No line items found for this GRN.</div>`;
+  } else {
+    let bodyRows = "";
+    rows.forEach((r, i) => {
+      bodyRows += `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td class="center">${escapeHtml(r.p_uom)}</td>
+          <td class="num">${qtyFmt(r.qty_puom)}</td>
+          <td class="center">${escapeHtml(r.l_uom)}</td>
+          <td class="num">${qtyFmt(r.qty_luom)}</td>
+          <td class="num strong">${qtyFmt(r.quantity)}</td>
+        </tr>`;
+    });
+
+    itemsHtml = `
+      <table class="data-table grn-items-table">
         <thead>
           <tr>
-            <th class="c-sno">S.No.</th>
-            <th class="c-desc">Product / Description</th>
-            <th class="c-uom">PUOM</th>
-            <th class="c-qty right">P. Qty</th>
-            <th class="c-uom">LUOM</th>
-            <th class="c-qty right">L. Qty</th>
-            <th class="c-qty right">Qty in LUOM</th>
+            <th>S.No.</th>
+            <th style="text-align:left;">Product / Description</th>
+            <th>PUOM</th>
+            <th>P. Qty</th>
+            <th>LUOM</th>
+            <th>L. Qty</th>
+            <th>Qty in LUOM</th>
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
       </table>
+      <table class="grn-totals">
+        <tbody>
+          <tr><td>Total P. Qty</td><td class="num">${qtyFmt(totals.totalPQty)}</td></tr>
+          <tr><td>Total L. Qty</td><td class="num">${qtyFmt(totals.totalLQty)}</td></tr>
+          <tr class="grand"><td>Total Quantity</td><td class="num">${qtyFmt(totals.totalQty)}</td></tr>
+        </tbody>
+      </table>`;
+  }
 
-      <div class="totals-box">
-        <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
-        <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
-        <div class="row grand"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
-      </div>`
-    }
+  // ── Remarks / terms ──
+  const remarksHtml = header.remarks
+    ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>`
+    : "";
 
-    ${header.remarks ? `<div class="remarks-box"><span class="label">Remarks:</span>${escapeHtml(header.remarks)}</div>` : ""}
+  const termsHtml = terms.length
+    ? `<div class="group"><div class="group-title">Terms</div>${terms
+        .map((t) => `<div class="muted">${escapeHtml(t.term)}</div>`)
+        .join("")}</div>`
+    : "";
 
-    ${termsHtml ? `<div class="terms-section">${termsHtml}</div>` : ""}
+  // ── Signature strip ──
+  const signHtml = `
+  <div class="grn-sign">
 
-    <div class="footer-sign">
-      <div>${escapeHtml(footer.prepared) || "Prepared By"}</div>
-      <div>${escapeHtml(footer.verified) || "Verified By"}</div>
-      <div>${escapeHtml(footer.approved) || "Approved By"}</div>
-      <div>${escapeHtml(footer.received) || "Received By"}</div>
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Prepared By</div>
     </div>
-  `;
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Checked By</div>
+    </div>
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Approved By</div>
+    </div>
+
+    <div class="sign-box">
+      <div class="sign-space"></div>
+      <div class="sign-line"></div>
+      <div class="sign-label">Receiver's Name &amp; Signature</div>
+    </div>
+
+  </div>`;
+
+  // ── Body: report title first, then details / items / remarks / terms ──
+  const bodyHtml = `
+    <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
+
+    ${detailsHtml}
+
+    <div class="group">
+      <div class="group-title">Items</div>
+      ${itemsHtml}
+    </div>
+
+    ${remarksHtml}
+    ${termsHtml}`;
+
+  // ── Shared footer (print date / user / report name) ──
+  const footerHtml = `
+  ${signHtml}
+
+  ${reportFooter({
+    reportName: REPORT_TITLE,
+    userName: loginId,
+    endLabel: "End of GRN",
+  })}
+`;
+  // ── Assemble the whole page using the same shell every other report uses ──
+  return buildReportDocument({
+    title: `${REPORT_TITLE} ${header.doc_no}`,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: GRN_EXTRA_CSS,
+    showPrintButton: true,
+  });
 }
 
-// ─── Excel builder ──────────────────────────────────────────────────────────
+// ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
 
 function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   const { rows } = data;
@@ -805,7 +864,7 @@ export const getGrnPrintReport = async (req: RequestWithUser, res: Response): Pr
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(html);
+    res.send(await renderHtml(data, params.loginid, params, req));
   } catch (error: any) {
     console.error("GRN Report HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate GRN report" });

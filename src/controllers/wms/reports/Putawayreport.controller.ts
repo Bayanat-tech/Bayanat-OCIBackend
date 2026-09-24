@@ -4,6 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
+
+// ─── Shared report building blocks ─────────────────────────────────────────
+// Adjust this import path to wherever reportHeader / reportFooter /
+// buildReportDocument actually live in your project.
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,6 +89,12 @@ function numFmt(value: unknown, decimals = 3): string {
   });
 }
 
+/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
+function withPostMessagePrintListener(html: string): string {
+  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
+  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
+}
+
 // ─── Data loader ──────────────────────────────────────────────────────────────
 
 async function loadTallyData(
@@ -159,49 +171,157 @@ function groupRows(rows: ReportRow[]): UserGroup[] {
   }));
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+// ─── Extra CSS specific to this report ─────────────────────────────────────
+// Landscape A4 + the grouped user/product table + info panel + signature
+// strip. The shared COMMON_REPORT_CSS ships a portrait @page and a generic
+// .data-table — this report overrides both for its own layout.
 
-function renderHtml(
+const TALLY_PUTAWAY_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 10mm 12mm; }
+  .paper { max-width: 277mm; }
+
+  /* ── Info panel ── */
+  .info-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border: 1px solid #c4cdd9;
+    border-radius: 3px;
+    margin-bottom: 12px;
+    font-size: 10.5px;
+  }
+  .info-col { padding: 10px 14px; border-right: 1px solid #c4cdd9; }
+  .info-col:last-child { border-right: none; }
+  .info-row { display: flex; align-items: baseline; padding: 3px 0; border-bottom: 1px solid #f1f5f9; }
+  .info-row:last-child { border-bottom: none; }
+  .info-label {
+    min-width: 100px; flex-shrink: 0; font-size: 9.5px; color: #6b7280;
+    font-weight: 600; text-align: right; padding-right: 8px; white-space: nowrap;
+  }
+  .info-value { font-size: 10.5px; font-weight: 700; color: #111827; }
+  .info-value.nil { font-weight: 400; color: #9ca3af; }
+
+  .time-col { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .time-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .time-box { border: 1px dashed #94a3b8; border-radius: 3px; padding: 7px 10px; text-align: center; }
+  .time-box-label {
+    font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase;
+    letter-spacing: .05em; margin-bottom: 4px;
+  }
+  .time-box-value { font-size: 13px; font-weight: 700; color: #1e3a5f; font-variant-numeric: tabular-nums; }
+  .time-box.total { grid-column: 1 / -1; border-color: #1e3a5f; background: #f0f4f9; }
+  .time-box.total .time-box-label { color: #1e3a5f; }
+
+  /* ── Grouped data table ── */
+  table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+  col.c0  { width: 7%;  } col.c1  { width: 9%;  } col.c2  { width: 9%;  }
+  col.c3  { width: 9%;  } col.c4  { width: 9%;  } col.c5  { width: 6%;  }
+  col.c6  { width: 11%; } col.c7  { width: 9%;  } col.c8  { width: 5%;  }
+  col.c9  { width: 9%;  } col.c10 { width: 5%;  }
+
+  thead tr.th-group th {
+    background: #1e3a5f; color: #fff; font-weight: 700;
+    font-size: 10px; padding: 6px 10px; text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+  }
+  thead tr.th-group th:last-child { border-right: none; }
+  thead tr.th-sub th {
+    background: #162d4a; color: #cbd5e1; font-weight: 600;
+    font-size: 9.5px; padding: 5px 10px; text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.10);
+    white-space: nowrap;
+  }
+  thead tr.th-sub th.num { text-align: right; }
+
+  tr.user-row td {
+    background: #1e3a5f; color: #fff; font-weight: 700;
+    font-size: 11px; padding: 5px 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  tr.prod-row td {
+    background: #e8ecf2; color: #1e3a5f; font-weight: 700;
+    font-size: 11px; padding: 4px 10px 4px 22px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid #d5dce8;
+  }
+  tbody tr.data-row td {
+    padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
+    color: #374151; font-size: 11px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
+
+  tr.prod-total td {
+    background: #e8ecf2; padding: 4px 10px; font-size: 11px;
+    font-weight: 700; color: #1e3a5f;
+    border-top: 1px solid #d5dce8; white-space: nowrap;
+  }
+  tr.prod-total td.total-label { padding-left: 22px; }
+  tr.user-total td {
+    background: #d5dce8; padding: 5px 10px; font-size: 11px;
+    font-weight: 700; color: #1e3a5f; white-space: nowrap;
+  }
+  tr.grand-total td {
+    background: #1e3a5f; color: #fff; font-weight: 700;
+    font-size: 12px; padding: 8px 10px;
+    border-top: 2px solid #162d4a;
+  }
+
+  /* ── Signature strip ── */
+  .sig-strip {
+    margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px; border-top: 1.5px solid #c4cdd9; padding-top: 14px;
+  }
+  .sig-group { display: flex; flex-direction: column; gap: 8px; }
+  .sig-group-title {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: #1e3a5f; padding-bottom: 4px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .sig-row { display: flex; align-items: flex-end; gap: 8px; }
+  .sig-label { font-size: 9.5px; color: #6b7280; font-weight: 600; min-width: 60px; flex-shrink: 0; padding-bottom: 2px; }
+  .sig-line { flex: 1; border-bottom: 1px solid #374151; min-height: 16px; }
+  .sig-box { border: 1px solid #94a3b8; border-radius: 3px; min-height: 52px; width: 100%; margin-top: 4px; }
+  .sig-group.supervisor .sig-row { margin-bottom: 10px; }
+`;
+
+// ─── HTML body renderer ─────────────────────────────────────────────────────
+// Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
+// from reportCommon supply the company header, footer and page shell.
+
+function renderBodyHtml(
   userGroups: UserGroup[],
   firstRow: ReportRow | null,
   jobNo: string,
-  prinCode: string,
-  reportTitle: string,
-  loginId: string,
-  autoPrint: boolean
+  prinCode: string
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-
   const grandPQty = userGroups.reduce((s, u) => s + u.totalPQty, 0);
   const grandLQty = userGroups.reduce((s, u) => s + u.totalLQty, 0);
 
-  // ── Info panel values (pulled from the first data row) ──────────────────
   const r = firstRow || {};
 
-  // Tally times — min across rows (start) and max (end)
-  // We already have firstRow; for multi-row min/max collect from all rows:
-  const allRows   = userGroups.flatMap(u => u.products.flatMap(p => p.rows));
-  const tallyStart  = allRows.map(x => x.start_tally_dt).filter(Boolean).sort()[0]        ?? null;
-  const tallyEnd    = allRows.map(x => x.end_tally_dt).filter(Boolean).sort().reverse()[0] ?? null;
-  const putStart    = allRows.map(x => x.start_put_dt).filter(Boolean).sort()[0]           ?? null;
-  const putEnd      = allRows.map(x => x.end_put_dt).filter(Boolean).sort().reverse()[0]   ?? null;
+  const allRows  = userGroups.flatMap((u) => u.products.flatMap((p) => p.rows));
+  const tallyStart = allRows.map((x) => x.start_tally_dt).filter(Boolean).sort()[0] ?? null;
+  const tallyEnd   = allRows.map((x) => x.end_tally_dt).filter(Boolean).sort().reverse()[0] ?? null;
+  const putStart   = allRows.map((x) => x.start_put_dt).filter(Boolean).sort()[0] ?? null;
+  const putEnd     = allRows.map((x) => x.end_put_dt).filter(Boolean).sort().reverse()[0] ?? null;
 
-  // Compute elapsed minutes between two date strings, formatted as HH:MM
   function elapsed(from: unknown, to: unknown): string {
     const a = from ? new Date(String(from)).getTime() : NaN;
     const b = to   ? new Date(String(to)).getTime()   : NaN;
     if (Number.isNaN(a) || Number.isNaN(b) || b < a) return "—";
-    const mins  = Math.round((b - a) / 60000);
-    const hh    = String(Math.floor(mins / 60)).padStart(2, "0");
-    const mm    = String(mins % 60).padStart(2, "0");
+    const mins = Math.round((b - a) / 60000);
+    const hh = String(Math.floor(mins / 60)).padStart(2, "0");
+    const mm = String(mins % 60).padStart(2, "0");
     return `${hh}:${mm}`;
   }
 
-  const tallyTime   = elapsed(tallyStart, tallyEnd);
-  const putTime     = elapsed(putStart, putEnd);
-  const totalTime   = elapsed(tallyStart, putEnd);
+  const tallyTime = elapsed(tallyStart, tallyEnd);
+  const putTime   = elapsed(putStart, putEnd);
+  const totalTime = elapsed(tallyStart, putEnd);
 
   function dateTimeText(value: unknown): string {
     if (!value) return "—";
@@ -211,46 +331,40 @@ function renderHtml(
       + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
   }
 
-  // Assigned users (unique values across all rows)
-  const tallyUsers = [...new Set(allRows.map(x => text(x.assigned_tally_user)).filter(Boolean))].join(", ");
-  const pdaUsers   = [...new Set(allRows.map(x => text(x.assigned_pda_user)).filter(Boolean))].join(", ");
+  const tallyUsers = [...new Set(allRows.map((x) => text(x.assigned_tally_user)).filter(Boolean))].join(", ");
+  const pdaUsers   = [...new Set(allRows.map((x) => text(x.assigned_pda_user)).filter(Boolean))].join(", ");
 
-  // Build all table rows as HTML strings
   let bodyRows = "";
 
   for (const ug of userGroups) {
-    // User header row
     bodyRows += `
       <tr class="user-row">
         <td colspan="11">User : ${escapeHtml(ug.userId)}</td>
       </tr>`;
 
     for (const pg of ug.products) {
-      // Product header row
       bodyRows += `
         <tr class="prod-row">
           <td colspan="11">${escapeHtml(pg.prodCode)} | ${escapeHtml(pg.prodName)}</td>
         </tr>`;
 
-      // Data rows
-      for (const r of pg.rows) {
+      for (const dr of pg.rows) {
         bodyRows += `
           <tr class="data-row">
-            <td>${escapeHtml(r.site_ind  || "—")}</td>
-            <td>${escapeHtml(r.lot_no    || "—")}</td>
-            <td>${escapeHtml(r.pallet_id || "—")}</td>
-            <td>${escapeHtml(dateText(r.mfg_date))}</td>
-            <td>${escapeHtml(dateText(r.exp_date))}</td>
-            <td>${escapeHtml(r.site_code     || "—")}</td>
-            <td>${escapeHtml(r.location_code || "—")}</td>
-            <td class="num">${escapeHtml(numFmt(r.qty_puom))}</td>
-            <td>${escapeHtml(r.p_uom || "—")}</td>
-            <td class="num">${escapeHtml(numFmt(r.qty_luom))}</td>
-            <td>${escapeHtml(r.l_uom || "—")}</td>
+            <td>${escapeHtml(dr.site_ind  || "—")}</td>
+            <td>${escapeHtml(dr.lot_no    || "—")}</td>
+            <td>${escapeHtml(dr.pallet_id || "—")}</td>
+            <td>${escapeHtml(dateText(dr.mfg_date))}</td>
+            <td>${escapeHtml(dateText(dr.exp_date))}</td>
+            <td>${escapeHtml(dr.site_code     || "—")}</td>
+            <td>${escapeHtml(dr.location_code || "—")}</td>
+            <td class="num">${escapeHtml(numFmt(dr.qty_puom))}</td>
+            <td>${escapeHtml(dr.p_uom || "—")}</td>
+            <td class="num">${escapeHtml(numFmt(dr.qty_luom))}</td>
+            <td>${escapeHtml(dr.l_uom || "—")}</td>
           </tr>`;
       }
 
-      // Product total row
       bodyRows += `
         <tr class="prod-total">
           <td colspan="7" class="total-label">Product Total : ${escapeHtml(pg.prodCode)}</td>
@@ -261,7 +375,6 @@ function renderHtml(
         </tr>`;
     }
 
-    // User total row
     bodyRows += `
       <tr class="user-total">
         <td colspan="7">User Total : ${escapeHtml(ug.userId)}</td>
@@ -272,7 +385,6 @@ function renderHtml(
       </tr>`;
   }
 
-  // Grand total row
   const grandRow = `
     <tr class="grand-total">
       <td colspan="7">Grand Total</td>
@@ -282,246 +394,8 @@ function renderHtml(
       <td></td>
     </tr>`;
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(jobNo)}</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 277mm;
-      min-height: 190mm;
-      margin: 0 auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-    }
-
-    /* ── Report header banner ── */
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 10px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-
-    /* ── Info panel ── */
-    .info-panel {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0;
-      border: 1px solid #c4cdd9;
-      border-radius: 3px;
-      margin-bottom: 12px;
-      font-size: 10.5px;
-    }
-    .info-col {
-      padding: 10px 14px;
-      border-right: 1px solid #c4cdd9;
-    }
-    .info-col:last-child { border-right: none; }
-    .info-row {
-      display: flex;
-      align-items: baseline;
-      padding: 3px 0;
-      border-bottom: 1px solid #f1f5f9;
-    }
-    .info-row:last-child { border-bottom: none; }
-    .info-label {
-      min-width: 100px;
-      flex-shrink: 0;
-      font-size: 9.5px;
-      color: #6b7280;
-      font-weight: 600;
-      text-align: right;
-      padding-right: 8px;
-      white-space: nowrap;
-    }
-    .info-value {
-      font-size: 10.5px;
-      font-weight: 700;
-      color: #111827;
-    }
-    .info-value.nil { font-weight: 400; color: #9ca3af; }
-
-    /* Time boxes (right column) */
-    .time-col {
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .time-boxes {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-    .time-box {
-      border: 1px dashed #94a3b8;
-      border-radius: 3px;
-      padding: 7px 10px;
-      text-align: center;
-    }
-    .time-box-label {
-      font-size: 9px;
-      font-weight: 700;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      margin-bottom: 4px;
-    }
-    .time-box-value {
-      font-size: 13px;
-      font-weight: 700;
-      color: #1e3a5f;
-      font-variant-numeric: tabular-nums;
-    }
-    .time-box.total {
-      grid-column: 1 / -1;
-      border-color: #1e3a5f;
-      background: #f0f4f9;
-    }
-    .time-box.total .time-box-label { color: #1e3a5f; }
-
-    /* ── Data table ── */
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
-    col.c0  { width: 7%;  } col.c1  { width: 9%;  } col.c2  { width: 9%;  }
-    col.c3  { width: 9%;  } col.c4  { width: 9%;  } col.c5  { width: 6%;  }
-    col.c6  { width: 11%; } col.c7  { width: 9%;  } col.c8  { width: 5%;  }
-    col.c9  { width: 9%;  } col.c10 { width: 5%;  }
-
-    thead tr.th-group th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 6px 10px; text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-    }
-    thead tr.th-group th:last-child { border-right: none; }
-    thead tr.th-sub th {
-      background: #162d4a; color: #cbd5e1; font-weight: 600;
-      font-size: 9.5px; padding: 5px 10px; text-align: left;
-      border-right: 1px solid rgba(255,255,255,0.10);
-      white-space: nowrap;
-    }
-    thead tr.th-sub th.num { text-align: right; }
-
-    tr.user-row td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    tr.prod-row td {
-      background: #e8ecf2; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 4px 10px 4px 22px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid #d5dce8;
-    }
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-
-    tr.prod-total td {
-      background: #e8ecf2; padding: 4px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f;
-      border-top: 1px solid #d5dce8; white-space: nowrap;
-    }
-    tr.prod-total td.total-label { padding-left: 22px; }
-    tr.user-total td {
-      background: #d5dce8; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
-    }
-
-    /* ── Signature strip ── */
-    .sig-strip {
-      margin-top: 16px;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px;
-      border-top: 1.5px solid #c4cdd9;
-      padding-top: 14px;
-    }
-    .sig-group { display: flex; flex-direction: column; gap: 8px; }
-    .sig-group-title {
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .08em; color: #1e3a5f;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .sig-row {
-      display: flex; align-items: flex-end; gap: 8px;
-    }
-    .sig-label {
-      font-size: 9.5px; color: #6b7280; font-weight: 600;
-      min-width: 60px; flex-shrink: 0; padding-bottom: 2px;
-    }
-    .sig-line {
-      flex: 1; border-bottom: 1px solid #374151; min-height: 16px;
-    }
-    .sig-box {
-      border: 1px solid #94a3b8; border-radius: 3px;
-      min-height: 52px; width: 100%; margin-top: 4px;
-    }
-    /* Supervisor column: lines only (no box) */
-    .sig-group.supervisor .sig-row { margin-bottom: 10px; }
-
-    /* ── Footer ── */
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code {
-      font-family: "Courier New", monospace; font-size: 9px; color: #6b7280;
-    }
-
-    @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      thead { display: table-header-group; }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-
-    <!-- ── Report title banner ── -->
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-
-    <!-- ── Print meta row ── -->
-    <div class="rpt-meta">
-      <span>Print Date:&nbsp;<strong>${escapeHtml(printDate)}</strong></span>
-      <span>Print User:&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-    </div>
-
-    <!-- ── Info panel ── -->
+  return `
     <div class="info-panel">
-
-      <!-- Left col: job identifiers -->
       <div class="info-col">
         <div class="info-row">
           <span class="info-label">Job No</span>
@@ -545,7 +419,6 @@ function renderHtml(
         </div>
       </div>
 
-      <!-- Centre col: tally / putaway timestamps -->
       <div class="info-col">
         <div class="info-row">
           <span class="info-label">Tally Start</span>
@@ -565,7 +438,6 @@ function renderHtml(
         </div>
       </div>
 
-      <!-- Right col: elapsed-time boxes -->
       <div class="time-col">
         <div class="time-boxes">
           <div class="time-box">
@@ -582,10 +454,8 @@ function renderHtml(
           </div>
         </div>
       </div>
+    </div>
 
-    </div><!-- /info-panel -->
-
-    <!-- ── Data table ── -->
     <table class="rpt-table">
       <colgroup>
         <col class="c0"/><col class="c1"/><col class="c2"/>
@@ -613,10 +483,7 @@ function renderHtml(
       </tbody>
     </table>
 
-    <!-- ── Signature strip ── -->
     <div class="sig-strip">
-
-      <!-- Tally By -->
       <div class="sig-group">
         <div class="sig-group-title">Tally By</div>
         <div class="sig-row">
@@ -633,7 +500,6 @@ function renderHtml(
         </div>
       </div>
 
-      <!-- Put-Away By -->
       <div class="sig-group">
         <div class="sig-group-title">Put-Away By</div>
         <div class="sig-row">
@@ -650,7 +516,6 @@ function renderHtml(
         </div>
       </div>
 
-      <!-- Supervisor -->
       <div class="sig-group supervisor">
         <div class="sig-group-title">Supervisor</div>
         <div class="sig-row">
@@ -666,28 +531,48 @@ function renderHtml(
           <span class="sig-line">&nbsp;</span>
         </div>
       </div>
-
-    </div><!-- /sig-strip -->
-
-    <!-- ── Page footer ── -->
-    <div class="rpt-footer">
-      <span>Object: <code>${escapeHtml(jobNo)}</code></span>
-      <span>Powered by Bayanat Technology</span>
     </div>
+  `;
+}
 
-  </main>
-  <script>
-    window.addEventListener("message", (e) => {
-      if (e.data === "print") window.print();
-    });
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-  </script>
-</body>
-</html>`;
+/**
+ * Assembles the full document via buildReportDocument(), using the shared
+ * company reportHeader() and reportFooter(). Kept async because reportHeader
+ * hits the DB for company name / address / logo.
+ */
+async function renderHtml(
+  req: RequestWithUser,
+  userGroups: UserGroup[],
+  firstRow: ReportRow | null,
+  jobNo: string,
+  prinCode: string,
+  reportTitle: string,
+  loginId: string,
+  autoPrint: boolean
+): Promise<string> {
+  const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
+  const bodyHtml   = renderBodyHtml(userGroups, firstRow, jobNo, prinCode);
+  const footerHtml = reportFooter({
+    reportName: reportTitle,
+    userName: loginId,
+    extraLeft: `Object: ${escapeHtml(jobNo)}`,
+  });
+
+  const html = buildReportDocument({
+    title: `${reportTitle} - ${jobNo}`,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: TALLY_PUTAWAY_EXTRA_CSS,
+    autoPrint,
+    showPrintButton: !autoPrint,
+  });
+
+  return withPostMessagePrintListener(html);
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
-// AdmZip only — no third-party spreadsheet library.
+// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
@@ -714,22 +599,19 @@ function xc(v: unknown, style: StyleKey): XlCell {
 }
 
 function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: string): Buffer {
-  const NCOLS = 11; // matches the 11 table columns
+  const NCOLS = 11;
 
   type Row = (XlCell | null)[];
   const skip = null;
   const rows: Row[] = [];
 
-  // ── Title banner ──────────────────────────────────────────────────────────
   rows.push([
     xc(`Tally & Putaway Detail Report — Job ${jobNo} / ${prinCode}`, "header"),
     skip, skip, skip, skip, skip, skip, skip, skip, skip, skip,
   ]);
 
-  // Blank row
   rows.push(Array(NCOLS).fill(skip));
 
-  // ── Column headers ────────────────────────────────────────────────────────
   rows.push([
     xc("Site Ind",   "header"),
     xc("Lot No",     "header"),
@@ -744,16 +626,12 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
     xc("LUOM",       "header"),
   ]);
 
-  // ── Data ─────────────────────────────────────────────────────────────────
   for (const ug of userGroups) {
-    // User header
     rows.push([xc(`User : ${ug.userId}`, "sectionUser"), skip, skip, skip, skip, skip, skip, skip, skip, skip, skip]);
 
     for (const pg of ug.products) {
-      // Product header
       rows.push([xc(`${pg.prodCode} | ${pg.prodName}`, "sectionProduct"), skip, skip, skip, skip, skip, skip, skip, skip, skip, skip]);
 
-      // Data rows
       for (const r of pg.rows) {
         rows.push([
           xc(text(r.site_ind)      || "—", "value"),
@@ -770,7 +648,6 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
         ]);
       }
 
-      // Product total
       rows.push([
         xc(`Product Total : ${pg.prodCode}`, "totalProduct"),
         skip, skip, skip, skip, skip,
@@ -782,7 +659,6 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
       ]);
     }
 
-    // User total
     rows.push([
       xc(`User Total : ${ug.userId}`, "totalUser"),
       skip, skip, skip, skip, skip,
@@ -794,7 +670,6 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
     ]);
   }
 
-  // Grand total
   const grandPQty = userGroups.reduce((s, u) => s + u.totalPQty, 0);
   const grandLQty = userGroups.reduce((s, u) => s + u.totalLQty, 0);
   rows.push([
@@ -807,14 +682,12 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
     xc("", "totalGrand"),
   ]);
 
-  // ── Column widths ─────────────────────────────────────────────────────────
   const COL_WIDTHS = [12, 18, 18, 13, 13, 10, 20, 14, 8, 14, 8];
 
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // ── Merge ranges ─────────────────────────────────────────────────────────
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -837,7 +710,6 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
     });
   });
 
-  // ── Sheet data XML ────────────────────────────────────────────────────────
   let sheetDataXml = "";
   rows.forEach((row, ri) => {
     const rn  = ri + 1;
@@ -869,9 +741,6 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
   ${mergeXml}
 </worksheet>`;
 
-  // ── Styles XML ────────────────────────────────────────────────────────────
-  // Fonts: 0=default, 1=header(white bold), 2=navy bold, 3=gray label, 4=dark bold, 5=grand(white bold lg)
-  // Fills: 0=none, 1=gray125(req), 2=navy(#1e3a5f), 3=lavender(#e8ecf2), 4=mid-lav(#d5dce8), 5=white
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="6">
@@ -909,49 +778,37 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="12">
-    <!-- 0: default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <!-- 1: header — navy bg, white bold, centered -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center"/>
     </xf>
-    <!-- 2: sectionUser — navy bg, white bold -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="center"/>
     </xf>
-    <!-- 3: sectionProduct — lavender bg, navy bold -->
     <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="center"/>
     </xf>
-    <!-- 4: label — gray bold right-aligned -->
     <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
       <alignment horizontal="right" vertical="top"/>
     </xf>
-    <!-- 5: value — dark bold, wrapping -->
     <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="top" wrapText="1"/>
     </xf>
-    <!-- 6: totalProduct — lavender bg, navy bold -->
     <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="center"/>
     </xf>
-    <!-- 7: totalUser — mid-lavender bg, navy bold -->
     <xf numFmtId="0" fontId="2" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="center"/>
     </xf>
-    <!-- 8: totalGrand — navy bg, white bold -->
     <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="center"/>
     </xf>
-    <!-- 9: numValue — dark bold, right-aligned -->
     <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="top"/>
     </xf>
-    <!-- 10: numTotal — navy bold, right-aligned, lavender bg -->
     <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
-    <!-- 11: numGrand — white bold, right-aligned, navy bg -->
     <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
@@ -997,7 +854,6 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-
 export const getTallyPutawayReportHtml = async (
   req: RequestWithUser,
   res: Response
@@ -1017,14 +873,14 @@ export const getTallyPutawayReportHtml = async (
     const userGroups = groupRows(rows);
     const firstRow   = rows[0] ?? null;
 
+    const html = await renderHtml(req, userGroups, firstRow, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(userGroups, firstRow, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(html);
   } catch (error: any) {
     console.error("Tally Putaway HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
-
 
 export const getTallyPutawayReportPdf = async (
   req: RequestWithUser,
@@ -1039,11 +895,12 @@ export const getTallyPutawayReportPdf = async (
       return;
     }
 
-    const rows       = await loadTallyData(req, jobNo, prinCode);
-    const userGroups = groupRows(rows);
-    const firstRow   = rows[0] ?? null;
+    const rows        = await loadTallyData(req, jobNo, prinCode);
+    const userGroups  = groupRows(rows);
+    const firstRow    = rows[0] ?? null;
     const reportTitle = "Tally & Putaway Detail Report";
-    const html = renderHtml(userGroups, firstRow, jobNo, prinCode, reportTitle, text(req.user?.loginid), true /* autoPrint */);
+    const html = await renderHtml(req, userGroups, firstRow, jobNo, prinCode, reportTitle, text(req.user?.loginid), true /* autoPrint */);
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", `inline; filename="Tally_Putaway_${jobNo}.pdf"`);
     res.send(html);
@@ -1052,7 +909,6 @@ export const getTallyPutawayReportPdf = async (
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
   }
 };
-
 
 export const getTallyPutawayReportExcel = async (
   req: RequestWithUser,

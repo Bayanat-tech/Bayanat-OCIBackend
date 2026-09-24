@@ -1,4 +1,3 @@
-
 import { Response } from "express";
 import oracledb from "oracledb";
 import * as XLSX from "xlsx";
@@ -6,6 +5,11 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../../common/report_common"; // adjust path to your shared report helpers module
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -373,7 +377,6 @@ function buildXlsxBuffer(ws: XLSX.WorkSheet, sheetName: string): Buffer {
     return styleIdBySignature.get(JSON.stringify(style)) || 0;
   };
 
-  const colCount = (ws["!cols"] || []).length;
   const colXml = (ws["!cols"] || [])
     .map((col: any, i: number) =>
       `<col min="${i + 1}" max="${i + 1}" width="${Number(col.wch || 12)}" customWidth="1"/>`)
@@ -496,34 +499,93 @@ function buildXlsxBuffer(ws: XLSX.WorkSheet, sheetName: string): Buffer {
   return zip.toBuffer();
 }
 
-// ─── Shared HTML Shell ────────────────────────────────────────────────────────
+// ─── Shared HTML helpers (common header / footer / CSS) ───────────────────────
 
-function buildPage(opts: {
-  title:        string;
-  username:     string;
-  reportName:   string;
-  tableHtml:    string;
-  drillLevel:   "l3" | "l4" | "ac" | "detail" | null;
-  companyCode:  string;
-  fromDate:     string;
-  toDate:       string;
-  divisionCode: string;
-}): string {
-  const { title, username, reportName, tableHtml, drillLevel, companyCode, fromDate, toDate, divisionCode } = opts;
+/** Extra CSS specific to trial-balance drill-down */
+const DRILLDOWN_EXTRA_CSS = `
+  .report-title-block {
+    margin: 0 0 10px 0;
+  }
+  .report-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+  }
+  .report-meta {
+    font-size: 10.5px;
+    color: #334155;
+    margin: 0 0 2px 0;
+  }
+  .report-meta strong {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .drill-hint {
+    font-size: 10px;
+    color: #0b4ca1;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 4px 10px;
+    margin: 8px 0 6px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  table.data-table th.right { text-align: right; }
+  table.data-table td.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+  }
+  table.data-table tr.total-row td {
+    border-top: 2px solid #0f172a;
+    border-bottom: 2px solid #0f172a;
+    font-weight: 700;
+    background: #f8fafc;
+  }
+  table.data-table tr.total-row td.empty {
+    border: 1px solid #e2e8f0;
+    background: #fff;
+  }
+  table.data-table tr.group-header td {
+    background: #f1f5f9;
+    font-weight: 700;
+  }
+  .balance-pos { color: #0f172a; }
+  .balance-neg { color: #c0392b; }
+  .end-of-report {
+    text-align: center;
+    margin-top: 12px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 6px;
+    color: #64748b;
+  }
+  @media print {
+    .drill-hint { display: none !important; }
+  }
+`;
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
+type DrillLevel = "l3" | "l4" | "ac" | "detail" | null;
 
-  const CODE_FIELD_MAP: Record<string, string> = {
-    l3:     "l2_code",
-    l4:     "l3_code",
-    ac:     "l4_code",
-    detail: "ac_code",
-  };
+const CODE_FIELD_MAP: Record<string, string> = {
+  l3:     "l2_code",
+  l4:     "l3_code",
+  ac:     "l4_code",
+  detail: "ac_code",
+};
 
-  const drillScript = drillLevel ? `
+function buildDrillScript(
+  drillLevel: DrillLevel,
+  companyCode: string,
+  fromDate: string,
+  toDate: string,
+  divisionCode: string,
+): string {
+  if (!drillLevel) return "";
+  return `
   <script>
     (function () {
       var DRILL_LEVEL   = ${JSON.stringify(drillLevel)};
@@ -535,7 +597,7 @@ function buildPage(opts: {
 
       document.querySelectorAll("tbody tr[data-code]").forEach(function (tr) {
         tr.style.cursor = "pointer";
-        tr.addEventListener("mouseenter", function () { tr.style.background = "#f0f9f5"; });
+        tr.addEventListener("mouseenter", function () { tr.style.background = "#eff6ff"; });
         tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
         tr.addEventListener("click", function () {
           var code = tr.getAttribute("data-code");
@@ -552,117 +614,76 @@ function buildPage(opts: {
         });
       });
     })();
-  </script>` : "";
-
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    @page { size: A4 portrait; margin: 10mm; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-      color: #000;
-      background: #eef2f7;
-    }
-    .sheet {
-      width: 210mm;
-      min-height: 297mm;
-      margin: 0 auto;
-      background: #fff;
-      padding: 8mm;
-      border: 1px solid #aab7c8;
-    }
-    .logo-area { margin-bottom: 16px; }
-    .divider-thick { border-top: 2px solid #000; margin: 10px 0 6px; }
-    .divider-thin  { border-top: 1px solid #000; margin: 6px 0 10px; }
-    .meta-row { display: flex; align-items: baseline; font-size: 12px; margin-bottom: 3px; }
-    .meta-label { font-weight: 700; width: 60px; flex-shrink: 0; }
-    .drill-hint {
-      font-size: 10px; color: #1a5f4a; background: #f0f9f5;
-      border: 1px solid #a7d7c5; border-radius: 4px;
-      padding: 4px 10px; margin-bottom: 8px;
-      display: inline-flex; align-items: center; gap: 6px;
-    }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
-    th {
-      border: 1px solid #000;
-      padding: 3px 8px;
-      text-align: center;
-      font-weight: 700;
-      background: #fff;
-    }
-    th.right { text-align: right; }
-    td { border: 1px solid #ccc; padding: 2px 8px; }
-    td.center { text-align: center; }
-    td.left   { text-align: left; }
-    td.num    { text-align: right; font-variant-numeric: tabular-nums; }
-    td.mono   { font-family: monospace; font-size: 10px; }
-    tr.total-row td { border: 2px solid #000; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; background: #f8f8f8; }
-    tr.total-row td.empty { border: 1px solid #ccc; background: #fff; }
-    .end-of-report { text-align: center; margin-top: 12px; margin-bottom: 6px; font-size: 11px; border-top: 1px solid #ccc; padding-top: 6px; }
-    .report-footer { display: flex; justify-content: space-between; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 4px; margin-top: 6px; }
-    .balance-pos { color: #000; }
-    .balance-neg { color: #c0392b; }
-    @media print {
-      body { background: white; }
-      .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; }
-      .actions { display: none; }
-      .drill-hint { display: none !important; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-      tbody tr { page-break-inside: avoid; }
-      .print-footer {
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        padding: 6px 24px;
-        border-top: 1px solid #ccc;
-        background: #fff;
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
-        color: #666;
-      }
-      .print-body-padding { padding-bottom: 40px !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="logo-area">
-      <svg width="160" height="50" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
-        <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
-        <text x="16" y="46" font-family="Arial" font-size="26" font-weight="700" fill="#d4a017">al madina المدينة</text>
-        <text x="16" y="72" font-family="Arial" font-size="15" font-weight="400" fill="#d4a017" letter-spacing="4">LOGISTICS اللوجستية</text>
-        <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
-      </svg>
-    </div>
-    <div class="divider-thick"></div>
-    <div class="meta-row"><span class="meta-label">Title :</span><span>${escapeHtml(title)}</span></div>
-    <div class="meta-row"><span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span></div>
-    <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(username)}</span></div>
-    <div class="divider-thin"></div>
-    ${drillLevel ? `<div class="drill-hint">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      Click any row to drill down
-    </div>` : ""}
-    ${tableHtml}
-    <div class="end-of-report">End of Report</div>
-    <div class="report-footer">
-      <span>Report: ${escapeHtml(reportName)}</span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </div>
-  ${drillScript}
-</body>
-</html>`;
+  </script>`;
 }
 
-// ─── Shared response helpers ──────────────────────────────────────────────────
+/**
+ * Builds the report body: title block + optional drill hint + table + end marker.
+ */
+function buildBodyHtml(opts: {
+  title: string;
+  fromDate: string;
+  toDate: string;
+  username: string;
+  tableHtml: string;
+  drillLevel: DrillLevel;
+}): string {
+  const { title, tableHtml, drillLevel } = opts;
+  const drillHint = drillLevel
+    ? `<div class="drill-hint no-print">
+         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+         Click any row to drill down
+       </div>`
+    : "";
+
+  return `
+    <div class="report-title-block">
+      <div class="report-title">${escapeHtml(title)}</div>
+    </div>
+    ${drillHint}
+    ${tableHtml}
+  `;
+}
+
+/**
+ * Assembles full HTML document using common header, footer, and CSS.
+ */
+async function buildDrilldownPage(opts: {
+  req: RequestWithUser;
+  title: string;
+  reportName: string;
+  tableHtml: string;
+  drillLevel: DrillLevel;
+  companyCode: string;
+  fromDate: string;
+  toDate: string;
+  divisionCode: string;
+}): Promise<string> {
+  const {
+    req, title, reportName, tableHtml, drillLevel,
+    companyCode, fromDate, toDate, divisionCode,
+  } = opts;
+
+  const username = req.user?.loginid ?? "";
+  const headerHtml = await reportHeader({ company_code: companyCode, req });
+  const footerHtml = reportFooter({
+    reportName,
+    userName: username,
+    endLabel: "End of report",
+  });
+  const bodyHtml =
+    buildBodyHtml({ title, fromDate, toDate, username, tableHtml, drillLevel }) +
+    buildDrillScript(drillLevel, companyCode, fromDate, toDate, divisionCode);
+
+  return buildReportDocument({
+    title,
+    headerHtml,
+    bodyHtml,
+    footerHtml,
+    extraCss: DRILLDOWN_EXTRA_CSS,
+    showPrintButton: true,
+  });
+}
 
 function sendHtml(res: Response, html: string) {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -673,6 +694,65 @@ function sendExcel(res: Response, buffer: Buffer, filename: string) {
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.end(buffer);
+}
+
+// ─── Summary table builder (L2 / L3 / L4 / AC) ────────────────────────────────
+
+function buildSummaryTableHtml(
+  rows: ReportRow[],
+  codeField: string,
+  codeHeader: string,
+  codeWidth: string,
+): string {
+  const totals = rows.reduce(
+    (acc, r) => ({
+      opening: acc.opening + amount(r.opening),
+      debit:   acc.debit   + amount(r.debit_amount),
+      credit:  acc.credit  + amount(r.credit_amount),
+      amount:  acc.amount  + amount(r.amount),
+    }),
+    { opening: 0, debit: 0, credit: 0, amount: 0 },
+  );
+
+  const dataRows =
+    rows
+      .map(
+        (r) => `
+      <tr data-code="${escapeHtml(r[codeField])}">
+        <td class="center">${escapeHtml(r[codeField])}</td>
+        <td class="left">${escapeHtml(r.ac_name)}</td>
+        <td class="num">${escapeHtml(fmtNumber(amount(r.opening)))}</td>
+        <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
+        <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
+        <td class="num">${escapeHtml(fmtNumber(amount(r.amount)))}</td>
+      </tr>`,
+      )
+      .join("") ||
+    `<tr><td colspan="6" class="center muted">No data found</td></tr>`;
+
+  return `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width:${codeWidth}">${escapeHtml(codeHeader)}</th>
+          <th>Account Name</th>
+          <th class="right">Opening</th>
+          <th class="right">Debit Amount</th>
+          <th class="right">Credit Amount</th>
+          <th class="right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${dataRows}</tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td class="empty" colspan="2"></td>
+          <td class="num">${escapeHtml(fmtNumber(totals.opening))}</td>
+          <td class="num">${escapeHtml(fmtNumber(totals.debit))}</td>
+          <td class="num">${escapeHtml(fmtNumber(totals.credit))}</td>
+          <td class="num">${escapeHtml(fmtNumber(totals.amount))}</td>
+        </tr>
+      </tfoot>
+    </table>`;
 }
 
 // ─── L2 Drilldown ─────────────────────────────────────────────────────────────
@@ -686,7 +766,6 @@ export const getDrilldownL2 = async (req: RequestWithUser, res: Response): Promi
       ? l2Codes.map(c => `'${c.replace(/'/g, "''")}'`).join(",")
       : "'All'";
 
-    // ↓ TO_DATE fixes ORA-01861 — Oracle needs explicit format for YYYY-MM-DD strings
     const sql = `
       SELECT
         TR_AC_DETAIL.company_code,
@@ -716,40 +795,13 @@ export const getDrilldownL2 = async (req: RequestWithUser, res: Response): Promi
     );
     const rows = normalize(result.rows as any[]);
 
-    const totals = rows.reduce(
-      (acc, r) => ({ opening: acc.opening + amount(r.opening), debit: acc.debit + amount(r.debit_amount), credit: acc.credit + amount(r.credit_amount), amount: acc.amount + amount(r.amount) }),
-      { opening: 0, debit: 0, credit: 0, amount: 0 },
-    );
-
-    const dataRows = rows.map(r => `
-      <tr data-code="${escapeHtml(r.l2_code)}">
-        <td class="center">${escapeHtml(r.l2_code)}</td>
-        <td class="left">${escapeHtml(r.ac_name)}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.opening)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.amount)))}</td>
-      </tr>`).join("") || `<tr><td colspan="6" class="center" style="color:#666">No data found</td></tr>`;
-
-    const tableHtml = `
-      <table>
-        <thead><tr>
-          <th style="width:70px">L2 Code</th><th>Account Name</th>
-          <th class="right">Opening</th><th class="right">Debit Amount</th>
-          <th class="right">Credit Amount</th><th class="right">Amount</th>
-        </tr></thead>
-        <tbody>${dataRows}</tbody>
-        <tfoot><tr class="total-row">
-          <td class="empty" colspan="2"></td>
-          <td>${escapeHtml(fmtNumber(totals.opening))}</td>
-          <td>${escapeHtml(fmtNumber(totals.debit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.credit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.amount))}</td>
-        </tr></tfoot>
-      </table>`;
-
+    const tableHtml = buildSummaryTableHtml(rows, "l2_code", "L2 Code", "70px");
     const title = `L2 Trial Balance  |  ${dateText(fromDate)} – ${dateText(toDate)}`;
-    sendHtml(res, buildPage({ title, username: req.user?.loginid ?? "", reportName: "rpt_drilldown_l2_trialbalance", tableHtml, drillLevel: "l3", companyCode, fromDate, toDate, divisionCode }));
+    const html = await buildDrilldownPage({
+      req, title, reportName: "rpt_drilldown_l2_trialbalance", tableHtml,
+      drillLevel: "l3", companyCode, fromDate, toDate, divisionCode,
+    });
+    sendHtml(res, html);
   } catch (error: any) {
     console.error("Drilldown L2 error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message });
@@ -830,41 +882,14 @@ export const getDrilldownL3 = async (req: RequestWithUser, res: Response): Promi
     const result = await conn.execute(sql, { companyCode, fromDate, toDate, divisionCode }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const rows = normalize(result.rows as any[]);
 
-    const totals = rows.reduce(
-      (acc, r) => ({ opening: acc.opening + amount(r.opening), debit: acc.debit + amount(r.debit_amount), credit: acc.credit + amount(r.credit_amount), amount: acc.amount + amount(r.amount) }),
-      { opening: 0, debit: 0, credit: 0, amount: 0 },
-    );
-
-    const l2Label  = l2Codes.length ? ` [L2: ${l2Codes.join(", ")}]` : "";
-    const dataRows = rows.map(r => `
-      <tr data-code="${escapeHtml(r.l3_code)}">
-        <td class="center">${escapeHtml(r.l3_code)}</td>
-        <td class="left">${escapeHtml(r.ac_name)}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.opening)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.amount)))}</td>
-      </tr>`).join("") || `<tr><td colspan="6" class="center" style="color:#666">No data found</td></tr>`;
-
-    const tableHtml = `
-      <table>
-        <thead><tr>
-          <th style="width:80px">L3 Code</th><th>Account Name</th>
-          <th class="right">Opening</th><th class="right">Debit Amount</th>
-          <th class="right">Credit Amount</th><th class="right">Amount</th>
-        </tr></thead>
-        <tbody>${dataRows}</tbody>
-        <tfoot><tr class="total-row">
-          <td class="empty" colspan="2"></td>
-          <td>${escapeHtml(fmtNumber(totals.opening))}</td>
-          <td>${escapeHtml(fmtNumber(totals.debit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.credit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.amount))}</td>
-        </tr></tfoot>
-      </table>`;
-
+    const l2Label = l2Codes.length ? ` [L2: ${l2Codes.join(", ")}]` : "";
+    const tableHtml = buildSummaryTableHtml(rows, "l3_code", "L3 Code", "80px");
     const title = `L3 Trial Balance${l2Label}  |  ${dateText(fromDate)} – ${dateText(toDate)}`;
-    sendHtml(res, buildPage({ title, username: req.user?.loginid ?? "", reportName: "rpt_drilldown_l3_trialbalance", tableHtml, drillLevel: "l4", companyCode, fromDate, toDate, divisionCode }));
+    const html = await buildDrilldownPage({
+      req, title, reportName: "rpt_drilldown_l3_trialbalance", tableHtml,
+      drillLevel: "l4", companyCode, fromDate, toDate, divisionCode,
+    });
+    sendHtml(res, html);
   } catch (error: any) {
     console.error("Drilldown L3 error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message });
@@ -945,41 +970,14 @@ export const getDrilldownL4 = async (req: RequestWithUser, res: Response): Promi
     const result = await conn.execute(sql, { companyCode, fromDate, toDate, divisionCode }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const rows = normalize(result.rows as any[]);
 
-    const totals = rows.reduce(
-      (acc, r) => ({ opening: acc.opening + amount(r.opening), debit: acc.debit + amount(r.debit_amount), credit: acc.credit + amount(r.credit_amount), amount: acc.amount + amount(r.amount) }),
-      { opening: 0, debit: 0, credit: 0, amount: 0 },
-    );
-
-    const l3Label  = l3Codes.length ? ` [L3: ${l3Codes.join(", ")}]` : "";
-    const dataRows = rows.map(r => `
-      <tr data-code="${escapeHtml(r.l4_code)}">
-        <td class="center">${escapeHtml(r.l4_code)}</td>
-        <td class="left">${escapeHtml(r.ac_name)}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.opening)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
-        <td class="num">${escapeHtml(fmtNumber(amount(r.amount)))}</td>
-      </tr>`).join("") || `<tr><td colspan="6" class="center" style="color:#666">No data found</td></tr>`;
-
-    const tableHtml = `
-      <table>
-        <thead><tr>
-          <th style="width:90px">L4 Code</th><th>Account Name</th>
-          <th class="right">Opening</th><th class="right">Debit Amount</th>
-          <th class="right">Credit Amount</th><th class="right">Amount</th>
-        </tr></thead>
-        <tbody>${dataRows}</tbody>
-        <tfoot><tr class="total-row">
-          <td class="empty" colspan="2"></td>
-          <td>${escapeHtml(fmtNumber(totals.opening))}</td>
-          <td>${escapeHtml(fmtNumber(totals.debit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.credit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.amount))}</td>
-        </tr></tfoot>
-      </table>`;
-
+    const l3Label = l3Codes.length ? ` [L3: ${l3Codes.join(", ")}]` : "";
+    const tableHtml = buildSummaryTableHtml(rows, "l4_code", "L4 Code", "90px");
     const title = `L4 Trial Balance${l3Label}  |  ${dateText(fromDate)} – ${dateText(toDate)}`;
-    sendHtml(res, buildPage({ title, username: req.user?.loginid ?? "", reportName: "rpt_drilldown_l4_trialbalance", tableHtml, drillLevel: "ac", companyCode, fromDate, toDate, divisionCode }));
+    const html = await buildDrilldownPage({
+      req, title, reportName: "rpt_drilldown_l4_trialbalance", tableHtml,
+      drillLevel: "ac", companyCode, fromDate, toDate, divisionCode,
+    });
+    sendHtml(res, html);
   } catch (error: any) {
     console.error("Drilldown L4 error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message });
@@ -1061,13 +1059,22 @@ export const getDrilldownAc = async (req: RequestWithUser, res: Response): Promi
     const result = await conn.execute(sql, { companyCode, fromDate, toDate, divisionCode }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
     const rows = normalize(result.rows as any[]);
 
+    const l4Label = l4Codes.length ? ` [L4: ${l4Codes.join(", ")}]` : "";
+
     const totals = rows.reduce(
-      (acc, r) => ({ opening: acc.opening + amount(r.opening), debit: acc.debit + amount(r.debit_amount), credit: acc.credit + amount(r.credit_amount), amount: acc.amount + amount(r.amount) }),
+      (acc, r) => ({
+        opening: acc.opening + amount(r.opening),
+        debit:   acc.debit   + amount(r.debit_amount),
+        credit:  acc.credit  + amount(r.credit_amount),
+        amount:  acc.amount  + amount(r.amount),
+      }),
       { opening: 0, debit: 0, credit: 0, amount: 0 },
     );
 
-    const l4Label  = l4Codes.length ? ` [L4: ${l4Codes.join(", ")}]` : "";
-    const dataRows = rows.map(r => `
+    const dataRows =
+      rows
+        .map(
+          (r) => `
       <tr data-code="${escapeHtml(r.ac_code)}">
         <td class="center mono">${escapeHtml(r.ac_code)}</td>
         <td class="left">${escapeHtml(r.ac_name)}</td>
@@ -1075,27 +1082,41 @@ export const getDrilldownAc = async (req: RequestWithUser, res: Response): Promi
         <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
         <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
         <td class="num">${escapeHtml(fmtNumber(amount(r.amount)))}</td>
-      </tr>`).join("") || `<tr><td colspan="6" class="center" style="color:#666">No data found</td></tr>`;
+      </tr>`,
+        )
+        .join("") ||
+      `<tr><td colspan="6" class="center muted">No data found</td></tr>`;
 
     const tableHtml = `
-      <table>
-        <thead><tr>
-          <th style="width:110px">A/C Code</th><th>Account Name</th>
-          <th class="right">Opening</th><th class="right">Debit Amount</th>
-          <th class="right">Credit Amount</th><th class="right">Amount</th>
-        </tr></thead>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:110px">A/C Code</th>
+            <th>Account Name</th>
+            <th class="right">Opening</th>
+            <th class="right">Debit Amount</th>
+            <th class="right">Credit Amount</th>
+            <th class="right">Amount</th>
+          </tr>
+        </thead>
         <tbody>${dataRows}</tbody>
-        <tfoot><tr class="total-row">
-          <td class="empty" colspan="2"></td>
-          <td>${escapeHtml(fmtNumber(totals.opening))}</td>
-          <td>${escapeHtml(fmtNumber(totals.debit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.credit))}</td>
-          <td>${escapeHtml(fmtNumber(totals.amount))}</td>
-        </tr></tfoot>
+        <tfoot>
+          <tr class="total-row">
+            <td class="empty" colspan="2"></td>
+            <td class="num">${escapeHtml(fmtNumber(totals.opening))}</td>
+            <td class="num">${escapeHtml(fmtNumber(totals.debit))}</td>
+            <td class="num">${escapeHtml(fmtNumber(totals.credit))}</td>
+            <td class="num">${escapeHtml(fmtNumber(totals.amount))}</td>
+          </tr>
+        </tfoot>
       </table>`;
 
     const title = `AC Trial Balance${l4Label}  |  ${dateText(fromDate)} – ${dateText(toDate)}`;
-    sendHtml(res, buildPage({ title, username: req.user?.loginid ?? "", reportName: "rpt_drilldown_ac_trialbalance", tableHtml, drillLevel: "detail", companyCode, fromDate, toDate, divisionCode }));
+    const html = await buildDrilldownPage({
+      req, title, reportName: "rpt_drilldown_ac_trialbalance", tableHtml,
+      drillLevel: "detail", companyCode, fromDate, toDate, divisionCode,
+    });
+    sendHtml(res, html);
   } catch (error: any) {
     console.error("Drilldown AC error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message });
@@ -1202,12 +1223,12 @@ export const getDrilldownDetail = async (req: RequestWithUser, res: Response): P
       let   acCredit   = 0;
 
       bodyHtml += `
-        <tr style="background:#f0f9f5">
-          <td class="center mono" style="font-weight:700">${escapeHtml(acCode)}</td>
-          <td class="left" style="font-weight:700" colspan="6">${escapeHtml(acName)}</td>
-          <td class="num" style="font-weight:700; color:#1a5f4a">Opening&nbsp;&nbsp;${escapeHtml(fmtNumber(opening))}</td>
+        <tr class="group-header">
+          <td class="center mono">${escapeHtml(acCode)}</td>
+          <td class="left" colspan="6">${escapeHtml(acName)}</td>
+          <td class="num primary-text">Opening&nbsp;&nbsp;${escapeHtml(fmtNumber(opening))}</td>
           <td></td>
-          <td class="num" style="font-weight:700">${escapeHtml(fmtNumber(opening))}</td>
+          <td class="num">${escapeHtml(fmtNumber(opening))}</td>
         </tr>`;
 
       for (const r of acRows) {
@@ -1239,43 +1260,51 @@ export const getDrilldownDetail = async (req: RequestWithUser, res: Response): P
       bodyHtml += `
         <tr class="total-row">
           <td class="empty" colspan="7" style="text-align:left; padding-left:12px">Total — ${escapeHtml(acName)}</td>
-          <td>${escapeHtml(fmtNumber(acDebit))}</td>
-          <td>${escapeHtml(fmtNumber(acCredit))}</td>
-          <td>${escapeHtml(fmtNumber(runBalance))}</td>
+          <td class="num">${escapeHtml(fmtNumber(acDebit))}</td>
+          <td class="num">${escapeHtml(fmtNumber(acCredit))}</td>
+          <td class="num">${escapeHtml(fmtNumber(runBalance))}</td>
         </tr>
         <tr><td colspan="10" style="height:6px; border:0; background:transparent"></td></tr>`;
     }
 
     if (!rows.length) {
-      bodyHtml = `<tr><td colspan="10" class="center" style="color:#666">No transactions found</td></tr>`;
+      bodyHtml = `<tr><td colspan="10" class="center muted">No transactions found</td></tr>`;
     }
 
-    const acLabel   = acCodes.length ? ` — ${acCodes.join(", ")}` : "";
+    const acLabel = acCodes.length ? ` — ${acCodes.join(", ")}` : "";
     const tableHtml = `
-      <table>
-        <thead><tr>
-          <th style="width:100px">A/C Code</th>
-          <th style="width:50px">Type</th>
-          <th style="width:65px">Doc No.</th>
-          <th style="width:80px">Doc Date</th>
-          <th style="width:80px">Chq No.</th>
-          <th style="width:80px">Chq Date</th>
-          <th>Bank</th>
-          <th class="right" style="width:110px">Debit</th>
-          <th class="right" style="width:110px">Credit</th>
-          <th class="right" style="width:120px">Balance</th>
-        </tr></thead>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:100px">A/C Code</th>
+            <th style="width:50px">Type</th>
+            <th style="width:65px">Doc No.</th>
+            <th style="width:80px">Doc Date</th>
+            <th style="width:80px">Chq No.</th>
+            <th style="width:80px">Chq Date</th>
+            <th>Bank</th>
+            <th class="right" style="width:110px">Debit</th>
+            <th class="right" style="width:110px">Credit</th>
+            <th class="right" style="width:120px">Balance</th>
+          </tr>
+        </thead>
         <tbody>${bodyHtml}</tbody>
-        <tfoot><tr class="total-row">
-          <td class="empty" colspan="7" style="text-align:left; padding-left:12px">Grand Total</td>
-          <td>${escapeHtml(fmtNumber(grandDebit))}</td>
-          <td>${escapeHtml(fmtNumber(grandCredit))}</td>
-          <td></td>
-        </tr></tfoot>
+        <tfoot>
+          <tr class="total-row">
+            <td class="empty" colspan="7" style="text-align:left; padding-left:12px">Grand Total</td>
+            <td class="num">${escapeHtml(fmtNumber(grandDebit))}</td>
+            <td class="num">${escapeHtml(fmtNumber(grandCredit))}</td>
+            <td></td>
+          </tr>
+        </tfoot>
       </table>`;
 
     const title = `Account Ledger${acLabel}  |  ${dateText(fromDate)} – ${dateText(toDate)}`;
-    sendHtml(res, buildPage({ title, username: req.user?.loginid ?? "", reportName: "rpt_drilldown_detail_trailbalance", tableHtml, drillLevel: null, companyCode, fromDate, toDate, divisionCode }));
+    const html = await buildDrilldownPage({
+      req, title, reportName: "rpt_drilldown_detail_trailbalance", tableHtml,
+      drillLevel: null, companyCode, fromDate, toDate, divisionCode,
+    });
+    sendHtml(res, html);
   } catch (error: any) {
     console.error("Drilldown Detail error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message });
