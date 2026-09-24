@@ -572,15 +572,37 @@ export const getChequePaymentDetail = async (req: RequestWithUser, res: Response
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
+    const divCode = String(req.query.div_code || '').trim();
+    const whereDiv = divCode ? 'AND d.div_code = :dc' : '';
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dn: String(req.params.doc_no),
+      dt: req.query.doc_type,
+    };
+    if (divCode) binds.dc = divCode;
+
     const result = await conn.execute(
-      `SELECT * FROM VW_TR_AC_DETAIL_DATA
-       WHERE company_code = :cc AND TO_CHAR(doc_no) = :dn
-         AND div_code = :dc AND doc_type = :dt
-       ORDER BY serial_no`,
-      { cc: req.user.company_code, dn: String(req.params.doc_no), dc: req.query.div_code, dt: req.query.doc_type },
+      `SELECT d.*,
+              COALESCE(d.ac_name, a.ac_name, l.l4_description, '') AS ac_name_resolved
+       FROM VW_TR_AC_DETAIL_DATA d
+       LEFT JOIN MS_ACCODES a
+              ON a.company_code = d.company_code
+             AND a.ac_code = d.ac_code
+       LEFT JOIN MS_AC_L4 l
+              ON l.company_code = d.company_code
+             AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
+       WHERE d.company_code = :cc AND TO_CHAR(d.doc_no) = :dn
+         AND d.doc_type = :dt
+         ${whereDiv}
+       ORDER BY d.serial_no`,
+      binds,
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    res.json({ success: true, data: normalize(result.rows || []) });
+    const rows = (result.rows || []).map((r: any) => ({
+      ...r,
+      AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
+    }));
+    res.json({ success: true, data: normalize(rows) });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
