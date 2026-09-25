@@ -1,4 +1,3 @@
-import { oracleDb } from "./../../../src/database/connection";
 import TenantManager from "../../database/TenantManager";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import { TVendorMain, DetailsTVendor } from "./vendore.interface";
@@ -1582,7 +1581,6 @@ export const proc_build_dynamic_sql = async (
       END;
     `;
 
-    // 2️⃣ Execute the stored procedure using your wrapper
     const procResult = await tenantQuery(plsql, {
       parameter,
       code1,
@@ -1679,5 +1677,60 @@ export const executeVendorInvoicePrintHandler = async (
       message: "Failed to execute procedure",
       details: error?.message || String(error),
     });
+  }
+};
+
+export const bulkApprovalHandler = async (req: Request, res: Response): Promise<void> => {
+  const { company_code, doc_nos, action } = req.body;
+  const requestUser = (req as any).user;
+  const approverId = defaultString(requestUser?.loginid1 || req.body.loginid || requestUser?.loginid);
+  const MAX_BULK_DOCS = 100;
+
+  const companyCode = defaultString(company_code);
+
+  const docNos: string[] = Array.from(
+    new Set(
+      (Array.isArray(doc_nos) ? doc_nos : String(doc_nos ?? "").split(","))
+        .map((d: unknown) => String(d).trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (!companyCode || !approverId || docNos.length === 0) {
+    res.status(400).json({ success: false, message: "company_code, loginid and doc_nos are required" });
+    return;
+  }
+  if (action !== "APPROVED" && action !== "REJECTED") {
+    res.status(400).json({ success: false, message: "Invalid action (must be APPROVED or REJECTED)" });
+    return;
+  }
+  if (docNos.length > MAX_BULK_DOCS) {
+    res.status(400).json({ success: false, message: `Select at most ${MAX_BULK_DOCS} documents at a time` });
+    return;
+  }
+ 
+  if (docNos.some((d) => !/^\d+$/.test(d))) {
+    res.status(400).json({ success: false, message: "Invalid doc_no in request" });
+    return;
+  }
+
+  try {
+    await tenantQuery(
+      `BEGIN WMSTST.PROC_VMS_FLOW_BULK_APPROVAL(:companyCode, :docNos, :loginId, :action); END;`,
+      {
+        companyCode: { val: companyCode },
+        docNos: { val: docNos.join(",") },
+        loginId: { val: approverId },
+        action: { val: action },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `${docNos.length} request(s) ${action === "APPROVED" ? "approved" : "rejected"}`,
+    });
+  } catch (err: any) {
+    console.error("Error in bulkApprovalHandler:", err);
+    res.status(500).json({ success: false, message: err.message ?? "Internal Server Error" });
   }
 };

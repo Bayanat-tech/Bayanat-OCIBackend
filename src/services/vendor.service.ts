@@ -1,8 +1,10 @@
 import axios from "axios";
 import https from "https";
-import { oracleDb } from "../database/connection";
+// import { oracleDb } from "../database/connection";
 import { getRepository } from "../database/connection";
 import { Vendor } from "../entity/Vendor";
+import TenantManager from "../database/TenantManager";
+import { getCurrentTenantId } from "../middleware/tenantContext.middleware";
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -360,11 +362,58 @@ export class VendorService {
   }
 
   // Add this method to your VendorService class
+  // static async callAwareVmsEntry(companyCode: string, docNo: string, userName: string = 'SYSTEM') {
+  // try {
+  //   console.log(`Calling PROC_AWARE_VMS_ENTRY for Company: ${companyCode}, Doc No: ${docNo}`);
+    
+  //   const result = await oracleDb.query(
+  //     `BEGIN
+  //       PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
+  //      END;`,
+  //     {
+  //       companyCode: { val: companyCode },
+  //       docNo: { val: Number(docNo) },
+  //       userName: { val: userName },
+  //     }
+  //   );
+    
+  //   console.log(`PROC_AWARE_VMS_ENTRY executed successfully`);
+  //   return { success: true, message: "Data transferred via Oracle procedure" };
+  // } catch (error: any) {
+  //   console.error("Error in callAwareVmsEntry:", error);
+  //   throw new Error(`Oracle procedure failed: ${error.message}`);
+  // }
+  // }
+  // FIXED: Use oracleDb instead of sequelize
+  // static async updateDataTransferFlag(companyCode: string, docNo: string) {
+  //   try {
+  //     const result = await oracleDb.query(
+  //       `UPDATE VMS_FLOW_HDR
+  //        SET DATA_TRANSFER = 'Y'
+  //        WHERE COMPANY_CODE = :companyCode 
+  //        AND DOC_NO = :docNo`,
+  //       {
+  //         companyCode: { val: companyCode },
+  //         docNo: { val: docNo },
+  //       }
+  //     );
+  //     console.log("Update result:", result);
+  //   } catch (error) {
+  //     console.error("Update data transfer flag error:", error);
+  //     throw error;
+  //   }
+  // }
+
   static async callAwareVmsEntry(companyCode: string, docNo: string, userName: string = 'SYSTEM') {
+  const tenantId = getCurrentTenantId() || process.env.DEFAULT_TENANT_ID;
+  if (!tenantId) {
+    throw new Error("Tenant context not found for callAwareVmsEntry");
+  }
+  const connection = await TenantManager.getConnection(tenantId);
   try {
     console.log(`Calling PROC_AWARE_VMS_ENTRY for Company: ${companyCode}, Doc No: ${docNo}`);
-    
-    const result = await oracleDb.query(
+
+    await connection.execute(
       `BEGIN
         PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
        END;`,
@@ -372,35 +421,46 @@ export class VendorService {
         companyCode: { val: companyCode },
         docNo: { val: Number(docNo) },
         userName: { val: userName },
-      }
+      },
+      { autoCommit: true }
     );
-    
+
     console.log(`PROC_AWARE_VMS_ENTRY executed successfully`);
     return { success: true, message: "Data transferred via Oracle procedure" };
   } catch (error: any) {
     console.error("Error in callAwareVmsEntry:", error);
     throw new Error(`Oracle procedure failed: ${error.message}`);
+  } finally {
+    await connection.close();
   }
-  }
-  // FIXED: Use oracleDb instead of sequelize
+}
+
   static async updateDataTransferFlag(companyCode: string, docNo: string) {
-    try {
-      const result = await oracleDb.query(
-        `UPDATE VMS_FLOW_HDR
-         SET DATA_TRANSFER = 'Y'
-         WHERE COMPANY_CODE = :companyCode 
-         AND DOC_NO = :docNo`,
-        {
-          companyCode: { val: companyCode },
-          docNo: { val: docNo },
-        }
-      );
-      console.log("Update result:", result);
-    } catch (error) {
-      console.error("Update data transfer flag error:", error);
-      throw error;
-    }
+  const tenantId = getCurrentTenantId() || process.env.DEFAULT_TENANT_ID;
+  if (!tenantId) {
+    throw new Error("Tenant context not found for updateDataTransferFlag");
   }
+  const connection = await TenantManager.getConnection(tenantId);
+  try {
+    const result = await connection.execute(
+      `UPDATE VMS_FLOW_HDR
+       SET DATA_TRANSFER = 'Y'
+       WHERE COMPANY_CODE = :companyCode 
+       AND DOC_NO = :docNo`,
+      {
+        companyCode: { val: companyCode },
+        docNo: { val: docNo },
+      },
+      { autoCommit: true }
+    );
+    console.log("Update result:", result);
+  } catch (error) {
+    console.error("Update data transfer flag error:", error);
+    throw error;
+  } finally {
+    await connection.close();
+  }
+}
 
   static async checkAccountEmployee(userId: string) {
     try {
