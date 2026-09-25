@@ -1716,7 +1716,7 @@ export const bulkApprovalHandler = async (req: Request, res: Response): Promise<
 
   try {
     await tenantQuery(
-      `BEGIN WMSTST.PROC_VMS_FLOW_BULK_APPROVAL(:companyCode, :docNos, :loginId, :action); END;`,
+      `BEGIN PROC_VMS_FLOW_BULK_APPROVAL(:companyCode, :docNos, :loginId, :action); END;`,
       {
         companyCode: { val: companyCode },
         docNos: { val: docNos.join(",") },
