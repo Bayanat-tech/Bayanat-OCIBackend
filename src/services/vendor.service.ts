@@ -415,7 +415,7 @@ export class VendorService {
 
     await connection.execute(
       `BEGIN
-        PROC_AWARE_VMS_ENTRY(:companyCode, :docNo, :userName);
+        PROC_AWARE_VMS_ENTRY_TEST(:companyCode, :docNo, :userName);
        END;`,
       {
         companyCode: { val: companyCode },
@@ -425,7 +425,7 @@ export class VendorService {
       { autoCommit: true }
     );
 
-    console.log(`PROC_AWARE_VMS_ENTRY executed successfully`);
+    console.log(`PROC_AWARE_VMS_ENTRY_TEST executed successfully`);
     return { success: true, message: "Data transferred via Oracle procedure" };
   } catch (error: any) {
     console.error("Error in callAwareVmsEntry:", error);
