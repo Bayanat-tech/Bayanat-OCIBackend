@@ -101,7 +101,7 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 //import { getPrRegisterOldSummaryReportExcel, getPrRegisterOldSummaryReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisteOld_Summary";
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
 //import { getPrRegisterOldDetailReportExcel, getPrRegisterOldDetailReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PR_RegisterOld_Details";
-import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+// import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
 import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareReportHtml, getPurchaseQuotationReportExcel, getPurchaseQuotationReportHtml, getPurchaseQuotationWithRatesReportExcel, getPurchaseQuotationWithRatesReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationReports";
 import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
@@ -245,8 +245,8 @@ router.post('/reports/SalesOrderReport/excel', getSalesOrderReportExcel);
 
 
 //--------------GrnPrintReport----------------
-router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
-router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
+// router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
+// router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
 
 
 
