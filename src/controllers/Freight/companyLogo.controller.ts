@@ -39,7 +39,7 @@ export async function getCompanyLogoDirect(req: RequestWithUser, res: Response, 
         conn = await TenantManager.getConnection(tenantId);
 
         const result = await conn.execute(
-            `SELECT COMPANY_LOGO_AWSURL, COMPANY_LOGO 
+            `SELECT COMPANY_LOGO_AWSURL, COMPANY_LOGO, COMPANY_NAME, ADDRESS1, ADDRESS2, ADDRESS3, CITY, COUNTRY 
              FROM MS_COMPANY 
              WHERE COMPANY_CODE = :company_code`,
             { company_code: company_code },
