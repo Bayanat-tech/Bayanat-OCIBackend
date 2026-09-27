@@ -5,6 +5,11 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,7 +22,7 @@ interface ProductGroup {
   serialNo: number;
   prodCode:   string;
   prodName:   string;
-    
+
   qty1: number; // QTY_PUOM
   uom1: string; // P_UOM
 
@@ -28,7 +33,6 @@ interface ProductGroup {
 
   qty1ByUom: UomTotals;
   qty2ByUom: UomTotals;
-
 }
 
 interface GroupSection {
@@ -241,11 +245,11 @@ async function loadOrderData(
     await closeConn(conn);
   }
 }
+
 // ─── Grouping ─────────────────────────────────────────────────────────────────
 
 function groupRows(rows: ReportRow[]): GroupSection[] {
   const groupMap: Record<string, {
-
     orderNo:    string;
     orderDate:  string;
     custCode:   string;
@@ -253,11 +257,9 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
     products:   Record<string, ProductGroup>;
     qty1ByUom:  UomTotals;
     qty2ByUom:  UomTotals;
-
   }> = {};
 
   for (const r of rows) {
-
     const groupKey = text(r.order_no) || "No Order";
     const prodKey  = `${text(r.serial_no)}-${text(r.prod_code)}`;
     const pUom     = text(r.p_uom);
@@ -266,7 +268,7 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
     const qtyPuom = parseFloat(String(r.qty_puom)) || 0;
     const qtyLuom = parseFloat(String(r.qty_luom)) || 0;
 
-if (!groupMap[groupKey])
+    if (!groupMap[groupKey])
       groupMap[groupKey] = {
         orderNo:   text(r.order_no),
         orderDate: text(r.order_date),
@@ -323,27 +325,142 @@ if (!groupMap[groupKey])
   }));
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+// ─── Sales Order-only CSS (extraCss for buildReportDocument) ──────────────────
 
-function renderHtml(
+const SALES_ORDER_EXTRA_CSS = `
+  /* No @page/body margins — from report_common */
+
+  .doc-title-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0; font-size: 18px; font-weight: 800; color: #0b4ca1;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* ── Job header block (flat label : value, no box) ── */
+  .job-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 16px;
+    margin-bottom: 10px;
+    padding: 8px 0 10px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 11px;
+  }
+  .job-col { display: flex; flex-direction: column; gap: 3px; }
+  .job-row { display: flex; align-items: baseline; gap: 6px; line-height: 1.6; }
+  .job-label {
+    font-size: 10.5px;
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .job-label::after { content: ":"; }
+  .job-value {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .job-value.nil { font-weight: 400; color: #94a3b8; }
+
+  /* ── Data table ── */
+  table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+
+  col.c0  { width: 8%;  } col.c1  { width: 40%; }
+  col.c2  { width: 14%; } col.c3  { width: 12%; }
+  col.c4  { width: 14%; } col.c5  { width: 12%; }
+
+  thead tr.th-group th {
+    background: #f1f5f9; color: #0f172a; font-weight: 700;
+    font-size: 10px; padding: 6px 5px; text-align: center;
+    border-top: 1px solid #475569; border-bottom: 1px solid #475569;
+  }
+  thead tr.th-group th:last-child { border-right: none; }
+  thead tr.th-sub th {
+    background: #f8fafc; color: #64748b; font-weight: 600;
+    font-size: 9.5px; padding: 5px 10px; text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  thead tr.th-sub th.num { text-align: right; }
+
+  tr.group-row td {
+    background: #0b4ca1; color: #fff; font-weight: 700;
+    font-size: 11px; padding: 5px 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  tr.prod-row td {
+    background: #f1f5f9; color: #0b4ca1; font-weight: 700;
+    font-size: 11px; padding: 4px 10px 4px 22px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  tr.prod-row td.prod-asn {
+    background: #f1f5f9; color: #0f172a; font-weight: 600;
+    padding-left: 10px; text-align: right; font-size: 10.5px;
+  }
+
+  tbody tr.data-row td {
+    padding: 4px 10px; border-bottom: 1px solid #e2e8f0;
+    color: #0f172a; font-size: 11px;
+    white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
+    vertical-align: top;
+  }
+  tbody tr.data-row:nth-child(even) td { background: #f8fafc; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.dim  { color: #94a3b8 !important; font-weight: 400; }
+  td.short  { color: #dc2626 !important; font-weight: 700; }
+  td.excess { color: #16a34a !important; font-weight: 700; }
+
+  tr.group-total td {
+    background: #e2e8f0; padding: 5px 10px; font-size: 11px;
+    font-weight: 700; color: #0b4ca1; white-space: nowrap;
+  }
+  tr.grand-total td {
+    background: #0b4ca1; color: #fff; font-weight: 700;
+    font-size: 12px; padding: 8px 10px;
+    border-top: 2px solid #093d82;
+  }
+
+  @media print {
+    thead { display: table-header-group; }
+
+    /* Keep section headers attached to their first data row */
+    tr.group-row,
+    tr.prod-row {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    /* Keep totals attached to the group above them */
+    tr.group-total,
+    tr.grand-total {
+      break-before: avoid;
+      page-break-before: avoid;
+    }
+  }
+`;
+
+// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+
+function renderSalesOrderBody(
   groups:      GroupSection[],
   firstRow:    ReportRow | null,
   jobNo:       string,
   prinCode:    string,
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
+  reportTitle: string
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-
   const r = firstRow || {};
 
   // ── Grand-level UOM totals ────────────────────────────────────────────────
   const grandTotalPuom = mergeUomTotals(...groups.map(g => g.qty1ByUom));
   const grandTotalLuom = mergeUomTotals(...groups.map(g => g.qty2ByUom));
-
 
   // ── Build body rows ────────────────────────────────────────────────────────
   let bodyRows = "";
@@ -362,8 +479,8 @@ function renderHtml(
       </td>
       </tr>`;
 
- for (const pg of gs.products) {
-    bodyRows += `
+    for (const pg of gs.products) {
+      bodyRows += `
       <tr class="data-row">
         <td class="num">
           ${escapeHtml(String(pg.serialNo || ""))}
@@ -390,10 +507,10 @@ function renderHtml(
           ${escapeHtml(pg.uom2 || "—")}
         </td>
       </tr>`;
-  }
+    }
 
-  // Order total
-  bodyRows += `
+    // Order total
+    bodyRows += `
     <tr class="group-total">
       <td colspan="2">
         Total
@@ -407,10 +524,10 @@ function renderHtml(
         ${escapeHtml(fmtUomTotals(gs.qty2ByUom))}
       </td>
     </tr>`;
-}
+  }
 
-// Grand total row
-const grandRow = `
+  // Grand total row
+  const grandRow = `
   <tr class="grand-total">
     <td colspan="2">
       Grand Total
@@ -425,237 +542,64 @@ const grandRow = `
     </td>
   </tr>`;
 
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(jobNo)}</title>
-  <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 277mm;
-      min-height: 190mm;
-      margin: 0 auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-    }
-
-    /* ── Report header banner ── */
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 6px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-
-    /* ── Job header block (flat label : value, no box) ── */
-    .job-header {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0 16px;
-      margin-bottom: 10px;
-      padding: 8px 0 10px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 11px;
-    }
-    .job-col { display: flex; flex-direction: column; gap: 3px; }
-    .job-row { display: flex; align-items: baseline; gap: 6px; line-height: 1.6; }
-    .job-label {
-      font-size: 10.5px;
-      color: #6b7280;
-      white-space: nowrap;
-    }
-    .job-label::after { content: ":"; }
-    .job-value {
-      font-size: 11px;
-      font-weight: 700;
-      color: #111827;
-    }
-    .job-value.nil { font-weight: 400; color: #9ca3af; }
-
-    /* ── Data table ── */
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
-    col.c0  { width: 8%;  } col.c1  { width: 8%;  } col.c2  { width: 9%;  }
-    col.c3  { width: 9%;  } col.c4  { width: 7%;  } col.c5  { width: 7%;  }
-    col.c6  { width: 14%; } col.c7  { width: 11%; }
-    col.c8  { width: 14%; } col.c9  { width: 13%; }
-
-    thead tr.th-group th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 6px 10px; text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-    }
-    thead tr.th-group th:last-child { border-right: none; }
-    thead tr.th-sub th {
-      background: #162d4a; color: #cbd5e1; font-weight: 600;
-      font-size: 9.5px; padding: 5px 10px; text-align: left;
-      border-right: 1px solid rgba(255,255,255,0.10);
-      white-space: nowrap;
-    }
-    thead tr.th-sub th.num { text-align: right; }
-
-    tr.group-row td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    tr.prod-row td {
-      background: #e8ecf2; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 4px 10px 4px 22px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      border-bottom: 1px solid #d5dce8;
-    }
-    tr.prod-row td.prod-asn {
-      background: #e8ecf2; color: #374151; font-weight: 600;
-      padding-left: 10px; text-align: right; font-size: 10.5px;
-    }
-
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
-      vertical-align: top;
-    }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    td.dim  { color: #9ca3af !important; font-weight: 400; }
-    td.short  { color: #dc2626 !important; font-weight: 700; }
-    td.excess { color: #16a34a !important; font-weight: 700; }
-
-    tr.group-total td {
-      background: #d5dce8; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
-    }
-
-    /* ── Footer ── */
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code {
-      font-family: "Courier New", monospace; font-size: 9px; color: #6b7280;
-    }
-
-    @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      thead { display: table-header-group; }
-
-      /* Keep section headers attached to their first data row */
-      tr.group-row,
-      tr.prod-row {
-        break-after: avoid;
-        page-break-after: avoid;
-      }
-
-      /* Keep totals attached to the group above them */
-      tr.group-total,
-      tr.grand-total {
-        break-before: avoid;
-        page-break-before: avoid;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-
-    <!-- ── Report title banner ── -->
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-
-    <!-- ── Print meta row ── -->
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(reportTitle)}</h1></div>
     </div>
 
     <!-- ── Job header block (flat, no box) ── -->
     <div class="job-header">
-
       <div class="job-col">
         <div class="job-row">
-          <span class="job-label">Job No:</span>
+          <span class="job-label">Job No</span>
           <span class="job-value">${escapeHtml(text(r.job_no) || jobNo)}</span>
         </div>
         <div class="job-row">
           <span class="job-label">Job Date</span>
-          <span class="job-value">  ${escapeHtml(text(r.job_date) || "—")}</span>
+          <span class="job-value">${escapeHtml(dateText(r.job_date) || "—")}</span>
         </div>
         <div class="job-row">
           <span class="job-label">Principal</span>
           <span class="job-value">${escapeHtml(text(r.prin_code) || prinCode)}${r.prin_name ? ` - ${escapeHtml(text(r.prin_name))}` : ""}</span>
         </div>
       </div>
-
     </div><!-- /job-header -->
 
     <!-- ── Data table ── -->
-<table class="rpt-table">
-  <colgroup>
-    <col class="c0" />
-    <col class="c1" />
-    <col class="c2" />
-    <col class="c3" />
-    <col class="c4" />
-    <col class="c5" />
-  </colgroup>
+    <table class="rpt-table">
+      <colgroup>
+        <col class="c0" />
+        <col class="c1" />
+        <col class="c2" />
+        <col class="c3" />
+        <col class="c4" />
+        <col class="c5" />
+      </colgroup>
 
-  <thead>
-    <tr class="th-group">
-      <th class="col-no">No.</th>
-      <th class="col-product">Product</th>
-      <th class="col-qty">Quantity1</th>
-      <th class="col-uom">UOM</th>
-      <th class="col-qty">Quantity2</th>
-      <th class="col-uom">UOM</th>
-    </tr>
-  </thead>
+      <thead>
+        <tr class="th-group">
+          <th class="col-no">No.</th>
+          <th class="col-product">Product</th>
+          <th class="col-qty">Quantity1</th>
+          <th class="col-uom">UOM</th>
+          <th class="col-qty">Quantity2</th>
+          <th class="col-uom">UOM</th>
+        </tr>
+      </thead>
 
-  <tbody>
-    ${bodyRows}
-    ${grandRow}
-  </tbody>
-</table>
+      <tbody>
+        ${bodyRows}
+        ${grandRow}
+      </tbody>
+    </table>
 
-    <!-- ── Page footer ── -->
-    <div class="rpt-footer">
-      <span>Report Name : <code>${escapeHtml(jobNo)}</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-
-  </main>
-  <script>
-    window.addEventListener("message", (e) => {
-      if (e.data === "print") window.print();
-    });
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-  </script>
-</body>
-</html>`;
+    <script>
+      // Print button in the Dialog toolbar fires this via postMessage
+      window.addEventListener("message", (e) => {
+        if (e.data === "print") window.print();
+      });
+    </script>
+  `;
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
@@ -837,13 +781,7 @@ function buildExcelBuffer(
     ),
   ]);
 
-  // Keep your existing Excel XML/workbook generation code below this point.
-  // It should use:
-  //
-  // rows
-  // NCOLS = 6
-
-  const COL_WIDTHS = [13, 13, 16, 16, 10, 10, 22, 22, 22, 18];
+  const COL_WIDTHS = [10, 40, 14, 12, 14, 12];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
@@ -903,9 +841,9 @@ function buildExcelBuffer(
   <fonts count="8">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FFDC2626"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF16A34A"/><name val="Calibri"/></font>
@@ -913,21 +851,21 @@ function buildExcelBuffer(
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFE8ECF2"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD5DCE8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <left style="thin"><color rgb="FFE2E8F0"/></left><right style="thin"><color rgb="FFE2E8F0"/></right>
+      <top style="thin"><color rgb="FFE2E8F0"/></top><bottom style="thin"><color rgb="FFE2E8F0"/></bottom>
       <diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FF1E3A5F"/></left><right style="thin"><color rgb="FF1E3A5F"/></right>
-      <top style="thin"><color rgb="FF1E3A5F"/></top><bottom style="thin"><color rgb="FF1E3A5F"/></bottom>
+      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
+      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
       <diagonal/>
     </border>
   </borders>
@@ -954,7 +892,7 @@ function buildExcelBuffer(
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="GRN Detail" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="Sales Order" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -989,30 +927,56 @@ function buildExcelBuffer(
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
+/**
+ * GET /api/wms/outbound/reports/sales-order/:job_no
+ *
+ * Returns self-contained HTML for the Dialog iframe via report_common
+ * (company header + footer). Print is handled by postMessage("print").
+ */
 export const getSalesOrderReportHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
-   // const companyCode     = text(req.params.companyCode  || req.query.companyCode);
-    const  jobNo     = text(req.params.job_no  || req.query.job_no);
+    const jobNo       = text(req.params.job_no  || req.query.job_no);
     const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title)    || "Sales Order Report";
     const autoPrint   = req.query.print === "true";
 
     if (!jobNo || !prinCode) {
-      res.status(400).json({ success: false, message:  "job_no and prin_code are required" });
+      res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
 
     const rows   = await loadOrderData(req, prinCode, jobNo);
     const groups = groupRows(rows);
     const first  = rows[0] ?? null;
+    const companyCode = text(req.user?.company_code);
+    const loginId = text(req.user?.loginid);
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderSalesOrderBody(groups, first, jobNo, prinCode, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_outbound_sales_order",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(jobNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `${reportTitle} - ${jobNo}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: SALES_ORDER_EXTRA_CSS,
+      autoPrint,
+      showPrintButton: true,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(groups, first,jobNo,prinCode, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(html);
   } catch (error: any) {
-    console.error("GRN HTML error:", error);
+    console.error("Sales Order HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
@@ -1022,12 +986,11 @@ export const getSalesOrderReportPdf = async (
   res: Response
 ): Promise<void> => {
   try {
-    const companyCode     = text(req.params.companyCode  || req.query.companyCode);
     const jobNo    = text(req.params.job_no  || req.query.job_no);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
-    if (!companyCode || !jobNo || !prinCode) {
-      res.status(400).json({ success: false, message: " job_no and prin_code are required" });
+    if (!jobNo || !prinCode) {
+      res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
 
@@ -1035,13 +998,33 @@ export const getSalesOrderReportPdf = async (
     const groups      = groupRows(rows);
     const first       = rows[0] ?? null;
     const reportTitle = "Sales Order Report";
-    const html = renderHtml(groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
+    const companyCode = text(req.user?.company_code);
+    const loginId = text(req.user?.loginid);
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderSalesOrderBody(groups, first, jobNo, prinCode, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_outbound_sales_order",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(jobNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `${reportTitle} - ${jobNo}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: SALES_ORDER_EXTRA_CSS,
+      autoPrint: true,
+      showPrintButton: true,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", `inline; filename="ORDER_${jobNo}.pdf"`);
     res.send(html);
   } catch (error: any) {
-    console.error("GRN PDF error:", error);
+    console.error("Sales Order PDF error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate PDF" });
   }
 };
@@ -1051,15 +1034,14 @@ export const exportSalesOrderReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const companyCode     = text(req.params.companyCode  || req.query.companyCode);
     const jobNo    = text(req.params.job_no  || req.query.job_no);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
 
     if (!jobNo || !prinCode) {
-      res.status(400).json({ success: false, message: "company_code, job_no and prin_code are required" });
+      res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
-    
+
     const rows   = await loadOrderData(req, prinCode, jobNo);
     const groups = groupRows(rows);
     const buffer = buildExcelBuffer(groups, jobNo, prinCode);
@@ -1068,7 +1050,7 @@ export const exportSalesOrderReportExcel = async (
     res.setHeader("Content-Disposition", `attachment; filename="ORDER_${jobNo}.xlsx"`);
     res.end(buffer);
   } catch (error: any) {
-    console.error("GRN Excel error:", error);
+    console.error("Sales Order Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
   }
 };
