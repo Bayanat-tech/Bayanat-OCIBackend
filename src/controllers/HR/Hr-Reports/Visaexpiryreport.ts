@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import TenantManager from "../../../database/TenantManager";
+import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -12,6 +15,14 @@ const formatDateStr = (v: any): string => {
     const d = new Date(v);
     return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
+
+const escapeHtml = (v: unknown): string =>
+    text(v)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +37,17 @@ interface VisaRow {
     visa_valid_from: string;
     visa_valid_to:   string;
     days_remaining:  number;
+}
+
+interface VisaReportParams {
+    parameter:   string;
+    loginid:     string;
+    companyCode: string;
+    division:    string;
+    department:  string;
+    date_from:   string;
+    date_to:     string;
+    emp_type:    string;
 }
 
 // ─── Shared: fetch rows from DB ───────────────────────────────────────────────
@@ -95,58 +117,26 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
     return { rows, connection };
 }
 
-// ─── Build HTML ───────────────────────────────────────────────────────────────
+// ─── Shared: build the Excel-compatible HTML (used only by the standalone
+//     /excel route — a plain MS-Excel HTML export, separate from the print
+//     page below, so it keeps its own self-contained styling) ──────────────
 
-function buildVisaExpiryHTML(
-    rows: VisaRow[],
-    params: {
-        parameter:  string;
-        loginid:    string;
-        division:   string;
-        department: string;
-        date_from:  string;
-        date_to:    string;
-        emp_type:   string;
-    }
-): string {
-
-    const reportTitle = "Visa Expiry Listing Report";
-    const generatedBy = text(params.loginid) || "Unknown User";
+function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): string {
     const reportDate  = formatDateStr(new Date());
+    const generatedBy = text(params.loginid) || "Unknown User";
 
     let totalExpired  = 0;
     let totalExpiring = 0;
     let totalValid    = 0;
 
-    const tableRows = rows.map((r, i) => {
-        const daysNum = Number(r.days_remaining);
-        let rowCls = "";
-        let daysCls = "";
-        if (daysNum < 0)        { totalExpired++;  rowCls = "row-exp";  daysCls = "days-exp";  }
-        else if (daysNum <= 30) { totalExpiring++; rowCls = "row-warn"; daysCls = "days-warn"; }
-        else                    { totalValid++; }
-
-        return `
-        <tr class="${rowCls}">
-          <td class="tc">${i + 1}</td>
-          <td class="bold">${text(r.employee_code)}</td>
-          <td>${text(r.rpt_name)}</td>
-          <td>${text(r.dept_name)}</td>
-          <td class="tc">${text(r.div_name)}</td>
-          <td>${text(r.section_name)}</td>
-          <td>${text(r.desg_name)}</td>
-          <td>${text(r.sponsor_name)}</td>
-          <td class="tc mono">${formatDateStr(r.visa_valid_from)}</td>
-          <td class="tc mono ${daysCls}">${formatDateStr(r.visa_valid_to)}</td>
-          <td class="tc mono ${daysCls}">${daysNum}</td>
-        </tr>`;
-    }).join("") || `<tr><td colspan="11" class="empty">No records found.</td></tr>`;
-
-    // ── Excel export data (built server-side, embedded in page) ───────────────
     const excelRows = rows.map((r, i) => {
         const daysNum = Number(r.days_remaining);
         const bgColor = daysNum < 0 ? "#FFF5F5" : daysNum <= 30 ? "#FFFDF0" : "#FFFFFF";
         const dayColor = daysNum < 0 ? "color:#C00000;font-weight:bold" : daysNum <= 30 ? "color:#B45309;font-weight:bold" : "";
+        if (daysNum < 0) totalExpired++;
+        else if (daysNum <= 30) totalExpiring++;
+        else totalValid++;
+
         return `<tr style="background:${bgColor}">
           <td style="text-align:center">${i + 1}</td>
           <td style="font-weight:bold">${text(r.employee_code)}</td>
@@ -162,7 +152,7 @@ function buildVisaExpiryHTML(
         </tr>`;
     }).join("");
 
-    const excelHtml = `
+    return `
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:x="urn:schemas-microsoft-com:office:excel"
       xmlns="http://www.w3.org/TR/REC-html40">
@@ -223,234 +213,183 @@ function buildVisaExpiryHTML(
     </tr>
   </tfoot>
 </table>
-</body></html>`.replace(/`/g, "\\`");
+</body></html>`;
+}
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${reportTitle}</title>
-  <style>
-    /* ── Base ─────────────────────────────────────────────────────────── */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 11px;
-      background: #f0f2f5;
-      color: #1e293b;
+// ─── Report-only CSS (document layout — not shared, same convention as the ───
+// ─── P&L and finance-doc reports)                                          ───
+
+// ★ FIX: report needs to print/preview in landscape — this table has 11
+//   columns and was cramped in portrait. `@page { size: A4 landscape; }`
+//   controls the actual print/PDF page orientation (same pattern used by
+//   the DN Summary report). Scoped margins kept tight since the table is
+//   wide relative to page width.
+const VISA_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 10mm 12mm; }
+
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 10px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.55;
+  }
+  .doc-title-row .doc-meta b { color: #0f172a; }
+
+  table.data-table.visa-table td.mono {
+    font-family: "Courier New", monospace;
+    font-size: 10px;
+  }
+  table.data-table.visa-table td.bold { font-weight: 700; }
+
+  table.data-table.visa-table tr.row-exp td {
+    background: #fff5f5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.data-table.visa-table tr.row-warn td {
+    background: #fffdf0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  table.data-table.visa-table td.days-exp  { color: #dc2626; font-weight: 700; }
+  table.data-table.visa-table td.days-warn { color: #d97706; font-weight: 700; }
+
+  .summary-bar {
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-top: 2px solid #0b4ca1;
+    background: #f1f5f9;
+    font-size: 10.5px;
+    color: #0f172a;
+    font-weight: 700;
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .summary-bar .dot-exp  { color: #dc2626; }
+  .summary-bar .dot-warn { color: #d97706; }
+  .summary-bar .dot-ok   { color: #16a34a; }
+
+  @media print {
+    table.data-table.visa-table tr.row-exp  td,
+    table.data-table.visa-table tr.row-warn td {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
+  }
+`;
 
-    /* ── Toolbar ──────────────────────────────────────────────────────── */
-    .toolbar {
-      background: #1e293b;
-      padding: 8px 20px;
-      display: flex; gap: 8px; justify-content: flex-end;
-    }
-    .btn {
-      padding: 7px 18px; border: none; border-radius: 5px;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-    }
-    .btn-print { background: #3b82f6; color: #fff; }
-    .btn-excel { background: #16a34a; color: #fff; }
-    .btn:hover { opacity: 0.88; }
+function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
+    let totalExpired  = 0;
+    let totalExpiring = 0;
+    let totalValid    = 0;
 
-    /* ── Page ─────────────────────────────────────────────────────────── */
-    .page {
-      width: 100%;
-      max-width: 1180px;
-      margin: 20px auto;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 16px rgba(0,0,0,0.10);
-      padding: 24px 28px 20px;
-    }
+    const tableRows = rows.map((r, i) => {
+        const daysNum = Number(r.days_remaining);
+        let rowCls = "";
+        let daysCls = "";
+        if (daysNum < 0)        { totalExpired++;  rowCls = "row-exp";  daysCls = "days-exp";  }
+        else if (daysNum <= 30) { totalExpiring++; rowCls = "row-warn"; daysCls = "days-warn"; }
+        else                    { totalValid++; }
 
-    /* ── Report Header ────────────────────────────────────────────────── */
-    .report-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2.5px solid #1e3a8a;
-      padding-bottom: 14px;
-      margin-bottom: 18px;
-    }
-    .report-title {
-      font-size: 15px; font-weight: 800;
-      color: #1e3a8a; margin-bottom: 10px;
-    }
-    .meta-table { border-collapse: collapse; }
-    .meta-table td { padding: 2px 10px 2px 0; vertical-align: top; font-size: 11px; }
-    .meta-lbl { font-weight: 700; color: #64748b; white-space: nowrap; min-width: 95px; }
-    .meta-val { color: #1e293b; }
-    .brand-block { text-align: right; white-space: nowrap; }
-    .brand-name  { font-size: 20px; font-weight: 800; color: #1e3a8a; letter-spacing: 0.08em; }
-    .brand-sub   { font-size: 9px;  letter-spacing: 0.25em; color: #64748b; margin-top: 2px; }
+        return `
+        <tr class="${rowCls}">
+          <td class="center">${i + 1}</td>
+          <td class="bold">${escapeHtml(r.employee_code)}</td>
+          <td>${escapeHtml(r.rpt_name)}</td>
+          <td>${escapeHtml(r.dept_name)}</td>
+          <td class="center">${escapeHtml(r.div_name)}</td>
+          <td>${escapeHtml(r.section_name)}</td>
+          <td>${escapeHtml(r.desg_name)}</td>
+          <td>${escapeHtml(r.sponsor_name)}</td>
+          <td class="center mono">${escapeHtml(formatDateStr(r.visa_valid_from))}</td>
+          <td class="center mono ${daysCls}">${escapeHtml(formatDateStr(r.visa_valid_to))}</td>
+          <td class="center mono ${daysCls}">${daysNum}</td>
+        </tr>`;
+    }).join("") || `<tr><td colspan="11" class="center muted">No records found.</td></tr>`;
 
-    /* ── Table ────────────────────────────────────────────────────────── */
-    .tbl-wrap { width: 100%; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-
-    thead tr { background: #1e3a8a; }
-    thead th {
-      color: #fff; font-weight: 700; font-size: 9px;
-      text-transform: uppercase; letter-spacing: 0.04em;
-      padding: 8px 6px; text-align: left;
-      border-right: 1px solid #2d52c4;
-      white-space: nowrap; overflow: hidden;
-    }
-    thead th.tc { text-align: center; }
-    thead th:last-child { border-right: none; }
-
-    tbody td {
-      padding: 7px 6px; font-size: 10.5px;
-      border-bottom: 1px solid #f1f5f9;
-      vertical-align: middle;
-      overflow: hidden; text-overflow: ellipsis;
-    }
-    tbody tr:hover td { background: #eff6ff !important; }
-
-    /* ── Row colours ──────────────────────────────────────────────────── */
-    tr.row-exp  td { background: #fff5f5; }
-    tr.row-warn td { background: #fffdf0; }
-
-    /* ── Cell helpers ─────────────────────────────────────────────────── */
-    td.tc     { text-align: center; }
-    td.mono   { font-family: 'Courier New', monospace; font-size: 10px; }
-    td.bold   { font-weight: 700; }
-    td.days-exp  { color: #dc2626; font-weight: 700; }
-    td.days-warn { color: #d97706; font-weight: 700; }
-    td.empty  { text-align: center; padding: 36px; color: #94a3b8; }
-
-    /* ── Footer ───────────────────────────────────────────────────────── */
-    .report-footer {
-      margin-top: 14px;
-      padding-top: 10px;
-      border-top: 1px solid #e2e8f0;
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 10px; color: #94a3b8;
-    }
-    .report-footer strong { color: #64748b; }
-    .dot-exp  { color: #dc2626; font-weight: 700; }
-    .dot-warn { color: #d97706; font-weight: 700; }
-    .dot-ok   { color: #16a34a; font-weight: 700; }
-
-    /* ── Print ────────────────────────────────────────────────────────── */
-    @media print {
-      body      { background: #fff; font-size: 9px; }
-      .toolbar  { display: none; }
-      .page     { margin: 0; border-radius: 0; box-shadow: none;
-                  padding: 14px 16px; max-width: 100%; }
-      thead     { display: table-header-group; }
-      tbody tr  { page-break-inside: avoid; }
-      tr.row-exp  td { background: #fff5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      tr.row-warn td { background: #fffdf0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      thead tr       { background: #1e3a8a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button class="btn btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
-    <button class="btn btn-excel" onclick="exportExcel()">📥 Export to Excel</button>
-  </div>
-
-  <script>
-    function exportExcel() {
-      const html = \`${excelHtml}\`;
-      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = 'VisaExpiryReport_${new Date().toISOString().slice(0, 10)}.xls';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-  </script>
-
-  <div class="page">
-
-    <!-- Header -->
-    <div class="report-header">
-      <div>
-        <div class="report-title">${reportTitle}</div>
-        <table class="meta-table">
-          <tr><td class="meta-lbl">Period :</td>     <td class="meta-val"><strong>${formatDateStr(params.date_from)} &ndash; ${formatDateStr(params.date_to)}</strong></td></tr>
-          <tr><td class="meta-lbl">Division :</td>   <td class="meta-val">${text(params.division) || "All"}</td></tr>
-          <tr><td class="meta-lbl">Department :</td> <td class="meta-val">${text(params.department) || "All"}</td></tr>
-          <tr><td class="meta-lbl">Emp. Type :</td>  <td class="meta-val">${params.emp_type === "A" ? "Active Employees" : "All Employees"}</td></tr>
-          <tr><td class="meta-lbl">Printed on :</td> <td class="meta-val">${reportDate}</td></tr>
-          <tr><td class="meta-lbl">User :</td>        <td class="meta-val">${generatedBy}</td></tr>
-        </table>
-      </div>
-      <div class="brand-block">
-        <div class="brand-name">AL MADINA</div>
-        <div class="brand-sub">L O G I S T I C S</div>
+    return `
+    <div class="doc-title-row">
+      <h1>Visa Expiry Listing Report</h1>
+      <div class="doc-meta">
+        <div><b>Period:</b> ${escapeHtml(formatDateStr(params.date_from))} &ndash; ${escapeHtml(formatDateStr(params.date_to))}</div>
+        <div><b>Division:</b> ${escapeHtml(params.division) || "All"}</div>
+        <div><b>Department:</b> ${escapeHtml(params.department) || "All"}</div>
+        <div><b>Emp. Type:</b> ${params.emp_type === "A" ? "Active Employees" : "All Employees"}</div>
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="tbl-wrap">
-      <table>
-        <colgroup>
-          <col style="width:32px"/>
-          <col style="width:82px"/>
-          <col style="width:145px"/>
-          <col style="width:95px"/>
-          <col style="width:60px"/>
-          <col style="width:75px"/>
-          <col style="width:115px"/>
-          <col style="width:100px"/>
-          <col style="width:76px"/>
-          <col style="width:76px"/>
-          <col style="width:60px"/>
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="tc">#</th>
-            <th>Emp. Code</th>
-            <th>Employee Name</th>
-            <th>Department</th>
-            <th class="tc">Division</th>
-            <th>Section</th>
-            <th>Designation</th>
-            <th>Sponsor</th>
-            <th class="tc">Visa From</th>
-            <th class="tc">Visa To</th>
-            <th class="tc">Days</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
-    </div>
+    <table class="data-table visa-table">
+      <colgroup>
+        <col style="width:32px"/>
+        <col style="width:82px"/>
+        <col style="width:145px"/>
+        <col style="width:95px"/>
+        <col style="width:60px"/>
+        <col style="width:75px"/>
+        <col style="width:115px"/>
+        <col style="width:100px"/>
+        <col style="width:76px"/>
+        <col style="width:76px"/>
+        <col style="width:60px"/>
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="center">#</th>
+          <th>Emp. Code</th>
+          <th>Employee Name</th>
+          <th>Department</th>
+          <th class="center">Division</th>
+          <th>Section</th>
+          <th>Designation</th>
+          <th>Sponsor</th>
+          <th class="center">Visa From</th>
+          <th class="center">Visa To</th>
+          <th class="center">Days</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
 
-    <!-- Footer -->
-    <div class="report-footer">
-      <div>
-        <strong>Total Records: ${rows.length}</strong>
-        &nbsp;&nbsp;
-        <span class="dot-exp">&#9679; Expired: ${totalExpired}</span>
-        &nbsp;&nbsp;
-        <span class="dot-warn">&#9679; Expiring Soon: ${totalExpiring}</span>
-        &nbsp;&nbsp;
-        <span class="dot-ok">&#9679; Valid: ${totalValid}</span>
-      </div>
-      <div>End of Report &bull; Generated by <strong>${generatedBy}</strong> &bull; ${reportDate}</div>
+    <div class="summary-bar">
+      <span>Total Records: ${rows.length}</span>
+      <span class="dot-exp">&#9679; Expired: ${totalExpired}</span>
+      <span class="dot-warn">&#9679; Expiring Soon: ${totalExpiring}</span>
+      <span class="dot-ok">&#9679; Valid: ${totalValid}</span>
     </div>
+  `;
+}
 
-  </div>
-</body>
-</html>`;
+// ─── Shared: resolve request body into VisaReportParams ──────────────────────
+
+function resolveParams(body: any): VisaReportParams {
+    const { parameter, loginid, company_code, code1, code2, code3, date1, date2, code9 } = body;
+    return {
+        parameter:   parameter || "Hr_Report_VISA_EXPIRY_REPORT",
+        loginid:     loginid   || "ADMIN",
+        companyCode: text(company_code || code1),
+        division:    code2     || "",
+        department:  code3     || "",
+        date_from:   date1     || "",
+        date_to:     date2     || "",
+        emp_type:    code9     || "A",
+    };
 }
 
 // ─── HTML Controller ──────────────────────────────────────────────────────────
 
-export const getVisaExpiryReport = async (req: Request, res: Response): Promise<void> => {
+export const getVisaExpiryReport = async (req: RequestWithUser, res: Response): Promise<void> => {
     let connection: any;
     try {
         const { rows, connection: conn } = await fetchVisaRows(req.body);
@@ -461,24 +400,62 @@ export const getVisaExpiryReport = async (req: Request, res: Response): Promise<
             return;
         }
 
-        const { parameter, loginid, code2, code3, date1, date2, code9 } = req.body;
+        const params = resolveParams(req.body);
+        const companyCode = params.companyCode || req.user?.company_code || "";
 
-        const html = buildVisaExpiryHTML(rows, {
-            parameter:  parameter || "Hr_Report_VISA_EXPIRY_REPORT",
-            loginid:    loginid   || "ADMIN",
-            division:   code2     || "",
-            department: code3     || "",
-            date_from:  date1     || "",
-            date_to:    date2     || "",
-            emp_type:   code9     || "A",
+        const headerHtml = await reportHeader({ company_code: companyCode, req });
+        const bodyHtml = renderVisaBody(rows, params);
+        const footerHtml = reportFooter({
+            reportName: "Visa Expiry Listing Report",
+            userName: params.loginid,
+            endLabel: "Powered by Bayanat Technology",
         });
 
-        res.setHeader("Content-Type", "text/html");
+        const html = buildReportDocument({
+            title: "Visa Expiry Listing Report",
+            headerHtml,
+            bodyHtml,
+            footerHtml,
+            extraCss: VISA_EXTRA_CSS,
+            autoPrint: req.query.print !== "false",
+        });
+
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.status(200).send(html);
 
     } catch (error: any) {
         console.error("Visa Expiry Report Error:", error);
         res.status(500).json({ success: false, message: "Unable to generate report", details: error.message });
+    } finally {
+        if (connection) try { await connection.close(); } catch (e) { console.error(e); }
+    }
+};
+
+// ─── Excel Controller ──────────────────────────────────────────────────────────
+
+export const exportVisaExpiryReportExcel = async (req: Request, res: Response): Promise<void> => {
+    let connection: any;
+    try {
+        const { rows, connection: conn } = await fetchVisaRows(req.body);
+        connection = conn;
+
+        if (!rows.length) {
+            res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+            return;
+        }
+
+        const excelHtml = buildVisaExpiryExcelHtml(rows, resolveParams(req.body));
+
+        res.setHeader("Content-Type", "application/vnd.ms-excel");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="VisaExpiryReport_${new Date().toISOString().slice(0, 10)}.xls"`
+        );
+        res.status(200).send(excelHtml);
+
+    } catch (error: any) {
+        console.error("Visa Expiry Report Excel Error:", error);
+        res.status(500).json({ success: false, message: "Unable to export report", details: error.message });
     } finally {
         if (connection) try { await connection.close(); } catch (e) { console.error(e); }
     }

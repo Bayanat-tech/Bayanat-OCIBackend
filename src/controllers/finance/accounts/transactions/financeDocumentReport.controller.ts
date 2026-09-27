@@ -7,6 +7,9 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
+import { reportHeader,
+  reportFooter,
+  buildReportDocument, } from "../../../common/report_common";
 
 type ReportRow = Record<string, any>;
 
@@ -184,7 +187,143 @@ async function loadReportData(req: RequestWithUser, docType: string, docNo: stri
   }
 }
 
-function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: string, autoPrint: boolean) {
+/** Finance-only CSS (document layout – not shared) */
+const FINANCE_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 10px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 10px 0 14px 0;
+  }
+  .box {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    overflow: hidden;
+  }
+  .box h2 {
+    margin: 0;
+    padding: 8px 12px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    background: transparent;
+    border: 0;
+  }
+  .box-body { padding: 4px 12px 12px; min-height: auto; }
+  .party-name { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+  .meta { display: grid; grid-template-columns: 28mm 1fr; gap: 4px 8px; font-size: 11px; }
+  .label { color: #64748b; font-weight: 600; }
+  .value { color: #0f172a; font-weight: 700; }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+  }
+  table.data-table th {
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    border: 0;
+    border-bottom: 1px solid #cbd5e1;
+    padding: 8px 6px;
+    text-align: left;
+  }
+  table.data-table th.num { text-align: right; }
+  table.data-table td {
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 8px 6px;
+    font-size: 11px;
+    vertical-align: top;
+  }
+  table.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table td.center { text-align: center; }
+
+  .totals-wrap {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+  .totals {
+    width: 240px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .totals td {
+    padding: 8px 12px;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 11px;
+  }
+  .totals tr:last-child td { border-bottom: 0; }
+  .totals .grand td {
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 800;
+    font-size: 12px;
+  }
+
+  .remarks {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    color: #475569;
+    font-size: 11px;
+  }
+  .sign {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-top: 40px;
+  }
+  .line {
+    border-top: 1px solid #94a3b8;
+    padding-top: 6px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #334155;
+  }
+`;
+
+/** Body only – no <html>/<head>/<body> */
+function renderFinanceBody(
+  data: Awaited<ReturnType<typeof loadReportData>>,
+  docType: string,
+  printUser = "",
+): string {
   const { company, header, details } = data;
   const visibleDetails = details.filter((row) => Number(row.serial_no) < 9000);
   const subtotal = visibleDetails.reduce((sum, row) => sum + amount(row.amount), 0);
@@ -197,19 +336,20 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
   const partyFax = text(header.party_fax);
   const documentNo = text(header.invoice_no || header.inv_no || header.ref_no || header.doc_no);
   const companyName = text(company.company_name || company.name || company.company_code || header.company_code);
-  const companyAddress = text(company.address || company.company_address || company.addr1 || company.addr2);
-  const companyTrn = text(company.trn_no || company.trn || company.vat_no || header.trn_no);
   const isPurchase = ["PI", "PO"].includes(docType);
   const partyLabel = isPayment(docType) ? "Payee / Account" : isPurchase ? "Supplier Details" : "Customer Details";
+  const printAt = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
 
-  const detailRows = visibleDetails.map((row, index) => {
-    const lineAmount = amount(row.amount);
-    const tax = amount(row.tx_compnt_amt_1);
-    const rate = amount(row.price) || lineAmount;
-    return `
+  const detailRows = visibleDetails
+    .map((row, index) => {
+      const lineAmount = amount(row.amount);
+      const tax = amount(row.tx_compnt_amt_1);
+      const rate = amount(row.price) || lineAmount;
+      return `
       <tr>
         <td class="center">${index + 1}</td>
-        <td class="code">${escapeHtml(row.ac_code)}</td>
         <td class="desc">
           <strong>${escapeHtml(row.ac_code)}</strong>
           <span>${escapeHtml(row.ac_name || row.remarks)}</span>
@@ -221,71 +361,16 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
         <td class="num">${money(tax)}</td>
         <td class="num strong">${money(lineAmount + tax)}</td>
       </tr>`;
-  }).join("");
+    })
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(titleFor(docType))} - ${escapeHtml(header.doc_no)}</title>
-  <style>
-    ${REPORT_FONT_FACE_CSS}
-    @page { size: A4; margin: 8mm; }
-    * { box-sizing: border-box; }
-    body { margin: 0; color: #111; font-family: ${REPORT_FONT_FAMILY}; font-size: 10px; line-height: 1.18; background: #f4f4f4; }
-    .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding: 8mm; border: 1px solid #777; }
-    .top { display: grid; grid-template-columns: 1fr 58mm; gap: 10px; align-items: start; border-bottom: 1px solid #777; padding-bottom: 6px; }
-    .brand { display: grid; gap: 3px; }
-    .company { font-size: 14px; line-height: 1.08; font-weight: 800; letter-spacing: 0; color: #111; text-transform: uppercase; }
-    .muted { color: #333; }
-    .title { border: 1px solid #777; text-align: center; }
-    .title h1 { margin: 0; padding: 6px 7px; color: #111; background: #fff; font-size: 12px; line-height: 1.1; text-transform: uppercase; letter-spacing: 0; border-bottom: 1px solid #777; }
-    .title .pill { display: block; padding: 4px 7px; color: #111; font-size: 9.5px; font-weight: 800; background: #fff; }
-    .summary { display: grid; grid-template-columns: 1.15fr .85fr; gap: 6px; margin-top: 6px; }
-    .box { border: 1px solid #999; overflow: hidden; }
-    .box h2 { margin: 0; padding: 4px 6px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0; color: #111; background: #fff; border-bottom: 1px solid #aaa; }
-    .box-body { padding: 6px; min-height: 28mm; }
-    .party-name { font-size: 10.8px; font-weight: 800; color: #111; margin-bottom: 4px; }
-    .meta { display: grid; grid-template-columns: 28mm 1fr; gap: 3px 8px; }
-    .label { color: #333; font-weight: 700; }
-    .value { color: #111; font-weight: 700; }
-    table { width: 100%; border-collapse: collapse; margin-top: 7px; table-layout: fixed; }
-    th { background: #f5f7fa; color: #111; padding: 4px 4px; text-align: left; font-size: 9px; font-weight: 800; border: 1px solid #888; }
-    td { border: 1px solid #999; padding: 4px 4px; vertical-align: top; font-size: 9.4px; }
-    td span { display: block; color: #111; margin-top: 1px; }
-    .code { width: 22mm; color: #111; }
-    .desc { width: auto; }
-    .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .center { text-align: center; }
-    .strong { font-weight: 800; }
-    .totals-wrap { display: grid; grid-template-columns: 1fr 62mm; gap: 8px; margin-top: 6px; align-items: start; }
-    .remarks { min-height: 23mm; border: 1px solid #999; padding: 6px; color: #111; }
-    .totals { width: 100%; margin: 0; border: 1px solid #777; }
-    .totals td { border: 0; border-bottom: 1px solid #aaa; padding: 4px 6px; }
-    .totals tr:last-child td { border-bottom: 0; }
-    .grand { color: #111; background: #fff; font-size: 11px; font-weight: 800; }
-    .section-caption { margin-top: 7px; padding: 4px 6px; border: 1px solid #888; border-bottom: 0; color: #111; font-weight: 800; letter-spacing: 0; text-transform: uppercase; background: #f5f7fa; }
-    .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; margin-top: 23mm; }
-    .line { border-top: 1px solid #777; padding-top: 5px; text-align: center; font-weight: 800; }
-    .actions { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
-    .actions button { border: 1px solid #cbd5e1; background: white; border-radius: 8px; padding: 8px 12px; font-weight: 700; cursor: pointer; }
-    @media print { body { background: white; } .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; } .actions { display: none; } }
-  </style>
-</head>
-<body>
-  <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
-  <main class="sheet">
-    <section class="top">
-      <div class="brand">
-        <div class="company">${escapeHtml(companyName)}</div>
-        <div>${escapeHtml(companyAddress)}</div>
-        <div class="muted">TRN: ${escapeHtml(companyTrn || "-")}</div>
-      </div>
-      <div class="title">
+  return `
+    <div class="doc-title-row">
+      <div>
         <h1>${escapeHtml(titleFor(docType))}</h1>
-        <div class="pill">${escapeHtml(header.canceled === "Y" ? "CANCELLED" : "ORIGINAL")}</div>
+        <div class="doc-sub">${escapeHtml(header.doc_no || "")}</div>
       </div>
-    </section>
+    </div>
 
     <section class="summary">
       <div class="box">
@@ -293,9 +378,8 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
         <div class="box-body">
           <div class="party-name">${escapeHtml(partyName || "Cash Sale")}</div>
           <div>${escapeHtml(partyAddress)}</div>
-          <div>${partyPhone ? `Contact: ${escapeHtml(partyPhone)}` : ""}</div>
-          <div>${partyFax ? `Fax: ${escapeHtml(partyFax)}` : ""}</div>
-          <div>${header.payment_terms ? `Payment Terms: ${escapeHtml(header.payment_terms)}` : ""}</div>
+          <div>${partyPhone ? `Tel: ${escapeHtml(partyPhone)}` : "Tel:"}</div>
+          <div>${partyFax ? `Fax: ${escapeHtml(partyFax)}` : "Fax:"}</div>
         </div>
       </div>
       <div class="box">
@@ -304,47 +388,39 @@ function renderHtml(data: Awaited<ReturnType<typeof loadReportData>>, docType: s
           <span class="label">Doc No</span><span class="value">${escapeHtml(header.doc_no)}</span>
           <span class="label">Invoice No</span><span class="value">${escapeHtml(documentNo)}</span>
           <span class="label">Doc Date</span><span class="value">${escapeHtml(dateText(header.doc_date))}</span>
-          <span class="label">Invoice Date</span><span class="value">${escapeHtml(dateText(header.inv_date || header.ref_date || header.doc_date))}</span>
           <span class="label">Account</span><span class="value">${escapeHtml(header.ac_code)}</span>
           <span class="label">Currency</span><span class="value">${escapeHtml(currency)}</span>
+          <span class="label">Payment</span><span class="value">${escapeHtml(header.payment_terms || "—")}</span>
         </div>
       </div>
     </section>
 
-    <table>
+    <table class="data-table">
       <thead>
         <tr>
-          <th class="center">SN</th>
-          <th>Code</th>
-          <th>Description</th>
-          <th class="num">Qty</th>
-          <th class="num">Rate</th>
-          <th class="num">Excl. VAT</th>
-          <th class="num">VAT %</th>
-          <th class="num">VAT Value</th>
-          <th class="num">Incl. VAT</th>
+          <th class="center" style="width:8%">S.No.</th>
+          <th style="width:36%">Description</th>
+          <th class="num" style="width:10%">Qty</th>
+          <th class="num" style="width:12%">Rate</th>
+          <th class="num" style="width:12%">Excl. VAT</th>
+          <th class="num" style="width:8%">VAT %</th>
+          <th class="num" style="width:12%">VAT</th>
+          <th class="num" style="width:12%">Incl. VAT</th>
         </tr>
       </thead>
-      <tbody>${detailRows || `<tr><td colspan="9" class="center muted">No lines found</td></tr>`}</tbody>
+      <tbody>${detailRows || `<tr><td colspan="8" class="center muted">No lines found</td></tr>`}</tbody>
     </table>
 
-    <section class="totals-wrap">
-      <div class="remarks"><strong>Remarks:</strong> ${escapeHtml(header.remarks || "")}</div>
-      <table class="totals">
-        <tr><td>Sub Total ${escapeHtml(currency)}</td><td class="num">${money(subtotal)}</td></tr>
-        <tr><td>Tax Total ${escapeHtml(currency)}</td><td class="num">${money(taxTotal)}</td></tr>
-        <tr><td class="grand">Grand Total ${escapeHtml(currency)}</td><td class="num grand">${money(total)}</td></tr>
-      </table>
-    </section>
+    ${header.remarks ? `<div class="remarks"><strong>Remarks:</strong> ${escapeHtml(header.remarks)}</div>` : ""}
 
-    <section class="sign">
-      <div class="line">Customer's Signature</div>
-      <div class="line">For ${escapeHtml(companyName)}</div>
-    </section>
-  </main>
-  ${autoPrint ? "<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>" : ""}
-</body>
-</html>`;
+    <div class="totals-wrap">
+      <table class="totals">
+        <tr><td>Sub Total</td><td class="num">${money(subtotal)}</td></tr>
+        <tr><td>Tax Total</td><td class="num">${money(taxTotal)}</td></tr>
+        <tr class="grand"><td>Grand Total ${escapeHtml(currency)}</td><td class="num">${money(total)}</td></tr>
+      </table>
+    </div>
+  `;
 }
 
 const excelStyles = {
@@ -681,9 +757,35 @@ export const getFinanceDocumentReportHtml = async (req: RequestWithUser, res: Re
       res.status(400).json({ success: false, message: "doc_type and doc_no are required" });
       return;
     }
+
     const data = await loadReportData(req, docType, docNo);
+    const companyCode =
+      req.user?.company_code || text(req.query.company_code) || text(data.header.company_code) || "BSG";
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: titleFor(docType),
+      userName: text(req.user?.loginid || (req.user as any)?.username || ""),
+    });
+
+const userName = text(req.user?.loginid || (req.user as any)?.username || "");
+const bodyHtml = renderFinanceBody(data, docType, userName);
+
+const html = buildReportDocument({
+  title: `${titleFor(docType)} - ${text(data.header.doc_no)}`,
+  headerHtml,
+  bodyHtml,
+  footerHtml: reportFooter({
+    reportName: titleFor(docType),
+    userName,
+    endLabel: "Powered by Bayanat Technology",
+  }),
+  extraCss: FINANCE_EXTRA_CSS,
+  autoPrint: req.query.print !== "false",
+});
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(data, docType, req.query.print !== "false"));
+    res.send(html);
   } catch (error: any) {
     console.error(error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });

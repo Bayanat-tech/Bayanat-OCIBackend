@@ -18,7 +18,7 @@ export const insUpdTtePQuotationBulk = async (
 
 
   try {
-  const user = req.user as IUser; 
+    const user = req.user as IUser;
     const header = req.body?.header;
     const details = req.body?.details;
 
@@ -68,8 +68,8 @@ export const insUpdTtePQuotationBulk = async (
 
       DOC_NO:
         header.doc_no != null
-          ? Number(header.doc_no)
-          : 0,
+          ? String(header.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -341,19 +341,19 @@ export const insUpdTtePQuotationBulk = async (
 
 
       TX_COMPNT_1_EXPMT:
-        String(header.tx_compnt_1_expmt ?? "S"),
+        String(header.tx_compnt_1_expmt ?? ""),
 
 
       TX_COMPNT_2_EXPMT:
-        String(header.tx_compnt_2_expmt ?? "S"),
+        String(header.tx_compnt_2_expmt ?? ""),
 
 
       TX_COMPNT_3_EXPMT:
-        String(header.tx_compnt_3_expmt ?? "S"),
+        String(header.tx_compnt_3_expmt ?? ""),
 
 
       TX_COMPNT_4_EXPMT:
-        String(header.tx_compnt_4_expmt ?? "S"),
+        String(header.tx_compnt_4_expmt ?? ""),
 
 
       TX_CAT_CODE_COST:
@@ -438,35 +438,39 @@ export const insUpdTtePQuotationBulk = async (
 
       TX_COMPNT_4_EXPMT_COST:
         String(header.tx_compnt_4_expmt_cost ?? "S"),
-        CREATED_BY:user.loginid ?? null,
+      CREATED_BY: user.loginid ?? null,
 
-  UPDATED_BY:
-user.loginid ?? null,
+      DISCOUNT_SCOOPE:
+        header.discount_scoope ?? null,
 
-  FLOW_LEVEL_RUNNING:
-    header.flow_level_running ?? 0,
 
-  LAST_ACTION:
-    header.last_action ?? null,
+      UPDATED_BY:
+        user.loginid ?? null,
 
-  FLOW_LEVEL_INITIAL:
-    header.flow_level_initial ?? 0,
+      FLOW_LEVEL_RUNNING:
+        header.flow_level_running ?? 0,
 
-  FLOW_LEVEL_FINAL:
-    header.flow_level_final ?? 0,
+      LAST_ACTION:
+        header.last_action ?? null,
 
-  FINAL_APPROVED:
-    String(header.final_approved ?? "N"),
+      FLOW_LEVEL_INITIAL:
+        header.flow_level_initial ?? 0,
 
-  HISTORY_SERIAL:
-    header.history_serial ?? 0,
+      FLOW_LEVEL_FINAL:
+        header.flow_level_final ?? 0,
 
-  NEXT_ACTION_BY:
-    header.next_action_by ?? null,
-  SENTBACK_REASON:
-    header.sentback_reason ?? null,
-  REJECT_REASON:
-    header.reject_reason ?? null
+      FINAL_APPROVED:
+        String(header.final_approved ?? "N"),
+
+      HISTORY_SERIAL:
+        header.history_serial ?? 0,
+
+      NEXT_ACTION_BY:
+        header.next_action_by ?? null,
+      SENTBACK_REASON:
+        header.sentback_reason ?? null,
+      REJECT_REASON:
+        header.reject_reason ?? null
 
     };
     /******************************************************
@@ -485,8 +489,8 @@ user.loginid ?? null,
 
       DOC_NO:
         d.doc_no != null
-          ? Number(d.doc_no)
-          : 0,
+          ? String(d.doc_no)
+          : null,
 
 
       DOC_DATE:
@@ -614,7 +618,7 @@ user.loginid ?? null,
 
 
       REF_DOC_NO:
-        d.ref_doc_no ?? 0,
+        d.ref_doc_no ?? null,
 
 
       REF_DOC_SERIAL:
@@ -839,7 +843,7 @@ user.loginid ?? null,
     /******************************************************
      * Execute Oracle Procedure
      ******************************************************/
-
+console.log("----------------->",header.tx_compnt_2_expmt);
     await connection.execute(
 
       `BEGIN
@@ -898,9 +902,7 @@ user.loginid ?? null,
 
   }
 
-  catch (err: any)
-
-  {
+  catch (err: any) {
 
     console.error(
       "Oracle Error :",
@@ -908,9 +910,7 @@ user.loginid ?? null,
     );
 
 
-    if (connection)
-
-    {
+    if (connection) {
 
       await connection.rollback();
 
@@ -934,13 +934,9 @@ user.loginid ?? null,
   }
 
 
-  finally
+  finally {
 
-  {
-
-    if (connection)
-
-    {
+    if (connection) {
 
       await connection.close();
 

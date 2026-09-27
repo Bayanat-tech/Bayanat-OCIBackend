@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import oracledb from "oracledb";
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../common/report_common";
+// ── adjust this path to wherever your report_common module lives ──
+
 
 const money = (v: any) => {
   const n = Number(v);
@@ -19,12 +22,81 @@ const formatDateStr = (v: any) => {
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
 
+/** Report-specific CSS only — everything else comes from COMMON_REPORT_CSS */
+const CHEQUE_REPORT_EXTRA_CSS = `
+  /* This report is wide → landscape A4 (preserves old 277mm page width) */
+  @page { size: A4 landscape; margin: 10mm; }
+
+  .opening-label { color: #c00; font-weight: 700; }
+  .opening-val   { color: #c00; font-weight: 700; font-family: 'Courier New', monospace; }
+
+  table.rt td { border: 1px solid #d5d8dc; }
+
+  tr.grp-hdr td {
+    background: #eaf2fb;
+    font-weight: 700;
+    color: #1a3c6e;
+    border-top: 2px solid #2471a3;
+    padding: 5px;
+  }
+
+  tr.sub-grp-hdr td {
+    background: #f8fafc;
+    font-weight: 700;
+    color: #374151;
+    padding: 3px 5px;
+    border-top: 1px solid #cbd5e1;
+  }
+
+  tr.data-row td { background: #fff; border-bottom: none; }
+
+  tr.narration-row td {
+    border-top: none !important;
+    text-align: center;
+    white-space: normal;
+    font-style: italic;
+    color: #555;
+    font-size: 10px;
+    background: #fff;
+  }
+
+  tr.total-row td {
+    background: #eaf0fb;
+    font-weight: 700;
+    border-top: 1.5px solid #2471a3;
+  }
+
+  tr.closing-row td {
+    background: #eaf0fb;
+    font-weight: 700;
+  }
+
+  tr.grand-row td {
+    background: #d4e6f1;
+    font-weight: 700;
+    border-top: 2px solid #1a5276;
+  }
+
+  .rt .num { font-family: 'Courier New', monospace; white-space: nowrap; }
+
+  /* 9 column widths */
+  table.rt col.c1 { width: 6%;  }
+  table.rt col.c2 { width: 11%; }
+  table.rt col.c3 { width: 9%;  }
+  table.rt col.c4 { width: 10%; }
+  table.rt col.c5 { width: 9%;  }
+  table.rt col.c6 { width: 14%; }
+  table.rt col.c7 { width: 11%; }
+  table.rt col.c8 { width: 11%; }
+  table.rt col.c9 { width: 12%; }
+`;
+
 export const getChequeDateWiseReport = async (req: Request, res: Response): Promise<void> => {
   let connection;
   try {
     const {
       parameter, loginid,
-      code1, code2, code3, code4, code5, code6, code7, code8, code20
+      code1, code2, code3, code4, code5, code6, code7, code8, code20,
     } = req.body;
 
     let tenantId = getCurrentTenantId();
@@ -42,14 +114,15 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
       code1: code1 || null, code2: code2 || null, code3: code3 || null,
       code4: code4 || null, code5: code5 || null, code6: code6 || null,
       code7: code7 || null, code8: code8 || null, code20: code20 || null,
-      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 }
+      out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
     for (let i = 9; i <= 20; i++) binds[`code${i}`] = req.body[`code${i}`] || null;
     for (let i = 1; i <= 4; i++) {
       binds[`number${i}`] = req.body[`number${i}`] || null;
       if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
     }
-    binds.date1 = null; binds.date2 = null;
+    binds.date1 = null;
+    binds.date2 = null;
 
     const result = await connection.execute(
       `DECLARE v_sql VARCHAR2(32767); BEGIN PROC_BUILD_DYNAMIC_SQL_COMMON20(
@@ -119,7 +192,6 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
         pdcRows.forEach((r) => {
           const amount = Number(r.lcur_amount) || 0;
           const dr = r.sign_ind > 0 ? amount : 0;
-
           const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
           totalDebit += dr;
           totalCredit += cr;
@@ -140,18 +212,10 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
               <td class="num" style="color:#b45309">${money(cr)}</td>
               <td class="num">${formatBalance(runningBalance)}</td>
             </tr>
-          ${narration ? `
-          <tr class="data-row">
-          <td colspan="9"
-    style="
-      text-align:center;
-      white-space:normal;
-      mso-wrap-style:wrap;
-       border-top: none !important;
-    ">
-  ${wrappedNarration}
-</td>
-                      </tr>`: ""}`;
+            ${narration ? `
+            <tr class="narration-row">
+              <td colspan="9">${wrappedNarration}</td>
+            </tr>` : ""}`;
         });
       });
 
@@ -182,236 +246,63 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
 
     const reportTitle = `Ledger Basic Report ${text(code5)} - ${text(code6)}`;
     const generatedBy = text(loginid) || "Unknown User";
-    const reportDate = formatDateStr(new Date());
 
-    const reportHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${reportTitle}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: 11px;
-      background: #e5e7eb;
-      color: #111;
-      padding: 10px;
-    }
-    .page {
-      width: 277mm;
-      max-width: 277mm;
-      margin: 10px auto;
-      background: #fff;
-      padding: 14px 16px;
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    }
+    /* ── Common parts ─────────────────────────────────────────── */
 
-    /* header */
-    .header {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      border-bottom: 2.5px solid #b8860b;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-    }
-      .data-row td {
-  border-bottom: none !important;
-}
+    // Dynamic company header from ms_company (logo, name, address)
+    // ── adjust company_code source to your request body if needed ──
+    const headerHtml = await reportHeader({
+      company_code: text(req.body.company_code || code1 || ""),
+      req: req as any,
+    });
 
-.narration-row td {
-  border-top: none !important;
-}
-    .logo-block {
-      background: #1a5276;
-      padding: 8px 14px;
-      border-radius: 4px;
-      min-width: 150px;
-      text-align: center;
-    }
-    .logo-arabic { font-size: 12px; font-weight: 700; color: #f0c040; direction: rtl; }
-    .logo-name   { font-size: 18px; font-weight: 800; color: #f0c040; letter-spacing: 0.04em; }
-    .logo-sub    { font-size: 9px; letter-spacing: 0.18em; color: #cce0f5; margin-top: 2px; }
+    const footerHtml = reportFooter({
+      reportName: "Cheque Date Wise Report",
+      userName: generatedBy,
+    });
 
-    .meta-block { flex: 1; }
-    .meta-block table { border-collapse: collapse; }
-    .meta-block td { padding: 1.5px 6px; font-size: 11px; vertical-align: top; }
-    .meta-block .lbl { font-weight: 700; color: #333; width: 72px; }
+    const bodyHtml = `
+      <div class="report-title-strip">
+        ${reportTitle}
+        &nbsp;|&nbsp; Date: ${formatDateStr(new Date())}
+        &nbsp;|&nbsp; User: ${generatedBy}
+        &nbsp;|&nbsp; Currency: OMR
+      </div>
+      <table class="data-table rt">
+        <colgroup>
+          <col class="c1"/><col class="c2"/><col class="c3"/>
+          <col class="c4"/><col class="c5"/><col class="c6"/>
+          <col class="c7"/><col class="c8"/><col class="c9"/>
+        </colgroup>
+        <thead>
+          <tr>
+            <th style="text-align:left;">Type</th>
+            <th style="text-align:left;">Doc No.</th>
+            <th>Doc Date</th>
+            <th style="text-align:left;">Chq No.</th>
+            <th>Chq Date</th>
+            <th style="text-align:left;">Bank</th>
+            <th class="num">Debit</th>
+            <th class="num">Credit</th>
+            <th class="num">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableBodyHtml || '<tr><td colspan="9" class="center muted" style="padding:36px 0;">No records found.</td></tr>'}
+        </tbody>
+      </table>`;
 
-    .page-info { font-size: 10px; color: #555; white-space: nowrap; text-align: right; }
-
-    /* table */
-    table.rt {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 10.5px;
-    }
-    table.rt th {
-      background: #1a5276;
-      color: #fff;
-      font-weight: 600;
-      padding: 5px;
-      border: 1px solid #2471a3;
-      text-align: center;
-    }
-    table.rt td {
-      border: 1px solid #d5d8dc;
-      padding: 3px 5px;
-      vertical-align: top;
-    }
-
-    /* sub-header row */
-    tr.sub-hdr th {
-      background: #d6e4f0;
-      color: #1a3c6e;
-      font-size: 10px;
-      font-weight: 600;
-      border-top: none;
-      text-align: center;
-    }
-
-    /* group header */
-    tr.grp-hdr td {
-      background: #eaf2fb;
-      font-weight: 700;
-      color: #1a3c6e;
-      border-top: 2px solid #2471a3;
-      padding: 5px;
-    }
-    .opening-label { color: #c00; font-weight: 700; }
-    .opening-val   { color: #c00; font-weight: 700; font-family: 'Courier New', monospace; }
-
-    /* PDC/NORMAL */
-    tr.sub-grp-hdr td {
-      background: #f8fafc;
-      font-weight: 700;
-      color: #374151;
-      padding: 3px 5px;
-      border-top: 1px solid #cbd5e1;
-    }
-
-    tr.data-row td { background: #fff; }
-    tr.narr-row td {
-      border-top: none;
-      font-style: italic;
-      color: #555;
-      font-size: 10px;
-      background: #fff;
-    }
-
-    tr.total-row td {
-      background: #eaf0fb;
-      font-weight: 700;
-      border-top: 1.5px solid #2471a3;
-    }
-    tr.closing-row td {
-      background: #eaf0fb;
-      font-weight: 700;
-    }
-    tr.grand-row td {
-      background: #d4e6f1;
-      font-weight: 700;
-      border-top: 2px solid #1a5276;
-    }
-
-    .num { text-align: right; font-family: 'Courier New', monospace; white-space: nowrap; }
-
-    /* 9 cols */
-    table.rt col.c1 { width: 6%;  }
-    table.rt col.c2 { width: 11%; }
-    table.rt col.c3 { width: 9%;  }
-    table.rt col.c4 { width: 10%; }
-    table.rt col.c5 { width: 9%;  }
-    table.rt col.c6 { width: 14%; }
-    table.rt col.c7 { width: 11%; }
-    table.rt col.c8 { width: 11%; }
-    table.rt col.c9 { width: 12%; }
-
-    .footer {
-      margin-top: 12px;
-      padding-top: 6px;
-      border-top: 1px solid #d5d8dc;
-      font-size: 10px;
-      color: #777;
-      text-align: center;
-    }
-    .no-print { margin-bottom: 10px; text-align: right; }
-    .btn {
-      padding: 7px 20px; background: #1a5276; color: #fff;
-      border: none; border-radius: 4px; font-size: 12px;
-      font-weight: 700; cursor: pointer;
-    }
-    .btn:hover { background: #154360; }
-
-    @media print {
-      body { background: #fff; padding: 0; }
-      .page { box-shadow: none; margin: 0; border-radius: 0; }
-      .no-print { display: none; }
-    }
-  </style>
-</head>
-<body>
-
-<div class="no-print">
-  <button class="btn" onclick="window.print()">Print / Save PDF</button>
-</div>
-
-<div class="page">
-  <div class="header">
-    <div class="logo-block">
-      <div class="logo-arabic">المدينة اللوجستية</div>
-      <div class="logo-name">al madina</div>
-      <div class="logo-sub">L O G I S T I C S</div>
-    </div>
-    <div class="meta-block">
-      <table>
-        <tr><td class="lbl">Title :</td><td>${reportTitle}</td></tr>
-        <tr><td class="lbl">Date :</td><td>${reportDate}</td></tr>
-        <tr><td class="lbl">User :</td><td>${generatedBy}</td></tr>
-        <tr><td class="lbl">Report :</td><td>${text(parameter)}</td></tr>
-        <tr><td class="lbl">Currency :</td><td>OMR</td></tr>
-      </table>
-    </div>
-    <div class="page-info">Page 1 of 1</div>
-  </div>
-
-  <table class="rt">
-    <colgroup>
-      <col class="c1"/><col class="c2"/><col class="c3"/>
-      <col class="c4"/><col class="c5"/><col class="c6"/>
-      <col class="c7"/><col class="c8"/><col class="c9"/>
-    </colgroup>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Doc No.</th>
-        <th>Doc Date</th>
-        <th>Chq No.</th>
-        <th>Chq Date</th>
-        <th>Bank</th>
-        <th class="num">Debit</th>
-        <th class="num">Credit</th>
-        <th class="num">Balance</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${tableBodyHtml || '<tr><td colspan="9" style="text-align:center;padding:36px 0;color:#888;">No records found.</td></tr>'}
-    </tbody>
-  </table>
-
-  <div class="footer">Generated by ${generatedBy} &bull; ${reportDate}</div>
-</div>
-
-</body>
-</html>`;
+    const reportHtml = buildReportDocument({
+      title: reportTitle,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: CHEQUE_REPORT_EXTRA_CSS,
+      showPrintButton: true,
+    });
 
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(reportHtml);
-
   } catch (error: any) {
     console.error("Cheque Date Wise Report Error:", error);
     res.status(500).json({
@@ -421,7 +312,11 @@ export const getChequeDateWiseReport = async (req: Request, res: Response): Prom
     });
   } finally {
     if (connection) {
-      try { await connection.close(); } catch (e) { console.error(e); }
+      try {
+        await connection.close();
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 };
