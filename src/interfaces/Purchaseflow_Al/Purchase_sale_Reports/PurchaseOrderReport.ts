@@ -366,10 +366,7 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
             : ""
         }
       </div>
-      <div class="print-meta">
-        <div>Print Date: ${escapeHtml(printDateTime)}</div>
-        <div>Print User: ${escapeHtml(loginId)}</div>
-      </div>
+      
     </div>
 
     <div class="info-grid">

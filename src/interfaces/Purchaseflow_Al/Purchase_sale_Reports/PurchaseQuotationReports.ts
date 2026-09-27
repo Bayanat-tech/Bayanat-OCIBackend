@@ -17,7 +17,7 @@ interface ReqParams {
   doc_no:       string;
 }
 
-// ─── DB helpers (same as PurchaseInvoiceReports.ts / po-order-register) ────
+// ─── DB helpers (same as SalesInvoiceReports.ts) ───────────────────────────
 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
@@ -75,7 +75,7 @@ function qtyFmt(value: unknown): string {
 function amtFmt(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0.00";
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 }
 
 // ─── Param extraction ───────────────────────────────────────────────────────
@@ -90,18 +90,9 @@ function extractParams(req: RequestWithUser): ReqParams {
   };
 }
 
-function resolveCompanyCode(req: RequestWithUser, params: ReqParams): string {
-  return (
-    params.company_code ||
-    text(req.user?.company_code) ||
-    text(req.query.company_code) ||
-    "BSG"
-  );
-}
-
 // ─── Data loader ────────────────────────────────────────────────────────────
 
-async function loadSalesInvoiceData(req: RequestWithUser, p: ReqParams, dispatchParam: string): Promise<ReportRow[]> {
+async function loadPurchaseQuotationData(req: RequestWithUser, p: ReqParams, dispatchParam: string): Promise<ReportRow[]> {
   const conn = await getConn(req);
   try {
     const binds: any = {
@@ -126,7 +117,7 @@ async function loadSalesInvoiceData(req: RequestWithUser, p: ReqParams, dispatch
       `DECLARE
          v_sql VARCHAR2(32767);
        BEGIN
-         PROC_BUILD_DYNAMIC_SQL_SALES_INVOICE(
+         PROC_BUILD_DYNAMIC_SQL_PURCHASE_QUOTATION(
            :parameter, :loginid,
            :code1,  :code2,  :code3,  :code4,
            :number1, :number2, :number3, :number4,
@@ -141,7 +132,7 @@ async function loadSalesInvoiceData(req: RequestWithUser, p: ReqParams, dispatch
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
 
-    console.log("=== GENERATED SQL (Sales Invoice) ===\n", rawSql, "\n=== END ===");
+    console.log("=== GENERATED SQL (Purchase Quotation) ===\n", rawSql, "\n=== END ===");
 
     const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
     return normalize(dataResult.rows as any[]);
@@ -152,7 +143,7 @@ async function loadSalesInvoiceData(req: RequestWithUser, p: ReqParams, dispatch
 
 // ─── Header model (built from the first line-item row) ─────────────────────
 
-interface SalesInvoiceHeader {
+interface PurchaseQuotationHeader {
   doc_no: string;
   doc_date: any;
   doc_type: string;
@@ -162,49 +153,43 @@ interface SalesInvoiceHeader {
   party_address: string;
   party_phone: string;
   party_fax: string;
-  cust_mobile: string;
-  cust_email: string;
-  payment_terms: string;
-  credit_period: string;
-  due_date: any;
-  salesman_code: string;
-  trn_no: string;
-  company_trn_no: string;
+  ref_no: string;
+  ref_date: any;
+  quotation_refno: string;
+  delivery_to: string;
+  dlvr_contact: string;
+  dlvr_email: string;
   disc_hdr_price: number;
   curr_code: string;
 }
 
-function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
+function buildPurchaseQuotationHeader(rows: ReportRow[]): PurchaseQuotationHeader {
   const h = rows[0] || {};
-  const address = [h.party_address, h.cust_add1, h.cust_add2, h.cust_add3].filter(Boolean).join(", ");
   return {
     doc_no: text(h.doc_no),
     doc_date: h.doc_date,
     doc_type: text(h.doc_type),
     div_name: text(h.div_name),
     ac_code: text(h.ac_code),
-    party_name: text(h.party_name || h.ac_name),
-    party_address: address || text(h.party_address),
+    party_name: text(h.party_name),
+    party_address: text(h.party_address),
     party_phone: text(h.party_phone),
     party_fax: text(h.party_fax),
-    cust_mobile: text(h.cust_mobile),
-    cust_email: text(h.cust_email),
-    payment_terms: text(h.payment_terms),
-    credit_period: text(h.credit_period),
-    due_date: h.due_date,
-    salesman_code: text(h.salesman_code),
-    trn_no: text(h.trn_no),
-    company_trn_no: text(h.company_trn_no),
+    ref_no: text(h.ref_no),
+    ref_date: h.ref_date,
+    quotation_refno: text(h.quotation_refno),
+    delivery_to: text(h.delivery_to),
+    dlvr_contact: text(h.dlvr_contact),
+    dlvr_email: text(h.dlvr_email),
     disc_hdr_price: num(h.disc_hdr_price),
     curr_code: text(h.curr_code) || "QAR",
   };
 }
 
-// ─── Layout CSS – same visual system as PO Order Register ─────────────────
-// (company letterhead / footer / .data-table come from report_common's
-// shared CSS; this only adds the bits specific to invoice-style reports)
+// ─── Shared visual system (identical extra CSS across all 3 reports) ──────
 
-const SALES_INVOICE_EXTRA_CSS = `
+/** Report-specific layout CSS (shared header/footer/table CSS comes from report_common) */
+const PQ_EXTRA_CSS = `
   .doc-title-row {
     display: flex;
     justify-content: space-between;
@@ -228,27 +213,17 @@ const SALES_INVOICE_EXTRA_CSS = `
     color: #475569;
     line-height: 1.4;
   }
-  .status-badge {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    vertical-align: middle;
-  }
-  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
 
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px 100px;
+    gap: 12px;
     margin-bottom: 14px;
   }
   .info-block {
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    padding: 10px 14px;
+    padding: 12px 14px;
     background: #f8fafc;
   }
   .info-block .label {
@@ -257,9 +232,10 @@ const SALES_INVOICE_EXTRA_CSS = `
     letter-spacing: 0.05em;
     color: #64748b;
     margin-bottom: 6px;
+    font-weight: 700;
   }
   .info-block .value-line {
-    font-size: 11px;
+    font-size: 12px;
     color: #0f172a;
     line-height: 1.55;
   }
@@ -267,7 +243,7 @@ const SALES_INVOICE_EXTRA_CSS = `
   .totals-box {
     margin-top: 16px;
     margin-left: auto;
-    width: 280px;
+    width: 300px;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     overflow: hidden;
@@ -275,8 +251,8 @@ const SALES_INVOICE_EXTRA_CSS = `
   .totals-box .row {
     display: flex;
     justify-content: space-between;
-    padding: 6px 14px;
-    font-size: 11.5px;
+    padding: 7px 14px;
+    font-size: 12px;
     border-bottom: 1px solid #f1f5f9;
   }
   .totals-box .row.grand {
@@ -286,22 +262,26 @@ const SALES_INVOICE_EXTRA_CSS = `
     font-size: 13px;
     border-bottom: none;
   }
+
+  table.data-table.compare th,
+  table.data-table.compare td {
+    font-size: 10.5px;
+    padding: 6px 6px;
+  }
 `;
 
-// ─── Shared body pieces ─────────────────────────────────────────────────────
-
-function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
+function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
   return `
     <div class="doc-title-row">
       <div>
         <h1>${escapeHtml(title)}</h1>
         <div class="doc-sub">${escapeHtml(subtitle)}</div>
       </div>
-     
+      
     </div>`;
 }
 
-function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
+function partyInfoBlockHtml(header: PurchaseQuotationHeader): string {
   return `
       <div class="info-block">
         <div class="label">To</div>
@@ -309,238 +289,250 @@ function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
         <div class="value-line">${escapeHtml(header.party_address)}</div>
         <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
         <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-        ${header.cust_mobile ? `<div class="value-line">Mob: ${escapeHtml(header.cust_mobile)}</div>` : ""}
-        ${header.cust_email ? `<div class="value-line">Email: ${escapeHtml(header.cust_email)}</div>` : ""}
-        ${header.trn_no ? `<div class="value-line">TRN No: ${escapeHtml(header.trn_no)}</div>` : ""}
+        ${header.dlvr_contact ? `<div class="value-line">Contact: ${escapeHtml(header.dlvr_contact)}</div>` : ""}
+        ${header.dlvr_email ? `<div class="value-line">Email: ${escapeHtml(header.dlvr_email)}</div>` : ""}
       </div>`;
 }
 
-// ─── Body 1: Sales Invoice ───────────────────────────────────────────────
+function quotationDetailsBlockHtml(header: PurchaseQuotationHeader): string {
+  return `
+      <div class="info-block">
+        <div class="label">Quotation Details</div>
+        <div class="value-line">Quotation No: <strong>${escapeHtml(header.doc_no)}</strong></div>
+        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
+        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
+        <div class="value-line">Quot Ref: ${escapeHtml(header.quotation_refno)}</div>
+        <div class="value-line">Ref No: ${escapeHtml(header.ref_no)}</div>
+        <div class="value-line">Ref Date: ${escapeHtml(dateText(header.ref_date))}</div>
+        <div class="value-line">Deliver To: ${escapeHtml(header.delivery_to)}</div>
+      </div>`;
+}
 
-function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
+// ─── Report 1: Quotation ────────────────────────────────────────────────────
+
+/** Body only – no full HTML document */
+function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  const header = buildSalesInvoiceHeader(rows);
-  const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
+  const header = buildPurchaseQuotationHeader(rows);
+
   const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
   const overallDiscount = header.disc_hdr_price;
   const grandTotal = totalAmount - overallDiscount;
 
   const bodyRows = rows
     .map(
-      (r, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-          <td>${escapeHtml(r.p_uom)}</td>
-          <td class="right">${qtyFmt(r.quantity)}</td>
-          <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right amount">${amtFmt(r.amount)}</td>
-        </tr>`
+      (r) => `
+      <tr>
+        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+        <td class="center">${escapeHtml(r.p_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_puom)}</td>
+        <td class="center">${escapeHtml(r.l_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_luom)}</td>
+        <td class="right">${qtyFmt(r.quantity)}</td>
+        <td class="right">${amtFmt(r.unit_price)}</td>
+        <td class="right">${amtFmt(r.disc_percent)}%</td>
+        <td class="right">${amtFmt(r.disc_price)}</td>
+        <td class="right amount">${amtFmt(r.amount)}</td>
+      </tr>`
     )
     .join("");
 
   return `
-    ${printMetaHtml("Sales Invoice", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
+    ${docTitleRowHtml("Quotation", `Purchase Quotation — ${header.div_name}`, printDateTime, loginId)}
 
     <div class="info-grid">
       ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        ${header.salesman_code ? `<div class="value-line">Sold By: ${escapeHtml(header.salesman_code)}</div>` : ""}
-        ${header.due_date ? `<div class="value-line">Due Date: ${escapeHtml(dateText(header.due_date))}</div>` : ""}
-      </div>
+      ${quotationDetailsBlockHtml(header)}
     </div>
 
     <table class="data-table">
       <thead>
         <tr>
-          <th>S.No.</th>
           <th>Product / Description</th>
-          <th>Unit</th>
-          <th class="right">Qty</th>
+          <th class="center">P Uom</th>
+          <th class="right">P Qty</th>
+          <th class="center">L Uom</th>
+          <th class="right">L Qty</th>
+          <th class="right">Quantity in LUOM</th>
           <th class="right">Unit Rate</th>
-          <th class="right">Gross Value</th>
+          <th class="right">Disc %</th>
+          <th class="right">Disc Amt</th>
+          <th class="right">Amount</th>
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
 
     <div class="totals-box">
-      <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
-      <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
+      <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
       <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
       <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
-    </div>`;
+    </div>
+  `;
 }
 
-// ─── Body 2: Sales Invoice (Tax) ───────────────────────────────────────────
+// ─── Report 2: Quotation With Rates ─────────────────────────────────────────
 
-function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
+/** Body only – no full HTML document */
+function renderPurchaseQuotationWithRatesBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  const header = buildSalesInvoiceHeader(rows);
-  const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
+  const header = buildPurchaseQuotationHeader(rows);
+
   const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
   const totalTax = rows.reduce((s, r) => s + num(r.tx_compnt_amt_1), 0);
   const overallDiscount = header.disc_hdr_price;
-  const netTotal = totalAmount - overallDiscount + totalTax;
+  const grandTotal = totalAmount - overallDiscount + totalTax;
 
   const bodyRows = rows
-    .map((r, i) => {
-      const amountInclTax = num(r.amount) + num(r.tx_compnt_amt_1);
-      return `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-          <td>${escapeHtml(r.p_uom)}</td>
-          <td class="right">${qtyFmt(r.quantity)}</td>
-          <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right">${amtFmt(r.amount)}</td>
-          <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
-          <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
-          <td class="right amount">${amtFmt(amountInclTax)}</td>
-        </tr>`;
-    })
+    .map(
+      (r) => `
+      <tr>
+        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+        <td class="center">${escapeHtml(r.p_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_puom)}</td>
+        <td class="center">${escapeHtml(r.l_uom)}</td>
+        <td class="right">${qtyFmt(r.qty_luom)}</td>
+        <td class="right">${qtyFmt(r.quantity)}</td>
+        <td class="right">${amtFmt(r.unit_price)}</td>
+        <td class="right">${amtFmt(r.disc_percent)}%</td>
+        <td class="right">${amtFmt(r.disc_price)}</td>
+        <td class="right amount">${amtFmt(r.amount)}</td>
+      </tr>`
+    )
     .join("");
 
   return `
-    ${printMetaHtml("Sales Invoice (Tax)", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
+    ${docTitleRowHtml("Quotation", `Purchase Quotation With Rates — ${header.div_name}`, printDateTime, loginId)}
 
     <div class="info-grid">
-        ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        ${header.salesman_code ? `<div class="value-line">Sold By: ${escapeHtml(header.salesman_code)}</div>` : ""}
-        <div class="value-line">Company TRN No: ${escapeHtml(header.company_trn_no)}</div>
-      </div>
-      
+      ${partyInfoBlockHtml(header)}
+      ${quotationDetailsBlockHtml(header)}
     </div>
 
     <table class="data-table">
       <thead>
         <tr>
-          <th>S.No.</th>
           <th>Product / Description</th>
-          <th>Unit</th>
-          <th class="right">Qty</th>
+          <th class="center">P Uom</th>
+          <th class="right">P Qty</th>
+          <th class="center">L Uom</th>
+          <th class="right">L Qty</th>
+          <th class="right">Quantity in LUOM</th>
           <th class="right">Unit Rate</th>
+          <th class="right">Disc %</th>
+          <th class="right">Disc Amt</th>
           <th class="right">Amount</th>
-          <th class="right">VAT %</th>
-          <th class="right">Tax Amount</th>
-          <th class="right">Amount (Inc. Tax)</th>
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
 
     <div class="totals-box">
-      <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
-      <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
+      <div class="row"><span>Total</span><span>${amtFmt(totalAmount)}</span></div>
       <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-      <div class="row"><span>Tax Amount</span><span>${amtFmt(totalTax)}</span></div>
-      <div class="row grand"><span>Total (Inclusive Tax)</span><span>${amtFmt(netTotal)}</span></div>
-    </div>`;
+      <div class="row"><span>TAX Amt</span><span>${amtFmt(totalTax)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
+    </div>
+  `;
 }
 
-// ─── Body 3: Sales - Account Details ───────────────────────────────────────
+// ─── Report 3: Compare Quotations ───────────────────────────────────────────
 
-function renderSalesAccountDetailsBody(rows: ReportRow[], loginId: string): string {
+/** Body only – no full HTML document */
+function renderCompareQuotationBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  let totalDebit = 0;
-  let totalCredit = 0;
   const bodyRows = rows
-    .map((r) => {
-      const amount = num(r.amount);
-      const isDebit = num(r.sign_ind) >= 0;
-      const debit = isDebit ? amount : 0;
-      const credit = !isDebit ? Math.abs(amount) : 0;
-      totalDebit += debit;
-      totalCredit += credit;
-      return `
-        <tr>
-          <td>${escapeHtml(r.doc_type)}</td>
-          <td>${escapeHtml(r.doc_no)}</td>
-          <td>${escapeHtml(dateText(r.doc_date))}</td>
-          <td>${escapeHtml(r.ac_code)}</td>
-          <td>${escapeHtml(r.ac_name)}</td>
-          <td>${escapeHtml(r.curr_code)}</td>
-          <td class="right">${qtyFmt(r.ex_rate)}</td>
-          <td class="right">${debit ? amtFmt(debit) : "\u2014"}</td>
-          <td class="right amount">${credit ? amtFmt(credit) : "\u2014"}</td>
-        </tr>`;
-    })
+    .map(
+      (r) => `
+      <tr>
+        <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
+        <td class="right">${qtyFmt(r.quantity)}</td>
+        <td>${escapeHtml(r.quot_no1)}</td>
+        <td>${escapeHtml(r.ac_code1)} ${escapeHtml(r.ac_name1)}</td>
+        <td class="right">${r.quot_price1 != null ? amtFmt(r.quot_price1) : ""}</td>
+        <td>${escapeHtml(r.quot_no2)}</td>
+        <td>${escapeHtml(r.ac_code2)} ${escapeHtml(r.ac_name2)}</td>
+        <td class="right">${r.quot_price2 != null ? amtFmt(r.quot_price2) : ""}</td>
+        <td>${escapeHtml(r.quot_no3)}</td>
+        <td>${escapeHtml(r.ac_code3)} ${escapeHtml(r.ac_name3)}</td>
+        <td class="right">${r.quot_price3 != null ? amtFmt(r.quot_price3) : ""}</td>
+        <td>${escapeHtml(r.quot_no4)}</td>
+        <td>${escapeHtml(r.ac_code4)} ${escapeHtml(r.ac_name4)}</td>
+        <td class="right">${r.quot_price4 != null ? amtFmt(r.quot_price4) : ""}</td>
+        <td>${escapeHtml(r.quot_no5)}</td>
+        <td>${escapeHtml(r.ac_code5)} ${escapeHtml(r.ac_name5)}</td>
+        <td class="right">${r.quot_price5 != null ? amtFmt(r.quot_price5) : ""}</td>
+      </tr>`
+    )
     .join("");
 
   return `
-    ${printMetaHtml("Invoice", "Report — rpt_pr_accountledger", printDateTime, loginId)}
+    ${docTitleRowHtml("Compare Quotations", "Report — rpt_pquotation_compare", printDateTime, loginId)}
 
-    <table class="data-table">
+    <table class="data-table compare">
       <thead>
         <tr>
-          <th>Type</th>
-          <th>Doc No</th>
-          <th>Doc Date</th>
-          <th>Ac Code</th>
-          <th>Ac Name</th>
-          <th>Curr Code</th>
-          <th class="right">Ex. Rate</th>
-          <th class="right">Debit</th>
-          <th class="right">Credit</th>
+          <th rowspan="2">Product</th>
+          <th rowspan="2">Qty</th>
+          <th colspan="3" class="center">Supplier 1</th>
+          <th colspan="3" class="center">Supplier 2</th>
+          <th colspan="3" class="center">Supplier 3</th>
+          <th colspan="3" class="center">Supplier 4</th>
+          <th colspan="3" class="center">Supplier 5</th>
+        </tr>
+        <tr>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
+          <th>Quot No</th><th>A/C Name</th><th class="right">Price</th>
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
-
-    <div class="totals-box">
-      <div class="row"><span>Total Debit</span><span>${amtFmt(totalDebit)}</span></div>
-      <div class="row grand"><span>Total Credit</span><span>${amtFmt(totalCredit)}</span></div>
-    </div>`;
+  `;
 }
 
 // ─── Route handlers (HTML) ──────────────────────────────────────────────────
-// Same shape as po-order-register: shared reportHeader/reportFooter/buildReportDocument,
-// and a JSON {success:false} response (not a rendered page) when there is no data.
 
-export const getSalesInvoiceReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseQuotationReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows = await loadSalesInvoiceData(req, params, "S_INVOICE_SI_19082026");
+    const rows = await loadPurchaseQuotationData(req, params, "PQ_QUOTATION_19082026");
     if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected document." });
+      res.status(200).json({ success: false, message: "No records found for the selected document." });
       return;
     }
 
-    const companyCode = resolveCompanyCode(req, params);
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
     const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
-      reportName: "rpt_sales_invoice",
+      reportName: "Quotation",
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesInvoiceBody(rows, params.loginid);
+    const bodyHtml = renderPurchaseQuotationBody(rows, params.loginid);
 
     const html = buildReportDocument({
-      title: "Sales Invoice",
+      title: `Quotation ${buildPurchaseQuotationHeader(rows).doc_no}`,
       headerHtml,
       bodyHtml,
       footerHtml,
-      extraCss: SALES_INVOICE_EXTRA_CSS,
+      extraCss: PQ_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
     });
@@ -548,35 +540,40 @@ export const getSalesInvoiceReportHtml = async (req: RequestWithUser, res: Respo
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
-    console.error("Sales Invoice report error:", error);
+    console.error("Purchase Quotation report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
 
-export const getSalesInvoiceTaxReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseQuotationWithRatesReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows = await loadSalesInvoiceData(req, params, "S_INVOICE_SI_TAX_19082026");
+    const rows = await loadPurchaseQuotationData(req, params, "PQ_WTH_RATES_19082026");
     if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected document." });
+      res.status(200).json({ success: false, message: "No records found for the selected document." });
       return;
     }
 
-    const companyCode = resolveCompanyCode(req, params);
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
     const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
-      reportName: "rpt_sales_invoice_tax",
+      reportName: "Quotation With Rates",
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesInvoiceTaxBody(rows, params.loginid);
+    const bodyHtml = renderPurchaseQuotationWithRatesBody(rows, params.loginid);
 
     const html = buildReportDocument({
-      title: "Sales Invoice (Tax)",
+      title: `Quotation With Rates ${buildPurchaseQuotationHeader(rows).doc_no}`,
       headerHtml,
       bodyHtml,
       footerHtml,
-      extraCss: SALES_INVOICE_EXTRA_CSS,
+      extraCss: PQ_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
     });
@@ -584,35 +581,40 @@ export const getSalesInvoiceTaxReportHtml = async (req: RequestWithUser, res: Re
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
-    console.error("Sales Invoice Tax report error:", error);
+    console.error("Purchase Quotation With Rates report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
 
-export const getSalesAccountDetailsReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseQuotationCompareReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows = await loadSalesInvoiceData(req, params, "S_INVOICE_ACCOUNT_DETAIL_19082026");
+    const rows = await loadPurchaseQuotationData(req, params, "PQ_COMPARE QUOTATION_19082026");
     if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected document." });
+      res.status(200).json({ success: false, message: "No records found for the selected document." });
       return;
     }
 
-    const companyCode = resolveCompanyCode(req, params);
+    const companyCode =
+      params.company_code ||
+      text(req.user?.company_code) ||
+      text(req.query.company_code) ||
+      "BSG";
+
     const headerHtml = await reportHeader({ company_code: companyCode, req });
     const footerHtml = reportFooter({
-      reportName: "rpt_pr_accountledger",
+      reportName: "rpt_pquotation_compare",
       userName: params.loginid,
       endLabel: "Powered by Bayanat Technology",
     });
-    const bodyHtml = renderSalesAccountDetailsBody(rows, params.loginid);
+    const bodyHtml = renderCompareQuotationBody(rows, params.loginid);
 
     const html = buildReportDocument({
-      title: "Account Details",
+      title: "Compare Quotations",
       headerHtml,
       bodyHtml,
       footerHtml,
-      extraCss: SALES_INVOICE_EXTRA_CSS,
+      extraCss: PQ_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
     });
@@ -620,13 +622,12 @@ export const getSalesAccountDetailsReportHtml = async (req: RequestWithUser, res
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
-    console.error("Sales Account Details report error:", error);
+    console.error("Compare Quotation report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
 
-// ─── Generic OOXML Excel builder engine (unchanged — shared by all 3 reports,
-//     already on the same styling system / blue as po-order-register's Excel) ─
+// ─── Generic OOXML Excel builder engine (shared) ────────────────────────────
 
 interface XlCell { v: unknown; styleKey: string }
 type XlRow = (XlCell | null)[];
@@ -658,7 +659,7 @@ function defaultXlStyleDefs(): Record<string, any> {
     data: { font: { sz: 10 }, alignment: { vertical: "center" }, border: { bottom: borderThin("FFF3F4F6") } },
     dataNum: {
       font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" },
-      numFmt: "#,##0.00", border: { bottom: borderThin("FFF3F4F6") },
+      numFmt: "#,##0.000", border: { bottom: borderThin("FFF3F4F6") },
     },
     dataNumInt: {
       font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" },
@@ -674,7 +675,7 @@ function defaultXlStyleDefs(): Record<string, any> {
       font: { bold: true, sz: 10, color: { rgb: "FF065F46" } },
       fill: { fgColor: { rgb: XL_GREEN_BG } },
       alignment: { horizontal: "right", vertical: "center" },
-      numFmt: "#,##0.00",
+      numFmt: "#,##0.000",
       border: { top: borderThin("FF065F46") },
     },
     grandTotal: {
@@ -686,7 +687,7 @@ function defaultXlStyleDefs(): Record<string, any> {
       font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
       fill: { fgColor: { rgb: XL_BLUE } },
       alignment: { horizontal: "right", vertical: "center" },
-      numFmt: "#,##0.00",
+      numFmt: "#,##0.000",
     },
     footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
@@ -897,47 +898,50 @@ function buildXlsxBuffer(sheetName: string, colCount: number, colWidth: number, 
   return zip.toBuffer();
 }
 
-// ─── Excel builder 1: Sales Invoice ─────────────────────────────────────────
+// ─── Excel builder 1: Quotation ─────────────────────────────────────────────
 
-function buildSalesInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
-  const header = buildSalesInvoiceHeader(rows);
-  const COL_COUNT = 6; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value
+function buildPurchaseQuotationExcelBuffer(rows: ReportRow[]): Buffer {
+  const header = buildPurchaseQuotationHeader(rows);
+  const COL_COUNT = 10;
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell("SALES INVOICE", "title"), null, null, null, null, null]);
+  rows_.push([xlCell("QUOTATION", "title"), null, null, null, null, null, null, null, null, null]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   rows_.push([
-    xlCell(`Invoice No: ${header.doc_no}`, "meta"), null,
-    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null,
-    xlCell(`A/C Code: ${header.ac_code}`, "meta"), null,
+    xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
+    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
+    xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
   ]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-  merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 3 } });
-  merges.push({ s: { r: 1, c: 4 }, e: { r: 1, c: 5 } });
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
+  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
 
-  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 5 } });
+  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
 
   rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
-    xlCell("S.No", "header"), xlCell("Product/Description", "header"), xlCell("Unit", "header"),
-    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Gross Value", "header"),
+    xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
+    xlCell("L Uom", "header"), xlCell("L Qty", "header"), xlCell("Quantity in LUOM", "header"),
+    xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
   ]);
 
-  let totalQty = 0;
   let totalAmount = 0;
-  rows.forEach((r, i) => {
-    totalQty += num(r.quantity);
+  rows.forEach((r) => {
     totalAmount += num(r.amount);
     rows_.push([
-      xlCell(i + 1, "dataNumInt"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
+      xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
       xlCell(text(r.p_uom), "data"),
-      xlCell(num(r.quantity), "dataNumInt"),
+      xlCell(num(r.qty_puom), "dataNum"),
+      xlCell(text(r.l_uom), "data"),
+      xlCell(num(r.qty_luom), "dataNum"),
+      xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),
+      xlCell(num(r.disc_percent), "dataNum"),
+      xlCell(num(r.disc_price), "dataNum"),
       xlCell(num(r.amount), "dataNum"),
     ]);
   });
@@ -948,217 +952,198 @@ function buildSalesInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
   rows_.push(new Array(COL_COUNT).fill(null));
 
   const totalRow = rows_.length;
-  rows_.push([xlCell("Total Amount", "groupTotal"), null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
-  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 4 } });
+  rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
+  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
 
   const discRow = rows_.length;
-  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
-  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 4 } });
+  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
+  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
 
   const grandRow = rows_.length;
-  rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
-  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 4 } });
+  rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
+  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
 
-  rows_.push([null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+  rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
 
-  return buildXlsxBuffer("Sales Invoice", COL_COUNT, 18, rows_, merges, defaultXlStyleDefs());
+  return buildXlsxBuffer("Quotation", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
 }
 
-// ─── Excel builder 2: Sales Invoice (Tax) ───────────────────────────────────
+// ─── Excel builder 2: Quotation With Rates ──────────────────────────────────
 
-function buildSalesInvoiceTaxExcelBuffer(rows: ReportRow[]): Buffer {
-  const header = buildSalesInvoiceHeader(rows);
-  const COL_COUNT = 8; // S.No, Product/Description, Unit, Qty, Unit Rate, Amount, VAT%, Tax Amount
+function buildPurchaseQuotationWithRatesExcelBuffer(rows: ReportRow[]): Buffer {
+  const header = buildPurchaseQuotationHeader(rows);
+  const COL_COUNT = 10;
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell("SALES INVOICE (TAX)", "title"), null, null, null, null, null, null, null]);
+  rows_.push([xlCell("QUOTATION (WITH RATES)", "title"), null, null, null, null, null, null, null, null, null]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   rows_.push([
-    xlCell(`Invoice No: ${header.doc_no}`, "meta"), null,
-    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null,
-    xlCell(`Company TRN No: ${header.company_trn_no}`, "meta"), null, null, null,
+    xlCell(`Quotation No: ${header.doc_no}`, "meta"), null, null,
+    xlCell(`Date: ${dateText(header.doc_date)}`, "meta"), null, null,
+    xlCell(`A/C Code: ${header.ac_code}`, "meta"), null, null, null,
   ]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-  merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 3 } });
-  merges.push({ s: { r: 1, c: 4 }, e: { r: 1, c: 7 } });
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
+  merges.push({ s: { r: 1, c: 6 }, e: { r: 1, c: 9 } });
 
-  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 7 } });
+  rows_.push([xlCell(`To: ${header.party_name}`, "meta"), null, null, null, null, null, null, null, null, null]);
+  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 9 } });
 
   rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
-    xlCell("S.No", "header"), xlCell("Product/Description", "header"), xlCell("Unit", "header"),
-    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Amount", "header"),
-    xlCell("VAT %", "header"), xlCell("Tax Amount", "header"),
+    xlCell("Product/Description", "header"), xlCell("P Uom", "header"), xlCell("P Qty", "header"),
+    xlCell("L Uom", "header"), xlCell("L Qty", "header"), xlCell("Quantity in LUOM", "header"),
+    xlCell("Unit Rate", "header"), xlCell("Disc %", "header"), xlCell("Disc Amt", "header"), xlCell("Amount", "header"),
   ]);
 
-  let totalQty = 0;
   let totalAmount = 0;
   let totalTax = 0;
-  rows.forEach((r, i) => {
-    totalQty += num(r.quantity);
+  rows.forEach((r) => {
     totalAmount += num(r.amount);
     totalTax += num(r.tx_compnt_amt_1);
     rows_.push([
-      xlCell(i + 1, "dataNumInt"),
-      xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
+      xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
       xlCell(text(r.p_uom), "data"),
-      xlCell(num(r.quantity), "dataNumInt"),
+      xlCell(num(r.qty_puom), "dataNum"),
+      xlCell(text(r.l_uom), "data"),
+      xlCell(num(r.qty_luom), "dataNum"),
+      xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),
+      xlCell(num(r.disc_percent), "dataNum"),
+      xlCell(num(r.disc_price), "dataNum"),
       xlCell(num(r.amount), "dataNum"),
-      xlCell(num(r.tx_compnt_perc_1), "dataNumInt"),
-      xlCell(num(r.tx_compnt_amt_1), "dataNum"),
     ]);
   });
 
   const overallDiscount = header.disc_hdr_price;
-  const netTotal = totalAmount - overallDiscount + totalTax;
+  const grandTotal = totalAmount - overallDiscount + totalTax;
 
   rows_.push(new Array(COL_COUNT).fill(null));
 
   const totalRow = rows_.length;
-  rows_.push([xlCell("Total Amount", "groupTotal"), null, null, null, null, xlCell(totalAmount, "groupTotalNum"), null, null]);
-  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 4 } });
-  merges.push({ s: { r: totalRow, c: 5 }, e: { r: totalRow, c: 7 } });
+  rows_.push([xlCell("Total", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
+  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 8 } });
 
   const discRow = rows_.length;
-  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, xlCell(overallDiscount, "groupTotalNum"), null, null]);
-  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 4 } });
-  merges.push({ s: { r: discRow, c: 5 }, e: { r: discRow, c: 7 } });
+  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
+  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 8 } });
 
   const taxRow = rows_.length;
-  rows_.push([xlCell("Tax Amount", "groupTotal"), null, null, null, null, xlCell(totalTax, "groupTotalNum"), null, null]);
-  merges.push({ s: { r: taxRow, c: 0 }, e: { r: taxRow, c: 4 } });
-  merges.push({ s: { r: taxRow, c: 5 }, e: { r: taxRow, c: 7 } });
+  rows_.push([xlCell("TAX Amt", "groupTotal"), null, null, null, null, null, null, null, null, xlCell(totalTax, "groupTotalNum")]);
+  merges.push({ s: { r: taxRow, c: 0 }, e: { r: taxRow, c: 8 } });
 
   const grandRow = rows_.length;
-  rows_.push([xlCell("Total (Inclusive Tax)", "grandTotal"), null, null, null, null, xlCell(netTotal, "grandTotalNum"), null, null]);
-  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 4 } });
-  merges.push({ s: { r: grandRow, c: 5 }, e: { r: grandRow, c: 7 } });
+  rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
+  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 8 } });
 
-  rows_.push([null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+  rows_.push([null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
 
-  return buildXlsxBuffer("Sales Invoice Tax", COL_COUNT, 15, rows_, merges, defaultXlStyleDefs());
+  return buildXlsxBuffer("Quotation With Rates", COL_COUNT, 14, rows_, merges, defaultXlStyleDefs());
 }
 
-// ─── Excel builder 3: Sales - Account Details ───────────────────────────────
+// ─── Excel builder 3: Compare Quotations ────────────────────────────────────
 
-function buildSalesAccountDetailsExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
-  const COL_COUNT = 9; // Type, Doc No, Doc Date, Ac Code, Ac Name, Curr Code, Ex Rate, Debit, Credit
+function buildCompareQuotationExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
+  const COL_COUNT = 17; // Product, Qty, then 5 x (Quot No, A/C Name, Price)
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell("ACCOUNT DETAILS", "title"), null, null, null, null, null, null, null, null]);
+  rows_.push([xlCell("COMPARE QUOTATIONS", "title"), ...new Array(COL_COUNT - 1).fill(null)]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   rows_.push([
     xlCell(`Date: ${dateText(new Date())}`, "meta"), null,
     xlCell(`User: ${loginId}`, "meta"), null,
-    xlCell("Report: rpt_pr_accountledger", "meta"), null, null, null, null,
+    xlCell("Report: rpt_pquotation_compare", "meta"), ...new Array(COL_COUNT - 5).fill(null),
   ]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
   merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 3 } });
-  merges.push({ s: { r: 1, c: 4 }, e: { r: 1, c: 8 } });
+  merges.push({ s: { r: 1, c: 4 }, e: { r: 1, c: COL_COUNT - 1 } });
 
   rows_.push(new Array(COL_COUNT).fill(null));
 
-  rows_.push([
-    xlCell("Type", "header"), xlCell("Doc No", "header"), xlCell("Doc Date", "header"),
-    xlCell("Ac Code", "header"), xlCell("Ac Name", "header"), xlCell("Curr Code", "header"),
-    xlCell("Ex. Rate", "header"), xlCell("Debit", "header"), xlCell("Credit", "header"),
-  ]);
+  const headerRow: XlRow = [xlCell("Product", "header"), xlCell("Qty", "header")];
+  for (let i = 1; i <= 5; i++) {
+    headerRow.push(xlCell("Quot No", "header"), xlCell("A/C Name", "header"), xlCell("Price", "header"));
+  }
+  rows_.push(headerRow);
 
-  let totalDebit = 0;
-  let totalCredit = 0;
   rows.forEach((r) => {
-    const amount = num(r.amount);
-    const isDebit = num(r.sign_ind) >= 0;
-    const debit = isDebit ? amount : 0;
-    const credit = !isDebit ? Math.abs(amount) : 0;
-    totalDebit += debit;
-    totalCredit += credit;
-    rows_.push([
-      xlCell(text(r.doc_type), "data"),
-      xlCell(text(r.doc_no), "data"),
-      xlCell(dateText(r.doc_date), "data"),
-      xlCell(text(r.ac_code), "data"),
-      xlCell(text(r.ac_name), "data"),
-      xlCell(text(r.curr_code), "data"),
-      xlCell(num(r.ex_rate), "dataNumInt"),
-      xlCell(debit, "dataNum"),
-      xlCell(credit, "dataNum"),
-    ]);
+    const row: XlRow = [
+      xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      xlCell(num(r.quantity), "dataNum"),
+    ];
+    for (let i = 1; i <= 5; i++) {
+      row.push(
+        xlCell(text(r[`quot_no${i}`]), "data"),
+        xlCell(`${text(r[`ac_code${i}`])} ${text(r[`ac_name${i}`])}`.trim(), "data"),
+        xlCell(r[`quot_price${i}`] != null ? num(r[`quot_price${i}`]) : "", r[`quot_price${i}`] != null ? "dataNum" : "data"),
+      );
+    }
+    rows_.push(row);
   });
 
   rows_.push(new Array(COL_COUNT).fill(null));
+  rows_.push([null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
 
-  const totalRow = rows_.length;
-  rows_.push([
-    xlCell("Total", "grandTotal"), null, null, null, null, null, null,
-    xlCell(totalDebit, "grandTotalNum"), xlCell(totalCredit, "grandTotalNum"),
-  ]);
-  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 6 } });
-
-  rows_.push([null, null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
-
-  return buildXlsxBuffer("Sales Account Details", COL_COUNT, 16, rows_, merges, defaultXlStyleDefs());
+  return buildXlsxBuffer("Compare Quotations", COL_COUNT, 12, rows_, merges, defaultXlStyleDefs());
 }
 
 // ─── Route handlers (Excel) ─────────────────────────────────────────────────
 
-export const getSalesInvoiceReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseQuotationReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows = await loadSalesInvoiceData(req, params, "S_INVOICE_SI__19082026");
+    const rows = await loadPurchaseQuotationData(req, params, "PQ_QUOTATION_19082026");
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected document." });
       return;
     }
-    const buffer = buildSalesInvoiceExcelBuffer(rows);
+    const buffer = buildPurchaseQuotationExcelBuffer(rows);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", 'attachment; filename="Sales_Invoice.xlsx"');
+    res.setHeader("Content-Disposition", 'attachment; filename="Purchase_Quotation.xlsx"');
     res.end(buffer);
   } catch (error: any) {
-    console.error("Sales Invoice Excel error:", error);
+    console.error("Purchase Quotation Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
   }
 };
 
-export const getSalesInvoiceTaxReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseQuotationWithRatesReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows = await loadSalesInvoiceData(req, params, "S_INVOICE_SI_TAX_19082026");
+    const rows = await loadPurchaseQuotationData(req, params, "PQ_WTH_RATES_19082026");
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected document." });
       return;
     }
-    const buffer = buildSalesInvoiceTaxExcelBuffer(rows);
+    const buffer = buildPurchaseQuotationWithRatesExcelBuffer(rows);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", 'attachment; filename="Sales_Invoice_Tax.xlsx"');
+    res.setHeader("Content-Disposition", 'attachment; filename="Purchase_Quotation_With_Rates.xlsx"');
     res.end(buffer);
   } catch (error: any) {
-    console.error("Sales Invoice Tax Excel error:", error);
+    console.error("Purchase Quotation With Rates Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
   }
 };
 
-export const getSalesAccountDetailsReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
+export const getPurchaseQuotationCompareReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
-    const rows = await loadSalesInvoiceData(req, params, "S_INVOICE_ACCOUNT_DETAIL_19082026");
+    const rows = await loadPurchaseQuotationData(req, params, "PQ_COMPARE QUOTATION_19082026");
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected document." });
       return;
     }
-    const buffer = buildSalesAccountDetailsExcelBuffer(rows, params.loginid);
+    const buffer = buildCompareQuotationExcelBuffer(rows, params.loginid);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", 'attachment; filename="Sales_Invoice_Account_Details.xlsx"');
+    res.setHeader("Content-Disposition", 'attachment; filename="Compare_Quotations.xlsx"');
     res.end(buffer);
   } catch (error: any) {
-    console.error("Sales Account Details Excel error:", error);
+    console.error("Compare Quotation Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
   }
 };

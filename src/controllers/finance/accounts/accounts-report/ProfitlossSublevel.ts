@@ -109,20 +109,27 @@ function parseCommon(req: RequestWithUser) {
   return { companyCode, fromDate, toDate, divisionCode };
 }
 
-// ─── Drilldown-only CSS (document layout — not shared, same convention as   ───
-// ─── the Level-1 P&L report and the finance-doc report)                    ───
+// ─── Drilldown-only CSS ───────────────────────────────────────────────────────
 
 /**
- * Drilldown-only CSS. Only genuinely report-specific rules live here — bold
- * weight now comes from the shared .strong class in report_common instead of
- * being redefined per row-type; left-align is kept here only because
- * report_common has no .left utility (just .right/.center/.num).
+ * Drilldown-only CSS (L2 account summary + L3 ledger).
  *
- * FIX (title/meta overlap on L3): .doc-title-row now wraps instead of
- * squeezing the meta block onto the same line as a long title. h1 is
- * allowed to shrink/wrap (flex: 1 1 auto; min-width: 0) and .doc-meta is
- * pinned to its own width on the right (flex: 0 0 auto; white-space: nowrap),
- * wrapping to its own line via flex-wrap when the title is too long.
+ * FIXES in this version
+ * ─────────────────────
+ * 1. HEADER ALIGNMENT — report_common ships `table.data-table th { text-align:center }`
+ *    which has HIGHER specificity than the shared `.num` / `.right` utilities, so
+ *    <th class="num"> headers (Debit / Credit / Closing / Balance) stayed centered
+ *    while the numbers below them were right-aligned. The rules below use
+ *    `table.data-table.ledger-table th.num` (higher specificity) so headers now
+ *    line up with their numbers.
+ * 2. FIXED COLUMN GRID — `table-layout: fixed` + <colgroup> percentages, so the
+ *    colspan'd rows (Opening / Total / Closing / Grand Total) always sit under the
+ *    correct columns regardless of cell content.
+ * 3. PRINT COLORS — `print-color-adjust: exact` so the blue Grand-Total row and the
+ *    grey header/section fills are actually printed. Without it, the white text of
+ *    the Grand-Total row printed on a white background (looked light grey / invisible).
+ * 4. `.strong` was 800 weight which falls back to an ultra-heavy face when Inter is
+ *    not installed — scoped to 700 inside the ledger table.
  */
 const DRILLDOWN_EXTRA_CSS = `
   /* These drilldown tables (A/C summary, ledger) are wide — print landscape */
@@ -168,12 +175,33 @@ const DRILLDOWN_EXTRA_CSS = `
     margin-bottom: 8px;
   }
 
-  /* report_common has no left-align utility — only .right/.center/.num */
+  /* ── Fixed column grid ─────────────────────────────────────────── */
+  table.data-table.ledger-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  table.data-table.ledger-table th,
+  table.data-table.ledger-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* ── Alignment (beats report_common's th { text-align:center }) ── */
   table.data-table.ledger-table th.left,
-  table.data-table.ledger-table td.left { text-align: left; }
+  table.data-table.ledger-table td.left   { text-align: left; }
+  table.data-table.ledger-table th.center,
+  table.data-table.ledger-table td.center { text-align: center; }
+  table.data-table.ledger-table th.num,
+  table.data-table.ledger-table td.num,
+  table.data-table.ledger-table th.right,
+  table.data-table.ledger-table td.right  { text-align: right; }
+
   table.data-table td.code { font-family: "Courier New", monospace; font-size: 10px; }
 
-  /* Only unique colors/backgrounds/borders here — bold comes from the shared .strong class */
+  /* Bold weight inside ledger tables */
+  table.data-table.ledger-table .strong { font-weight: 700; }
+
+  /* Only unique colors/backgrounds/borders here */
   table.data-table tr.ac-header td {
     background: #f1f5f9;
     color: #0f172a;
@@ -198,6 +226,30 @@ const DRILLDOWN_EXTRA_CSS = `
   }
   table.data-table tr.data-row:hover td { background: #f0f9f5; cursor: pointer; }
   .balance-neg { color: #b91c1c; }
+
+  /* ── Print ─────────────────────────────────────────────────────── */
+  @media print {
+    /* print the background fills + white-on-blue text exactly as on screen */
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    table.data-table thead { display: table-header-group; }
+    table.data-table tfoot { display: table-footer-group; }
+
+    /* a row is never split across two pages */
+    table.data-table tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* heading row must not be stranded alone at the bottom of a page */
+    table.data-table tr.ac-header {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+  }
 `;
 
 function renderDrilldownBody(opts: {
@@ -340,8 +392,10 @@ function sendExcel(res: Response, buffer: Buffer, filename: string) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEVEL 2 — Account Summary
 // Columns: A/C Code | A/C Name | Debit | Credit | Closing
-// FIXES APPLIED: doc_date < TO_DATE(:toDate)+1 (inclusive range),
-//                NVL(cancelled,'N') <> 'Y' (NULL-safe)
+//
+// FIX: MS_ACCODES is now joined on company_code as well as ac_code (same as the
+//      Level-1 query). Without it, an ac_code that exists in more than one
+//      company multiplies the TR_AC_DETAIL rows and inflates every SUM.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const L2_SQL = `
@@ -358,6 +412,7 @@ const L2_SQL = `
     MS_ACCODES
   WHERE
         TR_AC_DETAIL.ac_code      = MS_ACCODES.ac_code
+    AND TR_AC_DETAIL.company_code = MS_ACCODES.company_code
     AND TR_AC_DETAIL.company_code = :companyCode
     AND TR_AC_DETAIL.doc_date    >= TO_DATE(:fromDate, 'YYYY-MM-DD')
     AND TR_AC_DETAIL.doc_date    <  TO_DATE(:toDate,   'YYYY-MM-DD') + 1
@@ -412,19 +467,26 @@ export const getPnlDrilldownL2 = async (
 
     const tableHtml = `
       <table class="data-table ledger-table">
+        <colgroup>
+          <col style="width:12%" />
+          <col style="width:40%" />
+          <col style="width:16%" />
+          <col style="width:16%" />
+          <col style="width:16%" />
+        </colgroup>
         <thead>
           <tr>
-            <th style="width:120px">A/C Code</th>
+            <th class="center">A/C Code</th>
             <th class="left">A/C Name</th>
-            <th class="num" style="width:130px">Debit</th>
-            <th class="num" style="width:130px">Credit</th>
-            <th class="num" style="width:130px">Closing</th>
+            <th class="num">Debit</th>
+            <th class="num">Credit</th>
+            <th class="num">Closing</th>
           </tr>
         </thead>
         <tbody>${dataRows}</tbody>
         <tfoot>
           <tr class="total-row">
-            <td colspan="2"></td>
+            <td colspan="2" class="right strong" style="padding-right:12px">Total :</td>
             <td class="num strong">${escapeHtml(fmtNumber(totals.debit))}</td>
             <td class="num strong">${escapeHtml(fmtNumber(totals.credit))}</td>
             <td class="num strong">${escapeHtml(fmtNumber(totals.closing))}</td>
@@ -557,7 +619,7 @@ export const getPnlDrilldownL2Excel = async (
     if (!rows.length) sheetData_rows.push(["", "No data found", "", "", ""]);
 
     const TOTAL_ROW = sheetData_rows.length + 1;
-    sheetData_rows.push(["", "", totals.debit, totals.credit, totals.closing]);
+    sheetData_rows.push(["Total :", "", totals.debit, totals.credit, totals.closing]);
 
     function xc(v: unknown, s: number, ref: string): string {
       if (typeof v === "number") return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
@@ -610,8 +672,12 @@ export const getPnlDrilldownL2Excel = async (
 // ═══════════════════════════════════════════════════════════════════════════════
 // LEVEL 3 — Transaction Detail (Ledger)
 // Columns: A/C Code | Type | Doc No. | Doc Date | Chq No. | Chq Date | Bank | Debit | Credit | Balance
-// FIXES APPLIED: doc_date < TO_DATE(:toDate)+1 (inclusive range),
-//                NVL(cancelled,'N') <> 'Y' (NULL-safe)
+//
+// FIXES:
+//  • MS_ACCODES (a and b) now joined on company_code too — prevents duplicated
+//    transaction rows when the same ac_code exists in more than one company.
+//  • doc_type filter is now <> 'EJV' (was 'UJV'), the same filter used by
+//    Level 1 and Level 2, so the ledger total reconciles with the Level-2 closing.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const L3_SQL = `
@@ -636,13 +702,15 @@ const L3_SQL = `
     MS_ACCODES   b
   WHERE
         d.ac_code       = a.ac_code(+)
+    AND d.company_code  = a.company_code(+)
     AND d.bank_ac_code  = b.ac_code(+)
+    AND d.company_code  = b.company_code(+)
     AND d.company_code  = :companyCode
     AND d.ac_code       = :acCode
     AND d.doc_date     >= TO_DATE(:fromDate, 'YYYY-MM-DD')
     AND d.doc_date     <  TO_DATE(:toDate,   'YYYY-MM-DD') + 1
     AND NVL(d.cancelled, 'N') <> 'Y'
-    AND d.doc_type     <> 'UJV'
+    AND d.doc_type     <> 'EJV'
     AND ('All' = :divisionCode OR d.div_code = :divisionCode)
   ORDER BY
     d.doc_date,
@@ -684,7 +752,7 @@ export const getPnlDrilldownL3 = async (
 
       const balClass = runBalance < 0 ? " balance-neg strong" : "";
       return `<tr>
-        <td class="center code">${escapeHtml(text(r.doc_no ?? ""))}</td>
+        <td class="center code">${escapeHtml(text(r.ac_code ?? acCode))}</td>
         <td class="center">${escapeHtml(text(r.doc_type))}</td>
         <td class="center">${escapeHtml(text(r.doc_no ?? ""))}</td>
         <td class="center">${escapeHtml(dateText(r.doc_date))}</td>
@@ -701,28 +769,41 @@ export const getPnlDrilldownL3 = async (
 
     const tableHtml = `
       <table class="data-table ledger-table">
+        <colgroup>
+          <col style="width:10%" />
+          <col style="width:5%"  />
+          <col style="width:11%" />
+          <col style="width:9%"  />
+          <col style="width:9%"  />
+          <col style="width:9%"  />
+          <col style="width:13%" />
+          <col style="width:11%" />
+          <col style="width:11%" />
+          <col style="width:12%" />
+        </colgroup>
         <thead>
           <tr>
-            <th style="width:90px">A/C Code</th>
-            <th style="width:45px">Type</th>
-            <th style="width:70px">Doc No.</th>
-            <th style="width:82px">Doc Date</th>
-            <th style="width:75px">Chq No.</th>
-            <th style="width:82px">Chq Date</th>
+            <th class="center">A/C Code</th>
+            <th class="center">Type</th>
+            <th class="center">Doc No.</th>
+            <th class="center">Doc Date</th>
+            <th class="center">Chq No.</th>
+            <th class="center">Chq Date</th>
             <th class="left">Bank</th>
-            <th class="num" style="width:100px">Debit</th>
-            <th class="num" style="width:100px">Credit</th>
-            <th class="num" style="width:110px">Balance</th>
+            <th class="num">Debit</th>
+            <th class="num">Credit</th>
+            <th class="num">Balance</th>
           </tr>
         </thead>
         <tbody>
+          <!-- Opening row: A/C code | A/C name (cols 2-6) | "Opening" label (Bank col) | Debit, Credit blank | opening balance under Balance -->
           <tr class="ac-header">
-            <td class="code strong">${escapeHtml(acCode)}</td>
-            <td colspan="5" class="strong">${escapeHtml(acName)}</td>
-            <td class="center strong">Opening</td>
+            <td class="code strong center">${escapeHtml(acCode)}</td>
+            <td colspan="5" class="left strong">${escapeHtml(acName)}</td>
+            <td class="right strong">Opening</td>
+            <td></td>
+            <td></td>
             <td class="num strong">${escapeHtml(fmtNumber(opening))}</td>
-            <td></td>
-            <td></td>
           </tr>
           ${txRows}
           <tr class="subtotal-row">
@@ -731,17 +812,15 @@ export const getPnlDrilldownL3 = async (
             <td class="num strong">${escapeHtml(fmtNumber(totalCredit))}</td>
             <td></td>
           </tr>
+          <!-- Closing balance sits under the Balance column -->
           <tr class="closing-row">
-            <td colspan="7" class="right strong" style="padding-right:12px">Closing</td>
+            <td colspan="9" class="right strong" style="padding-right:12px">Closing :</td>
             <td class="num strong">${escapeHtml(fmtNumber(closing))}</td>
-            <td></td>
-            <td></td>
           </tr>
         </tbody>
         <tfoot>
           <tr class="grand-total-row">
-            <td colspan="6" class="strong" style="padding-left:12px">Grand Total :</td>
-            <td></td>
+            <td colspan="7" class="strong" style="padding-left:12px">Grand Total :</td>
             <td class="num strong">${escapeHtml(fmtNumber(totalDebit))}</td>
             <td class="num strong">${escapeHtml(fmtNumber(totalCredit))}</td>
             <td></td>

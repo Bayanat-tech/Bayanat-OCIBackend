@@ -4,8 +4,13 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 
-// ─── Types No group────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
 
@@ -202,25 +207,334 @@ async function loadAdjustmentData(
   }
 }
 
+// ─── Stock Adjustment-only CSS (extraCss for buildReportDocument) ────────────
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+const STOCK_ADJUSTMENT_EXTRA_CSS = `
+  :root {
+    --navy: #1f3e64;
+    --navy-dark: #162f4f;
+    --ink: #111827;
+    --muted: #64748b;
+    --line-strong: #b8c4d2;
+    --success-bg: #e8f5ee;
+    --success-text: #17603a;
+    --danger-bg: #fdecec;
+    --danger-text: #a83232;
+  }
 
-function renderHtml(
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  @media print {
+    @page { size: A4 landscape; margin: 8mm 10mm; }
+  }
+
+  .header-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(190px, 0.75fr) minmax(190px, 0.8fr);
+    gap: 18px;
+    margin: 8px 0 10px;
+    padding: 9px 12px;
+    background: #f8fafc;
+    border: 1px solid #e1e7ef;
+    border-left: 4px solid var(--navy);
+    border-radius: 3px;
+  }
+
+  .header-column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .info-row {
+    display: grid;
+    grid-template-columns: 104px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 7px;
+    min-height: 18px;
+  }
+
+  .header-column.compact .info-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .info-label {
+    color: var(--muted);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .info-label::after {
+    content: ":";
+  }
+
+  .info-value {
+    min-width: 0;
+    color: var(--ink);
+    font-size: 10.5px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 19px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .status-pill.confirmed {
+    color: var(--success-text);
+    background: var(--success-bg);
+    border: 1px solid #c8e7d5;
+  }
+
+  .status-pill.not-confirmed {
+    color: var(--danger-text);
+    background: var(--danger-bg);
+    border: 1px solid #f1caca;
+  }
+
+  .status-pill.empty {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .table-frame {
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  table.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  table.report-table thead th {
+    color: #ffffff;
+    font-weight: 700;
+    text-align: center;
+    vertical-align: middle;
+    border-right: 1px solid rgba(255,255,255,0.16);
+  }
+
+  table.report-table thead th:last-child {
+    border-right: 0;
+  }
+
+  table.report-table thead tr.header-main th {
+    padding: 6px 5px;
+    background: var(--navy);
+    font-size: 9px;
+    line-height: 1.15;
+  }
+
+  table.report-table thead tr.header-sub th {
+    padding: 5px;
+    color: #e7edf5;
+    background: var(--navy-dark);
+    font-size: 8.5px;
+    line-height: 1.1;
+  }
+
+  table.report-table tbody.item-block + tbody.item-block .main-row td {
+    border-top: 2px solid var(--line-strong);
+  }
+
+  table.report-table tbody td {
+    padding: 5px 6px;
+    color: #263445;
+    font-size: 9.6px;
+    vertical-align: middle;
+    border-right: 1px solid #e3e8ef;
+    border-bottom: 1px solid #e3e8ef;
+    overflow-wrap: anywhere;
+  }
+
+  table.report-table tbody td:last-child {
+    border-right: 0;
+  }
+
+  table.report-table .main-row td {
+    min-height: 25px;
+    background: #ffffff;
+  }
+
+  table.report-table .serial-cell,
+  table.report-table .product-code,
+  table.report-table .adj-type,
+  table.report-table .cell-number {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  table.report-table .cell-center {
+    text-align: center;
+  }
+
+  table.report-table .cell-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  table.report-table .description-row td {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    background: #f6f8fb;
+  }
+
+  table.report-table .product-name {
+    color: #263445;
+    font-weight: 600;
+  }
+
+  table.report-table .status-cell {
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .detail-label-inline {
+    margin-right: 7px;
+    color: var(--ink);
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+
+  .detail-label-inline::after {
+    content: ":";
+  }
+
+  table.report-table .detail-row td {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    background: #fbfcfd;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  table.report-table .detail-label {
+    color: #334155;
+    font-size: 9.3px;
+    font-weight: 700;
+  }
+
+  table.report-table .detail-label::after {
+    content: ":";
+  }
+
+  table.report-table .detail-value {
+    color: #475569;
+    font-size: 9.3px;
+  }
+
+  table.report-table .item-last-row td {
+    border-bottom: 0;
+  }
+
+  table.report-table .empty-row td {
+    padding: 18px;
+    color: var(--muted);
+    text-align: center;
+    font-style: italic;
+  }
+
+  .report-ending {
+    margin-top: 10px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .end-title {
+    position: relative;
+    padding: 9px 0 5px;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 800;
+    text-align: center;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .end-title::before {
+    content: "";
+    display: block;
+    margin-bottom: 8px;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .signature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 52px;
+    margin-top: 25px;
+  }
+
+  .signature-box {
+    min-height: 72px;
+    font-size: 10px;
+  }
+
+  .signature-role {
+    margin-bottom: 13px;
+    color: var(--ink);
+    font-weight: 700;
+  }
+
+  .signature-line {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    align-items: end;
+    gap: 6px;
+    margin-top: 7px;
+    color: #334155;
+  }
+
+  .signature-blank {
+    height: 13px;
+    border-bottom: 1px solid #9aa8b8;
+  }
+
+  @media print {
+    .header-panel,
+    .report-ending,
+    .signature-grid {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    table.report-table thead {
+      display: table-header-group;
+    }
+    table.report-table tbody.item-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+  }
+`;
+
+// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+
+function renderAdjustmentBody(
   rows: ReportRow[],
   firstRow: ReportRow | null,
   adjNo: string,
   prinCode: string,
-  reportTitle: string,
-  loginId: string,
-  autoPrint: boolean
+  reportTitle: string
 ): string {
-  const printDate = dateTimeText(new Date());
-
   const r = firstRow || {};
-  const header = r;
-  const documentTitle = autoPrint
-    ? `Stock_Adjusment_${adjNo}`
-    : `${reportTitle} - ${adjNo}`;
   const headerConfirmed = confirmedYesNo(r.header_confirmed);
   const headerStatusClass = isConfirmed(r.header_confirmed)
     ? "confirmed"
@@ -291,494 +605,51 @@ function renderHtml(
       </tbody>`;
   }
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>${escapeHtml(documentTitle)}</title>
-  <style>
-    :root {
-      --navy: #1f3e64;
-      --navy-dark: #162f4f;
-      --navy-soft: #eef3f8;
-      --ink: #111827;
-      --muted: #64748b;
-      --line: #d7dee8;
-      --line-strong: #b8c4d2;
-      --paper: #ffffff;
-      --canvas: #eef2f7;
-      --success-bg: #e8f5ee;
-      --success-text: #17603a;
-      --danger-bg: #fdecec;
-      --danger-text: #a83232;
-    }
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(reportTitle)}</h1></div>
+    </div>
 
-    @page {
-      size: A4 landscape;
-      margin: 8mm 10mm;
-    }
-
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 11px;
-      line-height: 1.35;
-      color: var(--ink);
-      background: var(--canvas);
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-
-    .sheet {
-      width: 277mm;
-      min-height: 190mm;
-      margin: 12px auto;
-      padding: 9mm 10mm 8mm;
-      background: var(--paper);
-      border: 1px solid #cbd5e1;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-    }
-
-    .report-title {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 38px;
-      padding: 8px 16px;
-      color: #ffffff;
-      background: var(--navy);
-      border-radius: 3px;
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .report-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      min-height: 28px;
-      padding: 5px 2px 6px;
-      color: var(--muted);
-      font-size: 9.5px;
-      border-bottom: 1px solid #edf1f5;
-    }
-
-    .report-meta strong {
-      color: var(--ink);
-      font-weight: 700;
-    }
-
-    .header-panel {
-      display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(190px, 0.75fr) minmax(190px, 0.8fr);
-      gap: 18px;
-      margin: 8px 0 10px;
-      padding: 9px 12px;
-      background: #f8fafc;
-      border: 1px solid #e1e7ef;
-      border-left: 4px solid var(--navy);
-      border-radius: 3px;
-    }
-
-    .header-column {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .info-row {
-      display: grid;
-      grid-template-columns: 104px minmax(0, 1fr);
-      align-items: baseline;
-      gap: 7px;
-      min-height: 18px;
-    }
-
-    .header-column.compact .info-row {
-      grid-template-columns: 72px minmax(0, 1fr);
-    }
-
-    .info-label {
-      color: var(--muted);
-      font-size: 10px;
-      white-space: nowrap;
-    }
-
-    .info-label::after {
-      content: ":";
-    }
-
-    .info-value {
-      min-width: 0;
-      color: var(--ink);
-      font-size: 10.5px;
-      font-weight: 700;
-      overflow-wrap: anywhere;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 19px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 9.5px;
-      font-weight: 700;
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    .status-pill.confirmed {
-      color: var(--success-text);
-      background: var(--success-bg);
-      border: 1px solid #c8e7d5;
-    }
-
-    .status-pill.not-confirmed {
-      color: var(--danger-text);
-      background: var(--danger-bg);
-      border: 1px solid #f1caca;
-    }
-
-    .status-pill.empty {
-      min-width: 0;
-      padding: 0;
-      border: 0;
-      background: transparent;
-    }
-
-    .table-frame {
-      border: 1px solid var(--line-strong);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    table.report-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
-
-    thead th {
-      color: #ffffff;
-      font-weight: 700;
-      text-align: center;
-      vertical-align: middle;
-      border-right: 1px solid rgba(255,255,255,0.16);
-    }
-
-    thead th:last-child {
-      border-right: 0;
-    }
-
-    thead tr.header-main th {
-      padding: 6px 5px;
-      background: var(--navy);
-      font-size: 9px;
-      line-height: 1.15;
-    }
-
-    thead tr.header-sub th {
-      padding: 5px;
-      color: #e7edf5;
-      background: var(--navy-dark);
-      font-size: 8.5px;
-      line-height: 1.1;
-    }
-
-    tbody.item-block + tbody.item-block .main-row td {
-      border-top: 2px solid var(--line-strong);
-    }
-
-    tbody td {
-      padding: 5px 6px;
-      color: #263445;
-      font-size: 9.6px;
-      vertical-align: middle;
-      border-right: 1px solid #e3e8ef;
-      border-bottom: 1px solid #e3e8ef;
-      overflow-wrap: anywhere;
-    }
-
-    tbody td:last-child {
-      border-right: 0;
-    }
-
-    .main-row td {
-      min-height: 25px;
-      background: #ffffff;
-    }
-
-    .serial-cell,
-    .product-code,
-    .adj-type,
-    .cell-number {
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .cell-center {
-      text-align: center;
-    }
-
-    .cell-number {
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .description-row td {
-      padding-top: 5px;
-      padding-bottom: 5px;
-      background: #f6f8fb;
-    }
-
-    .product-name {
-      color: #263445;
-      font-weight: 600;
-    }
-
-    .status-cell {
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    .detail-label-inline {
-      margin-right: 7px;
-      color: var(--ink);
-      font-size: 9.5px;
-      font-weight: 700;
-    }
-
-    .detail-label-inline::after {
-      content: ":";
-    }
-
-    .detail-row td {
-      padding-top: 4px;
-      padding-bottom: 4px;
-      background: #fbfcfd;
-      border-right: 0;
-      border-bottom: 0;
-    }
-
-    .detail-label {
-      color: #334155;
-      font-size: 9.3px;
-      font-weight: 700;
-    }
-
-    .detail-label::after {
-      content: ":";
-    }
-
-    .detail-value {
-      color: #475569;
-      font-size: 9.3px;
-    }
-
-    .item-last-row td {
-      border-bottom: 0;
-    }
-
-    .empty-row td {
-      padding: 18px;
-      color: var(--muted);
-      text-align: center;
-      font-style: italic;
-    }
-
-    .report-ending {
-      margin-top: 10px;
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    .end-title {
-      position: relative;
-      padding: 9px 0 5px;
-      color: var(--ink);
-      font-size: 11px;
-      font-weight: 800;
-      text-align: center;
-      border-top: 1px solid var(--line-strong);
-    }
-
-    .end-title::before {
-      content: "";
-      display: block;
-      margin-bottom: 8px;
-      border-top: 1px solid var(--line-strong);
-    }
-
-    .signature-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 52px;
-      margin-top: 25px;
-    }
-
-    .signature-box {
-      min-height: 72px;
-      font-size: 10px;
-    }
-
-    .signature-role {
-      margin-bottom: 13px;
-      color: var(--ink);
-      font-weight: 700;
-    }
-
-    .signature-line {
-      display: grid;
-      grid-template-columns: 54px minmax(0, 1fr);
-      align-items: end;
-      gap: 6px;
-      margin-top: 7px;
-      color: #334155;
-    }
-
-    .signature-blank {
-      height: 13px;
-      border-bottom: 1px solid #9aa8b8;
-    }
-
-    .rpt-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      margin-top: 24px;
-      padding-top: 7px;
-      border-top: 1px solid var(--line);
-      color: #64748b;
-      font-size: 9px;
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    .rpt-footer code {
-      color: #334155;
-      font-family: "Courier New", monospace;
-      font-size: 9px;
-      font-weight: 600;
-    }
-
-    @media screen and (max-width: 1100px) {
-      .sheet {
-        width: calc(100% - 20px);
-        min-width: 980px;
-      }
-    }
-
-    @media print {
-      body {
-        background: #ffffff;
-      }
-
-      .sheet {
-        width: auto;
-        min-height: auto;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        box-shadow: none;
-      }
-
-      .report-title,
-      thead tr.header-main th,
-      thead tr.header-sub th {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-
-      thead {
-        display: table-header-group;
-      }
-
-      tbody.item-block {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-
-      .header-panel,
-      .report-ending,
-      .signature-grid {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-    <header>
-      <div class="report-title">${escapeHtml(reportTitle)}</div>
-
-      <div class="report-meta">
-        <div>
-          Print Date:&nbsp;<strong>${escapeHtml(printDate)}</strong>
-          &nbsp;&nbsp;&nbsp;
-          Print User:&nbsp;<strong>${escapeHtml(loginId)}</strong>
+    <section class="header-panel">
+      <div class="header-column">
+        <div class="info-row">
+          <span class="info-label">Principal</span>
+          <span class="info-value">${escapeHtml(principalDisplay(r, prinCode))}</span>
         </div>
-        <div>Page&nbsp;<strong>1</strong>&nbsp;of&nbsp;<strong>1</strong></div>
+        <div class="info-row">
+          <span class="info-label">Adjustment No.</span>
+          <span class="info-value">${escapeHtml(text(r.adj_no).trim() || adjNo)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Adjustment Reason</span>
+          <span class="info-value">${escapeHtml(text(r.adj_code).trim())}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Remarks</span>
+          <span class="info-value">${escapeHtml(text(r.remarks).trim())}</span>
+        </div>
       </div>
 
-      <section class="header-panel">
-        <div class="header-column">
-          <div class="info-row">
-            <span class="info-label">Principal</span>
-            <span class="info-value">${escapeHtml(principalDisplay(r, prinCode))}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Adjustment No.</span>
-            <span class="info-value">${escapeHtml(text(r.adj_no).trim() || adjNo)}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Adjustment Reason</span>
-            <span class="info-value">${escapeHtml(text(r.adj_code).trim())}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Remarks</span>
-            <span class="info-value">${escapeHtml(text(r.remarks).trim())}</span>
-          </div>
+      <div class="header-column compact">
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${escapeHtml(dateTimeText(r.adj_date))}</span>
         </div>
+      </div>
 
-        <div class="header-column compact">
-          <div class="info-row">
-            <span class="info-label">Date</span>
-            <span class="info-value">${escapeHtml(dateTimeText(r.adj_date))}</span>
-          </div>
+      <div class="header-column compact">
+        <div class="info-row">
+          <span class="info-label">Confirmed</span>
+          <span class="info-value">
+            <span class="status-pill ${headerStatusClass}">${escapeHtml(headerConfirmed)}</span>
+          </span>
         </div>
-
-        <div class="header-column compact">
-          <div class="info-row">
-            <span class="info-label">Confirmed</span>
-            <span class="info-value">
-              <span class="status-pill ${headerStatusClass}">${escapeHtml(headerConfirmed)}</span>
-            </span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Date</span>
-            <span class="info-value">${escapeHtml(dateTimeText(r.confirmed_date))}</span>
-          </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${escapeHtml(dateTimeText(r.confirmed_date))}</span>
         </div>
-      </section>
-    </header>
+      </div>
+    </section>
 
     <div class="table-frame">
       <table class="report-table">
@@ -849,21 +720,12 @@ function renderHtml(
       </div>
     </section>
 
-    <div class="rpt-footer">
-      <span>Object: <code>${escapeHtml(header.company_code)}-${escapeHtml(header.adj_no)}</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </main>
-
-  <script>
-    window.addEventListener("message", (event) => {
-      if (event.data === "print") window.print();
-    });
-
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-  </script>
-</body>
-</html>`;
+    <script>
+      window.addEventListener("message", (event) => {
+        if (event.data === "print") window.print();
+      });
+    </script>
+  `;
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
@@ -1207,20 +1069,32 @@ export const getStockAdjusmentReportHtml = async (
     }
 
     const first = rows[0] ?? null;
+    const loginId = text(req.user?.loginid);
+    const companyCode = text(req.user?.company_code);
+    const documentTitle = autoPrint
+      ? `Stock_Adjusment_${adjNo}`
+      : `${reportTitle} - ${adjNo}`;
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderAdjustmentBody(rows, first, adjNo, prinCode, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_stock_adjustment",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(companyCode)}-${escapeHtml(adjNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: documentTitle,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: STOCK_ADJUSTMENT_EXTRA_CSS,
+      autoPrint,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-
-    res.send(
-      renderHtml(
-        rows,
-        first,
-        adjNo,
-        prinCode,
-        reportTitle,
-        text(req.user?.loginid),
-        autoPrint
-      )
-    );
+    res.send(html);
   } catch (error: any) {
     console.error("Adjustment HTML error:", error);
 
@@ -1266,16 +1140,26 @@ export const getStockAdjusmentReportPdf = async (
 
     const first = rows[0] ?? null;
     const reportTitle = "Entry List";
+    const loginId = text(req.user?.loginid);
+    const companyCode = text(req.user?.company_code);
 
-    const html = renderHtml(
-      rows,
-      first,
-      adjNo,
-      prinCode,
-      reportTitle,
-      text(req.user?.loginid),
-      true
-    );
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderAdjustmentBody(rows, first, adjNo, prinCode, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_stock_adjustment",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(companyCode)}-${escapeHtml(adjNo)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `Stock_Adjusment_${adjNo}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: STOCK_ADJUSTMENT_EXTRA_CSS,
+      autoPrint: true,
+    });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader(
@@ -1351,4 +1235,3 @@ export const exportStockAdjusmentReportExcel = async (
     });
   }
 };
-

@@ -141,13 +141,8 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
     const manuClause     = buildInClause("MANU_CODE",     p.manu,         "man", binds);
     const custClause     = buildInClause("AC_CODE",       p.cust,         "cus", binds);
 
-    // ── FIX (was ORA-01036: illegal variable name/number) ──────────────────
-    // Previously `binds.docNo` was ALWAYS added, even when docClause was
-    // hardcoded to "1=1" (i.e. the bind ":docNo" never actually appeared in
-    // the SQL text). oracledb throws ORA-01036 if a named bind is supplied
-    // but not referenced anywhere in the statement. Now we only set the
-    // bind when the clause actually uses it — same pattern already used
-    // correctly below for salesmanClause.
+    // Only bind :docNo when the SQL text actually references it
+    // (otherwise oracledb throws ORA-01036).
     const docNo = parseInt(p.docno, 10) || 0;
     let docClause = "1=1";
     if (docNo !== 0) {
@@ -204,9 +199,8 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
           ORDER BY salesman_name`;
         break;
       // Both "Customer-Group wise" and "Group-Customer wise" run the same
-      // underlying query (customer + group breakdown) — they only differ in
-      // which level is the primary section when we render/group the rows
-      // below (customer-first vs group-first).
+      // underlying query — they only differ in which level is the primary
+      // section when rows are grouped below.
       case "customergroupwise":
       case "groupcustomerwise":
         sql = `
@@ -229,43 +223,52 @@ async function loadPLSummaryData(req: RequestWithUser, p: ReqParams): Promise<Re
 // ─── Generic report-line model (shared by HTML + Excel renderers) ─────────
 //
 // "section"    -> top-level heading row (customer / salesman / group)
-// "subsection" -> second-level heading row (used only for the two
-//                 customer+group modes)
 // "data"       -> a real data row with numeric columns
-// "subtotal"   -> total for the current section/subsection
+// "subtotal"   -> total for the current section
 // "grandtotal" -> overall total
 
 interface ReportLine {
   kind: "section" | "subsection" | "data" | "subtotal" | "grandtotal";
   label?: string;
-  cells?: (string | number)[]; // aligned to `columns` below (numeric cols right-aligned)
+  cells?: (string | number)[]; // aligned to `columns` below
 }
 
 interface ColumnDef {
   label: string;
-  align: "left" | "right";
+  align: "left" | "right" | "center";
+  width: number; // percentage of table width (all columns in a mode add up to 100)
 }
 
 function getColumnsForMode(mode: ReportMode): ColumnDef[] {
   switch (mode) {
     case "invoicewise":
       return [
-        { label: "Inv No", align: "left" }, { label: "Date", align: "left" },
-        { label: "Qty", align: "right" }, { label: "Customer", align: "left" },
-        { label: "Sales Value", align: "right" }, { label: "Cost Value", align: "right" }, { label: "Profit", align: "right" },
+        { label: "Inv No",       align: "left",   width: 17 },
+        { label: "Date",         align: "center", width: 10 },
+        { label: "Qty",          align: "right",  width: 8  },
+        { label: "Customer",     align: "left",   width: 29 },
+        { label: "Sales Value",  align: "right",  width: 12 },
+        { label: "Cost Value",   align: "right",  width: 12 },
+        { label: "Profit",       align: "right",  width: 12 },
       ];
     case "salesmanwise":
       return [
-        { label: "Salesman Code", align: "left" }, { label: "Salesman Name", align: "left" },
-        { label: "Sales Value", align: "right" }, { label: "Cost Value", align: "right" }, { label: "Profit", align: "right" },
+        { label: "Salesman Code", align: "left",  width: 18 },
+        { label: "Salesman Name", align: "left",  width: 34 },
+        { label: "Sales Value",   align: "right", width: 16 },
+        { label: "Cost Value",    align: "right", width: 16 },
+        { label: "Profit",        align: "right", width: 16 },
       ];
     case "customerwise":
     case "customergroupwise":
     case "groupcustomerwise":
     default:
       return [
-        { label: "Code", align: "left" }, { label: "Name", align: "left" },
-        { label: "Sales Value", align: "right" }, { label: "Cost Value", align: "right" }, { label: "Profit", align: "right" },
+        { label: "Code",        align: "left",  width: 18 },
+        { label: "Name",        align: "left",  width: 34 },
+        { label: "Sales Value", align: "right", width: 16 },
+        { label: "Cost Value",  align: "right", width: 16 },
+        { label: "Profit",      align: "right", width: 16 },
       ];
   }
 }
@@ -280,9 +283,10 @@ function buildReportLines(mode: ReportMode, rows: ReportRow[]): { lines: ReportL
   const lines: ReportLine[] = [];
   let grandSales = 0, grandCost = 0, grandProfit = 0;
 
-  const addTotalsLine = (kind: ReportLine["kind"], label: string, sales: number, cost: number, profit: number, numericColCount: number) => {
-    const blanks = Array(columns.length - numericColCount - 1).fill("");
-    lines.push({ kind, label, cells: [...blanks, numFmt(sales), numFmt(cost), numFmt(profit)] });
+  // The last 3 columns are always Sales / Cost / Profit, so a totals line only
+  // needs its label + those 3 values (label spans everything before them).
+  const addTotalsLine = (kind: ReportLine["kind"], label: string, sales: number, cost: number, profit: number) => {
+    lines.push({ kind, label, cells: [numFmt(sales), numFmt(cost), numFmt(profit)] });
   };
 
   if (mode === "invoicewise") {
@@ -291,7 +295,13 @@ function buildReportLines(mode: ReportMode, rows: ReportRow[]): { lines: ReportL
       grandSales += sales; grandCost += cost; grandProfit += profit;
       lines.push({
         kind: "data",
-        cells: [text(r.inv_no) || "\u2014", dateText(r.doc_date), numFmt(r.quantity, 2), `${text(r.ac_code)} | ${text(r.ac_name)}`, numFmt(sales), numFmt(cost), numFmt(profit)],
+        cells: [
+          text(r.inv_no) || "\u2014",
+          dateText(r.doc_date),
+          numFmt(r.quantity, 2),
+          `${text(r.ac_code)} | ${text(r.ac_name)}`,
+          numFmt(sales), numFmt(cost), numFmt(profit),
+        ],
       });
     }
   } else if (mode === "customerwise") {
@@ -310,8 +320,9 @@ function buildReportLines(mode: ReportMode, rows: ReportRow[]): { lines: ReportL
     // customergroupwise (customer primary, group secondary) or
     // groupcustomerwise (group primary, customer secondary)
     const groupByCustomerFirst = mode === "customergroupwise";
-    const primaryKey  = (r: ReportRow) => (groupByCustomerFirst ? text(r.ac_code)    : text(r.group_code));
-    const primaryName = (r: ReportRow) => (groupByCustomerFirst ? text(r.ac_name)    : text(r.group_name));
+    const primaryKey    = (r: ReportRow) => (groupByCustomerFirst ? text(r.ac_code)    : text(r.group_code));
+    const primaryName   = (r: ReportRow) => (groupByCustomerFirst ? text(r.ac_name)    : text(r.group_name));
+    const secondaryCode = (r: ReportRow) => (groupByCustomerFirst ? text(r.group_code) : text(r.ac_code));
     const secondaryName = (r: ReportRow) => (groupByCustomerFirst ? text(r.group_name) : text(r.ac_name));
 
     const byPrimary = new Map<string, { name: string; rows: ReportRow[] }>();
@@ -327,14 +338,14 @@ function buildReportLines(mode: ReportMode, rows: ReportRow[]): { lines: ReportL
       for (const r of group.rows) {
         const sales = num(r.sales_value), cost = num(r.cost_value), profit = num(r.profit);
         subSales += sales; subCost += cost; subProfit += profit;
-        lines.push({ kind: "data", cells: ["", secondaryName(r), numFmt(sales), numFmt(cost), numFmt(profit)] });
+        lines.push({ kind: "data", cells: [secondaryCode(r), secondaryName(r), numFmt(sales), numFmt(cost), numFmt(profit)] });
       }
-      addTotalsLine("subtotal", `Total For ${key} | ${group.name}`, subSales, subCost, subProfit, 3);
+      addTotalsLine("subtotal", `Total For ${key} | ${group.name}`, subSales, subCost, subProfit);
       grandSales += subSales; grandCost += subCost; grandProfit += subProfit;
     }
   }
 
-  addTotalsLine("grandtotal", "Grand Total", grandSales, grandCost, grandProfit, mode === "invoicewise" ? 3 : 3);
+  addTotalsLine("grandtotal", "Grand Total", grandSales, grandCost, grandProfit);
   return { lines, columns };
 }
 
@@ -348,46 +359,77 @@ const MODE_TITLES: Record<ReportMode, string> = {
   groupcustomerwise: "P&L Summary Report - Group-Customer wise",
 };
 
-// A couple of small, purely layout-level rules (section / subtotal / grand
-// total row treatment, landscape page size) that the shared CSS doesn't
-// define for a group-and-total style report. Everything else — fonts,
-// table borders, header, footer, print rules, .data-table look — comes
-// straight from COMMON_REPORT_CSS via buildReportDocument.
+// Layout-level rules for this report on top of COMMON_REPORT_CSS.
+//
+// ALIGNMENT FIX: the shared CSS centres <th> by default while numeric <td>
+// are right-aligned, so headers never sat over their values. Here we
+//   1. use a fixed table layout with <colgroup> widths so every row
+//      (data / section / subtotal / grand total) shares the same columns,
+//   2. force the SAME text-align on <th> and <td> for each column
+//      (left / center / right) with !important so the shared CSS can't win,
+//   3. use one horizontal padding value for every row type so numbers in the
+//      total rows end at exactly the same x-position as the data rows.
 const PL_EXTRA_CSS = `
   /* This report reads better in landscape given the column count */
-  @page { size: A4 landscape; margin: 10mm 12mm; }
-
   .pl-title { font-size: 13px; font-weight: 800; color: #0b4ca1; text-align: center; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
 
-  table.data-table tr.section-row td { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 11px; padding: 5px 8px; border-bottom: none; }
-  table.data-table tr.subtotal-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 10.5px; padding: 5px 8px; }
-  table.data-table tr.grand-total td { background: #0b4ca1; color: #fff; font-weight: 800; font-size: 12px; padding: 7px 8px; border-top: 2px solid #08386f; border-bottom: none; }
+  table.data-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+
+  /* One padding for every cell type -> columns line up perfectly */
+  table.data-table th,
+  table.data-table td {
+    padding: 5px 10px;
+    box-sizing: border-box;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+
+  /* Header + body share the same alignment per column */
+  table.data-table th.left,   table.data-table td.left   { text-align: left   !important; }
+  table.data-table th.center, table.data-table td.center { text-align: center !important; }
+  table.data-table th.right,  table.data-table td.right  { text-align: right  !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  table.data-table tr.section-row td { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 11px; border-bottom: none; text-align: left !important; }
+  table.data-table tr.subtotal-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 10.5px; }
+  table.data-table tr.grand-total td { background: #0b4ca1; color: #fff; font-weight: 800; font-size: 12px; padding-top: 7px; padding-bottom: 7px; border-top: 2px solid #08386f; border-bottom: none; }
   table.data-table tbody tr.data-row:nth-child(even) td { background: #f8fafc; }
 `;
 
 function renderHtmlTable(lines: ReportLine[], columns: ColumnDef[]): string {
   const ncols = columns.length;
-  const headerCells = columns.map((c) => `<th class="${c.align === "right" ? "right" : ""}">${escapeHtml(c.label)}</th>`).join("");
+  const labelSpan = Math.max(1, ncols - 3); // label cell spans everything before Sales/Cost/Profit
+
+  const colgroup = `<colgroup>${columns.map((c) => `<col style="width:${c.width}%">`).join("")}</colgroup>`;
+
+  const headerCells = columns
+    .map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`)
+    .join("");
+
+  // Numeric cells for total rows (always the last 3 columns => right aligned)
+  const totalCells = (cells: (string | number)[] = []) =>
+    cells.slice(-3).map((c) => `<td class="right num">${escapeHtml(c)}</td>`).join("");
 
   const rowsHtml = lines.map((line) => {
     if (line.kind === "section") {
-      return `<tr class="section-row"><td colspan="${ncols}">${escapeHtml(line.label)}</td></tr>`;
+      return `<tr class="section-row"><td class="left" colspan="${ncols}">${escapeHtml(line.label)}</td></tr>`;
     }
     if (line.kind === "subtotal") {
-      const last3 = (line.cells || []).slice(-3);
-      return `<tr class="subtotal-row"><td colspan="${Math.max(1, ncols - 3)}">${escapeHtml(line.label)}</td>${last3.map((c) => `<td class="num">${escapeHtml(c)}</td>`).join("")}</tr>`;
+      return `<tr class="subtotal-row"><td class="left" colspan="${labelSpan}">${escapeHtml(line.label)}</td>${totalCells(line.cells)}</tr>`;
     }
     if (line.kind === "grandtotal") {
-      const last3 = (line.cells || []).slice(-3);
-      return `<tr class="grand-total"><td colspan="${Math.max(1, ncols - 3)}">${escapeHtml(line.label)}</td>${last3.map((c) => `<td class="num">${escapeHtml(c)}</td>`).join("")}</tr>`;
+      return `<tr class="grand-total"><td class="left" colspan="${labelSpan}">${escapeHtml(line.label)}</td>${totalCells(line.cells)}</tr>`;
     }
-    // data
-    const cells = (line.cells || []).map((c, i) => `<td class="${columns[i]?.align === "right" ? "num" : ""}">${escapeHtml(c)}</td>`).join("");
+    // data row
+    const cells = (line.cells || []).map((c, i) => {
+      const align = columns[i]?.align || "left";
+      return `<td class="${align}${align === "right" ? " num" : ""}">${escapeHtml(c)}</td>`;
+    }).join("");
     return `<tr class="data-row">${cells}</tr>`;
   }).join("");
 
   return `
     <table class="data-table">
+      ${colgroup}
       <thead><tr>${headerCells}</tr></thead>
       <tbody>${rowsHtml}</tbody>
     </table>`;
@@ -420,7 +462,7 @@ async function renderHtml(mode: ReportMode, lines: ReportLine[], columns: Column
   });
 }
 
-// ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
+// ─── Excel builder (separate output format, no HTML CSS involved) ─────────
 
 const STYLE_ID = { header: 1, section: 2, value: 3, numValue: 4, subtotal: 5, numSubtotal: 6, grand: 7, numGrand: 8 } as const;
 type StyleKey = keyof typeof STYLE_ID;
@@ -546,7 +588,7 @@ function buildExcelBuffer(mode: ReportMode, lines: ReportLine[], columns: Column
 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="P&L Summary" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="P&amp;L Summary" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
