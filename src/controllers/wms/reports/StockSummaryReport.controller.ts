@@ -1195,6 +1195,7 @@ export const getStockSummaryReportHtml = async (
       footerHtml,
       extraCss: STOCK_SUMMARY_EXTRA_CSS,
       autoPrint: req.query.print !== "false",
+      showPrintButton: true,
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -1227,4 +1228,4 @@ export const exportStockSummaryReportExcel = async (
       message: error.message || "Unable to export report",
     });
   }
-};
+}
