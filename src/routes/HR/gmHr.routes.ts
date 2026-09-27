@@ -75,6 +75,7 @@ import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
 import {insUpdHRHolidayCalendarBulk} from "../../controllers/HR/holiday_calendar_hr.controller";
 import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
 import { mhupsertLeaveApprovalHandler } from "../../controllers/HR/MHDL/mh_leave_approval";
+import { MHvalidateLeaveHandler } from "../../controllers/HR/MHDL/mh_hr.controller";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -155,8 +156,10 @@ router.get("/employees", getEmployeesHandler);
 router.get("/leavebalance/:employeeId", getLeaveBalanceHandler);
 router.get("/leaveentitle/:employeeId", getLeaveEntitleHandler);
 router.get("/leavehistory", getLeaveHistoryHandler);
-// router.get("/validateleave", validateLeaveHandler);
+
 router.get("/validateleave", newvalidateLeaveHandler);
+router.get("/mhvalidateleave",MHvalidateLeaveHandler);
+
 router.get("/leave-requests-erp-doc", getLeaveRequestsWithErpDocHandler);
 router.get("/leavedayscount", leaveDaysCntHandler);
 // router.post("/absentmemo", generateAbsentMemoDaily);
