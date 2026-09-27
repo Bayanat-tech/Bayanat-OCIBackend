@@ -891,6 +891,7 @@ export const getPendingLPODetail = async (
     const lpoDetail = await VendorService.getPendingLPODetail(
       company_code,
       ac_code,
+      div_code,
       doc_no
     );
     res.status(200).json({ success: true, data: lpoDetail });

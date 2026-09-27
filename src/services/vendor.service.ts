@@ -212,12 +212,13 @@ export class VendorService {
   static async getPendingLPODetail(
     company_code: string,
     ac_code: string,
+    div_code: string,
     doc_no: string
   ) {
     const response = await axiosInstance.get(
       "/VENDOR_SYSTEM_/LPO_PENDING_DETAIL",
       {
-        params: { company_code, ac_code, doc_no },
+        params: { company_code, ac_code, div_code, doc_no },
       }
     );
     return response.data;
