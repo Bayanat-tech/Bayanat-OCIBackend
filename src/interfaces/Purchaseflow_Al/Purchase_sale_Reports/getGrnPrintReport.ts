@@ -5,36 +5,36 @@ import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
-
+ 
 // ─── Shared report shell (header / footer / css / document wrapper) ───────
 // NOTE: adjust this relative path to wherever ReportCommon.ts actually lives
 // in your project (it's the file that exports reportHeader / reportFooter /
 // buildReportDocument / COMMON_REPORT_CSS).
-
+ 
 // ─── Types ────────────────────────────────────────────────────────────────
-
+ 
 type ReportRow = Record<string, any>;
-
+ 
 interface ReqParams {
   loginid:      string;
   company_code: string;
   doc_type:     string; // "GRN"
   doc_no:       string;
 }
-
+ 
 // ─── DB helpers (same as PoOrderRegisterReport.ts) ─────────────────────────
-
+ 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
   if (!tenantId && req.user?.loginid) tenantId = await TenantManager.getTenantForUser(req.user.loginid);
   if (!tenantId) throw Object.assign(new Error("Unable to determine tenant database"), { status: 400 });
   return TenantManager.getConnection(tenantId);
 }
-
+ 
 async function closeConn(conn?: oracledb.Connection) {
   if (conn) try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
 }
-
+ 
 function normalize(rows: any[] = []): ReportRow[] {
   return rows.map((row) =>
     Object.keys(row).reduce((acc: ReportRow, key) => {
@@ -43,40 +43,46 @@ function normalize(rows: any[] = []): ReportRow[] {
     }, {})
   );
 }
-
+ 
 // ─── Formatting helpers ─────────────────────────────────────────────────────
-
+ 
 function text(value: unknown): string {
   if (value == null) return "";
   return String(value);
 }
-
+ 
 function num(v: unknown): number {
   const n = parseFloat(String(v));
   return Number.isFinite(n) ? n : 0;
 }
-
+ 
 function dateText(value: unknown): string {
   if (!value) return "\u2014";
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
-
+ 
 function escapeHtml(value: unknown): string {
   return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
-
+ 
 function escapeXml(value: unknown): string {
   return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
-
+ 
 function qtyFmt(value: unknown): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "0";
   return n.toLocaleString("en-US", { maximumFractionDigits: 3 });
 }
-
+ 
+function amtFmt(value: unknown): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+ 
 // Matches the original DataWindow computed field: doc_type + '-' + doc_no.
 function formatDocNo(docType: string, docNo: string): string {
   const dt = text(docType).trim();
@@ -85,9 +91,9 @@ function formatDocNo(docType: string, docNo: string): string {
   if (dn.toUpperCase().startsWith(dt.toUpperCase())) return dn;
   return `${dt}-${dn}`;
 }
-
+ 
 // ─── Param extraction ───────────────────────────────────────────────────────
-
+ 
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   const q = (req.query || {}) as Record<string, any>;
@@ -98,24 +104,15 @@ function extractParams(req: RequestWithUser): ReqParams {
     doc_no:       text(b.doc_no) || text(q.doc_no),
   };
 }
-
-function resolveCompanyCode(req: RequestWithUser, params: ReqParams): string {
-  return (
-    params.company_code ||
-    text(req.user?.company_code) ||
-    text(req.query.company_code) ||
-    "BSG"
-  );
-}
-
+ 
 // ─── Data loader ────────────────────────────────────────────────────────────
-
+ 
 interface GrnData {
   rows: ReportRow[];
   terms: ReportRow[];
   footer: ReportRow;
 }
-
+ 
 async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData> {
   const conn = await getConn(req);
   try {
@@ -144,7 +141,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
       { company_code: p.company_code, doc_type: p.doc_type, doc_no: p.doc_no },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+ 
     const termsResult = await conn.execute(
       `SELECT srno, term, is_payterm
        FROM ms_ac_setup_terms
@@ -153,7 +150,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
       { doc_type: p.doc_type },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+ 
     const footerResult = await conn.execute(
       `SELECT prepared, verified, approved, received
        FROM ms_ac_setup_doc
@@ -161,7 +158,7 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
       { doc_type: p.doc_type },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-
+ 
     return {
       rows: normalize(grnResult.rows as any[]),
       terms: normalize(termsResult.rows as any[]),
@@ -171,9 +168,9 @@ async function loadGrnData(req: RequestWithUser, p: ReqParams): Promise<GrnData>
     await closeConn(conn);
   }
 }
-
+ 
 // ─── Report line model ──────────────────────────────────────────────────────
-
+ 
 interface GrnHeader {
   doc_no: string;
   doc_date: any;
@@ -197,7 +194,7 @@ interface GrnHeader {
   remarks: string;
   cancelled: boolean;
 }
-
+ 
 function buildHeader(rows: ReportRow[]): GrnHeader {
   const h = rows[0] || {};
   return {
@@ -224,18 +221,18 @@ function buildHeader(rows: ReportRow[]): GrnHeader {
     cancelled: text(h.cancelled).toUpperCase() === "Y",
   };
 }
-
+ 
 function computeTotals(rows: ReportRow[]) {
   const totalPQty = rows.reduce((s, r) => s + num(r.qty_puom), 0);
   const totalLQty = rows.reduce((s, r) => s + num(r.qty_luom), 0);
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
   return { totalPQty, totalLQty, totalQty };
 }
-
+ 
 // ─── HTML renderer (built entirely on the shared report shell) ────────────
-
+ 
 const REPORT_TITLE = "Goods Receipt Note";
-
+ 
 // A key/value line rendered as a <tr> inside a .data-table so it inherits
 // the exact same borders/spacing/font as every other report on the shared
 // shell — no bespoke "info-table" CSS needed anymore.
@@ -247,7 +244,7 @@ function kvRow(label: string, value: string, strongValue = false): string {
         <td class="${strongValue ? "strong" : ""}">${v}</td>
       </tr>`;
 }
-
+ 
 // A couple of small, purely layout-level rules (two-column split, status chip)
 // that the shared CSS doesn't define. Everything else (fonts, colors, table
 // borders, header, footer, print rules) comes straight from COMMON_REPORT_CSS.
@@ -259,7 +256,7 @@ const GRN_EXTRA_CSS = `
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
-
+ 
   /* Report title shown inside the body (same look as the other reports) */
   .grn-report-title {
     font-size: 13px;
@@ -270,46 +267,46 @@ const GRN_EXTRA_CSS = `
     letter-spacing: 0.04em;
     margin: 2px 0 8px 0;
   }
-
+ 
   .grn-two-col { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
   .grn-two-col > tbody > tr > td { border: 0; padding: 0; vertical-align: top; width: 50%; }
   .grn-two-col > tbody > tr > td:first-child { padding-right: 10px; }
   .grn-two-col > tbody > tr > td:last-child { padding-left: 10px; }
   .grn-status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; background: #fee2e2; color: #dc2626; margin-top: 4px; }
-
+ 
   .grn-totals { width: 260px; margin-left: auto; margin-top: 10px; border-collapse: collapse; }
   .grn-totals td { padding: 5px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; }
   .grn-totals tr.grand td { background: #0b4ca1 !important; color: #fff !important; font-weight: 800; font-size: 12px; border-bottom: none; }
-
+ 
   /* ── Items table: fixed layout with widths pinned per column via
      nth-child (more reliable across HTML→PDF renderers than <colgroup>). ── */
   .grn-items-table { table-layout: fixed; width: 100%; }
-
+ 
   .grn-items-table th:nth-child(1),
   .grn-items-table td:nth-child(1) { width: 36px; white-space: nowrap; }
-
+ 
   .grn-items-table th:nth-child(2),
   .grn-items-table td:nth-child(2) {
     width: auto;
     overflow-wrap: break-word;
     word-break: break-word;
   }
-
+ 
   .grn-items-table th:nth-child(3),
   .grn-items-table td:nth-child(3) { width: 50px; }
-
+ 
   .grn-items-table th:nth-child(4),
   .grn-items-table td:nth-child(4) { width: 80px; text-align: right; }
-
+ 
   .grn-items-table th:nth-child(5),
   .grn-items-table td:nth-child(5) { width: 50px; }
-
+ 
   .grn-items-table th:nth-child(6),
   .grn-items-table td:nth-child(6) { width: 80px; text-align: right; }
-
+ 
   .grn-items-table th:nth-child(7),
   .grn-items-table td:nth-child(7) { width: 95px; text-align: right; }
-
+ 
   .grn-sign {
     display: flex;
     justify-content: space-between;
@@ -319,46 +316,46 @@ const GRN_EXTRA_CSS = `
     page-break-inside: avoid;
     font-size: 10px;
   }
-
+ 
   .sign-box {
     width: 23%;
     min-height: 70px;
   }
-
+ 
   .sign-space {
     height: 32px;
   }
-
+ 
   .sign-line {
     width: 100%;
     border-top: 1px solid #64748b;
     margin-bottom: 6px;
   }
-
+ 
   .sign-label {
     font-size: 10px;
     font-weight: 700;
     color: #334155;
   }
-
+ 
   .sign-name {
     font-size: 9px;
     color: #64748b;
     margin-top: 3px;
   }
 `;
-
+ 
 async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
   const { rows, terms, footer } = data;
   const header = buildHeader(rows);
   const totals = computeTotals(rows);
-
+ 
   const contactMobile = [header.dlvr_contact, header.dlvr_mobile || header.mobile_no].filter((v) => v).join(" / ");
   const emailToShow = header.dlvr_email || header.e_mail;
-
+ 
   // ── Shared company header (logo + name + address), same as every other report ──
   const headerHtml = await reportHeader({ company_code: p.company_code, req });
-
+ 
   // ── Party / GRN details, two data-tables side by side ──
   const detailsHtml = `
     <table class="grn-two-col">
@@ -390,7 +387,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
       </tbody>
     </table>
     ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
-
+ 
   // ── Line items, using the shared data-table look exactly like every other report ──
   let itemsHtml: string;
   if (!rows.length) {
@@ -409,7 +406,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
           <td class="num strong">${qtyFmt(r.quantity)}</td>
         </tr>`;
     });
-
+ 
     itemsHtml = `
       <table class="data-table grn-items-table">
         <thead>
@@ -433,66 +430,66 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
         </tbody>
       </table>`;
   }
-
+ 
   // ── Remarks / terms ──
   const remarksHtml = header.remarks
     ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>`
     : "";
-
+ 
   const termsHtml = terms.length
     ? `<div class="group"><div class="group-title">Terms</div>${terms
         .map((t) => `<div class="muted">${escapeHtml(t.term)}</div>`)
         .join("")}</div>`
     : "";
-
+ 
   // ── Signature strip ──
   const signHtml = `
   <div class="grn-sign">
-
+ 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Prepared By</div>
     </div>
-
+ 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Checked By</div>
     </div>
-
+ 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Approved By</div>
     </div>
-
+ 
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line"></div>
       <div class="sign-label">Receiver's Name &amp; Signature</div>
     </div>
-
+ 
   </div>`;
-
+ 
   // ── Body: report title first, then details / items / remarks / terms ──
   const bodyHtml = `
     <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
-
+ 
     ${detailsHtml}
-
+ 
     <div class="group">
       <div class="group-title">Items</div>
       ${itemsHtml}
     </div>
-
+ 
     ${remarksHtml}
     ${termsHtml}`;
-
+ 
   // ── Shared footer (print date / user / report name) ──
   const footerHtml = `
   ${signHtml}
-
+ 
   ${reportFooter({
     reportName: REPORT_TITLE,
     userName: loginId,
@@ -509,52 +506,52 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
     showPrintButton: true,
   });
 }
-
+ 
 // ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
-
+ 
 function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
-  const { rows } = data;
+  const { rows, footer } = data;
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
-
+ 
   const BLUE = "FF1D4ED8";
   const WHITE = "FFFFFFFF";
   const GREEN_BG = "FFD1FAE5";
-
+ 
   const header = buildHeader(rows);
   const totals = computeTotals(rows);
-
+ 
   const COL_COUNT = 7; // S.No, Product/Description, PUOM, P.Qty, LUOM, L.Qty, Quantity
-
+ 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
   const rows_: Row[] = [];
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
-
+ 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
-
+ 
   rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
-
+ 
   rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
   merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 6 } });
-
+ 
   rows_.push([
     cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null,
     cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
   ]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
   merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: 6 } });
-
+ 
   rows_.push([null, null, null, null, null, null, null]);
-
+ 
   rows_.push([
     cell("S.No", "header"), cell("Product / Description", "header"), cell("PUOM", "header"),
     cell("P. Qty", "header"), cell("LUOM", "header"), cell("L. Qty", "header"), cell("Quantity", "header"),
   ]);
-
+ 
   rows.forEach((r, i) => {
     rows_.push([
       cell(i + 1, "data"),
@@ -566,9 +563,9 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
       cell(num(r.quantity), "dataNum"),
     ]);
   });
-
+ 
   rows_.push([null, null, null, null, null, null, null]);
-
+ 
   const totalRows: [string, number][] = [
     ["Total P. Qty", totals.totalPQty],
     ["Total L. Qty", totals.totalLQty],
@@ -578,19 +575,17 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
     merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
   });
-
+ 
   const gtRow = rows_.length;
   rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, cell(totals.totalQty, "grandTotalNum"), null]);
   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
-
-  rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
-
+ 
   // ── Style registration engine ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }
   interface BorderDef { top?: string; bottom?: string; left?: string; right?: string; }
   interface XfDef { fontId: number; fillId: number; borderId: number; numFmtId: number; align?: string; wrap?: boolean; }
-
+ 
   const styleDefs: Record<string, any> = {
     title: {
       font: { bold: true, sz: 16, color: { rgb: WHITE } },
@@ -631,9 +626,8 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.000",
     },
-    footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
-
+ 
   const fonts: FontDef[] = [{}];
   const fills: FillDef[] = [{}, {}];
   const borders: BorderDef[] = [{}];
@@ -641,7 +635,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   const cellXfs: XfDef[] = [{ fontId: 0, fillId: 0, borderId: 0, numFmtId: 0 }];
   const sigCache = new Map<string, number>();
   let nextCustomNumFmtId = 164;
-
+ 
   const registerFont = (f: any): number => {
     const def: FontDef = { bold: !!f?.bold, italic: !!f?.italic, sz: f?.sz ?? 10, color: f?.color?.rgb };
     const key = `font:${JSON.stringify(def)}`;
@@ -651,7 +645,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const registerFill = (f: any): number => {
     if (!f?.fgColor?.rgb) return 0;
     const def: FillDef = { color: f.fgColor.rgb };
@@ -662,7 +656,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const registerBorder = (b: any): number => {
     if (!b) return 0;
     const def: BorderDef = {
@@ -676,7 +670,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const registerNumFmt = (code?: string): number => {
     if (!code) return 0;
     const existing = numFmts.find((n) => n.code === code);
@@ -685,7 +679,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     numFmts.push({ id, code });
     return id;
   };
-
+ 
   const registerXf = (styleObj: any): number => {
     if (!styleObj) return 0;
     const fontId = registerFont(styleObj.font);
@@ -701,13 +695,13 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     sigCache.set(key, idx);
     return idx;
   };
-
+ 
   const styleIndexFor = (styleKey: string): number => registerXf(styleDefs[styleKey]);
-
+ 
   const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
     `<col min="${i + 1}" max="${i + 1}" width="18" customWidth="1"/>`
   ).join("");
-
+ 
   let sheetDataXml = "";
   rows_.forEach((row, ri) => {
     const rn = ri + 1;
@@ -725,12 +719,12 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     rowXml += "</row>";
     sheetDataXml += rowXml;
   });
-
+ 
   const mergesXml = merges.map((m) =>
     `<mergeCell ref="${String.fromCharCode(65 + m.s.c)}${m.s.r + 1}:${String.fromCharCode(65 + m.e.c)}${m.e.r + 1}"/>`
   ).join("");
   const mergeFinal = merges.length ? `<mergeCells count="${merges.length}">${mergesXml}</mergeCells>` : "";
-
+ 
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheetFormatPr defaultRowHeight="15"/>
@@ -738,11 +732,11 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   <sheetData>${sheetDataXml}</sheetData>
   ${mergeFinal}
 </worksheet>`;
-
+ 
   const numFmtsXml = numFmts.length
     ? `<numFmts count="${numFmts.length}">${numFmts.map((n) => `<numFmt numFmtId="${n.id}" formatCode="${escapeXml(n.code)}"/>`).join("")}</numFmts>`
     : "";
-
+ 
   const fontsXml = `<fonts count="${fonts.length}">${fonts.map((f) => `
     <font>
         ${f.sz ? `<sz val="${f.sz}"/>` : '<sz val="10"/>'}
@@ -752,7 +746,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
         ${f.italic ? "<i/>" : ""}
     </font>`).join("")}
 </fonts>`;
-
+ 
   const fillsXml = `<fills count="${fills.length}">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
@@ -764,7 +758,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
         </patternFill>
     </fill>`).join("")}
 </fills>`;
-
+ 
   const borderEdge = (rgb?: string) => (rgb ? `<color rgb="${rgb}"/>` : "");
   const bordersXml = `<borders count="${borders.length}">${borders.map((b) => `
     <border>
@@ -775,7 +769,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
         <diagonal/>
     </border>`).join("")}
 </borders>`;
-
+ 
   const cellXfsXml = `<cellXfs count="${cellXfs.length}">${cellXfs.map((xf) => {
     const applyAlign = xf.align || xf.wrap;
     return `
@@ -786,7 +780,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     </xf>`;
   }).join("")}
 </cellXfs>`;
-
+ 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
     ${numFmtsXml}
@@ -797,23 +791,23 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
     ${cellXfsXml}
     <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
-
+ 
   const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets><sheet name="GRN" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`;
-
+ 
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
-
+ 
   const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>`;
-
+ 
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -822,7 +816,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>`;
-
+ 
   const zip = new AdmZip();
   zip.addFile("[Content_Types].xml", Buffer.from(contentTypes));
   zip.addFile("_rels/.rels", Buffer.from(rels));
@@ -832,9 +826,9 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   zip.addFile("xl/styles.xml", Buffer.from(stylesXml));
   return zip.toBuffer();
 }
-
+ 
 // ─── Route handlers ─────────────────────────────────────────────────────────
-
+ 
 export const getGrnPrintReport = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
@@ -843,26 +837,6 @@ export const getGrnPrintReport = async (req: RequestWithUser, res: Response): Pr
       res.status(200).json({ success: false, message: "GRN not found." });
       return;
     }
-
-    const companyCode = resolveCompanyCode(req, params);
-    const headerHtml = await reportHeader({ company_code: companyCode, req });
-    const footerHtml = reportFooter({
-      reportName: "rpt_grn",
-      userName: params.loginid,
-      endLabel: "Powered by Bayanat Technology",
-    });
-    const bodyHtml = renderGrnBody(data, params.loginid);
-
-    const html = buildReportDocument({
-      title: `${REPORT_TITLE} ${buildHeader(data.rows).doc_no}`,
-      headerHtml,
-      bodyHtml,
-      footerHtml,
-      extraCss: GRN_EXTRA_CSS,
-      autoPrint: false,
-      showPrintButton: true,
-    });
-
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(await renderHtml(data, params.loginid, params, req));
   } catch (error: any) {
@@ -870,7 +844,7 @@ export const getGrnPrintReport = async (req: RequestWithUser, res: Response): Pr
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate GRN report" });
   }
 };
-
+ 
 export const getGrnPrintReportExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const params = extractParams(req);
@@ -880,7 +854,7 @@ export const getGrnPrintReportExcel = async (req: RequestWithUser, res: Response
       return;
     }
     const buffer = buildExcelBuffer(data, params.loginid);
-
+ 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", 'attachment; filename="GRN.xlsx"');
     res.end(buffer);
