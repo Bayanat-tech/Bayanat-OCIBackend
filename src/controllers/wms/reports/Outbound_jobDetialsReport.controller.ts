@@ -124,7 +124,6 @@ async function loadJobData(
     await closeConn(conn);
   }
 }
-
 // ─── HTML renderer ────────────────────────────────────────────────────────────
 
 function renderHtml(

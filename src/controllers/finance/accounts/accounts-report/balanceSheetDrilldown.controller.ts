@@ -5,6 +5,11 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -311,31 +316,59 @@ function buildXlsxBuffer(ws: XLSX.WorkSheet, sheetName: string): Buffer {
   return zip.toBuffer();
 }
 
-// ─── Shared HTML Shell ────────────────────────────────────────────────────────────
+// ─── Drilldown-only CSS (extraCss for buildReportDocument) ────────────────────
 
-function buildPage(opts: {
-  title:        string;
-  username:     string;
-  reportName:   string;
-  tableHtml:    string;
-  drillLevel:   "ac" | "detail" | null;
-  companyCode:  string;
-  asOnDate:     string;
-  divisionCode: string;
-}): string {
-  const { title, username, reportName, tableHtml, drillLevel, companyCode, asOnDate, divisionCode } = opts;
+const DRILLDOWN_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
+  table.drill-table th.right { text-align: right; }
+  table.drill-table td.center { text-align: center; }
+  table.drill-table td.left   { text-align: left; }
+  table.drill-table td.num    { text-align: right; font-variant-numeric: tabular-nums; }
+  table.drill-table td.mono   { font-family: monospace; font-size: 10px; }
 
-  const CODE_FIELD_MAP: Record<string, string> = {
-    ac:     "bl_code",
-    detail: "ac_code",
-  };
+  tr.total-row td {
+    border: 2px solid #000;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    background: #f8f8f8;
+  }
+  tr.total-row td.empty { border: 1px solid #ccc; background: #fff; }
 
-  const drillScript = drillLevel ? `
+  .drill-hint {
+    font-size: 10px; color: #1a5f4a; background: #f0f9f5;
+    border: 1px solid #a7d7c5; border-radius: 4px;
+    padding: 4px 10px; margin-bottom: 8px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  @media print {
+    .drill-hint { display: none !important; }
+  }
+
+  .balance-pos { color: #000; }
+  .balance-neg { color: #c0392b; }
+`;
+
+// ─── Drill-down click script (still needed — no equivalent in the shared shell) ─
+
+const CODE_FIELD_MAP: Record<string, string> = {
+  ac:     "bl_code",
+  detail: "ac_code",
+};
+
+function buildDrillScript(
+  drillLevel: "ac" | "detail" | null,
+  companyCode: string,
+  asOnDate: string,
+  divisionCode: string,
+): string {
+  if (!drillLevel) return "";
+  return `
   <script>
     (function () {
       var DRILL_LEVEL   = ${JSON.stringify(drillLevel)};
@@ -362,107 +395,7 @@ function buildPage(opts: {
         });
       });
     })();
-  </script>` : "";
-
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    @page { size: A4 portrait; margin: 10mm; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-      color: #000;
-      background: #eef2f7;
-    }
-    .sheet {
-      width: 210mm;
-      min-height: 297mm;
-      margin: 0 auto;
-      background: #fff;
-      padding: 8mm;
-      border: 1px solid #aab7c8;
-    }
-    .logo-area { margin-bottom: 16px; }
-    .divider-thick { border-top: 2px solid #000; margin: 10px 0 6px; }
-    .divider-thin  { border-top: 1px solid #000; margin: 6px 0 10px; }
-    .meta-row { display: flex; align-items: baseline; font-size: 12px; margin-bottom: 3px; }
-    .meta-label { font-weight: 700; width: 60px; flex-shrink: 0; }
-    .drill-hint {
-      font-size: 10px; color: #1a5f4a; background: #f0f9f5;
-      border: 1px solid #a7d7c5; border-radius: 4px;
-      padding: 4px 10px; margin-bottom: 8px;
-      display: inline-flex; align-items: center; gap: 6px;
-    }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
-    th {
-      border: 1px solid #000;
-      padding: 3px 8px;
-      text-align: center;
-      font-weight: 700;
-      background: #fff;
-    }
-    th.right { text-align: right; }
-    td { border: 1px solid #ccc; padding: 2px 8px; }
-    td.center { text-align: center; }
-    td.left   { text-align: left; }
-    td.num    { text-align: right; font-variant-numeric: tabular-nums; }
-    td.mono   { font-family: monospace; font-size: 10px; }
-    tr.total-row td { border: 2px solid #000; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; background: #f8f8f8; }
-    tr.total-row td.empty { border: 1px solid #ccc; background: #fff; }
-    .end-of-report { text-align: center; margin-top: 12px; margin-bottom: 6px; font-size: 11px; border-top: 1px solid #ccc; padding-top: 6px; }
-    .report-footer { display: flex; justify-content: space-between; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 4px; margin-top: 6px; }
-    .balance-pos { color: #000; }
-    .balance-neg { color: #c0392b; }
-    @media print {
-      body { background: white; }
-      .sheet { border: 0; margin: 0; width: auto; min-height: auto; padding: 0; }
-      .drill-hint { display: none !important; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-      tbody tr { page-break-inside: avoid; }
-      .print-body-padding { padding-bottom: 40px !important; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sheet">
-    <div class="logo-area">
-      <svg width="160" height="50" viewBox="0 0 360 112" xmlns="http://www.w3.org/2000/svg" style="display:block">
-        <rect width="360" height="112" rx="4" fill="#1a5f4a"/>
-        <text x="16" y="46" font-family="Arial" font-size="26" font-weight="700" fill="#d4a017">al madina المدينة</text>
-        <text x="16" y="72" font-family="Arial" font-size="15" font-weight="400" fill="#d4a017" letter-spacing="4">LOGISTICS اللوجستية</text>
-        <polygon points="310,20 355,56 310,92" fill="#d4a017"/>
-      </svg>
-    </div>
-    <div class="divider-thick"></div>
-    <div class="meta-row"><span class="meta-label">Title :</span><span>${escapeHtml(title)}</span></div>
-    <div class="meta-row"><span class="meta-label">Date :</span><span>${escapeHtml(printDateTime)}</span></div>
-    <div class="meta-row"><span class="meta-label">User :</span><span>${escapeHtml(username)}</span></div>
-    <div class="divider-thin"></div>
-    ${drillLevel ? `<div class="drill-hint">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      Click any row to drill down
-    </div>` : ""}
-    ${tableHtml}
-    <div class="end-of-report">End of Report</div>
-    <div class="report-footer">
-      <span>Report: ${escapeHtml(reportName)}</span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </div>
-  ${drillScript}
-</body>
-</html>`;
-}
-
-function sendHtml(res: Response, html: string) {
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.send(html);
+  </script>`;
 }
 
 function sendExcel(res: Response, buffer: Buffer, filename: string) {
@@ -516,7 +449,13 @@ async function loadAcRows(
   }
 }
 
-function renderAcTable(rows: ReportRow[]): { tableHtml: string; totals: { opening: number; debit: number; credit: number; amount: number } } {
+function renderAcBody(
+  rows: ReportRow[],
+  title: string,
+  companyCode: string,
+  asOnDate: string,
+  divisionCode: string,
+): string {
   const totals = rows.reduce<{
     opening: number;
     debit: number;
@@ -540,10 +479,10 @@ function renderAcTable(rows: ReportRow[]): { tableHtml: string; totals: { openin
       <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(r.amount)))}</td>
-    </tr>`).join("") || `<tr><td colspan="6" class="center" style="color:#666">No data found</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="6" class="center muted">No data found</td></tr>`;
 
   const tableHtml = `
-    <table>
+    <table class="data-table drill-table">
       <thead><tr>
         <th style="width:110px">A/C Code</th><th>Account Name</th>
         <th class="right">Opening</th><th class="right">Debit Amount</th>
@@ -559,7 +498,17 @@ function renderAcTable(rows: ReportRow[]): { tableHtml: string; totals: { openin
       </tr></tfoot>
     </table>`;
 
-  return { tableHtml, totals };
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(title)}</h1></div>
+    </div>
+    <div class="drill-hint">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Click any row to drill down
+    </div>
+    ${tableHtml}
+    ${buildDrillScript("detail", companyCode, asOnDate, divisionCode)}
+  `;
 }
 
 function buildSummaryExcel(
@@ -641,20 +590,28 @@ export const getBalanceSheetDrilldownAc = async (req: RequestWithUser, res: Resp
     const { companyCode, asOnDate, divisionCode } = parseCommon(req);
     const blCodes = parseCodeArray(req.body.bl_code);
     const rows = await loadAcRows(req, companyCode, asOnDate, divisionCode, blCodes);
-    const { tableHtml } = renderAcTable(rows);
     const blLabel = blCodes.length ? ` [BL: ${blCodes.join(", ")}]` : "";
     const title = `Account Breakdown${blLabel} | As on ${dateText(asOnDate)}`;
 
-    sendHtml(res, buildPage({
-      title,
-      username: req.user?.loginid ?? "",
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderAcBody(rows, title, companyCode, asOnDate, divisionCode);
+    const footerHtml = reportFooter({
       reportName: "rpt_drilldown_balancesheet_ac",
-      tableHtml,
-      drillLevel: "detail",
-      companyCode,
-      asOnDate,
-      divisionCode,
-    }));
+      userName: req.user?.loginid ?? "",
+      endLabel: "End of Report",
+    });
+
+    const html = buildReportDocument({
+      title,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: DRILLDOWN_EXTRA_CSS,
+      autoPrint: false,
+    });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   } catch (error: any) {
     console.error("Balance Sheet Drilldown AC error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate drill-down" });
@@ -723,7 +680,7 @@ async function loadDetailRows(
   }
 }
 
-function renderDetailTable(rows: ReportRow[]): { tableHtml: string; grandDebit: number; grandCredit: number } {
+function renderDetailBody(rows: ReportRow[], title: string): string {
   const grouped = new Map<string, ReportRow[]>();
   rows.forEach(r => {
     const key = text(r.ac_code);
@@ -788,11 +745,11 @@ function renderDetailTable(rows: ReportRow[]): { tableHtml: string; grandDebit: 
   });
 
   if (!rows.length) {
-    bodyHtml = `<tr><td colspan="10" class="center" style="color:#666">No transactions found</td></tr>`;
+    bodyHtml = `<tr><td colspan="10" class="center muted">No transactions found</td></tr>`;
   }
 
   const tableHtml = `
-    <table>
+    <table class="data-table drill-table">
       <thead><tr>
         <th style="width:100px">A/C Code</th>
         <th style="width:50px">Type</th>
@@ -814,7 +771,12 @@ function renderDetailTable(rows: ReportRow[]): { tableHtml: string; grandDebit: 
       </tr></tfoot>
     </table>`;
 
-  return { tableHtml, grandDebit, grandCredit };
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(title)}</h1></div>
+    </div>
+    ${tableHtml}
+  `;
 }
 
 function buildDetailExcel(rows: ReportRow[], sheetTitle: string, loginId: string): Buffer {
@@ -901,21 +863,29 @@ export const getBalanceSheetDrilldownDetail = async (req: RequestWithUser, res: 
     const { companyCode, asOnDate, divisionCode } = parseCommon(req);
     const acCodes = parseCodeArray(req.body.ac_code);
     const rows = await loadDetailRows(req, companyCode, asOnDate, divisionCode, acCodes);
-    const { tableHtml } = renderDetailTable(rows);
 
     const acLabel = acCodes.length ? ` — ${acCodes.join(", ")}` : "";
     const title = `Account Ledger${acLabel} | As on ${dateText(asOnDate)}`;
 
-    sendHtml(res, buildPage({
-      title,
-      username: req.user?.loginid ?? "",
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderDetailBody(rows, title);
+    const footerHtml = reportFooter({
       reportName: "rpt_drilldown_balancesheet_detail",
-      tableHtml,
-      drillLevel: null,
-      companyCode,
-      asOnDate,
-      divisionCode,
-    }));
+      userName: req.user?.loginid ?? "",
+      endLabel: "End of Report",
+    });
+
+    const html = buildReportDocument({
+      title,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: DRILLDOWN_EXTRA_CSS,
+      autoPrint: false,
+    });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   } catch (error: any) {
     console.error("Balance Sheet Drilldown Detail error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate drill-down" });

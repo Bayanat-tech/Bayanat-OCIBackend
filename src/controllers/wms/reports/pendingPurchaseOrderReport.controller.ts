@@ -4,6 +4,11 @@ import * as XLSX from "xlsx";
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import TenantManager from "../../../database/TenantManager";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 const AdmZip = require("adm-zip");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -99,19 +104,6 @@ function docLabel(docType: unknown, docNo: unknown): string {
   return t || n || "";
 }
 
-// Only allow http(s) image URLs through to the report — never trust the body blindly
-function safeLogoUrl(value: unknown): string {
-  const v = text(value).trim();
-  if (!v) return "";
-  try {
-    const u = new URL(v);
-    if (u.protocol === "http:" || u.protocol === "https:") return v;
-  } catch {
-    /* not a valid absolute URL */
-  }
-  return "";
-}
-
 // ─── Request Param Parser ────────────────────────────────────────────────────
 
 function parseParams(req: RequestWithUser) {
@@ -133,8 +125,6 @@ function parseParams(req: RequestWithUser) {
       ? "Detail"
       : "Summary";
 
-  const logoUrl = safeLogoUrl(body.logo_url);
-
   return {
     companyCode,
     supplierCode,
@@ -145,7 +135,6 @@ function parseParams(req: RequestWithUser) {
     dateFrom,
     dateTo,
     reportType,
-    logoUrl,
     loginId: req.user?.loginid ?? "",
   };
 }
@@ -286,22 +275,39 @@ function groupDetailByDoc(rows: ReportRow[]): Array<{
   return Array.from(map.values());
 }
 
-// ─── HTML Renderer ────────────────────────────────────────────────────────────
+// ─── Pending PO-only CSS (extraCss for buildReportDocument) ───────────────────
 
-function renderHtml(
+const PENDING_PO_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  table.pending-po-table th {
+    background: #f3f4f6;
+    font-weight: 700;
+  }
+  table.pending-po-table .group-header td {
+    background: #f9fafb;
+    font-weight: 700;
+    border-top: 2px solid #185FA5;
+  }
+  table.pending-po-table .subtotal td {
+    background: #f3f4f6;
+    font-weight: 700;
+  }
+  .cancelled { color: #dc2626; font-weight: 700; margin-left: 12px; }
+`;
+
+// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+
+function renderPendingPOBody(
   rows: ReportRow[],
   reportType: ReportType,
-  loginId: string,
   dateFrom: string | null,
   dateTo: string | null,
-  logoUrl: string,
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-
   const periodFrom = dateFrom ? formatDate(dateFrom) : "";
   const periodTo = dateTo
     ? formatDate(
@@ -320,108 +326,11 @@ function renderHtml(
       ? `Pending Purchase Orders List for the Period ${periodFrom} - ${periodTo}`
       : "Purchase Orders";
 
-  const reportSlug = reportType === "Summary" ? "rpt_pending_porder" : "rpt_pending_porder_detail";
-
-  const styles = `
-    <style>
-      * { box-sizing: border-box; }
-      body {
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 11px;
-        color: #111;
-        margin: 16px;
-      }
-      .report-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        border-bottom: 2px solid #185FA5;
-        padding-bottom: 8px;
-        margin-bottom: 10px;
-      }
-      .report-header .logo-block {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .report-header .logo-block img {
-        max-height: 56px;
-        max-width: 220px;
-        object-fit: contain;
-      }
-      .report-header .company-name {
-        font-size: 10px;
-        letter-spacing: 2px;
-        color: #6b7280;
-        text-transform: uppercase;
-      }
-      .report-header .page-info {
-        font-size: 11px;
-        color: #374151;
-        text-align: right;
-        white-space: nowrap;
-      }
-      .title {
-        font-size: 15px;
-        font-weight: 700;
-        margin: 4px 0 6px;
-        border-bottom: 1px solid #111;
-        padding-bottom: 6px;
-      }
-      .meta-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
-        color: #374151;
-        margin-bottom: 10px;
-      }
-      .meta-row .meta-left div { margin-bottom: 1px; }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th {
-        border: 1px solid #333;
-        background: #f3f4f6;
-        padding: 6px 8px;
-        text-align: left;
-        font-weight: 700;
-        font-size: 11px;
-      }
-      td {
-        border: 1px solid #ccc;
-        padding: 5px 8px;
-        font-size: 11px;
-      }
-      .num { text-align: right; }
-      .center { text-align: center; }
-      .group-header td {
-        background: #f9fafb;
-        font-weight: 700;
-        border-top: 2px solid #185FA5;
-      }
-      .subtotal td {
-        background: #f3f4f6;
-        font-weight: 700;
-      }
-      .footer {
-        text-align: center;
-        margin-top: 16px;
-        color: #6b7280;
-        font-size: 11px;
-      }
-      .cancelled { color: #dc2626; font-weight: 700; margin-left: 12px; }
-      @media print {
-        body { margin: 8px; }
-      }
-    </style>
-  `;
-
-  let body = "";
+  let tableHtml = "";
 
   if (reportType === "Summary") {
-    body = `
-      <table>
+    tableHtml = `
+      <table class="data-table pending-po-table">
         <thead>
           <tr>
             <th style="width:14%">Document No.</th>
@@ -450,15 +359,15 @@ function renderHtml(
             </tr>`,
                   )
                   .join("")
-              : `<tr><td colspan="7" class="center">No pending purchase orders found.</td></tr>`
+              : `<tr><td colspan="7" class="center muted">No pending purchase orders found.</td></tr>`
           }
         </tbody>
       </table>
     `;
   } else {
     const groups = groupDetailByDoc(rows);
-    body = `
-      <table>
+    tableHtml = `
+      <table class="data-table pending-po-table">
         <thead>
           <tr>
             <th style="width:12%">Product</th>
@@ -510,49 +419,23 @@ function renderHtml(
               </tr>`;
                   })
                   .join("")
-              : `<tr><td colspan="6" class="center">No pending purchase order lines found.</td></tr>`
+              : `<tr><td colspan="6" class="center muted">No pending purchase order lines found.</td></tr>`
           }
         </tbody>
       </table>
     `;
   }
 
-  const logoBlockHtml = logoUrl
-    ? `
-      <div class="logo-block">
-        <img src="${escapeHtml(logoUrl)}" alt="Company Logo" />
-      </div>`
-    : `<div class="logo-block"></div>`;
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
-  ${styles}
-</head>
-<body>
-  <div class="report-header">
-    ${logoBlockHtml}
-    <div class="page-info">Page 1 of 1</div>
-  </div>
-
-  <div class="title">${escapeHtml(title)}</div>
-
-  <div class="meta-row">
-    <div class="meta-left">
-      <div>Date &nbsp;: ${escapeHtml(printDate)}</div>
-      <div>Report : ${escapeHtml(reportSlug)}</div>
+  return `
+    <div class="doc-title-row">
+      <div><h1>${escapeHtml(title)}</h1></div>
     </div>
-  </div>
 
-  ${body}
-  <div class="footer">End of Report</div>
-</body>
-</html>`;
+    ${tableHtml}
+  `;
 }
 
-// ─── Excel Builder ────────────────────────────────────────────────────────────
+// ─── Excel Builder (unchanged) ─────────────────────────────────────────────────
 
 function buildExcelBuffer(
   rows: ReportRow[],
@@ -656,14 +539,30 @@ export const getPendingPOReportHtml = async (
   try {
     const params = parseParams(req);
     const rows = await loadPendingPOData(req);
-    const html = renderHtml(
-      rows,
-      params.reportType,
-      params.loginId,
-      params.dateFrom,
-      params.dateTo,
-      params.logoUrl,
-    );
+
+    const reportSlug =
+      params.reportType === "Summary" ? "rpt_pending_porder" : "rpt_pending_porder_detail";
+
+    const headerHtml = await reportHeader({ company_code: params.companyCode, req });
+    const bodyHtml = renderPendingPOBody(rows, params.reportType, params.dateFrom, params.dateTo);
+    const footerHtml = reportFooter({
+      reportName: reportSlug,
+      userName: params.loginId,
+      endLabel: "End of Report",
+    });
+
+    const html = buildReportDocument({
+      title:
+        params.reportType === "Summary"
+          ? "Pending Purchase Orders List"
+          : "Purchase Orders",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PENDING_PO_EXTRA_CSS,
+      autoPrint: req.query.print !== "false",
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {

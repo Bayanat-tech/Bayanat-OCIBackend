@@ -4,6 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  reportFooter,
+  reportHeader,
+  REPORT_HEADER_CSS,
+  REPORT_FOOTER_CSS,
+} from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,21 +98,18 @@ function numFmt(value: unknown, decimals = 0): string {
 }
 
 // Normalizes an incoming filter value to what the SQL-builder proc expects:
-// undefined / "" / "all" (any case) all collapse to the literal "All" string,
-// which is what the proc's `UPPER(TRIM(P_CODEx)) <> 'ALL'` checks skip on.
-// Any other non-empty string passes through trimmed.
+// undefined / "" / "all" (any case) all collapse to the literal "All" string.
 function normalizeFilter(value: unknown): string {
   const v = text(value).trim();
   if (!v || v.toUpperCase() === "ALL") return "All";
   return v;
 }
 
-// ★ NEW — splits a comma-joined filter value ("P001,P002,P003") into a clean
-//   list of individual codes. Returns null for "All" or a single code, since
-//   those two cases are handled fine by the proc itself via equality match.
+// Splits a comma-joined filter value ("P001,P002,P003") into a clean list.
+// Returns null for "All" or a single code (the proc handles those natively).
 function parseMultiCodeFilter(value: string): string[] | null {
   if (value === "All") return null;
-  if (!value.includes(",")) return null; // single code — proc handles it natively
+  if (!value.includes(",")) return null;
   const list = value.split(",").map((c) => c.trim()).filter(Boolean);
   return list.length > 1 ? list : null;
 }
@@ -126,15 +129,10 @@ async function loadDnData(
   try {
     const requestedPrin = normalizeFilter(params.prinCode);
 
-    // ★ FIX: PROC_BUILD_DYNAMIC_SQL_COMMON20 only supports a single-value
-    //   equality match on PRIN_CODE (or the literal "All" to skip the filter
-    //   altogether) — it does NOT understand a comma-joined list. Passing a
-    //   list straight through used to silently return zero rows.
-    //
-    //   When the user picks 2+ specific principals, we ask the proc for the
-    //   full unfiltered dataset instead (same as "All") and then narrow the
-    //   result down to just the requested principals ourselves, in JS, below.
-    const multiCodes  = parseMultiCodeFilter(requestedPrin);
+    // PROC_BUILD_DYNAMIC_SQL_COMMON20 only supports a single-value equality
+    // match on PRIN_CODE (or "All"). For 2+ principals we ask for everything
+    // and narrow down in JS below.
+    const multiCodes   = parseMultiCodeFilter(requestedPrin);
     const procPrinCode = multiCodes ? "All" : requestedPrin;
 
     const binds: Record<string, any> = {
@@ -193,8 +191,6 @@ async function loadDnData(
 
     let rows = normalize(dataResult.rows as any[]);
 
-    // ★ FIX: narrow down to just the selected principals when multiple were
-    //   requested. Case/whitespace-insensitive compare to be safe.
     if (multiCodes) {
       const wanted = new Set(multiCodes.map((c) => c.toUpperCase()));
       rows = rows.filter((r) => wanted.has(text(r.prin_code).trim().toUpperCase()));
@@ -251,248 +247,298 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
   }));
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
-// NOTE: No action-bar rendered here — Print & Excel buttons live on the React
-//       parent page and communicate with this iframe via postMessage / API call.
+// ─── HTML renderer — ONE table: thead (header) / tbody (rows) / tfoot (footer) ─
+//
+// Structure of the printed document:
+//
+//   <table class="dn-table">
+//     <thead>  company header  +  report title  +  column headings   ← repeats on every page
+//     <tbody>  principal / group / product / data / total rows       ← rows never split across pages
+//     <tfoot>  report footer                                         ← repeats on every page
+//   </table>
+//
+// Print behaviour lives in the @media print block below:
+//   • thead → display: table-header-group   (repeat on each page)
+//   • tfoot → display: table-footer-group   (repeat on each page)
+//   • tr    → break-inside: avoid           (a row that doesn't fit moves whole to next page)
+//   • section header rows → break-after: avoid (no orphan heading at page bottom)
+//
+// The Print button lives on the React parent page and talks to this iframe
+// through postMessage — the listener is included in the document below.
 
-function renderHtml(
-  prins:       PrinSection[],
-  reportTitle: string,
-  loginId:     string,
-  autoPrint:   boolean
-): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+const DN_COL_COUNT = 8;
 
+const DN_CSS = `
+  /* This report reads better in landscape given the column count */
+  @page { size: A4 landscape; margin: 10mm 12mm; }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; background: #fff; }
+
+  body {
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 10.5px;
+    line-height: 1.25;
+    color: #0f172a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sheet { padding: 12px; }
+
+  /* ── The one report table ─────────────────────────────────────────── */
+  table.dn-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  table.dn-table td,
+  table.dn-table th {
+    padding: 4px 5px;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* ── thead: company header / title / column headings ──────────────── */
+  table.dn-table thead td.hdr-company { padding: 0; border: 0; }
+  table.dn-table thead td.hdr-title {
+    padding: 0 0 8px 0;
+    border: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: #0b4ca1;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  table.dn-table thead th {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    padding: 6px 5px;
+    border-top: 1px solid #475569;
+    border-bottom: 1px solid #475569;
+  }
+  table.dn-table thead th.right { text-align: right; }
+
+  /* ── tbody rows ───────────────────────────────────────────────────── */
+  table.dn-table tbody td { border-bottom: 1px solid #e2e8f0; }
+  table.dn-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  table.dn-table tr.prin-row td  { background: #0b4ca1; color: #fff;    font-weight: 700; font-size: 11px;   padding: 6px 8px; border-bottom: none; }
+  table.dn-table tr.group-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px;   padding: 5px 8px 5px 20px; }
+  table.dn-table tr.prod-row td  { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; padding: 4px 8px 4px 32px; }
+
+  table.dn-table tr.data-row td:first-child { padding-left: 40px; }
+  table.dn-table tr.data-row:nth-child(even) td { background: #f8fafc; }
+
+  table.dn-table tr.prod-total  td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; }
+  table.dn-table tr.group-total td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px; }
+  table.dn-table tr.prin-total  td { background: #c7d8f0; color: #0b4ca1; font-weight: 700; font-size: 11px; }
+  table.dn-table tr.grand-total td { background: #0b4ca1; color: #fff;    font-weight: 800; font-size: 12px; padding: 8px; border-top: 2px solid #08386f; border-bottom: none; }
+
+  /* ── tfoot: report footer ─────────────────────────────────────────── */
+  table.dn-table tfoot td { padding: 8px 0 0 0; border: 0; }
+
+  /* ═════════════════════  PRINT (media css)  ═════════════════════════ */
+  @media print {
+    html, body { height: auto; margin: 0; background: #fff; }
+    .sheet { padding: 0; }
+    .no-print, .actions, .viewerbar { display: none !important; }
+
+    /* header + footer repeat on every printed page */
+    table.dn-table thead { display: table-header-group; }
+    table.dn-table tfoot { display: table-footer-group; }
+    table.dn-table tbody { display: table-row-group; }
+
+    /* a row is NEVER split across two pages — if it doesn't fit it moves whole */
+    table.dn-table tr,
+    table.dn-table td,
+    table.dn-table th {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* keep principal / group / product heading rows attached to the row after them */
+    table.dn-table tr.prin-row,
+    table.dn-table tr.group-row,
+    table.dn-table tr.prod-row {
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    /* keep a total row attached to the row before it where possible */
+    table.dn-table tr.prod-total,
+    table.dn-table tr.group-total,
+    table.dn-table tr.prin-total,
+    table.dn-table tr.grand-total {
+      break-before: avoid;
+      page-break-before: avoid;
+    }
+
+    /* page border on every printed page */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border: 1.5px solid #0b4ca1;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    body { padding: 1.5mm; }
+  }
+`;
+
+// Listens for the parent React page's print trigger (postMessage).
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function(e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
+
+function renderDnBodyRows(prins: PrinSection[]): { bodyRows: string; grandQty: number; grandVolume: number } {
   const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
-
-  const autoPrintScript = autoPrint
-    ? "window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 300); });"
-    : "";
 
   let bodyRows = "";
 
   for (const ps of prins) {
-    bodyRows += "<tr class=\"prin-row\"><td colspan=\"8\">" +
-      escapeHtml(ps.prinCode) + (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") +
-      "</td></tr>";
+    bodyRows += `<tr class="prin-row"><td colspan="${DN_COL_COUNT}">${escapeHtml(ps.prinCode)}${ps.prinName ? " | " + escapeHtml(ps.prinName) : ""}</td></tr>`;
 
     for (const gs of ps.groups) {
-      bodyRows += "<tr class=\"group-row\"><td colspan=\"8\">Group : " +
-        escapeHtml(gs.groupName) + "</td></tr>";
+      bodyRows += `<tr class="group-row"><td colspan="${DN_COL_COUNT}">Group : ${escapeHtml(gs.groupName)}</td></tr>`;
 
       for (const prd of gs.prods) {
-        bodyRows += "<tr class=\"prod-row\"><td colspan=\"8\">" +
-          escapeHtml(prd.prodCode) + (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") +
-          "</td></tr>";
+        bodyRows += `<tr class="prod-row"><td colspan="${DN_COL_COUNT}">${escapeHtml(prd.prodCode)}${prd.prodName ? " | " + escapeHtml(prd.prodName) : ""}</td></tr>`;
 
         for (const dr of prd.rows) {
           const qty    = parseFloat(String(dr.qty ?? dr.quantity ?? dr.qty_puom)) || 0;
           const volume = parseFloat(String(dr.volume)) || 0;
           bodyRows +=
-            "<tr class=\"data-row\">" +
-            "<td>" + escapeHtml(dr.dn_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.dn_date ?? dr.receipt_date)) + "</td>" +
-            "<td>" + escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date)) + "</td>" +
-            "<td>" + escapeHtml(dr.job_no || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.customer || dr.cust_code || "\u2014") + "</td>" +
-            "<td>" + escapeHtml(dr.container_no || "\u2014") + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(qty)) + "</td>" +
-            "<td class=\"num\">" + escapeHtml(numFmt(volume, 3)) + "</td>" +
-            "</tr>";
+            `<tr class="data-row">` +
+            `<td>${escapeHtml(dr.dn_no || "\u2014")}</td>` +
+            `<td>${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>` +
+            `<td>${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>` +
+            `<td>${escapeHtml(dr.job_no || "\u2014")}</td>` +
+            `<td>${escapeHtml(dr.customer || dr.cust_code || "\u2014")}</td>` +
+            `<td>${escapeHtml(dr.container_no || "\u2014")}</td>` +
+            `<td class="num">${escapeHtml(numFmt(qty))}</td>` +
+            `<td class="num">${escapeHtml(numFmt(volume, 3))}</td>` +
+            `</tr>`;
         }
 
         bodyRows +=
-          "<tr class=\"prod-total\">" +
-          "<td colspan=\"6\">Total For " + escapeHtml(prd.prodCode) +
-          (prd.prodName ? " | " + escapeHtml(prd.prodName) : "") + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalQty)) + "</td>" +
-          "<td class=\"num\">" + escapeHtml(numFmt(prd.totalVolume, 3)) + "</td>" +
-          "</tr>";
+          `<tr class="prod-total">` +
+          `<td colspan="6">Total For ${escapeHtml(prd.prodCode)}${prd.prodName ? " | " + escapeHtml(prd.prodName) : ""}</td>` +
+          `<td class="num">${escapeHtml(numFmt(prd.totalQty))}</td>` +
+          `<td class="num">${escapeHtml(numFmt(prd.totalVolume, 3))}</td>` +
+          `</tr>`;
       }
 
       bodyRows +=
-        "<tr class=\"group-total\">" +
-        "<td colspan=\"6\">Total For " + escapeHtml(gs.groupName) + "</td>" +
-        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalQty)) + "</td>" +
-        "<td class=\"num\">" + escapeHtml(numFmt(gs.totalVolume, 3)) + "</td>" +
-        "</tr>";
+        `<tr class="group-total">` +
+        `<td colspan="6">Total For ${escapeHtml(gs.groupName)}</td>` +
+        `<td class="num">${escapeHtml(numFmt(gs.totalQty))}</td>` +
+        `<td class="num">${escapeHtml(numFmt(gs.totalVolume, 3))}</td>` +
+        `</tr>`;
     }
 
     bodyRows +=
-      "<tr class=\"prin-total\">" +
-      "<td colspan=\"6\">Total For " + escapeHtml(ps.prinCode) +
-      (ps.prinName ? " | " + escapeHtml(ps.prinName) : "") + "</td>" +
-      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalQty)) + "</td>" +
-      "<td class=\"num\">" + escapeHtml(numFmt(ps.totalVolume, 3)) + "</td>" +
-      "</tr>";
+      `<tr class="prin-total">` +
+      `<td colspan="6">Total For ${escapeHtml(ps.prinCode)}${ps.prinName ? " | " + escapeHtml(ps.prinName) : ""}</td>` +
+      `<td class="num">${escapeHtml(numFmt(ps.totalQty))}</td>` +
+      `<td class="num">${escapeHtml(numFmt(ps.totalVolume, 3))}</td>` +
+      `</tr>`;
   }
 
-  const grandRow =
-    "<tr class=\"grand-total\">" +
-    "<td colspan=\"6\">Grand Total</td>" +
-    "<td class=\"num\">" + escapeHtml(numFmt(grandQty)) + "</td>" +
-    "<td class=\"num\">" + escapeHtml(numFmt(grandVolume, 3)) + "</td>" +
-    "</tr>";
+  bodyRows +=
+    `<tr class="grand-total">` +
+    `<td colspan="6">Grand Total</td>` +
+    `<td class="num">${escapeHtml(numFmt(grandQty))}</td>` +
+    `<td class="num">${escapeHtml(numFmt(grandVolume, 3))}</td>` +
+    `</tr>`;
+
+  return { bodyRows, grandQty, grandVolume };
+}
+
+async function renderHtml(
+  prins:       PrinSection[],
+  reportTitle: string,
+  loginId:     string,
+  companyCode: string,
+  req:         RequestWithUser,
+  autoPrint:   boolean
+): Promise<string> {
+  // Shared company header (logo + name + address) → goes into <thead>
+  const headerHtml = await reportHeader({ company_code: companyCode, req });
+
+  // Shared footer (print date / user / report name) → goes into <tfoot>
+  const footerHtml = reportFooter({
+    reportName: "Delivery Note Summary",
+    userName:   loginId,
+  });
+
+  const { bodyRows } = renderDnBodyRows(prins);
 
   return `<!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>${escapeHtml(reportTitle)}</title>
   <style>
-    @page { size: A4 landscape; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", Calibri, Arial, sans-serif;
-      font-size: 12px; color: #111827;
-      background: #eef1f6;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sheet {
-      width: 277mm; min-height: 190mm;
-      margin: 18px auto; background: #fff;
-      padding: 10mm 12mm;
-      border: 1px solid #c4cdd9;
-      border-radius: 4px;
-    }
-    .rpt-header {
-      background: #1e3a5f; color: #fff; text-align: center;
-      font-size: 14px; font-weight: 700; letter-spacing: .08em;
-      padding: 10px 16px; text-transform: uppercase;
-      border-radius: 3px 3px 0 0;
-    }
-    .rpt-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 2px 8px;
-      border-bottom: 1px solid #e2e8f0;
-      margin-bottom: 10px;
-      font-size: 10px; color: #4b5563;
-    }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-    table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    col.c0 { width: 9%;  } col.c1 { width: 10%; } col.c2 { width: 10%; }
-    col.c3 { width: 14%; } col.c4 { width: 13%; } col.c5 { width: 15%; }
-    col.c6 { width: 15%; } col.c7 { width: 14%; }
-    thead tr.th-main th {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 10px; padding: 7px 10px; text-align: center;
-      border-right: 1px solid rgba(255,255,255,0.15);
-    }
-    thead tr.th-main th:last-child { border-right: none; }
-    thead tr.th-main th.left { text-align: left; }
-    thead tr.th-main th.num  { text-align: right; }
-    tr.prin-row td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 11px; padding: 5px 10px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-    }
-    tr.group-row td {
-      background: #dce4ef; color: #1e3a5f; font-weight: 700;
-      font-size: 11px; padding: 4px 10px 4px 20px;
-      border-bottom: 1px solid #c8d4e4;
-    }
-    tr.prod-row td {
-      background: #fef3c7; color: #92400e; font-weight: 700;
-      font-size: 10px; padding: 3px 10px 3px 32px;
-      border-bottom: 1px solid #fde68a;
-    }
-    tbody tr.data-row td {
-      padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-      color: #374151; font-size: 11px;
-      white-space: normal; word-wrap: break-word; vertical-align: top;
-    }
-    tbody tr.data-row td:first-child { padding-left: 40px; }
-    tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-    tr.prod-total td {
-      background: #fde68a; padding: 3px 10px; font-size: 10px;
-      font-weight: 700; color: #78350f; white-space: nowrap;
-    }
-    tr.group-total td {
-      background: #c8d4e4; padding: 4px 10px; font-size: 11px;
-      font-weight: 700; color: #1e3a5f; white-space: nowrap;
-    }
-    tr.prin-total td {
-      background: #a8b8d0; padding: 5px 10px; font-size: 11px;
-      font-weight: 700; color: #0f2040; white-space: nowrap;
-    }
-    tr.grand-total td {
-      background: #1e3a5f; color: #fff; font-weight: 700;
-      font-size: 12px; padding: 8px 10px;
-      border-top: 2px solid #162d4a;
-    }
-    .rpt-footer {
-      margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 6px;
-      display: flex; justify-content: space-between;
-      font-size: 9px; color: #9ca3af;
-    }
-    .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
-    @media print {
-      body   { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; border-radius: 0; }
-      thead  { display: table-header-group; }
-      tr.prin-row, tr.group-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
-      tr.prod-total, tr.group-total, tr.prin-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
-    }
+    ${REPORT_HEADER_CSS}
+    ${REPORT_FOOTER_CSS}
+    ${DN_CSS}
   </style>
 </head>
 <body>
-
   <div class="sheet">
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-    <div class="rpt-meta">
-      <span>Print Date :&nbsp;<strong>${escapeHtml(printDate)}</strong>&nbsp;&nbsp;&nbsp;
-            Print User :&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
-      <span>Page 1 of 1</span>
-    </div>
-
-    <table class="rpt-table" id="dnTable">
+    <table class="dn-table">
       <colgroup>
-        <col class="c0"/><col class="c1"/><col class="c2"/>
-        <col class="c3"/><col class="c4"/><col class="c5"/>
-        <col class="c6"/><col class="c7"/>
+        <col style="width:12%" />
+        <col style="width:9%"  />
+        <col style="width:10%" />
+        <col style="width:14%" />
+        <col style="width:22%" />
+        <col style="width:15%" />
+        <col style="width:8%"  />
+        <col style="width:10%" />
       </colgroup>
+
       <thead>
-        <tr class="th-main">
-          <th class="left">DN No</th>
+        <tr><td class="hdr-company" colspan="${DN_COL_COUNT}">${headerHtml}</td></tr>
+        <tr><td class="hdr-title"   colspan="${DN_COL_COUNT}">${escapeHtml(reportTitle)}</td></tr>
+        <tr>
+          <th>DN No</th>
           <th>DN Date</th>
           <th>Confirm Date</th>
-          <th class="left">Job No</th>
-          <th class="left">Customer</th>
-          <th class="left">Container No</th>
-          <th class="num">Qty</th>
-          <th class="num">Volume</th>
+          <th>Job No</th>
+          <th>Customer</th>
+          <th>Container No</th>
+          <th class="right">Qty</th>
+          <th class="right">Volume</th>
         </tr>
       </thead>
-      <tbody>
-        ${bodyRows}
-        ${grandRow}
-      </tbody>
+
+      <tbody>${bodyRows}</tbody>
+
+      <tfoot>
+        <tr><td colspan="${DN_COL_COUNT}">${footerHtml}</td></tr>
+      </tfoot>
     </table>
-
-    <div class="rpt-footer">
-      <span>Report Name : <code>Delivery Note Summary</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
   </div>
-
-  <script>
-    // Listen for print trigger from parent React page via postMessage
-    window.addEventListener("message", function(e) {
-      if (e.data === "print") window.print();
-    });
-
-    ${autoPrintScript}
-  </script>
+  ${PRINT_LISTENER_SCRIPT}
+  ${autoPrint ? `<script>window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 300); });</script>` : ""}
 </body>
 </html>`;
 }
 
-// ─── Excel builder ────────────────────────────────────────────────────────────
+// ─── Excel builder (unchanged — separate output format, no HTML CSS involved) ─
 
 const STYLE_ID = {
   default:       0,
@@ -739,18 +785,16 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
 
 // ─── Route helpers ────────────────────────────────────────────────────────────
 
-// Pulls filter params from query (GET) or body (POST). Every field defaults
-// to "All" so a request with no filters at all — i.e. the very first load
-// when the page mounts — asks the SQL-builder proc for the entire dataset.
-// The proc already treats the literal "All" (case-insensitive) as "skip this
-// filter," so this is the single source of truth for that contract.
+// Pulls filter params from query (GET) or body (POST). Every filter defaults
+// to "All"; company_code falls back to the logged-in user's company.
 function extractParams(req: RequestWithUser) {
   const src = { ...req.query, ...req.body };
   return {
-    loginid:  text(req.user?.loginid),
-    prinCode: normalizeFilter(src.code2),
-    fromdate: normalizeFilter(src.code3),
-    todate:   normalizeFilter(src.code4),
+    loginid:      text(req.user?.loginid),
+    company_code: text(src.company_code || req.user?.company_code),
+    prinCode:     normalizeFilter(src.code2),
+    fromdate:     normalizeFilter(src.code3),
+    todate:       normalizeFilter(src.code4),
   };
 }
 
@@ -765,7 +809,6 @@ export const getDnSummaryReportHtml = async (
     const autoPrint   = req.query.print === "true";
     const params      = extractParams(req);
     console.log("DN Summary HTML params:", params);
-    console.log("DN summary req", req.body)
 
     const rows = await loadDnData(req, params);
     if (!rows.length) {
@@ -775,7 +818,7 @@ export const getDnSummaryReportHtml = async (
 
     const prins = groupRows(rows);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(prins, reportTitle, params.loginid, autoPrint));
+    res.send(await renderHtml(prins, reportTitle, params.loginid, params.company_code, req, autoPrint));
   } catch (error: any) {
     console.error("DN Summary HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -796,7 +839,7 @@ export const getDnSummaryReportPdf = async (
     }
 
     const prins = groupRows(rows);
-    const html  = renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, true);
+    const html  = await renderHtml(prins, "Delivery Note Report (Summary)", params.loginid, params.company_code, req, true);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", "inline; filename=\"DN_Summary.pdf\"");
