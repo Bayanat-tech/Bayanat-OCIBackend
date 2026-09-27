@@ -247,6 +247,36 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
   }));
 }
 
+// ─── Column model ───────────────────────────────────────────────────────────
+//
+// ALIGNMENT FIX: previously the <thead><th> defaulted to text-align:center
+// for every column while <tbody><td> had NO alignment class at all (so it
+// fell back to the browser default, left) — only Qty/Volume were forced
+// right via `.num`. That's why headers looked centered over left-aligned
+// data. Now every column has ONE alignment, declared once here, and both
+// the header cell and every data cell for that column use the same class.
+
+type ColAlign = "left" | "center" | "right";
+
+interface DnColumn {
+  label: string;
+  align: ColAlign;
+  width: number; // % — all 8 must add up to 100
+}
+
+const DN_COLUMNS: DnColumn[] = [
+  { label: "DN No",        align: "center", width: 8  },
+  { label: "DN Date",      align: "center", width: 9  },
+  { label: "Confirm Date", align: "center", width: 10 },
+  { label: "Job No",       align: "left",   width: 14 },
+  { label: "Customer",     align: "left",   width: 23 },
+  { label: "Container No", align: "left",   width: 16 },
+  { label: "Qty",          align: "right",  width: 10 },
+  { label: "Volume",       align: "right",  width: 10 },
+];
+
+const DN_COL_COUNT = DN_COLUMNS.length;
+
 // ─── HTML renderer — ONE table: thead (header) / tbody (rows) / tfoot (footer) ─
 //
 // Structure of the printed document:
@@ -265,8 +295,6 @@ function groupRows(rows: ReportRow[]): PrinSection[] {
 //
 // The Print button lives on the React parent page and talks to this iframe
 // through postMessage — the listener is included in the document below.
-
-const DN_COL_COUNT = 8;
 
 const DN_CSS = `
   /* This report reads better in landscape given the column count */
@@ -301,6 +329,13 @@ const DN_CSS = `
     word-break: break-word;
   }
 
+  /* Header cell and every data cell of the SAME column share ONE alignment,
+     forced with !important so no other rule (row-type styling, browser
+     default) can pull them apart. */
+  table.dn-table th.left,   table.dn-table td.left   { text-align: left   !important; }
+  table.dn-table th.center, table.dn-table td.center { text-align: center !important; }
+  table.dn-table th.right,  table.dn-table td.right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+
   /* ── thead: company header / title / column headings ──────────────── */
   table.dn-table thead td.hdr-company { padding: 0; border: 0; }
   table.dn-table thead td.hdr-title {
@@ -318,16 +353,14 @@ const DN_CSS = `
     color: #0f172a;
     font-size: 10px;
     font-weight: 700;
-    text-align: center;
     padding: 6px 5px;
     border-top: 1px solid #475569;
     border-bottom: 1px solid #475569;
   }
-  table.dn-table thead th.right { text-align: right; }
 
   /* ── tbody rows ───────────────────────────────────────────────────── */
   table.dn-table tbody td { border-bottom: 1px solid #e2e8f0; }
-  table.dn-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.dn-table .num { font-variant-numeric: tabular-nums; }
 
   table.dn-table tr.prin-row td  { background: #0b4ca1; color: #fff;    font-weight: 700; font-size: 11px;   padding: 6px 8px; border-bottom: none; }
   table.dn-table tr.group-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px;   padding: 5px 8px 5px 20px; }
@@ -405,6 +438,11 @@ function renderDnBodyRows(prins: PrinSection[]): { bodyRows: string; grandQty: n
   const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
 
+  // last 2 columns (Qty, Volume) drive the totals rows; the label spans everything before them.
+  const labelSpan = DN_COL_COUNT - 2;
+  const qtyAlign    = DN_COLUMNS[DN_COL_COUNT - 2].align; // "right"
+  const volAlign    = DN_COLUMNS[DN_COL_COUNT - 1].align; // "right"
+
   let bodyRows = "";
 
   for (const ps of prins) {
@@ -421,46 +459,46 @@ function renderDnBodyRows(prins: PrinSection[]): { bodyRows: string; grandQty: n
           const volume = parseFloat(String(dr.volume)) || 0;
           bodyRows +=
             `<tr class="data-row">` +
-            `<td>${escapeHtml(dr.dn_no || "\u2014")}</td>` +
-            `<td>${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>` +
-            `<td>${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>` +
-            `<td>${escapeHtml(dr.job_no || "\u2014")}</td>` +
-            `<td>${escapeHtml(dr.customer || dr.cust_code || "\u2014")}</td>` +
-            `<td>${escapeHtml(dr.container_no || "\u2014")}</td>` +
-            `<td class="num">${escapeHtml(numFmt(qty))}</td>` +
-            `<td class="num">${escapeHtml(numFmt(volume, 3))}</td>` +
+            `<td class="${DN_COLUMNS[0].align}">${escapeHtml(dr.dn_no || "\u2014")}</td>` +
+            `<td class="${DN_COLUMNS[1].align}">${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>` +
+            `<td class="${DN_COLUMNS[2].align}">${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>` +
+            `<td class="${DN_COLUMNS[3].align}">${escapeHtml(dr.job_no || "\u2014")}</td>` +
+            `<td class="${DN_COLUMNS[4].align}">${escapeHtml(dr.customer || dr.cust_code || "\u2014")}</td>` +
+            `<td class="${DN_COLUMNS[5].align}">${escapeHtml(dr.container_no || "\u2014")}</td>` +
+            `<td class="${DN_COLUMNS[6].align} num">${escapeHtml(numFmt(qty))}</td>` +
+            `<td class="${DN_COLUMNS[7].align} num">${escapeHtml(numFmt(volume, 3))}</td>` +
             `</tr>`;
         }
 
         bodyRows +=
           `<tr class="prod-total">` +
-          `<td colspan="6">Total For ${escapeHtml(prd.prodCode)}${prd.prodName ? " | " + escapeHtml(prd.prodName) : ""}</td>` +
-          `<td class="num">${escapeHtml(numFmt(prd.totalQty))}</td>` +
-          `<td class="num">${escapeHtml(numFmt(prd.totalVolume, 3))}</td>` +
+          `<td class="left" colspan="${labelSpan}">Total For ${escapeHtml(prd.prodCode)}${prd.prodName ? " | " + escapeHtml(prd.prodName) : ""}</td>` +
+          `<td class="${qtyAlign} num">${escapeHtml(numFmt(prd.totalQty))}</td>` +
+          `<td class="${volAlign} num">${escapeHtml(numFmt(prd.totalVolume, 3))}</td>` +
           `</tr>`;
       }
 
       bodyRows +=
         `<tr class="group-total">` +
-        `<td colspan="6">Total For ${escapeHtml(gs.groupName)}</td>` +
-        `<td class="num">${escapeHtml(numFmt(gs.totalQty))}</td>` +
-        `<td class="num">${escapeHtml(numFmt(gs.totalVolume, 3))}</td>` +
+        `<td class="left" colspan="${labelSpan}">Total For ${escapeHtml(gs.groupName)}</td>` +
+        `<td class="${qtyAlign} num">${escapeHtml(numFmt(gs.totalQty))}</td>` +
+        `<td class="${volAlign} num">${escapeHtml(numFmt(gs.totalVolume, 3))}</td>` +
         `</tr>`;
     }
 
     bodyRows +=
       `<tr class="prin-total">` +
-      `<td colspan="6">Total For ${escapeHtml(ps.prinCode)}${ps.prinName ? " | " + escapeHtml(ps.prinName) : ""}</td>` +
-      `<td class="num">${escapeHtml(numFmt(ps.totalQty))}</td>` +
-      `<td class="num">${escapeHtml(numFmt(ps.totalVolume, 3))}</td>` +
+      `<td class="left" colspan="${labelSpan}">Total For ${escapeHtml(ps.prinCode)}${ps.prinName ? " | " + escapeHtml(ps.prinName) : ""}</td>` +
+      `<td class="${qtyAlign} num">${escapeHtml(numFmt(ps.totalQty))}</td>` +
+      `<td class="${volAlign} num">${escapeHtml(numFmt(ps.totalVolume, 3))}</td>` +
       `</tr>`;
   }
 
   bodyRows +=
     `<tr class="grand-total">` +
-    `<td colspan="6">Grand Total</td>` +
-    `<td class="num">${escapeHtml(numFmt(grandQty))}</td>` +
-    `<td class="num">${escapeHtml(numFmt(grandVolume, 3))}</td>` +
+    `<td class="left" colspan="${labelSpan}">Grand Total</td>` +
+    `<td class="${qtyAlign} num">${escapeHtml(numFmt(grandQty))}</td>` +
+    `<td class="${volAlign} num">${escapeHtml(numFmt(grandVolume, 3))}</td>` +
     `</tr>`;
 
   return { bodyRows, grandQty, grandVolume };
@@ -485,6 +523,9 @@ async function renderHtml(
 
   const { bodyRows } = renderDnBodyRows(prins);
 
+  const colgroup = DN_COLUMNS.map((c) => `<col style="width:${c.width}%" />`).join("\n        ");
+  const headerCells = DN_COLUMNS.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("\n          ");
+
   return `<!doctype html>
 <html>
 <head>
@@ -500,28 +541,14 @@ async function renderHtml(
   <div class="sheet">
     <table class="dn-table">
       <colgroup>
-        <col style="width:12%" />
-        <col style="width:9%"  />
-        <col style="width:10%" />
-        <col style="width:14%" />
-        <col style="width:22%" />
-        <col style="width:15%" />
-        <col style="width:8%"  />
-        <col style="width:10%" />
+        ${colgroup}
       </colgroup>
 
       <thead>
         <tr><td class="hdr-company" colspan="${DN_COL_COUNT}">${headerHtml}</td></tr>
         <tr><td class="hdr-title"   colspan="${DN_COL_COUNT}">${escapeHtml(reportTitle)}</td></tr>
         <tr>
-          <th>DN No</th>
-          <th>DN Date</th>
-          <th>Confirm Date</th>
-          <th>Job No</th>
-          <th>Customer</th>
-          <th>Container No</th>
-          <th class="right">Qty</th>
-          <th class="right">Volume</th>
+          ${headerCells}
         </tr>
       </thead>
 
@@ -633,7 +660,7 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
     xc(numFmt(grandVolume, 3), "numGrand"),
   ]);
 
-  const COL_WIDTHS = [12, 14, 14, 18, 16, 16, 14, 14];
+  const COL_WIDTHS = [10, 14, 14, 18, 20, 16, 12, 12];
   const colXml = COL_WIDTHS.map((w, i) =>
     "<col min=\"" + (i + 1) + "\" max=\"" + (i + 1) + "\" width=\"" + w + "\" customWidth=\"1\"/>"
   ).join("");
@@ -733,7 +760,7 @@ function buildExcelBuffer(prins: PrinSection[]): Buffer {
     <xf numFmtId="0" fontId="2" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
     <xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1" indent="6"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="top" wrapText="1" indent="6"/></xf>
     <xf numFmtId="0" fontId="4" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="4"/></xf>
     <xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" indent="2"/></xf>
     <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
