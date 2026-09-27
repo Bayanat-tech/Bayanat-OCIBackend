@@ -269,13 +269,42 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
 }
 
 // ─── Extra CSS specific to this report ─────────────────────────────────────
-// Landscape A4 + the flat job-header block + the grouped GRN table with
-// Short/Excess coloring. The shared COMMON_REPORT_CSS ships a portrait
-// @page and a generic .data-table — this report overrides both.
+// Landscape A4 + doc-title-row (Sales Invoice pattern) + flat job-header
+// block. The data table now uses the SHARED `.data-table` class from
+// report_common.ts, restyled here only with neutral grey banners + blue
+// accent (matching Sales Invoice), not the old solid-navy theme.
+// Short/Excess colors (red/green) are kept — that's business-meaning color,
+// not decorative theme color. report_common.ts itself is never touched.
 
 const GRN_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 10mm 12mm; }
   .paper { max-width: 277mm; }
+
+  /* ── Title row — same pattern as Sales Invoice ── */
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
 
   /* ── Flat job header block (label : value, no box) ── */
   .job-header {
@@ -294,65 +323,52 @@ const GRN_EXTRA_CSS = `
   .job-value { font-size: 11px; font-weight: 700; color: #111827; }
   .job-value.nil { font-weight: 400; color: #9ca3af; }
 
-  /* ── Grouped data table ── */
-  table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* ── Grouped data table — SAME theme as Sales Invoice's .data-table ── */
+  table.data-table.grn-table { table-layout: fixed; }
+  table.data-table.grn-table col.c0  { width: 8%;  }
+  table.data-table.grn-table col.c1  { width: 8%;  }
+  table.data-table.grn-table col.c2  { width: 9%;  }
+  table.data-table.grn-table col.c3  { width: 9%;  }
+  table.data-table.grn-table col.c4  { width: 7%;  }
+  table.data-table.grn-table col.c5  { width: 7%;  }
+  table.data-table.grn-table col.c6  { width: 14%; }
+  table.data-table.grn-table col.c7  { width: 11%; }
+  table.data-table.grn-table col.c8  { width: 14%; }
+  table.data-table.grn-table col.c9  { width: 13%; }
 
-  col.c0  { width: 8%;  } col.c1  { width: 8%;  } col.c2  { width: 9%;  }
-  col.c3  { width: 9%;  } col.c4  { width: 7%;  } col.c5  { width: 7%;  }
-  col.c6  { width: 14%; } col.c7  { width: 11%; }
-  col.c8  { width: 14%; } col.c9  { width: 13%; }
-
-  thead tr.th-group th {
-    background: #1e3a5f; color: #fff; font-weight: 700;
-    font-size: 10px; padding: 6px 10px; text-align: center;
-    border-right: 1px solid rgba(255,255,255,0.15);
-    border-bottom: 1px solid rgba(255,255,255,0.12);
+  table.data-table.grn-table thead tr.th-sub th {
+    background: #f1f5f9; color: #0f172a; border-top: none;
   }
-  thead tr.th-group th:last-child { border-right: none; }
-  thead tr.th-sub th {
-    background: #162d4a; color: #cbd5e1; font-weight: 600;
-    font-size: 9.5px; padding: 5px 10px; text-align: left;
-    border-right: 1px solid rgba(255,255,255,0.10);
-    white-space: nowrap;
-  }
-  thead tr.th-sub th.num { text-align: right; }
 
   tr.group-row td {
-    background: #1e3a5f; color: #fff; font-weight: 700;
+    background: #0b4ca1; color: #fff; font-weight: 700;
     font-size: 11px; padding: 5px 10px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
   }
   tr.prod-row td {
-    background: #e8ecf2; color: #1e3a5f; font-weight: 700;
+    background: #eef4fc; color: #0b4ca1; font-weight: 700;
     font-size: 11px; padding: 4px 10px 4px 22px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    border-bottom: 1px solid #d5dce8;
+    border-bottom: 1px solid #dbe6f5;
   }
   tr.prod-row td.prod-asn {
-    background: #e8ecf2; color: #374151; font-weight: 600;
+    background: #eef4fc; color: #374151; font-weight: 600;
     padding-left: 10px; text-align: right; font-size: 10.5px;
   }
 
-  tbody tr.data-row td {
-    padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-    color: #374151; font-size: 11px;
-    white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
-    vertical-align: top;
-  }
-  tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
   td.dim    { color: #9ca3af !important; font-weight: 400; }
   td.short  { color: #dc2626 !important; font-weight: 700; }
   td.excess { color: #16a34a !important; font-weight: 700; }
 
   tr.group-total td {
-    background: #d5dce8; padding: 5px 10px; font-size: 11px;
-    font-weight: 700; color: #1e3a5f; white-space: nowrap;
+    background: #f8fafc; padding: 5px 10px; font-size: 11px;
+    font-weight: 700; color: #0f172a; white-space: nowrap;
+    border-top: 1px solid #e2e8f0;
   }
   tr.grand-total td {
-    background: #1e3a5f; color: #fff; font-weight: 700;
+    background: #0b4ca1; color: #fff; font-weight: 700;
     font-size: 12px; padding: 8px 10px;
-    border-top: 2px solid #162d4a;
+    border-top: 2px solid #083a7d;
   }
 
   @media print {
@@ -375,13 +391,31 @@ const GRN_EXTRA_CSS = `
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
 // from reportCommon supply the company header, footer and page shell.
 
+function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
+  return `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="doc-sub">${escapeHtml(subtitle)}</div>
+      </div>
+      <div class="print-meta">
+        Printed: ${escapeHtml(printDateTime)}
+      </div>
+    </div>`;
+}
+
 function renderBodyHtml(
-  groups:   GroupSection[],
-  firstRow: ReportRow | null,
-  jobNo:    string,
-  prinCode: string
+  groups:      GroupSection[],
+  firstRow:    ReportRow | null,
+  jobNo:       string,
+  prinCode:    string,
+  reportTitle: string
 ): string {
   const r = firstRow || {};
+
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
 
   const grandRecvPuom = mergeUomTotals(...groups.map(g => g.recvByPuom));
   const grandRecvLuom = mergeUomTotals(...groups.map(g => g.recvByLuom));
@@ -432,17 +466,17 @@ function renderBodyHtml(
         const shortExcess = fmtShortExcessCell(qtyPuomExp, qtyPuom, drPuom, qtyLuomExp, qtyLuom, drLuom);
 
         bodyRows += `
-          <tr class="data-row">
+          <tr>
             <td>${escapeHtml(dateText(dr.mfg_date))}</td>
             <td>${escapeHtml(dateText(dr.exp_date))}</td>
             <td>${escapeHtml(dr.batch_no  || "—")}</td>
             <td>${escapeHtml(dr.lot_no    || "—")}</td>
             <td>${escapeHtml(dr.grosswt   || "—")}</td>
             <td>${escapeHtml(dr.netwt     || "—")}</td>
-            <td class="num">${escapeHtml(recvStr)}</td>
-            <td class="num dim">${escapeHtml(damStr)}</td>
-            <td class="num">${escapeHtml(totalStr)}</td>
-            <td class="num${shortExcess.cls ? " " + shortExcess.cls : ""}">${escapeHtml(shortExcess.text)}</td>
+            <td class="right">${escapeHtml(recvStr)}</td>
+            <td class="right dim">${escapeHtml(damStr)}</td>
+            <td class="right">${escapeHtml(totalStr)}</td>
+            <td class="right${shortExcess.cls ? " " + shortExcess.cls : ""}">${escapeHtml(shortExcess.text)}</td>
           </tr>`;
       }
     }
@@ -453,9 +487,9 @@ function renderBodyHtml(
     bodyRows += `
       <tr class="group-total">
         <td colspan="6">Group Total : ${escapeHtml(gs.groupName)}</td>
-        <td class="num">${escapeHtml(fmtUomTotals(gs.recvByPuom))}${Object.keys(gs.recvByLuom).length ? " " + escapeHtml(fmtUomTotals(gs.recvByLuom)) : ""}</td>
-        <td class="num dim">${escapeHtml(fmtUomTotals(gs.damByPuom))}${Object.keys(gs.damByLuom).length ? " " + escapeHtml(fmtUomTotals(gs.damByLuom)) : ""}</td>
-        <td class="num">${escapeHtml(fmtUomTotals(gsTotalPuom))}${Object.keys(gsTotalLuom).length ? " " + escapeHtml(fmtUomTotals(gsTotalLuom)) : ""}</td>
+        <td class="right">${escapeHtml(fmtUomTotals(gs.recvByPuom))}${Object.keys(gs.recvByLuom).length ? " " + escapeHtml(fmtUomTotals(gs.recvByLuom)) : ""}</td>
+        <td class="right dim">${escapeHtml(fmtUomTotals(gs.damByPuom))}${Object.keys(gs.damByLuom).length ? " " + escapeHtml(fmtUomTotals(gs.damByLuom)) : ""}</td>
+        <td class="right">${escapeHtml(fmtUomTotals(gsTotalPuom))}${Object.keys(gsTotalLuom).length ? " " + escapeHtml(fmtUomTotals(gsTotalLuom)) : ""}</td>
         <td></td>
       </tr>`;
   }
@@ -463,13 +497,15 @@ function renderBodyHtml(
   const grandRow = `
     <tr class="grand-total">
       <td colspan="6">Grand Total</td>
-      <td class="num">${escapeHtml(fmtUomTotals(grandRecvPuom))}${Object.keys(grandRecvLuom).length ? " " + escapeHtml(fmtUomTotals(grandRecvLuom)) : ""}</td>
-      <td class="num">${escapeHtml(fmtUomTotals(grandDamPuom))}${Object.keys(grandDamLuom).length ? " " + escapeHtml(fmtUomTotals(grandDamLuom)) : ""}</td>
-      <td class="num">${escapeHtml(fmtUomTotals(grandTotalPuom))}${Object.keys(grandTotalLuom).length ? " " + escapeHtml(fmtUomTotals(grandTotalLuom)) : ""}</td>
+      <td class="right">${escapeHtml(fmtUomTotals(grandRecvPuom))}${Object.keys(grandRecvLuom).length ? " " + escapeHtml(fmtUomTotals(grandRecvLuom)) : ""}</td>
+      <td class="right">${escapeHtml(fmtUomTotals(grandDamPuom))}${Object.keys(grandDamLuom).length ? " " + escapeHtml(fmtUomTotals(grandDamLuom)) : ""}</td>
+      <td class="right">${escapeHtml(fmtUomTotals(grandTotalPuom))}${Object.keys(grandTotalLuom).length ? " " + escapeHtml(fmtUomTotals(grandTotalLuom)) : ""}</td>
       <td></td>
     </tr>`;
 
   return `
+    ${printMetaHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`, printDateTime)}
+
     <div class="job-header">
       <div class="job-col">
         <div class="job-row">
@@ -529,7 +565,7 @@ function renderBodyHtml(
       </div>
     </div>
 
-    <table class="rpt-table">
+    <table class="data-table grn-table">
       <colgroup>
         <col class="c0"/><col class="c1"/><col class="c2"/>
         <col class="c3"/><col class="c4"/><col class="c5"/>
@@ -551,10 +587,10 @@ function renderBodyHtml(
           <th>Lot No</th>
           <th>Gross WT</th>
           <th>Net WT</th>
-          <th class="num">Qty (Primary + Least)</th>
-          <th class="num">Qty (Primary + Least)</th>
-          <th class="num">Qty (Primary + Least)</th>
-          <th class="num">Qty (Primary + Least)</th>
+          <th class="right">Qty (Primary + Least)</th>
+          <th class="right">Qty (Primary + Least)</th>
+          <th class="right">Qty (Primary + Least)</th>
+          <th class="right">Qty (Primary + Least)</th>
         </tr>
       </thead>
       <tbody>
@@ -581,7 +617,7 @@ async function renderHtml(
   autoPrint: boolean
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
-  const bodyHtml   = renderBodyHtml(groups, firstRow, jobNo, prinCode);
+  const bodyHtml   = renderBodyHtml(groups, firstRow, jobNo, prinCode, reportTitle);
   const footerHtml = reportFooter({
     reportName: reportTitle,
     userName: loginId,
@@ -602,7 +638,9 @@ async function renderHtml(
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
-// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
+// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
+// theme (short/excess red/green retained). AdmZip-based xlsx generation
+// has no shared equivalent yet.
 
 const STYLE_ID = {
   default:        0,
@@ -619,6 +657,7 @@ const STYLE_ID = {
   numGrand:      11,
   numShort:      12,
   numExcess:     13,
+  reportTitle:   14,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -628,13 +667,13 @@ function xc(v: unknown, style: StyleKey): XlCell {
   return { v, s: STYLE_ID[style] };
 }
 
-function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: string): Buffer {
+function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: string, reportTitle: string): Buffer {
   const NCOLS = 10;
   type Row = (XlCell | null)[];
   const skip = null;
   const rows: Row[] = [];
 
-  rows.push([xc(`Goods Receipt Note — Job ${jobNo} / ${prinCode}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
+  rows.push([xc(`${reportTitle} — Job ${jobNo} / ${prinCode}`, "reportTitle"), ...Array(NCOLS - 1).fill(skip)]);
   rows.push(Array(NCOLS).fill(skip));
 
   rows.push([
@@ -754,7 +793,7 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
   let sheetDataXml = "";
   rows.forEach((row, ri) => {
     const rn = ri + 1;
-    const ht = rn === 1 ? ` ht="22" customHeight="1"` : "";
+    const ht = rn === 1 ? ` ht="26" customHeight="1"` : "";
     let rowXml = `<row r="${rn}"${ht}>`;
     row.forEach((cell, ci) => {
       if (cell === null) return;
@@ -783,22 +822,23 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="8">
+  <fonts count="9">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FFDC2626"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF16A34A"/><name val="Calibri"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFE8ECF2"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD5DCE8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF4FC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFDBE6F5"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
@@ -809,13 +849,13 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
       <diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FF1E3A5F"/></left><right style="thin"><color rgb="FF1E3A5F"/></right>
-      <top style="thin"><color rgb="FF1E3A5F"/></top><bottom style="thin"><color rgb="FF1E3A5F"/></bottom>
+      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
+      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
       <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="14">
+  <cellXfs count="15">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
@@ -830,6 +870,7 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
     <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="6" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="7" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="8" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -935,6 +976,7 @@ export const getGrnReportExcel = async (
   try {
     const jobNo    = text(req.params.job_no  || req.query.job_no);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const reportTitle = text(req.query.title) || "Goods Receipt Note";
 
     if (!jobNo || !prinCode) {
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
@@ -943,7 +985,7 @@ export const getGrnReportExcel = async (
 
     const rows   = await loadGrnData(req, jobNo, prinCode);
     const groups = groupRows(rows);
-    const buffer = buildExcelBuffer(groups, jobNo, prinCode);
+    const buffer = buildExcelBuffer(groups, jobNo, prinCode, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="GRN_${jobNo}.xlsx"`);

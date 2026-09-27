@@ -163,12 +163,37 @@ async function loadInboundActivityData(
 }
 
 // ─── Extra CSS specific to this report ─────────────────────────────────────
-// (record/field layout + an activity table — the shared COMMON_REPORT_CSS
-// only ships generic table/list styles, so the field-row/box rules live
-// here as extraCss; the activity table reuses the shared .data-table look
-// but with left-aligned header text like the original.)
+// (doc-title-row from Sales Invoice + record/field layout + activity table.
+// The shared COMMON_REPORT_CSS only ships generic table/list styles, so the
+// title row + field-row/box rules live here as extraCss; the activity table
+// reuses the shared .data-table blue-header look, just left-aligned text.)
 
 const INBOUND_SERVICE_ACTIVITY_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
   .section-label {
     font-size: 9.5px; font-weight: 700; color: #0b4ca1; text-transform: uppercase;
     letter-spacing: .08em; margin: 14px 0 7px; padding-bottom: 4px;
@@ -199,8 +224,25 @@ const INBOUND_SERVICE_ACTIVITY_EXTRA_CSS = `
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
 // from reportCommon supply the company header, footer and page shell.
 
-function renderBodyHtml(rows: ReportRow[]): string {
+function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
+  return `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="doc-sub">${escapeHtml(subtitle)}</div>
+      </div>
+      <div class="print-meta">
+        Printed: ${escapeHtml(printDateTime)}
+      </div>
+    </div>`;
+}
+
+function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
   const d = rows[0];
+
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
 
   const field = (label: string, value: unknown) => `
     <div class="field-row">
@@ -217,6 +259,8 @@ function renderBodyHtml(rows: ReportRow[]): string {
     </tr>`).join("");
 
   return `
+    ${printMetaHtml(reportTitle, `Job No: ${text(d.job_type)} ${text(d.job_no)} — Principal: ${text(d.prin_code)}`, printDateTime)}
+
     <div class="section-label">Job Information</div>
     <div class="two-col">
       <div>
@@ -276,7 +320,7 @@ async function renderHtml(
   const d = rows[0];
 
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
-  const bodyHtml   = renderBodyHtml(rows);
+  const bodyHtml   = renderBodyHtml(rows, reportTitle);
   const footerHtml = reportFooter({
     reportName: reportTitle,
     userName: loginId,
@@ -297,18 +341,22 @@ async function renderHtml(
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
+// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
+// theme, and a distinct bigger "reportTitle" style (matching the doc-title-row
+// used in HTML) so the Excel title no longer looks like an oversized column
+// header. AdmZip-based xlsx generation has no shared equivalent yet.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:      0,
-  header:       1,  // white text, dark-indigo bg, centered
-  sectionTitle: 2,  // indigo text, lavender bg, bottom border
+  header:       1,  // white text, blue bg, centered — column headers
+  sectionTitle: 2,  // blue text, light-blue bg, bottom border
   label:        3,  // gray bold, right-aligned
   value:        4,  // dark bold, wrapping
-  tableHeader:  5,  // white text, indigo bg, left aligned
+  tableHeader:  5,  // white text, blue bg, left aligned
   tableCell:    6,  // white bg, bordered
   tableCellNum: 7,  // white bg, bordered, right aligned
+  reportTitle:  8,  // big centered white-on-blue title row
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -319,7 +367,7 @@ function xc(v: unknown, style: StyleKey): XlCell {
   return { v, s: STYLE_ID[style] };
 }
 
-function buildExcelBuffer(rows: ReportRow[]): Buffer {
+function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
   const d      = rows[0];
   const NCOLS  = 7;
   const skip   = null;
@@ -327,7 +375,7 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   type Row = (XlCell | null)[];
   const xlRows: Row[] = [];
 
-  xlRows.push([xc(`Inbound Service Activity Report — Job ${text(d.job_type)} ${text(d.job_no)}`, "header"), skip, skip, skip, skip, skip, skip]);
+  xlRows.push([xc(`${reportTitle} — Job ${text(d.job_type)} ${text(d.job_no)}`, "reportTitle"), skip, skip, skip, skip, skip, skip]);
 
   xlRows.push(Array(NCOLS).fill(skip));
 
@@ -415,7 +463,7 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   let sheetDataXml = "";
   xlRows.forEach((row, ri) => {
     const rn  = ri + 1;
-    const ht  = rn === 1 ? ` ht="22" customHeight="1"` : "";
+    const ht  = rn === 1 ? ` ht="26" customHeight="1"` : "";
     let rowXml = `<row r="${rn}"${ht}>`;
     row.forEach((cell, ci) => {
       if (cell === null) return;
@@ -446,26 +494,27 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   // ── Styles XML — order must match STYLE_ID above ──────────────────────────
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="6">
+  <fonts count="7">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E1B4B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="5">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E1B4B"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF4FC"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF312E81"/></left><right style="thin"><color rgb="FF312E81"/></right>
-      <top style="thin"><color rgb="FF312E81"/></top><bottom style="thin"><color rgb="FF312E81"/></bottom>
+      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
+      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
       <diagonal/>
     </border>
     <border>
@@ -475,7 +524,7 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="8">
+  <cellXfs count="9">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
     <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
@@ -484,6 +533,7 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
     <xf numFmtId="0" fontId="5" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
     <xf numFmtId="0" fontId="0" fillId="4" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
     <xf numFmtId="0" fontId="0" fillId="4" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -557,13 +607,14 @@ export const getWmsInboundServiceActivityReportExcel = async (
   try {
     const jobNo    = text(req.params.job_no || req.query.job_no);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const reportTitle = text(req.query.title) || "Inbound Service Activity Report";
 
     if (!jobNo || !prinCode) {
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
     const activityRows = await loadInboundActivityData(req, jobNo, prinCode);
-    const buffer        = buildExcelBuffer(activityRows);
+    const buffer        = buildExcelBuffer(activityRows, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Inbound_Service_Activity_${jobNo}.xlsx"`);
