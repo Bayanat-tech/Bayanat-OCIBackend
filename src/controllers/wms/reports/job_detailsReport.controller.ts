@@ -139,6 +139,31 @@ async function loadJobData(
 // styles, so the field-row/box/progress-cell rules live here as extraCss)
 
 const JOB_DETAILS_EXTRA_CSS = `
+
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+  }
+
   .section-label {
     font-size: 9.5px; font-weight: 700; color: #0b4ca1; text-transform: uppercase;
     letter-spacing: .08em; margin: 14px 0 7px; padding-bottom: 4px;
@@ -175,7 +200,20 @@ const JOB_DETAILS_EXTRA_CSS = `
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
 // from reportCommon supply the company header, footer and page shell.
 
-function renderBodyHtml(d: ReportRow): string {
+function renderBodyHtml(d: ReportRow, reportTitle: string): string  {
+   const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+   const titleRowHtml = `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(reportTitle)}</h1>
+        <div class="doc-sub">Job No: ${escapeHtml(d.job_no)} &mdash; ${escapeHtml(d.company_code)}</div>
+      </div>
+      <div class="print-meta">
+        Printed: ${escapeHtml(printDateTime)}
+      </div>
+    </div>`;
   const progressCells = PROGRESS_COLS.map((col) => {
     const dateVal = dateText(d[col.dateKey]);
     const isDone  = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
@@ -191,6 +229,7 @@ function renderBodyHtml(d: ReportRow): string {
     </div>`;
 
   return `
+    ${titleRowHtml}
     <div class="section-label">Job Information</div>
     <div class="two-col">
       <div>
@@ -260,7 +299,7 @@ async function renderHtml(
   autoPrint: boolean
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
-  const bodyHtml   = renderBodyHtml(d);
+  const bodyHtml   = renderBodyHtml(d,  reportTitle);
   const footerHtml = reportFooter({
     reportName: reportTitle,
     userName: loginId,

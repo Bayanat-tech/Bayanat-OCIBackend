@@ -1,8 +1,14 @@
-import * as express from "express"; // Importing the Express framework for building web applications.
-import { checkUserAuthorization } from "../../../middleware/checkUserAthorization"; // Importing middleware to check user authorization.
-import passport from "passport"; // Importing Passport for authentication.
-import { exportStockDetailReportExcel, getStockDetailReportHtml } from "../../../controllers/wms/reports/stockDetailReportController";
-import { getStockSummaryReportHtml, exportStockSummaryReportExcel } from "../../../controllers/wms/reports/StockSummaryReport.controller";
+import * as express from "express";
+import { checkUserAuthorization } from "../../../middleware/checkUserAthorization";
+import passport from "passport";
+import {
+  exportStockDetailReportExcel,
+  getStockDetailReportHtml,
+} from "../../../controllers/wms/reports/stockDetailReportController";
+import {
+  getStockSummaryReportHtml,
+  exportStockSummaryReportExcel,
+} from "../../../controllers/wms/reports/StockSummaryReport.controller";
 import {
   getStockAgeingQuantityReportHtml,
   exportStockAgeingQuantityReportExcel,
@@ -15,11 +21,10 @@ import {
   getStockTransferReportHtml,
   exportStockTransferReportExcel,
 } from "../../../controllers/wms/reports/stockTransferReportController";
-// import { getStockDetailsReport } from "../../../controllers/wms/reports/stockCriteria/stock_details.controller"; // Importing the controller for handling stock details report requests.
-// import { getSummaryStockReport } from "../../../controllers/wms/reports/stockCriteria/summary_stock.controller"; // Importing the controller for handling summary stock report requests.
-// import { getAgeingStockReport } from "../../../controllers/wms/reports/stockCriteria/ageing_stock.controller"; // Importing the controller for handling ageing stock report requests.
-const
-router = express.Router(); // Creating a new router instance.
+
+const router = express.Router();
+
+// ─── Stock Transfer ───────────────────────────────────────────────────────────
 
 router.get(
   "/stocktransfer-report/html",
@@ -27,36 +32,47 @@ router.get(
   checkUserAuthorization,
   getStockTransferReportHtml
 );
+
 router.get(
   "/stocktransfer-report/excel",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   exportStockTransferReportExcel
 );
+
+// ─── Stock Confirmation ───────────────────────────────────────────────────────
+
 router.get(
   "/stockconfirmation-report/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getStockConfirmationReportHtml
 );
+
 router.get(
   "/stockconfirmation-report/excel",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   exportStockConfirmationReportExcel
-)
+);
+
+// ─── Stock Details ────────────────────────────────────────────────────────────
+
 router.post(
   "/stockdetails/html",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getStockDetailReportHtml
 );
+
 router.post(
   "/stockdetails/excel",
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   exportStockDetailReportExcel
 );
+
+// ─── Stock Summary ────────────────────────────────────────────────────────────
 
 router.post(
   "/stocksummary/html",
@@ -72,6 +88,8 @@ router.post(
   exportStockSummaryReportExcel
 );
 
+// ─── Stock Ageing (Quantity) ──────────────────────────────────────────────────
+
 router.post(
   "/stockageing/quantity/html",
   passport.authenticate("jwt", { session: false }),
@@ -85,6 +103,8 @@ router.post(
   checkUserAuthorization,
   exportStockAgeingQuantityReportExcel
 );
+
+// ─── Stock Ageing (Volume) ────────────────────────────────────────────────────
 
 router.post(
   "/stockageing/volume/html",
@@ -100,30 +120,4 @@ router.post(
   exportStockAgeingVolumeReportExcel
 );
 
-// ----------- stock details report ------------
-// Route to get stock details report
-// router.get(
-//   "/stock-criteria/detailstock",
-//   passport.authenticate("jwt", { session: false }), // Authenticate using JWT without session
-//   checkUserAuthorization, // Middleware to check if the user is authorized
-//   getStockDetailsReport // Controller function to handle the request
-// );
-
-// ---------- summary report ------------
-// Route to get summary stock report
-// router.get(
-//   "/stock-criteria/summarystock",
-//   passport.authenticate("jwt", { session: false }), // Authenticate using JWT without session
-//   checkUserAuthorization, // Middleware to check if the user is authorized
-//   getSummaryStockReport // Controller function to handle the request
-// );
-
-// ---------- Ageing Report ---------
-// Route to get ageing stock report
-// router.get(
-//   "/stock-criteria/aging",
-//   passport.authenticate("jwt", { session: false }), // Authenticate using JWT without session
-//   getAgeingStockReport // Controller function to handle the request
-// );
-
-export default router; // Exporting the router to be used in other parts of the application.
+export default router;

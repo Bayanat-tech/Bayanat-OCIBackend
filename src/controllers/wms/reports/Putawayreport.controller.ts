@@ -172,25 +172,53 @@ function groupRows(rows: ReportRow[]): UserGroup[] {
 }
 
 // ─── Extra CSS specific to this report ─────────────────────────────────────
-// Landscape A4 + the grouped user/product table + info panel + signature
-// strip. The shared COMMON_REPORT_CSS ships a portrait @page and a generic
-// .data-table — this report overrides both for its own layout.
+// Landscape A4 + doc-title-row (Sales Invoice pattern) + info panel +
+// signature strip. The data table now uses the SHARED `.data-table` class
+// from report_common.ts, restyled here only with neutral grey banners +
+// blue accent (matching Sales Invoice), not the old solid-navy theme.
+// report_common.ts itself is never touched.
 
 const TALLY_PUTAWAY_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 10mm 12mm; }
   .paper { max-width: 277mm; }
+
+  /* ── Title row — same pattern as Sales Invoice ── */
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
 
   /* ── Info panel ── */
   .info-panel {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 0;
-    border: 1px solid #c4cdd9;
-    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
     margin-bottom: 12px;
     font-size: 10.5px;
   }
-  .info-col { padding: 10px 14px; border-right: 1px solid #c4cdd9; }
+  .info-col { padding: 10px 14px; border-right: 1px solid #e2e8f0; }
   .info-col:last-child { border-right: none; }
   .info-row { display: flex; align-items: baseline; padding: 3px 0; border-bottom: 1px solid #f1f5f9; }
   .info-row:last-child { border-bottom: none; }
@@ -208,77 +236,64 @@ const TALLY_PUTAWAY_EXTRA_CSS = `
     font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase;
     letter-spacing: .05em; margin-bottom: 4px;
   }
-  .time-box-value { font-size: 13px; font-weight: 700; color: #1e3a5f; font-variant-numeric: tabular-nums; }
-  .time-box.total { grid-column: 1 / -1; border-color: #1e3a5f; background: #f0f4f9; }
-  .time-box.total .time-box-label { color: #1e3a5f; }
+  .time-box-value { font-size: 13px; font-weight: 700; color: #0b4ca1; font-variant-numeric: tabular-nums; }
+  .time-box.total { grid-column: 1 / -1; border-color: #0b4ca1; background: #eef4fc; }
+  .time-box.total .time-box-label { color: #0b4ca1; }
 
-  /* ── Grouped data table ── */
-  table.rpt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  /* ── Grouped data table — SAME theme as Sales Invoice's .data-table ── */
+  table.data-table.putaway-table { table-layout: fixed; }
+  table.data-table.putaway-table col.c0  { width: 7%;  }
+  table.data-table.putaway-table col.c1  { width: 9%;  }
+  table.data-table.putaway-table col.c2  { width: 9%;  }
+  table.data-table.putaway-table col.c3  { width: 9%;  }
+  table.data-table.putaway-table col.c4  { width: 9%;  }
+  table.data-table.putaway-table col.c5  { width: 6%;  }
+  table.data-table.putaway-table col.c6  { width: 11%; }
+  table.data-table.putaway-table col.c7  { width: 9%;  }
+  table.data-table.putaway-table col.c8  { width: 5%;  }
+  table.data-table.putaway-table col.c9  { width: 9%;  }
+  table.data-table.putaway-table col.c10 { width: 5%;  }
 
-  col.c0  { width: 7%;  } col.c1  { width: 9%;  } col.c2  { width: 9%;  }
-  col.c3  { width: 9%;  } col.c4  { width: 9%;  } col.c5  { width: 6%;  }
-  col.c6  { width: 11%; } col.c7  { width: 9%;  } col.c8  { width: 5%;  }
-  col.c9  { width: 9%;  } col.c10 { width: 5%;  }
-
-  thead tr.th-group th {
-    background: #1e3a5f; color: #fff; font-weight: 700;
-    font-size: 10px; padding: 6px 10px; text-align: center;
-    border-right: 1px solid rgba(255,255,255,0.15);
-    border-bottom: 1px solid rgba(255,255,255,0.12);
+  table.data-table.putaway-table thead tr.th-sub th {
+    background: #f1f5f9; color: #0f172a; border-top: none;
   }
-  thead tr.th-group th:last-child { border-right: none; }
-  thead tr.th-sub th {
-    background: #162d4a; color: #cbd5e1; font-weight: 600;
-    font-size: 9.5px; padding: 5px 10px; text-align: left;
-    border-right: 1px solid rgba(255,255,255,0.10);
-    white-space: nowrap;
-  }
-  thead tr.th-sub th.num { text-align: right; }
 
   tr.user-row td {
-    background: #1e3a5f; color: #fff; font-weight: 700;
+    background: #0b4ca1; color: #fff; font-weight: 700;
     font-size: 11px; padding: 5px 10px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
   }
   tr.prod-row td {
-    background: #e8ecf2; color: #1e3a5f; font-weight: 700;
+    background: #eef4fc; color: #0b4ca1; font-weight: 700;
     font-size: 11px; padding: 4px 10px 4px 22px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    border-bottom: 1px solid #d5dce8;
+    border-bottom: 1px solid #dbe6f5;
   }
-  tbody tr.data-row td {
-    padding: 4px 10px; border-bottom: 1px solid #e5e7eb;
-    color: #374151; font-size: 11px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  tbody tr.data-row:nth-child(even) td { background: #f9fafb; }
-
   tr.prod-total td {
-    background: #e8ecf2; padding: 4px 10px; font-size: 11px;
-    font-weight: 700; color: #1e3a5f;
-    border-top: 1px solid #d5dce8; white-space: nowrap;
+    background: #f8fafc; padding: 4px 10px; font-size: 11px;
+    font-weight: 700; color: #0f172a;
+    border-top: 1px solid #e2e8f0; white-space: nowrap;
   }
   tr.prod-total td.total-label { padding-left: 22px; }
   tr.user-total td {
-    background: #d5dce8; padding: 5px 10px; font-size: 11px;
-    font-weight: 700; color: #1e3a5f; white-space: nowrap;
+    background: #eef4fc; padding: 5px 10px; font-size: 11px;
+    font-weight: 700; color: #0b4ca1; white-space: nowrap;
   }
   tr.grand-total td {
-    background: #1e3a5f; color: #fff; font-weight: 700;
+    background: #0b4ca1; color: #fff; font-weight: 700;
     font-size: 12px; padding: 8px 10px;
-    border-top: 2px solid #162d4a;
+    border-top: 2px solid #083a7d;
   }
 
   /* ── Signature strip ── */
   .sig-strip {
     margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 16px; border-top: 1.5px solid #c4cdd9; padding-top: 14px;
+    gap: 16px; border-top: 1.5px solid #e2e8f0; padding-top: 14px;
   }
   .sig-group { display: flex; flex-direction: column; gap: 8px; }
   .sig-group-title {
     font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .08em; color: #1e3a5f; padding-bottom: 4px;
+    letter-spacing: .08em; color: #0b4ca1; padding-bottom: 4px;
     border-bottom: 1px solid #e2e8f0;
   }
   .sig-row { display: flex; align-items: flex-end; gap: 8px; }
@@ -286,22 +301,45 @@ const TALLY_PUTAWAY_EXTRA_CSS = `
   .sig-line { flex: 1; border-bottom: 1px solid #374151; min-height: 16px; }
   .sig-box { border: 1px solid #94a3b8; border-radius: 3px; min-height: 52px; width: 100%; margin-top: 4px; }
   .sig-group.supervisor .sig-row { margin-bottom: 10px; }
+
+  @media print {
+    tr.user-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
+    tr.prod-total, tr.user-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
+  }
 `;
 
 // ─── HTML body renderer ─────────────────────────────────────────────────────
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
 // from reportCommon supply the company header, footer and page shell.
 
+function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
+  return `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="doc-sub">${escapeHtml(subtitle)}</div>
+      </div>
+      <div class="print-meta">
+        Printed: ${escapeHtml(printDateTime)}
+      </div>
+    </div>`;
+}
+
 function renderBodyHtml(
   userGroups: UserGroup[],
   firstRow: ReportRow | null,
   jobNo: string,
-  prinCode: string
+  prinCode: string,
+  reportTitle: string
 ): string {
   const grandPQty = userGroups.reduce((s, u) => s + u.totalPQty, 0);
   const grandLQty = userGroups.reduce((s, u) => s + u.totalLQty, 0);
 
   const r = firstRow || {};
+
+  const printDateTime = new Date().toLocaleString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
 
   const allRows  = userGroups.flatMap((u) => u.products.flatMap((p) => p.rows));
   const tallyStart = allRows.map((x) => x.start_tally_dt).filter(Boolean).sort()[0] ?? null;
@@ -350,7 +388,7 @@ function renderBodyHtml(
 
       for (const dr of pg.rows) {
         bodyRows += `
-          <tr class="data-row">
+          <tr>
             <td>${escapeHtml(dr.site_ind  || "—")}</td>
             <td>${escapeHtml(dr.lot_no    || "—")}</td>
             <td>${escapeHtml(dr.pallet_id || "—")}</td>
@@ -358,9 +396,9 @@ function renderBodyHtml(
             <td>${escapeHtml(dateText(dr.exp_date))}</td>
             <td>${escapeHtml(dr.site_code     || "—")}</td>
             <td>${escapeHtml(dr.location_code || "—")}</td>
-            <td class="num">${escapeHtml(numFmt(dr.qty_puom))}</td>
+            <td class="right">${escapeHtml(numFmt(dr.qty_puom))}</td>
             <td>${escapeHtml(dr.p_uom || "—")}</td>
-            <td class="num">${escapeHtml(numFmt(dr.qty_luom))}</td>
+            <td class="right">${escapeHtml(numFmt(dr.qty_luom))}</td>
             <td>${escapeHtml(dr.l_uom || "—")}</td>
           </tr>`;
       }
@@ -368,9 +406,9 @@ function renderBodyHtml(
       bodyRows += `
         <tr class="prod-total">
           <td colspan="7" class="total-label">Product Total : ${escapeHtml(pg.prodCode)}</td>
-          <td class="num">${escapeHtml(numFmt(pg.totalPQty))}</td>
+          <td class="right">${escapeHtml(numFmt(pg.totalPQty))}</td>
           <td></td>
-          <td class="num">${escapeHtml(numFmt(pg.totalLQty))}</td>
+          <td class="right">${escapeHtml(numFmt(pg.totalLQty))}</td>
           <td></td>
         </tr>`;
     }
@@ -378,9 +416,9 @@ function renderBodyHtml(
     bodyRows += `
       <tr class="user-total">
         <td colspan="7">User Total : ${escapeHtml(ug.userId)}</td>
-        <td class="num">${escapeHtml(numFmt(ug.totalPQty))}</td>
+        <td class="right">${escapeHtml(numFmt(ug.totalPQty))}</td>
         <td></td>
-        <td class="num">${escapeHtml(numFmt(ug.totalLQty))}</td>
+        <td class="right">${escapeHtml(numFmt(ug.totalLQty))}</td>
         <td></td>
       </tr>`;
   }
@@ -388,13 +426,15 @@ function renderBodyHtml(
   const grandRow = `
     <tr class="grand-total">
       <td colspan="7">Grand Total</td>
-      <td class="num">${escapeHtml(numFmt(grandPQty))}</td>
+      <td class="right">${escapeHtml(numFmt(grandPQty))}</td>
       <td></td>
-      <td class="num">${escapeHtml(numFmt(grandLQty))}</td>
+      <td class="right">${escapeHtml(numFmt(grandLQty))}</td>
       <td></td>
     </tr>`;
 
   return `
+    ${printMetaHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`, printDateTime)}
+
     <div class="info-panel">
       <div class="info-col">
         <div class="info-row">
@@ -456,7 +496,7 @@ function renderBodyHtml(
       </div>
     </div>
 
-    <table class="rpt-table">
+    <table class="data-table putaway-table">
       <colgroup>
         <col class="c0"/><col class="c1"/><col class="c2"/>
         <col class="c3"/><col class="c4"/><col class="c5"/>
@@ -473,8 +513,8 @@ function renderBodyHtml(
           <th>Site Ind</th><th>Lot No</th><th>Pallet Id</th>
           <th>Mfg. Date</th><th>Exp. Date</th>
           <th>Site</th><th>Location</th>
-          <th class="num">Quantity</th><th>UOM</th>
-          <th class="num">Quantity</th><th>UOM</th>
+          <th class="right">Quantity</th><th>UOM</th>
+          <th class="right">Quantity</th><th>UOM</th>
         </tr>
       </thead>
       <tbody>
@@ -551,7 +591,7 @@ async function renderHtml(
   autoPrint: boolean
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
-  const bodyHtml   = renderBodyHtml(userGroups, firstRow, jobNo, prinCode);
+  const bodyHtml   = renderBodyHtml(userGroups, firstRow, jobNo, prinCode, reportTitle);
   const footerHtml = reportFooter({
     reportName: reportTitle,
     userName: loginId,
@@ -572,22 +612,24 @@ async function renderHtml(
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
-// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
+// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
+// theme. AdmZip-based xlsx generation has no shared equivalent yet.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:         0,
-  header:          1,  // white text, navy bg, centered
-  sectionUser:     2,  // white text, navy bg
-  sectionProduct:  3,  // navy text, lavender bg
+  header:          1,  // white text, blue bg, centered
+  sectionUser:     2,  // white text, blue bg
+  sectionProduct:  3,  // blue text, light-blue bg
   label:           4,  // gray, right-aligned
   value:           5,  // dark bold, wrapping
-  totalProduct:    6,  // navy text, light lavender bg
-  totalUser:       7,  // navy text, mid lavender bg
-  totalGrand:      8,  // white text, navy bg, bold
+  totalProduct:    6,  // blue text, light-blue bg
+  totalUser:       7,  // blue text, mid-blue-tint bg
+  totalGrand:      8,  // white text, blue bg, bold
   numValue:        9,  // dark bold, right-aligned
-  numTotal:       10,  // navy bold, right-aligned, lavender bg
-  numGrand:       11,  // white bold, right-aligned, navy bg
+  numTotal:       10,  // blue bold, right-aligned, light-blue bg
+  numGrand:       11,  // white bold, right-aligned, blue bg
+  reportTitle:    12,  // big centered white-on-blue title row
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -598,7 +640,7 @@ function xc(v: unknown, style: StyleKey): XlCell {
   return { v, s: STYLE_ID[style] };
 }
 
-function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: string): Buffer {
+function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: string, reportTitle: string): Buffer {
   const NCOLS = 11;
 
   type Row = (XlCell | null)[];
@@ -606,7 +648,7 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
   const rows: Row[] = [];
 
   rows.push([
-    xc(`Tally & Putaway Detail Report — Job ${jobNo} / ${prinCode}`, "header"),
+    xc(`${reportTitle} — Job ${jobNo} / ${prinCode}`, "reportTitle"),
     skip, skip, skip, skip, skip, skip, skip, skip, skip, skip,
   ]);
 
@@ -713,7 +755,7 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
   let sheetDataXml = "";
   rows.forEach((row, ri) => {
     const rn  = ri + 1;
-    const ht  = rn === 1 ? ` ht="22" customHeight="1"` : "";
+    const ht  = rn === 1 ? ` ht="26" customHeight="1"` : "";
     let rowXml = `<row r="${rn}"${ht}>`;
     row.forEach((cell, ci) => {
       if (cell === null) return;
@@ -743,20 +785,21 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="6">
+  <fonts count="7">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFE8ECF2"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD5DCE8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF4FC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFDBE6F5"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
@@ -769,15 +812,15 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
       <diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FF1E3A5F"/></left>
-      <right style="thin"><color rgb="FF1E3A5F"/></right>
-      <top style="thin"><color rgb="FF1E3A5F"/></top>
-      <bottom style="thin"><color rgb="FF1E3A5F"/></bottom>
+      <left style="thin"><color rgb="FF0B4CA1"/></left>
+      <right style="thin"><color rgb="FF0B4CA1"/></right>
+      <top style="thin"><color rgb="FF0B4CA1"/></top>
+      <bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
       <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="12">
+  <cellXfs count="13">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center"/>
@@ -811,6 +854,9 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
     </xf>
     <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
+    </xf>
+    <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
+      <alignment horizontal="center" vertical="center"/>
     </xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
@@ -917,6 +963,7 @@ export const getTallyPutawayReportExcel = async (
   try {
     const jobNo    = text(req.params.job_no  || req.query.job_no);
     const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const reportTitle = text(req.query.title) || "Putaway Detail Report";
 
     if (!jobNo || !prinCode) {
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
@@ -925,7 +972,7 @@ export const getTallyPutawayReportExcel = async (
 
     const rows       = await loadTallyData(req, jobNo, prinCode);
     const userGroups = groupRows(rows);
-    const buffer     = buildExcelBuffer(userGroups, jobNo, prinCode);
+    const buffer     = buildExcelBuffer(userGroups, jobNo, prinCode, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Putaway_${jobNo}.xlsx"`);
