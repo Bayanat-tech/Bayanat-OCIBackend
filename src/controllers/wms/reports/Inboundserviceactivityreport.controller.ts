@@ -6,11 +6,6 @@ import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
 
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
@@ -22,7 +17,7 @@ export interface TInboundActivityRow {
   TRANSPORTER_CODE: string | null; VEHICLE_NO: string | null;
   ACTIVITY_GROUP_CODE: string | null; PRIN_NAME: string;
   BILL: number; COST: number; BILL_RATE: number; QUANTITY: number; COST_RATE: number;
-  SO_NO: string | null; PO_NO: string | null; DEST_PORT_NAME: string |null ; PORT_NAME: string | null;
+  SO_NO: string | null; PO_NO: string | null; DEST_PORT_NAME: string | null; PORT_NAME: string | null;
   DESCRIPTION1: string | null; PORT_CODE: string | null; DESTINATION_PORT: string | null;
   TRANSPORT_MODE: string | null; QTY: number | null; CBM: number | null;
   REMARKS: string | null; TRANSPORTER_NAME: string | null;
@@ -59,13 +54,6 @@ function text(value: unknown): string {
   return String(value);
 }
 
-function dateText(value: unknown): string {
-  if (!value) return "—";
-  const d = new Date(String(value));
-  if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 function escapeHtml(value: unknown): string {
   return text(value)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -85,12 +73,6 @@ function numFmt(value: unknown, decimals = 2): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-}
-
-/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
-function withPostMessagePrintListener(html: string): string {
-  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
-  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -125,7 +107,7 @@ async function loadInboundActivityData(
              and job_no = tn_invoice_det.job_no) po_no,
          ti_job.description1, ti_job.port_code,
          (select PORT_NAME from ms_port where port_code = ti_job.port_code ) as PORT_NAME,
-          (select PORT_NAME from ms_port where port_code = ti_job.destination_port ) as DEST_PORT_NAME,
+         (select PORT_NAME from ms_port where port_code = ti_job.destination_port ) as DEST_PORT_NAME,
          ti_job.destination_port, ti_job.transport_mode,
          (select sum(quantity) from vw_trans
            where company_code = tn_invoice_det.company_code
@@ -146,11 +128,11 @@ async function loadInboundActivityData(
          AND ( tn_invoice_det.company_code = ti_job.company_code )
          AND ( tn_invoice_det.prin_code = ti_job.prin_code )
          AND ( tn_invoice_det.job_no = ti_job.job_no )
-         AND ( tn_invoice_det.company_code = '${req.user.company_code}' )
+         AND ( tn_invoice_det.company_code = :company_code )
          AND ( tn_invoice_det.prin_code = :prin_code )
          AND ( tn_invoice_det.job_no = :job_no )
        ORDER BY tn_invoice_det.srno`,
-      { job_no: jobNo, prin_code: prinCode },
+      { company_code: req.user.company_code, job_no: jobNo, prin_code: prinCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const rows = normalize(result.rows as any[]);
@@ -163,10 +145,8 @@ async function loadInboundActivityData(
 }
 
 // ─── Extra CSS specific to this report ─────────────────────────────────────
-// (doc-title-row from Sales Invoice + record/field layout + activity table.
-// The shared COMMON_REPORT_CSS only ships generic table/list styles, so the
-// title row + field-row/box rules live here as extraCss; the activity table
-// reuses the shared .data-table blue-header look, just left-aligned text.)
+// (company letterhead / footer / .data-table come from report_common;
+// font sizes and row styling follow DN Summary)
 
 const INBOUND_SERVICE_ACTIVITY_EXTRA_CSS = `
   .doc-title-row {
@@ -185,13 +165,6 @@ const INBOUND_SERVICE_ACTIVITY_EXTRA_CSS = `
     margin: 2px 0 0;
     font-size: 11px;
     color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-    white-space: nowrap;
   }
 
   .section-label {
@@ -215,34 +188,54 @@ const INBOUND_SERVICE_ACTIVITY_EXTRA_CSS = `
     background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
     padding: 10px 14px; margin-bottom: 14px;
   }
+
+  /* ── Activity table — same font sizes / row styling as DN Summary ── */
+  table.data-table { table-layout: fixed; }
+  table.data-table th,
+  table.data-table td { overflow-wrap: anywhere; word-break: break-word; }
   table.data-table th { text-align: left; }
-  table.data-table th.num { text-align: right; }
-  table.data-table td.num { text-align: right; }
+  table.data-table th.num,
+  table.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table tr.data-row:nth-child(even) td { background: #f8fafc; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr, table.data-table td, table.data-table th {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .box, .two-col { break-inside: avoid; page-break-inside: avoid; }
+    .section-label { break-after: avoid; page-break-after: avoid; }
+  }
 `;
+
+// Lets the React parent page trigger printing through postMessage
+// (report_common only provides the built-in button, so this is added to the body).
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
 
 // ─── HTML body renderer ─────────────────────────────────────────────────────
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
+// from report_common supply the company header, footer and page shell.
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
+function titleHtml(title: string, subtitle: string): string {
   return `
     <div class="doc-title-row">
       <div>
         <h1>${escapeHtml(title)}</h1>
         <div class="doc-sub">${escapeHtml(subtitle)}</div>
       </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
-      </div>
     </div>`;
 }
 
 function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
   const d = rows[0];
-
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
 
   const field = (label: string, value: unknown) => `
     <div class="field-row">
@@ -251,27 +244,27 @@ function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
     </div>`;
 
   const activityRows = rows.map((r) => `
-    <tr>
+    <tr class="data-row">
       <td>${escapeHtml(r.act_code)}</td>
       <td>${escapeHtml(r.other_services)}</td>
-      <td class="num">${numFmt(r.quantity, 3)}</td>
+      <td class="num">${escapeHtml(numFmt(r.quantity, 3))}</td>
       <td>${escapeHtml(r.transporter_name)}</td>
     </tr>`).join("");
 
   return `
-    ${printMetaHtml(reportTitle, `Job No: ${text(d.job_type)} ${text(d.job_no)} — Principal: ${text(d.prin_code)}`, printDateTime)}
+    ${titleHtml(reportTitle, `Job No: ${text(d.job_type)} ${text(d.job_no)} — Principal: ${text(d.prin_code)}`)}
 
     <div class="section-label">Job Information</div>
     <div class="two-col">
       <div>
-        ${field("Job No",   `${text(d.job_type)} ${text(d.job_no)}`.trim())}
+        ${field("Job No",    `${text(d.job_type)} ${text(d.job_no)}`.trim())}
         ${field("Principal", `${text(d.prin_code)} — ${text(d.prin_name)}`)}
         ${field("Invoice No", d.invoice_no)}
       </div>
       <div>
-        ${field("Ref #",       d.description1)}
-        ${field("SO No",       d.so_no)}
-        ${field("PO No",       d.po_no)}
+        ${field("Ref #",  d.description1)}
+        ${field("SO No",  d.so_no)}
+        ${field("PO No",  d.po_no)}
       </div>
     </div>
 
@@ -302,13 +295,13 @@ function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
         <div style="font-size:11px; color:#111827; white-space:pre-wrap;">${escapeHtml(d.remarks) || '<span class="nil">—</span>'}</div>
       </div>
     </div>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
 /**
  * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
+ * company reportHeader() and reportFooter() — same setup as DN Summary.
  */
 async function renderHtml(
   req: RequestWithUser,
@@ -322,29 +315,25 @@ async function renderHtml(
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
   const bodyHtml   = renderBodyHtml(rows, reportTitle);
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Object: ${escapeHtml(d.company_code)}-${escapeHtml(d.job_no)}`,
+    reportName: "rpt_inbound_service_activity",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
   });
 
-  const html = buildReportDocument({
+  return buildReportDocument({
     title: `${reportTitle} - ${text(d.job_no)}`,
     headerHtml,
     bodyHtml,
     footerHtml,
     extraCss: INBOUND_SERVICE_ACTIVITY_EXTRA_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
   });
-
-  return withPostMessagePrintListener(html);
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
-// theme, and a distinct bigger "reportTitle" style (matching the doc-title-row
-// used in HTML) so the Excel title no longer looks like an oversized column
-// header. AdmZip-based xlsx generation has no shared equivalent yet.
+// AdmZip-based xlsx generation has no shared equivalent yet.
+// Font is Arial (same as DN Summary Excel).
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
@@ -495,13 +484,13 @@ function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="7">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Arial"/></font>
+    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Arial"/></font>
+    <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
   </fonts>
   <fills count="5">
     <fill><patternFill patternType="none"/></fill>
@@ -605,8 +594,8 @@ export const getWmsInboundServiceActivityReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "Inbound Service Activity Report";
 
     if (!jobNo || !prinCode) {
@@ -614,11 +603,11 @@ export const getWmsInboundServiceActivityReportExcel = async (
       return;
     }
     const activityRows = await loadInboundActivityData(req, jobNo, prinCode);
-    const buffer        = buildExcelBuffer(activityRows, reportTitle);
+    const buffer       = buildExcelBuffer(activityRows, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Inbound_Service_Activity_${jobNo}.xlsx"`);
-    res.end(buffer); // res.end() matches the pattern — prevents Express buffer re-encoding
+    res.end(buffer);
   } catch (error: any) {
     console.error("Inbound Service Activity Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });

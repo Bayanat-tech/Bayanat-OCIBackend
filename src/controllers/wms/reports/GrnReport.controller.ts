@@ -6,14 +6,10 @@ import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
 
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
+type Orientation = "portrait" | "landscape" | "auto";
 
 // UOM-keyed totals e.g. { "PKT": 99, "CTN": 12 }
 type UomTotals = Record<string, number>;
@@ -127,7 +123,7 @@ function fmtUomTotals(map: UomTotals, primaryUom?: string): string {
 }
 
 /**
- * Merge two UomTotals maps (sum values for matching keys).
+ * Merge UomTotals maps (sum values for matching keys).
  */
 function mergeUomTotals(...maps: UomTotals[]): UomTotals {
   const result: UomTotals = {};
@@ -152,9 +148,9 @@ function fmtShortExcessCell(
 
   if (diffPuom === 0 && diffLuom === 0) return { text: "—", cls: "" };
 
-  const driver  = diffPuom !== 0 ? diffPuom : diffLuom;
+  const driver   = diffPuom !== 0 ? diffPuom : diffLuom;
   const isExcess = driver < 0;
-  const prefix  = isExcess ? "Excess: +" : "Short: -";
+  const prefix   = isExcess ? "Excess: +" : "Short: -";
 
   const parts: string[] = [];
   if (diffPuom !== 0) parts.push(`${numFmt(Math.abs(diffPuom))} ${pUom}`.trim());
@@ -163,10 +159,17 @@ function fmtShortExcessCell(
   return { text: `${prefix}${parts.join(" / ")}`, cls: isExcess ? "excess" : "short" };
 }
 
-/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
-function withPostMessagePrintListener(html: string): string {
-  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
-  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
+/**
+ * Reads the orientation from the query string. If the viewer sends nothing,
+ * returns "auto" and the CSS falls back to a width-based media query.
+ */
+function getOrientation(req: RequestWithUser): Orientation {
+  const raw = text(
+    req.query.orientation || req.query.view || req.query.layout || req.query.page_orientation
+  ).toLowerCase();
+  if (raw === "portrait" || raw === "p") return "portrait";
+  if (raw === "landscape" || raw === "l") return "landscape";
+  return "auto";
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -268,19 +271,16 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
   }));
 }
 
-// ─── Extra CSS specific to this report ─────────────────────────────────────
-// Landscape A4 + doc-title-row (Sales Invoice pattern) + flat job-header
-// block. The data table now uses the SHARED `.data-table` class from
-// report_common.ts, restyled here only with neutral grey banners + blue
-// accent (matching Sales Invoice), not the old solid-navy theme.
-// Short/Excess colors (red/green) are kept — that's business-meaning color,
-// not decorative theme color. report_common.ts itself is never touched.
+// ─── Extra CSS specific to this report (LANDSCAPE = default) ────────────────
+// (company letterhead / footer / .data-table / .right come from report_common;
+// font sizes and row styling follow DN Summary. Short/Excess red/green are
+// business-meaning colors and are kept.)
 
 const GRN_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 10mm 12mm; }
   .paper { max-width: 277mm; }
 
-  /* ── Title row — same pattern as Sales Invoice ── */
+  /* ── Title row — same as DN Summary ── */
   .doc-title-row {
     display: flex;
     justify-content: space-between;
@@ -297,13 +297,6 @@ const GRN_EXTRA_CSS = `
     margin: 2px 0 0;
     font-size: 11px;
     color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-    white-space: nowrap;
   }
 
   /* ── Flat job header block (label : value, no box) ── */
@@ -323,83 +316,154 @@ const GRN_EXTRA_CSS = `
   .job-value { font-size: 11px; font-weight: 700; color: #111827; }
   .job-value.nil { font-weight: 400; color: #9ca3af; }
 
-  /* ── Grouped data table — SAME theme as Sales Invoice's .data-table ── */
+  /* ── Grouped data table — same font sizes / row styling as DN Summary ── */
   table.data-table.grn-table { table-layout: fixed; }
-  table.data-table.grn-table col.c0  { width: 8%;  }
-  table.data-table.grn-table col.c1  { width: 8%;  }
+ table.data-table.grn-table th {
+    font-size: 10.5px;
+    padding: 7px 4px;
+    overflow-wrap: normal;
+    word-break: normal;
+    white-space: normal;
+    line-height: 1.25;
+  }
+ table.data-table.grn-table td {
+    font-size: 10.5px;
+    padding: 6px 4px;
+  }
+  table.data-table.grn-table td.right { text-align: right !important; font-variant-numeric: tabular-nums; }
+
+ table.data-table.grn-table col.c0  { width: 9%;  }
+  table.data-table.grn-table col.c1  { width: 9%;  }
   table.data-table.grn-table col.c2  { width: 9%;  }
-  table.data-table.grn-table col.c3  { width: 9%;  }
-  table.data-table.grn-table col.c4  { width: 7%;  }
-  table.data-table.grn-table col.c5  { width: 7%;  }
-  table.data-table.grn-table col.c6  { width: 14%; }
-  table.data-table.grn-table col.c7  { width: 11%; }
+  table.data-table.grn-table col.c3  { width: 8%;  }
+  table.data-table.grn-table col.c4  { width: 6%;  }
+  table.data-table.grn-table col.c5  { width: 6%;  }
+  table.data-table.grn-table col.c6  { width: 16%; }
+  table.data-table.grn-table col.c7  { width: 12%; }
   table.data-table.grn-table col.c8  { width: 14%; }
-  table.data-table.grn-table col.c9  { width: 13%; }
+  table.data-table.grn-table col.c9  { width: 11%; }
 
   table.data-table.grn-table thead tr.th-sub th {
     background: #f1f5f9; color: #0f172a; border-top: none;
   }
 
-  tr.group-row td {
-    background: #0b4ca1; color: #fff; font-weight: 700;
-    font-size: 11px; padding: 5px 10px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  tr.prod-row td {
-    background: #eef4fc; color: #0b4ca1; font-weight: 700;
-    font-size: 11px; padding: 4px 10px 4px 22px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    border-bottom: 1px solid #dbe6f5;
-  }
-  tr.prod-row td.prod-asn {
-    background: #eef4fc; color: #374151; font-weight: 600;
-    padding-left: 10px; text-align: right; font-size: 10.5px;
-  }
+  table.data-table tr.group-row td { background: #0b4ca1; color: #fff;    font-weight: 700; font-size: 11px;   padding: 6px 8px; border-bottom: none; }
+  table.data-table tr.prod-row  td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; padding: 4px 8px 4px 20px; }
+  table.data-table tr.prod-row  td.prod-asn { text-align: right; padding-left: 8px; padding-right: 8px; }
+  table.data-table tr.data-row:nth-child(even) td { background: #f8fafc; }
 
-  td.dim    { color: #9ca3af !important; font-weight: 400; }
-  td.short  { color: #dc2626 !important; font-weight: 700; }
-  td.excess { color: #16a34a !important; font-weight: 700; }
+  table.data-table td.dim    { color: #9ca3af !important; font-weight: 400; }
+  table.data-table td.short  { color: #dc2626 !important; font-weight: 700; }
+  table.data-table td.excess { color: #16a34a !important; font-weight: 700; }
 
-  tr.group-total td {
-    background: #f8fafc; padding: 5px 10px; font-size: 11px;
-    font-weight: 700; color: #0f172a; white-space: nowrap;
-    border-top: 1px solid #e2e8f0;
-  }
-  tr.grand-total td {
+  table.data-table tr.group-total td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px; }
+  table.data-table tr.grand-total td {
     background: #0b4ca1; color: #fff; font-weight: 700;
-    font-size: 12px; padding: 8px 10px;
+    font-size: 12px; padding: 8px 8px;
     border-top: 2px solid #083a7d;
   }
 
   @media print {
-    /* Keep section headers attached to their first data row */
-    tr.group-row,
-    tr.prod-row {
-      break-after: avoid;
-      page-break-after: avoid;
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr, table.data-table td, table.data-table th {
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
-    /* Keep totals attached to the group above them */
-    tr.group-total,
-    tr.grand-total {
-      break-before: avoid;
-      page-break-before: avoid;
-    }
+    table.data-table tr.group-row,
+    table.data-table tr.prod-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.group-total,
+    table.data-table tr.grand-total { break-before: avoid; page-break-before: avoid; }
+    .job-header { break-inside: avoid; page-break-inside: avoid; }
   }
 `;
 
+// ─── PORTRAIT override CSS ──────────────────────────────────────────────────
+// A4 portrait has ~190mm usable width (landscape has 277mm). These rules use
+// !important so they beat any white-space:nowrap / font-size / width coming
+// from report_common. They are applied in two ways:
+//   1. orientation=portrait  -> always applied
+//   2. no orientation sent   -> applied automatically when the page/iframe is
+//                               narrower than 900px (i.e. a portrait page)
+
+const PORTRAIT_RULES = `
+  .paper { max-width: 100% !important; }
+
+  table.data-table.grn-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  table.data-table.grn-table th,
+  table.data-table.grn-table td {
+    font-size: 8.5px !important;
+    padding: 4px 2px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    line-height: 1.2 !important;
+    overflow: hidden;
+  }
+  table.data-table.grn-table th { text-align: center !important; vertical-align: middle; }
+  table.data-table.grn-table thead tr.th-group th:first-child { text-align: left !important; }
+  table.data-table.grn-table th.right,
+  table.data-table.grn-table td.right { text-align: right !important; }
+
+  /* 10 columns, total = 100% */
+  table.data-table.grn-table col.c0 { width: 8%  !important; }  /* Mfg   */
+  table.data-table.grn-table col.c1 { width: 8%  !important; }  /* Exp   */
+  table.data-table.grn-table col.c2 { width: 8%  !important; }  /* Batch */
+  table.data-table.grn-table col.c3 { width: 8%  !important; }  /* Lot   */
+  table.data-table.grn-table col.c4 { width: 6%  !important; }  /* Gross */
+  table.data-table.grn-table col.c5 { width: 6%  !important; }  /* Net   */
+  table.data-table.grn-table col.c6 { width: 18% !important; }  /* Recv  */
+  table.data-table.grn-table col.c7 { width: 12% !important; }  /* Dam   */
+  table.data-table.grn-table col.c8 { width: 16% !important; }  /* Total */
+  table.data-table.grn-table col.c9 { width: 10% !important; }  /* S/E   */
+
+  table.data-table tr.group-row td,
+  table.data-table tr.group-total td { font-size: 9.5px !important; }
+  table.data-table tr.prod-row td    { font-size: 8.5px !important; padding-left: 6px !important; }
+  table.data-table tr.grand-total td { font-size: 9.5px !important; }
+
+  .job-header { gap: 0 8px !important; }
+  .job-label  { font-size: 9.5px !important; white-space: normal !important; }
+  .job-value  { font-size: 10px !important; }
+`;
+
+// Explicit portrait
+const GRN_PORTRAIT_CSS = `
+  @page { size: A4 portrait; margin: 10mm 10mm; }
+  ${PORTRAIT_RULES}
+`;
+
+// No orientation given -> apply portrait rules only on narrow pages
+const GRN_AUTO_NARROW_CSS = `
+  @media (max-width: 900px) {
+    ${PORTRAIT_RULES}
+  }
+`;
+
+// Lets the React parent page trigger printing through postMessage
+// (report_common only provides the built-in button, so this is added to the body).
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
+
 // ─── HTML body renderer ─────────────────────────────────────────────────────
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
+// from report_common supply the company header, footer and page shell.
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
+function titleHtml(title: string, subtitle: string): string {
   return `
     <div class="doc-title-row">
       <div>
         <h1>${escapeHtml(title)}</h1>
         <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
       </div>
     </div>`;
 }
@@ -412,10 +476,6 @@ function renderBodyHtml(
   reportTitle: string
 ): string {
   const r = firstRow || {};
-
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
 
   const grandRecvPuom = mergeUomTotals(...groups.map(g => g.recvByPuom));
   const grandRecvLuom = mergeUomTotals(...groups.map(g => g.recvByLuom));
@@ -457,16 +517,14 @@ function renderBodyHtml(
         const recvStr = fmtQtyCell(qtyPuom, drPuom, qtyLuom, drLuom);
         const damStr  = fmtQtyCell(qtyPuomDam, drPuom, qtyLuomDam, drLuom);
 
-        const totalPuomQty = qtyPuom + qtyPuomDam;
-        const totalLuomQty = qtyLuom + qtyLuomDam;
-        const totalStr = fmtQtyCell(totalPuomQty, drPuom, totalLuomQty, drLuom);
+        const totalStr = fmtQtyCell(qtyPuom + qtyPuomDam, drPuom, qtyLuom + qtyLuomDam, drLuom);
 
         const qtyPuomExp = parseFloat(String(dr.qtypuom_expected)) || 0;
         const qtyLuomExp = parseFloat(String(dr.qtyluom_expected)) || 0;
         const shortExcess = fmtShortExcessCell(qtyPuomExp, qtyPuom, drPuom, qtyLuomExp, qtyLuom, drLuom);
 
         bodyRows += `
-          <tr>
+          <tr class="data-row">
             <td>${escapeHtml(dateText(dr.mfg_date))}</td>
             <td>${escapeHtml(dateText(dr.exp_date))}</td>
             <td>${escapeHtml(dr.batch_no  || "—")}</td>
@@ -488,7 +546,7 @@ function renderBodyHtml(
       <tr class="group-total">
         <td colspan="6">Group Total : ${escapeHtml(gs.groupName)}</td>
         <td class="right">${escapeHtml(fmtUomTotals(gs.recvByPuom))}${Object.keys(gs.recvByLuom).length ? " " + escapeHtml(fmtUomTotals(gs.recvByLuom)) : ""}</td>
-        <td class="right dim">${escapeHtml(fmtUomTotals(gs.damByPuom))}${Object.keys(gs.damByLuom).length ? " " + escapeHtml(fmtUomTotals(gs.damByLuom)) : ""}</td>
+        <td class="right">${escapeHtml(fmtUomTotals(gs.damByPuom))}${Object.keys(gs.damByLuom).length ? " " + escapeHtml(fmtUomTotals(gs.damByLuom)) : ""}</td>
         <td class="right">${escapeHtml(fmtUomTotals(gsTotalPuom))}${Object.keys(gsTotalLuom).length ? " " + escapeHtml(fmtUomTotals(gsTotalLuom)) : ""}</td>
         <td></td>
       </tr>`;
@@ -504,7 +562,7 @@ function renderBodyHtml(
     </tr>`;
 
   return `
-    ${printMetaHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`, printDateTime)}
+    ${titleHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`)}
 
     <div class="job-header">
       <div class="job-col">
@@ -529,7 +587,7 @@ function renderBodyHtml(
       <div class="job-col">
         <div class="job-row">
           <span class="job-label">WMS GRN Date</span>
-          <span class="job-value${r.grn_date ? "" : " nil"}">${r.grn_date ? dateText(r.grn_date) : "&nbsp;"}</span>
+          <span class="job-value${r.grn_date ? "" : " nil"}">${r.grn_date ? escapeHtml(dateText(r.grn_date)) : "&nbsp;"}</span>
         </div>
         <div class="job-row">
           <span class="job-label">Container No</span>
@@ -587,10 +645,10 @@ function renderBodyHtml(
           <th>Lot No</th>
           <th>Gross WT</th>
           <th>Net WT</th>
-          <th class="right">Qty (Primary + Least)</th>
-          <th class="right">Qty (Primary + Least)</th>
-          <th class="right">Qty (Primary + Least)</th>
-          <th class="right">Qty (Primary + Least)</th>
+          <th class="right">Qty </th>
+          <th class="right">Qty</th>
+          <th class="right">Qty </th>
+          <th class="right">Qty</th>
         </tr>
       </thead>
       <tbody>
@@ -598,13 +656,14 @@ function renderBodyHtml(
         ${grandRow}
       </tbody>
     </table>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
 /**
  * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
+ * company reportHeader() and reportFooter() — same setup as DN Summary.
+ * Portrait adds GRN_PORTRAIT_CSS after the base CSS so its rules override.
  */
 async function renderHtml(
   req: RequestWithUser,
@@ -614,33 +673,35 @@ async function renderHtml(
   prinCode: string,
   reportTitle: string,
   loginId: string,
-  autoPrint: boolean
+  autoPrint: boolean,
+  orientation: Orientation = "auto"
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
   const bodyHtml   = renderBodyHtml(groups, firstRow, jobNo, prinCode, reportTitle);
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Report Name: ${escapeHtml(jobNo)}`,
+    reportName: "rpt_grn",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
   });
 
-  const html = buildReportDocument({
+  return buildReportDocument({
     title: `${reportTitle} - ${jobNo}`,
     headerHtml,
     bodyHtml,
     footerHtml,
-    extraCss: GRN_EXTRA_CSS,
+    extraCss:
+      orientation === "portrait"  ? GRN_EXTRA_CSS + GRN_PORTRAIT_CSS :
+      orientation === "landscape" ? GRN_EXTRA_CSS :
+                                    GRN_EXTRA_CSS + GRN_AUTO_NARROW_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
   });
-
-  return withPostMessagePrintListener(html);
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
-// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
-// theme (short/excess red/green retained). AdmZip-based xlsx generation
-// has no shared equivalent yet.
+// AdmZip-based xlsx generation has no shared equivalent yet.
+// Font is Arial (same as DN Summary Excel).
+// STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:        0,
@@ -823,15 +884,15 @@ function buildExcelBuffer(groups: GroupSection[], jobNo: string, prinCode: strin
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="9">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><sz val="10"/><color rgb="FFDC2626"/><name val="Calibri"/></font>
-    <font><sz val="10"/><color rgb="FF16A34A"/><name val="Calibri"/></font>
-    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Arial"/></font>
+    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FFDC2626"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FF16A34A"/><name val="Arial"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
@@ -922,6 +983,7 @@ export const getGrnReportHtml = async (
     const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title)    || "Goods Receipt Note";
     const autoPrint   = req.query.print === "true";
+    const orientation = getOrientation(req);
 
     if (!jobNo || !prinCode) {
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
@@ -932,7 +994,10 @@ export const getGrnReportHtml = async (
     const groups = groupRows(rows);
     const first  = rows[0] ?? null;
 
-    const html = await renderHtml(req, groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), autoPrint);
+    const html = await renderHtml(
+      req, groups, first, jobNo, prinCode, reportTitle,
+      text(req.user?.loginid), autoPrint, orientation
+    );
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
@@ -946,8 +1011,9 @@ export const getGrnReportPdf = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no  || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
+    const orientation = getOrientation(req);
 
     if (!jobNo || !prinCode) {
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
@@ -958,7 +1024,10 @@ export const getGrnReportPdf = async (
     const groups      = groupRows(rows);
     const first       = rows[0] ?? null;
     const reportTitle = "Goods Receipt Note";
-    const html = await renderHtml(req, groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
+    const html = await renderHtml(
+      req, groups, first, jobNo, prinCode, reportTitle,
+      text(req.user?.loginid), true, orientation
+    );
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", `inline; filename="GRN_${jobNo}.pdf"`);
@@ -974,8 +1043,8 @@ export const getGrnReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no  || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "Goods Receipt Note";
 
     if (!jobNo || !prinCode) {

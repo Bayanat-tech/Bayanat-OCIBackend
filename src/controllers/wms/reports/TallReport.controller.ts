@@ -6,11 +6,6 @@ import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
 
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
@@ -86,12 +81,6 @@ function toNum(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
-function withPostMessagePrintListener(html: string): string {
-  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
-  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
-}
-
 // ─── Data loader ──────────────────────────────────────────────────────────────
 
 async function loadTallyData(
@@ -148,18 +137,13 @@ function groupRows(rows: ReportRow[]): ProductGroup[] {
 }
 
 // ─── Extra CSS specific to this report ─────────────────────────────────────
-// Landscape A4 + the flat job header block + doc-title-row (same pattern as
-// Sales Invoice / Job Details). The DATA TABLE itself now uses the shared
-// `.data-table` / `.totals-box` classes from report_common.ts as-is — no
-// local color overrides — so it renders EXACTLY like the Sales Invoice
-// table (grey header, plain rows, blue totals box at the bottom).
-// report_common.ts itself is never touched.
+// (company letterhead / footer / .data-table / .right come from report_common;
+// font sizes, row styling and totals box follow DN Summary)
 
 const TALLY_EXTRA_CSS = `
-  @page { size: A4 landscape; margin: 10mm 12mm; }
-  .paper { max-width: 277mm; }
+  /* No forced @page orientation: the viewer's Portrait/Landscape selector decides */
 
-  /* ── Title row — same pattern as Sales Invoice / Job Details ── */
+  /* ── Title row ── */
   .doc-title-row {
     display: flex;
     justify-content: space-between;
@@ -177,15 +161,8 @@ const TALLY_EXTRA_CSS = `
     font-size: 11px;
     color: #64748b;
   }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-    white-space: nowrap;
-  }
 
-  /* ── Flat job header block (label : value, no box) ── */
+  /* ── Flat job header block ── */
   .job-header {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -202,50 +179,89 @@ const TALLY_EXTRA_CSS = `
   .job-value { font-size: 11px; font-weight: 700; color: #111827; }
   .job-value.nil { font-weight: 400; color: #9ca3af; }
 
-  /* ── Column widths for the grouped table (colors come from the shared
-       .data-table / .group-title / .totals-box classes — no overrides) ── */
-  table.data-table.tally-table { table-layout: fixed; }
-  table.data-table.tally-table col.c0 { width: 26%; }
-  table.data-table.tally-table col.c1 { width: 12%; }
+  /* ── Data table: works in portrait and landscape ── */
+  table.data-table.tally-table { table-layout: fixed; width: 100%; }
+  table.data-table.tally-table th,
+  table.data-table.tally-table td {
+    font-size: 11px;
+    padding: 6px 4px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+  table.data-table.tally-table th { line-height: 1.25; vertical-align: bottom; }
+  table.data-table.tally-table th.right,
+  table.data-table.tally-table td.right { text-align: right !important; font-variant-numeric: tabular-nums; }
+
+  table.data-table.tally-table col.c0 { width: 22%; }
+  table.data-table.tally-table col.c1 { width: 13%; }
   table.data-table.tally-table col.c2 { width: 13%; }
-  table.data-table.tally-table col.c3 { width: 13%; }
+  table.data-table.tally-table col.c3 { width: 12%; }
   table.data-table.tally-table col.c4 { width: 11%; }
   table.data-table.tally-table col.c5 { width: 11%; }
-  table.data-table.tally-table col.c6 { width: 7%;  }
-  table.data-table.tally-table col.c7 { width: 7%;  }
+  table.data-table.tally-table col.c6 { width: 9%;  }
+  table.data-table.tally-table col.c7 { width: 9%;  }
 
-  table.data-table.tally-table td.group-title-cell {
-    background: #f1f5f9;
-    font-weight: 800;
-    font-size: 12px;
-    color: #0f172a;
-    padding: 5px 8px;
+  table.data-table tr.group-title-row td { background: #e8eef7; color: #0b4ca1; font-weight: 700; font-size: 11.5px; padding: 6px 8px; }
+  table.data-table tr.sub-total td { background: #f8fafc; color: #0b4ca1; font-weight: 700; font-size: 11px; }
+
+  /* ── Totals box ── */
+  .totals-box {
+    margin-top: 16px;
+    margin-left: auto;
+    width: 280px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
   }
-  table.data-table.tally-table tr.sub-total td {
+  .totals-box .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 14px;
+    font-size: 11.5px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .totals-box .row.grand {
+    background: #0b4ca1;
+    color: #fff;
     font-weight: 700;
-    color: #0f172a;
-    background: #f8fafc;
+    font-size: 13px;
+    border-bottom: none;
   }
 
   @media print {
-    tr.group-title-row { break-after: avoid; page-break-after: avoid; }
-    tr.sub-total { break-before: avoid; page-break-before: avoid; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr, table.data-table td, table.data-table th {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    table.data-table tr.group-title-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.sub-total { break-before: avoid; page-break-before: avoid; }
+    .job-header, .totals-box { break-inside: avoid; page-break-inside: avoid; }
   }
 `;
 
+// Lets the React parent page trigger printing through postMessage
+// (report_common only provides the built-in button, so this is added to the body).
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
+
 // ─── HTML body renderer ─────────────────────────────────────────────────────
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
+// from report_common supply the company header, footer and page shell.
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
+function titleHtml(title: string, subtitle: string): string {
   return `
     <div class="doc-title-row">
       <div>
         <h1>${escapeHtml(title)}</h1>
         <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
       </div>
     </div>`;
 }
@@ -259,10 +275,6 @@ function renderBodyHtml(
 ): string {
   const r = firstRow || {};
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
   let grandPalletCount = 0, grandAsn = 0, grandTally = 0;
   for (const pg of groups) {
     grandPalletCount += pg.palletCount;
@@ -275,12 +287,12 @@ function renderBodyHtml(
   for (const pg of groups) {
     bodyRows += `
       <tr class="group-title-row">
-        <td colspan="8" class="group-title-cell">${escapeHtml(pg.prodCode)} | ${escapeHtml(pg.prodName)}</td>
+        <td colspan="8">${escapeHtml(pg.prodCode)} | ${escapeHtml(pg.prodName)}</td>
       </tr>`;
 
     for (const dr of pg.rows) {
       bodyRows += `
-        <tr>
+        <tr class="data-row">
           <td></td>
           <td>${escapeHtml(dr.pallet_id || "—")}</td>
           <td>${escapeHtml(dr.batch_no  || "—")}</td>
@@ -302,7 +314,7 @@ function renderBodyHtml(
   }
 
   return `
-    ${printMetaHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`, printDateTime)}
+    ${titleHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`)}
 
     <div class="job-header">
       <div class="job-col">
@@ -312,7 +324,7 @@ function renderBodyHtml(
         </div>
         <div class="job-row">
           <span class="job-label">Job Date</span>
-          <span class="job-value${r.job_date ? "" : " nil"}">${r.job_date ? dateText(r.job_date) : "&nbsp;"}</span>
+          <span class="job-value${r.job_date ? "" : " nil"}">${r.job_date ? escapeHtml(dateText(r.job_date)) : "&nbsp;"}</span>
         </div>
         <div class="job-row">
           <span class="job-label">Principal</span>
@@ -367,13 +379,13 @@ function renderBodyHtml(
       <div class="row"><span>Total ASN Qty</span><span>${escapeHtml(qtyFmt(grandAsn))}</span></div>
       <div class="row grand"><span>Total Tally Qty</span><span>${escapeHtml(qtyFmt(grandTally))}</span></div>
     </div>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
 /**
  * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
+ * company reportHeader() and reportFooter() — same setup as DN Summary.
  */
 async function renderHtml(
   req: RequestWithUser,
@@ -388,26 +400,26 @@ async function renderHtml(
   const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
   const bodyHtml   = renderBodyHtml(groups, firstRow, jobNo, prinCode, reportTitle);
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Report Name: ${escapeHtml(jobNo)}`,
+    reportName: "rpt_tally_report",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
   });
 
-  const html = buildReportDocument({
+  return buildReportDocument({
     title: `${reportTitle} - ${jobNo}`,
     headerHtml,
     bodyHtml,
     footerHtml,
     extraCss: TALLY_EXTRA_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
   });
-
-  return withPostMessagePrintListener(html);
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
-// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
+// AdmZip-based xlsx generation has no shared equivalent yet.
+// Font is Arial (same as DN Summary Excel).
+// STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:      0,
@@ -548,12 +560,12 @@ function buildExcelBuffer(groups: ProductGroup[], jobNo: string, prinCode: strin
     <numFmt numFmtId="164" formatCode="#,##0"/>
   </numFmts>
   <fonts count="6">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
-    <font><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
-    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FF111827"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Arial"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
   </fonts>
   <fills count="5">
     <fill><patternFill patternType="none"/></fill>
@@ -667,7 +679,7 @@ export const getTallyReportPdf = async (
 
     const rows        = await loadTallyData(req, jobNo, prinCode);
     const groups      = groupRows(rows);
-    const first        = rows[0] ?? null;
+    const first       = rows[0] ?? null;
     const reportTitle = "Inbound Tally Report";
     const html = await renderHtml(req, groups, first, jobNo, prinCode, reportTitle, text(req.user?.loginid), true);
 
@@ -685,8 +697,8 @@ export const getTallyReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no  || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "Inbound Tally Report";
 
     if (!jobNo || !prinCode) {

@@ -6,11 +6,6 @@ import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
 
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
@@ -119,10 +114,10 @@ async function loadJobData(
     const result = await conn.execute(
       `SELECT *
        FROM VW_BOWM_JOBTXN
-       WHERE COMPANY_CODE = '${req.user.company_code}'
-         AND job_no    = :job_no
-         AND prin_code = :prin_code`,
-      { job_no: jobNo, prin_code: prinCode },
+       WHERE COMPANY_CODE = :company_code
+         AND job_no       = :job_no
+         AND prin_code    = :prin_code`,
+      { company_code: req.user.company_code, job_no: jobNo, prin_code: prinCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const rows = normalize(result.rows as any[]);
@@ -135,8 +130,7 @@ async function loadJobData(
 }
 
 // ─── Extra CSS specific to this report ─────────────────────────────────────
-// (record/field layout — the shared COMMON_REPORT_CSS only ships table/list
-// styles, so the field-row/box/progress-cell rules live here as extraCss)
+// (company letterhead / footer / .data-table come from report_common)
 
 const JOB_DETAILS_EXTRA_CSS = `
 
@@ -156,12 +150,6 @@ const JOB_DETAILS_EXTRA_CSS = `
     margin: 2px 0 0;
     font-size: 11px;
     color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
   }
 
   .section-label {
@@ -194,26 +182,41 @@ const JOB_DETAILS_EXTRA_CSS = `
   .prog-cell.done { background: #f0fdf4; }
   .prog-date { display: block; font-size: 9.5px; color: #374151; }
   .prog-cell:not(.done) .prog-date { color: #9ca3af; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr, table.data-table td, table.data-table th {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .box, .two-col { break-inside: avoid; page-break-inside: avoid; }
+    .section-label { break-after: avoid; page-break-after: avoid; }
+  }
 `;
+
+// Lets the React parent page trigger printing through postMessage
+// (report_common only provides the built-in button, so this is added to the body).
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
 
 // ─── HTML body renderer ─────────────────────────────────────────────────────
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
+// from report_common supply the company header, footer and page shell.
 
-function renderBodyHtml(d: ReportRow, reportTitle: string): string  {
-   const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-   const titleRowHtml = `
+function renderBodyHtml(d: ReportRow, reportTitle: string): string {
+  const titleRowHtml = `
     <div class="doc-title-row">
       <div>
         <h1>${escapeHtml(reportTitle)}</h1>
-        <div class="doc-sub">Job No: ${escapeHtml(d.job_no)} &mdash; ${escapeHtml(d.company_code)}</div>
-      </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
+        <div class="doc-sub">Job No: ${escapeHtml(d.job_no)}</div>
       </div>
     </div>`;
+
   const progressCells = PROGRESS_COLS.map((col) => {
     const dateVal = dateText(d[col.dateKey]);
     const isDone  = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
@@ -283,13 +286,13 @@ function renderBodyHtml(d: ReportRow, reportTitle: string): string  {
       </thead>
       <tbody><tr>${progressCells}</tr></tbody>
     </table>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
 /**
  * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
+ * company reportHeader() and reportFooter() — same setup as DN Summary.
  */
 async function renderHtml(
   req: RequestWithUser,
@@ -299,11 +302,11 @@ async function renderHtml(
   autoPrint: boolean
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
-  const bodyHtml   = renderBodyHtml(d,  reportTitle);
+  const bodyHtml   = renderBodyHtml(d, reportTitle);
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Object: ${escapeHtml(d.company_code)}-${escapeHtml(d.job_no)}`,
+    reportName: "rpt_job_details",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
   });
 
   return buildReportDocument({
@@ -313,12 +316,12 @@ async function renderHtml(
     footerHtml,
     extraCss: JOB_DETAILS_EXTRA_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
   });
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
+// AdmZip-based xlsx generation has no shared equivalent yet.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
@@ -563,9 +566,7 @@ function buildExcelBuffer(d: ReportRow): Buffer {
 
 /**
  * GET /api/wms/inbound/reports/job-details/:job_no
- *
- * Returns self-contained HTML for the Dialog iframe, built on the shared
- * reportCommon shell (company header + footer + print CSS).
+ * Returns self-contained HTML built on the shared report_common shell.
  */
 export const getWmsJobDetailsReportHtml = async (
   req: RequestWithUser,
@@ -593,9 +594,7 @@ export const getWmsJobDetailsReportHtml = async (
 
 /**
  * GET /api/wms/inbound/reports/job-details/:job_no/excel
- *
- * Streams a styled .xlsx using AdmZip — unchanged from before, since
- * reportCommon currently only covers HTML reports.
+ * Streams a styled .xlsx using AdmZip.
  */
 export const getWmsJobDetailsReportExcel = async (
   req: RequestWithUser,

@@ -6,11 +6,6 @@ import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
 
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
@@ -87,12 +82,6 @@ function numFmt(value: unknown, decimals = 3): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-}
-
-/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
-function withPostMessagePrintListener(html: string): string {
-  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
-  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -172,17 +161,14 @@ function groupRows(rows: ReportRow[]): UserGroup[] {
 }
 
 // ─── Extra CSS specific to this report ─────────────────────────────────────
-// Landscape A4 + doc-title-row (Sales Invoice pattern) + info panel +
-// signature strip. The data table now uses the SHARED `.data-table` class
-// from report_common.ts, restyled here only with neutral grey banners +
-// blue accent (matching Sales Invoice), not the old solid-navy theme.
-// report_common.ts itself is never touched.
+// (company letterhead / footer / .data-table / .right come from report_common;
+// font sizes and row styling follow DN Summary)
 
 const TALLY_PUTAWAY_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 10mm 12mm; }
   .paper { max-width: 277mm; }
 
-  /* ── Title row — same pattern as Sales Invoice ── */
+  /* ── Title row — same as DN Summary ── */
   .doc-title-row {
     display: flex;
     justify-content: space-between;
@@ -199,13 +185,6 @@ const TALLY_PUTAWAY_EXTRA_CSS = `
     margin: 2px 0 0;
     font-size: 11px;
     color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-    white-space: nowrap;
   }
 
   /* ── Info panel ── */
@@ -240,8 +219,13 @@ const TALLY_PUTAWAY_EXTRA_CSS = `
   .time-box.total { grid-column: 1 / -1; border-color: #0b4ca1; background: #eef4fc; }
   .time-box.total .time-box-label { color: #0b4ca1; }
 
-  /* ── Grouped data table — SAME theme as Sales Invoice's .data-table ── */
+  /* ── Grouped data table — same font sizes / row styling as DN Summary ── */
   table.data-table.putaway-table { table-layout: fixed; }
+  table.data-table.putaway-table th,
+  table.data-table.putaway-table td { overflow-wrap: anywhere; word-break: break-word; }
+  table.data-table.putaway-table td.right,
+  table.data-table.putaway-table th.right { text-align: right !important; font-variant-numeric: tabular-nums; }
+
   table.data-table.putaway-table col.c0  { width: 7%;  }
   table.data-table.putaway-table col.c1  { width: 9%;  }
   table.data-table.putaway-table col.c2  { width: 9%;  }
@@ -258,30 +242,16 @@ const TALLY_PUTAWAY_EXTRA_CSS = `
     background: #f1f5f9; color: #0f172a; border-top: none;
   }
 
-  tr.user-row td {
+  table.data-table tr.user-row  td { background: #0b4ca1; color: #fff;    font-weight: 700; font-size: 11px;   padding: 6px 8px; border-bottom: none; }
+  table.data-table tr.prod-row  td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; padding: 4px 8px 4px 20px; }
+  table.data-table tr.data-row:nth-child(even) td { background: #f8fafc; }
+
+  table.data-table tr.prod-total td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; }
+  table.data-table tr.prod-total td.total-label { padding-left: 20px; }
+  table.data-table tr.user-total td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px; }
+  table.data-table tr.grand-total td {
     background: #0b4ca1; color: #fff; font-weight: 700;
-    font-size: 11px; padding: 5px 10px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  tr.prod-row td {
-    background: #eef4fc; color: #0b4ca1; font-weight: 700;
-    font-size: 11px; padding: 4px 10px 4px 22px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    border-bottom: 1px solid #dbe6f5;
-  }
-  tr.prod-total td {
-    background: #f8fafc; padding: 4px 10px; font-size: 11px;
-    font-weight: 700; color: #0f172a;
-    border-top: 1px solid #e2e8f0; white-space: nowrap;
-  }
-  tr.prod-total td.total-label { padding-left: 22px; }
-  tr.user-total td {
-    background: #eef4fc; padding: 5px 10px; font-size: 11px;
-    font-weight: 700; color: #0b4ca1; white-space: nowrap;
-  }
-  tr.grand-total td {
-    background: #0b4ca1; color: #fff; font-weight: 700;
-    font-size: 12px; padding: 8px 10px;
+    font-size: 12px; padding: 8px 8px;
     border-top: 2px solid #083a7d;
   }
 
@@ -303,24 +273,41 @@ const TALLY_PUTAWAY_EXTRA_CSS = `
   .sig-group.supervisor .sig-row { margin-bottom: 10px; }
 
   @media print {
-    tr.user-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
-    tr.prod-total, tr.user-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr, table.data-table td, table.data-table th {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    table.data-table tr.user-row,
+    table.data-table tr.prod-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.prod-total,
+    table.data-table tr.user-total,
+    table.data-table tr.grand-total { break-before: avoid; page-break-before: avoid; }
+    .info-panel, .sig-strip { break-inside: avoid; page-break-inside: avoid; }
   }
 `;
 
+// Lets the React parent page trigger printing through postMessage
+// (report_common only provides the built-in button, so this is added to the body).
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
+
 // ─── HTML body renderer ─────────────────────────────────────────────────────
 // Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
+// from report_common supply the company header, footer and page shell.
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
+function titleHtml(title: string, subtitle: string): string {
   return `
     <div class="doc-title-row">
       <div>
         <h1>${escapeHtml(title)}</h1>
         <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
       </div>
     </div>`;
 }
@@ -337,11 +324,7 @@ function renderBodyHtml(
 
   const r = firstRow || {};
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
-  const allRows  = userGroups.flatMap((u) => u.products.flatMap((p) => p.rows));
+  const allRows    = userGroups.flatMap((u) => u.products.flatMap((p) => p.rows));
   const tallyStart = allRows.map((x) => x.start_tally_dt).filter(Boolean).sort()[0] ?? null;
   const tallyEnd   = allRows.map((x) => x.end_tally_dt).filter(Boolean).sort().reverse()[0] ?? null;
   const putStart   = allRows.map((x) => x.start_put_dt).filter(Boolean).sort()[0] ?? null;
@@ -388,7 +371,7 @@ function renderBodyHtml(
 
       for (const dr of pg.rows) {
         bodyRows += `
-          <tr>
+          <tr class="data-row">
             <td>${escapeHtml(dr.site_ind  || "—")}</td>
             <td>${escapeHtml(dr.lot_no    || "—")}</td>
             <td>${escapeHtml(dr.pallet_id || "—")}</td>
@@ -433,7 +416,7 @@ function renderBodyHtml(
     </tr>`;
 
   return `
-    ${printMetaHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`, printDateTime)}
+    ${titleHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`)}
 
     <div class="info-panel">
       <div class="info-col">
@@ -572,13 +555,13 @@ function renderBodyHtml(
         </div>
       </div>
     </div>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
 /**
  * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
+ * company reportHeader() and reportFooter() — same setup as DN Summary.
  */
 async function renderHtml(
   req: RequestWithUser,
@@ -593,27 +576,25 @@ async function renderHtml(
   const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
   const bodyHtml   = renderBodyHtml(userGroups, firstRow, jobNo, prinCode, reportTitle);
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Object: ${escapeHtml(jobNo)}`,
+    reportName: "rpt_tally_putaway",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
   });
 
-  const html = buildReportDocument({
+  return buildReportDocument({
     title: `${reportTitle} - ${jobNo}`,
     headerHtml,
     bodyHtml,
     footerHtml,
     extraCss: TALLY_PUTAWAY_EXTRA_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
   });
-
-  return withPostMessagePrintListener(html);
 }
 
 // ─── Excel builder ─────────────────────────────────────────────────────────────
-// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
-// theme. AdmZip-based xlsx generation has no shared equivalent yet.
+// AdmZip-based xlsx generation has no shared equivalent yet.
+// Font is Arial (same as DN Summary Excel).
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
@@ -786,13 +767,13 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="7">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Arial"/></font>
+    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
@@ -961,8 +942,8 @@ export const getTallyPutawayReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no  || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "Putaway Detail Report";
 
     if (!jobNo || !prinCode) {
