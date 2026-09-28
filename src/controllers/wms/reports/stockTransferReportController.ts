@@ -1,4 +1,4 @@
-// src/controllers/wms/reports/stockTransferReport.controller.ts
+// src/controllers/wms/reports/stockTransferReportController.ts
 import { Response } from "express";
 import oracledb from "oracledb";
 import * as XLSX from "xlsx";
@@ -94,7 +94,7 @@ function yesNo(val: any): string {
   return s === "Y" || s === "1" || s === "YES" || s === "TRUE" ? "Yes" : "No";
 }
 
-// ─── Request Param Parser (reads BODY first, then query/params) ──────────────
+// ─── Request Param Parser ─────────────────────────────────────────────────────
 
 function parseParams(req: RequestWithUser) {
   const body = req.body || {};
@@ -108,22 +108,24 @@ function parseParams(req: RequestWithUser) {
     return "";
   };
 
-  const companyCode = pick(
-    body.company_code,
-    body.code1,
-    q.company_code,
-    p.company_code,
-    req.user?.company_code,
-  ) || "All";
+  const companyCode =
+    pick(
+      body.company_code,
+      body.code1,
+      q.company_code,
+      p.company_code,
+      req.user?.company_code,
+    ) || "All";
 
-  const prinCode = pick(
-    body.prin_code,
-    body.principal_code,
-    body.code2,
-    q.prin_code,
-    q.principal_code,
-    p.prin_code,
-  ) || "All";
+  const prinCode =
+    pick(
+      body.prin_code,
+      body.principal_code,
+      body.code2,
+      q.prin_code,
+      q.principal_code,
+      p.prin_code,
+    ) || "All";
 
   const stnNoRaw = pick(
     body.stn_no,
@@ -132,7 +134,7 @@ function parseParams(req: RequestWithUser) {
     p.stn_no,
     p.stnNo,
   );
-  const stnNo = stnNoRaw.replace(/'/g, ""); // strip legacy single-quotes callers may still send
+  const stnNo = stnNoRaw.replace(/'/g, "");
 
   const reportType: ReportType =
     pick(body.report_type, body.reportType, q.report_type, q.reportType, "Transfer") ===
@@ -150,11 +152,6 @@ function parseParams(req: RequestWithUser) {
 }
 
 // ─── Data Loaders ────────────────────────────────────────────────────────────
-
-// Both loaders now use bind variables for every user-supplied value. The old
-// buildStockTransferSql / buildStockConfirmationSql interpolated company_code,
-// prin_code and stn_no straight into the SQL string — an obvious injection
-// vector even though those values come from query params.
 
 async function loadStockTransferData(req: RequestWithUser): Promise<ReportRow[]> {
   const p = parseParams(req);
@@ -346,36 +343,57 @@ function groupConfirmationRows(rows: ReportRow[]): ConfirmationLine[] {
     });
 }
 
-// ─── Stock Transfer-only CSS (extraCss for buildReportDocument) ──────────────
+// ─── Stock Transfer CSS — report_common aligned ──────────────────────────────
 
 const STOCK_TRANSFER_EXTRA_CSS = `
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
+  /* No @page/body margins — from report_common COMMON_REPORT_CSS */
+
+  .doc-title-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0; font-size: 18px; font-weight: 800; color: #0b4ca1;
   }
 
-  table.stock-transfer-table th {
-    background: #f3f4f6;
-    font-weight: 700;
+  .info-block {
+    display: flex; justify-content: space-between; gap: 24px;
+    margin-bottom: 12px; padding-bottom: 10px;
+    border-bottom: 2px solid #0b4ca1;
+    font-size: 11px;
+  }
+  .info-left, .info-right { display: flex; flex-direction: column; gap: 3px; }
+  .info-block .label { color: #64748b; font-weight: 600; }
+
+  table.stock-transfer-table {
+    width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 3px;
+  }
+  table.stock-transfer-table thead th {
+    background: #f1f5f9; color: #0f172a; font-weight: 700;
+    font-size: 10px; padding: 6px 5px; text-align: center;
+    border-top: 1px solid #475569; border-bottom: 1px solid #475569;
+  }
+  table.stock-transfer-table tbody td {
+    padding: 4px 5px; border-bottom: 1px solid #e2e8f0; color: #0f172a;
+    vertical-align: top;
   }
   table.stock-transfer-table .group-header td {
-    background: #f9fafb;
-    font-weight: 700;
-    border-top: 2px solid #185FA5;
+    background: #0b4ca1; color: #fff; font-weight: 700;
+    border-top: 2px solid #093d82;
   }
   table.stock-transfer-table .status-row td {
-    border-top: none;
-    font-style: italic;
-    color: #555;
-    padding-top: 0;
-    line-height: 1.2;
+    border-top: none; font-style: italic; color: #64748b;
+    padding-top: 0; line-height: 1.2; background: #f8fafc;
   }
   table.stock-transfer-table .subtotal td {
-    background: #f3f4f6;
-    font-weight: 700;
-    border-top: 2px solid #333;
+    background: #f1f5f9; font-weight: 700; color: #0b4ca1;
+    border-top: 2px solid #0b4ca1;
   }
+  .center { text-align: center; }
+  .left { text-align: left; }
+  .right { text-align: right; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .muted { color: #64748b; }
 `;
 
 // ─── HTML Body Renderers ─────────────────────────────────────────────────────
@@ -465,6 +483,12 @@ function renderStockTransferBody(rows: ReportRow[]): string {
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
+
+    <script>
+      window.addEventListener("message", (e) => {
+        if (e.data === "print") window.print();
+      });
+    </script>
   `;
 }
 
@@ -578,6 +602,12 @@ function renderStockConfirmationBody(rows: ReportRow[]): string {
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
+
+    <script>
+      window.addEventListener("message", (e) => {
+        if (e.data === "print") window.print();
+      });
+    </script>
   `;
 }
 
@@ -744,7 +774,7 @@ export const getStockTransferReportHtml = async (
     const rows = await loadStockTransferData(req);
 
     if (!rows.length) {
-      res.status(404).json({
+      res.status(400).json({
         success: false,
         message: `No stock transfer data found for STN ${params.stnNo}`,
       });
@@ -769,6 +799,7 @@ export const getStockTransferReportHtml = async (
       footerHtml,
       extraCss: STOCK_TRANSFER_EXTRA_CSS,
       autoPrint: req.query.print !== "false",
+      showPrintButton: true,
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -791,7 +822,7 @@ export const exportStockTransferReportExcel = async (
     const rows = await loadStockTransferData(req);
 
     if (!rows.length) {
-      res.status(404).json({
+      res.status(400).json({
         success: false,
         message: `No stock transfer data found for STN ${params.stnNo}`,
       });
@@ -852,6 +883,7 @@ export const getStockConfirmationReportHtml = async (
       footerHtml,
       extraCss: STOCK_TRANSFER_EXTRA_CSS,
       autoPrint: req.query.print !== "false",
+      showPrintButton: true,
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
