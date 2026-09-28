@@ -105,6 +105,7 @@ import { getPurchaseInvoiceAccountDetailsReportExcel, getPurchaseInvoiceAccountD
 import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, getSalesInvoiceReportExcel, getSalesInvoiceReportHtml, getSalesInvoiceTaxReportExcel, getSalesInvoiceTaxReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesInvoiceReports";
 import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareReportHtml, getPurchaseQuotationReportExcel, getPurchaseQuotationReportHtml, getPurchaseQuotationWithRatesReportExcel, getPurchaseQuotationWithRatesReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationReports";
 import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
+import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 
 
 
@@ -245,8 +246,8 @@ router.post('/reports/SalesOrderReport/excel', getSalesOrderReportExcel);
 
 
 //--------------GrnPrintReport----------------
-// router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
-// router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
+router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
+router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
 
 
 
