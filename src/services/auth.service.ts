@@ -45,6 +45,20 @@ export class AuthService {
     return result.rows[0];
   }
 
+  static async findRootUserByEmail(email: string, includeInactive = false): Promise<any | null> {
+    const normalizedEmail = String(email || "").trim();
+    if (!normalizedEmail) return null;
+
+    const result = await oracleDb.query(
+      `SELECT * FROM ${SEC_LOGINTEST_TABLE}
+       WHERE LOWER(TRIM(NVL(EMAIL_ID, ''))) = LOWER(:email)
+       ${includeInactive ? "" : "AND ACTIVE_FLAG = 'Y'"}`,
+      { email: normalizedEmail }
+    );
+
+    return result.rows?.[0] || null;
+  }
+
   static async findUserByEmailOrLoginId(
     identifier: string
   ): Promise<{
@@ -146,6 +160,7 @@ export class AuthService {
     const hashedPassword = await this.hashPassword(password);
     const loginid = String(apiUser.USER_ID).trim();
     const allowedRoleIds: number[] = application === 'EMPLOYEE' ? [77777] : [88888];
+    let provisioningStep = 'tenant registry lookup';
 
     await oracleDb.withTransaction(async (conn) => {
       const options = { outFormat: oracledb.OUT_FORMAT_OBJECT, autoCommit: false };
@@ -173,6 +188,7 @@ export class AuthService {
         { loginid }, options);
 
       if (rootExists.rows?.length) {
+        provisioningStep = 'root SEC_LOGINTEST update';
         await conn.execute(
           `UPDATE CUSTOMERS.SEC_LOGINTEST
            SET EMAIL_ID = NVL(EMAIL_ID, :email),
@@ -191,14 +207,16 @@ export class AuthService {
            WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid)`,
           { email: binds.email, username: binds.username, hashedPassword, application: binds.application, loginid }, options);
       } else {
+        provisioningStep = 'root SEC_LOGINTEST insert';
         await conn.execute(
           `INSERT INTO CUSTOMERS.SEC_LOGINTEST
            (COMPANY_CODE, LOGINID, EMAIL_ID, USERNAME, STATUS, USERPASS, SEC_PASSWD, PASSWORD,
             ACTIVE_FLAG, CREATED_BY, CREATED_AT, APPLICATION, USER_CODE, USER_ID, USERID,
-            LOGINID1, LAST_ACTION, UPDATED_BY)
+            LOGINID1, LAST_ACTION, UPDATED_BY, LANG_PREF, ID)
            VALUES ('BSG', :loginid, :email, :username, 'A', :hashedPassword, :hashedPassword,
                    :hashedPassword, 'Y', 'system', SYSTIMESTAMP, :application, :loginid,
-                   :loginid, :loginid, :employeeId, 'LOGIN', 'system')`,
+                   :loginid, :loginid, :employeeId, 'LOGIN', 'system', 'en',
+                   (SELECT NVL(MAX(ID), 0) + 1 FROM CUSTOMERS.SEC_LOGINTEST))`,
           { loginid, email: binds.email, username: binds.username, hashedPassword, application: binds.application, employeeId: binds.employeeId }, options);
       }
 
@@ -207,6 +225,7 @@ export class AuthService {
         { loginid }, options);
 
       if (tenantLoginExists.rows?.length) {
+        provisioningStep = `${schema}.SEC_LOGIN update`;
         await conn.execute(
           `UPDATE ${schema}.SEC_LOGIN
            SET EMAIL_ID = NVL(EMAIL_ID, :email),
@@ -225,6 +244,7 @@ export class AuthService {
            WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid)`,
           { email: binds.email, username: binds.username, hashedPassword, application: binds.application, employeeId: binds.employeeId, loginid }, options);
       } else {
+        provisioningStep = `${schema}.SEC_LOGIN insert`;
         await conn.execute(
           `INSERT INTO ${schema}.SEC_LOGIN
            (COMPANY_CODE, LOGINID, USERID, LOGINID1, USERNAME, EMAIL_ID, USERPASS, SEC_PASSWD,
@@ -241,15 +261,19 @@ export class AuthService {
         { loginid, tenantId }, options);
 
       if (mappingExists.rows?.length) {
+        provisioningStep = 'CUSTOMERS.USER_TENANT_MAPPING update';
         await conn.execute(
           `UPDATE CUSTOMERS.USER_TENANT_MAPPING
            SET IS_DEFAULT = 'Y', CREATED_DATE = NVL(CREATED_DATE, SYSDATE)
            WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid) AND LOWER(TRIM(TENANT_ID)) = LOWER(:tenantId)`,
           { loginid, tenantId }, options);
       } else {
+        provisioningStep = 'CUSTOMERS.USER_TENANT_MAPPING insert';
         await conn.execute(
-          `INSERT INTO CUSTOMERS.USER_TENANT_MAPPING (LOGINID, TENANT_ID, IS_DEFAULT, CREATED_DATE)
-           VALUES (:loginid, :tenantId, 'Y', SYSDATE)`,
+          `INSERT INTO CUSTOMERS.USER_TENANT_MAPPING
+           (USER_MAP_ID, LOGINID, TENANT_ID, IS_DEFAULT, CREATED_DATE)
+           VALUES ((SELECT NVL(MAX(USER_MAP_ID), 0) + 1 FROM CUSTOMERS.USER_TENANT_MAPPING),
+                   :loginid, :tenantId, 'Y', SYSDATE)`,
           { loginid, tenantId }, options);
       }
 
@@ -270,6 +294,7 @@ export class AuthService {
           { loginid, roleId }, options);
 
         if (roleExists.rows?.length) {
+          provisioningStep = `${schema}.SEC_ROLE_FUNCTION_ACCESS_USER update for role ${roleId}`;
           await conn.execute(
             `UPDATE ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
              SET SNEW = 'Y', SMODIFY = 'Y', SDELETE = 'Y', SSAVE = 'Y', SSEARCH = 'Y',
@@ -278,6 +303,7 @@ export class AuthService {
              WHERE LOWER(TRIM(LOGINID)) = LOWER(:loginid) AND SERIAL_NO_OR_ROLE_ID = :roleId`,
             { loginid, roleId }, options);
         } else {
+          provisioningStep = `${schema}.SEC_ROLE_FUNCTION_ACCESS_USER insert for role ${roleId}`;
           await conn.execute(
             `INSERT INTO ${schema}.SEC_ROLE_FUNCTION_ACCESS_USER
              (COMPANY_CODE, LOGINID, SERIAL_NO_OR_ROLE_ID, SNEW, SMODIFY, SDELETE, SSAVE,
@@ -288,6 +314,12 @@ export class AuthService {
             { loginid, roleId }, options);
         }
       }
+    }).catch((error: any) => {
+      console.error(`[AuthService.createTenantAccount] Failed during ${provisioningStep}`, {
+        code: error?.code,
+        message: error?.message,
+      });
+      throw error;
     });
   }
 

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import oracledb = require("oracledb");
-import * as XLSX from "xlsx";
+import oracledb from "oracledb";
 const AdmZip = require("adm-zip");
 import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
@@ -62,12 +61,13 @@ function fmtNumber(n: number): string {
 }
 
 function dateText(value: unknown): string {
-  if (!value) return "";
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return String(value).substring(0, 10);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-  });
+  if (!value) return "—";
+  const d = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
+  const day   = String(d.getDate()).padStart(2, "0");
+  const month = d.toLocaleString("en-GB", { month: "short" });
+  const year  = d.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 function escapeHtml(value: unknown): string {
@@ -88,7 +88,7 @@ function escapeXml(value: unknown): string {
     .replace(/'/g, "&apos;");
 }
 
-// ─── Request Param Parsers ─────────────────────────────────────────────────────
+// ─── Request Param Parsers ────────────────────────────────────────────────────
 
 function parseCommon(req: RequestWithUser) {
   const companyCode  = text(req.body.company_code  || req.user?.company_code);
@@ -116,245 +116,7 @@ function sqlLiteralList(codes: string[]): string {
     : "'All'";
 }
 
-// ─── Excel Styles (shared with Trial Balance drilldown) ─────────────────────────
-
-const excelStyles = {
-  title: {
-    font: { bold: true, sz: 13, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "1A5F4A" } },
-    alignment: { horizontal: "center", vertical: "center" },
-    border: {
-      top:    { style: "thin", color: { rgb: "1A5F4A" } },
-      bottom: { style: "thin", color: { rgb: "1A5F4A" } },
-      left:   { style: "thin", color: { rgb: "1A5F4A" } },
-      right:  { style: "thin", color: { rgb: "1A5F4A" } },
-    },
-  },
-  meta: {
-    font: { bold: true, sz: 10, color: { rgb: "000000" } },
-    alignment: { vertical: "center" },
-  },
-  tableHead: {
-    font: { bold: true, color: { rgb: "FFFFFF" } },
-    fill: { fgColor: { rgb: "1A5F4A" } },
-    alignment: { horizontal: "center", vertical: "center" },
-    border: {
-      top:    { style: "thin", color: { rgb: "1A5F4A" } },
-      bottom: { style: "thin", color: { rgb: "1A5F4A" } },
-      left:   { style: "thin", color: { rgb: "1A5F4A" } },
-      right:  { style: "thin", color: { rgb: "1A5F4A" } },
-    },
-  },
-  normal: {
-    alignment: { vertical: "top", wrapText: true },
-    border: { bottom: { style: "thin", color: { rgb: "E2E8F0" } } },
-  },
-  number: {
-    alignment: { horizontal: "right", vertical: "top" },
-    numFmt: "#,##0.000",
-    border: { bottom: { style: "thin", color: { rgb: "E2E8F0" } } },
-  },
-  totalLabel: {
-    font: { bold: true, color: { rgb: "0F172A" } },
-    fill: { fgColor: { rgb: "F8F8F8" } },
-    border: {
-      top:    { style: "medium", color: { rgb: "000000" } },
-      bottom: { style: "medium", color: { rgb: "000000" } },
-      left:   { style: "medium", color: { rgb: "000000" } },
-      right:  { style: "medium", color: { rgb: "000000" } },
-    },
-  },
-  totalNumber: {
-    font: { bold: true },
-    fill: { fgColor: { rgb: "F8F8F8" } },
-    alignment: { horizontal: "right" },
-    numFmt: "#,##0.000",
-    border: {
-      top:    { style: "medium", color: { rgb: "000000" } },
-      bottom: { style: "medium", color: { rgb: "000000" } },
-      left:   { style: "medium", color: { rgb: "000000" } },
-      right:  { style: "medium", color: { rgb: "000000" } },
-    },
-  },
-};
-
-const styleIdBySignature = new Map<string, number>([
-  [JSON.stringify(excelStyles.title),      1],
-  [JSON.stringify(excelStyles.meta),       2],
-  [JSON.stringify(excelStyles.tableHead),  3],
-  [JSON.stringify(excelStyles.normal),     4],
-  [JSON.stringify(excelStyles.number),     5],
-  [JSON.stringify(excelStyles.totalLabel), 6],
-  [JSON.stringify(excelStyles.totalNumber),7],
-]);
-
-function applyStyle(ws: XLSX.WorkSheet, row: number, col: number, style: Record<string, unknown>) {
-  const ref = XLSX.utils.encode_cell({ r: row - 1, c: col - 1 });
-  if (!ws[ref]) ws[ref] = { t: "s", v: "" };
-  (ws[ref] as any).s = style;
-}
-
-function styleRange(ws: XLSX.WorkSheet, row: number, startCol: number, endCol: number, style: Record<string, unknown>) {
-  for (let col = startCol; col <= endCol; col++) applyStyle(ws, row, col, style);
-}
-
-function buildXlsxBuffer(ws: XLSX.WorkSheet, sheetName: string): Buffer {
-  const range = XLSX.utils.decode_range(ws["!ref"] || "A1:A1");
-
-  const colXml = (ws["!cols"] || [])
-    .map((col: any, i: number) => `<col min="${i + 1}" max="${i + 1}" width="${Number(col.wch || 12)}" customWidth="1"/>`)
-    .join("");
-
-  let sheetData = "";
-  for (let r = range.s.r; r <= range.e.r; r++) {
-    const cells: string[] = [];
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const ref = XLSX.utils.encode_cell({ r, c });
-      const cell = ws[ref] as XLSX.CellObject | undefined;
-      const styleId = cell ? styleIdBySignature.get(JSON.stringify((cell as any).s)) || 0 : 0;
-      if (!cell && !styleId) continue;
-      const attrs = `r="${ref}"${styleId ? ` s="${styleId}"` : ""}`;
-      const value = cell?.v;
-      if (typeof value === "number") {
-        cells.push(`<c ${attrs}><v>${value}</v></c>`);
-      } else {
-        cells.push(`<c ${attrs} t="inlineStr"><is><t>${escapeXml(value ?? "")}</t></is></c>`);
-      }
-    }
-    if (cells.length) sheetData += `<row r="${r + 1}">${cells.join("")}</row>`;
-  }
-
-  const merges = (ws["!merges"] || [])
-    .map((m: any) => `<mergeCell ref="${XLSX.utils.encode_range(m)}"/>`)
-    .join("");
-
-  const mergeXml = merges ? `<mergeCells count="${(ws["!merges"] || []).length}">${merges}</mergeCells>` : "";
-
-  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheetFormatPr defaultRowHeight="15"/>
-  <cols>${colXml}</cols>
-  <sheetData>${sheetData}</sheetData>
-  ${mergeXml}
-</worksheet>`;
-
-  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
-  <fonts count="5">
-    <font><sz val="10"/><name val="Arial"/></font>
-    <font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF000000"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Arial"/></font>
-  </fonts>
-  <fills count="4">
-    <fill><patternFill patternType="none"/></fill>
-    <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1A5F4A"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF8F8F8"/><bgColor indexed="64"/></patternFill></fill>
-  </fills>
-  <borders count="4">
-    <border><left/><right/><top/><bottom/><diagonal/></border>
-    <border>
-      <left style="thin"><color rgb="FF1A5F4A"/></left><right style="thin"><color rgb="FF1A5F4A"/></right>
-      <top style="thin"><color rgb="FF1A5F4A"/></top><bottom style="thin"><color rgb="FF1A5F4A"/></bottom><diagonal/>
-    </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
-    <border>
-      <left style="medium"><color rgb="FF000000"/></left><right style="medium"><color rgb="FF000000"/></right>
-      <top style="medium"><color rgb="FF000000"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/>
-    </border>
-  </borders>
-  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="8">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="164" fontId="0" fillId="0" borderId="2" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="3" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
-    <xf numFmtId="164" fontId="4" fillId="3" borderId="3" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>
-  </cellXfs>
-  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
-</styleSheet>`;
-
-  const safeName = sheetName.replace(/[\\/?*\[\]]/g, "_").substring(0, 31);
-  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="${escapeXml(safeName)}" sheetId="1" r:id="rId1"/></sheets>
-</workbook>`;
-
-  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`;
-
-  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`;
-
-  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-</Types>`;
-
-  const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml",        Buffer.from(contentTypes));
-  zip.addFile("_rels/.rels",                Buffer.from(rels));
-  zip.addFile("xl/workbook.xml",            Buffer.from(workbookXml));
-  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
-  zip.addFile("xl/worksheets/sheet1.xml",   Buffer.from(sheetXml));
-  zip.addFile("xl/styles.xml",              Buffer.from(stylesXml));
-  return zip.toBuffer();
-}
-
-// ─── Drilldown-only CSS (extraCss for buildReportDocument) ────────────────────
-
-const DRILLDOWN_EXTRA_CSS = `
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-
-  table.drill-table th.right { text-align: right; }
-  table.drill-table td.center { text-align: center; }
-  table.drill-table td.left   { text-align: left; }
-  table.drill-table td.num    { text-align: right; font-variant-numeric: tabular-nums; }
-  table.drill-table td.mono   { font-family: monospace; font-size: 10px; }
-
-  tr.total-row td {
-    border: 2px solid #000;
-    font-weight: 700;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    background: #f8f8f8;
-  }
-  tr.total-row td.empty { border: 1px solid #ccc; background: #fff; }
-
-  .drill-hint {
-    font-size: 10px; color: #1a5f4a; background: #f0f9f5;
-    border: 1px solid #a7d7c5; border-radius: 4px;
-    padding: 4px 10px; margin-bottom: 8px;
-    display: inline-flex; align-items: center; gap: 6px;
-  }
-  @media print {
-    .drill-hint { display: none !important; }
-  }
-
-  .balance-pos { color: #000; }
-  .balance-neg { color: #c0392b; }
-`;
-
-// ─── Drill-down click script (still needed — no equivalent in the shared shell) ─
+// ─── Drill-down click script ─────────────────────────────────────────────────
 
 const CODE_FIELD_MAP: Record<string, string> = {
   ac:     "bl_code",
@@ -378,9 +140,6 @@ function buildDrillScript(
       var CODE_FIELD    = ${JSON.stringify(CODE_FIELD_MAP[drillLevel] ?? "")};
 
       document.querySelectorAll("tbody tr[data-code]").forEach(function (tr) {
-        tr.style.cursor = "pointer";
-        tr.addEventListener("mouseenter", function () { tr.style.background = "#f0f9f5"; });
-        tr.addEventListener("mouseleave", function () { tr.style.background = ""; });
         tr.addEventListener("click", function () {
           var code = tr.getAttribute("data-code");
           window.parent.postMessage({
@@ -396,6 +155,313 @@ function buildDrillScript(
       });
     })();
   </script>`;
+}
+
+// ─── Blue theme CSS ──────────────────────────────────────────────────────────
+
+const DRILLDOWN_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+
+  .drill-hint {
+    font-size: 10px;
+    color: #0b4ca1;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: 4px 10px;
+    margin-bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  @media print { .drill-hint { display: none !important; } }
+
+  .table-frame {
+    border: 1px solid #b8c4d2;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  table.drill-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  table.drill-table thead th {
+    background: #0b4ca1;
+    color: #ffffff;
+    padding: 7px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.16);
+    white-space: nowrap;
+  }
+  table.drill-table thead th:last-child { border-right: 0; }
+  table.drill-table thead th.right  { text-align: right; }
+  table.drill-table thead th.center { text-align: center; }
+
+  table.drill-table tbody td {
+    padding: 5px 6px;
+    font-size: 10px;
+    color: #263445;
+    border-right: 1px solid #e3e8ef;
+    border-bottom: 1px solid #e3e8ef;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+  table.drill-table tbody td:last-child { border-right: 0; }
+  table.drill-table tbody td.center { text-align: center; }
+  table.drill-table tbody td.left   { text-align: left; }
+  table.drill-table tbody td.num    { text-align: right; font-variant-numeric: tabular-nums; }
+  table.drill-table tbody td.mono   { font-family: 'Courier New', monospace; font-size: 9.5px; }
+
+  table.drill-table tbody tr[data-code] { cursor: pointer; }
+  table.drill-table tbody tr[data-code]:hover { background: #eff6ff !important; }
+  table.drill-table tbody tr.group-header td { background: #f0f9ff; font-weight: 700; }
+  table.drill-table tbody tr.item-row td { background: #ffffff; }
+
+  .balance-pos { color: #0f172a; }
+  .balance-neg { color: #991b1b; }
+
+  tr.total-row td {
+    background: #eff6ff !important;
+    border-top: 2px solid #0b4ca1 !important;
+    border-bottom: 2px solid #0b4ca1 !important;
+    font-weight: 800;
+    color: #0b4ca1;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    padding: 6px;
+  }
+  tr.total-row td.empty {
+    border: 1px solid #b8c4d2 !important;
+    border-right: none !important;
+    background: #f8fafc !important;
+  }
+
+  @media print {
+    tr.total-row { page-break-inside: avoid; }
+  }
+`;
+
+// ─── Excel builder (manual OOXML via AdmZip — blue theme) ────────────────────
+
+const STYLE_ID = {
+  default:       0,
+  title:         1,
+  metaLabel:     2,
+  metaValue:     3,
+  tableHeader:   4,
+  cellText:      5,
+  cellNumber:    6,
+  groupHeader:   7,
+  totalLabel:    8,
+  totalNumber:   9,
+  subInfo:      10,
+} as const;
+
+type StyleKey = keyof typeof STYLE_ID;
+
+interface XlCell { v: unknown; s: number }
+
+function xc(v: unknown, style: StyleKey): XlCell {
+  return { v, s: STYLE_ID[style] };
+}
+
+interface BuildXlsxOptions {
+  title: string;
+  meta: { label: string; value: string }[];
+  headers: string[];
+  colWidths: number[];
+  dataRows: (XlCell | null)[][];
+  totalRow?: (XlCell | null)[];
+  sheetName: string;
+}
+
+function buildXlsxBuffer(opts: BuildXlsxOptions): Buffer {
+  const NCOLS = opts.headers.length;
+  const skip  = null;
+
+  type Row = (XlCell | null)[];
+  const rows: Row[] = [];
+
+  rows.push([xc(opts.title, "title"), ...Array(NCOLS - 1).fill(skip)]);
+  rows.push(Array(NCOLS).fill(skip));
+
+  for (const m of opts.meta) {
+    rows.push([
+      xc(m.label, "metaLabel"),
+      xc(m.value, "metaValue"),
+      ...Array(NCOLS - 2).fill(skip),
+    ]);
+  }
+  rows.push(Array(NCOLS).fill(skip));
+
+  rows.push(opts.headers.map(h => xc(h, "tableHeader")));
+  for (const row of opts.dataRows) rows.push(row);
+  if (opts.totalRow) rows.push(opts.totalRow);
+
+  const colXml = opts.colWidths
+    .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
+    .join("");
+
+  const merges: string[] = [];
+  rows.forEach((row, ri) => {
+    const rn = ri + 1;
+    let spanStart = -1;
+    row.forEach((cell, ci) => {
+      if (cell !== null && spanStart === -1) {
+        spanStart = ci;
+      } else if (cell === null && spanStart !== -1) {
+        let end = ci;
+        while (end + 1 < row.length && row[end + 1] === null) end++;
+        if (end > spanStart) {
+          merges.push(
+            `${String.fromCharCode(65 + spanStart)}${rn}:${String.fromCharCode(65 + end)}${rn}`
+          );
+        }
+        spanStart = -1;
+      } else if (cell !== null) {
+        spanStart = ci;
+      }
+    });
+  });
+
+  let sheetDataXml = "";
+  rows.forEach((row, ri) => {
+    const rn  = ri + 1;
+    const ht  = rn === 1 ? ` ht="22" customHeight="1"` : "";
+    let rowXml = `<row r="${rn}"${ht}>`;
+    row.forEach((cell, ci) => {
+      if (cell === null) return;
+      const ref = `${String.fromCharCode(65 + ci)}${rn}`;
+      if (typeof cell.v === "number") {
+        rowXml += `<c r="${ref}" s="${cell.s}"><v>${cell.v}</v></c>`;
+      } else {
+        rowXml += `<c r="${ref}" s="${cell.s}" t="inlineStr"><is><t>${escapeXml(cell.v ?? "")}</t></is></c>`;
+      }
+    });
+    rowXml += `</row>`;
+    sheetDataXml += rowXml;
+  });
+
+  const mergeXml = merges.length
+    ? `<mergeCells count="${merges.length}">${merges.map((m) => `<mergeCell ref="${m}"/>`).join("")}</mergeCells>`
+    : "";
+
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>${colXml}</cols>
+  <sheetData>${sheetDataXml}</sheetData>
+  ${mergeXml}
+</worksheet>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
+  <fonts count="7">
+    <font><sz val="10"/><name val="Calibri"/></font>
+    <font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF64748B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
+    <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><sz val="9"/><color rgb="FF334155"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="6">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="4">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
+      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <diagonal/>
+    </border>
+    <border>
+      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
+      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
+      <diagonal/>
+    </border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
+  </borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="11">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="5" borderId="3" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="5" borderId="3" xfId="0" applyNumberFormat="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="4" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="4" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="3" fillId="4" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="5" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+  </cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+
+  const safeName = opts.sheetName.replace(/[\\/?*\[\]]/g, "_").substring(0, 31);
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="${escapeXml(safeName)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const zip = new AdmZip();
+  zip.addFile("[Content_Types].xml",        Buffer.from(contentTypes));
+  zip.addFile("_rels/.rels",                Buffer.from(rels));
+  zip.addFile("xl/workbook.xml",            Buffer.from(workbookXml));
+  zip.addFile("xl/_rels/workbook.xml.rels", Buffer.from(workbookRels));
+  zip.addFile("xl/worksheets/sheet1.xml",   Buffer.from(sheetXml));
+  zip.addFile("xl/styles.xml",              Buffer.from(stylesXml));
+  return zip.toBuffer();
 }
 
 function sendExcel(res: Response, buffer: Buffer, filename: string) {
@@ -472,31 +538,48 @@ function renderAcBody(
   );
 
   const dataRows = rows.map(r => `
-    <tr data-code="${escapeHtml(r.ac_code)}">
+    <tr data-code="${escapeHtml(r.ac_code)}" class="item-row">
       <td class="center mono">${escapeHtml(r.ac_code)}</td>
       <td class="left">${escapeHtml(r.ac_name)}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(r.opening)))}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(r.debit_amount)))}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(r.credit_amount)))}</td>
       <td class="num">${escapeHtml(fmtNumber(amount(r.amount)))}</td>
-    </tr>`).join("") || `<tr><td colspan="6" class="center muted">No data found</td></tr>`;
+    </tr>`).join("") || `<tr><td colspan="6" class="center" style="color:#64748b;font-style:italic;padding:18px;">No data found</td></tr>`;
 
   const tableHtml = `
-    <table class="data-table drill-table">
-      <thead><tr>
-        <th style="width:110px">A/C Code</th><th>Account Name</th>
-        <th class="right">Opening</th><th class="right">Debit Amount</th>
-        <th class="right">Credit Amount</th><th class="right">Amount</th>
-      </tr></thead>
-      <tbody>${dataRows}</tbody>
-      <tfoot><tr class="total-row">
-        <td class="empty" colspan="2"></td>
-        <td>${escapeHtml(fmtNumber(totals.opening))}</td>
-        <td>${escapeHtml(fmtNumber(totals.debit))}</td>
-        <td>${escapeHtml(fmtNumber(totals.credit))}</td>
-        <td>${escapeHtml(fmtNumber(totals.amount))}</td>
-      </tr></tfoot>
-    </table>`;
+    <div class="table-frame">
+      <table class="drill-table">
+        <colgroup>
+          <col style="width: 11%" />
+          <col style="width: 39%" />
+          <col style="width: 12%" />
+          <col style="width: 13%" />
+          <col style="width: 13%" />
+          <col style="width: 12%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="center">A/C Code</th>
+            <th>Account Name</th>
+            <th class="right">Opening</th>
+            <th class="right">Debit Amount</th>
+            <th class="right">Credit Amount</th>
+            <th class="right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${dataRows}</tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td class="empty" colspan="2"></td>
+            <td>${escapeHtml(fmtNumber(totals.opening))}</td>
+            <td>${escapeHtml(fmtNumber(totals.debit))}</td>
+            <td>${escapeHtml(fmtNumber(totals.credit))}</td>
+            <td>${escapeHtml(fmtNumber(totals.amount))}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
 
   return `
     <div class="doc-title-row">
@@ -533,107 +616,44 @@ function buildSummaryExcel(
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  const sheetRows: any[][] = [
-    ["al madina LOGISTICS - Balance Sheet Drill-Down", "", "", "", "", ""],
-    [],
-    ["Title :", sheetTitle, "", "", "", ""],
-    ["Date :", printDateTime, "", "", "", ""],
-    ["User :", loginId, "", "", "", ""],
-    [],
-    [codeHeader, "Account Name", "Opening", "Debit Amount", "Credit Amount", "Amount"],
-  ];
+  const dataRows: (XlCell | null)[][] = rows.map(r => [
+    xc(text(r[codeField]), "cellText"),
+    xc(text(r.ac_name), "cellText"),
+    xc(amount(r.opening), "cellNumber"),
+    xc(amount(r.debit_amount), "cellNumber"),
+    xc(amount(r.credit_amount), "cellNumber"),
+    xc(amount(r.amount), "cellNumber"),
+  ]);
 
-  const dataStartRow = sheetRows.length + 1;
-  rows.forEach(r => {
-    sheetRows.push([
-      text(r[codeField]),
-      text(r.ac_name),
-      amount(r.opening),
-      amount(r.debit_amount),
-      amount(r.credit_amount),
-      amount(r.amount),
-    ]);
-  });
-
-  if (!rows.length) sheetRows.push(["", "No data found", "", "", "", ""]);
-  const totalRowIndex = sheetRows.length + 1;
-  sheetRows.push(["", "", totals.opening, totals.debit, totals.credit, totals.amount]);
-
-  const ws = XLSX.utils.aoa_to_sheet(sheetRows);
-  ws["!cols"] = [{ wch: 12 }, { wch: 40 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
-  ws["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
-    { s: { r: 2, c: 1 }, e: { r: 2, c: 5 } },
-    { s: { r: 3, c: 1 }, e: { r: 3, c: 5 } },
-    { s: { r: 4, c: 1 }, e: { r: 4, c: 5 } },
-    { s: { r: totalRowIndex - 1, c: 0 }, e: { r: totalRowIndex - 1, c: 1 } },
-  ];
-
-  styleRange(ws, 1, 1, 6, excelStyles.title);
-  styleRange(ws, 3, 1, 2, excelStyles.meta);
-  styleRange(ws, 4, 1, 2, excelStyles.meta);
-  styleRange(ws, 5, 1, 2, excelStyles.meta);
-  styleRange(ws, 7, 1, 6, excelStyles.tableHead);
-
-  for (let r = dataStartRow; r < dataStartRow + Math.max(rows.length, 1); r++) {
-    styleRange(ws, r, 1, 2, excelStyles.normal);
-    styleRange(ws, r, 3, 6, excelStyles.number);
+  if (!rows.length) {
+    dataRows.push([xc("No data found", "cellText"), null, null, null, null, null]);
   }
-  styleRange(ws, totalRowIndex, 1, 2, excelStyles.totalLabel);
-  styleRange(ws, totalRowIndex, 3, 6, excelStyles.totalNumber);
 
-  return buildXlsxBuffer(ws, "BS Drill-Down");
+  const totalRow: (XlCell | null)[] = [
+    xc("", "totalLabel"),
+    xc("", "totalLabel"),
+    xc(totals.opening, "totalNumber"),
+    xc(totals.debit, "totalNumber"),
+    xc(totals.credit, "totalNumber"),
+    xc(totals.amount, "totalNumber"),
+  ];
+
+  return buildXlsxBuffer({
+    title: "al madina LOGISTICS - Balance Sheet Drill-Down",
+    meta: [
+      { label: "Title", value: sheetTitle },
+      { label: "Date",  value: printDateTime },
+      { label: "User",  value: loginId },
+    ],
+    headers: [codeHeader, "Account Name", "Opening", "Debit Amount", "Credit Amount", "Amount"],
+    colWidths: [12, 40, 18, 18, 18, 18],
+    dataRows,
+    totalRow,
+    sheetName: "BS Drill-Down",
+  });
 }
 
-export const getBalanceSheetDrilldownAc = async (req: RequestWithUser, res: Response): Promise<void> => {
-  try {
-    const { companyCode, asOnDate, divisionCode } = parseCommon(req);
-    const blCodes = parseCodeArray(req.body.bl_code);
-    const rows = await loadAcRows(req, companyCode, asOnDate, divisionCode, blCodes);
-    const blLabel = blCodes.length ? ` [BL: ${blCodes.join(", ")}]` : "";
-    const title = `Account Breakdown${blLabel} | As on ${dateText(asOnDate)}`;
-
-    const headerHtml = await reportHeader({ company_code: companyCode, req });
-    const bodyHtml = renderAcBody(rows, title, companyCode, asOnDate, divisionCode);
-    const footerHtml = reportFooter({
-      reportName: "rpt_drilldown_balancesheet_ac",
-      userName: req.user?.loginid ?? "",
-      endLabel: "End of Report",
-    });
-
-    const html = buildReportDocument({
-      title,
-      headerHtml,
-      bodyHtml,
-      footerHtml,
-      extraCss: DRILLDOWN_EXTRA_CSS,
-      autoPrint: false,
-    });
-
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(html);
-  } catch (error: any) {
-    console.error("Balance Sheet Drilldown AC error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate drill-down" });
-  }
-};
-
-export const getBalanceSheetDrilldownAcExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
-  try {
-    const { companyCode, asOnDate, divisionCode } = parseCommon(req);
-    const blCodes = parseCodeArray(req.body.bl_code);
-    const rows = await loadAcRows(req, companyCode, asOnDate, divisionCode, blCodes);
-    const blLabel = blCodes.length ? ` [BL: ${blCodes.join(", ")}]` : "";
-    const title = `Account Breakdown${blLabel} | As on ${dateText(asOnDate)}`;
-    const buffer = buildSummaryExcel(rows, "ac_code", "A/C Code", title, req.user?.loginid ?? "");
-    sendExcel(res, buffer, `balance_sheet_drilldown_ac_${companyCode}_${asOnDate}.xlsx`);
-  } catch (error: any) {
-    console.error("Balance Sheet Drilldown AC Excel error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to export drill-down" });
-  }
-};
-
-// ─── Detail Level Drilldown ────────────────────────────────────────────────────
+// ─── Detail Level Drilldown ───────────────────────────────────────────────────
 
 async function loadDetailRows(
   req: RequestWithUser,
@@ -700,10 +720,10 @@ function renderDetailBody(rows: ReportRow[], title: string): string {
     let acCredit = 0;
 
     bodyHtml += `
-      <tr style="background:#f0f9f5">
+      <tr class="group-header">
         <td class="center mono" style="font-weight:700">${escapeHtml(acCode)}</td>
         <td class="left" style="font-weight:700" colspan="6">${escapeHtml(acName)}</td>
-        <td class="num" style="font-weight:700; color:#1a5f4a">Opening&nbsp;&nbsp;${escapeHtml(fmtNumber(opening))}</td>
+        <td class="num" style="font-weight:700; color:#0b4ca1">Opening&nbsp;&nbsp;${escapeHtml(fmtNumber(opening))}</td>
         <td></td>
         <td class="num" style="font-weight:700">${escapeHtml(fmtNumber(opening))}</td>
       </tr>`;
@@ -717,7 +737,7 @@ function renderDetailBody(rows: ReportRow[], title: string): string {
       const balClass = runBalance < 0 ? "balance-neg" : "balance-pos";
 
       bodyHtml += `
-        <tr>
+        <tr class="item-row">
           <td class="center mono">${escapeHtml(r.ac_code)}</td>
           <td class="center">${escapeHtml(r.doc_type)}</td>
           <td class="center">${escapeHtml(String(r.doc_no ?? ""))}</td>
@@ -745,31 +765,49 @@ function renderDetailBody(rows: ReportRow[], title: string): string {
   });
 
   if (!rows.length) {
-    bodyHtml = `<tr><td colspan="10" class="center muted">No transactions found</td></tr>`;
+    bodyHtml = `<tr><td colspan="10" class="center" style="color:#64748b;font-style:italic;padding:18px;">No transactions found</td></tr>`;
   }
 
   const tableHtml = `
-    <table class="data-table drill-table">
-      <thead><tr>
-        <th style="width:100px">A/C Code</th>
-        <th style="width:50px">Type</th>
-        <th style="width:65px">Doc No.</th>
-        <th style="width:80px">Doc Date</th>
-        <th style="width:80px">Chq No.</th>
-        <th style="width:80px">Chq Date</th>
-        <th>Bank</th>
-        <th class="right" style="width:110px">Debit</th>
-        <th class="right" style="width:110px">Credit</th>
-        <th class="right" style="width:120px">Balance</th>
-      </tr></thead>
-      <tbody>${bodyHtml}</tbody>
-      <tfoot><tr class="total-row">
-        <td class="empty" colspan="7" style="text-align:left; padding-left:12px">Grand Total</td>
-        <td>${escapeHtml(fmtNumber(grandDebit))}</td>
-        <td>${escapeHtml(fmtNumber(grandCredit))}</td>
-        <td></td>
-      </tr></tfoot>
-    </table>`;
+    <div class="table-frame">
+      <table class="drill-table">
+        <colgroup>
+          <col style="width: 9%" />
+          <col style="width: 5%" />
+          <col style="width: 6%" />
+          <col style="width: 8%" />
+          <col style="width: 8%" />
+          <col style="width: 8%" />
+          <col style="width: 18%" />
+          <col style="width: 10%" />
+          <col style="width: 10%" />
+          <col style="width: 12%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="center">A/C Code</th>
+            <th class="center">Type</th>
+            <th class="center">Doc No.</th>
+            <th class="center">Doc Date</th>
+            <th class="center">Chq No.</th>
+            <th class="center">Chq Date</th>
+            <th>Bank</th>
+            <th class="right">Debit</th>
+            <th class="right">Credit</th>
+            <th class="right">Balance</th>
+          </tr>
+        </thead>
+        <tbody>${bodyHtml}</tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td class="empty" colspan="7" style="text-align:left; padding-left:12px">Grand Total</td>
+            <td>${escapeHtml(fmtNumber(grandDebit))}</td>
+            <td>${escapeHtml(fmtNumber(grandCredit))}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
 
   return `
     <div class="doc-title-row">
@@ -786,15 +824,7 @@ function buildDetailExcel(rows: ReportRow[], sheetTitle: string, loginId: string
   });
 
   const headers = ["A/C Code", "Type", "Doc No.", "Doc Date", "Chq No.", "Chq Date", "Bank", "Debit", "Credit", "Balance"];
-  const sheetRows: any[][] = [
-    ["al madina LOGISTICS - Account Ledger", "", "", "", "", "", "", "", "", ""],
-    [],
-    ["Title :", sheetTitle, "", "", "", "", "", "", "", ""],
-    ["Date :", printDateTime, "", "", "", "", "", "", "", ""],
-    ["User :", loginId, "", "", "", "", "", "", "", ""],
-    [],
-    headers,
-  ];
+  const dataRows: (XlCell | null)[][] = [];
 
   const grouped = new Map<string, ReportRow[]>();
   for (const r of rows) {
@@ -812,7 +842,10 @@ function buildDetailExcel(rows: ReportRow[], sheetTitle: string, loginId: string
     let acDebit = 0;
     let acCredit = 0;
 
-    sheetRows.push([`${acCode} — ${acName}`, "", "", "", "", "", "", "", "", ""]);
+    dataRows.push([
+      xc(`${acCode} — ${acName}`, "groupHeader"),
+      null, null, null, null, null, null, null, null, null,
+    ]);
 
     for (const r of acRows) {
       const debit = amount(r.sign_ind) >= 0 ? Math.abs(amount(r.lcur_amount)) : 0;
@@ -821,42 +854,115 @@ function buildDetailExcel(rows: ReportRow[], sheetTitle: string, loginId: string
       acDebit += debit;
       acCredit += credit;
 
-      sheetRows.push([
-        text(r.ac_code), text(r.doc_type), text(r.doc_no ?? ""), dateText(r.doc_date),
-        text(r.cheque_no ?? ""), dateText(r.cheque_date), text(r.bank_ac_name ?? ""),
-        debit > 0 ? debit : "",
-        credit > 0 ? credit : "",
-        runBalance,
+      dataRows.push([
+        xc(text(r.ac_code), "cellText"),
+        xc(text(r.doc_type), "cellText"),
+        xc(text(r.doc_no ?? ""), "cellText"),
+        xc(dateText(r.doc_date), "cellText"),
+        xc(text(r.cheque_no ?? ""), "cellText"),
+        xc(dateText(r.cheque_date), "cellText"),
+        xc(text(r.bank_ac_name ?? ""), "cellText"),
+        xc(debit > 0 ? debit : 0, "cellNumber"),
+        xc(credit > 0 ? credit : 0, "cellNumber"),
+        xc(runBalance, "cellNumber"),
       ]);
     }
 
     grandDebit += acDebit;
     grandCredit += acCredit;
-    sheetRows.push([`Total — ${acName}`, "", "", "", "", "", "", acDebit, acCredit, runBalance]);
-    sheetRows.push([]);
+
+    dataRows.push([
+      xc(`Total — ${acName}`, "totalLabel"),
+      null, null, null, null, null, null,
+      xc(acDebit, "totalNumber"),
+      xc(acCredit, "totalNumber"),
+      xc(runBalance, "totalNumber"),
+    ]);
+    dataRows.push([null, null, null, null, null, null, null, null, null, null]);
   });
 
-  if (!rows.length) sheetRows.push(["No transactions found", "", "", "", "", "", "", "", "", ""]);
-  sheetRows.push(["Grand Total", "", "", "", "", "", "", grandDebit, grandCredit, ""]);
-
-  const ws = XLSX.utils.aoa_to_sheet(sheetRows);
-  ws["!cols"] = [
-    { wch: 14 }, { wch: 8 }, { wch: 10 }, { wch: 12 },
-    { wch: 12 }, { wch: 12 }, { wch: 22 }, { wch: 16 }, { wch: 16 }, { wch: 16 },
-  ];
-
-  styleRange(ws, 1, 1, 10, excelStyles.title);
-  styleRange(ws, 3, 1, 2, excelStyles.meta);
-  styleRange(ws, 4, 1, 2, excelStyles.meta);
-  styleRange(ws, 5, 1, 2, excelStyles.meta);
-  styleRange(ws, 7, 1, 10, excelStyles.tableHead);
-
-  for (let r = 8; r <= sheetRows.length; r++) {
-    styleRange(ws, r, 8, 10, excelStyles.number);
+  if (!rows.length) {
+    dataRows.push([
+      xc("No transactions found", "cellText"),
+      null, null, null, null, null, null, null, null, null,
+    ]);
   }
 
-  return buildXlsxBuffer(ws, "Ledger Detail");
+  dataRows.push([
+    xc("Grand Total", "totalLabel"),
+    null, null, null, null, null, null,
+    xc(grandDebit, "totalNumber"),
+    xc(grandCredit, "totalNumber"),
+    xc("", "totalNumber"),
+  ]);
+
+  return buildXlsxBuffer({
+    title: "al madina LOGISTICS - Account Ledger",
+    meta: [
+      { label: "Title", value: sheetTitle },
+      { label: "Date",  value: printDateTime },
+      { label: "User",  value: loginId },
+    ],
+    headers,
+    colWidths: [14, 8, 10, 12, 12, 12, 22, 16, 16, 16],
+    dataRows,
+    sheetName: "Ledger Detail",
+  });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROUTE HANDLERS  (exports required by transactions_finance.routes.ts)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const getBalanceSheetDrilldownAc = async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const { companyCode, asOnDate, divisionCode } = parseCommon(req);
+    const blCodes = parseCodeArray(req.body.bl_code);
+    const rows = await loadAcRows(req, companyCode, asOnDate, divisionCode, blCodes);
+    const blLabel = blCodes.length ? ` [BL: ${blCodes.join(", ")}]` : "";
+    const title = `Account Breakdown${blLabel} | As on ${dateText(asOnDate)}`;
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml = renderAcBody(rows, title, companyCode, asOnDate, divisionCode);
+    const footerHtml = reportFooter({
+      reportName: "rpt_drilldown_balancesheet_ac",
+      userName: req.user?.loginid ?? "",
+      extraLeft: `Object: ${escapeHtml(companyCode)} — ${escapeHtml(blLabel || "All")}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: DRILLDOWN_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (error: any) {
+    console.error("Balance Sheet Drilldown AC error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate drill-down" });
+  }
+};
+
+export const getBalanceSheetDrilldownAcExcel = async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const { companyCode, asOnDate, divisionCode } = parseCommon(req);
+    const blCodes = parseCodeArray(req.body.bl_code);
+    const rows = await loadAcRows(req, companyCode, asOnDate, divisionCode, blCodes);
+    const blLabel = blCodes.length ? ` [BL: ${blCodes.join(", ")}]` : "";
+    const title = `Account Breakdown${blLabel} | As on ${dateText(asOnDate)}`;
+    const buffer = buildSummaryExcel(rows, "ac_code", "A/C Code", title, req.user?.loginid ?? "");
+    sendExcel(res, buffer, `balance_sheet_drilldown_ac_${companyCode}_${asOnDate}.xlsx`);
+  } catch (error: any) {
+    console.error("Balance Sheet Drilldown AC Excel error:", error);
+    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to export drill-down" });
+  }
+};
 
 export const getBalanceSheetDrilldownDetail = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
@@ -872,7 +978,8 @@ export const getBalanceSheetDrilldownDetail = async (req: RequestWithUser, res: 
     const footerHtml = reportFooter({
       reportName: "rpt_drilldown_balancesheet_detail",
       userName: req.user?.loginid ?? "",
-      endLabel: "End of Report",
+      extraLeft: `Object: ${escapeHtml(companyCode)} — ${escapeHtml(acLabel || "All")}`,
+      extraRight: "Powered by Bayanat Technology",
     });
 
     const html = buildReportDocument({
@@ -882,6 +989,7 @@ export const getBalanceSheetDrilldownDetail = async (req: RequestWithUser, res: 
       footerHtml,
       extraCss: DRILLDOWN_EXTRA_CSS,
       autoPrint: false,
+      showPrintButton: true,
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
