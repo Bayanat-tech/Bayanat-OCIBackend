@@ -24,7 +24,7 @@ export const MHgetLeaveEntitleHandler = async (req: Request, res: Response) => {
   }
 };
 
-export const leaveDaysCntHandler = async (req: Request, res: Response) => {
+export const MHleaveDaysCntHandler = async (req: Request, res: Response) => {
   try {
     const {
       company_code,
