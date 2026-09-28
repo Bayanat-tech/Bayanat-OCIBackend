@@ -4,6 +4,11 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import {
+  reportHeader,
+  reportFooter,
+  buildReportDocument,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -88,8 +93,6 @@ function isY(value: unknown): boolean {
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
-// NOTE: TA_ADJHEADER.CONFIRMED and TA_ADJDETAIL.CONFIRMED are aliased separately
-// below — selecting both as bare CONFIRMED collapses them into one JS key.
 
 const ADJ_CONFIRM_SQL = `
 SELECT  TA_ADJHEADER.ADJ_NO ,
@@ -166,19 +169,218 @@ async function loadAdjConfirmData(
   }
 }
 
-// ─── HTML renderer ────────────────────────────────────────────────────────────
+// ─── CSS — Stock Transfer blue theme (#0b4ca1) ────────────────────────────────
 
-function renderHtml(
+const ADJ_CONFIRM_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+
+  .section-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #0b4ca1;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 7px;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #0b4ca1;
+  }
+  .field-row {
+    display: flex;
+    align-items: baseline;
+    padding: 3.5px 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .f-label {
+    font-size: 10px;
+    color: #64748b;
+    min-width: 128px;
+    padding-right: 8px;
+    text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .f-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .nil { font-weight: 400; color: #94a3b8; }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 32px;
+    margin-bottom: 14px;
+  }
+
+  .status-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 8px 14px;
+    border-radius: 4px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+  .status-banner.pending {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+  .status-banner .sb-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #166534;
+  }
+  .status-banner.pending .sb-label { color: #991b1b; }
+  .status-banner .sb-date {
+    font-size: 10.5px;
+    color: #4b5563;
+  }
+
+  .items-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0b4ca1;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin: 4px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #0b4ca1;
+  }
+
+  table.adj-items-table thead th {
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 7px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: left;
+    border-top: 1px solid #475569;
+    border-bottom: 1px solid #475569;
+    white-space: nowrap;
+  }
+  table.adj-items-table thead th.c-center,
+  table.adj-items-table thead th.c-num { text-align: center; }
+  table.adj-items-table tbody td {
+    padding: 6px;
+    font-size: 10.5px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  table.adj-items-table .item-row td { background: #fff; }
+  .c-num { text-align: center; color: #64748b; width: 26px; }
+  .c-center { text-align: center; }
+  .c-prod { min-width: 120px; }
+  .prod-code { display: block; font-weight: 700; color: #0f172a; }
+  .prod-name { display: block; font-size: 9.5px; color: #64748b; margin-top: 1px; }
+  .c-qty { text-align: right; white-space: nowrap; }
+  .uom { font-size: 9px; color: #94a3b8; }
+  .adj-type-pill {
+    display: inline-block;
+    padding: 1.5px 7px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 1.5px 8px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .status-pill.confirmed {
+    background: #f0fdf4;
+    color: #166534;
+  }
+  table.adj-items-table .sub-row td {
+    background: #f8fafc;
+    border-top: none;
+    padding: 4px 6px 6px;
+  }
+  .sub-item {
+    display: inline-block;
+    font-size: 9.5px;
+    color: #334155;
+    margin-right: 26px;
+  }
+  .sub-label {
+    display: block;
+    font-size: 8.5px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+
+  .remarks-box { margin-top: 14px; }
+  .remarks-text {
+    font-size: 10.5px;
+    color: #334155;
+    padding: 8px 0 0;
+    min-height: 18px;
+  }
+
+  .sign-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 24px;
+    margin-top: 28px;
+    page-break-inside: avoid;
+  }
+  .sign-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #0b4ca1;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 22px;
+  }
+  .sign-sub {
+    font-size: 8.5px;
+    color: #94a3b8;
+    margin: 14px 0 2px;
+  }
+  .sign-line {
+    border-bottom: 1px solid #94a3b8;
+    height: 1px;
+  }
+
+  @media print {
+    .sub-row, .item-row { page-break-inside: avoid; }
+  }
+`;
+
+// ─── HTML Body Renderer ───────────────────────────────────────────────────────
+
+function renderAdjConfirmBody(
   header: ReportRow,
   details: ReportRow[],
-  reportTitle: string,
-  loginId: string,
-  autoPrint: boolean
+  reportTitle: string
 ): string {
-  const printDate = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
-
   const field = (label: string, value: unknown) => `
     <div class="field-row">
       <span class="f-label">${escapeHtml(label)}</span>
@@ -230,113 +432,24 @@ function renderHtml(
       <div class="sign-line"></div>
     </div>`;
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>${escapeHtml(reportTitle)} - ${escapeHtml(header.adj_no)}</title>
-  <style>
-    @page { size: A4; margin: 10mm 12mm; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 13px; color: #111827;
-           background: #eef1f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .sheet { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff;
-             padding: 10mm 12mm; border: 1px solid #c4cdd9; }
-    .rpt-header { background: #1e1b4b; color: #fff; text-align: center; font-size: 15px;
-                  font-weight: 700; letter-spacing: .10em; padding: 10px 16px;
-                  text-transform: uppercase; border-radius: 3px 3px 0 0; }
-    .rpt-meta { display: flex; justify-content: space-between; align-items: center;
-                padding: 8px 2px 10px; border-bottom: 2px solid #1e1b4b;
-                font-size: 10.5px; color: #4b5563; margin-bottom: 14px; }
-    .rpt-meta strong { color: #111827; font-weight: 600; }
-    .section-label { font-size: 9.5px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
-                     letter-spacing: .08em; margin-bottom: 7px; padding-bottom: 4px;
-                     border-bottom: 1.5px solid #1e1b4b; }
-    .field-row { display: flex; align-items: baseline; padding: 3.5px 0;
-                 border-bottom: 1px solid #f1f5f9; }
-    .field-row:last-child { border-bottom: none; }
-    .f-label { font-size: 10px; color: #6b7280; min-width: 128px; padding-right: 8px;
-               text-align: right; white-space: nowrap; flex-shrink: 0; }
-    .f-value { font-size: 11px; font-weight: 600; color: #111827; }
-    .nil { font-weight: 400; color: #9ca3af; }
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
-    .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
-           padding: 10px 14px; margin-bottom: 14px; }
-
-    .status-banner { display: flex; justify-content: space-between; align-items: center;
-                      margin-bottom: 14px; padding: 8px 14px; border-radius: 4px;
-                      background: #f0fdf4; border: 1px solid #bbf7d0; }
-    .status-banner.pending { background: #fef2f2; border-color: #fecaca; }
-    .status-banner .sb-label { font-size: 10px; font-weight: 700; text-transform: uppercase;
-                                letter-spacing: .06em; color: #166534; }
-    .status-banner.pending .sb-label { color: #991b1b; }
-    .status-banner .sb-date { font-size: 10.5px; color: #4b5563; }
-
-    .items-title { font-size: 10px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
-                   letter-spacing: .08em; margin: 4px 0 8px; padding-bottom: 4px;
-                   border-bottom: 2px solid #1e1b4b; }
-    table { width: 100%; border-collapse: collapse; }
-    thead th { background: #1e1b4b; color: #fff; padding: 7px 6px; font-size: 9px;
-               font-weight: 700; text-align: left; border: 1px solid #312e81; white-space: nowrap; }
-    thead th.c-center, thead th.c-num { text-align: center; }
-    tbody td { padding: 6px; font-size: 10.5px; border: 1px solid #e5e7eb; vertical-align: top; }
-    .item-row td { background: #fff; }
-    .c-num { text-align: center; color: #6b7280; width: 26px; }
-    .c-center { text-align: center; }
-    .c-prod { min-width: 120px; }
-    .prod-code { display: block; font-weight: 700; color: #111827; }
-    .prod-name { display: block; font-size: 9.5px; color: #6b7280; margin-top: 1px; }
-    .c-qty { text-align: right; white-space: nowrap; }
-    .uom { font-size: 9px; color: #9ca3af; }
-    .adj-type-pill { display: inline-block; padding: 1.5px 7px; border-radius: 10px;
-                      background: #eef2ff; color: #4338ca; font-size: 9px; font-weight: 700; }
-    .status-pill { display: inline-block; padding: 1.5px 8px; border-radius: 10px;
-                    background: #f3f4f6; color: #6b7280; font-size: 9px; font-weight: 700; }
-    .status-pill.confirmed { background: #f0fdf4; color: #166534; }
-    .sub-row td { background: #f8fafc; border-top: none; padding: 4px 6px 6px; }
-    .sub-item { display: inline-block; font-size: 9.5px; color: #374151; margin-right: 26px; }
-    .sub-label { display: block; font-size: 8.5px; color: #9ca3af; text-transform: uppercase;
-                 letter-spacing: .05em; }
-
-    .remarks-box { margin-top: 14px; }
-    .remarks-text { font-size: 10.5px; color: #374151; padding: 8px 0 0; min-height: 18px; }
-
-    .sign-block { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 24px;
-                  margin-top: 28px; page-break-inside: avoid; }
-    .sign-label { font-size: 9.5px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
-                  letter-spacing: .05em; margin-bottom: 22px; }
-    .sign-sub { font-size: 8.5px; color: #9ca3af; margin: 14px 0 2px; }
-    .sign-line { border-bottom: 1px solid #9ca3af; height: 1px; }
-
-    .rpt-footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 7px;
-                  display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; }
-    .rpt-footer code { font-family: "Courier New", monospace; font-size: 9px; color: #6b7280; }
-    @media print {
-      body { background: #fff; }
-      .sheet { border: none; margin: 0; width: auto; min-height: auto; padding: 0; }
-      .sub-row, .item-row { page-break-inside: avoid; }
-    }
-  </style>
-</head>
-<body>
-  <main class="sheet">
-    <div class="rpt-header">${escapeHtml(reportTitle)}</div>
-    <div class="rpt-meta">
-      <span>Print Date:&nbsp;<strong>${escapeHtml(printDate)}</strong></span>
-      <span>Print User:&nbsp;<strong>${escapeHtml(loginId)}</strong></span>
+  return `
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(reportTitle)}</h1>
+      </div>
     </div>
 
     <div class="section-label">Adjustment Information</div>
     <div class="two-col">
       <div>
-        ${field("Principal", header.prin_code)}
-        ${field("Adjustment No", header.adj_no)}
-        ${field("Adjustment Date", dateText(header.adj_date))}
-        ${field("Adjustment Reason", header.adj_code)}
+        ${field("Principal",          header.prin_code)}
+        ${field("Adjustment No",      header.adj_no)}
+        ${field("Adjustment Date",    dateText(header.adj_date))}
       </div>
       <div>
-        ${field("Confirmed", headerConfirmed ? "Yes" : "No")}
-        ${field("Confirmed Date", dateText(header.confirmed_date))}
+        ${field("Adjustment Reason",  header.adj_code)}
+        ${field("Confirmed",          headerConfirmed ? "Yes" : "No")}
+        ${field("Confirmed Date",     dateText(header.confirmed_date))}
       </div>
     </div>
 
@@ -346,7 +459,7 @@ function renderHtml(
     </div>
 
     <div class="items-title">Adjustment Items</div>
-    <table>
+    <table class="data-table adj-items-table">
       <thead>
         <tr>
           <th class="c-num">No.</th>
@@ -376,36 +489,26 @@ function renderHtml(
       ${signBlock("Supervised By")}
     </div>
 
-    <div class="rpt-footer">
-      <span>Object: <code>${escapeHtml(header.company_code)}-${escapeHtml(header.adj_no)}</code></span>
-      <span>Powered by Bayanat Technology</span>
-    </div>
-  </main>
-  <script>
-    // Print button in the Dialog toolbar fires this via postMessage
-    window.addEventListener("message", (e) => {
-      if (e.data === "print") window.print();
-    });
-    ${autoPrint ? `window.addEventListener("load", () => setTimeout(() => window.print(), 300));` : ""}
-  </script>
-</body>
-</html>`;
+    <script>
+      window.addEventListener("message", (e) => {
+        if (e.data === "print") window.print();
+      });
+    </script>
+  `;
 }
 
-// ─── Excel builder ────────────────────────────────────────────────────────────
-// Uses AdmZip (already in the project) — same pattern as the Job Details report.
-// STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
+// ─── Excel builder (blue theme) ───────────────────────────────────────────────
 
 const STYLE_ID = {
   default:        0,
-  header:         1, // white text, dark-indigo bg, centered
-  sectionTitle:   2, // indigo text, lavender bg, bottom border
-  label:          3, // gray bold, right-aligned
-  value:          4, // dark bold, wrapping
-  tableHeader:    5, // white text, dark-indigo bg, small, centered
-  cellConfirmed:  6, // green-tint bg
-  cellPending:    7, // white bg, gray text
-  subInfo:        8, // gray italic-ish small text on tint bg
+  header:         1,
+  sectionTitle:   2,
+  label:          3,
+  value:          4,
+  tableHeader:    5,
+  cellConfirmed:  6,
+  cellPending:    7,
+  subInfo:        8,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -417,13 +520,6 @@ function xc(v: unknown, style: StyleKey): XlCell {
 }
 
 function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
-  // Layout: 8 cols (A-H)
-  //   A = left label   B = left value   C = spacer
-  //   D = right label  E = right value  F,G,H = unused in header block
-  // Item table uses all 8 cols: No, Site, Location, Product, Job No, Lot No/DocRef(merged label handled separately), Adj Type, Qty summary
-  // Simpler: item table columns -> No | Site | Location | Product Code | Product Name | Job No | Lot No | Doc Ref
-  // then a second row per item for Adj Type / Qty P.UOM / Qty L.UOM / Status / Country / Manufacturer
-
   const NCOLS = 8;
   const skip  = null;
 
@@ -433,7 +529,6 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   rows.push([xc(`WMS Adjustment Confirmation Report — Adj No ${text(header.adj_no)}`, "header"), skip, skip, skip, skip, skip, skip, skip]);
   rows.push(Array(NCOLS).fill(skip));
 
-  // ── Adjustment Information ────────────────────────────────────────────────
   rows.push([xc("ADJUSTMENT INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip, skip]);
 
   const headerConfirmed = isY(header.header_confirmed);
@@ -441,11 +536,11 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
     ["Principal",          header.prin_code],
     ["Adjustment No",      header.adj_no],
     ["Adjustment Date",    dateText(header.adj_date)],
-    ["Adjustment Reason",  header.adj_code],
   ];
   const rightInfo: [string, unknown][] = [
-    ["Confirmed",       headerConfirmed ? "Yes" : "No"],
-    ["Confirmed Date",  dateText(header.confirmed_date)],
+    ["Adjustment Reason",  header.adj_code],
+    ["Confirmed",          headerConfirmed ? "Yes" : "No"],
+    ["Confirmed Date",     dateText(header.confirmed_date)],
   ];
   for (let i = 0; i < Math.max(leftInfo.length, rightInfo.length); i++) {
     const [ll, lv] = leftInfo[i]  ?? ["", ""];
@@ -456,7 +551,6 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   rows.push([xc("Remarks", "label"), xc(header.remarks, "value"), skip, skip, skip, skip, skip, skip]);
   rows.push(Array(NCOLS).fill(skip));
 
-  // ── Items ──────────────────────────────────────────────────────────────────
   rows.push([xc("ADJUSTMENT ITEMS", "sectionTitle"), skip, skip, skip, skip, skip, skip, skip]);
   rows.push([
     xc("No.", "tableHeader"), xc("Site", "tableHeader"), xc("Location", "tableHeader"),
@@ -489,14 +583,11 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
     ]);
   });
 
-  // ── Build sheet XML ───────────────────────────────────────────────────────
   const COL_WIDTHS = [10, 12, 14, 30, 12, 12, 14, 12];
-
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Collect merge ranges: a run of nulls following a non-null cell = merge
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -550,23 +641,23 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   ${mergeXml}
 </worksheet>`;
 
-  // ── Styles XML — order must match STYLE_ID above ──────────────────────────
+  // Blue theme styles matching Stock Transfer
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="7">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E1B4B"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><sz val="9"/><color rgb="FF374151"/><name val="Calibri"/></font>
+    <font><sz val="9"/><color rgb="FF334155"/><name val="Calibri"/></font>
   </fonts>
   <fills count="7">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E1B4B"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill>
@@ -574,14 +665,14 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   <borders count="4">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF312E81"/></left><right style="thin"><color rgb="FF312E81"/></right>
-      <top style="thin"><color rgb="FF312E81"/></top><bottom style="thin"><color rgb="FF312E81"/></bottom>
+      <left style="thin"><color rgb="FF475569"/></left><right style="thin"><color rgb="FF475569"/></right>
+      <top style="thin"><color rgb="FF475569"/></top><bottom style="thin"><color rgb="FF475569"/></bottom>
       <diagonal/>
     </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FFC7D2FE"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FF0B4CA1"/></bottom><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <left style="thin"><color rgb="FFE2E8F0"/></left><right style="thin"><color rgb="FFE2E8F0"/></right>
+      <top style="thin"><color rgb="FFE2E8F0"/></top><bottom style="thin"><color rgb="FFE2E8F0"/></bottom>
       <diagonal/>
     </border>
   </borders>
@@ -642,30 +733,46 @@ export const getWmsAdjConfirmReportHtml = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
-
-  console.log('Adjconfirm',req);
-
   try {
     const adjNo       = text(req.params.adj_no || req.query.adj_no);
     const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "WMS Adjustment Confirmation Report";
     const autoPrint   = req.query.print === "true";
 
-    console.log('adjNo',adjNo,'prinCode',prinCode);
-
     if (!adjNo || !prinCode) {
       res.status(400).json({ success: false, message: "adj_no and prin_code are required" });
       return;
     }
     const { header, details } = await loadAdjConfirmData(req, adjNo, prinCode);
+    const companyCode = text(req.user?.company_code);
+    const loginId     = text(req.user?.loginid);
+
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const bodyHtml   = renderAdjConfirmBody(header, details, reportTitle);
+    const footerHtml = reportFooter({
+      reportName: "rpt_adj_confirmation",
+      userName: loginId,
+      extraLeft: `Object: ${escapeHtml(header.company_code)}-${escapeHtml(header.adj_no)}`,
+      extraRight: "Powered by Bayanat Technology",
+    });
+
+    const html = buildReportDocument({
+      title: `${reportTitle} - ${header.adj_no}`,
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: ADJ_CONFIRM_EXTRA_CSS,
+      autoPrint,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderHtml(header, details, reportTitle, text(req.user?.loginid), autoPrint));
+    res.send(html);
   } catch (error: any) {
     console.error("WMS Adjustment Confirmation HTML error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
-
 
 export const getWmsAdjConfirmReportExcel = async (
   req: RequestWithUser,
@@ -684,7 +791,7 @@ export const getWmsAdjConfirmReportExcel = async (
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Adjustment_${adjNo}_Confirmation.xlsx"`);
-    res.end(buffer); // res.end() prevents Express buffer re-encoding
+    res.end(buffer);
   } catch (error: any) {
     console.error("WMS Adjustment Confirmation Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });
