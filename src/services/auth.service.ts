@@ -45,6 +45,20 @@ export class AuthService {
     return result.rows[0];
   }
 
+  static async findRootUserByEmail(email: string, includeInactive = false): Promise<any | null> {
+    const normalizedEmail = String(email || "").trim();
+    if (!normalizedEmail) return null;
+
+    const result = await oracleDb.query(
+      `SELECT * FROM ${SEC_LOGINTEST_TABLE}
+       WHERE LOWER(TRIM(NVL(EMAIL_ID, ''))) = LOWER(:email)
+       ${includeInactive ? "" : "AND ACTIVE_FLAG = 'Y'"}`,
+      { email: normalizedEmail }
+    );
+
+    return result.rows?.[0] || null;
+  }
+
   static async findUserByEmailOrLoginId(
     identifier: string
   ): Promise<{

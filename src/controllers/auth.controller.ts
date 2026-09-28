@@ -123,8 +123,18 @@ export const login: RequestHandler = async (req: Request, res: Response) => {
     console.log(`[login] STEP 1: Authenticating user '${email}'...`);
 
     // Existing central accounts authenticate locally; never reprovision inactive users.
-    const isMhdlEmployeeCode = /^M/i.test(email) && !email.includes("@");
-    let rootUser = await AuthService.findRootUserByIdentifier(email, true);
+    const isEmailLogin = email.includes("@");
+    const isMhdlEmployeeCode = /^M/i.test(email) && !isEmailLogin;
+    let rootUser = isEmailLogin
+      ? await AuthService.findRootUserByEmail(email, true)
+      : await AuthService.findRootUserByIdentifier(email, true);
+    if (!rootUser && isEmailLogin) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: EMAIL_NOT_FOUND_MESSAGE,
+      });
+      return;
+    }
     if (!rootUser) {
       let stage = "external_verification";
       try {
