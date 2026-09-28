@@ -311,11 +311,7 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
   return `
     <div class="doc-title-row">
       <h1>${escapeHtml(REPORT_TITLE)}</h1>
-      <div class="print-meta">
-        <div><strong>Date:</strong> ${escapeHtml(printDateTime)}</div>
-        <div><strong>User:</strong> ${escapeHtml(loginId)}</div>
-        <div><strong>Report:</strong> ${escapeHtml(REPORT_NAME)}</div>
-      </div>
+     
     </div>
 
     ${
