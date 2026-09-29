@@ -650,7 +650,7 @@ export const getPLSummaryReportExcel = async (req: RequestWithUser, res: Respons
     }
     const { lines, columns } = buildReportLines(params.mode, rows);
     const buffer = buildExcelBuffer(params.mode, lines, columns);
-
+ 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", 'attachment; filename="PL_Summary_Report.xlsx"');
     res.end(buffer);
