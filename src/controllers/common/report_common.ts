@@ -62,6 +62,19 @@ function printDateTimeNow(): string {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Base report font size – ONE value drives body text AND the header  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One font size (CSS px) for all report text in every report built with
+ * buildReportDocument (preview, print, PDF, new window).
+ * The company header scales from it: name = 1.6×, logo height = 6.4×,
+ * logo max width = 22×, address = 1×. Change this single value to resize
+ * everything together.
+ */
+export const REPORT_FONT_PX = 8;
+
+/* ------------------------------------------------------------------ */
 /*  Shared CSS – freight / list report style + print-safe table shell  */
 /* ------------------------------------------------------------------ */
 
@@ -79,13 +92,13 @@ export const REPORT_HEADER_CSS = `
   }
   .company-logo-wrap {
     flex: 0 0 auto;
-    max-width: 220px;
+    max-width: ${REPORT_FONT_PX * 22}px;
     display: flex;
     align-items: center;
   }
   .company-logo {
-    max-height: 64px;
-    max-width: 220px;
+    max-height: ${REPORT_FONT_PX * 6.4}px;
+    max-width: ${REPORT_FONT_PX * 22}px;
     object-fit: contain;
     display: block;
   }
@@ -95,14 +108,14 @@ export const REPORT_HEADER_CSS = `
     min-width: 0;
   }
   .company-name {
-    font-size: 16px;
+    font-size: ${REPORT_FONT_PX * 1.6}px;
     font-weight: 800;
     color: #0f172a;
     margin: 0 0 4px 0;
     line-height: 1.2;
   }
   .company-address {
-    font-size: 10.5px;
+    font-size: ${REPORT_FONT_PX}px;
     color: #334155;
     line-height: 1.45;
     margin: 0;
@@ -316,6 +329,24 @@ export const COMMON_REPORT_CSS = `
     }
   }
 `;
+
+/* ------------------------------------------------------------------ */
+/*  Constant report font size – applied AFTER each report's extraCss   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Forces REPORT_FONT_PX (defined at the top of this file) on all report text.
+ * Excluded (keep their own sizes): h1–h6, .company-name, .group-title.
+ * The company header (logo, name, address) is sized from the same value in
+ * REPORT_HEADER_CSS, so header and body always keep the same proportions.
+ */
+export const REPORT_FONT_CSS = `
+  body,
+  body *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(script):not(style):not(.company-name):not(.group-title) {
+    font-size: ${REPORT_FONT_PX}px !important;
+  }
+`;
+
 /* ------------------------------------------------------------------ */
 /*  reportHeader – logo left, name + each address line full width      */
 /* ------------------------------------------------------------------ */
@@ -463,6 +494,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
     ${REPORT_FOOTER_CSS}
     ${COMMON_REPORT_CSS}
     ${extraCss}
+    ${REPORT_FONT_CSS}
   </style>
 </head>
 <body>
