@@ -108,33 +108,35 @@ function parseParams(req: RequestWithUser) {
     return "";
   };
 
+  // Strip surrounding/embedded single & double quotes from any incoming value
+  const clean = (v: string): string => v.replace(/['"]/g, "").trim();
+
   const companyCode =
-    pick(
-      body.company_code,
-      body.code1,
-      q.company_code,
-      p.company_code,
-      req.user?.company_code,
+    clean(
+      pick(
+        body.company_code,
+        body.code1,
+        q.company_code,
+        p.company_code,
+        req.user?.company_code,
+      ),
     ) || "All";
 
   const prinCode =
-    pick(
-      body.prin_code,
-      body.principal_code,
-      body.code2,
-      q.prin_code,
-      q.principal_code,
-      p.prin_code,
+    clean(
+      pick(
+        body.prin_code,
+        body.principal_code,
+        body.code2,
+        q.prin_code,
+        q.principal_code,
+        p.prin_code,
+      ),
     ) || "All";
 
-  const stnNoRaw = pick(
-    body.stn_no,
-    body.number1,
-    q.stn_no,
-    p.stn_no,
-    p.stnNo,
+  const stnNo = clean(
+    pick(body.stn_no, body.number1, q.stn_no, p.stn_no, p.stnNo),
   );
-  const stnNo = stnNoRaw.replace(/'/g, "");
 
   const reportType: ReportType =
     pick(body.report_type, body.reportType, q.report_type, q.reportType, "Transfer") ===
