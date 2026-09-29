@@ -787,10 +787,25 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
     });
 
     // ── COUNT query ───────────────────────────────────────────────
+    // Listing rows represent documents, even when the view joins several details.
+    // Company is part of the key, so identical numbers owned by other companies
+    // remain independent.
+    const documentSource = `(
+      SELECT ranked.* FROM (
+        SELECT source.*,
+               ROW_NUMBER() OVER (
+                 PARTITION BY company_code, doc_type, doc_no
+                 ORDER BY doc_date DESC NULLS LAST
+               ) AS document_row_rank
+        FROM VW_AC_LPO_HEADER_DETAIL source
+        ${whereClause}
+      ) ranked
+      WHERE document_row_rank = 1
+    )`;
+
     const countResult = await conn.execute(
       `SELECT COUNT(*) AS TOTAL_COUNT
-       FROM VW_AC_LPO_HEADER_DETAIL
-       ${whereClause}`,
+       FROM ${documentSource}`,
       binds,
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -803,9 +818,8 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
     // ── DATA query with pagination ────────────────────────────────
     const dataResult = await conn.execute(
       `SELECT *
-       FROM VW_AC_LPO_HEADER_DETAIL
-       ${whereClause}
-       ORDER BY doc_date DESC, doc_no DESC
+       FROM ${documentSource}
+       ORDER BY doc_date DESC, doc_no DESC, doc_type
        OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY`,
       { ...binds, offset, limit },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -815,7 +829,7 @@ export const getLpoDoc = async (req: RequestWithUser, res: Response): Promise<vo
     const data = (dataResult.rows || []).map((row: any) => {
       const mapped: any = {};
       Object.keys(row).forEach((k) => {
-        mapped[k.toLowerCase()] = row[k];
+        if (k.toLowerCase() !== "document_row_rank") mapped[k.toLowerCase()] = row[k];
       });
       return mapped;
     });
