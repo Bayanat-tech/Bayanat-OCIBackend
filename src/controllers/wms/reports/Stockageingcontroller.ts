@@ -7,6 +7,7 @@ import TenantManager from "../../../database/TenantManager";
 import {
   reportHeader,
   reportFooter,
+  reportAppliedFilters,
   buildReportDocument,
 } from "../../common/report_common";
 const AdmZip = require("adm-zip");
@@ -152,6 +153,12 @@ function bucketLabels(p: AgeingParams): string[] {
   ];
 }
 
+const GROUP_BY_LABELS: Record<TGroupBy, string> = {
+  product_group: "Product Group → Product",
+  product:       "Product",
+  principal:     "Principal",
+};
+
 // ─── Data Loader ──────────────────────────────────────────────────────────────
 
 async function loadAgeingData(
@@ -266,11 +273,14 @@ const COL_COUNT = 8; // Product + 6 buckets + Total
 
 // ─── Ageing-only CSS (extraCss for buildReportDocument) ───────────────────────
 //
-// Keeps the box-shadow repaint fallback (on top of the plain print-color-adjust
-// fix used in Stock Summary/GRN) since this report leans on heavier row
-// coloring than either of those — the box-shadow trick is what actually fixed
-// the earlier print-color bugs on this report.
-
+// Palette aligned with FREIGHT_COLORS so the ageing report matches the
+// Stock Summary / Freight reports:
+//   navy      = #00378c  (parent header, principal header rows)
+//   navyDeep  = #002a6b  (Total column header — slightly darker accent)
+//   strip     = #eaf0f8  (principal total / group total backgrounds)
+//   dataStrip = #f1f5f9  (product total row)
+//   grandBg   = #00378c  (grand total row — same as header for consistency)
+//
 const STOCK_AGEING_EXTRA_CSS = `
   * {
     -webkit-print-color-adjust: exact !important;
@@ -278,64 +288,72 @@ const STOCK_AGEING_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  table.ageing-table th { background: #1d4ed8 !important; color: #fff; box-shadow: inset 0 0 0 1000px #1d4ed8; }
-  table.ageing-table th.total-col-hdr { background: #0f3460 !important; box-shadow: inset 0 0 0 1000px #0f3460; }
-  table.ageing-table td.total-col { font-weight: 700; background: #eff6ff; box-shadow: inset 0 0 0 1000px #eff6ff; }
+  table.ageing-table th {
+    background: #00378c !important;
+    color: #fff;
+    box-shadow: inset 0 0 0 1000px #00378c;
+  }
+  table.ageing-table th.total-col-hdr {
+    background: #002a6b !important;
+    box-shadow: inset 0 0 0 1000px #002a6b;
+  }
+  table.ageing-table td.total-col {
+    font-weight: 700;
+    background: #eaf0f8;
+    box-shadow: inset 0 0 0 1000px #eaf0f8;
+  }
   table.ageing-table td.subtotal-label { text-align: right; font-weight: 700; padding-right: 8px; }
   table.ageing-table td.principal-label { text-align: left; font-weight: 700; padding-right: 8px; }
 
   tr.principal-header td {
-    background: #1d4ed8;
-    box-shadow: inset 0 0 0 1000px #1d4ed8;
+    background: #00378c;
+    box-shadow: inset 0 0 0 1000px #00378c;
     color: #fff;
     font-weight: 700;
     padding: 4px 6px;
   }
   tr.group-header td {
-    background: #dbeafe;
-    box-shadow: inset 0 0 0 1000px #dbeafe;
+    background: #eaf0f8;
+    box-shadow: inset 0 0 0 1000px #eaf0f8;
     font-weight: 700;
     padding: 3px 6px;
   }
   tr.data-row td { background: #fff; }
   tr.product-total-row td {
-    background: #e0f2fe;
-    box-shadow: inset 0 0 0 1000px #e0f2fe;
+    background: #f1f5f9;
+    box-shadow: inset 0 0 0 1000px #f1f5f9;
     font-weight: 700;
-    border-top: 1px solid #7dd3fc;
+    border-top: 1px solid #cbd5e1;
   }
   tr.group-total-row td {
-    background: #fffde7;
-    box-shadow: inset 0 0 0 1000px #fffde7;
+    background: #f1f5f9;
+    box-shadow: inset 0 0 0 1000px #f1f5f9;
     font-weight: 700;
-    border-top: 1px solid #999;
+    border-top: 1px solid #94a3b8;
   }
   tr.principal-total-row td {
-    background: #bfdbfe;
-    box-shadow: inset 0 0 0 1000px #bfdbfe;
+    background: #eaf0f8;
+    box-shadow: inset 0 0 0 1000px #eaf0f8;
     font-weight: 700;
-    border-top: 2px solid #1d4ed8;
+    border-top: 2px solid #00378c;
   }
   tr.grand-total-row td {
-    background: #1d4ed8;
-    box-shadow: inset 0 0 0 1000px #1d4ed8;
+    background: #00378c;
+    box-shadow: inset 0 0 0 1000px #00378c;
     color: #fff;
     font-weight: 700;
-    border-top: 2px solid #1e3a8a;
-  }
-
-  .filter-criteria {
-    font-size: 10px;
-    font-style: italic;
-    color: #555;
-    margin-top: 8px;
+    border-top: 2px solid #002a6b;
   }
 `;
 
 // ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
 
 function renderAgeingBody(
-  rows: AgeingRow[], params: AgeingParams, metric: TMetric, reportTitle: string,
+  rows: AgeingRow[],
+  params: AgeingParams,
+  metric: TMetric,
+  reportTitle: string,
+  filtersHtml: string,
 ): string {
   const labels = bucketLabels(params);
 
@@ -438,6 +456,8 @@ function renderAgeingBody(
       <div><h1>${escapeHtml(reportTitle)}</h1></div>
     </div>
 
+    ${filtersHtml}
+
     <table class="data-table ageing-table">
       <thead>
         <tr>
@@ -456,10 +476,6 @@ function renderAgeingBody(
         </tr>
       </tfoot>
     </table>
-
-    <div class="filter-criteria">
-      Filter Criteria : Principal Code: [${escapeHtml(params.prinCode.join(", "))}], Department Code: [${escapeHtml(params.deptCode.join(", "))}], Product Code: [${escapeHtml(params.prodCode.join(", "))}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]
-    </div>
   `;
 }
 
@@ -791,7 +807,20 @@ async function handleHtml(req: RequestWithUser, res: Response, metric: TMetric, 
     const loginId = text(req.user?.loginid);
 
     const headerHtml = await reportHeader({ company_code: params.companyCode, req });
-    const bodyHtml    = renderAgeingBody(rows, params, metric, reportTitle);
+
+    // ── Applied Filters strip (matches the Freight Revenue style) ──────────
+    const filtersHtml = reportAppliedFilters([
+      { label: "Principal",  value: params.prinCode },
+      { label: "Department", value: params.deptCode },
+      { label: "Product",    value: params.prodCode },
+      {
+        label: "Age Buckets (days)",
+        value: `${params.age1} / ${params.age2} / ${params.age3} / ${params.age4} / ${params.age5}`,
+      },
+      { label: "Group By",   value: GROUP_BY_LABELS[params.groupBy] ?? params.groupBy },
+    ]);
+
+    const bodyHtml    = renderAgeingBody(rows, params, metric, reportTitle, filtersHtml);
     const footerHtml  = reportFooter({
       reportName: `rpt_stock_ageing_${metric}`,
       userName: loginId,
