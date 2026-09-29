@@ -272,7 +272,15 @@ function sumBuckets(rows: AgeingRow[], metric: TMetric): AgeBuckets {
 const COL_COUNT = 8; // Product + 6 buckets + Total
 
 // ─── Ageing-only CSS (extraCss for buildReportDocument) ───────────────────────
-
+//
+// Palette aligned with FREIGHT_COLORS so the ageing report matches the
+// Stock Summary / Freight reports:
+//   navy      = #00378c  (parent header, principal header rows)
+//   navyDeep  = #002a6b  (Total column header — slightly darker accent)
+//   strip     = #eaf0f8  (principal total / group total backgrounds)
+//   dataStrip = #f1f5f9  (product total row)
+//   grandBg   = #00378c  (grand total row — same as header for consistency)
+//
 const STOCK_AGEING_EXTRA_CSS = `
   * {
     -webkit-print-color-adjust: exact !important;
@@ -280,50 +288,61 @@ const STOCK_AGEING_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  table.ageing-table th { background: #1d4ed8 !important; color: #fff; box-shadow: inset 0 0 0 1000px #1d4ed8; }
-  table.ageing-table th.total-col-hdr { background: #0f3460 !important; box-shadow: inset 0 0 0 1000px #0f3460; }
-  table.ageing-table td.total-col { font-weight: 700; background: #eff6ff; box-shadow: inset 0 0 0 1000px #eff6ff; }
+  table.ageing-table th {
+    background: #00378c !important;
+    color: #fff;
+    box-shadow: inset 0 0 0 1000px #00378c;
+  }
+  table.ageing-table th.total-col-hdr {
+    background: #002a6b !important;
+    box-shadow: inset 0 0 0 1000px #002a6b;
+  }
+  table.ageing-table td.total-col {
+    font-weight: 700;
+    background: #eaf0f8;
+    box-shadow: inset 0 0 0 1000px #eaf0f8;
+  }
   table.ageing-table td.subtotal-label { text-align: right; font-weight: 700; padding-right: 8px; }
   table.ageing-table td.principal-label { text-align: left; font-weight: 700; padding-right: 8px; }
 
   tr.principal-header td {
-    background: #1d4ed8;
-    box-shadow: inset 0 0 0 1000px #1d4ed8;
+    background: #00378c;
+    box-shadow: inset 0 0 0 1000px #00378c;
     color: #fff;
     font-weight: 700;
     padding: 4px 6px;
   }
   tr.group-header td {
-    background: #dbeafe;
-    box-shadow: inset 0 0 0 1000px #dbeafe;
+    background: #eaf0f8;
+    box-shadow: inset 0 0 0 1000px #eaf0f8;
     font-weight: 700;
     padding: 3px 6px;
   }
   tr.data-row td { background: #fff; }
   tr.product-total-row td {
-    background: #e0f2fe;
-    box-shadow: inset 0 0 0 1000px #e0f2fe;
+    background: #f1f5f9;
+    box-shadow: inset 0 0 0 1000px #f1f5f9;
     font-weight: 700;
-    border-top: 1px solid #7dd3fc;
+    border-top: 1px solid #cbd5e1;
   }
   tr.group-total-row td {
-    background: #fffde7;
-    box-shadow: inset 0 0 0 1000px #fffde7;
+    background: #f1f5f9;
+    box-shadow: inset 0 0 0 1000px #f1f5f9;
     font-weight: 700;
-    border-top: 1px solid #999;
+    border-top: 1px solid #94a3b8;
   }
   tr.principal-total-row td {
-    background: #bfdbfe;
-    box-shadow: inset 0 0 0 1000px #bfdbfe;
+    background: #eaf0f8;
+    box-shadow: inset 0 0 0 1000px #eaf0f8;
     font-weight: 700;
-    border-top: 2px solid #1d4ed8;
+    border-top: 2px solid #00378c;
   }
   tr.grand-total-row td {
-    background: #1d4ed8;
-    box-shadow: inset 0 0 0 1000px #1d4ed8;
+    background: #00378c;
+    box-shadow: inset 0 0 0 1000px #00378c;
     color: #fff;
     font-weight: 700;
-    border-top: 2px solid #1e3a8a;
+    border-top: 2px solid #002a6b;
   }
 `;
 

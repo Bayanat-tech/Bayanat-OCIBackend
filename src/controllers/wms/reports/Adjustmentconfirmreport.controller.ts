@@ -169,7 +169,7 @@ async function loadAdjConfirmData(
   }
 }
 
-// ─── CSS — Stock Transfer blue theme (#0b4ca1) ────────────────────────────────
+// ─── CSS — Adjust Confirmation theme (aligned with FREIGHT_COLORS) ───────────
 
 const ADJ_CONFIRM_EXTRA_CSS = `
   * {
@@ -188,18 +188,18 @@ const ADJ_CONFIRM_EXTRA_CSS = `
     margin: 0;
     font-size: 18px;
     font-weight: 800;
-    color: #0b4ca1;
+    color: #00378c;
   }
 
   .section-label {
     font-size: 9.5px;
     font-weight: 700;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .08em;
     margin-bottom: 7px;
     padding-bottom: 4px;
-    border-bottom: 1.5px solid #0b4ca1;
+    border-bottom: 1.5px solid #00378c;
   }
   .field-row {
     display: flex;
@@ -260,24 +260,26 @@ const ADJ_CONFIRM_EXTRA_CSS = `
   .items-title {
     font-size: 10px;
     font-weight: 700;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .08em;
     margin: 4px 0 8px;
     padding-bottom: 4px;
-    border-bottom: 2px solid #0b4ca1;
+    border-bottom: 2px solid #00378c;
   }
 
+  /* Dark navy table header — matches Stock Summary */
   table.adj-items-table thead th {
-    background: #f1f5f9;
-    color: #0f172a;
+    background: #00378c !important;
+    color: #ffffff !important;
     padding: 7px 6px;
     font-size: 9px;
     font-weight: 700;
     text-align: left;
-    border-top: 1px solid #475569;
-    border-bottom: 1px solid #475569;
+    border-top: 1px solid #002a6b;
+    border-bottom: 1px solid #002a6b;
     white-space: nowrap;
+    box-shadow: inset 0 0 0 1000px #00378c;
   }
   table.adj-items-table thead th.c-center,
   table.adj-items-table thead th.c-num { text-align: center; }
@@ -354,7 +356,7 @@ const ADJ_CONFIRM_EXTRA_CSS = `
   .sign-label {
     font-size: 9.5px;
     font-weight: 700;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .05em;
     margin-bottom: 22px;
@@ -497,7 +499,7 @@ function renderAdjConfirmBody(
   `;
 }
 
-// ─── Excel builder (blue theme) ───────────────────────────────────────────────
+// ─── Excel builder (navy theme — matches Stock Summary) ───────────────────────
 
 const STYLE_ID = {
   default:        0,
@@ -641,13 +643,13 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   ${mergeXml}
 </worksheet>`;
 
-  // Blue theme styles matching Stock Transfer
+  // Navy theme styles matching Stock Summary
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="7">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
@@ -656,7 +658,7 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
   <fills count="7">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
@@ -669,7 +671,7 @@ function buildExcelBuffer(header: ReportRow, details: ReportRow[]): Buffer {
       <top style="thin"><color rgb="FF475569"/></top><bottom style="thin"><color rgb="FF475569"/></bottom>
       <diagonal/>
     </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FF0B4CA1"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FF00378C"/></bottom><diagonal/></border>
     <border>
       <left style="thin"><color rgb="FFE2E8F0"/></left><right style="thin"><color rgb="FFE2E8F0"/></right>
       <top style="thin"><color rgb="FFE2E8F0"/></top><bottom style="thin"><color rgb="FFE2E8F0"/></bottom>
