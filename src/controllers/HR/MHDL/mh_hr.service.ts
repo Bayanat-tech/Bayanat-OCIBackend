@@ -1,35 +1,6 @@
 
 import * as oracledb from "oracledb";
-import { oracleDb} from "../../../database/connection";
 import { QueryExecutor } from "../../../database/QueryExecutor";
-
-// Add helper function for date handling
-// function formatDate(date: Date | string | null | undefined): string | null {
-//   if (!date) return null;
-//   if (typeof date === "string") {
-//     return date === "0000-00-00" ? null : date;
-//   }
-//   if (date instanceof Date) {
-//     return date.toISOString().split("T")[0];
-//   }
-//   return null;
-// }
-
-// function formatDateTime(date: string | Date | null | undefined): string | null {
-//   if (!date) return null;
-//   if (typeof date === "string") {
-//     // Handle existing datetime string
-//     if (date.includes(" ")) {
-//       const [datePart] = date.split(" ");
-//       return datePart;
-//     }
-//     return date === "0000-00-00" ? null : date;
-//   }
-//   if (date instanceof Date) {
-//     return date.toISOString().split("T")[0];
-//   }
-//   return null;
-// }
 
 export interface LeaveResumeDatesUpdate {
   requestNumber: string;
