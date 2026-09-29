@@ -68,11 +68,16 @@ function escapeXml(value: unknown): string {
 
 function numFmt(value: unknown, decimals = 2): string {
   const n = Number(value);
-  if (!Number.isFinite(n) || n === 0) return "—";
+  if (!Number.isFinite(n) || n === 0) return "\u2014";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+}
+
+/** "OMSLL  Salalah" style: code and name joined with " - ", skipping blanks */
+function joinParts(...parts: unknown[]): string {
+  return parts.map(text).map((p) => p.trim()).filter(Boolean).join(" - ");
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -144,75 +149,142 @@ async function loadInboundActivityData(
   }
 }
 
-// ─── Extra CSS specific to this report ─────────────────────────────────────
-// (company letterhead / footer / .data-table come from report_common;
-// font sizes and row styling follow DN Summary)
+// ─── Activity table columns (single header row; ONE alignment per column) ────
+
+type ColAlign = "left" | "center" | "right";
+
+interface ActColumn { label: string; align: ColAlign; width: number } // width in %, sums to 100
+
+const ACT_COLUMNS: ActColumn[] = [
+  { label: "Code",        align: "left",  width: 14 },
+  { label: "Description", align: "left",  width: 42 },
+  { label: "Quantity",    align: "right", width: 14 },
+  { label: "Supplier",    align: "left",  width: 30 },
+];
+
+// ─── Layout CSS – same look as the Quotation List PDF ────────────────────────
+// Letterhead / footer come from report_common; this only styles the body.
+// Class names (.filter-summary, .group-title, .info-grid, .field/.label,
+// .filter-header) are the ones prepareReportHtml() on the frontend knows, so
+// the client-side PDF (createFreightPdf → fontVfs / Inter) and Excel export
+// keep the identical design.
 
 const INBOUND_SERVICE_ACTIVITY_EXTRA_CSS = `
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
+  @page { size: A4 portrait; margin: 8mm 10mm; }
+  .paper { max-width: none; }
+
+  body, .paper, table.data-table {
+    font-family: "Inter", "Segoe UI", Arial, sans-serif;
   }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
+
+  h1.report-title {
+    margin: 0 0 6px 0;
+    font-size: 17px;
     font-weight: 800;
-    color: #0b4ca1;
-  }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
+    color: #00378c;
+    line-height: 1.2;
   }
 
-  .section-label {
-    font-size: 9.5px; font-weight: 700; color: #0b4ca1; text-transform: uppercase;
-    letter-spacing: .08em; margin: 14px 0 7px; padding-bottom: 4px;
-    border-bottom: 1.5px solid #0b4ca1;
+  .filter-summary {
+    margin: 0 0 10px 0;
+    padding: 5px 10px;
+    font-size: 9.5px;
+    line-height: 1.35;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #00378c;
   }
-  .field-row {
-    display: flex; align-items: baseline; padding: 3.5px 0;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  .field-row:last-child { border-bottom: none; }
-  .f-label {
-    font-size: 10px; color: #6b7280; min-width: 108px; padding-right: 8px;
-    text-align: right; white-space: nowrap; flex-shrink: 0;
-  }
-  .f-value { font-size: 11px; font-weight: 600; color: #111827; }
-  .nil { font-weight: 400; color: #9ca3af; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
-  .box {
-    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
-    padding: 10px 14px; margin-bottom: 14px;
+  .filter-summary strong { color: #00378c; font-weight: 700; }
+
+  .group-title {
+    margin: 10px 0 4px 0;
+    padding: 5px 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #00378c;
+    background: #eaf0f8;
   }
 
-  /* ── Activity table — same font sizes / row styling as DN Summary ── */
-  table.data-table { table-layout: fixed; }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 24px;
+    margin: 0 0 4px 0;
+  }
+
+  .field {
+    display: flex;
+    align-items: baseline;
+    padding: 3px 4px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 10px;
+    line-height: 1.3;
+  }
+  .field .label {
+    flex: 0 0 110px;
+    padding-right: 8px;
+    color: #475569;
+    font-weight: 700;
+  }
+  .field .label::after { content: ":"; }
+  .field .value {
+    color: #1e293b;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+
+  .filter-header {
+    margin: 2px 0 2px 0;
+    padding: 2px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #00378c;
+  }
+
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 10px;
+    color: #1e293b;
+  }
   table.data-table th,
-  table.data-table td { overflow-wrap: anywhere; word-break: break-word; }
-  table.data-table th { text-align: left; }
-  table.data-table th.num,
-  table.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  table.data-table tr.data-row:nth-child(even) td { background: #f8fafc; }
+  table.data-table td {
+    padding: 4px 8px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    border-bottom: 1px solid #e2e8f0;
+    line-height: 1.25;
+  }
+  table.data-table thead th {
+    background: #00378c;
+    color: #fff;
+    font-weight: 700;
+    font-size: 10px;
+    border-bottom: none;
+    padding: 6px 8px;
+  }
+  table.data-table .left   { text-align: left   !important; }
+  table.data-table .center { text-align: center !important; }
+  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+  table.data-table tr.data-row td { background: #fcfdfe; }
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
     table.data-table thead { display: table-header-group; }
     table.data-table tr, table.data-table td, table.data-table th {
       break-inside: avoid;
       page-break-inside: avoid;
     }
-    .box, .two-col { break-inside: avoid; page-break-inside: avoid; }
-    .section-label { break-after: avoid; page-break-after: avoid; }
+    .info-grid { break-inside: avoid; page-break-inside: avoid; }
+    .group-title { break-after: avoid; page-break-after: avoid; }
   }
 `;
 
-// Lets the React parent page trigger printing through postMessage
-// (report_common only provides the built-in button, so this is added to the body).
+// Lets the React parent page trigger printing through postMessage.
 const PRINT_LISTENER_SCRIPT = `
   <script>
     window.addEventListener("message", function (e) {
@@ -221,88 +293,81 @@ const PRINT_LISTENER_SCRIPT = `
   </script>`;
 
 // ─── HTML body renderer ─────────────────────────────────────────────────────
-// Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from report_common supply the company header, footer and page shell.
-
-function titleHtml(title: string, subtitle: string): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-    </div>`;
-}
 
 function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
   const d = rows[0];
 
-  const field = (label: string, value: unknown) => `
-    <div class="field-row">
-      <span class="f-label">${escapeHtml(label)}</span>
-      <span class="f-value">${escapeHtml(value) || '<span class="nil"></span>'}</span>
-    </div>`;
+  const jobText = `${text(d.job_type)} ${text(d.job_no)}`.trim();
+  const prinText = joinParts(d.prin_code, d.prin_name);
 
-  const activityRows = rows.map((r) => `
-    <tr class="data-row">
-      <td>${escapeHtml(r.act_code)}</td>
-      <td>${escapeHtml(r.other_services)}</td>
-      <td class="num">${escapeHtml(numFmt(r.quantity, 3))}</td>
-      <td>${escapeHtml(r.transporter_name)}</td>
-    </tr>`).join("");
+  const field = (label: string, value: unknown) =>
+    `<div class="field"><span class="label">${escapeHtml(label)}</span> <span class="value">${escapeHtml(text(value) || "\u2014")}</span></div>`;
+
+  const filterLine = [
+    ["Job No",     jobText],
+    ["Principal",  text(d.prin_code)],
+    ["Invoice No", text(d.invoice_no)],
+  ]
+    .map(([k, v]) => `<strong>${escapeHtml(k)}:</strong> ${escapeHtml(v || "\u2014")}`)
+    .join(" | ");
+
+  const C = ACT_COLUMNS;
+  const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
+  const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
+
+  const activityRows = rows.map((r) =>
+    `<tr class="data-row">` +
+    `<td class="${C[0].align}">${escapeHtml(text(r.act_code) || "\u2014")}</td>` +
+    `<td class="${C[1].align}">${escapeHtml(text(r.other_services) || "\u2014")}</td>` +
+    `<td class="${C[2].align} num">${escapeHtml(numFmt(r.quantity, 3))}</td>` +
+    `<td class="${C[3].align}">${escapeHtml(text(r.transporter_name) || "\u2014")}</td>` +
+    `</tr>`
+  ).join("");
 
   return `
-    ${titleHtml(reportTitle, `Job No: ${text(d.job_type)} ${text(d.job_no)} — Principal: ${text(d.prin_code)}`)}
+    <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+    <div class="filter-summary"><strong>Job Details:</strong> ${filterLine}</div>
 
-    <div class="section-label">Job Information</div>
-    <div class="two-col">
+    <div class="group-title">Job Information</div>
+    <div class="info-grid">
       <div>
-        ${field("Job No",    `${text(d.job_type)} ${text(d.job_no)}`.trim())}
-        ${field("Principal", `${text(d.prin_code)} — ${text(d.prin_name)}`)}
+        ${field("Job No",     jobText)}
+        ${field("Principal",  prinText)}
         ${field("Invoice No", d.invoice_no)}
       </div>
       <div>
-        ${field("Ref #",  d.description1)}
-        ${field("SO No",  d.so_no)}
-        ${field("PO No",  d.po_no)}
+        ${field("Ref #", d.description1)}
+        ${field("SO No", d.so_no)}
+        ${field("PO No", d.po_no)}
       </div>
     </div>
 
-    <div class="section-label">Activities</div>
+    <div class="group-title">Activities</div>
     <table class="data-table">
-      <thead>
-        <tr>
-          <th style="width:12%">Code</th>
-          <th>Description</th>
-          <th class="num" style="width:14%">Quantity</th>
-          <th style="width:24%">Supplier</th>
-        </tr>
-      </thead>
+      <colgroup>${colgroup}</colgroup>
+      <thead><tr>${headerCells}</tr></thead>
       <tbody>${activityRows}</tbody>
     </table>
 
-    <div class="two-col">
-      <div class="box" style="margin-bottom:0;">
-        <div class="section-label" style="border:none; margin-bottom:6px;">Movement</div>
+    <div class="group-title">Movement &amp; Remarks</div>
+    <div class="info-grid">
+      <div>
+        <div class="filter-header">Movement</div>
         ${field("Type of Movement", d.transport_mode)}
-        ${field("From",             `${text(d.port_code)}  ${text(d.port_name)}`)}
-        ${field("To",               `${text(d.destination_port)} ${text(d.dest_port_name)}`)}
+        ${field("From",             joinParts(d.port_code, d.port_name))}
+        ${field("To",               joinParts(d.destination_port, d.dest_port_name))}
         ${field("Quantity",         numFmt(d.qty, 0))}
         ${field("Volume (CBM)",     numFmt(d.cbm, 3))}
       </div>
-      <div class="box" style="margin-bottom:0;">
-        <div class="section-label" style="border:none; margin-bottom:6px;">Remarks</div>
-        <div style="font-size:11px; color:#111827; white-space:pre-wrap;">${escapeHtml(d.remarks) || '<span class="nil">—</span>'}</div>
+      <div>
+        <div class="filter-header">Remarks</div>
+        ${field("Remarks", d.remarks)}
       </div>
     </div>
     ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
-/**
- * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter() — same setup as DN Summary.
- */
 async function renderHtml(
   req: RequestWithUser,
   rows: ReportRow[],
@@ -332,20 +397,19 @@ async function renderHtml(
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// AdmZip-based xlsx generation has no shared equivalent yet.
-// Font is Arial (same as DN Summary Excel).
+// Same palette / Arial font as the other reports.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:      0,
-  header:       1,  // white text, blue bg, centered — column headers
-  sectionTitle: 2,  // blue text, light-blue bg, bottom border
-  label:        3,  // gray bold, right-aligned
-  value:        4,  // dark bold, wrapping
-  tableHeader:  5,  // white text, blue bg, left aligned
-  tableCell:    6,  // white bg, bordered
-  tableCellNum: 7,  // white bg, bordered, right aligned
-  reportTitle:  8,  // big centered white-on-blue title row
+  title:        1,  // blue bold 14, no fill
+  sectionTitle: 2,  // blue bold on #eaf0f8
+  label:        3,  // slate bold, right-aligned
+  value:        4,  // dark, wrapping
+  tableHeader:  5,  // white on #00378c, centered
+  tableCell:    6,  // left, light bottom border
+  tableCellNum: 7,  // right, #,##0.000, light bottom border
+  footer:       8,  // italic grey, right
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -357,76 +421,93 @@ function xc(v: unknown, style: StyleKey): XlCell {
 }
 
 function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
-  const d      = rows[0];
-  const NCOLS  = 7;
-  const skip   = null;
+  const d     = rows[0];
+  const NCOLS = 4;
+  const skip  = null;
 
   type Row = (XlCell | null)[];
   const xlRows: Row[] = [];
+  const blank = (): Row => Array(NCOLS).fill(skip);
 
-  xlRows.push([xc(`${reportTitle} — Job ${text(d.job_type)} ${text(d.job_no)}`, "reportTitle"), skip, skip, skip, skip, skip, skip]);
+  const spanRow = (label: string, style: StyleKey) => {
+    const row = blank();
+    row[0] = xc(label, style);
+    xlRows.push(row);
+  };
 
-  xlRows.push(Array(NCOLS).fill(skip));
+  const jobText  = `${text(d.job_type)} ${text(d.job_no)}`.trim();
+  const prinText = joinParts(d.prin_code, d.prin_name);
 
-  xlRows.push([xc("JOB INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
+  spanRow(`${reportTitle} \u2014 Job ${jobText}`, "title");
+  xlRows.push(blank());
+
+  spanRow("JOB INFORMATION", "sectionTitle");
 
   const leftInfo: [string, unknown][] = [
-    ["Job No",     `${text(d.job_type)} ${text(d.job_no)}`.trim()],
-    ["Principal",  `${text(d.prin_code)} — ${text(d.prin_name)}`],
+    ["Job No",     jobText],
+    ["Principal",  prinText],
     ["Invoice No", d.invoice_no],
   ];
   const rightInfo: [string, unknown][] = [
-    ["Ref #",  d.description1],
-    ["SO No",  d.so_no],
-    ["PO No",  d.po_no],
+    ["Ref #", d.description1],
+    ["SO No", d.so_no],
+    ["PO No", d.po_no],
   ];
   for (let i = 0; i < Math.max(leftInfo.length, rightInfo.length); i++) {
     const [ll, lv] = leftInfo[i]  ?? ["", ""];
     const [rl, rv] = rightInfo[i] ?? ["", ""];
-    xlRows.push([xc(ll, "label"), xc(lv, "value"), xc("", "default"), xc(rl, "label"), xc(rv, "value"), skip, skip]);
+    xlRows.push([xc(ll, "label"), xc(lv, "value"), xc(rl, "label"), xc(rv, "value")]);
   }
 
-  xlRows.push(Array(NCOLS).fill(skip));
+  xlRows.push(blank());
 
-  xlRows.push([xc("ACTIVITIES", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
-  xlRows.push([
-    xc("Code", "tableHeader"), xc("Description", "tableHeader"),
-    xc("Quantity", "tableHeader"), xc("Supplier", "tableHeader"),
-    skip, skip, skip,
-  ]);
+  spanRow("ACTIVITIES", "sectionTitle");
+  xlRows.push(ACT_COLUMNS.map((c) => xc(c.label, "tableHeader")));
   for (const r of rows) {
     xlRows.push([
-      xc(r.act_code, "tableCell"),
-      xc(r.other_services, "tableCell"),
-      xc(Number(r.quantity) || 0, "tableCellNum"),
-      xc(r.transporter_name, "tableCell"),
-      skip, skip, skip,
+      xc(text(r.act_code)         || "\u2014", "tableCell"),
+      xc(text(r.other_services)   || "\u2014", "tableCell"),
+      xc(Number(r.quantity) || 0,              "tableCellNum"),
+      xc(text(r.transporter_name) || "\u2014", "tableCell"),
     ]);
   }
 
-  xlRows.push(Array(NCOLS).fill(skip));
+  xlRows.push(blank());
 
-  xlRows.push([xc("MOVEMENT", "sectionTitle"), skip, skip, xc("REMARKS", "sectionTitle"), skip, skip, skip]);
+  // MOVEMENT (A:B) | REMARKS (C:D)
+  xlRows.push([xc("MOVEMENT", "sectionTitle"), skip, xc("REMARKS", "sectionTitle"), skip]);
 
   const movement: [string, unknown][] = [
     ["Type of Movement", d.transport_mode],
-    ["From",             d.port_code],
-    ["To",               d.destination_port],
+    ["From",             joinParts(d.port_code, d.port_name)],
+    ["To",               joinParts(d.destination_port, d.dest_port_name)],
     ["Quantity",         numFmt(d.qty, 0)],
     ["Volume (CBM)",     numFmt(d.cbm, 3)],
   ];
   for (let i = 0; i < movement.length; i++) {
     const [ml, mv] = movement[i];
-    const remarksCell = i === 0 ? xc(d.remarks ?? "", "value") : skip;
-    xlRows.push([xc(ml, "label"), xc(mv, "value"), xc("", "default"), remarksCell, skip, skip, skip]);
+    xlRows.push([
+      xc(ml, "label"),
+      xc(mv, "value"),
+      i === 0 ? xc(text(d.remarks) || "\u2014", "value") : skip,
+      skip,
+    ]);
   }
 
-  const COL_WIDTHS = [18, 30, 3, 22, 22, 2, 2];
+  xlRows.push(blank());
+  {
+    const row = blank();
+    row[NCOLS - 1] = xc("Powered by Bayanat Technology", "footer");
+    xlRows.push(row);
+  }
+
+  const COL_WIDTHS = [20, 36, 20, 28];
 
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
+  // merge each run of "value followed by nulls" into one merged range
   const merges: string[] = [];
   xlRows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -451,8 +532,8 @@ function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
 
   let sheetDataXml = "";
   xlRows.forEach((row, ri) => {
-    const rn  = ri + 1;
-    const ht  = rn === 1 ? ` ht="26" customHeight="1"` : "";
+    const rn = ri + 1;
+    const ht = rn === 1 ? ` ht="24" customHeight="1"` : "";
     let rowXml = `<row r="${rn}"${ht}>`;
     row.forEach((cell, ci) => {
       if (cell === null) return;
@@ -483,46 +564,43 @@ function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
   // ── Styles XML — order must match STYLE_ID above ──────────────────────────
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
   <fonts count="7">
-    <font><sz val="10"/><name val="Arial"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Arial"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Arial"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Arial"/></font>
-    <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
-    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><b/><sz val="14"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><b/><sz val="9"/><color rgb="FF475569"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><i/><sz val="8"/><color rgb="FF64748B"/><name val="Arial"/></font>
   </fonts>
-  <fills count="5">
+  <fills count="4">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF4FC"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
-  <borders count="3">
+  <borders count="4">
     <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
-      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
-    <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
-      <diagonal/>
-    </border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFCBD5E1"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="9">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="4" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="4" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="6" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
