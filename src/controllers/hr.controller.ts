@@ -56,6 +56,57 @@ const ALLOWED_FILTER_COLUMNS = new Set<string>([
   'NEXT_ACTION_BY_NAME',
   'REMARKS'
 ]);
+const DATE_COLUMNS = new Set<string>([
+  'REQUEST_DATE',
+  'LAST_UPDATED',
+  'LEAVE_START_DATE',
+  'LEAVE_END_DATE'
+]);
+
+  const toYmd = (v: any): string | null => {
+    const s = String(v ?? '').slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  };
+
+  function buildDateClause(
+    col: string,
+    op: string,
+    val: any,
+    key: string,
+    binds: Record<string, any>
+  ): string | null {
+    const c = `TRUNC(${col})`;
+    const d = (k: string) => `TO_DATE(:${k}, 'YYYY-MM-DD')`;
+
+    switch (op) {
+      case 'is_null':
+        return `${col} IS NULL`;
+      case 'is_not_null':
+        return `${col} IS NOT NULL`;
+      case 'between': {
+        const from = toYmd(Array.isArray(val) ? val[0] : val);
+        const to = toYmd(Array.isArray(val) ? val[1] : val);
+        if (!from || !to) return null;
+        binds[`${key}_from`] = from;
+        binds[`${key}_to`] = to;
+        return `${c} BETWEEN ${d(`${key}_from`)} AND ${d(`${key}_to`)}`;
+      }
+      default: {
+        const ymd = toYmd(Array.isArray(val) ? val[0] : val);
+        if (!ymd) return null;
+        binds[key] = ymd;
+        const sqlOp: Record<string, string> = {
+          equals: '=',
+          not_equals: '<>',
+          gt: '>',
+          gte: '>=',
+          lt: '<',
+          lte: '<='
+        };
+        return sqlOp[op] ? `${c} ${sqlOp[op]} ${d(key)}` : null;
+      }
+    }
+  }
 
 function buildFilterSql(
   search: any
@@ -73,6 +124,12 @@ function buildFilterSql(
       const key = `f_${gi}_${ci}`;
       const op = String(clause?.operator ?? 'equals').toLowerCase();
       const val = clause?.field_value;
+
+      if (DATE_COLUMNS.has(col)) {
+      const clause = buildDateClause(col, op, val, key, binds);
+      if (clause) clauses.push(clause);
+      return;
+      }
 
       switch (op) {
         case 'contains':
