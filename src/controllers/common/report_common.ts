@@ -154,6 +154,110 @@ export const REPORT_FOOTER_CSS = `
   }
 `;
 
+/* ------------------------------------------------------------------ */
+/*  Applied Filters strip – matches the "Freight Revenue" style        */
+/* ------------------------------------------------------------------ */
+
+export const REPORT_APPLIED_FILTERS_CSS = `
+  .applied-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    margin: 0 0 14px 0;
+    padding: 8px 12px;
+    background: #eef4fb;
+    border-left: 5px solid #0b4ca1;
+    border-top: 1px solid #c7d8ee;
+    border-right: 1px solid #c7d8ee;
+    border-bottom: 1px solid #c7d8ee;
+    font-size: 10px;
+    color: #0f172a;
+  }
+  .applied-filters .af-label {
+    font-weight: 800;
+    color: #0b4ca1;
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+  .applied-filters .af-item {
+    white-space: nowrap;
+  }
+  .applied-filters .af-item .af-key {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .applied-filters .af-item .af-val {
+    font-weight: 400;
+    color: #1e293b;
+  }
+  .applied-filters .af-sep {
+    color: #64748b;
+    margin: 0 6px;
+    font-weight: 700;
+  }
+`;
+
+/* ------------------------------------------------------------------ */
+/*  reportAppliedFilters – renders the filter strip                    */
+/* ------------------------------------------------------------------ */
+
+export type AppliedFilter =
+  | { label: string; value: string | string[] | null | undefined }
+  | { label: string; value: string | string[] | null | undefined; hidden?: boolean };
+
+/**
+ * Renders the "Applied Filters: Key: Value | Key: Value" strip.
+ *
+ * - Skips filters whose value is empty / null / undefined / "All"
+ *   unless `includeAll` is set to true.
+ * - Array values are joined with ", ".
+ * - Returns "" when nothing to show, so it's safe to inline in a body.
+ */
+export function reportAppliedFilters(
+  filters: AppliedFilter[],
+  options: { includeAll?: boolean; label?: string } = {}
+): string {
+  const { includeAll = false, label = "Applied Filters:" } = options;
+
+  const parts: string[] = [];
+
+  for (const f of filters) {
+    if (!f || !f.label) continue;
+
+    const raw = f.value;
+    let display = "";
+
+    if (Array.isArray(raw)) {
+      const cleaned = raw
+        .map((v) => String(v ?? "").trim())
+        .filter((v) => v !== "");
+      display = cleaned.join(", ");
+    } else if (raw != null) {
+      display = String(raw).trim();
+    }
+
+    if (!display) continue;
+    if (!includeAll && display.toLowerCase() === "all") continue;
+
+    parts.push(
+      `<span class="af-item"><span class="af-key">${escapeHtml(
+        f.label
+      )}:</span> <span class="af-val">${escapeHtml(display)}</span></span>`
+    );
+  }
+
+  if (!parts.length) return "";
+
+  const joined = parts.join(`<span class="af-sep">|</span>`);
+
+  return `
+    <div class="applied-filters">
+      <span class="af-label">${escapeHtml(label)}</span>
+      ${joined}
+    </div>`;
+}
+
 /** Common CSS for all HTML reports (tables, groups, print, sheet) */
 export const COMMON_REPORT_CSS = `
   @page { size: A4; margin: 12mm; }
@@ -492,6 +596,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
   <style>
     ${REPORT_HEADER_CSS}
     ${REPORT_FOOTER_CSS}
+    ${REPORT_APPLIED_FILTERS_CSS}
     ${COMMON_REPORT_CSS}
     ${extraCss}
     ${REPORT_FONT_CSS}
