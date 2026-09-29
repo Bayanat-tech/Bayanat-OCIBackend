@@ -318,14 +318,14 @@ const BALANCE_SHEET_EXTRA_CSS = `
     margin: 0;
     font-size: 18px;
     font-weight: 800;
-    color: #0b4ca1;
+    color: #00378c;
   }
 
   .drill-hint {
     font-size: 10px;
-    color: #0b4ca1;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
+    color: #00378c;
+    background: #eaf0f8;
+    border: 1px solid #cbd5e1;
     border-radius: 4px;
     padding: 4px 10px;
     margin-bottom: 8px;
@@ -336,7 +336,7 @@ const BALANCE_SHEET_EXTRA_CSS = `
   @media print { .drill-hint { display: none !important; } }
 
   .table-frame {
-    border: 1px solid #b8c4d2;
+    border: 1px solid #cbd5e1;
     border-radius: 3px;
     overflow: hidden;
   }
@@ -347,7 +347,7 @@ const BALANCE_SHEET_EXTRA_CSS = `
     table-layout: fixed;
   }
   table.bs-table thead th {
-    background: #0b4ca1;
+    background: #00378c;
     color: #ffffff;
     padding: 7px 8px;
     font-size: 9.5px;
@@ -361,8 +361,8 @@ const BALANCE_SHEET_EXTRA_CSS = `
   table.bs-table tbody td {
     padding: 5px 8px;
     font-size: 10px;
-    color: #263445;
-    border-bottom: 1px solid #e3e8ef;
+    color: #1e293b;
+    border-bottom: 1px solid #e2e8f0;
     vertical-align: middle;
   }
   table.bs-table tbody td.num {
@@ -371,7 +371,7 @@ const BALANCE_SHEET_EXTRA_CSS = `
   }
 
   table.bs-table tr.section-header td {
-    background: #0b4ca1;
+    background: #00378c;
     color: #ffffff;
     font-weight: 700;
     padding: 6px 8px;
@@ -382,19 +382,19 @@ const BALANCE_SHEET_EXTRA_CSS = `
   }
 
   table.bs-table tr.sub-group-header td {
-    background: #eff6ff;
-    color: #0b4ca1;
+    background: #eaf0f8;
+    color: #00378c;
     font-weight: 700;
     padding: 5px 8px;
-    border-bottom: 1px solid #bfdbfe;
+    border-bottom: 1px solid #cbd5e1;
     text-decoration: underline;
-    text-decoration-color: #93c5fd;
+    text-decoration-color: #cbd5e1;
   }
 
   table.bs-table tr.data-row td:first-child { padding-left: 28px; }
 
   table.bs-table tbody tr[data-code] { cursor: pointer; }
-  table.bs-table tbody tr[data-code]:hover { background: #eff6ff !important; }
+  table.bs-table tbody tr[data-code]:hover { background: #eaf0f8 !important; }
 
   table.bs-table tr.data-row.empty td {
     color: #94a3b8;
@@ -403,9 +403,9 @@ const BALANCE_SHEET_EXTRA_CSS = `
   }
 
   table.bs-table tr.total-row td {
-    background: #f8fafc;
+    background: #f1f5f9;
     font-weight: 700;
-    color: #0f172a;
+    color: #00378c;
     border-top: 1px solid #64748b;
     border-bottom: 2px solid #334155;
     padding: 6px 8px;
@@ -413,8 +413,8 @@ const BALANCE_SHEET_EXTRA_CSS = `
   table.bs-table tr.total-row td.num { text-align: right; }
 
   table.bs-table tr.grand-total-row td {
-    background: #dbeafe;
-    color: #1e3a8a;
+    background: #e2e8f0;
+    color: #00378c;
     font-weight: 800;
     padding: 6px 8px;
     border-top: 2px solid #334155;
@@ -424,7 +424,7 @@ const BALANCE_SHEET_EXTRA_CSS = `
   table.bs-table tr.grand-total-row td.num { text-align: right; }
 
   table.bs-table tr.net-assets-row td {
-    background: #fef2f2;
+    background: #fee2e2;
     color: #b91c1c;
     font-weight: 800;
     padding: 6px 8px;
@@ -729,27 +729,27 @@ function buildExcelBuffer(
     <font><b/><sz val="13"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FF1E3A8A"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFB91C1C"/><name val="Calibri"/></font>
   </fonts>
   <fills count="7">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFDBEAFE"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF2F2"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFEE2E2"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="6">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
-      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom><diagonal/>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom><diagonal/>
     </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FFBFDBFE"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFCBD5E1"/></bottom><diagonal/></border>
     <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
     <border>
       <left style="thin"><color rgb="FF64748B"/></left><right style="thin"><color rgb="FF64748B"/></right>

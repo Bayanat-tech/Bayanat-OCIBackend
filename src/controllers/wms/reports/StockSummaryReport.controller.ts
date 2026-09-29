@@ -328,9 +328,10 @@ const STOCK_SUMMARY_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  table.data-table th.sub-qty { background: #185FA5; }
-  table.data-table th.stock-qty-l-hdr { background: #0b4ca1; }
-  table.data-table td.stock-qty-l { font-weight: 800; color: #0b4ca1; }
+  /* All header cells now use the SAME parent navy (#00378c = FREIGHT_COLORS.navy). */
+  table.data-table th.sub-qty         { background: #00378c; }
+  table.data-table th.stock-qty-l-hdr { background: #00378c; }
+  table.data-table td.stock-qty-l     { font-weight: 800; color: #00378c; }
   tr.principal-header td {
     background: #0b4ca1;
     color: #fff;
