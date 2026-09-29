@@ -105,11 +105,28 @@ export const getFinanceListData = async (
           }
         }
 
+        // The search view can repeat one header when its account joins find more
+        // than one matching account row. A finance document is identified by its
+        // company, document type and document number. Deduplicate on that key
+        // before counting and paging so another company's matching document is
+        // never merged with this one.
+        const documentSource = `(
+          SELECT ranked.* FROM (
+            SELECT source.*,
+                   ROW_NUMBER() OVER (
+                     PARTITION BY company_code, doc_type, doc_no
+                     ORDER BY doc_date DESC NULLS LAST
+                   ) AS document_row_rank
+            FROM VW_AC_HEADER_SEARCH source
+            ${whereClause}
+          ) ranked
+          WHERE document_row_rank = 1
+        )`;
+
         const countResult = await connection.execute(
           `
           SELECT COUNT(*) AS TOTAL_COUNT
-          FROM VW_AC_HEADER_SEARCH
-          ${whereClause}
+          FROM ${documentSource}
           `,
           binds,
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -122,9 +139,8 @@ export const getFinanceListData = async (
         const dataResult = await connection.execute(
           `
           SELECT *
-          FROM VW_AC_HEADER_SEARCH
-          ${whereClause}
-          ORDER BY doc_no DESC
+          FROM ${documentSource}
+          ORDER BY doc_no DESC, doc_type
           OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
           `,
           {
@@ -138,7 +154,7 @@ export const getFinanceListData = async (
         fetchedData = (dataResult.rows || []).map((row: any) => {
           const mapped: any = {};
           Object.keys(row).forEach((k) => {
-            mapped[k.toLowerCase()] = (row as any)[k];
+            if (k.toLowerCase() !== "document_row_rank") mapped[k.toLowerCase()] = (row as any)[k];
           });
           return mapped;
         });

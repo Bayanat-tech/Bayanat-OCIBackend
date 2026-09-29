@@ -211,63 +211,67 @@ export const HrService = {
     return response.data;
   },
 
-  LeaveDaysCount: async (params: {
-    leaveStartDate: string;
-    leaveEndDate: string;
-    leaveType: string;
+ LeaveDaysCount: async (params: {
     company_code: string;
     employee_code: string;
+    leaveStartDate: string;
+    leaveEndDate: string;
+    half_day:string;
+    leaveType: string;
   }) => {
-    const { leaveStartDate, leaveEndDate, leaveType, company_code, employee_code } = params;
+    const { leaveStartDate, leaveEndDate , leaveType , company_code , half_day , employee_code} = params;
 
     const query = `
-      DECLARE
-        v_leave_days NUMBER;
-      BEGIN
-        v_leave_days := FUN_CALC_LEAVE_DAYS(
+    DECLARE
+     v_leave_days NUMBER;
+     BEGIN
+        v_leave_days := FUN_CALCULATE_FINAL_LEAVE_DAYS(
+          :p_company_code,
+          :p_employee_code,
           TO_DATE(:leaveStartDate, 'DD-MM-YYYY'),
           TO_DATE(:leaveEndDate, 'DD-MM-YYYY'),
-          :p_leaveType,
-          :p_company_code,
-          :p_employee_code
+          :p_half_day,
+          :p_leaveType
         );
-        :p_leave_days := v_leave_days;
+      :p_leave_days := v_leave_days;
       END;
     `;
+    
+    const bindParams = {
+      p_company_code: company_code,
+      leaveStartDate: leaveStartDate,
+      leaveEndDate: leaveEndDate,
+      p_half_day: half_day,
+      p_leaveType: leaveType,
+      p_employee_code: employee_code,
+      p_leave_days: {
+        dir: oracledb.BIND_OUT,
+        type: oracledb.NUMBER,
+      },
+    };
 
     try {
-      const result = await QueryExecutor.executeRawQuery(query, {
-        leaveStartDate,
-        leaveEndDate,
-        p_leaveType: leaveType,
-        p_company_code: company_code,
-        p_employee_code: employee_code,
-        p_leave_days: {
-          dir: oracledb.BIND_OUT,
-          type: oracledb.NUMBER,
-        },
-      });
+      const result = await QueryExecutor.executeRawQuery(query, bindParams);
+      const leaveDays = (result.outBinds as any).p_leave_days;
 
       return {
         success: true,
-        leaveStartDate,
-        leaveEndDate,
-        company_code,
-        employee_code,
-        leaveDays: (result.outBinds as any).p_leave_days,
-        leaveType,
+        leaveStartDate: leaveStartDate,
+        leaveEndDate: leaveEndDate,
+        company_code: company_code,
+        leaveDays: leaveDays,
+        leaveType: leaveType,
         message: "Leave days calculated successfully",
       };
-    } catch (error) {
+    }catch (error: string | any) {
       console.error("Error calculating leave days:", error);
       return {
         success: false,
-        leaveStartDate,
-        leaveEndDate,
-        company_code,
-        employee_code,
+        leaveStartDate: leaveStartDate,
+        leaveEndDate: leaveEndDate,
+        company_code: company_code,
         leaveDays: null,
-        leaveType,
+        leaveType: leaveType,
         message: "Failed to calculate leave days",
       };
     }

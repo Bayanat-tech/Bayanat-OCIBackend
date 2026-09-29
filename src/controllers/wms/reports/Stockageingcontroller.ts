@@ -7,6 +7,7 @@ import TenantManager from "../../../database/TenantManager";
 import {
   reportHeader,
   reportFooter,
+  reportAppliedFilters,
   buildReportDocument,
 } from "../../common/report_common";
 const AdmZip = require("adm-zip");
@@ -152,6 +153,12 @@ function bucketLabels(p: AgeingParams): string[] {
   ];
 }
 
+const GROUP_BY_LABELS: Record<TGroupBy, string> = {
+  product_group: "Product Group → Product",
+  product:       "Product",
+  principal:     "Principal",
+};
+
 // ─── Data Loader ──────────────────────────────────────────────────────────────
 
 async function loadAgeingData(
@@ -265,11 +272,6 @@ function sumBuckets(rows: AgeingRow[], metric: TMetric): AgeBuckets {
 const COL_COUNT = 8; // Product + 6 buckets + Total
 
 // ─── Ageing-only CSS (extraCss for buildReportDocument) ───────────────────────
-//
-// Keeps the box-shadow repaint fallback (on top of the plain print-color-adjust
-// fix used in Stock Summary/GRN) since this report leans on heavier row
-// coloring than either of those — the box-shadow trick is what actually fixed
-// the earlier print-color bugs on this report.
 
 const STOCK_AGEING_EXTRA_CSS = `
   * {
@@ -323,19 +325,16 @@ const STOCK_AGEING_EXTRA_CSS = `
     font-weight: 700;
     border-top: 2px solid #1e3a8a;
   }
-
-  .filter-criteria {
-    font-size: 10px;
-    font-style: italic;
-    color: #555;
-    margin-top: 8px;
-  }
 `;
 
 // ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
 
 function renderAgeingBody(
-  rows: AgeingRow[], params: AgeingParams, metric: TMetric, reportTitle: string,
+  rows: AgeingRow[],
+  params: AgeingParams,
+  metric: TMetric,
+  reportTitle: string,
+  filtersHtml: string,
 ): string {
   const labels = bucketLabels(params);
 
@@ -438,6 +437,8 @@ function renderAgeingBody(
       <div><h1>${escapeHtml(reportTitle)}</h1></div>
     </div>
 
+    ${filtersHtml}
+
     <table class="data-table ageing-table">
       <thead>
         <tr>
@@ -456,10 +457,6 @@ function renderAgeingBody(
         </tr>
       </tfoot>
     </table>
-
-    <div class="filter-criteria">
-      Filter Criteria : Principal Code: [${escapeHtml(params.prinCode.join(", "))}], Department Code: [${escapeHtml(params.deptCode.join(", "))}], Product Code: [${escapeHtml(params.prodCode.join(", "))}], Ages: [Age1=${params.age1}, Age2=${params.age2}, Age3=${params.age3}, Age4=${params.age4}, Age5=${params.age5}], Group By: [${params.groupBy === "product" ? "Product" : params.groupBy === "principal" ? "Principal" : "Product Group → Product"}]
-    </div>
   `;
 }
 
@@ -791,7 +788,20 @@ async function handleHtml(req: RequestWithUser, res: Response, metric: TMetric, 
     const loginId = text(req.user?.loginid);
 
     const headerHtml = await reportHeader({ company_code: params.companyCode, req });
-    const bodyHtml    = renderAgeingBody(rows, params, metric, reportTitle);
+
+    // ── Applied Filters strip (matches the Freight Revenue style) ──────────
+    const filtersHtml = reportAppliedFilters([
+      { label: "Principal",  value: params.prinCode },
+      { label: "Department", value: params.deptCode },
+      { label: "Product",    value: params.prodCode },
+      {
+        label: "Age Buckets (days)",
+        value: `${params.age1} / ${params.age2} / ${params.age3} / ${params.age4} / ${params.age5}`,
+      },
+      { label: "Group By",   value: GROUP_BY_LABELS[params.groupBy] ?? params.groupBy },
+    ]);
+
+    const bodyHtml    = renderAgeingBody(rows, params, metric, reportTitle, filtersHtml);
     const footerHtml  = reportFooter({
       reportName: `rpt_stock_ageing_${metric}`,
       userName: loginId,

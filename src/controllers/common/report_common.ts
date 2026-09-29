@@ -62,6 +62,19 @@ function printDateTimeNow(): string {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Base report font size – ONE value drives body text AND the header  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One font size (CSS px) for all report text in every report built with
+ * buildReportDocument (preview, print, PDF, new window).
+ * The company header scales from it: name = 1.6×, logo height = 6.4×,
+ * logo max width = 22×, address = 1×. Change this single value to resize
+ * everything together.
+ */
+export const REPORT_FONT_PX = 8;
+
+/* ------------------------------------------------------------------ */
 /*  Shared CSS – freight / list report style + print-safe table shell  */
 /* ------------------------------------------------------------------ */
 
@@ -79,13 +92,13 @@ export const REPORT_HEADER_CSS = `
   }
   .company-logo-wrap {
     flex: 0 0 auto;
-    max-width: 220px;
+    max-width: ${REPORT_FONT_PX * 22}px;
     display: flex;
     align-items: center;
   }
   .company-logo {
-    max-height: 64px;
-    max-width: 220px;
+    max-height: ${REPORT_FONT_PX * 6.4}px;
+    max-width: ${REPORT_FONT_PX * 22}px;
     object-fit: contain;
     display: block;
   }
@@ -95,14 +108,14 @@ export const REPORT_HEADER_CSS = `
     min-width: 0;
   }
   .company-name {
-    font-size: 16px;
+    font-size: ${REPORT_FONT_PX * 1.6}px;
     font-weight: 800;
     color: #0f172a;
     margin: 0 0 4px 0;
     line-height: 1.2;
   }
   .company-address {
-    font-size: 10.5px;
+    font-size: ${REPORT_FONT_PX}px;
     color: #334155;
     line-height: 1.45;
     margin: 0;
@@ -140,6 +153,110 @@ export const REPORT_FOOTER_CSS = `
     white-space: nowrap;
   }
 `;
+
+/* ------------------------------------------------------------------ */
+/*  Applied Filters strip – matches the "Freight Revenue" style        */
+/* ------------------------------------------------------------------ */
+
+export const REPORT_APPLIED_FILTERS_CSS = `
+  .applied-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    margin: 0 0 14px 0;
+    padding: 8px 12px;
+    background: #eef4fb;
+    border-left: 5px solid #0b4ca1;
+    border-top: 1px solid #c7d8ee;
+    border-right: 1px solid #c7d8ee;
+    border-bottom: 1px solid #c7d8ee;
+    font-size: 10px;
+    color: #0f172a;
+  }
+  .applied-filters .af-label {
+    font-weight: 800;
+    color: #0b4ca1;
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+  .applied-filters .af-item {
+    white-space: nowrap;
+  }
+  .applied-filters .af-item .af-key {
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .applied-filters .af-item .af-val {
+    font-weight: 400;
+    color: #1e293b;
+  }
+  .applied-filters .af-sep {
+    color: #64748b;
+    margin: 0 6px;
+    font-weight: 700;
+  }
+`;
+
+/* ------------------------------------------------------------------ */
+/*  reportAppliedFilters – renders the filter strip                    */
+/* ------------------------------------------------------------------ */
+
+export type AppliedFilter =
+  | { label: string; value: string | string[] | null | undefined }
+  | { label: string; value: string | string[] | null | undefined; hidden?: boolean };
+
+/**
+ * Renders the "Applied Filters: Key: Value | Key: Value" strip.
+ *
+ * - Skips filters whose value is empty / null / undefined / "All"
+ *   unless `includeAll` is set to true.
+ * - Array values are joined with ", ".
+ * - Returns "" when nothing to show, so it's safe to inline in a body.
+ */
+export function reportAppliedFilters(
+  filters: AppliedFilter[],
+  options: { includeAll?: boolean; label?: string } = {}
+): string {
+  const { includeAll = false, label = "Applied Filters:" } = options;
+
+  const parts: string[] = [];
+
+  for (const f of filters) {
+    if (!f || !f.label) continue;
+
+    const raw = f.value;
+    let display = "";
+
+    if (Array.isArray(raw)) {
+      const cleaned = raw
+        .map((v) => String(v ?? "").trim())
+        .filter((v) => v !== "");
+      display = cleaned.join(", ");
+    } else if (raw != null) {
+      display = String(raw).trim();
+    }
+
+    if (!display) continue;
+    if (!includeAll && display.toLowerCase() === "all") continue;
+
+    parts.push(
+      `<span class="af-item"><span class="af-key">${escapeHtml(
+        f.label
+      )}:</span> <span class="af-val">${escapeHtml(display)}</span></span>`
+    );
+  }
+
+  if (!parts.length) return "";
+
+  const joined = parts.join(`<span class="af-sep">|</span>`);
+
+  return `
+    <div class="applied-filters">
+      <span class="af-label">${escapeHtml(label)}</span>
+      ${joined}
+    </div>`;
+}
 
 /** Common CSS for all HTML reports (tables, groups, print, sheet) */
 export const COMMON_REPORT_CSS = `
@@ -316,6 +433,24 @@ export const COMMON_REPORT_CSS = `
     }
   }
 `;
+
+/* ------------------------------------------------------------------ */
+/*  Constant report font size – applied AFTER each report's extraCss   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Forces REPORT_FONT_PX (defined at the top of this file) on all report text.
+ * Excluded (keep their own sizes): h1–h6, .company-name, .group-title.
+ * The company header (logo, name, address) is sized from the same value in
+ * REPORT_HEADER_CSS, so header and body always keep the same proportions.
+ */
+export const REPORT_FONT_CSS = `
+  body,
+  body *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(script):not(style):not(.company-name):not(.group-title) {
+    font-size: ${REPORT_FONT_PX}px !important;
+  }
+`;
+
 /* ------------------------------------------------------------------ */
 /*  reportHeader – logo left, name + each address line full width      */
 /* ------------------------------------------------------------------ */
@@ -461,8 +596,10 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
   <style>
     ${REPORT_HEADER_CSS}
     ${REPORT_FOOTER_CSS}
+    ${REPORT_APPLIED_FILTERS_CSS}
     ${COMMON_REPORT_CSS}
     ${extraCss}
+    ${REPORT_FONT_CSS}
   </style>
 </head>
 <body>

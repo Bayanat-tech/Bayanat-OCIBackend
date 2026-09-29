@@ -10,6 +10,7 @@ import {
   buildReportDocument,
 } from "../../common/report_common";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReportRow = Record<string, any>;
 
@@ -22,11 +23,12 @@ export interface TOutboundActivityRow {
   BILL: number; COST: number; BILL_RATE: number; QUANTITY: number; COST_RATE: number;
   SO_NO: string | null; PO_NO: string | null;
   DESCRIPTION1: string | null; PORT_CODE: string | null; DESTINATION_PORT: string | null;
-  DEST_PORT_NAME: string |null ; PORT_NAME: string | null;
+  DEST_PORT_NAME: string | null; PORT_NAME: string | null;
   TRANSPORT_MODE: string | null; QTY: number | null; CBM: number | null;
   REMARKS: string | null; TRANSPORTER_NAME: string | null;
 }
 
+// ─── DB Helpers ───────────────────────────────────────────────────────────────
 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
@@ -38,7 +40,8 @@ async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
 }
 
 async function closeConn(conn?: oracledb.Connection) {
-  if (conn) try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
+  if (conn)
+    try { await conn.close(); } catch (e) { console.warn("Close conn error:", e); }
 }
 
 function normalize(rows: any[] = []): ReportRow[] {
@@ -46,10 +49,11 @@ function normalize(rows: any[] = []): ReportRow[] {
     Object.keys(row).reduce((acc: ReportRow, key) => {
       acc[key.toLowerCase()] = row[key];
       return acc;
-    }, {})
+    }, {}),
   );
 }
 
+// ─── Formatters ───────────────────────────────────────────────────────────────
 
 function text(value: unknown): string {
   if (value == null) return "";
@@ -84,11 +88,12 @@ function numFmt(value: unknown, decimals = 2): string {
   });
 }
 
+// ─── Data Loader ─────────────────────────────────────────────────────────────
 
 async function loadOutboundActivityData(
   req: RequestWithUser,
   jobNo: string,
-  prinCode: string
+  prinCode: string,
 ): Promise<ReportRow[]> {
   const conn = await getConn(req);
   try {
@@ -112,7 +117,8 @@ async function loadOutboundActivityData(
              and job_no = tn_invoice_det.job_no) po_no,
          ti_job.description1, ti_job.port_code, ti_job.destination_port,
          (select PORT_NAME from ms_port where port_code = ti_job.port_code ) as PORT_NAME,
-          (select PORT_NAME from ms_port where port_code = ti_job.destination_port ) as DEST_PORT_NAME, ti_job.transport_mode,
+         (select PORT_NAME from ms_port where port_code = ti_job.destination_port ) as DEST_PORT_NAME,
+         ti_job.transport_mode,
          (select sum(quantity) from vw_trans
            where company_code = tn_invoice_det.company_code
              and prin_code = tn_invoice_det.prin_code
@@ -132,12 +138,16 @@ async function loadOutboundActivityData(
          AND ( tn_invoice_det.company_code = ti_job.company_code )
          AND ( tn_invoice_det.prin_code = ti_job.prin_code )
          AND ( tn_invoice_det.job_no = ti_job.job_no )
-         AND ( tn_invoice_det.company_code = '${req.user.company_code}' )
+         AND ( tn_invoice_det.company_code = :company_code )
          AND ( tn_invoice_det.prin_code = :prin_code )
          AND ( tn_invoice_det.job_no = :job_no )
        ORDER BY tn_invoice_det.srno`,
-      { job_no: jobNo, prin_code: prinCode },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      {
+        company_code: req.user.company_code,
+        job_no: jobNo,
+        prin_code: prinCode,
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT },
     );
     const rows = normalize(result.rows as any[]);
     if (!rows.length)
@@ -148,7 +158,7 @@ async function loadOutboundActivityData(
   }
 }
 
-// ─── Service Activity-only CSS (extraCss for buildReportDocument) ─────────────
+// ─── Extra CSS — Blue theme matching Adjustment Confirmation ─────────────────
 
 const SERVICE_ACTIVITY_EXTRA_CSS = `
   * {
@@ -157,33 +167,129 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  .field-row { display: flex; align-items: baseline; padding: 3.5px 0;
-               border-bottom: 1px solid #f1f5f9; }
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+
+  .section-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #0b4ca1;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 7px;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #0b4ca1;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: baseline;
+    padding: 3.5px 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
   .field-row:last-child { border-bottom: none; }
-  .f-label { font-size: 10px; color: #6b7280; min-width: 108px; padding-right: 8px;
-             text-align: right; white-space: nowrap; flex-shrink: 0; }
-  .f-value { font-size: 11px; font-weight: 600; color: #111827; }
-  .nil { font-weight: 400; color: #9ca3af; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
-  .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
-         padding: 10px 14px; margin-bottom: 14px; }
-  .section-label { font-size: 9.5px; font-weight: 700; color: #1e1b4b; text-transform: uppercase;
-                   letter-spacing: .08em; margin-bottom: 7px; padding-bottom: 4px;
-                   border-bottom: 1.5px solid #1e1b4b; }
-  table.activity-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  .f-label {
+    font-size: 10px;
+    color: #64748b;
+    min-width: 128px;
+    padding-right: 8px;
+    text-align: right;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .f-label::after { content: ":"; }
+  .f-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  .nil { font-weight: 400; color: #94a3b8; }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 32px;
+    margin-bottom: 14px;
+  }
+
+  .box {
+    background: #f8fafc;
+    border: 1px solid #e1e7ef;
+    border-left: 4px solid #0b4ca1;
+    border-radius: 3px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .box .field-row {
+    border-bottom: 1px solid #e9eef5;
+  }
+  .box .f-label {
+    min-width: 128px;
+    text-align: right;
+  }
+
+  .table-frame {
+    border: 1px solid #b8c4d2;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  table.activity-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    table-layout: fixed;
+  }
   table.activity-table thead th {
-    background: #1e1b4b; color: #fff; padding: 7px 8px; font-size: 9.5px;
-    font-weight: 700; text-align: left; border: 1px solid #312e81;
+    background: #0b4ca1;
+    color: #ffffff;
+    padding: 7px 8px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.16);
   }
+  table.activity-table thead th:last-child { border-right: 0; }
   table.activity-table thead th.num { text-align: right; }
+
   table.activity-table tbody td {
-    border: 1px solid #e2e8f0; padding: 6px 8px; font-size: 10.5px; color: #374151;
+    border-bottom: 1px solid #e3e8ef;
+    border-right: 1px solid #e3e8ef;
+    padding: 6px 8px;
+    font-size: 10.5px;
+    color: #263445;
+    vertical-align: middle;
   }
-  table.activity-table tbody td.num { text-align: right; }
+  table.activity-table tbody td:last-child { border-right: 0; }
+  table.activity-table tbody td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
   table.activity-table tbody tr:nth-child(even) { background: #f8fafc; }
+
+  .remarks-text {
+    font-size: 11px;
+    color: #0f172a;
+    white-space: pre-wrap;
+    min-height: 18px;
+  }
+
+  @media print {
+    table.activity-table thead { display: table-header-group; }
+    table.activity-table tbody tr { page-break-inside: avoid; }
+  }
 `;
 
-// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+// ─── HTML Body Renderer ──────────────────────────────────────────────────────
 
 function renderServiceActivityBody(rows: ReportRow[], reportTitle: string): string {
   const d = rows[0];
@@ -191,7 +297,7 @@ function renderServiceActivityBody(rows: ReportRow[], reportTitle: string): stri
   const field = (label: string, value: unknown) => `
     <div class="field-row">
       <span class="f-label">${escapeHtml(label)}</span>
-      <span class="f-value">${escapeHtml(value) || '<span class="nil"></span>'}</span>
+      <span class="f-value">${escapeHtml(value) || '<span class="nil">—</span>'}</span>
     </div>`;
 
   const activityRows = rows.map((r) => `
@@ -210,47 +316,54 @@ function renderServiceActivityBody(rows: ReportRow[], reportTitle: string): stri
     <div class="section-label">Job Information</div>
     <div class="two-col">
       <div>
-        ${field("Job No",   `${text(d.job_type)} ${text(d.job_no)}`.trim())}
+        ${field("Job No",    `${text(d.job_type)} ${text(d.job_no)}`.trim())}
         ${field("Principal", `${text(d.prin_code)} — ${text(d.prin_name)}`)}
         ${field("Invoice No", d.invoice_no)}
       </div>
       <div>
-        ${field("Ref #",       d.description1)}
-        ${field("SO No",       d.so_no)}
-        ${field("PO No",       d.po_no)}
+        ${field("Ref #",  d.description1)}
+        ${field("SO No",  d.so_no)}
+        ${field("PO No",  d.po_no)}
       </div>
     </div>
 
     <div class="section-label">Activities</div>
-    <table class="activity-table">
-      <thead>
-        <tr>
-          <th style="width:12%">Code</th>
-          <th>Description</th>
-          <th class="num" style="width:14%">Quantity</th>
-          <th style="width:24%">Supplier</th>
-        </tr>
-      </thead>
-      <tbody>${activityRows}</tbody>
-    </table>
+    <div class="table-frame">
+      <table class="activity-table">
+        <colgroup>
+          <col style="width: 12%" />
+          <col style="width: 50%" />
+          <col style="width: 14%" />
+          <col style="width: 24%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Description</th>
+            <th class="num">Quantity</th>
+            <th>Supplier</th>
+          </tr>
+        </thead>
+        <tbody>${activityRows}</tbody>
+      </table>
+    </div>
 
     <div class="two-col">
       <div class="box" style="margin-bottom:0;">
         <div class="section-label" style="border:none; margin-bottom:6px;">Movement</div>
         ${field("Type of Movement", d.transport_mode)}
-        ${field("From",             `${text(d.port_code)}  ${text(d.port_name)}`)}
-        ${field("To",               `${text(d.destination_port)} ${text(d.dest_port_name)}`)}
+        ${field("From",             `${text(d.port_code)}  ${text(d.port_name)}`.trim())}
+        ${field("To",               `${text(d.destination_port)} ${text(d.dest_port_name)}`.trim())}
         ${field("Quantity",         numFmt(d.qty, 0))}
         ${field("Volume (CBM)",     numFmt(d.cbm, 3))}
       </div>
       <div class="box" style="margin-bottom:0;">
         <div class="section-label" style="border:none; margin-bottom:6px;">Remarks</div>
-        <div style="font-size:11px; color:#111827; white-space:pre-wrap;">${escapeHtml(d.remarks) || '<span class="nil">—</span>'}</div>
+        <div class="remarks-text">${escapeHtml(d.remarks) || '<span class="nil">—</span>'}</div>
       </div>
     </div>
 
     <script>
-      // Print button in the Dialog toolbar fires this via postMessage
       window.addEventListener("message", (e) => {
         if (e.data === "print") window.print();
       });
@@ -258,15 +371,17 @@ function renderServiceActivityBody(rows: ReportRow[], reportTitle: string): stri
   `;
 }
 
+// ─── Excel Builder — blue theme via AdmZip ───────────────────────────────────
+
 const STYLE_ID = {
   default:      0,
   header:       1,
   sectionTitle: 2,
   label:        3,
-  value:        4, 
-  tableHeader:  5, 
-  tableCell:    6, 
-  tableCellNum: 7, 
+  value:        4,
+  tableHeader:  5,
+  tableCell:    6,
+  tableCellNum: 7,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -278,20 +393,18 @@ function xc(v: unknown, style: StyleKey): XlCell {
 }
 
 function buildExcelBuffer(rows: ReportRow[]): Buffer {
-
-  const d      = rows[0];
-  const NCOLS  = 7;
-  const skip   = null;
+  const d     = rows[0];
+  const NCOLS = 7;
+  const skip  = null;
 
   type Row = (XlCell | null)[];
   const xlRows: Row[] = [];
 
-  // ── Row 1: title banner ───────────────────────────────────────────────────
+  // Title banner
   xlRows.push([xc(`Outbound Activity Service Report — Job ${text(d.job_type)} ${text(d.job_no)}`, "header"), skip, skip, skip, skip, skip, skip]);
-
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // ── Job Information ───────────────────────────────────────────────────────
+  // Job Information
   xlRows.push([xc("JOB INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
 
   const leftInfo: [string, unknown][] = [
@@ -300,9 +413,9 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
     ["Invoice No", d.invoice_no],
   ];
   const rightInfo: [string, unknown][] = [
-    ["Ref #",  d.description1],
-    ["SO No",  d.so_no],
-    ["PO No",  d.po_no],
+    ["Ref #", d.description1],
+    ["SO No", d.so_no],
+    ["PO No", d.po_no],
   ];
   for (let i = 0; i < Math.max(leftInfo.length, rightInfo.length); i++) {
     const [ll, lv] = leftInfo[i]  ?? ["", ""];
@@ -312,7 +425,7 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
 
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // ── Activities table ──────────────────────────────────────────────────────
+  // Activities
   xlRows.push([xc("ACTIVITIES", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
   xlRows.push([
     xc("Code", "tableHeader"), xc("Description", "tableHeader"),
@@ -331,13 +444,13 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
 
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // ── Movement / Remarks ────────────────────────────────────────────────────
+  // Movement / Remarks
   xlRows.push([xc("MOVEMENT", "sectionTitle"), skip, skip, xc("REMARKS", "sectionTitle"), skip, skip, skip]);
 
   const movement: [string, unknown][] = [
     ["Type of Movement", d.transport_mode],
-    ["From",             d.port_code],
-    ["To",               d.destination_port],
+    ["From",             `${text(d.port_code)}  ${text(d.port_name)}`.trim()],
+    ["To",               `${text(d.destination_port)} ${text(d.dest_port_name)}`.trim()],
     ["Quantity",         numFmt(d.qty, 0)],
     ["Volume (CBM)",     numFmt(d.cbm, 3)],
   ];
@@ -347,13 +460,13 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
     xlRows.push([xc(ml, "label"), xc(mv, "value"), xc("", "default"), remarksCell, skip, skip, skip]);
   }
 
-  // ── Build sheet XML ───────────────────────────────────────────────────────
+  // Column widths
   const COL_WIDTHS = [18, 30, 3, 22, 22, 2, 2];
-
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
+  // Merges
   const merges: string[] = [];
   xlRows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -407,29 +520,29 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   ${mergeXml}
 </worksheet>`;
 
-  // ── Styles XML — order must match STYLE_ID above ──────────────────────────
+  // Styles — blue theme
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="6">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E1B4B"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="5">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E1B4B"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF312E81"/></left><right style="thin"><color rgb="FF312E81"/></right>
-      <top style="thin"><color rgb="FF312E81"/></top><bottom style="thin"><color rgb="FF312E81"/></bottom>
+      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
+      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
       <diagonal/>
     </border>
     <border>
@@ -478,7 +591,6 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>`;
 
-  // AdmZip — same pattern as the outbound job report
   const zip = new AdmZip();
   zip.addFile("[Content_Types].xml",        Buffer.from(contentTypes));
   zip.addFile("_rels/.rels",                Buffer.from(rels));
@@ -489,17 +601,19 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   return zip.toBuffer();
 }
 
-// ─── Route handlers ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROUTE HANDLERS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 /**
  * GET /api/wms/outbound/reports/service-activity/:job_no
  *
- * Returns self-contained HTML for the Dialog iframe via report_common
- * (company header + footer). Print is handled by postMessage("print").
+ * Returns self-contained HTML via report_common (company header + footer).
+ * Print is handled by postMessage("print").
  */
 export const getWmsOutboundServiceActivityReportHtml = async (
   req: RequestWithUser,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const jobNo       = text(req.params.job_no || req.query.job_no);
@@ -511,13 +625,14 @@ export const getWmsOutboundServiceActivityReportHtml = async (
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
+
     const activityRows = await loadOutboundActivityData(req, jobNo, prinCode);
-    const companyCode = text(req.user?.company_code);
-    const loginId = text(req.user?.loginid);
-    const d = activityRows[0];
+    const companyCode  = text(req.user?.company_code);
+    const loginId      = text(req.user?.loginid);
+    const d            = activityRows[0];
 
     const headerHtml = await reportHeader({ company_code: companyCode, req });
-    const bodyHtml = renderServiceActivityBody(activityRows, reportTitle);
+    const bodyHtml   = renderServiceActivityBody(activityRows, reportTitle);
     const footerHtml = reportFooter({
       reportName: "rpt_outbound_service_activity",
       userName: loginId,
@@ -532,6 +647,7 @@ export const getWmsOutboundServiceActivityReportHtml = async (
       footerHtml,
       extraCss: SERVICE_ACTIVITY_EXTRA_CSS,
       autoPrint,
+      showPrintButton: true,
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -544,7 +660,7 @@ export const getWmsOutboundServiceActivityReportHtml = async (
 
 export const getWmsOutboundServiceActivityReportExcel = async (
   req: RequestWithUser,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const jobNo    = text(req.params.job_no || req.query.job_no);
@@ -554,8 +670,9 @@ export const getWmsOutboundServiceActivityReportExcel = async (
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
+
     const activityRows = await loadOutboundActivityData(req, jobNo, prinCode);
-    const buffer        = buildExcelBuffer(activityRows);
+    const buffer       = buildExcelBuffer(activityRows);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Outbound_Service_Activity_${jobNo}.xlsx"`);
