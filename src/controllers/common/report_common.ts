@@ -3,7 +3,6 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import TenantManager from "../../database/TenantManager";
 
-
 type CompanyHeaderRow = {
   company_name: string | null;
   address1: string | null;
@@ -62,9 +61,37 @@ function printDateTimeNow(): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Shared CSS – matches the Enquiry List PDF                          */
+/*  Base report font size – ONE value drives body text AND the header  */
 /* ------------------------------------------------------------------ */
+/**
+ * One font size (CSS px) for all report text when fontMode === "fixed".
+ * Company header scales from it only when fontMode is "fixed".
+ * When fontMode is "native" (default) the fixed sizes from the
+ * second-file header CSS are used.
+ */
+export const REPORT_FONT_PX = 6;
 
+/* ------------------------------------------------------------------ */
+/*  Freight palette – the SINGLE source of colors for report HTML.     */
+/* ------------------------------------------------------------------ */
+export const FREIGHT_COLORS = {
+  navy:         "#00378c",
+  navyDeep:     "#002a6b",
+  strip:        "#eaf0f8",
+  stripBorder:  "#cbd5e1",
+  rule:         "#cbd5e1",
+  ruleSoft:     "#e2e8f0",
+  rowAlt:       "#fcfdfe",
+  subtotalBg:   "#f1f5f9",
+  grandTotalBg: "#e2e8f0",
+  text:         "#1e293b",
+  muted:        "#64748b",
+  label:        "#475569",
+};
+
+/* ------------------------------------------------------------------ */
+/*  HEADER CSS – taken from the SECOND file (fixed sizes, no navy rule)*/
+/* ------------------------------------------------------------------ */
 export const REPORT_HEADER_CSS = `
   .company-header {
     display: flex;
@@ -114,6 +141,9 @@ export const REPORT_HEADER_CSS = `
   }
 `;
 
+/* ------------------------------------------------------------------ */
+/*  FOOTER CSS – taken from the SECOND file                            */
+/* ------------------------------------------------------------------ */
 export const REPORT_FOOTER_CSS = `
   .report-footer {
     width: 100%;
@@ -134,32 +164,123 @@ export const REPORT_FOOTER_CSS = `
   }
 `;
 
-/** Common CSS for all HTML reports (tables, groups, print, sheet) */
+/* ------------------------------------------------------------------ */
+/*  Applied Filters strip                                              */
+/* ------------------------------------------------------------------ */
+export const REPORT_APPLIED_FILTERS_CSS = `
+  .applied-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    margin: 0 0 12px 0;
+    padding: 7px 12px;
+    background: ${FREIGHT_COLORS.strip};
+    border-left: 4px solid ${FREIGHT_COLORS.navy};
+    border-top: 1px solid ${FREIGHT_COLORS.ruleSoft};
+    border-right: 1px solid ${FREIGHT_COLORS.ruleSoft};
+    border-bottom: 1px solid ${FREIGHT_COLORS.ruleSoft};
+    font-size: 10px;
+    color: ${FREIGHT_COLORS.label};
+  }
+  .applied-filters .af-label {
+    font-weight: 800;
+    color: ${FREIGHT_COLORS.navy};
+    margin-right: 6px;
+    white-space: nowrap;
+  }
+  .applied-filters .af-item {
+    white-space: nowrap;
+  }
+  .applied-filters .af-item .af-key {
+    font-weight: 700;
+    color: ${FREIGHT_COLORS.label};
+  }
+  .applied-filters .af-item .af-val {
+    font-weight: 400;
+    color: ${FREIGHT_COLORS.label};
+  }
+  .applied-filters .af-sep {
+    color: ${FREIGHT_COLORS.rule};
+    margin: 0 6px;
+    font-weight: 700;
+  }
+`;
+
+export type AppliedFilter =
+  | { label: string; value: string | string[] | null | undefined }
+  | { label: string; value: string | string[] | null | undefined; hidden?: boolean };
+
+export function reportAppliedFilters(
+  filters: AppliedFilter[],
+  options: { includeAll?: boolean; label?: string } = {}
+): string {
+  const { includeAll = true, label = "Applied Filters:" } = options;
+  const parts: string[] = [];
+
+  for (const f of filters) {
+    if (!f || !f.label) continue;
+    const raw = f.value;
+    let display = "";
+    if (Array.isArray(raw)) {
+      const cleaned = raw
+        .map((v) => String(v ?? "").trim())
+        .filter((v) => v !== "");
+      display = cleaned.join(", ");
+    } else if (raw != null) {
+      display = String(raw).trim();
+    }
+    if (!display) continue;
+    if (!includeAll && display.toLowerCase() === "all") continue;
+
+    parts.push(
+      `<span class="af-item"><span class="af-key">${escapeHtml(
+        f.label
+      )}:</span> <span class="af-val">${escapeHtml(display)}</span></span>`
+    );
+  }
+
+  if (!parts.length) return "";
+
+  const joined = parts.join(`<span class="af-sep">|</span>`);
+  return `
+    <div class="applied-filters">
+      <span class="af-label">${escapeHtml(label)}</span>
+      ${joined}
+    </div>`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Common report CSS – Freight tables + SECOND-file print rules       */
+/* ------------------------------------------------------------------ */
 export const COMMON_REPORT_CSS = `
+  /* ===== Page setup (from second file) ===== */
   @page {
     size: A4;
     margin: 8mm 8mm 12mm 8mm;
     @bottom-right {
       content: "Page " counter(page) " of " counter(pages);
-      font-family: Inter;
+      font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       font-size: 11px;
       color: #64748b;
     }
   }
+
   * {
     box-sizing: border-box;
-    /* Make browsers print background colors, borders and zebra rows exactly as on screen */
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
   body {
     margin: 0;
-    color: #1e293b;
+    color: ${FREIGHT_COLORS.text};
     font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: 10.5px;
+    line-height: 1.25;
     background: #fff;
   }
+
   .sheet { padding: 0; }
   .paper {
     max-width: 210mm;
@@ -182,83 +303,82 @@ export const COMMON_REPORT_CSS = `
     vertical-align: top;
   }
 
-  /* ===== Report title + section strip (same as Enquiry List) ===== */
-  .report-title,
-  .doc-title-row h1 {
-    margin: 12px 0 16px 0;
-    font-size: 20px;
-    font-weight: 700;
-    color: #0b4ca1;
-    line-height: 1.25;
-  }
-  .section-strip,
-  .group-title {
-    background: #e8f0fa;
-    color: #0b4ca1;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 9px 10px;
-    margin: 0 0 12px 0;
-  }
-  .group { margin-top: 10px; }
-
-  /* ===== Data table (same as Enquiry List) ===== */
-  table.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
+  /* Report title */
+  .doc-title-row { margin: 0 0 10px 0; }
+  .doc-title-row h1,
+  .report-title {
     margin: 0;
-    font-size: 11px;
+    font-size: 15px;
+    font-weight: 800;
+    color: ${FREIGHT_COLORS.navy};
+    letter-spacing: 0.2px;
   }
-  table.data-table th,
-  table.data-table td {
-    overflow-wrap: anywhere;
-    word-break: break-word;
+
+  /* Data tables – Freight style */
+  table.data-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 10.5px;
+    margin-top: 2px;
   }
-  table.data-table thead th {
-    background: #e8f0fa;
-    color: #0b4ca1;
-    font-size: 11px;
+  table.data-table th {
+    background: ${FREIGHT_COLORS.navy};
+    color: #ffffff;
+    font-size: 10px;
+    padding: 7px 6px;
+    text-align: left;
     font-weight: 700;
-    text-align: center;
-    padding: 9px 8px;
     border: 0;
-    border-bottom: 2px solid #0b4ca1;
-    line-height: 1.25;
+    border-bottom: 1.5px solid ${FREIGHT_COLORS.navyDeep};
   }
-  table.data-table thead th.left { text-align: left; }
-  table.data-table thead th.num  { text-align: right; }
-  table.data-table tbody td {
-    padding: 8px;
-    font-size: 11px;
-    font-weight: 400;
-    color: #334155;
-    vertical-align: top;
-    background: #fff;
-    border: 0;
-    border-bottom: 1px solid #e2e8f0;
+  table.data-table td {
+    padding: 5px 6px;
+    vertical-align: middle;
+    border-bottom: 1px solid ${FREIGHT_COLORS.ruleSoft};
+    color: ${FREIGHT_COLORS.text};
   }
-  table.data-table tbody tr:nth-child(even) td { background: #f8fafc; }
-  table.data-table td.num    { text-align: right; font-variant-numeric: tabular-nums; }
-  table.data-table td.center { text-align: center; }
-  table.data-table td.primary-text,
-  table.data-table td.strong { font-weight: 700; color: #0b4ca1; }
-  table.data-table td.muted  { color: #94a3b8; font-style: italic; text-align: center; }
+  table.data-table tbody tr:nth-child(even) td { background: ${FREIGHT_COLORS.rowAlt}; }
+  table.data-table tbody tr:last-child td { border-bottom: 0; }
 
   .right { text-align: right; }
   .center { text-align: center; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .strong { font-weight: 700; }
-  .primary-text { color: #0b4ca1; font-weight: 700; }
-  .muted { color: #64748b; }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .strong { font-weight: 800; }
+  .primary-text { color: ${FREIGHT_COLORS.navy}; font-weight: 800; }
+  .muted { color: ${FREIGHT_COLORS.muted}; }
+
+  .group { margin-top: 10px; }
+  .group-title,
+  .section-strip {
+    background: ${FREIGHT_COLORS.strip};
+    padding: 4px 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: ${FREIGHT_COLORS.navy};
+  }
+
+  tr.subtotal-row td {
+    background: ${FREIGHT_COLORS.subtotalBg};
+    color: ${FREIGHT_COLORS.navy};
+    font-weight: 700;
+  }
+  tr.grand-total-row td {
+    background: ${FREIGHT_COLORS.grandTotalBg};
+    color: ${FREIGHT_COLORS.navy};
+    font-weight: 800;
+  }
 
   .empty {
-    border: 1px dashed #cbd5e1;
+    border: 1px dashed ${FREIGHT_COLORS.rule};
     background: #f8fafc;
     text-align: center;
     padding: 56px;
     margin-top: 14px;
-    color: #64748b;
+    color: ${FREIGHT_COLORS.muted};
     font-weight: 700;
   }
 
@@ -272,7 +392,7 @@ export const COMMON_REPORT_CSS = `
   }
   .actions button {
     height: 34px;
-    border: 1px solid #cbd5e1;
+    border: 1px solid ${FREIGHT_COLORS.rule};
     border-radius: 8px;
     background: white;
     font-weight: 700;
@@ -280,11 +400,14 @@ export const COMMON_REPORT_CSS = `
     cursor: pointer;
   }
   .actions button.primary {
-    background: #0b4ca1;
-    border-color: #0b4ca1;
+    background: ${FREIGHT_COLORS.navy};
+    border-color: ${FREIGHT_COLORS.navy};
     color: white;
   }
 
+  /* ================================================================ */
+  /*  PRINT CSS – taken entirely from the SECOND file                 */
+  /* ================================================================ */
   @media print {
     html, body {
       height: 100%;
@@ -373,9 +496,18 @@ export const COMMON_REPORT_CSS = `
 `;
 
 /* ------------------------------------------------------------------ */
-/*  reportHeader – logo left, name + each address line right           */
+/*  Forced font size (only when fontMode === "fixed")                  */
 /* ------------------------------------------------------------------ */
+export const REPORT_FONT_CSS = `
+  body,
+  body *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(script):not(style):not(.company-name):not(.group-title) {
+    font-size: ${REPORT_FONT_PX}px !important;
+  }
+`;
 
+/* ------------------------------------------------------------------ */
+/*  reportHeader                                                       */
+/* ------------------------------------------------------------------ */
 export const reportHeader = async ({
   company_code,
   req,
@@ -413,6 +545,7 @@ export const reportHeader = async ({
 
     const row = normalizeRow((result.rows as Record<string, any>[] | undefined)?.[0]);
     if (!row) return empty;
+
     const addressParts = [
       row.address1,
       row.address2,
@@ -445,9 +578,8 @@ export const reportHeader = async ({
 };
 
 /* ------------------------------------------------------------------ */
-/*  reportFooter – common footer for every report                      */
+/*  reportFooter                                                       */
 /* ------------------------------------------------------------------ */
-
 export type ReportFooterOptions = {
   reportName?: string;
   userName?: string;
@@ -466,8 +598,11 @@ export function reportFooter(options: ReportFooterOptions = {}): string {
   } = options;
 
   const printed = printDateTimeNow();
-  const left = extraLeft || `Print: ${escapeHtml(printed)}${userName ? ` | User: ${escapeHtml(userName)}` : ""}`;
-  const right = extraRight || `Report: ${escapeHtml(reportName)} | ${escapeHtml(endLabel)}`;
+  const left =
+    extraLeft ||
+    `Print: ${escapeHtml(printed)}${userName ? ` | User: ${escapeHtml(userName)}` : ""}`;
+  const right =
+    extraRight || `Report: ${escapeHtml(reportName)} | ${escapeHtml(endLabel)}`;
 
   return `
     <div class="report-footer">
@@ -477,9 +612,8 @@ export function reportFooter(options: ReportFooterOptions = {}): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  buildReportDocument – shell table: thead header, tfoot footer      */
+/*  buildReportDocument                                                */
 /* ------------------------------------------------------------------ */
-
 export type BuildReportDocumentOptions = {
   title: string;
   headerHtml: string;
@@ -488,16 +622,13 @@ export type BuildReportDocumentOptions = {
   extraCss?: string;
   autoPrint?: boolean;
   showPrintButton?: boolean;
+  /**
+   * "fixed"  – force REPORT_FONT_PX on almost everything.
+   * "native" – keep sizes from CSS (default – safe for existing reports).
+   */
+  fontMode?: "fixed" | "native";
 };
 
-/**
- * Builds full HTML document.
- * Structure:
- *   table.report-shell
- *     thead → company header (repeats on each printed page)
- *     tbody → report body (inner tables, groups, etc.)
- *     tfoot → footer (repeats on each printed page)
- */
 export function buildReportDocument(opts: BuildReportDocumentOptions): string {
   const {
     title,
@@ -507,6 +638,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
     extraCss = "",
     autoPrint = false,
     showPrintButton = true,
+    fontMode = "native",
   } = opts;
 
   return `<!doctype html>
@@ -515,11 +647,12 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     ${REPORT_HEADER_CSS}
     ${REPORT_FOOTER_CSS}
+    ${REPORT_APPLIED_FILTERS_CSS}
     ${COMMON_REPORT_CSS}
     ${extraCss}
+    ${fontMode === "fixed" ? REPORT_FONT_CSS : ""}
   </style>
 </head>
 <body>
@@ -543,7 +676,11 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
       </table>
     </div>
   </div>
-  ${autoPrint ? `<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>` : ""}
+  ${
+    autoPrint
+      ? `<script>window.addEventListener('load', () => setTimeout(() => window.print(), 300));</script>`
+      : ""
+  }
 </body>
 </html>`;
 }
