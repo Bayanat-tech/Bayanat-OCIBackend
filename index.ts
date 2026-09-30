@@ -1,11 +1,9 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
-import http from "http";
 import { initializeAllConnections, TypeORMService } from "./src/database/connection";
-//import startSchedulers from "./src/scheduler/startSchedulers";
+import startSchedulers from "./src/scheduler/startSchedulers";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
 import passport from "passport";
-import { initSupportRealtime } from "./src/services/supportRealtime.service";
 
 const app = express();
 console.log("index.ts loaded");
@@ -41,7 +39,6 @@ import wmsRoutes from "./src/routes/wms.routes";
 import boldReportsRoutes from "./src/routes/boldreports.routes";
 // import cfsRoutes from "./src/routes/SMS/sms.routes";
 import pamsRoutes from "./src/routes/pams.routes";
-import supportRoutes from "./src/routes/support.routes";
 
 import almsRoutes from "./src/routes/alms.routes";
 import mmsRoutes from "./src/routes/mms_routes";
@@ -88,8 +85,6 @@ app.use("/api/wms", wmsRoutes);
 
 app.use("/api/user", editLangrouter);
 
-app.use("/api/support", supportRoutes);
-
 app.use("/api/mms", mmsRoutes); 
 
 // Health check
@@ -132,7 +127,6 @@ app.get("/api/diagnostics/database", (req: Request, res: Response) => {
 });
 
 const PORT = process.env.PORT || 3500;
-const server = http.createServer(app);
 
 async function startServer() {
   try {
@@ -157,14 +151,13 @@ async function startServer() {
     }
     try {
       // Start background schedulers (email sender, attendance, etc.)
-      //await startSchedulers();
+      await startSchedulers();
     } catch (schedErr) {
       console.error("Failed to start schedulers:", schedErr);
       // Non-fatal: continue running server even if schedulers fail
     }
     console.log(`Listening on port ${PORT}...`);
-    initSupportRealtime(server);
-    server.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log("Health check: http://localhost:" + PORT + "/health");
     });

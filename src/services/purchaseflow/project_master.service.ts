@@ -20,6 +20,59 @@ export class ProjectMasterService {
     return { fetchedData, totalCount };
   }
 
+  static async findDuplicate(project_code: string, company_code: string): Promise<ProjectMaster | null> {
+    const repository = getRepository(ProjectMaster);
+    return await repository.findOne({
+      where: {
+        project_code,
+        company_code,
+      } as any,
+    });
+  }
+
+  static async createProject(projectData: Partial<ProjectMaster>): Promise<ProjectMaster> {
+    const repository = getRepository(ProjectMaster);
+    const project = repository.create({
+      ...projectData,
+      created_at: projectData.created_at || new Date(),
+      updated_at: projectData.updated_at || new Date(),
+    } as ProjectMaster);
+
+    return await repository.save(project);
+  }
+
+  static async updateProject(
+    project_code: string,
+    company_code: string,
+    projectData: Partial<ProjectMaster>
+  ): Promise<boolean> {
+    const repository = getRepository(ProjectMaster);
+    const result = await repository.update(
+      {
+        project_code,
+        company_code,
+      } as any,
+      {
+        ...projectData,
+        updated_at: new Date(),
+      } as any
+    );
+
+    return Boolean(result.affected && result.affected > 0);
+  }
+
+  static async deleteProjects(projectCodes: string[]): Promise<number> {
+    const repository = getRepository(ProjectMaster);
+    const result = await repository
+      .createQueryBuilder()
+      .delete()
+      .from(ProjectMaster)
+      .where("PROJECT_CODE IN (:...projectCodes)", { projectCodes })
+      .execute();
+
+    return result.affected || 0;
+  }
+
   static async getProjectMaster(
     loginid: string,
     page = 1,
@@ -56,60 +109,4 @@ export class ProjectMasterService {
 
     return { fetchedData, totalCount };
   }
-
-  static async findDuplicate(project_code: string, company_code: string): Promise<ProjectMaster | null> {
-    const repository = getRepository(ProjectMaster);
-    return await repository.findOne({
-      where: {
-        project_code,
-        company_code,
-      },
-    });
-  }
-
-  static async createProject(payload: Partial<ProjectMaster>): Promise<ProjectMaster> {
-    const repository = getRepository(ProjectMaster);
-    const entity = repository.create({
-      ...payload,
-      project_date_from: normalizeDate(payload.project_date_from),
-      project_date_to: normalizeDate(payload.project_date_to),
-    });
-    return await repository.save(entity);
-  }
-
-  static async updateProject(
-    project_code: string,
-    company_code: string,
-    payload: Partial<ProjectMaster>
-  ): Promise<boolean> {
-    const repository = getRepository(ProjectMaster);
-    const result = await repository.update(
-      { project_code, company_code },
-      {
-        ...payload,
-        project_date_from: normalizeDate(payload.project_date_from),
-        project_date_to: normalizeDate(payload.project_date_to),
-        updated_at: new Date(),
-      }
-    );
-    return Boolean(result.affected && result.affected > 0);
-  }
-
-  static async deleteProjects(projectCodes: string[]): Promise<number> {
-    const repository = getRepository(ProjectMaster);
-    const result = await repository
-      .createQueryBuilder()
-      .delete()
-      .from(ProjectMaster)
-      .where("project_code IN (:...projectCodes)", { projectCodes })
-      .execute();
-    return result.affected || 0;
-  }
-}
-
-function normalizeDate(value: unknown): Date | undefined {
-  if (!value) return undefined;
-  if (value instanceof Date) return value;
-  const parsed = new Date(String(value));
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
