@@ -109,7 +109,6 @@ function numFmt(value: unknown, decimals = 3): string {
   });
 }
 
-/** Add qty into a UomTotals bucket */
 function addUom(map: UomTotals, uom: string, qty: number): void {
   if (!uom) return;
   map[uom] = (map[uom] ?? 0) + qty;
@@ -125,7 +124,6 @@ function fmtUomTotals(map: UomTotals, primaryUom?: string): string {
   const keys = Object.keys(map);
   if (keys.length === 0) return "—";
 
-  // Put primaryUom first if provided
   const ordered = primaryUom
     ? [primaryUom, ...keys.filter(k => k !== primaryUom)]
     : keys;
@@ -136,9 +134,6 @@ function fmtUomTotals(map: UomTotals, primaryUom?: string): string {
     .join(" / ");
 }
 
-/**
- * Merge two UomTotals maps (sum values for matching keys).
- */
 function mergeUomTotals(...maps: UomTotals[]): UomTotals {
   const result: UomTotals = {};
   for (const map of maps)
@@ -147,12 +142,6 @@ function mergeUomTotals(...maps: UomTotals[]): UomTotals {
   return result;
 }
 
-/**
- * Mirrors the SSRS expression:
- *   exp - recv == 0            -> blank
- *   recv > exp (negative diff) -> "Excess: +<diff>"  (green)
- *   recv < exp (positive diff) -> "Short: -<diff>"   (red)
- */
 function fmtShortExcessCell(
   expPuom: number, recvPuom: number, pUom: string,
   expLuom: number, recvLuom: number, lUom: string
@@ -162,8 +151,6 @@ function fmtShortExcessCell(
 
   if (diffPuom === 0 && diffLuom === 0) return { text: "—", cls: "" };
 
-  // Drive the Short/Excess label off the primary UOM diff; fall back to L_UOM
-  // if the primary UOM diff happens to be zero.
   const driver  = diffPuom !== 0 ? diffPuom : diffLuom;
   const isExcess = driver < 0;
   const prefix  = isExcess ? "Excess: +" : "Short: -";
@@ -304,10 +291,8 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
     pg.qty1 += qtyPuom;
     pg.qty2 += qtyLuom;
 
-    // Always accumulate PUOM
     addUom(pg.qty1ByUom, pUom, qtyPuom);
 
-    // L_UOM rule: only if qty is not zero
     if (qtyLuom !== 0)
       addUom(pg.qty2ByUom, lUom, qtyLuom);
 
@@ -325,7 +310,7 @@ function groupRows(rows: ReportRow[]): GroupSection[] {
   }));
 }
 
-// ─── Sales Order-only CSS (extraCss for buildReportDocument) ──────────────────
+// ─── Sales Order-only CSS — freight palette ──────────────────────────────────
 
 const SALES_ORDER_EXTRA_CSS = `
   /* No @page/body margins — from report_common */
@@ -335,7 +320,7 @@ const SALES_ORDER_EXTRA_CSS = `
     margin: 4px 0 12px 0;
   }
   .doc-title-row h1 {
-    margin: 0; font-size: 18px; font-weight: 800; color: #0b4ca1;
+    margin: 0; font-size: 18px; font-weight: 800; color: #00378c;
   }
   * {
     -webkit-print-color-adjust: exact !important;
@@ -364,7 +349,7 @@ const SALES_ORDER_EXTRA_CSS = `
   .job-value {
     font-size: 11px;
     font-weight: 700;
-    color: #0f172a;
+    color: #1e293b;
   }
   .job-value.nil { font-weight: 400; color: #94a3b8; }
 
@@ -375,70 +360,78 @@ const SALES_ORDER_EXTRA_CSS = `
   col.c2  { width: 14%; } col.c3  { width: 12%; }
   col.c4  { width: 14%; } col.c5  { width: 12%; }
 
+  /* Group header — solid freight blue */
   thead tr.th-group th {
-    background: #f1f5f9; color: #0f172a; font-weight: 700;
+    background: #00378c; color: #ffffff; font-weight: 700;
     font-size: 10px; padding: 6px 5px; text-align: center;
-    border-top: 1px solid #475569; border-bottom: 1px solid #475569;
+    border-top: 1px solid #00378c; border-bottom: 1px solid #00378c;
   }
   thead tr.th-group th:last-child { border-right: none; }
+
+  /* Sub header — light freight tint */
   thead tr.th-sub th {
-    background: #f8fafc; color: #64748b; font-weight: 600;
+    background: #eaf0f8; color: #00378c; font-weight: 600;
     font-size: 9.5px; padding: 5px 10px; text-align: left;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #cbd5e1;
     white-space: nowrap;
   }
   thead tr.th-sub th.num { text-align: right; }
 
+  /* Order group row */
   tr.group-row td {
-    background: #0b4ca1; color: #fff; font-weight: 700;
+    background: #00378c; color: #ffffff; font-weight: 700;
     font-size: 11px; padding: 5px 10px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
+
+  /* Product row */
   tr.prod-row td {
-    background: #f1f5f9; color: #0b4ca1; font-weight: 700;
+    background: #eaf0f8; color: #00378c; font-weight: 700;
     font-size: 11px; padding: 4px 10px 4px 22px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     border-bottom: 1px solid #e2e8f0;
   }
   tr.prod-row td.prod-asn {
-    background: #f1f5f9; color: #0f172a; font-weight: 600;
+    background: #eaf0f8; color: #1e293b; font-weight: 600;
     padding-left: 10px; text-align: right; font-size: 10.5px;
   }
 
+  /* Data rows */
   tbody tr.data-row td {
     padding: 4px 10px; border-bottom: 1px solid #e2e8f0;
-    color: #0f172a; font-size: 11px;
+    color: #1e293b; font-size: 11px;
     white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
     vertical-align: top;
   }
-  tbody tr.data-row:nth-child(even) td { background: #f8fafc; }
+  tbody tr.data-row:nth-child(even) td { background: #fcfdfe; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
   td.dim  { color: #94a3b8 !important; font-weight: 400; }
   td.short  { color: #dc2626 !important; font-weight: 700; }
   td.excess { color: #16a34a !important; font-weight: 700; }
 
+  /* Subtotal row (per order) */
   tr.group-total td {
-    background: #e2e8f0; padding: 5px 10px; font-size: 11px;
-    font-weight: 700; color: #0b4ca1; white-space: nowrap;
+    background: #f1f5f9; padding: 5px 10px; font-size: 11px;
+    font-weight: 700; color: #00378c; white-space: nowrap;
   }
+
+  /* Grand total row */
   tr.grand-total td {
-    background: #0b4ca1; color: #fff; font-weight: 700;
+    background: #00378c; color: #ffffff; font-weight: 700;
     font-size: 12px; padding: 8px 10px;
-    border-top: 2px solid #093d82;
+    border-top: 2px solid #00295e;
   }
 
   @media print {
     thead { display: table-header-group; }
 
-    /* Keep section headers attached to their first data row */
     tr.group-row,
     tr.prod-row {
       break-after: avoid;
       page-break-after: avoid;
     }
 
-    /* Keep totals attached to the group above them */
     tr.group-total,
     tr.grand-total {
       break-before: avoid;
@@ -447,7 +440,7 @@ const SALES_ORDER_EXTRA_CSS = `
   }
 `;
 
-// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+// ─── HTML Body Renderer ───────────────────────────────────────────────────────
 
 function renderSalesOrderBody(
   groups:      GroupSection[],
@@ -458,11 +451,9 @@ function renderSalesOrderBody(
 ): string {
   const r = firstRow || {};
 
-  // ── Grand-level UOM totals ────────────────────────────────────────────────
   const grandTotalPuom = mergeUomTotals(...groups.map(g => g.qty1ByUom));
   const grandTotalLuom = mergeUomTotals(...groups.map(g => g.qty2ByUom));
 
-  // ── Build body rows ────────────────────────────────────────────────────────
   let bodyRows = "";
 
   for (const gs of groups) {
@@ -509,7 +500,6 @@ function renderSalesOrderBody(
       </tr>`;
     }
 
-    // Order total
     bodyRows += `
     <tr class="group-total">
       <td colspan="2">
@@ -526,7 +516,6 @@ function renderSalesOrderBody(
     </tr>`;
   }
 
-  // Grand total row
   const grandRow = `
   <tr class="grand-total">
     <td colspan="2">
@@ -547,7 +536,6 @@ function renderSalesOrderBody(
       <div><h1>${escapeHtml(reportTitle)}</h1></div>
     </div>
 
-    <!-- ── Job header block (flat, no box) ── -->
     <div class="job-header">
       <div class="job-col">
         <div class="job-row">
@@ -563,9 +551,8 @@ function renderSalesOrderBody(
           <span class="job-value">${escapeHtml(text(r.prin_code) || prinCode)}${r.prin_name ? ` - ${escapeHtml(text(r.prin_name))}` : ""}</span>
         </div>
       </div>
-    </div><!-- /job-header -->
+    </div>
 
-    <!-- ── Data table ── -->
     <table class="rpt-table">
       <colgroup>
         <col class="c0" />
@@ -594,7 +581,6 @@ function renderSalesOrderBody(
     </table>
 
     <script>
-      // Print button in the Dialog toolbar fires this via postMessage
       window.addEventListener("message", (e) => {
         if (e.data === "print") window.print();
       });
@@ -647,20 +633,16 @@ function buildExcelBuffer(
   const skip = null;
   const rows: Row[] = [];
 
-  // Total quantity from UOM-keyed totals
   const sumUomTotals = (totals: UomTotals): number =>
     Object.values(totals).reduce(
       (sum, qty) => sum + Number(qty || 0),
       0
     );
 
-  // UOM names, for example: CTR / PCS
   const getUomNames = (totals: UomTotals): string =>
     Object.keys(totals)
       .filter((uom) => uom.trim() !== "")
       .join(" / ");
-
-  // ── Title ────────────────────────────────────────────────────────────────
 
   rows.push([
     xc(
@@ -672,8 +654,6 @@ function buildExcelBuffer(
 
   rows.push(Array(NCOLS).fill(skip));
 
-  // ── Column headers ───────────────────────────────────────────────────────
-
   rows.push([
     xc("No.",       "header"),
     xc("Product",   "header"),
@@ -683,8 +663,6 @@ function buildExcelBuffer(
     xc("UOM",       "header"),
   ]);
 
-  // ── Order sections ───────────────────────────────────────────────────────
-
   for (const gs of groups) {
     const orderDate = dateText(gs.orderDate) || "—";
 
@@ -692,7 +670,6 @@ function buildExcelBuffer(
       ? `${gs.custName} (${gs.custCode})`
       : gs.custName || "—";
 
-    // Order header
     rows.push([
       xc(
         `Order No./ Date: ${gs.orderNo || "—"} / ${orderDate}` +
@@ -702,7 +679,6 @@ function buildExcelBuffer(
       ...Array(NCOLS - 1).fill(skip),
     ]);
 
-    // Product rows
     for (const pg of gs.products) {
       const product = pg.prodName
         ? `${pg.prodCode} | ${pg.prodName}`
@@ -718,7 +694,6 @@ function buildExcelBuffer(
       ]);
     }
 
-    // Order total
     rows.push([
       xc("Total:", "totalGroup"),
       xc("",       "totalGroup"),
@@ -745,8 +720,6 @@ function buildExcelBuffer(
     ]);
   }
 
-  // ── Grand-level UOM totals ───────────────────────────────────────────────
-
   const grandTotalPuom = mergeUomTotals(
     ...groups.map((g) => g.qty1ByUom)
   );
@@ -755,7 +728,6 @@ function buildExcelBuffer(
     ...groups.map((g) => g.qty2ByUom)
   );
 
-  // Grand total row
   rows.push([
     xc("Grand Total", "totalGrand"),
     xc("",            "totalGrand"),
@@ -786,7 +758,6 @@ function buildExcelBuffer(
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Merge ranges
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -836,14 +807,15 @@ function buildExcelBuffer(
   ${mergeXml}
 </worksheet>`;
 
+  // ── Styles — freight palette ──
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="8">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF1E293B"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FFDC2626"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF16A34A"/><name val="Calibri"/></font>
@@ -851,8 +823,8 @@ function buildExcelBuffer(
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
@@ -864,8 +836,8 @@ function buildExcelBuffer(
       <diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
-      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
   </borders>
@@ -927,12 +899,6 @@ function buildExcelBuffer(
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-/**
- * GET /api/wms/outbound/reports/sales-order/:job_no
- *
- * Returns self-contained HTML for the Dialog iframe via report_common
- * (company header + footer). Print is handled by postMessage("print").
- */
 export const getSalesOrderReportHtml = async (
   req: RequestWithUser,
   res: Response
