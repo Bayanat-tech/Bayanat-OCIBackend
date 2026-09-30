@@ -176,21 +176,70 @@ const TALLY_EXTRA_CSS = `
     print-color-adjust: exact !important;
   }
 
-  /* Letterhead – same as Enquiry List */
-  .company-name       { font-size: 18px; font-weight: 700; }
-  .company-address    { font-size: 11px; }
+  /* Letterhead – navy rule under the header, Enquiry sizes */
+  .company-header {
+    border-bottom: 2px solid #00378c;
+    padding: 0 0 10px 0;
+    margin: 0 0 8px 0;
+  }
+  .company-name       { font-size: 18px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 11px; line-height: 1.4; }
   .company-logo-wrap  { max-width: 180px; }
   .company-logo       { max-height: 56px; max-width: 180px; }
 
   /* Title + filter strip */
   h1.report-title {
-    margin: 28px 0 14px 0;
+    margin: 24px 0 14px 0;
     font-size: 20px;
+    font-weight: 700;
+    color: #00378c !important;
+  }
+  .applied-filters { font-size: 10px; margin-bottom: 18px; }
+
+  /* Section strip (Sign-off) */
+  .group-title {
+    background: #eaf0f8 !important;
+    color: #00378c !important;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 8px;
+    margin: 16px 0 4px 0;
+  }
+
+  /* Label / value grid (3 columns) */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 28px;
+    margin: 0 0 14px 0;
+  }
+  .field {
+    display: flex;
+    align-items: baseline;
+    min-height: 24px;
+    padding: 4px 6px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 10.5px;
+    line-height: 1.3;
+  }
+  .field .label {
+    flex: 0 0 110px;
+    padding-right: 8px;
+    color: #475569;
+    font-weight: 700;
+  }
+  .field .label::after { content: ":"; }
+  .field--empty .label::after { content: ""; }
+  .field .value { color: #1e293b; overflow-wrap: anywhere; }
+
+  .filter-header {
+    padding: 4px 6px;
+    font-size: 11px;
     font-weight: 700;
     color: #00378c;
   }
-  .applied-filters { font-size: 10px; margin-bottom: 28px; }
 
+  /* Data table */
   table.data-table {
     width: 100%;
     table-layout: fixed;
@@ -208,39 +257,38 @@ const TALLY_EXTRA_CSS = `
   table.data-table .center { text-align: center !important; }
   table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
 
-  /* Header: solid blue bar, white bold text */
+  /* Header: solid navy bar, white bold text */
   table.data-table thead tr th {
     background: #00378c !important;
     color: #ffffff !important;
     font-weight: 700;
     font-size: 10.5px;
     padding: 12px 8px;
-    border: 0;
+    border: 0 !important;
     text-transform: none;
   }
 
-  /* Section banners: Principal / Group / Product */
-  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c; text-align: left; }
-  table.data-table tbody tr.prin-row  td { background: #eaf0f8; font-size: 13px; font-weight: 700; padding: 11px 8px; }
-  table.data-table tbody tr.group-row td { background: #f4f7fc; font-size: 10.5px; padding: 7px 8px 7px 16px; }
-  table.data-table tbody tr.prod-row  td { background: #fafbfd; font-size: 10.5px; padding: 7px 8px 7px 28px; color: #334155; }
+  /* Section banners: User / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c !important; text-align: left; }
+  table.data-table tbody tr.user-row td { background: #eaf0f8 !important; font-size: 13px; padding: 11px 8px; }
+  table.data-table tbody tr.prod-row td { background: #f4f7fc !important; font-size: 10.5px; padding: 7px 8px 7px 16px; }
 
   /* Data rows */
   table.data-table tbody tr.data-row td {
-    background: #fafcfe;
+    background: #fafcfe !important;
+    font-size: 10.5px;
     padding: 9px 8px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0 !important;
     color: #1e293b;
   }
-  table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
 
-  /* Totals */
+  /* Totals – shaded, bold navy, right aligned */
   table.data-table tbody tr.subtotal-row td {
-    background: #e2e8f0; color: #00378c; font-weight: 700; padding: 8px 8px;
+    background: #e2e8f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 8px 8px;
   }
   table.data-table tbody tr.grand-total-row td {
-    background: #dbe4f0; color: #00378c; font-weight: 700; padding: 9px 8px;
-    border-bottom: 1px solid #cbd5e1;
+    background: #dbe4f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 9px 8px;
+    border-bottom: 1px solid #cbd5e1 !important;
   }
 
   @media print {
@@ -250,6 +298,9 @@ const TALLY_EXTRA_CSS = `
     table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
     table.data-table tr.subtotal-row,
     table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
+    .info-grid   { break-inside: avoid; }
+    .group-title { break-after: avoid; }
+    .report-footer { font-size: 10px; }
   }
 `;
 // Lets the React parent page trigger printing through postMessage.
