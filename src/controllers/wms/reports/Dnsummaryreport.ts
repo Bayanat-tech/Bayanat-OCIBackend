@@ -4,7 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
-import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
+import {
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
+} from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -41,7 +46,7 @@ interface DnParams {
   todate:       string;
 }
 
-// ─── DB helpers (same as Sales Invoice / PO Order Register) ────────────────
+// ─── DB helpers ─────────────────────────────────────────────────────────────
 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
   let tenantId = getCurrentTenantId();
@@ -115,6 +120,11 @@ function parseMultiCodeFilter(value: string): string[] | null {
   if (!value.includes(",")) return null;
   const list = value.split(",").map((c) => c.trim()).filter(Boolean);
   return list.length > 1 ? list : null;
+}
+
+function periodText(p: DnParams): string {
+  if (p.fromdate === "All" && p.todate === "All") return "All Dates";
+  return `${p.fromdate} to ${p.todate}`;
 }
 
 // ─── Param extraction ───────────────────────────────────────────────────────
@@ -264,134 +274,112 @@ interface DnColumn {
 }
 
 const DN_COLUMNS: DnColumn[] = [
-  { label: "DN No",        align: "center", width: 10 },
-  { label: "DN Date",      align: "center", width: 10 },
-  { label: "Confirm Date", align: "center", width: 11 },
-  { label: "Job No",       align: "center", width: 16 },
-  { label: "Customer",     align: "left",   width: 18 },
-  { label: "Container No", align: "center", width: 15 },
+  { label: "DN No",        align: "left",   width: 10 },
+  { label: "DN Date",      align: "center", width: 9  },
+  { label: "Confirm Date", align: "center", width: 10 },
+  { label: "Job No",       align: "left",   width: 14 },
+  { label: "Customer",     align: "left",   width: 14 },
+  { label: "Container No", align: "left",   width: 14 },
   { label: "Qty",          align: "right",  width: 8  },
   { label: "Volume",       align: "right",  width: 12 },
 ];
 
 const DN_COL_COUNT = DN_COLUMNS.length;
+const LABEL_SPAN   = DN_COL_COUNT - 2; // total-row label spans everything before Qty
 
-// ─── Layout CSS – same visual system as Sales Invoice / PO Order Register ───
-// (company letterhead / footer / .data-table / .right / .center come from
-// report_common; this only adds what is specific to this report)
+// ─── Layout CSS – same look as the Quotation List PDF ───────────────────────
+// Used together with fontMode: "native", so the sizes below are the real sizes.
+// Letterhead / footer come from report_common; this only styles the body.
+// NOTE: row selectors include "tbody" so they out-rank the zebra rule
+// (tbody tr:nth-child(even) td) in report_common.
 
 const DN_EXTRA_CSS = `
-  /* wide report → landscape (overrides the A4 portrait @page in report_common) */
-  @page { size: A4 landscape; margin: 10mm 12mm; }
-  .paper { max-width: none; }
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
 
-  .left { text-align: left; }
-
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-  }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px 100px;
-    margin-bottom: 14px;
-  }
-  .info-block {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 10px 14px;
-    background: #f8fafc;
-  }
-  .info-block .label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
-    margin-bottom: 6px;
-  }
-  .info-block .value-line {
-    font-size: 11px;
-    color: #0f172a;
-    line-height: 1.55;
-  }
+  /* Letterhead – same as Enquiry List */
+  .company-name       { font-size: 18px; font-weight: 700; }
+  .company-address    { font-size: 11px; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
 
-  /* data table */
-  table.data-table { table-layout: fixed; }
-  table.data-table th,
-  table.data-table td { overflow-wrap: anywhere; word-break: break-word; }
-  table.data-table th.left,   table.data-table td.left   { text-align: left   !important; }
-  table.data-table th.center, table.data-table td.center { text-align: center !important; }
-  table.data-table th.right,  table.data-table td.right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
-
-  table.data-table tr.prin-row  td { background: #0b4ca1; color: #fff;    font-weight: 700; font-size: 11px;   padding: 6px 8px; border-bottom: none; }
-  table.data-table tr.group-row td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px;   padding: 5px 8px 5px 20px; }
-  table.data-table tr.prod-row  td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; padding: 4px 8px 4px 32px; }
-  table.data-table tr.data-row:nth-child(even) td { background: #f8fafc; }
-
-  table.data-table tr.prod-total  td { background: #eef2f7; color: #334155; font-weight: 700; font-size: 10.5px; }
-  table.data-table tr.group-total td { background: #dbe6f6; color: #0b4ca1; font-weight: 700; font-size: 11px; }
-  table.data-table tr.prin-total  td { background: #c7d8f0; color: #0b4ca1; font-weight: 700; font-size: 11px; }
-
-  .totals-box {
-    margin-top: 16px;
-    margin-left: auto;
-    width: 280px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .totals-box .row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 14px;
-    font-size: 11.5px;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  .totals-box .row.grand {
-    background: #0b4ca1;
-    color: #fff;
+  /* Title + filter strip */
+  h1.report-title {
+    margin: 28px 0 14px 0;
+    font-size: 20px;
     font-weight: 700;
-    font-size: 13px;
-    border-bottom: none;
+    color: #00378c;
+  }
+  .applied-filters { font-size: 10px; margin-bottom: 28px; }
+
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
+    border-collapse: collapse;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  table.data-table .left   { text-align: left   !important; }
+  table.data-table .center { text-align: center !important; }
+  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+
+  /* Header: solid blue bar, white bold text */
+  table.data-table thead tr th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 12px 8px;
+    border: 0;
+    text-transform: none;
+  }
+
+  /* Section banners: Principal / Group / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c; text-align: left; }
+  table.data-table tbody tr.prin-row  td { background: #eaf0f8; font-size: 13px; font-weight: 700; padding: 11px 8px; }
+  table.data-table tbody tr.group-row td { background: #f4f7fc; font-size: 10.5px; padding: 7px 8px 7px 16px; }
+  table.data-table tbody tr.prod-row  td { background: #fafbfd; font-size: 10.5px; padding: 7px 8px 7px 28px; color: #334155; }
+
+  /* Data rows */
+  table.data-table tbody tr.data-row td {
+    background: #fafcfe;
+    padding: 9px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #1e293b;
+  }
+  table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
+
+  /* Totals */
+  table.data-table tbody tr.subtotal-row td {
+    background: #e2e8f0; color: #00378c; font-weight: 700; padding: 8px 8px;
+  }
+  table.data-table tbody tr.grand-total-row td {
+    background: #dbe4f0; color: #00378c; font-weight: 700; padding: 9px 8px;
+    border-bottom: 1px solid #cbd5e1;
   }
 
   @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
+    body::before { display: none !important; }
     table.data-table thead { display: table-header-group; }
-    table.data-table tr, table.data-table td, table.data-table th {
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-    /* keep section headings attached to the row after them */
-    table.data-table tr.prin-row,
-    table.data-table tr.group-row,
-    table.data-table tr.prod-row { break-after: avoid; page-break-after: avoid; }
-    /* keep total rows attached to the row before them */
-    table.data-table tr.prod-total,
-    table.data-table tr.group-total,
-    table.data-table tr.prin-total { break-before: avoid; page-break-before: avoid; }
-    .totals-box { break-inside: avoid; page-break-inside: avoid; }
+    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
+    table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.subtotal-row,
+    table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
   }
 `;
 
-// Lets the React parent page trigger printing through postMessage
-// (report_common only provides the built-in button, so this is added to the body).
+// Lets the React parent page trigger printing through postMessage.
 const PRINT_LISTENER_SCRIPT = `
   <script>
     window.addEventListener("message", function (e) {
@@ -401,63 +389,40 @@ const PRINT_LISTENER_SCRIPT = `
 
 // ─── Body pieces ────────────────────────────────────────────────────────────
 
-function titleHtml(title: string, subtitle: string): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-    </div>`;
-}
-
-function filterInfoHtml(p: DnParams): string {
-  return `
-    <div class="info-grid">
-      <div class="info-block">
-        <div class="label">Filters</div>
-        <div class="value-line">Principal: <strong>${escapeHtml(p.prinCode)}</strong></div>
-        <div class="value-line">From Date: ${escapeHtml(p.fromdate)}</div>
-        <div class="value-line">To Date: ${escapeHtml(p.todate)}</div>
-      </div>
-      <div class="info-block">
-        <div class="label">Report Details</div>
-        <div class="value-line">Report: <strong>Delivery Note Summary</strong></div>
-        <div class="value-line">User: ${escapeHtml(p.loginid)}</div>
-      </div>
-    </div>`;
-}
-
 function renderDnBody(prins: PrinSection[], params: DnParams, reportTitle: string): string {
   const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
-  const labelSpan   = DN_COL_COUNT - 2;
   const C = DN_COLUMNS;
+
+  const filtersHtml = reportAppliedFilters([
+    { label: "Period",    value: periodText(params) },
+    { label: "Principal", value: params.prinCode },
+  ]);
 
   const totalRow = (cls: string, label: string, qty: number, vol: number) =>
     `<tr class="${cls}">` +
-    `<td class="left" colspan="${labelSpan}">${label}</td>` +
-    `<td class="${C[6].align} num">${escapeHtml(qtyFmt(qty))}</td>` +
-    `<td class="${C[7].align} num">${escapeHtml(volFmt(vol))}</td>` +
+    `<td class="right" colspan="${LABEL_SPAN}">${label}</td>` +
+    `<td class="right num">${escapeHtml(qtyFmt(qty))}</td>` +
+    `<td class="right num">${escapeHtml(volFmt(vol))}</td>` +
     `</tr>`;
 
   let bodyRows = "";
 
   for (const ps of prins) {
-    const prinLabel = `${escapeHtml(ps.prinCode)}${ps.prinName ? " | " + escapeHtml(ps.prinName) : ""}`;
-    bodyRows += `<tr class="prin-row"><td colspan="${DN_COL_COUNT}">${prinLabel}</td></tr>`;
+    const prinLabel = `${escapeHtml(ps.prinCode)}${ps.prinName ? " - " + escapeHtml(ps.prinName) : ""}`;
+    bodyRows += `<tr class="group-header-row prin-row"><td colspan="${DN_COL_COUNT}">${prinLabel}</td></tr>`;
 
     for (const gs of ps.groups) {
-      bodyRows += `<tr class="group-row"><td colspan="${DN_COL_COUNT}">Group : ${escapeHtml(gs.groupName)}</td></tr>`;
+      bodyRows += `<tr class="group-header-row group-row"><td colspan="${DN_COL_COUNT}">Group : ${escapeHtml(gs.groupName)}</td></tr>`;
 
       for (const prd of gs.prods) {
-        const prodLabel = `${escapeHtml(prd.prodCode)}${prd.prodName ? " | " + escapeHtml(prd.prodName) : ""}`;
-        bodyRows += `<tr class="prod-row"><td colspan="${DN_COL_COUNT}">${prodLabel}</td></tr>`;
+        const prodLabel = `${escapeHtml(prd.prodCode)}${prd.prodName ? " - " + escapeHtml(prd.prodName) : ""}`;
+        bodyRows += `<tr class="group-header-row prod-row"><td colspan="${DN_COL_COUNT}">${prodLabel}</td></tr>`;
 
         for (const dr of prd.rows) {
           bodyRows +=
             `<tr class="data-row">` +
-            `<td class="${C[0].align}">${escapeHtml(dr.dn_no || "\u2014")}</td>` +
+            `<td class="${C[0].align} primary-text">${escapeHtml(dr.dn_no || "\u2014")}</td>` +
             `<td class="${C[1].align}">${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>` +
             `<td class="${C[2].align}">${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>` +
             `<td class="${C[3].align}">${escapeHtml(dr.job_no || "\u2014")}</td>` +
@@ -467,30 +432,30 @@ function renderDnBody(prins: PrinSection[], params: DnParams, reportTitle: strin
             `<td class="${C[7].align} num">${escapeHtml(volFmt(num(dr.volume)))}</td>` +
             `</tr>`;
         }
-        bodyRows += totalRow("prod-total", `Total For ${prodLabel}`, prd.totalQty, prd.totalVolume);
+        bodyRows += totalRow("subtotal-row", `Sub Total (${prodLabel}):`, prd.totalQty, prd.totalVolume);
       }
-      bodyRows += totalRow("group-total", `Total For ${escapeHtml(gs.groupName)}`, gs.totalQty, gs.totalVolume);
+      bodyRows += totalRow("subtotal-row", `Sub Total (${escapeHtml(gs.groupName)}):`, gs.totalQty, gs.totalVolume);
     }
-    bodyRows += totalRow("prin-total", `Total For ${prinLabel}`, ps.totalQty, ps.totalVolume);
+    bodyRows += totalRow("subtotal-row", `Sub Total (${prinLabel}):`, ps.totalQty, ps.totalVolume);
   }
+
+  const recordCount = prins.reduce(
+    (s, p) => s + p.groups.reduce((gs, g) => gs + g.prods.reduce((ps, pr) => ps + pr.rows.length, 0), 0),
+    0
+  );
+  bodyRows += totalRow("grand-total-row", `GRAND TOTAL (${recordCount} Records):`, grandQty, grandVolume);
 
   const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
   const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
 
   return `
-    ${titleHtml(reportTitle, "Delivery Note Summary — grouped by Principal / Group / Product")}
-    ${filterInfoHtml(params)}
-
+    <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+    ${filtersHtml}
     <table class="data-table">
       <colgroup>${colgroup}</colgroup>
       <thead><tr>${headerCells}</tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
-
-    <div class="totals-box">
-      <div class="row"><span>Total Quantity</span><span>${qtyFmt(grandQty)}</span></div>
-      <div class="row grand"><span>Total Volume</span><span>${volFmt(grandVolume)}</span></div>
-    </div>
     ${PRINT_LISTENER_SCRIPT}`;
 }
 
@@ -503,13 +468,15 @@ async function buildDnHtml(
   reportTitle: string,
   autoPrint: boolean
 ): Promise<string> {
+  const printed = new Date().toLocaleString("en-US");
   const companyCode = resolveCompanyCode(req, params);
   const headerHtml  = await reportHeader({ company_code: companyCode, req });
-  const footerHtml  = reportFooter({
-    reportName: "rpt_dn_summary",
-    userName:   params.loginid,
-    endLabel:   "Powered by Bayanat Technology",
-  });
+ const footerHtml = reportFooter({
+  reportName: "Delivery Note Summary",
+  userName:   params.loginid,
+  endLabel:   "Powered by Bayanat Technology",
+  extraLeft:  `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
+});
   const bodyHtml = renderDnBody(prins, params, reportTitle);
 
   return buildReportDocument({
@@ -520,6 +487,7 @@ async function buildDnHtml(
     extraCss: DN_EXTRA_CSS,
     autoPrint,
     showPrintButton: true,
+    fontMode: "native",
   });
 }
 
@@ -565,15 +533,14 @@ export const getDnSummaryReportPdf = async (req: RequestWithUser, res: Response)
   }
 };
 
-// ─── Generic OOXML Excel builder engine (same as Sales Invoice) ─────────────
+// ─── Generic OOXML Excel builder engine ─────────────────────────────────────
 
 interface XlCell { v: unknown; styleKey: string }
 type XlRow = (XlCell | null)[];
 interface XlMerge { s: { r: number; c: number }; e: { r: number; c: number } }
 
-const XL_BLUE     = "FF1D4ED8";
-const XL_WHITE    = "FFFFFFFF";
-const XL_GREEN_BG = "FFD1FAE5";
+const XL_BLUE  = "FF00378C";
+const XL_WHITE = "FFFFFFFF";
 
 function xlCell(v: unknown, styleKey: string): XlCell {
   return { v, styleKey };
@@ -581,67 +548,46 @@ function xlCell(v: unknown, styleKey: string): XlCell {
 
 function defaultXlStyleDefs(): Record<string, any> {
   const borderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
-  const rowBorder  = { bottom: borderThin("FFF3F4F6") };
+  const rowBorder  = { bottom: borderThin("FFE2E8F0") };
 
   const defs: Record<string, any> = {
     title: {
-      font: { bold: true, sz: 16, color: { rgb: XL_WHITE } },
-      fill: { fgColor: { rgb: XL_BLUE } },
-      alignment: { horizontal: "center", vertical: "center" },
+      font: { bold: true, sz: 14, color: { rgb: XL_BLUE } },
+      alignment: { horizontal: "left", vertical: "center" },
     },
-    meta: { font: { sz: 9, color: { rgb: "FF333333" } } },
+    meta: {
+      font: { sz: 9, color: { rgb: "FF475569" } },
+      fill: { fgColor: { rgb: "FFF8FAFC" } },
+      alignment: { horizontal: "left", vertical: "center" },
+    },
     header: {
       font: { bold: true, sz: 10, color: { rgb: XL_WHITE } },
       fill: { fgColor: { rgb: XL_BLUE } },
       alignment: { horizontal: "center", vertical: "center", wrapText: true },
       border: { top: borderThin(XL_BLUE), bottom: borderThin(XL_BLUE), left: borderThin(XL_BLUE), right: borderThin(XL_BLUE) },
     },
-    data:       { font: { sz: 10 }, alignment: { vertical: "center" }, border: rowBorder },
+    data:       { font: { sz: 10 }, alignment: { horizontal: "left",   vertical: "center" }, border: rowBorder },
     dataCenter: { font: { sz: 10 }, alignment: { horizontal: "center", vertical: "center" }, border: rowBorder },
-    dataNum:    { font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" }, numFmt: "#,##0.00",  border: rowBorder },
-    dataNumInt: { font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" }, numFmt: "#,##0",     border: rowBorder },
-    dataNum3:   { font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" }, numFmt: "#,##0.000", border: rowBorder },
-    groupTotal: {
-      font: { bold: true, sz: 10, color: { rgb: "FF065F46" } },
-      fill: { fgColor: { rgb: XL_GREEN_BG } },
-      alignment: { horizontal: "left", vertical: "center" },
-      border: { top: borderThin("FF065F46") },
-    },
-    grandTotal: {
-      font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
-      fill: { fgColor: { rgb: XL_BLUE } },
-      alignment: { horizontal: "left", vertical: "center" },
-    },
-    grandTotalQty: {
-      font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
-      fill: { fgColor: { rgb: XL_BLUE } },
-      alignment: { horizontal: "right", vertical: "center" },
-      numFmt: "#,##0",
-    },
-    grandTotalVol: {
-      font: { bold: true, sz: 12, color: { rgb: XL_WHITE } },
-      fill: { fgColor: { rgb: XL_BLUE } },
-      alignment: { horizontal: "right", vertical: "center" },
-      numFmt: "#,##0.000",
-    },
+    dataNum:    { font: { sz: 10 }, alignment: { horizontal: "right",  vertical: "center" }, numFmt: "#,##0.00",  border: rowBorder },
+    dataNumInt: { font: { sz: 10 }, alignment: { horizontal: "right",  vertical: "center" }, numFmt: "#,##0",     border: rowBorder },
+    dataNum3:   { font: { sz: 10 }, alignment: { horizontal: "right",  vertical: "center" }, numFmt: "#,##0.000", border: rowBorder },
     footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
 
     // section heading rows (Principal / Group / Product)
-    secPrin:  { font: { bold: true, sz: 11, color: { rgb: XL_WHITE } },   fill: { fgColor: { rgb: XL_BLUE } },     alignment: { horizontal: "left", vertical: "center" } },
-    secGroup: { font: { bold: true, sz: 10, color: { rgb: "FF0B4CA1" } }, fill: { fgColor: { rgb: "FFDBE6F6" } }, alignment: { horizontal: "left", vertical: "center" } },
-    secProd:  { font: { bold: true, sz: 10, color: { rgb: "FF334155" } }, fill: { fgColor: { rgb: "FFEEF2F7" } }, alignment: { horizontal: "left", vertical: "center" } },
+    secPrin:  { font: { bold: true, sz: 11, color: { rgb: XL_BLUE } },   fill: { fgColor: { rgb: "FFEAF0F8" } }, alignment: { horizontal: "left", vertical: "center" } },
+    secGroup: { font: { bold: true, sz: 10, color: { rgb: XL_BLUE } },   fill: { fgColor: { rgb: "FFF4F7FC" } }, alignment: { horizontal: "left", vertical: "center" } },
+    secProd:  { font: { bold: true, sz: 10, color: { rgb: "FF334155" } }, fill: { fgColor: { rgb: "FFFAFBFD" } }, alignment: { horizontal: "left", vertical: "center" } },
   };
 
   // per-level total rows: label / qty / volume
-  const totalLevel = (name: string, fill: string, color: string) => {
-    const base = { font: { bold: true, sz: 10, color: { rgb: color } }, fill: { fgColor: { rgb: fill } }, border: { top: borderThin(color) } };
-    defs[name]         = { ...base, alignment: { horizontal: "left",  vertical: "center" } };
+  const totalLevel = (name: string, fill: string, color: string, topColor: string) => {
+    const base = { font: { bold: true, sz: 10, color: { rgb: color } }, fill: { fgColor: { rgb: fill } }, border: { top: borderThin(topColor) } };
+    defs[name]         = { ...base, alignment: { horizontal: "right", vertical: "center" } };
     defs[`${name}Qty`] = { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: "#,##0" };
     defs[`${name}Vol`] = { ...base, alignment: { horizontal: "right", vertical: "center" }, numFmt: "#,##0.000" };
   };
-  totalLevel("totProd",  "FFEEF2F7", "FF334155");
-  totalLevel("totGroup", "FFDBE6F6", "FF0B4CA1");
-  totalLevel("totPrin",  "FFC7D8F0", "FF0B4CA1");
+  totalLevel("subTotal",   "FFF1F5F9", XL_BLUE, "FFCBD5E1");
+  totalLevel("grandTotal", "FFE2E8F0", XL_BLUE, XL_BLUE);
 
   return defs;
 }
@@ -868,7 +814,7 @@ function buildDnSummaryExcelBuffer(prins: PrinSection[], params: DnParams): Buff
   const merges: XlMerge[] = [];
   const blank = (): XlRow => new Array(COL_COUNT).fill(null);
 
-  // a full-width, merged row with one styled cell (title / section headings)
+  // full-width merged row with one styled cell (title / filters / section headings)
   const spanRow = (label: string, styleKey: string) => {
     const r = rows_.length;
     const row = blank();
@@ -878,70 +824,56 @@ function buildDnSummaryExcelBuffer(prins: PrinSection[], params: DnParams): Buff
   };
 
   // total row: label merged across first 6 cols, qty + volume in their own cells
-  const totalRow = (label: string, qty: number, vol: number, labelKey: string, qtyKey: string, volKey: string) => {
+  const totalRow = (label: string, qty: number, vol: number, level: "subTotal" | "grandTotal") => {
     const r = rows_.length;
     const row = blank();
-    row[0] = xlCell(label, labelKey);
-    row[6] = xlCell(qty, qtyKey);
-    row[7] = xlCell(vol, volKey);
+    row[0] = xlCell(label, level);
+    row[6] = xlCell(qty, `${level}Qty`);
+    row[7] = xlCell(vol, `${level}Vol`);
     rows_.push(row);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 5 } });
+    merges.push({ s: { r, c: 0 }, e: { r, c: LABEL_SPAN - 1 } });
   };
 
-  spanRow("DELIVERY NOTE REPORT (SUMMARY)", "title");
-
-  // meta row
-  {
-    const r = rows_.length;
-    const row = blank();
-    row[0] = xlCell(`Principal: ${params.prinCode}`, "meta");
-    row[3] = xlCell(`From: ${params.fromdate}   To: ${params.todate}`, "meta");
-    row[6] = xlCell(`User: ${params.loginid}`, "meta");
-    rows_.push(row);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 2 } });
-    merges.push({ s: { r, c: 3 }, e: { r, c: 5 } });
-    merges.push({ s: { r, c: 6 }, e: { r, c: 7 } });
-  }
-
-  rows_.push(blank());
-
+  spanRow("Delivery Note Report (Summary)", "title");
+  spanRow(`Applied Filters: Period: ${periodText(params)} | Principal: ${params.prinCode}`, "meta");
   rows_.push(DN_COLUMNS.map((c) => xlCell(c.label, "header")));
 
+  let recordCount = 0;
+
   for (const ps of prins) {
-    const prinLabel = ps.prinCode + (ps.prinName ? " | " + ps.prinName : "");
+    const prinLabel = ps.prinCode + (ps.prinName ? " - " + ps.prinName : "");
     spanRow(prinLabel, "secPrin");
 
     for (const gs of ps.groups) {
       spanRow("Group : " + gs.groupName, "secGroup");
 
       for (const prd of gs.prods) {
-        const prodLabel = prd.prodCode + (prd.prodName ? " | " + prd.prodName : "");
+        const prodLabel = prd.prodCode + (prd.prodName ? " - " + prd.prodName : "");
         spanRow(prodLabel, "secProd");
 
         for (const dr of prd.rows) {
+          recordCount++;
           rows_.push([
-            xlCell(text(dr.dn_no) || "\u2014", "dataCenter"),
+            xlCell(text(dr.dn_no) || "\u2014", "data"),
             xlCell(dateText(dr.dn_date ?? dr.receipt_date), "dataCenter"),
             xlCell(dateText(dr.principal_confirm_date ?? dr.confirm_date), "dataCenter"),
-            xlCell(text(dr.job_no) || "\u2014", "dataCenter"),
-            xlCell(text(dr.customer ?? dr.cust_code) || "\u2014", "data"),
-            xlCell(text(dr.container_no) || "\u2014", "dataCenter"),
+            xlCell(text(dr.job_no) || "\u2014", "data"),
+            xlCell(text(dr.customer || dr.cust_code) || "\u2014", "data"),
+            xlCell(text(dr.container_no) || "\u2014", "data"),
             xlCell(rowQty(dr), "dataNumInt"),
             xlCell(num(dr.volume), "dataNum3"),
           ]);
         }
-        totalRow("Total For " + prodLabel, prd.totalQty, prd.totalVolume, "totProd", "totProdQty", "totProdVol");
+        totalRow(`Sub Total (${prodLabel}):`, prd.totalQty, prd.totalVolume, "subTotal");
       }
-      totalRow("Total For " + gs.groupName, gs.totalQty, gs.totalVolume, "totGroup", "totGroupQty", "totGroupVol");
+      totalRow(`Sub Total (${gs.groupName}):`, gs.totalQty, gs.totalVolume, "subTotal");
     }
-    totalRow("Total For " + prinLabel, ps.totalQty, ps.totalVolume, "totPrin", "totPrinQty", "totPrinVol");
+    totalRow(`Sub Total (${prinLabel}):`, ps.totalQty, ps.totalVolume, "subTotal");
   }
 
   const grandQty    = prins.reduce((s, p) => s + p.totalQty,    0);
   const grandVolume = prins.reduce((s, p) => s + p.totalVolume, 0);
-
-  rows_.push(blank());
-  totalRow("Grand Total", grandQty, grandVolume, "grandTotal", "grandTotalQty", "grandTotalVol");
+  totalRow(`GRAND TOTAL (${recordCount} Records):`, grandQty, grandVolume, "grandTotal");
 
   {
     const row = blank();
@@ -949,7 +881,7 @@ function buildDnSummaryExcelBuffer(prins: PrinSection[], params: DnParams): Buff
     rows_.push(row);
   }
 
-  const COL_WIDTHS = [12, 14, 14, 18, 24, 18, 12, 14];
+  const COL_WIDTHS = [14, 13, 14, 18, 26, 18, 10, 13];
   return buildXlsxBuffer("DN Summary", COL_COUNT, COL_WIDTHS, rows_, merges, defaultXlStyleDefs());
 }
 

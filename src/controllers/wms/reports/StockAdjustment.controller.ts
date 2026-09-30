@@ -218,7 +218,10 @@ async function loadAdjustmentData(
   }
 }
 
-// ─── CSS — Stock Adjustment theme (matches Adjustment Confirmation) ───────────
+// ─── CSS — Stock Adjustment theme (aligned with FREIGHT_COLORS) ───────────────
+//
+//   navy     = #00378c  (title, section labels, table header, item title)
+//   navyDeep = #002a6b  (table header borders)
 
 const STOCK_ADJUSTMENT_EXTRA_CSS = `
   * {
@@ -237,18 +240,18 @@ const STOCK_ADJUSTMENT_EXTRA_CSS = `
     margin: 0;
     font-size: 18px;
     font-weight: 800;
-    color: #0b4ca1;
+    color: #00378c;
   }
 
   .section-label {
     font-size: 9.5px;
     font-weight: 700;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .08em;
     margin-bottom: 7px;
     padding-bottom: 4px;
-    border-bottom: 1.5px solid #0b4ca1;
+    border-bottom: 1.5px solid #00378c;
   }
   .field-row {
     display: flex;
@@ -309,24 +312,26 @@ const STOCK_ADJUSTMENT_EXTRA_CSS = `
   .items-title {
     font-size: 10px;
     font-weight: 700;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .08em;
     margin: 4px 0 8px;
     padding-bottom: 4px;
-    border-bottom: 2px solid #0b4ca1;
+    border-bottom: 2px solid #00378c;
   }
 
+  /* Dark navy table header — matches Stock Summary */
   table.adj-items-table thead th {
-    background: #f1f5f9;
-    color: #0f172a;
+    background: #00378c !important;
+    color: #ffffff !important;
     padding: 7px 6px;
     font-size: 9px;
     font-weight: 700;
     text-align: left;
-    border-top: 1px solid #475569;
-    border-bottom: 1px solid #475569;
+    border-top: 1px solid #002a6b;
+    border-bottom: 1px solid #002a6b;
     white-space: nowrap;
+    box-shadow: inset 0 0 0 1000px #00378c;
   }
   table.adj-items-table thead th.c-center,
   table.adj-items-table thead th.c-num { text-align: center; }
@@ -402,7 +407,7 @@ const STOCK_ADJUSTMENT_EXTRA_CSS = `
   .sign-label {
     font-size: 9.5px;
     font-weight: 700;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .05em;
     margin-bottom: 22px;
@@ -435,7 +440,6 @@ function renderAdjustmentBody(
   const headerConfirmed = isConfirmed(r.header_confirmed);
   const headerConfirmedText = confirmedYesNo(r.header_confirmed);
 
-  // ── EXACT match to WMS Adjustment Confirmation header ──
   const field = (label: string, value: unknown) => `
     <div class="field-row">
       <span class="f-label">${escapeHtml(label)}</span>
@@ -548,7 +552,7 @@ function renderAdjustmentBody(
   `;
 }
 
-// ─── Excel builder (blue theme) ───────────────────────────────────────────────
+// ─── Excel builder (navy theme — matches Stock Summary) ───────────────────────
 
 const STYLE_ID = {
   default:        0,
@@ -737,7 +741,7 @@ function buildExcelBuffer(
   <fonts count="6">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
@@ -745,7 +749,7 @@ function buildExcelBuffer(
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFEF2F2"/><bgColor indexed="64"/></patternFill></fill>
@@ -758,11 +762,11 @@ function buildExcelBuffer(
       <diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
-      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
+      <left style="thin"><color rgb="FF002A6B"/></left><right style="thin"><color rgb="FF002A6B"/></right>
+      <top style="thin"><color rgb="FF002A6B"/></top><bottom style="thin"><color rgb="FF002A6B"/></bottom>
       <diagonal/>
     </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FF0B4CA1"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FF00378C"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="11">

@@ -8,6 +8,7 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 import {
   reportHeader,
   reportFooter,
+  reportAppliedFilters,
   buildReportDocument,
 } from "../../common/report_common";
 
@@ -327,9 +328,10 @@ const STOCK_SUMMARY_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  table.data-table th.sub-qty { background: #185FA5; }
-  table.data-table th.stock-qty-l-hdr { background: #0b4ca1; }
-  table.data-table td.stock-qty-l { font-weight: 800; color: #0b4ca1; }
+  /* All header cells now use the SAME parent navy (#00378c = FREIGHT_COLORS.navy). */
+  table.data-table th.sub-qty         { background: #00378c; }
+  table.data-table th.stock-qty-l-hdr { background: #00378c; }
+  table.data-table td.stock-qty-l     { font-weight: 800; color: #00378c; }
   tr.principal-header td {
     background: #0b4ca1;
     color: #fff;
@@ -371,7 +373,7 @@ const STOCK_SUMMARY_EXTRA_CSS = `
 
 // ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
 
-function renderStockSummaryBody(rows: ReportRow[], groupBy: TGroupBy): string {
+function renderStockSummaryBody(rows: ReportRow[], groupBy: TGroupBy, filtersHtml = ""): string {
   const colSpec        = getColSpec(groupBy);
   const includeSiteCol = groupBy !== "site_location";
 
@@ -531,6 +533,8 @@ function renderStockSummaryBody(rows: ReportRow[], groupBy: TGroupBy): string {
     <div class="doc-title-row">
       <div><h1>Stock Summary Report</h1></div>
     </div>
+
+    ${filtersHtml}
 
     <table class="data-table">
       <thead>
@@ -1172,6 +1176,13 @@ function buildExcelBuffer(rows: ReportRow[], groupBy: TGroupBy, loginId: string)
 
 // ─── Route Handlers ───────────────────────────────────────────────────────────
 
+const GROUP_BY_LABELS: Record<string, string> = {
+  group_brand:       "Product Group → Brand",
+  principal_product: "Principal → Product",
+  product_group:     "Product Group",
+  site_location:     "Site / Location",
+};
+
 export const getStockSummaryReportHtml = async (
   req: RequestWithUser,
   res: Response,
@@ -1180,8 +1191,15 @@ export const getStockSummaryReportHtml = async (
     const params = parseParams(req);
     const rows   = await loadStockData(req);
 
-    const headerHtml = await reportHeader({ company_code: params.companyCode, req });
-    const bodyHtml    = renderStockSummaryBody(rows, params.groupBy);
+    const headerHtml  = await reportHeader({ company_code: params.companyCode, req });
+    const filtersHtml = reportAppliedFilters([
+      { label: "Principal", value: params.prinCode },
+      { label: "Product",   value: params.prodCode },
+      { label: "Site",      value: params.siteCode },
+      { label: "Location",  value: params.locationCode },
+      { label: "Group By",  value: GROUP_BY_LABELS[params.groupBy] || "No grouping" },
+    ]);
+    const bodyHtml    = renderStockSummaryBody(rows, params.groupBy, filtersHtml);
     const footerHtml  = reportFooter({
       reportName: "rpt_stock_summary",
       userName: params.loginId,

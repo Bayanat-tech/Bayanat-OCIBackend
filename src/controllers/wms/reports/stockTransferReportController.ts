@@ -345,9 +345,19 @@ function groupConfirmationRows(rows: ReportRow[]): ConfirmationLine[] {
     });
 }
 
-// ─── Stock Transfer CSS — report_common aligned ──────────────────────────────
+// ─── Stock Transfer CSS — aligned with FREIGHT_COLORS ───────────────────────
+//
+//   navy     = #00378c  (title, rule, table header, group header, subtotal)
+//   navyDeep = #002a6b  (group header top border, subtotal top border)
+//   th background now matches Stock Summary header (dark navy, white text).
 
 const STOCK_TRANSFER_EXTRA_CSS = `
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   /* No @page/body margins — from report_common COMMON_REPORT_CSS */
 
   .doc-title-row {
@@ -355,13 +365,13 @@ const STOCK_TRANSFER_EXTRA_CSS = `
     margin: 4px 0 12px 0;
   }
   .doc-title-row h1 {
-    margin: 0; font-size: 18px; font-weight: 800; color: #0b4ca1;
+    margin: 0; font-size: 18px; font-weight: 800; color: #00378c;
   }
 
   .info-block {
     display: flex; justify-content: space-between; gap: 24px;
     margin-bottom: 12px; padding-bottom: 10px;
-    border-bottom: 2px solid #0b4ca1;
+    border-bottom: 2px solid #00378c;
     font-size: 11px;
   }
   .info-left, .info-right { display: flex; flex-direction: column; gap: 3px; }
@@ -370,26 +380,33 @@ const STOCK_TRANSFER_EXTRA_CSS = `
   table.stock-transfer-table {
     width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 3px;
   }
+  /* Dark navy header — matches Stock Summary */
   table.stock-transfer-table thead th {
-    background: #f1f5f9; color: #0f172a; font-weight: 700;
-    font-size: 10px; padding: 6px 5px; text-align: center;
-    border-top: 1px solid #475569; border-bottom: 1px solid #475569;
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 6px 5px;
+    text-align: center;
+    border-top: 1px solid #002a6b;
+    border-bottom: 1px solid #002a6b;
+    box-shadow: inset 0 0 0 1000px #00378c;
   }
   table.stock-transfer-table tbody td {
     padding: 4px 5px; border-bottom: 1px solid #e2e8f0; color: #0f172a;
     vertical-align: top;
   }
   table.stock-transfer-table .group-header td {
-    background: #0b4ca1; color: #fff; font-weight: 700;
-    border-top: 2px solid #093d82;
+    background: #00378c; color: #fff; font-weight: 700;
+    border-top: 2px solid #002a6b;
   }
   table.stock-transfer-table .status-row td {
     border-top: none; font-style: italic; color: #64748b;
     padding-top: 0; line-height: 1.2; background: #f8fafc;
   }
   table.stock-transfer-table .subtotal td {
-    background: #f1f5f9; font-weight: 700; color: #0b4ca1;
-    border-top: 2px solid #0b4ca1;
+    background: #f1f5f9; font-weight: 700; color: #00378c;
+    border-top: 2px solid #002a6b;
   }
   .center { text-align: center; }
   .left { text-align: left; }
