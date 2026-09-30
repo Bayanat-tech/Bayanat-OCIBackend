@@ -4,6 +4,7 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
+import { buildReportDocument, reportFooter, reportHeader } from "../../../controllers/common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,15 @@ function extractParams(req: RequestWithUser): ReqParams {
   };
 }
 
+function resolveCompanyCode(req: RequestWithUser, params: ReqParams): string {
+  return (
+    params.company_code ||
+    text(req.user?.company_code) ||
+    text(req.query.company_code) ||
+    "BSG"
+  );
+}
+
 // ─── Data loader ────────────────────────────────────────────────────────────
 
 async function loadPurchaseInvoiceData(req: RequestWithUser, p: ReqParams, dispatchParam: string): Promise<ReportRow[]> {
@@ -159,7 +169,6 @@ interface InvoiceHeader {
   due_date: any;
   tax_reg_no: string;
   disc_hdr_price: number;
-  logo_url: string | null;
 }
 
 function buildInvoiceHeader(rows: ReportRow[]): InvoiceHeader {
@@ -181,361 +190,312 @@ function buildInvoiceHeader(rows: ReportRow[]): InvoiceHeader {
     due_date: h.due_date,
     tax_reg_no: text(h.tax_reg_no),
     disc_hdr_price: num(h.disc_hdr_price),
-    // TODO: PROC_BUILD_DYNAMIC_SQL_PR_INVOICE doesn't select logo_url yet — add the
-    // same ms_hr_division.comp_logo subquery used in the PO Order procedure if you
-    // want the letterhead logo here too.
-    logo_url: h.logo_url || null,
   };
 }
 
-// ─── Shared visual system (identical classes/colors to the PO Order Report) ─
+// ─── Layout CSS — same visual system as Sales Invoice / PO Order Register ──
 
-const SHARED_STYLES = `
-        @media print {
-            @page { size: A4 portrait; margin: 8mm; }
-            .no-print { display: none !important; }
-            .report-container { box-shadow: none !important; border: none !important; }
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            background: #f3f4f6;
-            color: #111827;
-        }
-        .report-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 24px 28px;
-        }
-        .report-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #1d4ed8;
-            padding-bottom: 14px;
-            margin-bottom: 20px;
-        }
-        .report-title-area { display: flex; align-items: center; gap: 14px; }
-        .logo-img { max-height: 50px; max-width: 120px; object-fit: contain; }
-        .report-title { font-size: 18px; font-weight: 700; color: #1e3a8a; letter-spacing: 1px; }
-        .report-subtitle { font-size: 12px; color: #6b7280; font-weight: 400; letter-spacing: 0.5px; }
-        .report-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.6; }
-        .report-meta strong { color: #374151; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; margin-bottom: 18px; }
-        .info-block { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; background: #f8fafc; }
-        .info-block .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 6px; }
-        .info-block .value-line { font-size: 12px; color: #111827; line-height: 1.6; }
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; display: inline-block; }
-        .status-CANCELLED { background: #fee2e2; color: #dc2626; }
-        .report-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-        .report-table thead th {
-            background: #f3f4f6; padding: 8px 14px; text-align: left; font-weight: 600; color: #374151;
-            border-bottom: 2px solid #d1d5db; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-        }
-        .report-table tbody td { padding: 7px 14px; border-bottom: 1px solid #f3f4f6; }
-        .report-table .right { text-align: right; }
-        .report-table .amount { font-weight: 500; color: #065f46; }
-        .totals-box { margin-top: 16px; margin-left: auto; width: 320px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-        .totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid #f3f4f6; }
-        .totals-box .row.grand { background: #1d4ed8; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
-        .report-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-top: 14px; margin-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280;
-        }
-        @media print {
-            .report-header { border-bottom-color: #000; }
-            .report-table thead th { background: #e5e7eb !important; }
-            .report-container { border-radius: 0; padding: 10mm; }
-        }
+const PURCHASE_INVOICE_EXTRA_CSS = `
+  .doc-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 4px 0 12px 0;
+  }
+  .doc-title-row h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b4ca1;
+  }
+  .doc-title-row .doc-sub {
+    margin: 2px 0 0;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .doc-title-row .print-meta {
+    text-align: right;
+    font-size: 10.5px;
+    color: #475569;
+    line-height: 1.4;
+  }
+  .status-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+    margin-bottom: 14px;
+  }
+  .info-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: #f8fafc;
+  }
+  .info-block .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .info-block .value-line {
+    font-size: 11px;
+    color: #0f172a;
+    line-height: 1.55;
+  }
+
+  .totals-box {
+    margin-top: 16px;
+    margin-left: auto;
+    width: 280px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .totals-box .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 14px;
+    font-size: 11.5px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .totals-box .row.grand {
+    background: #0b4ca1;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    border-bottom: none;
+  }
 `;
 
-function reportHeaderHtml(title: string, subtitle: string, header: { logo_url: string | null }, printDateTime: string, loginId: string): string {
+function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
   return `
-        <div class="report-header">
-            <div class="report-title-area">
-                ${header.logo_url ? `<img src="${escapeHtml(header.logo_url)}" alt="Logo" class="logo-img" onerror="this.style.display='none'" />` : ""}
-                <div>
-                    <div class="report-title">${escapeHtml(title)}</div>
-                    <div class="report-subtitle">${escapeHtml(subtitle)}</div>
-                </div>
-            </div>
-            <div class="report-meta">
-                <div><strong>Print Date:</strong> ${escapeHtml(printDateTime)}</div>
-                <div><strong>Print User:</strong> ${escapeHtml(loginId)}</div>
-            </div>
-        </div>`;
+    <div class="doc-title-row">
+      <div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="doc-sub">${escapeHtml(subtitle)}</div>
+      </div>
+      
+    </div>`;
 }
 
 function partyInfoBlockHtml(header: InvoiceHeader): string {
   return `
-            <div class="info-block">
-                <div class="label">To</div>
-                <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-                <div class="value-line">${escapeHtml(header.party_address)}</div>
-                <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-                <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-                ${header.mobile_no ? `<div class="value-line">Mob: ${escapeHtml(header.mobile_no)}</div>` : ""}
-                ${header.e_mail ? `<div class="value-line">Email: ${escapeHtml(header.e_mail)}</div>` : ""}
-            </div>`;
+      <div class="info-block">
+        <div class="label">To</div>
+        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+        <div class="value-line">${escapeHtml(header.party_address)}</div>
+        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+        ${header.mobile_no ? `<div class="value-line">Mob: ${escapeHtml(header.mobile_no)}</div>` : ""}
+        ${header.e_mail ? `<div class="value-line">Email: ${escapeHtml(header.e_mail)}</div>` : ""}
+      </div>`;
 }
 
-function printFooterHtml(): string {
-  return `
-    <div style="text-align:center;padding:12px;font-size:11px;color:#9ca3af;">
-        Powered by Bayanat Technology
-    </div>`;
-}
+// ─── Body 1: Purchase Invoice ───────────────────────────────────────────
 
-function emptyStateHtml(title: string): string {
-  return `<!doctype html>
-<html><head><meta charset="utf-8"/><title>${escapeHtml(title)}</title></head>
-<body style="font-family:sans-serif;padding:40px;color:#6b7280;text-align:center;">
-  No records found for the selected document.
-</body></html>`;
-}
-
-// ─── Report 1: Purchase Invoice ────────────────────────────────────────────
-
-function renderPurchaseInvoiceHtml(rows: ReportRow[], loginId: string): string {
-  if (!rows.length) return emptyStateHtml("Purchase Invoice");
-
+function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
   const header = buildInvoiceHeader(rows);
-
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
   const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
   const overallDiscount = header.disc_hdr_price;
   const grandTotal = totalAmount - overallDiscount;
 
-  let bodyRows = "";
-  rows.forEach((r, i) => {
-    bodyRows += `
-                        <tr>
-                            <td>${i + 1}</td>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td>${escapeHtml(r.p_uom)}</td>
-                            <td class="right">${qtyFmt(r.quantity)}</td>
-                            <td class="right">${amtFmt(r.unit_price)}</td>
-                            <td class="right amount">${amtFmt(r.amount)}</td>
-                        </tr>`;
-  });
+  const bodyRows = rows
+    .map(
+      (r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td>${escapeHtml(r.p_uom)}</td>
+          <td class="right">${qtyFmt(r.quantity)}</td>
+          <td class="right">${amtFmt(r.unit_price)}</td>
+          <td class="right amount">${amtFmt(r.amount)}</td>
+        </tr>`
+    )
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Purchase Invoice ${escapeHtml(header.doc_no)}</title>
-    <style>${SHARED_STYLES}</style>
-</head>
-<body>
-    <div class="report-container">
-        ${reportHeaderHtml("Purchase Invoice", `Invoice Document — ${header.div_name}`, header, printDateTime, loginId)}
+  return `
+    ${printMetaHtml("Purchase Invoice", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
 
-        <div class="info-grid">
-            ${partyInfoBlockHtml(header)}
-            <div class="info-block">
-                <div class="label">Invoice Details</div>
-                <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-                <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-                <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-                <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-                ${header.due_date ? `<div class="value-line">Due Date: ${escapeHtml(dateText(header.due_date))}</div>` : ""}
-            </div>
-        </div>
-
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>S.No.</th>
-                    <th>Product / Description</th>
-                    <th>Unit</th>
-                    <th class="right">Qty</th>
-                    <th class="right">Unit Rate</th>
-                    <th class="right">Gross Value</th>
-                </tr>
-            </thead>
-            <tbody>${bodyRows}</tbody>
-        </table>
-
-        <div class="totals-box">
-            <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
-            <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
-            <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-            <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
-        </div>
+    <div class="info-grid">
+      ${partyInfoBlockHtml(header)}
+      <div class="info-block">
+        <div class="label">Invoice Details</div>
+        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
+        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
+        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
+        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
+        ${header.due_date ? `<div class="value-line">Due Date: ${escapeHtml(dateText(header.due_date))}</div>` : ""}
+      </div>
     </div>
-    ${printFooterHtml()}
-</body>
-</html>`;
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Product / Description</th>
+          <th>Unit</th>
+          <th class="right">Qty</th>
+          <th class="right">Unit Rate</th>
+          <th class="right">Gross Value</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+
+    <div class="totals-box">
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
+      <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
+      <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
+    </div>`;
 }
 
-// ─── Report 2: Purchase Invoice (Tax) ──────────────────────────────────────
+// ─── Body 2: Purchase Invoice (Tax) ─────────────────────────────────────
 
-function renderPurchaseInvoiceTaxHtml(rows: ReportRow[], loginId: string): string {
-  if (!rows.length) return emptyStateHtml("Purchase Invoice (Tax)");
-
+function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
   const header = buildInvoiceHeader(rows);
-
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
   const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
   const totalTax = rows.reduce((s, r) => s + num(r.tx_compnt_amt_1), 0);
   const overallDiscount = header.disc_hdr_price;
   const netTotal = totalAmount - overallDiscount + totalTax;
 
-  let bodyRows = "";
-  rows.forEach((r, i) => {
-    const amountInclTax = num(r.amount) + num(r.tx_compnt_amt_1);
-    bodyRows += `
-                        <tr>
-                            <td>${i + 1}</td>
-                            <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-                            <td>${escapeHtml(r.p_uom)}</td>
-                            <td class="right">${qtyFmt(r.quantity)}</td>
-                            <td class="right">${amtFmt(r.unit_price)}</td>
-                            <td class="right">${amtFmt(r.amount)}</td>
-                            <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
-                            <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
-                            <td class="right amount">${amtFmt(amountInclTax)}</td>
-                        </tr>`;
-  });
+  const bodyRows = rows
+    .map((r, i) => {
+      const amountInclTax = num(r.amount) + num(r.tx_compnt_amt_1);
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+          <td>${escapeHtml(r.p_uom)}</td>
+          <td class="right">${qtyFmt(r.quantity)}</td>
+          <td class="right">${amtFmt(r.unit_price)}</td>
+          <td class="right">${amtFmt(r.amount)}</td>
+          <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
+          <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
+          <td class="right amount">${amtFmt(amountInclTax)}</td>
+        </tr>`;
+    })
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Purchase Invoice Tax ${escapeHtml(header.doc_no)}</title>
-    <style>${SHARED_STYLES}</style>
-</head>
-<body>
-    <div class="report-container">
-        ${reportHeaderHtml("Purchase Invoice (Tax)", `Invoice Document — ${header.div_name}`, header, printDateTime, loginId)}
+  return `
+    ${printMetaHtml("Purchase Invoice (Tax)", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
 
-        <div class="info-grid">
-            ${partyInfoBlockHtml(header)}
-            <div class="info-block">
-                <div class="label">Invoice Details</div>
-                <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-                <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-                <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-                <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-                <div class="value-line">Tax Reg No: ${escapeHtml(header.tax_reg_no)}</div>
-            </div>
-        </div>
-
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>S.No.</th>
-                    <th>Product / Description</th>
-                    <th>Unit</th>
-                    <th class="right">Qty</th>
-                    <th class="right">Unit Rate</th>
-                    <th class="right">Amount</th>
-                    <th class="right">VAT %</th>
-                    <th class="right">Amount Tax</th>
-                    <th class="right">Amount (Incl. Tax)</th>
-                </tr>
-            </thead>
-            <tbody>${bodyRows}</tbody>
-        </table>
-
-        <div class="totals-box">
-            <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
-            <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
-            <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-            <div class="row"><span>TAX Amount</span><span>${amtFmt(totalTax)}</span></div>
-            <div class="row grand"><span>Net Total</span><span>${amtFmt(netTotal)}</span></div>
-        </div>
+    <div class="info-grid">
+      ${partyInfoBlockHtml(header)}
+      <div class="info-block">
+        <div class="label">Invoice Details</div>
+        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
+        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
+        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
+        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
+        <div class="value-line">Tax Reg No: ${escapeHtml(header.tax_reg_no)}</div>
+      </div>
     </div>
-    ${printFooterHtml()}
-</body>
-</html>`;
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Product / Description</th>
+          <th>Unit</th>
+          <th class="right">Qty</th>
+          <th class="right">Unit Rate</th>
+          <th class="right">Amount</th>
+          <th class="right">VAT %</th>
+          <th class="right">Amount Tax</th>
+          <th class="right">Amount (Incl. Tax)</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+
+    <div class="totals-box">
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
+      <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
+      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
+      <div class="row"><span>TAX Amount</span><span>${amtFmt(totalTax)}</span></div>
+      <div class="row grand"><span>Net Total</span><span>${amtFmt(netTotal)}</span></div>
+    </div>`;
 }
 
-// ─── Report 3: Account Details ─────────────────────────────────────────────
+// ─── Body 3: Account Details ─────────────────────────────────────────────
 
-function renderAccountDetailsHtml(rows: ReportRow[], loginId: string): string {
-  if (!rows.length) return emptyStateHtml("Account Details");
-
+function renderAccountDetailsBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
-  const header = { logo_url: (rows[0].logo_url || null) as string | null };
-
   let totalDebit = 0;
   let totalCredit = 0;
-  let bodyRows = "";
-  rows.forEach((r) => {
-    const amount = num(r.amount);
-    const isDebit = num(r.sign_ind) >= 0;
-    const debit = isDebit ? amount : 0;
-    const credit = !isDebit ? Math.abs(amount) : 0;
-    totalDebit += debit;
-    totalCredit += credit;
-    bodyRows += `
-                        <tr>
-                            <td>${escapeHtml(r.doc_type)}</td>
-                            <td>${escapeHtml(r.doc_no)}</td>
-                            <td>${escapeHtml(dateText(r.doc_date))}</td>
-                            <td>${escapeHtml(r.ac_code)}</td>
-                            <td>${escapeHtml(r.ac_name)}</td>
-                            <td>${escapeHtml(r.curr_code)}</td>
-                            <td class="right">${qtyFmt(r.ex_rate)}</td>
-                            <td class="right">${debit ? amtFmt(debit) : "\u2014"}</td>
-                            <td class="right amount">${credit ? amtFmt(credit) : "\u2014"}</td>
-                        </tr>`;
-  });
+  const bodyRows = rows
+    .map((r) => {
+      const amount = num(r.amount);
+      const isDebit = num(r.sign_ind) >= 0;
+      const debit = isDebit ? amount : 0;
+      const credit = !isDebit ? Math.abs(amount) : 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      return `
+        <tr>
+          <td>${escapeHtml(r.doc_type)}</td>
+          <td>${escapeHtml(r.doc_no)}</td>
+          <td>${escapeHtml(dateText(r.doc_date))}</td>
+          <td>${escapeHtml(r.ac_code)}</td>
+          <td>${escapeHtml(r.ac_name)}</td>
+          <td>${escapeHtml(r.curr_code)}</td>
+          <td class="right">${qtyFmt(r.ex_rate)}</td>
+          <td class="right">${debit ? amtFmt(debit) : "\u2014"}</td>
+          <td class="right amount">${credit ? amtFmt(credit) : "\u2014"}</td>
+        </tr>`;
+    })
+    .join("");
 
-  return `<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Account Details</title>
-    <style>${SHARED_STYLES}</style>
-</head>
-<body>
-    <div class="report-container">
-        ${reportHeaderHtml("Account Details", "Report — rpt_pr_accountledger", header, printDateTime, loginId)}
+  return `
+    ${printMetaHtml("Account Details", "Report — rpt_pr_accountledger", printDateTime, loginId)}
 
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Doc No</th>
-                    <th>Doc Date</th>
-                    <th>Ac Code</th>
-                    <th>Ac Name</th>
-                    <th>Curr Code</th>
-                    <th class="right">Ex. Rate</th>
-                    <th class="right">Debit</th>
-                    <th class="right">Credit</th>
-                </tr>
-            </thead>
-            <tbody>${bodyRows}</tbody>
-        </table>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Doc No</th>
+          <th>Doc Date</th>
+          <th>Ac Code</th>
+          <th>Ac Name</th>
+          <th>Curr Code</th>
+          <th class="right">Ex. Rate</th>
+          <th class="right">Debit</th>
+          <th class="right">Credit</th>
+        </tr>
+      </thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
 
-        <div class="totals-box" style="width: 260px;">
-            <div class="row"><span>Total Debit</span><span>${amtFmt(totalDebit)}</span></div>
-            <div class="row grand"><span>Total Credit</span><span>${amtFmt(totalCredit)}</span></div>
-        </div>
-    </div>
-    ${printFooterHtml()}
-</body>
-</html>`;
+    <div class="totals-box">
+      <div class="row"><span>Total Debit</span><span>${amtFmt(totalDebit)}</span></div>
+      <div class="row grand"><span>Total Credit</span><span>${amtFmt(totalCredit)}</span></div>
+    </div>`;
 }
 
 // ─── Route handlers (HTML) ──────────────────────────────────────────────────
@@ -544,8 +504,32 @@ export const getPurchaseInvoiceReportHtml = async (req: RequestWithUser, res: Re
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseInvoiceData(req, params, "P_INVOICE_PI_19082026");
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected document." });
+      return;
+    }
+
+    const companyCode = resolveCompanyCode(req, params);
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "rpt_purchase_invoice",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderPurchaseInvoiceBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: "Purchase Invoice",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PURCHASE_INVOICE_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderPurchaseInvoiceHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("Purchase Invoice report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -556,8 +540,32 @@ export const getPurchaseInvoiceTaxReportHtml = async (req: RequestWithUser, res:
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseInvoiceData(req, params, "P_INVOICE_PI_TAX_19082026");
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected document." });
+      return;
+    }
+
+    const companyCode = resolveCompanyCode(req, params);
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "rpt_purchase_invoice_tax",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: "Purchase Invoice (Tax)",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PURCHASE_INVOICE_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderPurchaseInvoiceTaxHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("Purchase Invoice Tax report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
@@ -568,15 +576,39 @@ export const getPurchaseInvoiceAccountDetailsReportHtml = async (req: RequestWit
   try {
     const params = extractParams(req);
     const rows = await loadPurchaseInvoiceData(req, params, "P_INVOICE_ACCOUNT_DETAIL_19082026");
+    if (!rows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected document." });
+      return;
+    }
+
+    const companyCode = resolveCompanyCode(req, params);
+    const headerHtml = await reportHeader({ company_code: companyCode, req });
+    const footerHtml = reportFooter({
+      reportName: "rpt_pr_accountledger",
+      userName: params.loginid,
+      endLabel: "Powered by Bayanat Technology",
+    });
+    const bodyHtml = renderAccountDetailsBody(rows, params.loginid);
+
+    const html = buildReportDocument({
+      title: "Account Details",
+      headerHtml,
+      bodyHtml,
+      footerHtml,
+      extraCss: PURCHASE_INVOICE_EXTRA_CSS,
+      autoPrint: false,
+      showPrintButton: true,
+    });
+
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(renderAccountDetailsHtml(rows, params.loginid));
+    res.send(html);
   } catch (error: any) {
     console.error("Purchase Invoice Account Details report error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
   }
 };
 
-// ─── Generic OOXML Excel builder engine (shared by all 3 reports) ─────────
+// ─── Generic OOXML Excel builder engine (unchanged — shared by all 3 reports) ─
 
 interface XlCell { v: unknown; styleKey: string }
 type XlRow = (XlCell | null)[];
