@@ -132,9 +132,15 @@ async function loadJobData(
 // ─── Job Details-only CSS ─────────────────────────────────────────────────────
 // Complements COMMON_REPORT_CSS from report_common.
 // Do NOT set @page / body / sheet margins — those already live in report_common.
+//
+// Colors aligned with the freight palette:
+//   primary blue   → #00378c
+//   banner tint    → #eaf0f8
+//   soft gray line → #f1f5f9
+//   border gray    → #cbd5e1 / #e2e8f0
 
 const JOB_DETAILS_EXTRA_CSS = `
-  /* Title — matches Sales Invoice / report_common primary blue */
+  /* Title — matches freight primary blue */
   .doc-title-row {
     display: flex;
     justify-content: space-between;
@@ -145,7 +151,7 @@ const JOB_DETAILS_EXTRA_CSS = `
     margin: 0;
     font-size: 18px;
     font-weight: 800;
-    color: #0b4ca1;
+    color: #00378c;
   }
   .doc-title-row .doc-sub {
     margin: 2px 0 0;
@@ -153,16 +159,16 @@ const JOB_DETAILS_EXTRA_CSS = `
     color: #64748b;
   }
 
-  /* Section title — primary blue underline (overrides shared .group-title bg) */
+  /* Section title — primary blue underline */
   .group-title {
     background: transparent;
     padding: 0 0 4px 0;
     font-size: 11px;
     font-weight: 800;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .06em;
-    border-bottom: 2px solid #0b4ca1;
+    border-bottom: 2px solid #00378c;
     margin: 14px 0 8px;
   }
   .group-title:first-of-type { margin-top: 0; }
@@ -187,7 +193,7 @@ const JOB_DETAILS_EXTRA_CSS = `
   .f-value {
     font-size: 11px;
     font-weight: 600;
-    color: #0f172a;
+    color: #1e293b;
   }
   .nil { font-weight: 400; color: #94a3b8; }
 
@@ -212,14 +218,14 @@ const JOB_DETAILS_EXTRA_CSS = `
     padding: 0 0 4px 0;
     font-size: 11px;
     font-weight: 800;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .06em;
-    border-bottom: 2px solid #0b4ca1;
+    border-bottom: 2px solid #00378c;
     margin: 14px 0 8px;
   }
 
-  /* Progress table — same header treatment as shared .data-table */
+  /* Progress table — matches freight table header treatment */
   table.job-progress-table {
     border-collapse: collapse;
     width: 100%;
@@ -227,11 +233,11 @@ const JOB_DETAILS_EXTRA_CSS = `
     margin-top: 3px;
   }
   table.job-progress-table thead th {
-    background: #f1f5f9;
-    color: #0f172a;
+    background: #00378c;
+    color: #ffffff;
     font-size: 10px;
-    border-top: 1px solid #475569;
-    border-bottom: 1px solid #475569;
+    border-top: 1px solid #00378c;
+    border-bottom: 1px solid #00378c;
     padding: 6px 5px;
     text-align: center;
     font-weight: 700;
@@ -240,19 +246,21 @@ const JOB_DETAILS_EXTRA_CSS = `
     border-bottom: 1px solid #e2e8f0;
     padding: 7px 8px;
     text-align: center;
-    background: #fff;
+    background: #ffffff;
     vertical-align: middle;
   }
   .prog-cell.done {
-    background: #d1fae5;
+    background: #eaf0f8;
   }
   .prog-date {
     display: block;
     font-size: 9.5px;
-    color: #0f172a;
+    color: #00378c;
+    font-weight: 700;
   }
   .prog-cell:not(.done) .prog-date {
     color: #94a3b8;
+    font-weight: 400;
   }
 `;
 
@@ -497,21 +505,22 @@ function buildExcelBuffer(d: ReportRow): Buffer {
   ${mergeXml}
 </worksheet>`;
 
+  // ── Recolored to match the freight palette (primary blue #00378c) ──
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="5">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF1E293B"/><name val="Calibri"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD1FAE5"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="4">
@@ -521,7 +530,7 @@ function buildExcelBuffer(d: ReportRow): Buffer {
       <top style="thin"><color rgb="FF475569"/></top><bottom style="thin"><color rgb="FF475569"/></bottom>
       <diagonal/>
     </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FF0B4CA1"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FF00378C"/></bottom><diagonal/></border>
     <border>
       <left style="thin"><color rgb="FFE2E8F0"/></left><right style="thin"><color rgb="FFE2E8F0"/></right>
       <top style="thin"><color rgb="FFE2E8F0"/></top><bottom style="thin"><color rgb="FFE2E8F0"/></bottom>

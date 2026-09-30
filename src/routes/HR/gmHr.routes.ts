@@ -77,6 +77,7 @@ import { tenantContextMiddleware } from "../../middleware/tenantContext.middlewa
 import { mhupsertLeaveApprovalHandler } from "../../controllers/HR/MHDL/mh_leave_approval";
 import { MHleaveDaysCntHandler, MHvalidateLeaveHandler } from "../../controllers/HR/MHDL/mh_hr.controller";
 import { getPayslipReportHtml } from "../../controllers/HR/MHDL/Payslip.report.controller";
+import { mhgetRequestFlowUsers } from "../../controllers/HR/MHDL/mh_hr_leave_flow_sentback";
 
 // Creating an instance of the Express Router
 const router = express.Router();
@@ -151,7 +152,10 @@ router.put("/mhupsertLeaveApprovalHandler", mhupsertLeaveApprovalHandler);
 router.post("/saveFile", (req, res, next) => {
   saveFileHR(req, res).catch(next);
 });
+
 router.get("/getRequestFlowUsers", getRequestFlowUsers as any );
+router.get("/mhgetRequestFlowUsers", mhgetRequestFlowUsers as any)
+
 // HR .NET API routes
 router.get("/employees", getEmployeesHandler);
 router.get("/leavebalance/:employeeId", getLeaveBalanceHandler);
