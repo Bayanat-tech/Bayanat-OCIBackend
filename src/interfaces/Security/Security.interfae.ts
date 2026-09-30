@@ -45,6 +45,7 @@ export interface ISecmodule {
   level3?: string | null;
   position?: number;
   url_path: string;
+  component_name?: string;
   icon: string;
   created_at?: Date;
   created_by?: string;

@@ -1,6 +1,6 @@
 FROM node:20-bookworm-slim
 
-ENV PORT=3505 \
+ENV PORT=3500 \
     ORACLE_INSTANT_CLIENT_PATH=/opt/oracle/instantclient_19_31 \
     LD_LIBRARY_PATH=/opt/oracle/instantclient_19_31
 
@@ -26,6 +26,8 @@ RUN rm -rf build tsconfig.tsbuildinfo \
     && yarn build \
     && yarn cache clean
 
-EXPOSE 3505
+ENV NODE_ENV=production
+
+EXPOSE 3500
 
 CMD ["yarn", "start:prod"]

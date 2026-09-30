@@ -27,6 +27,7 @@ export const createsecmodulemaster = async (
       level3,
       position,
       url_path,
+      component_name,
       icon,
     } = req.body;
 
@@ -37,6 +38,7 @@ export const createsecmodulemaster = async (
       level2,
       level3,
       url_path,
+      component_name,
       icon,
     });
 
@@ -56,6 +58,7 @@ export const createsecmodulemaster = async (
       level3,
       position,
       url_path,
+      component_name,
       icon,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,

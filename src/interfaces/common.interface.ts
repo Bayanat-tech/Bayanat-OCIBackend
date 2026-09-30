@@ -6,6 +6,8 @@ export interface GenerateTokenInterface {
   username: string;
   loginid: string;
   email_id: string;
+  tenant_id?:string;
+
 }
 export interface RowData {
   COMPANY_CODE: string;
@@ -15,6 +17,8 @@ export interface RowData {
   LEVEL2?: string;
   LEVEL3?: string;
   URL_PATH?: string | null;
+  COMPONENT_NAME?: string | null;
+  ICON?: string | null;
   POSITION: number;
   USERID: string;
   CREATE_USER: string;
@@ -23,12 +27,18 @@ export interface RowData {
 
 export interface TreeNode {
   id: string;
+  serial_no?: number | string | null;
   title: string;
   type: "collapse" | "item" | "group";
   icon: string;
   url_path?: string | null;
+  component_name?: string | null;
+  app_code?: string | null;
+  level1?: string | null;
+  level2?: string | null;
+  level3?: string | null;
+  position?: number | null;
   children?: TreeNode[];
-  position?: number;
 }
 export type TLogin = { email: string; password: string };
 export interface ComparePasswordInterface {
