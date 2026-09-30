@@ -62,7 +62,7 @@ function printDateTimeNow(): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Shared CSS – freight / list report style + print-safe table shell  */
+/*  Shared CSS – matches the Enquiry List PDF                          */
 /* ------------------------------------------------------------------ */
 
 export const REPORT_HEADER_CSS = `
@@ -73,9 +73,8 @@ export const REPORT_HEADER_CSS = `
     gap: 20px;
     width: 100%;
     box-sizing: border-box;
-    border-bottom: 2px solid #0b4ca1;
-    padding: 0 0 12px 0;
-    margin: 0 0 12px 0;
+    padding: 0 0 14px 0;
+    margin: 0 0 8px 0;
   }
   .company-logo-wrap {
     flex: 0 0 auto;
@@ -95,16 +94,16 @@ export const REPORT_HEADER_CSS = `
     min-width: 0;
   }
   .company-name {
-    font-size: 16px;
-    font-weight: 800;
+    font-size: 20px;
+    font-weight: 700;
     color: #0f172a;
-    margin: 0 0 4px 0;
+    margin: 0 0 8px 0;
     line-height: 1.2;
   }
   .company-address {
-    font-size: 10.5px;
-    color: #334155;
-    line-height: 1.45;
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.5;
     margin: 0;
   }
   .company-address-line {
@@ -119,21 +118,15 @@ export const REPORT_FOOTER_CSS = `
   .report-footer {
     width: 100%;
     box-sizing: border-box;
-    border-top: 1px solid #94a3b8;
+    border-top: 1px solid #e2e8f0;
     padding-top: 6px;
     margin-top: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    font-size: 10px;
+    font-size: 11px;
     color: #64748b;
-  }
-  .report-footer .footer-center {
-    flex: 1;
-    text-align: center;
-    font-weight: 700;
-    color: #0f172a;
   }
   .report-footer .footer-left,
   .report-footer .footer-right {
@@ -143,17 +136,28 @@ export const REPORT_FOOTER_CSS = `
 
 /** Common CSS for all HTML reports (tables, groups, print, sheet) */
 export const COMMON_REPORT_CSS = `
-  @page { size: A4; margin: 12mm; }
+  @page {
+    size: A4;
+    margin: 8mm 8mm 12mm 8mm;
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: Inter;
+      font-size: 11px;
+      color: #64748b;
+    }
+  }
   * {
     box-sizing: border-box;
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    /* Make browsers print background colors, borders and zebra rows exactly as on screen */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   body {
     margin: 0;
-    color: #0f172a;
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    font-size: 10.5px;
-    line-height: 1.25;
+    color: #1e293b;
+    font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.35;
     background: #fff;
   }
   .sheet { padding: 0; }
@@ -178,42 +182,76 @@ export const COMMON_REPORT_CSS = `
     vertical-align: top;
   }
 
-  /* Inner data tables */
-  table.data-table {
-    border-collapse: collapse;
-    width: 100%;
-    font-size: 10.5px;
-    margin-top: 3px;
-  }
-  table.data-table th {
-    background: #f1f5f9;
-    color: #0f172a;
-    font-size: 10px;
-    border-top: 1px solid #475569;
-    border-bottom: 1px solid #475569;
-    padding: 6px 5px;
-    text-align: center;
+  /* ===== Report title + section strip (same as Enquiry List) ===== */
+  .report-title,
+  .doc-title-row h1 {
+    margin: 12px 0 16px 0;
+    font-size: 20px;
     font-weight: 700;
+    color: #0b4ca1;
+    line-height: 1.25;
   }
+  .section-strip,
+  .group-title {
+    background: #e8f0fa;
+    color: #0b4ca1;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 9px 10px;
+    margin: 0 0 12px 0;
+  }
+  .group { margin-top: 10px; }
+
+  /* ===== Data table (same as Enquiry List) ===== */
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0;
+    font-size: 11px;
+  }
+  table.data-table th,
   table.data-table td {
-    padding: 4px 5px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  table.data-table thead th {
+    background: #e8f0fa;
+    color: #0b4ca1;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    padding: 9px 8px;
+    border: 0;
+    border-bottom: 2px solid #0b4ca1;
+    line-height: 1.25;
+  }
+  table.data-table thead th.left { text-align: left; }
+  table.data-table thead th.num  { text-align: right; }
+  table.data-table tbody td {
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 400;
+    color: #334155;
     vertical-align: top;
+    background: #fff;
+    border: 0;
     border-bottom: 1px solid #e2e8f0;
   }
+  table.data-table tbody tr:nth-child(even) td { background: #f8fafc; }
+  table.data-table td.num    { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table td.center { text-align: center; }
+  table.data-table td.primary-text,
+  table.data-table td.strong { font-weight: 700; color: #0b4ca1; }
+  table.data-table td.muted  { color: #94a3b8; font-style: italic; text-align: center; }
+
   .right { text-align: right; }
   .center { text-align: center; }
   .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .strong { font-weight: 800; }
-  .primary-text { color: #0b4ca1; font-weight: 800; }
+  .strong { font-weight: 700; }
+  .primary-text { color: #0b4ca1; font-weight: 700; }
   .muted { color: #64748b; }
 
-  .group { margin-top: 10px; }
-  .group-title {
-    background: #f1f5f9;
-    padding: 4px 6px;
-    font-size: 13px;
-    font-weight: 800;
-  }
   .empty {
     border: 1px dashed #cbd5e1;
     background: #f8fafc;
@@ -252,9 +290,41 @@ export const COMMON_REPORT_CSS = `
       height: 100%;
       margin: 0;
       background: white;
+      color: #1e293b;
+      font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
     .actions, .viewerbar, .no-print { display: none !important; }
+
+    /* Same look as screen: header bar, zebra rows, strips */
+    table.data-table thead { display: table-header-group; }
+    table.data-table thead th {
+      background: #e8f0fa !important;
+      color: #0b4ca1 !important;
+      font-size: 11px;
+      border-bottom: 2px solid #0b4ca1 !important;
+    }
+    table.data-table tbody td {
+      font-size: 11px;
+      color: #334155;
+      border-bottom: 1px solid #e2e8f0 !important;
+    }
+    table.data-table tbody tr:nth-child(even) td { background: #f8fafc !important; }
+    .section-strip,
+    .group-title {
+      background: #e8f0fa !important;
+      color: #0b4ca1 !important;
+      break-after: avoid;
+    }
+    .report-title,
+    .doc-title-row h1 { color: #0b4ca1 !important; }
+    .company-name { font-size: 20px; color: #0f172a; }
+    .company-address { font-size: 11px; color: #64748b; }
+    .report-footer { font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; }
 
     .sheet,
     .paper {
@@ -281,7 +351,6 @@ export const COMMON_REPORT_CSS = `
       display: table-footer-group;
     }
 
-    /* This helps push the footer to the bottom on short pages */
     table.report-shell tbody {
       height: 100%;
     }
@@ -296,28 +365,15 @@ export const COMMON_REPORT_CSS = `
       page-break-inside: avoid;
     }
 
-    /* Page border on every printed page */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      border: 1.5px solid #0b4ca1;
-      pointer-events: none;
-      z-index: 9999;
-    }
-
-    /* Keep footer clean */
     .report-footer {
       margin-top: 0;
       padding-top: 6px;
     }
   }
 `;
+
 /* ------------------------------------------------------------------ */
-/*  reportHeader – logo left, name + each address line full width      */
+/*  reportHeader – logo left, name + each address line right           */
 /* ------------------------------------------------------------------ */
 
 export const reportHeader = async ({
@@ -358,27 +414,27 @@ export const reportHeader = async ({
     const row = normalizeRow((result.rows as Record<string, any>[] | undefined)?.[0]);
     if (!row) return empty;
     const addressParts = [
-    row.address1,
-    row.address2,
-    row.address3,
-    [row.city, row.country].filter(Boolean).join(", "),
+      row.address1,
+      row.address2,
+      row.address3,
+      [row.city, row.country].filter(Boolean).join(", "),
     ].filter((v) => v != null && String(v).trim() !== "");
 
     const addressHtml = addressParts
-    .map((line) => `<span class="company-address-line">${escapeHtml(line)}</span>`)
-    .join("");
+      .map((line) => `<span class="company-address-line">${escapeHtml(line)}</span>`)
+      .join("");
 
     const logoHtml = row.logo
-    ? `<img class="company-logo" src="${escapeHtml(row.logo)}" alt="Logo" />`
-    : "";
+      ? `<img class="company-logo" src="${escapeHtml(row.logo)}" alt="Logo" />`
+      : "";
 
     return `
     <div class="company-header">
-        <div class="company-logo-wrap">${logoHtml}</div>
-        <div class="company-name-block">
+      <div class="company-logo-wrap">${logoHtml}</div>
+      <div class="company-name-block">
         <div class="company-name">${escapeHtml(row.company_name || "Company")}</div>
         <div class="company-address">${addressHtml}</div>
-        </div>
+      </div>
     </div>`;
   } catch (error) {
     console.error("reportHeader error:", error);
@@ -459,6 +515,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     ${REPORT_HEADER_CSS}
     ${REPORT_FOOTER_CSS}
     ${COMMON_REPORT_CSS}
