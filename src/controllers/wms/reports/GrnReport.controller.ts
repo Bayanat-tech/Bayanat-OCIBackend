@@ -4,7 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
-import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
+import {
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -305,140 +310,100 @@ function asnText(pg: ProductGroup): string {
 }
 
 // ─── Layout CSS – same look as the Quotation List PDF (LANDSCAPE = default) ──
+// Used together with fontMode: "native", so the sizes below are the real sizes.
 // Letterhead / footer come from report_common; this only styles the body.
-// Class names (.filter-summary, .info-grid, .field/.label, .group-header-row,
-// .subtotal-row, .grand-total-row) are the ones prepareReportHtml() on the
-// frontend knows, so the client-side PDF (createFreightPdf → fontVfs / Inter)
-// and Excel export keep the same design. Short/Excess red/green are
-// business-meaning colours and are kept.
+// NOTE: row selectors include "tbody" so they out-rank the zebra rule
+// (tbody tr:nth-child(even) td) in report_common.
+// Short/Excess red/green are business-meaning colours and are kept.
 
-const GRN_EXTRA_CSS = `
-  @page { size: A4 landscape; margin: 8mm 10mm; }
-  .paper { max-width: none; }
+const JOB_DETAILS_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
 
-  body, .paper, table.data-table {
-    font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
+  /* Letterhead – same as Enquiry List */
+  .company-name       { font-size: 18px; font-weight: 700; }
+  .company-address    { font-size: 11px; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
+
+  /* Title + filter strip */
   h1.report-title {
-    margin: 0 0 6px 0;
-    font-size: 17px;
-    font-weight: 800;
-    color: #00378c;
-    line-height: 1.2;
-  }
-
-  .filter-summary {
-    margin: 0 0 8px 0;
-    padding: 5px 10px;
-    font-size: 9.5px;
-    line-height: 1.35;
-    color: #475569;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-left: 4px solid #00378c;
-  }
-  .filter-summary strong { color: #00378c; font-weight: 700; }
-
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 0 24px;
-    margin: 0 0 8px 0;
-  }
-
-  .field {
-    display: flex;
-    align-items: baseline;
-    padding: 3px 4px;
-    border-bottom: 1px solid #e2e8f0;
-    font-size: 10px;
-    line-height: 1.3;
-  }
-  .field .label {
-    flex: 0 0 105px;
-    padding-right: 8px;
-    color: #475569;
+    margin: 28px 0 14px 0;
+    font-size: 20px;
     font-weight: 700;
+    color: #00378c;
   }
-  .field .label::after { content: ":"; }
-  .field .value {
-    color: #1e293b;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
+  .applied-filters { font-size: 10px; margin-bottom: 28px; }
 
   table.data-table {
     width: 100%;
     table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
     border-collapse: collapse;
-    margin: 0;
-    font-size: 10px;
-    color: #1e293b;
   }
   table.data-table th,
   table.data-table td {
-    padding: 4px 6px;
     overflow-wrap: anywhere;
     word-break: break-word;
-    white-space: normal;
-    border-bottom: 1px solid #e2e8f0;
-    line-height: 1.25;
   }
-  table.data-table thead th {
-    background: #00378c;
-    color: #fff;
-    font-weight: 700;
-    font-size: 10px;
-    border-bottom: none;
-    padding: 6px 6px;
-  }
-
-  table.data-table col.c0 { width: 8%;  }
-  table.data-table col.c1 { width: 8%;  }
-  table.data-table col.c2 { width: 9%;  }
-  table.data-table col.c3 { width: 9%;  }
-  table.data-table col.c4 { width: 6%;  }
-  table.data-table col.c5 { width: 6%;  }
-  table.data-table col.c6 { width: 17%; }
-  table.data-table col.c7 { width: 13%; }
-  table.data-table col.c8 { width: 15%; }
-  table.data-table col.c9 { width: 9%;  }
 
   table.data-table .left   { text-align: left   !important; }
   table.data-table .center { text-align: center !important; }
   table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
 
-  /* section banners: Group / Product */
-  table.data-table tr.group-header-row td { font-weight: 700; color: #00378c; text-align: left; }
-  table.data-table tr.group-row td { background: #eaf0f8; font-size: 11px;   padding: 5px 8px; }
-  table.data-table tr.prod-row  td { background: #f4f7fc; font-size: 10.5px; padding: 4px 8px 4px 18px; }
+  /* Header: solid blue bar, white bold text */
+  table.data-table thead tr th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 12px 8px;
+    border: 0;
+    text-transform: none;
+  }
 
-  table.data-table tr.data-row td { background: #fcfdfe; }
-  table.data-table td.dim    { color: #94a3b8 !important; }
-  table.data-table td.short  { color: #dc2626 !important; font-weight: 700; }
-  table.data-table td.excess { color: #16a34a !important; font-weight: 700; }
+  /* Section banners: Principal / Group / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c; text-align: left; }
+  table.data-table tbody tr.prin-row  td { background: #eaf0f8; font-size: 13px; font-weight: 700; padding: 11px 8px; }
+  table.data-table tbody tr.group-row td { background: #f4f7fc; font-size: 10.5px; padding: 7px 8px 7px 16px; }
+  table.data-table tbody tr.prod-row  td { background: #fafbfd; font-size: 10.5px; padding: 7px 8px 7px 28px; color: #334155; }
 
-  /* totals */
-  table.data-table tr.subtotal-row td    { background: #f1f5f9; color: #00378c; font-weight: 700; }
-  table.data-table tr.grand-total-row td { background: #e2e8f0; color: #00378c; font-weight: 700; font-size: 10.5px; border-bottom: 1px solid #cbd5e1; }
+  /* Data rows */
+  table.data-table tbody tr.data-row td {
+    background: #fafcfe;
+    padding: 9px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #1e293b;
+  }
+  table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
+
+  /* Totals */
+  table.data-table tbody tr.subtotal-row td {
+    background: #e2e8f0; color: #00378c; font-weight: 700; padding: 8px 8px;
+  }
+  table.data-table tbody tr.grand-total-row td {
+    background: #dbe4f0; color: #00378c; font-weight: 700; padding: 9px 8px;
+    border-bottom: 1px solid #cbd5e1;
+  }
 
   @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body::before { display: none !important; }
     table.data-table thead { display: table-header-group; }
-    table.data-table tr, table.data-table td, table.data-table th {
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
+    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
     table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
     table.data-table tr.subtotal-row,
     table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
-    .info-grid { break-inside: avoid; page-break-inside: avoid; }
   }
 `;
 
 // ─── PORTRAIT override CSS ──────────────────────────────────────────────────
-// A4 portrait has ~190mm usable width (landscape has 277mm). Applied when:
+// A4 portrait has ~186mm usable width (landscape has ~273mm). Applied when:
 //   1. orientation=portrait  -> always
 //   2. no orientation sent   -> automatically when the page/iframe is narrower than 900px
 
@@ -449,9 +414,9 @@ const PORTRAIT_RULES = `
     padding: 3px 3px !important;
     line-height: 1.2 !important;
   }
-  table.data-table tr.group-row td { font-size: 9.5px !important; }
-  table.data-table tr.prod-row td  { font-size: 8.5px !important; padding-left: 10px !important; }
-  table.data-table tr.grand-total-row td { font-size: 9px !important; }
+  table.data-table tbody tr.group-row td { font-size: 9.5px !important; }
+  table.data-table tbody tr.prod-row td  { font-size: 8.5px !important; padding-left: 10px !important; }
+  table.data-table tbody tr.grand-total-row td { font-size: 9px !important; }
 
   /* 10 columns, total = 100% */
   table.data-table col.c0 { width: 8%  !important; }
@@ -470,7 +435,7 @@ const PORTRAIT_RULES = `
 `;
 
 const GRN_PORTRAIT_CSS = `
-  @page { size: A4 portrait; margin: 8mm 8mm; }
+  @page { size: A4 portrait; margin: 6mm 8mm 12mm 8mm; }
   ${PORTRAIT_RULES}
 `;
 
@@ -515,14 +480,32 @@ function renderBodyHtml(
   const field = (label: string, value: unknown) =>
     `<div class="field"><span class="label">${escapeHtml(label)}</span> <span class="value">${escapeHtml(text(value) || "\u2014")}</span></div>`;
 
-  const filterLine = [
-    ["Job No",    jobNoText],
-    ["Principal", prinCodeText],
-    ["GRN No",    text(r.grn_no)],
-    ["GRN Date",  dateText(r.grn_date)],
-  ]
-    .map(([k, v]) => `<strong>${escapeHtml(k)}:</strong> ${escapeHtml(v || "\u2014")}`)
-    .join(" | ");
+  const emptyField = `<div class="field field--empty"><span class="label"></span><span class="value"></span></div>`;
+  const col = (items: string[], n: number) =>
+    items.concat(Array(Math.max(0, n - items.length)).fill(emptyField)).join("");
+
+  const filtersHtml = reportAppliedFilters([
+    { label: "Job No",    value: jobNoText },
+    { label: "Principal", value: prinCodeText },
+    { label: "GRN No",    value: text(r.grn_no) },
+    { label: "GRN Date",  value: dateText(r.grn_date) },
+  ]);
+
+  const infoLeft = [
+    field("Job Number", jobNoText),
+    field("Principal",  prinText),
+    field("GRN Number", r.grn_no),
+  ];
+  const infoMid = [
+    field("GRN Date",       dateText(r.grn_date)),
+    field("Container No",   r.container_no),
+    field("Container Size", r.container_size),
+  ];
+  const infoRight = [
+    field("Doc Ref",         r.doc_ref),
+    field("Created By",      r.user_id),
+    field("Prin. Reference", r.prin_ref1),
+  ];
 
   // total row: label spans the first 6 cols, then Received / Damaged / Total, then empty Short/Excess
   const totalRow = (cls: string, label: string, recv: string, dam: string, total: string) =>
@@ -600,24 +583,12 @@ function renderBodyHtml(
 
   return `
     <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
-    <div class="filter-summary"><strong>Applied Filters:</strong> ${filterLine}</div>
+    ${filtersHtml}
 
     <div class="info-grid">
-      <div>
-        ${field("Job Number", jobNoText)}
-        ${field("Principal",  prinText)}
-        ${field("GRN Number", r.grn_no)}
-      </div>
-      <div>
-        ${field("GRN Date",       dateText(r.grn_date))}
-        ${field("Container No",   r.container_no)}
-        ${field("Container Size", r.container_size)}
-      </div>
-      <div>
-        ${field("Doc Ref",         r.doc_ref)}
-        ${field("Created By",      r.user_id)}
-        ${field("Prin. Reference", r.prin_ref1)}
-      </div>
+      <div>${col(infoLeft, 3)}</div>
+      <div>${col(infoMid, 3)}</div>
+      <div>${col(infoRight, 3)}</div>
     </div>
 
     <table class="data-table">
@@ -654,11 +625,12 @@ async function renderHtml(
     bodyHtml,
     footerHtml,
     extraCss:
-      orientation === "portrait"  ? GRN_EXTRA_CSS + GRN_PORTRAIT_CSS :
-      orientation === "landscape" ? GRN_EXTRA_CSS :
-                                    GRN_EXTRA_CSS + GRN_AUTO_NARROW_CSS,
+      orientation === "portrait"  ? JOB_DETAILS_EXTRA_CSS + GRN_PORTRAIT_CSS :
+      orientation === "landscape" ? JOB_DETAILS_EXTRA_CSS :
+                                    JOB_DETAILS_EXTRA_CSS + GRN_AUTO_NARROW_CSS,
     autoPrint,
     showPrintButton: true,
+    fontMode: "native",
   });
 }
 

@@ -3,7 +3,6 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { getCurrentTenantId } from "../../middleware/tenantContext.middleware";
 import TenantManager from "../../database/TenantManager";
 
-
 type CompanyHeaderRow = {
   company_name: string | null;
   address1: string | null;
@@ -71,6 +70,9 @@ function printDateTimeNow(): string {
  * Company header scales from it: name = 1.4×, logo height = 5×,
  * logo max width = 20×, address = 1×. Change this single value to resize
  * everything together.
+ *
+ * NOTE: reports that pass fontMode: "native" skip the forced font size
+ * and control their own sizes through extraCss.
  */
 export const REPORT_FONT_PX = 6;
 
@@ -503,6 +505,7 @@ export const COMMON_REPORT_CSS = `
 /**
  * Forces REPORT_FONT_PX on all report text.
  * Excluded (keep their own sizes): h1–h6, .company-name, .group-title.
+ * Skipped entirely when buildReportDocument gets fontMode: "native".
  */
 export const REPORT_FONT_CSS = `
   body,
@@ -552,28 +555,29 @@ export const reportHeader = async ({
 
     const row = normalizeRow((result.rows as Record<string, any>[] | undefined)?.[0]);
     if (!row) return empty;
+
     const addressParts = [
-    row.address1,
-    row.address2,
-    row.address3,
-    [row.city, row.country].filter(Boolean).join(", "),
+      row.address1,
+      row.address2,
+      row.address3,
+      [row.city, row.country].filter(Boolean).join(", "),
     ].filter((v) => v != null && String(v).trim() !== "");
 
     const addressHtml = addressParts
-    .map((line) => `<span class="company-address-line">${escapeHtml(line)}</span>`)
-    .join("");
+      .map((line) => `<span class="company-address-line">${escapeHtml(line)}</span>`)
+      .join("");
 
     const logoHtml = row.logo
-    ? `<img class="company-logo" src="${escapeHtml(row.logo)}" alt="Logo" />`
-    : "";
+      ? `<img class="company-logo" src="${escapeHtml(row.logo)}" alt="Logo" />`
+      : "";
 
     return `
     <div class="company-header">
-        <div class="company-logo-wrap">${logoHtml}</div>
-        <div class="company-name-block">
+      <div class="company-logo-wrap">${logoHtml}</div>
+      <div class="company-name-block">
         <div class="company-name">${escapeHtml(row.company_name || "Company")}</div>
         <div class="company-address">${addressHtml}</div>
-        </div>
+      </div>
     </div>`;
   } catch (error) {
     console.error("reportHeader error:", error);
@@ -627,6 +631,11 @@ export type BuildReportDocumentOptions = {
   extraCss?: string;
   autoPrint?: boolean;
   showPrintButton?: boolean;
+  /**
+   * "fixed"  (default) – every text element is forced to REPORT_FONT_PX.
+   * "native"           – no forced size; the report's extraCss decides.
+   */
+  fontMode?: "fixed" | "native";
 };
 
 /**
@@ -646,6 +655,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
     extraCss = "",
     autoPrint = false,
     showPrintButton = true,
+    fontMode = "fixed",
   } = opts;
 
   return `<!doctype html>
@@ -659,7 +669,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
     ${REPORT_APPLIED_FILTERS_CSS}
     ${COMMON_REPORT_CSS}
     ${extraCss}
-    ${REPORT_FONT_CSS}
+    ${fontMode === "fixed" ? REPORT_FONT_CSS : ""}
   </style>
 </head>
 <body>
