@@ -46,6 +46,26 @@ const normalizeUniqueSerials = <T extends Record<string, any>>(rows: T[] = [], f
   });
 };
 
+// Child rows share their parent's SERIAL_NO. Their unique key is the pair
+// (SERIAL_NO, DTL_SR_NO), so never make SERIAL_NO unique across allocations.
+export const normalizeChildSequences = <T extends Record<string, any>>(rows: T[] = [], fallbackDocNo = "0"): T[] => {
+  const nextSequenceByParent = new Map<number, number>();
+  return rows.map((row, index) => {
+    const rawParentSerial = Number(row?.serial_no);
+    const parentSerial = Number.isFinite(rawParentSerial) && rawParentSerial > 0
+      ? rawParentSerial
+      : index + 1;
+    const nextSequence = (nextSequenceByParent.get(parentSerial) || 0) + 1;
+    nextSequenceByParent.set(parentSerial, nextSequence);
+    return {
+      ...row,
+      doc_no: row?.doc_no ?? fallbackDocNo,
+      serial_no: parentSerial,
+      dtl_sr_no: nextSequence,
+    } as T;
+  });
+};
+
 export const procBulkAccountEntry = async (
   req: Request,
   res: Response
@@ -86,9 +106,9 @@ export const procBulkAccountEntry = async (
 
     connection = await TenantManager.getConnection(tenantId);
     const safeDetails = normalizeUniqueSerials(details, String(header.doc_no || "0"));
-    const safeInvoiceDetail = normalizeUniqueSerials(invoiceDetail, String(header.doc_no || "0"));
-    const safeExpenseDetail = normalizeUniqueSerials(expenseDetail, String(header.doc_no || "0"));
-    const safeJobDetail = normalizeUniqueSerials(jobDetail, String(header.doc_no || "0"));
+    const safeInvoiceDetail = normalizeChildSequences(invoiceDetail, String(header.doc_no || "0"));
+    const safeExpenseDetail = normalizeChildSequences(expenseDetail, String(header.doc_no || "0"));
+    const safeJobDetail = normalizeChildSequences(jobDetail, String(header.doc_no || "0"));
 
     console.log("========================>", header.doc_no);
     console.log("invoiceDetail raw:", invoiceDetail);
