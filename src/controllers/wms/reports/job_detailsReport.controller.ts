@@ -138,9 +138,11 @@ async function loadJobData(
   }
 }
 
-// ─── Layout CSS – same look as the Quotation List PDF ────────────────────────
-// Used together with fontMode: "native", so the sizes below are the real sizes.
-// Letterhead / footer come from report_common; this only styles the body.
+// ─── Layout CSS – same look as the Enquiry List PDF ──────────────────────────
+// Works with the shared report_common (fontMode "native"). report_common's
+// @media print block forces a light-blue table header, light-blue group strips
+// and a lighter title colour with !important, so those are overridden here with
+// the same selectors (this CSS is injected after the common CSS, so it wins).
 
 const JOB_DETAILS_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
@@ -151,21 +153,70 @@ const JOB_DETAILS_EXTRA_CSS = `
     print-color-adjust: exact !important;
   }
 
-  /* Letterhead – same as Enquiry List */
-  .company-name       { font-size: 18px; font-weight: 700; }
-  .company-address    { font-size: 11px; }
+  /* Letterhead – navy rule under the header, Enquiry sizes */
+  .company-header {
+    border-bottom: 2px solid #00378c;
+    padding: 0 0 10px 0;
+    margin: 0 0 8px 0;
+  }
+  .company-name       { font-size: 18px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 11px; line-height: 1.4; }
   .company-logo-wrap  { max-width: 180px; }
   .company-logo       { max-height: 56px; max-width: 180px; }
 
   /* Title + filter strip */
   h1.report-title {
-    margin: 28px 0 14px 0;
+    margin: 24px 0 14px 0;
     font-size: 20px;
+    font-weight: 700;
+    color: #00378c !important;
+  }
+  .applied-filters { font-size: 10px; margin-bottom: 20px; }
+
+  /* Section strips (Job Information, References, FIRS, Progress) */
+  .group-title {
+    background: #eaf0f8 !important;
+    color: #00378c !important;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 8px;
+    margin: 14px 0 4px 0;
+  }
+
+  /* Label / value grid */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 28px;
+    margin: 0 0 4px 0;
+  }
+  .field {
+    display: flex;
+    align-items: baseline;
+    min-height: 26px;
+    padding: 5px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 10.5px;
+    line-height: 1.3;
+  }
+  .field .label {
+    flex: 0 0 120px;
+    padding-right: 8px;
+    color: #475569;
+    font-weight: 700;
+  }
+  .field .label::after { content: ":"; }
+  .field--empty .label::after { content: ""; }
+  .field .value { color: #1e293b; overflow-wrap: anywhere; }
+
+  .filter-header {
+    padding: 4px 8px;
+    font-size: 11px;
     font-weight: 700;
     color: #00378c;
   }
-  .applied-filters { font-size: 10px; margin-bottom: 28px; }
 
+  /* Job progress table – solid navy header like Enquiry */
   table.data-table {
     width: 100%;
     table-layout: fixed;
@@ -173,58 +224,29 @@ const JOB_DETAILS_EXTRA_CSS = `
     margin-top: 0;
     border-collapse: collapse;
   }
-  table.data-table th,
-  table.data-table td {
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  table.data-table .left   { text-align: left   !important; }
-  table.data-table .center { text-align: center !important; }
-  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
-
-  /* Header: solid blue bar, white bold text */
-  table.data-table thead tr th {
+  table.data-table thead th {
     background: #00378c !important;
     color: #ffffff !important;
-    font-weight: 700;
     font-size: 10.5px;
-    padding: 12px 8px;
-    border: 0;
-    text-transform: none;
+    font-weight: 700;
+    padding: 11px 8px;
+    text-align: center;
+    border: 0 !important;
   }
-
-  /* Section banners: Principal / Group / Product */
-  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c; text-align: left; }
-  table.data-table tbody tr.prin-row  td { background: #eaf0f8; font-size: 13px; font-weight: 700; padding: 11px 8px; }
-  table.data-table tbody tr.group-row td { background: #f4f7fc; font-size: 10.5px; padding: 7px 8px 7px 16px; }
-  table.data-table tbody tr.prod-row  td { background: #fafbfd; font-size: 10.5px; padding: 7px 8px 7px 28px; color: #334155; }
-
-  /* Data rows */
-  table.data-table tbody tr.data-row td {
-    background: #fafcfe;
-    padding: 9px 8px;
-    border-bottom: 1px solid #e2e8f0;
-    color: #1e293b;
+  table.data-table tbody td {
+    font-size: 10.5px;
+    padding: 10px 8px;
+    text-align: center;
+    border-bottom: 1px solid #e2e8f0 !important;
   }
-  table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
-
-  /* Totals */
-  table.data-table tbody tr.subtotal-row td {
-    background: #e2e8f0; color: #00378c; font-weight: 700; padding: 8px 8px;
-  }
-  table.data-table tbody tr.grand-total-row td {
-    background: #dbe4f0; color: #00378c; font-weight: 700; padding: 9px 8px;
-    border-bottom: 1px solid #cbd5e1;
-  }
+  table.data-table tbody td.done    { background: #f0fdf4 !important; color: #166534; font-weight: 700; }
+  table.data-table tbody td.pending { background: #fcfdfe !important; color: #94a3b8; }
 
   @media print {
-    body::before { display: none !important; }
-    table.data-table thead { display: table-header-group; }
-    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
-    table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
-    table.data-table tr.subtotal-row,
-    table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
+    body::before { display: none !important; }   /* no page border */
+    .info-grid   { break-inside: avoid; }
+    .group-title { break-after: avoid; }
+    .report-footer { font-size: 10px; }
   }
 `;
 
@@ -329,10 +351,14 @@ async function renderHtml(
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
   const bodyHtml   = renderBodyHtml(d, reportTitle);
+
+  // Same print stamp format as the Enquiry List (9/30/2026, 12:15:22 PM)
+  const printed = new Date().toLocaleString("en-US");
   const footerHtml = reportFooter({
-    reportName: "rpt_job_details",
+    reportName: "WMS Job Details",
     userName:   loginId,
     endLabel:   "Powered by Bayanat Technology",
+    extraLeft:  `Print: ${escapeHtml(printed)}${loginId ? ` | User: ${escapeHtml(loginId)}` : ""}`,
   });
 
   return buildReportDocument({
