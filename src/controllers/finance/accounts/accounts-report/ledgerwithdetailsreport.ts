@@ -43,6 +43,26 @@ const LEDGER_DETAILS_EXTRA_CSS = `
     max-width: 297mm;
   }
 
+  /* Force wrap inside fixed layout so text never spills into next col */
+  table.data-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+    vertical-align: top;
+  }
+  /* Amount columns must stay tight and never wrap oddly */
+  table.data-table th.num,
+  table.data-table td.num {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* Opening balance */
   .opening-label {
     color: #b91c1c;
@@ -53,6 +73,7 @@ const LEDGER_DETAILS_EXTRA_CSS = `
     color: #b91c1c;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   /* Account group header */
@@ -73,42 +94,25 @@ const LEDGER_DETAILS_EXTRA_CSS = `
     padding: 6px 8px;
   }
 
-  /* Secondary thead row (Salesman / Ref) */
-  table.data-table thead tr.sub-hdr th {
-    background: #dbeafe !important;
-    color: #0b4ca1;
+  /* Inner detail lines – stay inside the cell */
+  .cell-main {
+    display: block;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .cell-sub,
+  .cell-narr {
+    display: block;
+    margin-top: 3px;
     font-size: 10px;
-    font-weight: 600;
-    border-bottom: 1px solid #93c5fd !important;
-    padding: 5px 8px;
-  }
-
-  /* Data + narration attachment */
-  tr.data-row td {
-    border-bottom: none !important;
-  }
-  tr.narration-row td {
-    border-top: none !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    text-align: center;
+    font-style: italic;
+    color: #64748b;
+    font-weight: 400;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     white-space: normal;
-    font-style: italic;
-    color: #64748b;
-    font-size: 10px;
-    background: #fff !important;
-    padding-top: 2px;
-    padding-bottom: 6px;
-  }
-
-  /* Salesman / Ref detail row under transaction */
-  tr.narr-row td {
-    border-top: none !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    font-style: italic;
-    color: #64748b;
-    font-size: 10px;
-    background: #f8fafc !important;
-    padding: 3px 8px;
   }
 
   /* Totals */
@@ -137,16 +141,19 @@ const LEDGER_DETAILS_EXTRA_CSS = `
     color: #b45309;
   }
 
-  /* 9 column widths */
-  table.data-table col.c1 { width: 6%;  }
-  table.data-table col.c2 { width: 11%; }
-  table.data-table col.c3 { width: 9%;  }
-  table.data-table col.c4 { width: 10%; }
-  table.data-table col.c5 { width: 9%;  }
-  table.data-table col.c6 { width: 14%; }
-  table.data-table col.c7 { width: 11%; }
-  table.data-table col.c8 { width: 11%; }
-  table.data-table col.c9 { width: 12%; }
+  /*
+   * Column widths – Bank gets more room; Debit/Credit/Balance stay fixed.
+   * Total = 100%
+   */
+  table.data-table col.c1 { width: 5%;  }  /* Type */
+  table.data-table col.c2 { width: 12%; }  /* Doc No */
+  table.data-table col.c3 { width: 8%;  }  /* Doc Date */
+  table.data-table col.c4 { width: 8%;  }  /* Chq No */
+  table.data-table col.c5 { width: 8%;  }  /* Chq Date */
+  table.data-table col.c6 { width: 27%; }  /* Bank + narr (wider) */
+  table.data-table col.c7 { width: 11%; }  /* Debit */
+  table.data-table col.c8 { width: 11%; }  /* Credit */
+  table.data-table col.c9 { width: 10%; }  /* Balance */
 `;
 
 export const getLedgerWithDetailsReport = async (
@@ -287,37 +294,43 @@ export const getLedgerWithDetailsReport = async (
           const wrappedNarration =
             narration.match(/.{1,80}(\s|$)/g)?.join("<br/>") || narration;
 
-          // Main data row (properly closed)
+          const salesmanLine = [text(r.salesman_code || ""), text(r.salesman_name || "")]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+          const refLine = [text(r.ref_ac_code || ""), text(r.ref_ac_name || "")]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+
+          // Single row: main values + inner detail lines (no extra <tr>)
           tableBodyHtml += `
             <tr class="data-row">
-              <td>${text(r.doc_type || "")}</td>
-              <td>${text(r.doc_no || "")}</td>
-              <td class="center">${formatDateStr(r.doc_date)}</td>
-              <td>${text(r.cheque_no || "")}</td>
-              <td class="center">${formatDateStr(r.cheque_date)}</td>
-              <td>${text(r.bank || "")}</td>
+              <td>
+                <span class="cell-main">${text(r.doc_type || "")}</span>
+                ${salesmanLine ? `<span class="cell-sub">${salesmanLine}</span>` : ""}
+              </td>
+              <td>
+                <span class="cell-main">${text(r.doc_no || "")}</span>
+              </td>
+              <td class="center">
+                <span class="cell-main">${formatDateStr(r.doc_date)}</span>
+              </td>
+              <td>
+                <span class="cell-main">${text(r.cheque_no || "")}</span>
+              </td>
+              <td class="center">
+                <span class="cell-main">${formatDateStr(r.cheque_date)}</span>
+              </td>
+              <td>
+                <span class="cell-main">${text(r.bank || "")}</span>
+                ${refLine ? `<span class="cell-sub">${refLine}</span>` : ""}
+                ${narration ? `<span class="cell-narr">${wrappedNarration}</span>` : ""}
+              </td>
               <td class="num dr-amt">${money(dr)}</td>
               <td class="num cr-amt">${money(cr)}</td>
               <td class="num">${formatBalance(runningBalance)}</td>
             </tr>`;
-
-          // Narration as its own row (fixed broken nesting from original)
-          if (narration) {
-            tableBodyHtml += `
-              <tr class="narration-row">
-                <td colspan="9">${wrappedNarration}</td>
-              </tr>`;
-          }
-
-          // Salesman / Ref account detail row
-          if (r.salesman_code || r.salesman_name || r.ref_ac_code || r.ref_ac_name) {
-            tableBodyHtml += `
-              <tr class="narr-row">
-                <td colspan="2">${text(r.salesman_code || "")} ${text(r.salesman_name || "")}</td>
-                <td colspan="4">${text(r.ref_ac_code || "")} ${text(r.ref_ac_name || "")}</td>
-                <td colspan="3"></td>
-              </tr>`;
-          }
         });
       });
 
@@ -384,11 +397,6 @@ export const getLedgerWithDetailsReport = async (
             <th class="num">Debit</th>
             <th class="num">Credit</th>
             <th class="num">Balance</th>
-          </tr>
-          <tr class="sub-hdr">
-            <th colspan="2">Salesman Code/Name</th>
-            <th colspan="4">Ref Ac Code/Name</th>
-            <th colspan="3"></th>
           </tr>
         </thead>
         <tbody>

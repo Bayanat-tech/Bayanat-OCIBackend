@@ -30,7 +30,7 @@ const formatBalance = (value: number) =>
 
 /**
  * Report-specific CSS only.
- * Everything else (header, footer, data-table, print, zebra, shell) comes from COMMON_REPORT_CSS.
+ * Header, footer, data-table, print, zebra, shell → COMMON_REPORT_CSS.
  */
 const CHEQUE_REPORT_EXTRA_CSS = `
   /* Wide report → landscape A4 */
@@ -40,10 +40,29 @@ const CHEQUE_REPORT_EXTRA_CSS = `
   }
 
   .paper {
-    max-width: 297mm; /* A4 landscape width */
+    max-width: 297mm;
   }
 
-  /* Opening balance highlight */
+  /* Force wrap inside fixed layout so text never spills into next col */
+  table.data-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+    vertical-align: top;
+  }
+  table.data-table th.num,
+  table.data-table td.num {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Opening balance */
   .opening-label {
     color: #b91c1c;
     font-weight: 700;
@@ -53,9 +72,10 @@ const CHEQUE_REPORT_EXTRA_CSS = `
     color: #b91c1c;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
-  /* Group header (account) – sits above data-table rows */
+  /* Account group header */
   tr.grp-hdr td {
     background: #e8f0fa !important;
     color: #0b4ca1;
@@ -64,7 +84,7 @@ const CHEQUE_REPORT_EXTRA_CSS = `
     padding: 9px 8px;
   }
 
-  /* Sub-group (PDC / NORMAL) */
+  /* PDC / NORMAL sub-group */
   tr.sub-grp-hdr td {
     background: #f1f5f9 !important;
     color: #334155;
@@ -73,21 +93,24 @@ const CHEQUE_REPORT_EXTRA_CSS = `
     padding: 6px 8px;
   }
 
-  /* Data rows – rely on common zebra; keep narration attached */
-  tr.data-row td {
-    border-bottom: none !important;
+  /* Inner detail lines – stay inside the cell */
+  .cell-main {
+    display: block;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
-  tr.narration-row td {
-    border-top: none !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    text-align: center;
-    white-space: normal;
+  .cell-narr {
+    display: block;
+    margin-top: 3px;
+    font-size: 10px;
     font-style: italic;
     color: #64748b;
-    font-size: 10px;
-    background: #fff !important;
-    padding-top: 2px;
-    padding-bottom: 8px;
+    font-weight: 400;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
   }
 
   /* Totals */
@@ -111,20 +134,21 @@ const CHEQUE_REPORT_EXTRA_CSS = `
     border-top: 2px solid #0b4ca1 !important;
   }
 
-  /* Debit / Credit tint (optional visual cue) */
-  td.dr-amt { color: #b45309; }
-  td.cr-amt { color: #b45309; }
+  td.dr-amt,
+  td.cr-amt {
+    color: #b45309;
+  }
 
-  /* Column widths (9 cols) */
-  table.data-table col.c1 { width: 6%;  }
-  table.data-table col.c2 { width: 11%; }
-  table.data-table col.c3 { width: 9%;  }
-  table.data-table col.c4 { width: 10%; }
-  table.data-table col.c5 { width: 9%;  }
-  table.data-table col.c6 { width: 14%; }
-  table.data-table col.c7 { width: 11%; }
-  table.data-table col.c8 { width: 11%; }
-  table.data-table col.c9 { width: 12%; }
+  /* Column widths – Bank wider; amounts fixed */
+  table.data-table col.c1 { width: 5%;  }  /* Type */
+  table.data-table col.c2 { width: 12%; }  /* Doc No */
+  table.data-table col.c3 { width: 8%;  }  /* Doc Date */
+  table.data-table col.c4 { width: 8%;  }  /* Chq No */
+  table.data-table col.c5 { width: 8%;  }  /* Chq Date */
+  table.data-table col.c6 { width: 27%; }  /* Bank + narr */
+  table.data-table col.c7 { width: 11%; }  /* Debit */
+  table.data-table col.c8 { width: 11%; }  /* Credit */
+  table.data-table col.c9 { width: 10%; }  /* Balance */
 `;
 
 export const getChequeDateWiseReport = async (
@@ -180,7 +204,6 @@ export const getChequeDateWiseReport = async (
       binds[`number${i}`] = req.body[`number${i}`] || null;
       if (i > 2) binds[`date${i}`] = req.body[`date${i}`] || null;
     }
-    // Procedure contract for this report
     binds.date1 = null;
     binds.date2 = null;
 
@@ -232,7 +255,7 @@ export const getChequeDateWiseReport = async (
       let totalCredit = 0;
       let runningBalance = opening;
 
-      // Account group header + opening
+      // Account header + opening
       tableBodyHtml += `
         <tr class="grp-hdr">
           <td colspan="6"><strong>${text(ac_code)}</strong>&nbsp;&nbsp;${text(ac_name)}</td>
@@ -240,7 +263,7 @@ export const getChequeDateWiseReport = async (
           <td class="num opening-val" colspan="2">${formatBalance(opening)}</td>
         </tr>`;
 
-      // Split PDC / NORMAL
+      // PDC / NORMAL
       const pdcGroups: Record<string, any[]> = {};
       groupRows.forEach((r) => {
         const k = r.pdc_ind === "Y" ? "PDC" : "NORMAL";
@@ -266,23 +289,22 @@ export const getChequeDateWiseReport = async (
           const wrappedNarration =
             narration.match(/.{1,80}(\s|$)/g)?.join("<br/>") || narration;
 
+          // Single row: main values + narration inside Bank cell
           tableBodyHtml += `
             <tr class="data-row">
-              <td>${text(r.doc_type || "")}</td>
-              <td>${text(r.doc_no || "")}</td>
-              <td class="center">${formatDateStr(r.doc_date)}</td>
-              <td>${text(r.cheque_no || "")}</td>
-              <td class="center">${formatDateStr(r.cheque_date)}</td>
-              <td>${text(r.bank || "")}</td>
+              <td><span class="cell-main">${text(r.doc_type || "")}</span></td>
+              <td><span class="cell-main">${text(r.doc_no || "")}</span></td>
+              <td class="center"><span class="cell-main">${formatDateStr(r.doc_date)}</span></td>
+              <td><span class="cell-main">${text(r.cheque_no || "")}</span></td>
+              <td class="center"><span class="cell-main">${formatDateStr(r.cheque_date)}</span></td>
+              <td>
+                <span class="cell-main">${text(r.bank || "")}</span>
+                ${narration ? `<span class="cell-narr">${wrappedNarration}</span>` : ""}
+              </td>
               <td class="num dr-amt">${money(dr)}</td>
               <td class="num cr-amt">${money(cr)}</td>
               <td class="num">${formatBalance(runningBalance)}</td>
-            </tr>
-            ${
-              narration
-                ? `<tr class="narration-row"><td colspan="9">${wrappedNarration}</td></tr>`
-                : ""
-            }`;
+            </tr>`;
         });
       });
 
@@ -303,7 +325,6 @@ export const getChequeDateWiseReport = async (
         </tr>`;
     });
 
-    // Grand total
     tableBodyHtml += `
       <tr class="grand-row">
         <td colspan="6" class="right"><strong>Grand Total :</strong></td>
@@ -365,7 +386,7 @@ export const getChequeDateWiseReport = async (
       bodyHtml,
       footerHtml,
       extraCss: CHEQUE_REPORT_EXTRA_CSS,
-      showPrintButton: true,
+      showPrintButton: false,
     });
 
     res.setHeader("Content-Type", "text/html");
