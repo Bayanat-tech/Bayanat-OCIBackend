@@ -682,9 +682,9 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     conn = await getConn(req);
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
     const binds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
-    list.forEach((n, i) => (binds[`inv${i}`] = n));
+    list.forEach((n, i) => (binds[`inv${i}`] = n.trim().toUpperCase()));
     const result = await conn.execute(
-      `SELECT * FROM VW_INVOICE_OUTSTANDING WHERE company_code = :cc AND div_code = :dc AND inv_no IN (${placeholders})`,
+      `SELECT * FROM VW_INVOICE_OUTSTANDING WHERE company_code = :cc AND div_code = :dc AND UPPER(TRIM(inv_no)) IN (${placeholders})`,
       binds,
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -693,9 +693,10 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
       const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
       const org = Number(r.ORIGINAL_AMOUNT || 0);
       const pd = Number(r.PAID_AMOUNT || 0);
-      found[r.INV_NO] = { inv_no: r.INV_NO, original_amount: org, paid_amount: pd, outstanding_amount: out, payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0, is_fully_paid: out <= 0.01 };
+      const key = String(r.INV_NO || '').trim().toUpperCase();
+      found[key] = { inv_no: r.INV_NO, original_amount: org, paid_amount: pd, outstanding_amount: out, payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0, is_fully_paid: out <= 0.01 };
     });
-    const balances = list.map(inv => found[inv] ?? { inv_no: inv, original_amount: 0, paid_amount: 0, outstanding_amount: 0, payment_percentage: 0, is_fully_paid: true, error: 'Invoice not found' });
+    const balances = list.map(inv => found[inv.trim().toUpperCase()] ?? { inv_no: inv, original_amount: 0, paid_amount: 0, outstanding_amount: 0, payment_percentage: 0, is_fully_paid: true, error: 'Invoice not found' });
     res.json({ success: true, data: { balances, count: balances.length } });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
