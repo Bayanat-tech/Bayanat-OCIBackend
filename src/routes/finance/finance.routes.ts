@@ -345,6 +345,11 @@ router.use(
   transactionsRoutes
 );
 
+import { getFinanceDashboardData } from "../../controllers/finance/financeDashboard.controller";
+
+router.post("/dashboard", passport.authenticate("jwt", { session: false }), getFinanceDashboardData);
+router.post("/workspace/dashboard", passport.authenticate("jwt", { session: false }), getFinanceDashboardData);
+
 // Common procedure for finance modules
 router.post(
   "/proc_common_sql_finance",
