@@ -79,6 +79,22 @@ export const getFinanceDashboardData = async (req: RequestWithUser, res: Respons
       divCode: divCode || null,
     };
 
+    // VW_AC_HEADER_SEARCH can expose the same header more than once when its
+    // account joins match multiple rows. Every dashboard total must work from
+    // one row per finance document, just like the listing endpoint does.
+    const sourceFor = (whereClause: string) => `(
+      SELECT * FROM (
+        SELECT source.*,
+               ROW_NUMBER() OVER (
+                 PARTITION BY source.COMPANY_CODE, source.DOC_TYPE, source.DOC_NO
+                 ORDER BY source.DOC_DATE DESC NULLS LAST
+               ) AS DOCUMENT_ROW_RANK
+          FROM VW_AC_HEADER_SEARCH source
+         WHERE ${whereClause}
+      )
+      WHERE DOCUMENT_ROW_RANK = 1
+    )`;
+
     // 4. KPI Aggregation by DOC_TYPE
     // Also support filtering by selectedMonth for KPIs if requested
     let kpiWhere = baseWhere;
@@ -94,8 +110,7 @@ export const getFinanceDashboardData = async (req: RequestWithUser, res: Respons
         COUNT(*) AS DOC_COUNT,
         NVL(SUM(CASE WHEN CANCELED = 'Y' THEN 0 ELSE AMOUNT END), 0) AS TOTAL_AMOUNT,
         NVL(SUM(CASE WHEN CANCELED = 'Y' THEN 1 ELSE 0 END), 0) AS CANCELED_COUNT
-      FROM VW_AC_HEADER_SEARCH
-      WHERE ${kpiWhere}
+      FROM ${sourceFor(kpiWhere)}
       GROUP BY DOC_TYPE
     `;
     const kpiRes: any = await conn.execute(kpiSql, kpiBinds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
@@ -111,8 +126,7 @@ export const getFinanceDashboardData = async (req: RequestWithUser, res: Respons
           DOC_TYPE,
           COUNT(*) AS DOC_COUNT,
           NVL(SUM(CASE WHEN CANCELED = 'Y' THEN 0 ELSE AMOUNT END), 0) AS TOTAL_AMOUNT
-        FROM VW_AC_HEADER_SEARCH
-        WHERE ${baseWhere} AND TO_CHAR(DOC_DATE, 'MM') = :priorMonthStr
+        FROM ${sourceFor(`${baseWhere} AND TO_CHAR(DOC_DATE, 'MM') = :priorMonthStr`)}
         GROUP BY DOC_TYPE
       `;
       const priorRes: any = await conn.execute(priorKpiSql, priorBinds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
@@ -153,9 +167,7 @@ export const getFinanceDashboardData = async (req: RequestWithUser, res: Respons
         COUNT(CASE WHEN DOC_TYPE IN ('SI', 'PI') THEN 1 END) AS INVOICES_COUNT,
         COUNT(CASE WHEN DOC_TYPE IN ('BP', 'CP', 'BR', 'CR') THEN 1 END) AS PAYMENTS_COUNT,
         COUNT(CASE WHEN DOC_TYPE IN ('JV', 'RJV', 'UJV') THEN 1 END) AS JOURNALS_COUNT
-      FROM VW_AC_HEADER_SEARCH
-      WHERE ${baseWhere}
-        AND DOC_DATE IS NOT NULL
+      FROM ${sourceFor(`${baseWhere} AND DOC_DATE IS NOT NULL`)}
       GROUP BY TO_CHAR(DOC_DATE, 'MM'), TO_CHAR(DOC_DATE, 'Mon')
       ORDER BY TO_CHAR(DOC_DATE, 'MM')
     `;
@@ -181,9 +193,8 @@ export const getFinanceDashboardData = async (req: RequestWithUser, res: Respons
           AC_NAME,
           COUNT(*) AS VOUCHER_COUNT,
           NVL(SUM(AMOUNT), 0) AS TOTAL_AMOUNT
-        FROM VW_AC_HEADER_SEARCH
-        WHERE ${baseWhere}
-          AND AC_NAME IS NOT NULL
+        FROM ${sourceFor(`${baseWhere} AND AC_NAME IS NOT NULL`)}
+        WHERE 1 = 1
           AND (CANCELED IS NULL OR CANCELED != 'Y')
         GROUP BY AC_NAME
         ORDER BY TOTAL_AMOUNT DESC
@@ -214,8 +225,7 @@ export const getFinanceDashboardData = async (req: RequestWithUser, res: Respons
           AMOUNT,
           CANCELED,
           DIV_CODE
-        FROM VW_AC_HEADER_SEARCH
-        WHERE ${baseWhere}
+        FROM ${sourceFor(baseWhere)}
         ORDER BY DOC_DATE DESC NULLS LAST, DOC_NO DESC
       ) WHERE ROWNUM <= 10
     `;
