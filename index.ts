@@ -1,18 +1,43 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
+import http from "http";
+import { Server as SocketIOServer } from "socket.io";
+
 import { initializeAllConnections, TypeORMService } from "./src/database/connection";
 import startSchedulers from "./src/scheduler/startSchedulers";
 import { tenantContextMiddleware } from "./src/middleware/tenantContext.middleware";
 import passport from "passport";
 
 const app = express();
+
+// Create HTTP server for Express + Socket.IO
+const httpServer = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log(`Socket.IO client connected: ${socket.id}`);
+
+  socket.on("disconnect", (reason) => {
+    console.log(
+      `Socket.IO client disconnected: ${socket.id}, reason: ${reason}`
+    );
+  });
+});
+
 console.log("index.ts loaded");
 
 app.use(cors());
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: "50mb" }));
 
-app.use(express.urlencoded({limit: '50mb', extended: true }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // passport strategies will be initialized after TypeORM is ready (see startServer)
 export const withTenantContext = () => [
@@ -20,7 +45,7 @@ export const withTenantContext = () => [
   tenantContextMiddleware,
 ];
 
-import freight from "./src/routes/Freight/freight.routes"
+import freight from "./src/routes/Freight/freight.routes";
 import purchaseSalesRoutes from "./src/routes/purchase_sales/purchase_sales.routes";
 import constants from "./src/helpers/constants";
 import accountsRoutes from "./src/routes/accounts/reports/ageing/ageing_accounts.routes";
@@ -43,7 +68,9 @@ import pamsRoutes from "./src/routes/pams.routes";
 import almsRoutes from "./src/routes/alms.routes";
 import mmsRoutes from "./src/routes/mms_routes";
 import gmHrRoutes from "./src/routes/HR/gmHr.routes";
+
 //----------------routes-------------
+
 app.use("/api/files", fileRoutes);
 
 app.use("/api/auth", authRoutes);
@@ -65,7 +92,7 @@ app.use("/api/notification", logRoutes);
 
 app.use("/api/vendor", VendorRouter);
 
-// app.use("/api/finance",financeRoutes );
+// app.use("/api/finance", financeRoutes);
 
 // app.use("/api/attendance", attendanceRoutes);
 
@@ -85,7 +112,7 @@ app.use("/api/wms", wmsRoutes);
 
 app.use("/api/user", editLangrouter);
 
-app.use("/api/mms", mmsRoutes); 
+app.use("/api/mms", mmsRoutes);
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
@@ -100,7 +127,7 @@ app.get("/health", (req: Request, res: Response) => {
 app.get("/api/diagnostics/tenants", (req: Request, res: Response) => {
   const { TenantManager } = require("./src/database/TenantManager");
   const registeredTenants = TenantManager.getTenants();
-  
+
   res.status(200).json({
     success: true,
     message: "Tenant Status",
@@ -118,7 +145,7 @@ app.get("/api/diagnostics/database", (req: Request, res: Response) => {
     message: "Database Status",
     connections: {
       central: "CUSTOMERS schema (Active)",
-      tenants: "Check /api/diagnostics/tenants"
+      tenants: "Check /api/diagnostics/tenants",
     },
     connection_string: process.env.ORACLE_CONNECTION_STRING,
     note: "Tenant databases may fail if unreachable - check server logs",
@@ -132,34 +159,51 @@ async function startServer() {
   try {
     console.log("Starting server...");
     console.log("Initializing database connections...");
+
     await initializeAllConnections();
-    // await AttendanceEventScheduler.initializeScheduler();
-    console.log(" All database connections initialized");
+
+    console.log("All database connections initialized");
 
     console.log("Initializing TypeORM service...");
     await TypeORMService.initialize();
+
     console.log("TypeORM initialized successfully");
 
     try {
       console.log("Initializing passport strategies...");
+
       require("./src/utils/passport");
+
       app.use(passport.initialize());
+
       console.log("Passport initialized");
     } catch (err) {
       console.error("Failed to initialize passport strategies:", err);
       throw err;
     }
+
     try {
-      // Start background schedulers (email sender, attendance, etc.)
+      // Start background schedulers
       await startSchedulers();
     } catch (schedErr) {
       console.error("Failed to start schedulers:", schedErr);
+
       // Non-fatal: continue running server even if schedulers fail
     }
+
     console.log(`Listening on port ${PORT}...`);
-    app.listen(PORT, () => {
+
+    // IMPORTANT:
+    // Use httpServer.listen instead of app.listen
+    // so Socket.IO and Express share the same HTTP server.
+    httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      console.log("Health check: http://localhost:" + PORT + "/health");
+      console.log(
+        "Health check: http://localhost:" + PORT + "/health"
+      );
+      console.log(
+        "Socket.IO: http://localhost:" + PORT + "/socket.io/"
+      );
     });
   } catch (error) {
     console.error("Failed to start server:", error);
@@ -167,12 +211,17 @@ async function startServer() {
   }
 }
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error(
+    "Unhandled Rejection at:",
+    promise,
+    "reason:",
+    reason
+  );
 });
 
 // Start the server
-startServer().catch(err => {
+startServer().catch((err) => {
   console.error("Uncaught error in startServer:", err);
   process.exit(1);
 });
