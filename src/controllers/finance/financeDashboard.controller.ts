@@ -100,15 +100,39 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
       );
       availableFyPeriods = (pRes.rows || []).map((r: any) => String(r.FY_PERIOD));
 
-      const dRes = await conn.execute(
-        `SELECT DISTINCT DIV_CODE FROM VW_AC_HEADER_SEARCH WHERE COMPANY_CODE = :companyCode AND DIV_CODE IS NOT NULL ORDER BY DIV_CODE ASC`,
-        { companyCode },
-        { outFormat: oracledb.OUT_FORMAT_OBJECT }
-      );
-      availableDivisions = (dRes.rows || []).map((r: any) => ({
-        div_code: String(r.DIV_CODE),
-        div_name: `Division ${r.DIV_CODE}`,
-      }));
+      try {
+        const dRes = await conn.execute(
+          `SELECT d.DIV_CODE, NVL(m.DIV_NAME, d.DIV_CODE) AS DIV_NAME
+           FROM (
+             SELECT DISTINCT DIV_CODE 
+             FROM VW_AC_HEADER_SEARCH 
+             WHERE COMPANY_CODE = :companyCode AND DIV_CODE IS NOT NULL
+             UNION
+             SELECT DISTINCT DIV_CODE 
+             FROM MS_HR_DIVISION 
+             WHERE (COMPANY_CODE = :companyCode OR COMPANY_CODE IS NULL)
+           ) d
+           LEFT JOIN MS_HR_DIVISION m 
+             ON TRIM(m.DIV_CODE) = TRIM(d.DIV_CODE)
+           ORDER BY d.DIV_CODE ASC`,
+          { companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        availableDivisions = (dRes.rows || []).map((r: any) => ({
+          div_code: String(r.DIV_CODE),
+          div_name: r.DIV_NAME ? String(r.DIV_NAME).trim() : `Division ${r.DIV_CODE}`,
+        }));
+      } catch (divErr) {
+        const dRes = await conn.execute(
+          `SELECT DISTINCT DIV_CODE FROM VW_AC_HEADER_SEARCH WHERE COMPANY_CODE = :companyCode AND DIV_CODE IS NOT NULL ORDER BY DIV_CODE ASC`,
+          { companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        availableDivisions = (dRes.rows || []).map((r: any) => ({
+          div_code: String(r.DIV_CODE),
+          div_name: `Division ${r.DIV_CODE}`,
+        }));
+      }
     } catch (_) {}
 
     const selectedFy = metaRows[0]?.SELECTED_FY_PERIOD || fyPeriod || availableFyPeriods[0] || "226";
