@@ -102,6 +102,7 @@ export const REPORT_HEADER_CSS = `
     box-sizing: border-box;
     padding: 0 0 14px 0;
     margin: 0 0 8px 0;
+    border-bottom: 1.5px solid #cbd5e1;   /* ← straight line after header */
   }
   .company-logo-wrap {
     flex: 0 0 auto;
@@ -254,13 +255,13 @@ export function reportAppliedFilters(
 /*  Common report CSS – Freight tables + SECOND-file print rules       */
 /* ------------------------------------------------------------------ */
 export const COMMON_REPORT_CSS = `
-  /* ===== Page setup (from second file) ===== */
+  /* ===== Page setup ===== */
   @page {
     size: A4;
-    margin: 8mm 8mm 12mm 8mm;
+    margin: 5mm;   /* smaller outer page margin */
     @bottom-right {
       content: "Page " counter(page) " of " counter(pages);
-      font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-family: Inter;
       font-size: 11px;
       color: #64748b;
     }
@@ -281,13 +282,23 @@ export const COMMON_REPORT_CSS = `
     background: #fff;
   }
 
-  .sheet { padding: 0; }
-  .paper {
-    max-width: 210mm;
-    margin: 0 auto;
-    background: white;
-    padding: 0;
-  }
+    .sheet {
+      padding: 0;
+      border: 0;
+      box-shadow: none;
+      max-width: none;
+      height: 100%;
+      min-height: 100%;
+    }
+
+    .paper {
+      padding: 3px !important;
+      border: 1px solid #64748b !important;
+      max-width: none;
+      height: 100%;
+      min-height: 100%;
+      box-shadow: none;
+    }
 
   /* Outer shell table – header/footer repeat on print pages */
   table.report-shell {
@@ -304,7 +315,7 @@ export const COMMON_REPORT_CSS = `
   }
 
   /* Report title */
-  .doc-title-row { margin: 0 0 10px 0; }
+  .doc-title-row { margin: 0 0 8px 0; }
   .doc-title-row h1,
   .report-title {
     margin: 0;
@@ -406,9 +417,9 @@ export const COMMON_REPORT_CSS = `
   }
 
   /* ================================================================ */
-  /*  PRINT CSS – taken entirely from the SECOND file                 */
+  /*  PRINT CSS                                                       */
   /* ================================================================ */
-  @media print {
+    @media print {
     html, body {
       height: 100%;
       margin: 0;
@@ -423,7 +434,6 @@ export const COMMON_REPORT_CSS = `
 
     .actions, .viewerbar, .no-print { display: none !important; }
 
-    /* Same look as screen: header bar, zebra rows, strips */
     table.data-table thead { display: table-header-group; }
     table.data-table thead th {
       background: #e8f0fa !important;
@@ -449,8 +459,7 @@ export const COMMON_REPORT_CSS = `
     .company-address { font-size: 11px; color: #64748b; }
     .report-footer { font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; }
 
-    .sheet,
-    .paper {
+    .sheet {
       padding: 0;
       border: 0;
       box-shadow: none;
@@ -459,7 +468,15 @@ export const COMMON_REPORT_CSS = `
       min-height: 100%;
     }
 
-    /* Force the shell table to fill the page so tfoot sits at the bottom */
+    .paper {
+      padding: 3px !important;
+      border: 1px solid #64748b !important;
+      max-width: none;
+      height: 100%;
+      min-height: 100%;
+      box-shadow: none;
+    }
+
     table.report-shell {
       height: 100%;
       min-height: 100%;
@@ -493,7 +510,7 @@ export const COMMON_REPORT_CSS = `
       padding-top: 6px;
     }
   }
-`;
+`;;
 
 /* ------------------------------------------------------------------ */
 /*  Forced font size (only when fontMode === "fixed")                  */
