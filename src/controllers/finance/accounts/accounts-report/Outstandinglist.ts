@@ -4,11 +4,16 @@ import TenantManager from "../../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 import {
+  FREIGHT_COLORS as C,
   reportHeader,
   reportFooter,
+  reportAppliedFilters,
   buildReportDocument,
 } from "../../../common/report_common";
 
+/* ───────────────────────── helpers ───────────────────────── */
+const text = (v: any) => (v == null ? "" : String(v));
+const num = (v: any) => Number(v) || 0;
 const money = (v: any) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return "0.000";
@@ -17,19 +22,14 @@ const money = (v: any) => {
     maximumFractionDigits: 3,
   });
 };
-const text = (v: any) => (v == null ? "" : String(v));
-const num = (v: any) => Number(v) || 0;
-const formatDateStr = (v: any) => {
-  if (!v) return "";
-  const d = new Date(v);
-  return isNaN(d.getTime())
-    ? String(v)
-    : d.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-};
+/** Negative = red, zero = dimmed */
+const moneyCell = (v: number) =>
+  `<span class="${v < 0 ? "neg" : v === 0 ? "zero" : ""}">${money(v)}</span>`;
+const pct = (part: number, whole: number) =>
+  whole ? `${((part / whole) * 100).toFixed(1)}%` : "0.0%";
+const plural = (n: number, one: string, many = one + "s") =>
+  `${n} ${n === 1 ? one : many}`;
+
 const escapeHtml = (v: any) =>
   text(v)
     .replace(/&/g, "&amp;")
@@ -38,70 +38,341 @@ const escapeHtml = (v: any) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
-/** Layout only – fonts, header, footer and base table style come from report_common.ts */
+/** Accepts ISO, dd/mm/yyyy, dd-mm-yyyy, dd-MMM-yyyy, Date objects. */
+const parseDate = (v: any): Date | null => {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m) {
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+const formatDate = (v: any) => {
+  const d = parseDate(v);
+  if (!d) return text(v);
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+const DAY_MS = 86400000;
+
+/* Ageing buckets */
+const BUCKETS = [
+  { key: "b0", label: "0 – 30 days", fg: "#15803d", bg: "#dcfce7" },
+  { key: "b1", label: "31 – 60 days", fg: "#a16207", bg: "#fef9c3" },
+  { key: "b2", label: "61 – 90 days", fg: "#c2410c", bg: "#ffedd5" },
+  { key: "b3", label: "Over 90 days", fg: "#b91c1c", bg: "#fee2e2" },
+];
+const bucketOf = (age: number) =>
+  age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3;
+
+/* ───────────────────────── report CSS ───────────────────────── */
 const OUTSTANDING_EXTRA_CSS = `
-  .report-sub {
-    margin: -8px 0 14px 0;
+  :root {
+    --bd: ${C.rule};
+    --bd-soft: ${C.ruleSoft};
+    ${BUCKETS.map((b) => `--${b.key}-fg:${b.fg}; --${b.key}-bg:${b.bg};`).join(" ")}
+  }
+
+  /* ===== Title + Currency bar (clean UX) ===== */
+  .doc-title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid ${C.navy};
+  }
+  .doc-title-row .report-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    color: ${C.navy};
+  }
+  .doc-title-row .currency-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: ${C.strip};
+    border: 1px solid ${C.stripBorder};
+    border-radius: 20px;
     font-size: 11px;
+    font-weight: 700;
+    color: ${C.navy};
+    white-space: nowrap;
+  }
+  .doc-title-row .currency-pill .curr-label {
+    font-size: 9px;
     font-weight: 600;
-    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: ${C.muted};
   }
 
-  table.data-table tbody tr.detail-row td { background: #fff !important; }
-  table.data-table tbody tr.detail-row td.inv { padding-left: 22px; font-weight: 700; color: #0b4ca1; }
+  /* ===== Numbered section headings ===== */
+  .sec {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0 8px 0;
+    break-after: avoid;
+  }
+  .sec .sec-no {
+    flex: 0 0 auto;
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: ${C.navy};
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 3px;
+  }
+  .sec .sec-name {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: ${C.navy};
+    white-space: nowrap;
+  }
+  .sec .sec-line { flex: 1; height: 1px; background: var(--bd); }
+  .sec .sec-note { font-size: 9px; color: ${C.muted}; white-space: nowrap; }
 
-  table.data-table tbody tr.l4-row td {
-    background: #e8f0fa !important;
-    color: #0b4ca1;
-    font-weight: 700;
-    border-bottom: 1px solid #b8d0ea;
+  /* ===== Joined stat strips ===== */
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid var(--bd);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
   }
-  table.data-table tbody tr.ac-row td {
-    background: #fff !important;
-    color: #0f172a;
-    font-weight: 700;
-    border-bottom: 1px solid #cbd5e1;
+  .stat-strip > .stat {
+    min-width: 0;
+    padding: 8px 10px;
+    border-right: 1px solid var(--bd);
   }
-  table.data-table tbody tr.ac-total td {
-    background: #f8fafc !important;
-    color: #0f172a;
-    font-weight: 700;
-    border-top: 1px solid #94a3b8;
+  .stat-strip > .stat:last-child { border-right: 0; }
+  .stat.accent { background: ${C.strip}; }
+  .stat .stat-label {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.4px;
+    text-transform: uppercase; color: ${C.muted};
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  table.data-table tbody tr.l4-total td {
-    background: #f1f5f9 !important;
-    color: #0f172a;
-    font-weight: 700;
-    border-top: 1px solid #475569;
-    border-bottom: 1px solid #475569;
+  .stat .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+  .stat .stat-value {
+    margin-top: 3px;
+    font-size: 14px; font-weight: 800; color: ${C.navy};
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: clip;
   }
-  table.data-table tbody tr.spacer td {
-    height: 10px;
-    padding: 0;
-    background: #fff !important;
-    border: 0;
+  .stat .stat-sub {
+    margin-top: 2px; font-size: 9px; color: ${C.muted};
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  table.data-table tbody tr.grand-total td {
-    background: #e8f0fa !important;
-    color: #0b4ca1;
-    font-weight: 700;
-    border-bottom: 2px solid #0b4ca1;
+  .stat .bar { margin-top: 5px; }
+
+  .bar {
+    position: relative; height: 5px;
+    background: var(--bd-soft); border-radius: 3px; overflow: hidden;
   }
-  table.data-table tbody tr td.wrap {
-    white-space: normal;
+  .bar > i {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    display: block; background: ${C.navy};
+  }
+
+  /* ===== CRITICAL: fixed-layout tables that never overflow ===== */
+  table.data-table.grid {
+    table-layout: fixed;          /* ← forces columns to respect widths */
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid var(--bd);
+    border-collapse: collapse;
+  }
+  table.data-table.grid thead th {
+    border: 1px solid ${C.navyDeep} !important;
+    padding: 6px 6px;
+    font-size: 9.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.data-table.grid tbody tr td {
+    border: 1px solid var(--bd) !important;
+    padding: 4px 6px;
+    min-width: 0;                 /* allows flex/grid children to shrink */
+    overflow: hidden;
+    vertical-align: top;
+    font-size: 10px;
+  }
+  /* Narration / any long text – wrap hard */
+  table.data-table.grid td.wrap {
+    white-space: normal !important;
     overflow-wrap: anywhere;
     word-break: break-word;
+    line-height: 1.35;
+  }
+  table.data-table.grid td.num,
+  table.data-table.grid th.num {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  table.data-table.grid td.center,
+  table.data-table.grid th.center {
+    text-align: center;
+    white-space: nowrap;
+  }
+  table.data-table.grid tbody tr { break-inside: avoid; page-break-inside: avoid; }
+  .neg  { color: #b91c1c; }
+  .zero { color: #94a3b8; }
+
+  /* ===== Summary table ===== */
+  table.data-table.summary tbody tr td { background: #fff !important; }
+  table.data-table.summary tbody tr:nth-child(even) td { background: ${C.rowAlt} !important; }
+  table.data-table.summary tbody tr.sum-total td {
+    background: ${C.grandTotalBg} !important;
+    color: ${C.navy};
+    font-weight: 800;
+  }
+  .share { display: flex; align-items: center; gap: 6px; }
+  .share .bar { flex: 1; min-width: 0; }
+  .share span { flex: 0 0 auto; width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ===== Badges / chips ===== */
+  .badge {
+    display: inline-block; padding: 1px 6px; margin-right: 6px;
+    border-radius: 3px; font-size: 9px; font-weight: 800;
+    letter-spacing: 0.3px; white-space: nowrap; vertical-align: middle;
+  }
+  .badge.l4 { background: ${C.navy}; color: #fff; }
+  .badge.ac { background: #fff; color: ${C.navy}; border: 1px solid ${C.stripBorder}; }
+  .chip {
+    display: inline-block; min-width: 34px; padding: 1px 6px;
+    border-radius: 9px; font-size: 9px; font-weight: 800; text-align: center;
+  }
+  ${BUCKETS.map(
+    (b) => `.chip.${b.key} { color: var(--${b.key}-fg); background: var(--${b.key}-bg); }
+  .dot.${b.key} { background: var(--${b.key}-fg); }
+  .bar > i.${b.key} { background: var(--${b.key}-fg); }`
+  ).join("\n  ")}
+
+  /* ===== Group block ===== */
+  .grp { margin: 0 0 14px 0; }
+  .grp-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 6px 10px;
+    background: ${C.strip};
+    border: 1px solid var(--bd);
+    border-left: 4px solid ${C.navy};
+    border-bottom: 0;
+    break-after: avoid;
+  }
+  .grp-head .gh-title {
+    min-width: 0; flex: 1 1 auto;
+    font-size: 11px; font-weight: 800; color: ${C.navy};
+    white-space: normal; overflow-wrap: anywhere;
+  }
+  .grp-head .gh-meta {
+    flex: 0 0 auto; display: flex; gap: 6px;
+  }
+  .grp-head .gh-pill {
+    padding: 1px 7px; background: #fff; border: 1px solid ${C.stripBorder};
+    border-radius: 9px; font-size: 9px; font-weight: 700; color: ${C.label};
+    white-space: nowrap;
   }
 
+  table.data-table.detail tbody tr.ac-row td {
+    background: ${C.subtotalBg} !important;
+    color: ${C.text};
+    font-weight: 800;
+  }
+  table.data-table.detail tbody tr.detail-row td { background: #fff !important; }
+  table.data-table.detail tbody tr.detail-row.alt td { background: ${C.rowAlt} !important; }
+  table.data-table.detail tbody tr.detail-row td.sl { color: ${C.muted}; text-align: center; }
+  table.data-table.detail tbody tr.detail-row td.inv { font-weight: 700; color: ${C.navy}; }
+  table.data-table.detail tbody tr.ac-total td {
+    background: ${C.rowAlt} !important;
+    color: ${C.text};
+    font-weight: 700;
+    border-top: 1.5px solid ${C.muted} !important;
+  }
+  table.data-table.detail tbody tr.l4-total td {
+    background: ${C.strip} !important;
+    color: ${C.navy};
+    font-weight: 800;
+    border-top: 1.5px solid ${C.navy} !important;
+  }
+
+  /* ===== Grand total bar ===== */
+  table.data-table.grandbar { margin-top: 4px; }
+  table.data-table.grandbar tbody tr td {
+    background: ${C.navy} !important;
+    color: #fff;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 8px 7px;
+    border: 1px solid ${C.navyDeep} !important;
+  }
+
+  /* ===== Legend ===== */
+  .legend {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    margin-top: 10px; padding: 6px 10px;
+    border: 1px solid var(--bd); border-radius: 4px; background: #f8fafc;
+    font-size: 9px; color: ${C.muted};
+  }
+  .legend .lg-title { font-weight: 800; color: ${C.label}; text-transform: uppercase; letter-spacing: 0.4px; }
+  .legend .lg-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+  /* ===== Print safety ===== */
   @media print {
-    table.data-table tbody tr.l4-row,
-    table.data-table tbody tr.ac-row { break-after: avoid; }
-    table.data-table tbody tr.ac-total,
-    table.data-table tbody tr.l4-total,
-    table.data-table tbody tr.grand-total { break-inside: avoid; }
+    .stat-strip, .grp-head, .bar, .bar > i, .badge, .chip, .dot, .legend, .sec-no,
+    .currency-pill {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .stat-strip, .legend { break-inside: avoid; }
+    .grp-head { break-after: avoid; }
+    table.data-table.grid {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    table.data-table.grid thead th {
+      background: ${C.navy} !important; color: #fff !important;
+      border: 1px solid ${C.navyDeep} !important;
+    }
+    table.data-table.grid tbody tr td {
+      border: 1px solid var(--bd) !important;
+      font-size: 9.5px;
+    }
+    table.data-table.detail tbody tr.ac-row { break-after: avoid; }
+    table.data-table.detail tbody tr.ac-total,
+    table.data-table.detail tbody tr.l4-total { break-inside: avoid; }
+    table.data-table.grandbar { break-inside: avoid; }
+    table.data-table.grandbar tbody tr td { background: ${C.navy} !important; color: #fff !important; }
   }
 `;
 
+/* ───────────────────────── types ───────────────────────── */
+type Totals = { org: number; unalloc: number; balance: number; count: number };
+type AccGroup = Totals & { ac_code: string; ac_name: string; rows: any[] };
+type L4Group = Totals & {
+  l4_code: string;
+  l4_description: string;
+  accounts: Map<string, AccGroup>;
+};
+
+/* ───────────────────────── controller ───────────────────────── */
 export const OutstandingList = async (
   req: Request,
   res: Response
@@ -175,141 +446,344 @@ export const OutstandingList = async (
       }, {})
     );
 
-    // ─── Group: l4_code → ac_code → inv rows ─────────────────────────
-    type DetailRow = (typeof rows)[0];
-    type AccGroup = { ac_code: string; ac_name: string; rows: DetailRow[] };
-    type L4Group = {
-      l4_code: string;
-      l4_description: string;
-      accounts: Map<string, AccGroup>;
+    /* ─── Ageing set-up ─── */
+    const asOn = parseDate(code6);
+    const hasAge = !!asOn;
+    const ageOf = (v: any): number | null => {
+      const d = parseDate(v);
+      if (!d || !asOn) return null;
+      return Math.max(0, Math.floor((asOn.getTime() - d.getTime()) / DAY_MS));
     };
 
+    /* ─── 1. Group + total ─── */
     const l4Map = new Map<string, L4Group>();
+    const grand: Totals = { org: 0, unalloc: 0, balance: 0, count: 0 };
+    const bucketBal = [0, 0, 0, 0];
+    const bucketCnt = [0, 0, 0, 0];
+    let accountCount = 0;
+
     rows.forEach((r) => {
       const l4Key = text(r.l4_code);
       const acKey = text(r.ac_code);
+
       if (!l4Map.has(l4Key))
         l4Map.set(l4Key, {
           l4_code: l4Key,
           l4_description: text(r.l4_description),
           accounts: new Map(),
+          org: 0, unalloc: 0, balance: 0, count: 0,
         });
       const l4 = l4Map.get(l4Key)!;
-      if (!l4.accounts.has(acKey))
+
+      if (!l4.accounts.has(acKey)) {
         l4.accounts.set(acKey, {
           ac_code: acKey,
           ac_name: text(r.ac_name),
           rows: [],
+          org: 0, unalloc: 0, balance: 0, count: 0,
         });
-      l4.accounts.get(acKey)!.rows.push(r);
+        accountCount++;
+      }
+      const ac = l4.accounts.get(acKey)!;
+
+      const org = num(r.org_amt);
+      const unalloc = num(r.un_allocated_amt);
+      const balance = num(r.balance_amount);
+
+      ac.rows.push(r);
+      for (const t of [ac, l4, grand]) {
+        t.org += org;
+        t.unalloc += unalloc;
+        t.balance += balance;
+        t.count += 1;
+      }
+
+      if (hasAge) {
+        const age = ageOf(r.inv_date);
+        if (age != null) {
+          const b = bucketOf(age);
+          bucketBal[b] += balance;
+          bucketCnt[b] += 1;
+        }
+      }
     });
 
-    // ─── Table body ───────────────────────────────────────────────────
-    const COLS = 5;
-    let body = "";
-    let grandOrg = 0,
-      grandUnalloc = 0,
-      grandBalance = 0;
+    let sectionNo = 0;
+    const section = (name: string, note = "") => `
+      <div class="sec">
+        <span class="sec-no">${++sectionNo}</span>
+        <span class="sec-name">${escapeHtml(name)}</span>
+        <span class="sec-line"></span>
+        ${note ? `<span class="sec-note">${escapeHtml(note)}</span>` : ""}
+      </div>`;
 
+    /* ─── 2. Overview strip ─── */
+    const overviewHtml = `
+      ${section("Overview")}
+      <div class="stat-strip">
+        <div class="stat">
+          <div class="stat-label">Total Invoiced</div>
+          <div class="stat-value">${money(grand.org)}</div>
+          <div class="stat-sub">${plural(grand.count, "invoice")}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Un-Allocated</div>
+          <div class="stat-value">${money(grand.unalloc)}</div>
+          <div class="stat-sub">${pct(grand.unalloc, grand.org)} of invoiced</div>
+        </div>
+        <div class="stat accent">
+          <div class="stat-label">Outstanding Balance</div>
+          <div class="stat-value">${money(grand.balance)}</div>
+          <div class="stat-sub">${pct(grand.balance, grand.org)} of invoiced</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Coverage</div>
+          <div class="stat-value">${accountCount}</div>
+          <div class="stat-sub">${plural(accountCount, "account")} in ${plural(l4Map.size, "group")}</div>
+        </div>
+      </div>`;
+
+    /* ─── 3. Ageing strip ─── */
+    const ageingHtml = hasAge
+      ? `
+      ${section("Ageing of Balance", `As on ${formatDate(asOn)}`)}
+      <div class="stat-strip">
+        ${BUCKETS.map((b, i) => {
+          const share = grand.balance
+            ? Math.max(0, Math.min(100, (bucketBal[i] / grand.balance) * 100))
+            : 0;
+          return `
+        <div class="stat">
+          <div class="stat-label"><span class="dot ${b.key}"></span>${b.label}</div>
+          <div class="stat-value">${money(bucketBal[i])}</div>
+          <div class="stat-sub">${pct(bucketBal[i], grand.balance)} · ${plural(bucketCnt[i], "invoice")}</div>
+          <div class="bar"><i class="${b.key}" style="width:${share.toFixed(1)}%"></i></div>
+        </div>`;
+        }).join("")}
+      </div>`
+      : "";
+
+    /* ─── 4. Summary by group ─── */
+    let sumBody = "";
     l4Map.forEach((l4) => {
-      body += `
-        <tr class="l4-row">
-          <td colspan="${COLS}" class="wrap">${escapeHtml(l4.l4_code)}&nbsp;&nbsp;${escapeHtml(l4.l4_description)}</td>
+      const share = grand.balance
+        ? Math.max(0, Math.min(100, (l4.balance / grand.balance) * 100))
+        : 0;
+      sumBody += `
+        <tr>
+          <td class="wrap"><span class="badge l4">${escapeHtml(l4.l4_code)}</span>${escapeHtml(l4.l4_description)}</td>
+          <td class="center">${l4.accounts.size}</td>
+          <td class="center">${l4.count}</td>
+          <td class="num">${moneyCell(l4.org)}</td>
+          <td class="num">${moneyCell(l4.unalloc)}</td>
+          <td class="num">${moneyCell(l4.balance)}</td>
+          <td><div class="share"><div class="bar"><i style="width:${share.toFixed(1)}%"></i></div><span>${pct(l4.balance, grand.balance)}</span></div></td>
+        </tr>`;
+    });
+    sumBody += `
+        <tr class="sum-total">
+          <td>Total</td>
+          <td class="center">${accountCount}</td>
+          <td class="center">${grand.count}</td>
+          <td class="num">${moneyCell(grand.org)}</td>
+          <td class="num">${moneyCell(grand.unalloc)}</td>
+          <td class="num">${moneyCell(grand.balance)}</td>
+          <td class="num">100.0%</td>
         </tr>`;
 
-      let l4Org = 0,
-        l4Unalloc = 0,
-        l4Balance = 0;
+    const summaryHtml = `
+      ${section("Summary by Group")}
+      <table class="data-table grid summary">
+        <colgroup>
+          <col style="width:28%" />
+          <col style="width:7%" />
+          <col style="width:7%" />
+          <col style="width:14%" />
+          <col style="width:14%" />
+          <col style="width:14%" />
+          <col style="width:16%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="left">Group</th>
+            <th class="center">Accts</th>
+            <th class="center">Invs</th>
+            <th class="num">Inv Amount</th>
+            <th class="num">Un-Allocated</th>
+            <th class="num">Balance</th>
+            <th class="left">Share of Balance</th>
+          </tr>
+        </thead>
+        <tbody>${sumBody}</tbody>
+      </table>`;
+
+    /* ─── 5. Invoice details – fixed columns that never overflow ─── */
+    const COLS = hasAge ? 7 : 6;
+    const LABEL_SPAN = hasAge ? 4 : 3;
+
+    // Percentages carefully chosen so numbers stay on-page even with long inv_no / narration
+    const colgroup = hasAge
+      ? `<col style="width:4%" />
+         <col style="width:22%" />
+         <col style="width:11%" />
+         <col style="width:9%" />
+         <col style="width:18%" />
+         <col style="width:18%" />
+         <col style="width:18%" />`
+      : `<col style="width:4%" />
+         <col style="width:28%" />
+         <col style="width:12%" />
+         <col style="width:18%" />
+         <col style="width:19%" />
+         <col style="width:19%" />`;
+
+    const theadHtml = `
+        <thead>
+          <tr>
+            <th class="center">#</th>
+            <th class="left">Invoice No</th>
+            <th class="center">Inv Date</th>
+            ${hasAge ? `<th class="center">Age</th>` : ""}
+            <th class="num">Inv Amount</th>
+            <th class="num">Un-Allocated</th>
+            <th class="num">Balance</th>
+          </tr>
+        </thead>`;
+
+    let groupsHtml = "";
+    l4Map.forEach((l4) => {
+      let body = "";
 
       l4.accounts.forEach((ac) => {
         body += `
           <tr class="ac-row">
-            <td colspan="${COLS}" class="wrap">${escapeHtml(ac.ac_code)}&nbsp;&nbsp;${escapeHtml(ac.ac_name)}</td>
+            <td colspan="${COLS}" class="wrap">
+              <span class="badge ac">${escapeHtml(ac.ac_code)}</span>${escapeHtml(ac.ac_name)}
+            </td>
           </tr>`;
 
-        let acOrg = 0,
-          acUnalloc = 0,
-          acBalance = 0;
-
-        ac.rows.forEach((r) => {
-          const org = num(r.org_amt);
-          const unalloc = num(r.un_allocated_amt);
-          const balance = num(r.balance_amount);
-          acOrg += org;
-          acUnalloc += unalloc;
-          acBalance += balance;
-
+        ac.rows.forEach((r, i) => {
+          const age = hasAge ? ageOf(r.inv_date) : null;
           body += `
-          <tr class="detail-row">
+          <tr class="detail-row${i % 2 ? " alt" : ""}">
+            <td class="sl">${i + 1}</td>
             <td class="inv wrap">${escapeHtml(r.inv_no)}</td>
-            <td class="center">${escapeHtml(formatDateStr(r.inv_date))}</td>
-            <td class="num">${money(org)}</td>
-            <td class="num">${money(unalloc)}</td>
-            <td class="num">${money(balance)}</td>
+            <td class="center">${escapeHtml(formatDate(r.inv_date))}</td>
+            ${
+              hasAge
+                ? `<td class="center">${
+                    age == null
+                      ? "–"
+                      : `<span class="chip ${BUCKETS[bucketOf(age)].key}">${age}d</span>`
+                  }</td>`
+                : ""
+            }
+            <td class="num">${moneyCell(num(r.org_amt))}</td>
+            <td class="num">${moneyCell(num(r.un_allocated_amt))}</td>
+            <td class="num">${moneyCell(num(r.balance_amount))}</td>
           </tr>`;
         });
 
         body += `
           <tr class="ac-total">
-            <td colspan="2" class="wrap">Total for ${escapeHtml(ac.ac_name)}</td>
-            <td class="num">${money(acOrg)}</td>
-            <td class="num">${money(acUnalloc)}</td>
-            <td class="num">${money(acBalance)}</td>
+            <td colspan="${LABEL_SPAN}" class="wrap">Total for ${escapeHtml(ac.ac_name)} · ${plural(ac.count, "invoice")}</td>
+            <td class="num">${moneyCell(ac.org)}</td>
+            <td class="num">${moneyCell(ac.unalloc)}</td>
+            <td class="num">${moneyCell(ac.balance)}</td>
           </tr>`;
-
-        l4Org += acOrg;
-        l4Unalloc += acUnalloc;
-        l4Balance += acBalance;
       });
 
       body += `
-        <tr class="l4-total">
-          <td colspan="2" class="wrap">Total for ${escapeHtml(l4.l4_description)}</td>
-          <td class="num">${money(l4Org)}</td>
-          <td class="num">${money(l4Unalloc)}</td>
-          <td class="num">${money(l4Balance)}</td>
-        </tr>
-        <tr class="spacer"><td colspan="${COLS}"></td></tr>`;
+          <tr class="l4-total">
+            <td colspan="${LABEL_SPAN}" class="wrap">Total for ${escapeHtml(l4.l4_description)}</td>
+            <td class="num">${moneyCell(l4.org)}</td>
+            <td class="num">${moneyCell(l4.unalloc)}</td>
+            <td class="num">${moneyCell(l4.balance)}</td>
+          </tr>`;
 
-      grandOrg += l4Org;
-      grandUnalloc += l4Unalloc;
-      grandBalance += l4Balance;
+      groupsHtml += `
+      <div class="grp">
+        <div class="grp-head">
+          <div class="gh-title">
+            <span class="badge l4">${escapeHtml(l4.l4_code)}</span>${escapeHtml(l4.l4_description)}
+          </div>
+          <div class="gh-meta">
+            <span class="gh-pill">${plural(l4.accounts.size, "account")}</span>
+            <span class="gh-pill">${plural(l4.count, "invoice")}</span>
+          </div>
+        </div>
+        <table class="data-table grid detail">
+          <colgroup>${colgroup}</colgroup>
+          ${theadHtml}
+          <tbody>${body}</tbody>
+        </table>
+      </div>`;
     });
 
-    if (l4Map.size) {
-      body += `
-        <tr class="grand-total">
-          <td colspan="2">Grand Total</td>
-          <td class="num">${money(grandOrg)}</td>
-          <td class="num">${money(grandUnalloc)}</td>
-          <td class="num">${money(grandBalance)}</td>
-        </tr>`;
-    }
-
-    const tableHtml = l4Map.size
-      ? `
-      <table class="data-table">
-        <thead>
+    const grandBar = `
+      <table class="data-table grid grandbar">
+        <colgroup>${colgroup}</colgroup>
+        <tbody>
           <tr>
-            <th class="left" style="width:30%">A/C Code / Inv No</th>
-            <th class="center" style="width:14%">Inv Date</th>
-            <th class="num" style="width:18%">Inv Amount</th>
-            <th class="num" style="width:19%">Un-Allocated</th>
-            <th class="num" style="width:19%">Inv Balance</th>
+            <td colspan="${LABEL_SPAN}">Grand Total · ${plural(accountCount, "account")} · ${plural(grand.count, "invoice")}</td>
+            <td class="num">${money(grand.org)}</td>
+            <td class="num">${money(grand.unalloc)}</td>
+            <td class="num">${money(grand.balance)}</td>
           </tr>
-        </thead>
-        <tbody>${body}</tbody>
-      </table>`
-      : `<div class="empty">No records found.</div>`;
+        </tbody>
+      </table>`;
 
-    const bodyHtml = `
-      <h1 class="report-title">Outstanding List</h1>
-      <div class="report-sub">
-        Ageing as on ${escapeHtml(code6)} &nbsp;|&nbsp; Division: ${escapeHtml(code2 || "All")}
+    const detailHtml = `
+      ${section("Invoice Details", plural(l4Map.size, "group"))}
+      ${groupsHtml}
+      ${grandBar}`;
+
+    const legendHtml = hasAge
+      ? `
+      <div class="legend">
+        <span class="lg-title">Age legend</span>
+        ${BUCKETS.map(
+          (b) => `<span class="lg-item"><span class="chip ${b.key}">d</span>${b.label}</span>`
+        ).join("")}
+        <span>Age = days from invoice date to the “as on” date.</span>
+      </div>`
+      : "";
+
+    /* ─── 6. Page body – improved title + currency UX ─── */
+    const currency = text(code1 || "OMR"); // adjust if your currency comes from another code
+
+    const filtersHtml = reportAppliedFilters([
+      { label: "Ageing as on", value: hasAge ? formatDate(asOn) : code6 },
+      { label: "Division", value: code2 || "All" },
+    ]);
+
+    const bodyHtml = l4Map.size
+      ? `
+      <div class="doc-title-row">
+        <h1 class="report-title">Outstanding List</h1>
+        <div class="currency-pill">
+          <span class="curr-label">Currency</span>
+          <span>${escapeHtml(currency)}</span>
+        </div>
       </div>
-      ${tableHtml}`;
+      ${filtersHtml}
+      ${overviewHtml}
+      ${ageingHtml}
+      ${summaryHtml}
+      ${detailHtml}
+      ${legendHtml}`
+      : `
+      <div class="doc-title-row">
+        <h1 class="report-title">Outstanding List</h1>
+        <div class="currency-pill">
+          <span class="curr-label">Currency</span>
+          <span>${escapeHtml(currency)}</span>
+        </div>
+      </div>
+      ${filtersHtml}
+      <div class="empty">No records found.</div>`;
 
-    // Company code is never hard coded: body -> logged-in user
+    /* ─── 7. Header / footer / document ─── */
     const companyCode = text(
       company_code || (req as RequestWithUser).user?.company_code
     );
@@ -330,6 +804,7 @@ export const OutstandingList = async (
       extraCss: OUTSTANDING_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
+      fontMode: "native",
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
