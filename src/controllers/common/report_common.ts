@@ -61,18 +61,12 @@ function printDateTimeNow(): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Base report font size – ONE value drives body text AND the header  */
+/*  Base report font size                                              */
 /* ------------------------------------------------------------------ */
-/**
- * One font size (CSS px) for all report text when fontMode === "fixed".
- * Company header scales from it only when fontMode is "fixed".
- * When fontMode is "native" (default) the fixed sizes from the
- * second-file header CSS are used.
- */
 export const REPORT_FONT_PX = 6;
 
 /* ------------------------------------------------------------------ */
-/*  Freight palette – the SINGLE source of colors for report HTML.     */
+/*  Freight palette                                                    */
 /* ------------------------------------------------------------------ */
 export const FREIGHT_COLORS = {
   navy:         "#00378c",
@@ -90,7 +84,7 @@ export const FREIGHT_COLORS = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  HEADER CSS – taken from the SECOND file (fixed sizes, no navy rule)*/
+/*  HEADER CSS                                                         */
 /* ------------------------------------------------------------------ */
 export const REPORT_HEADER_CSS = `
   .company-header {
@@ -102,6 +96,7 @@ export const REPORT_HEADER_CSS = `
     box-sizing: border-box;
     padding: 0 0 14px 0;
     margin: 0 0 8px 0;
+    border-bottom: 1.5px solid #cbd5e1;
   }
   .company-logo-wrap {
     flex: 0 0 auto;
@@ -142,7 +137,7 @@ export const REPORT_HEADER_CSS = `
 `;
 
 /* ------------------------------------------------------------------ */
-/*  FOOTER CSS – taken from the SECOND file                            */
+/*  FOOTER CSS                                                         */
 /* ------------------------------------------------------------------ */
 export const REPORT_FOOTER_CSS = `
   .report-footer {
@@ -251,19 +246,13 @@ export function reportAppliedFilters(
 }
 
 /* ------------------------------------------------------------------ */
-/*  Common report CSS – Freight tables + SECOND-file print rules       */
+/*  Common report CSS                                                  */
 /* ------------------------------------------------------------------ */
 export const COMMON_REPORT_CSS = `
-  /* ===== Page setup (from second file) ===== */
+  /* ===== Page setup ===== */
   @page {
     size: A4;
-    margin: 8mm 8mm 12mm 8mm;
-    @bottom-right {
-      content: "Page " counter(page) " of " counter(pages);
-      font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-      font-size: 11px;
-      color: #64748b;
-    }
+    margin: 5mm;
   }
 
   * {
@@ -281,15 +270,24 @@ export const COMMON_REPORT_CSS = `
     background: #fff;
   }
 
-  .sheet { padding: 0; }
-  .paper {
-    max-width: 210mm;
-    margin: 0 auto;
-    background: white;
+  /* ===== Screen: no border, hidden page-border element ===== */
+  .page-border { display: none; }
+
+  .sheet {
     padding: 0;
+    border: 0;
+    box-shadow: none;
+    max-width: none;
   }
 
-  /* Outer shell table – header/footer repeat on print pages */
+  .paper {
+    padding: 3px;
+    border: 0;
+    box-shadow: none;
+    max-width: none;
+  }
+
+  /* Outer shell table */
   table.report-shell {
     width: 100%;
     border-collapse: collapse;
@@ -304,7 +302,7 @@ export const COMMON_REPORT_CSS = `
   }
 
   /* Report title */
-  .doc-title-row { margin: 0 0 10px 0; }
+  .doc-title-row { margin: 0 0 8px 0; }
   .doc-title-row h1,
   .report-title {
     margin: 0;
@@ -406,11 +404,10 @@ export const COMMON_REPORT_CSS = `
   }
 
   /* ================================================================ */
-  /*  PRINT CSS – taken entirely from the SECOND file                 */
+  /*  PRINT CSS                                                       */
   /* ================================================================ */
   @media print {
     html, body {
-      height: 100%;
       margin: 0;
       background: white;
       color: #1e293b;
@@ -423,7 +420,6 @@ export const COMMON_REPORT_CSS = `
 
     .actions, .viewerbar, .no-print { display: none !important; }
 
-    /* Same look as screen: header bar, zebra rows, strips */
     table.data-table thead { display: table-header-group; }
     table.data-table thead th {
       background: #e8f0fa !important;
@@ -437,6 +433,8 @@ export const COMMON_REPORT_CSS = `
       border-bottom: 1px solid #e2e8f0 !important;
     }
     table.data-table tbody tr:nth-child(even) td { background: #f8fafc !important; }
+    table.data-table tr { page-break-inside: avoid; }
+
     .section-strip,
     .group-title {
       background: #e8f0fa !important;
@@ -447,50 +445,57 @@ export const COMMON_REPORT_CSS = `
     .doc-title-row h1 { color: #0b4ca1 !important; }
     .company-name { font-size: 20px; color: #0f172a; }
     .company-address { font-size: 11px; color: #64748b; }
-    .report-footer { font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; }
 
-    .sheet,
-    .paper {
+    .sheet {
       padding: 0;
       border: 0;
       box-shadow: none;
       max-width: none;
-      height: 100%;
-      min-height: 100%;
     }
 
-    /* Force the shell table to fill the page so tfoot sits at the bottom */
-    table.report-shell {
-      height: 100%;
-      min-height: 100%;
-      page-break-inside: auto;
+    /* Full border on EVERY printed page (print only) */
+    .page-border {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 1px solid #64748b;
+      pointer-events: none;
+      z-index: 1;
     }
 
-    table.report-shell thead {
-      display: table-header-group;
+    /* No border on the wrapper; padding keeps content off the page border */
+    .paper {
+      padding: 8px !important;
+      border: 0 !important;
+      box-shadow: none;
+      max-width: none;
     }
 
-    table.report-shell tfoot {
-      display: table-footer-group;
+    table.report-shell { page-break-inside: auto; }
+    table.report-shell thead { display: table-header-group; }
+    table.report-shell tfoot { display: table-footer-group; }
+
+    /* Reserve space so rows never run under the fixed footer */
+    table.report-shell > tfoot > tr > td {
+      height: 36px;
     }
 
-    table.report-shell tbody {
-      height: 100%;
-    }
-
-    table.report-shell > tbody > tr,
-    table.report-shell > tbody > tr > td {
-      height: 100%;
-      vertical-align: top;
-    }
-
-    table.data-table tr {
-      page-break-inside: avoid;
-    }
-
+    /* Footer pinned inside the border at the bottom of EVERY page */
     .report-footer {
-      margin-top: 0;
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      bottom: 6px;
+      margin: 0;
       padding-top: 6px;
+      background: #fff;
+      font-size: 11px;
+      color: #64748b;
+      border-top: 1px solid #e2e8f0;
+      z-index: 2;
     }
   }
 `;
@@ -624,7 +629,7 @@ export type BuildReportDocumentOptions = {
   showPrintButton?: boolean;
   /**
    * "fixed"  – force REPORT_FONT_PX on almost everything.
-   * "native" – keep sizes from CSS (default – safe for existing reports).
+   * "native" – keep sizes from CSS (default).
    */
   fontMode?: "fixed" | "native";
 };
@@ -662,6 +667,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
       : ""
   }
   <div class="sheet">
+    <div class="page-border"></div>
     <div class="paper">
       <table class="report-shell">
         <thead>

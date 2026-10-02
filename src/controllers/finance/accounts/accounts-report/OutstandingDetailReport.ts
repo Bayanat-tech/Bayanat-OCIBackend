@@ -6,9 +6,7 @@ import { escapeHtml } from "../../../purchase_sales/report/common/formatters";
 import { buildReportDocument, reportFooter, reportHeader } from "../../../common/report_common";
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 
-
-// ─── Helpers (unchanged) ──────────────────────────────────────────────────────
-
+/* ───────────────────────── helpers ───────────────────────── */
 const money = (v: any) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return "0.000";
@@ -38,52 +36,191 @@ const moneyBalance = (v: any) => {
   return n < 0 ? `(${abs})` : abs;
 };
 
-// ─── Extra CSS – only what is specific to this report ─────────────────────────
-
+/* ───────────────────────── Extra CSS ───────────────────────── */
 const EXTRA_CSS = `
-  /* One customer statement per page */
-  .statement-block { page-break-after: always; }
-  .statement-block:last-of-type { page-break-after: auto; }
+  /* ── One customer statement per page ── */
+  .statement-block {
+    page-break-after: always;
+    break-after: page;
+  }
+  .statement-block:last-of-type {
+    page-break-after: auto;
+    break-after: auto;
+  }
 
-  /* Title / currency banner (sits under the common company header) */
+  /* ── Title / Currency banner ── */
   .report-meta {
     display: flex;
-    justify-content: flex-start;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 8px;
-    margin-bottom: 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 0 10px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #1e3a5f;
   }
-  .meta-table { border-collapse: collapse; }
-  .meta-table td { padding: 2px 8px 2px 0; vertical-align: top; font-size: 11px; }
-  .meta-label { font-weight: 700; color: #64748b; min-width: 70px; white-space: nowrap; }
-
-  /* Customer block */
-  .customer-block { margin: 10px 0 6px; }
-  .customer-name { font-size: 12px; font-weight: 800; margin-bottom: 4px; }
-  .customer-address { font-size: 10.5px; color: #334155; line-height: 1.5; margin-bottom: 8px; }
-  .contact-table { width: 100%; font-size: 10.5px; border-collapse: collapse; }
-  .contact-table td { padding: 2px 6px 2px 0; vertical-align: top; }
-  .contact-label { font-weight: 700; color: #64748b; white-space: nowrap; }
-  .right-label { text-align: right; }
-  .right-value { text-align: right; font-variant-numeric: tabular-nums; }
-
-  /* Statement table – overrides data-table defaults where needed */
-  table.statement-table { margin-top: 6px; }
-  table.statement-table th {
-    background: #1e3a5f;
-    color: #ffffff;
-    border-top: 0;
-    border-bottom: 0;
+  .report-meta .meta-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #1e3a5f;
+    letter-spacing: 0.2px;
+  }
+  .report-meta .currency-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1e3a5f;
     white-space: nowrap;
   }
-  table.statement-table td { vertical-align: middle; }
-  .statement-table .neg-balance { color: #c0392b; }
-  .statement-table tbody tr:hover td { background: #f8fafc; }
+  .report-meta .currency-pill .curr-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+  }
+
+  /* ── Customer block ── */
+  .customer-block {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #1e3a5f;
+    border-radius: 4px;
+  }
+  .customer-name {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #1e3a5f;
+    margin-bottom: 4px;
+  }
+  .customer-address {
+    font-size: 10.5px;
+    color: #334155;
+    line-height: 1.45;
+    margin-bottom: 8px;
+  }
+  .contact-table {
+    width: 100%;
+    font-size: 10.5px;
+    border-collapse: collapse;
+  }
+  .contact-table td {
+    padding: 1px 8px 1px 0;
+    vertical-align: top;
+  }
+  .contact-label {
+    font-weight: 700;
+    color: #64748b;
+    white-space: nowrap;
+    width: 1%;
+  }
+  .right-label { text-align: right; }
+  .right-value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  /* ── Statement table – NEVER overflows ── */
+  table.statement-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 4px;
+    border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+    box-sizing: border-box;
+  }
+  table.statement-table * {
+    box-sizing: border-box;
+  }
+  table.statement-table thead th {
+    background: #1e3a5f;
+    color: #ffffff;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 6px 4px;
+    border: 1px solid #0f2744;
+    white-space: nowrap;
+    text-align: center;
+    overflow: hidden;
+  }
+  table.statement-table thead th.left { text-align: left; }
+  table.statement-table thead th.num  { text-align: right; }
+
+  table.statement-table tbody td {
+    padding: 4px 4px;
+    font-size: 10px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+    overflow: hidden;          /* safety – content should never need it */
+  }
+
+  /* Columns that may contain long text – allow wrap */
+  table.statement-table td.wrap {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+
+  /* Amount columns – never wrap, never truncate */
+  table.statement-table td.num {
+    text-align: right;
+    white-space: nowrap !important;
+    font-variant-numeric: tabular-nums;
+    overflow: visible;         /* important – do not clip numbers */
+  }
+  table.statement-table td.center {
+    text-align: center;
+    white-space: nowrap;
+  }
+  table.statement-table .neg-balance {
+    color: #b91c1c;
+    font-weight: 600;
+  }
+  table.statement-table tbody tr:nth-child(even) td { background: #f8fafc; }
+
+  /* Empty state */
+  .empty {
+    padding: 32px;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  /* ── Print safety ── */
+  @media print {
+    .report-meta, .customer-block, .currency-pill {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    table.statement-table {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    table.statement-table thead th {
+      background: #1e3a5f !important;
+      color: #fff !important;
+    }
+    table.statement-table tbody tr { break-inside: avoid; }
+    .customer-block { break-after: avoid; }
+  }
 `;
 
-// ─── Controller ───────────────────────────────────────────────────────────────
-
-export const OutstandingDetailReport = async (req: Request, res: Response): Promise<void> => {
+/* ───────────────────────── Controller ───────────────────────── */
+export const OutstandingDetailReport = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   let connection;
   try {
     const {
@@ -158,13 +295,20 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
       }, {})
     );
 
-    // ── Group by ac_code (one statement block per customer) ───────────
+    // ── Group by ac_code ──────────────────────────────────────────────
     type DetailRow = (typeof rows)[0];
     type AcGroup = {
-      ac_code: string; ac_name: string;
-      address1: string; address2: string; address3: string;
-      phone: string; email: string; fax: string;
-      contact_person: string; cr_period: string; cr_amt: string;
+      ac_code: string;
+      ac_name: string;
+      address1: string;
+      address2: string;
+      address3: string;
+      phone: string;
+      email: string;
+      fax: string;
+      contact_person: string;
+      cr_period: string;
+      cr_amt: string;
       rows: DetailRow[];
     };
 
@@ -195,7 +339,7 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
     const currCode = escapeHtml(text(code5) || "OMR");
     const asOnDate = escapeHtml(formatDateStr(code6) || text(code6));
 
-    // ── Shared company header (logo + name + address from ms_company) ─
+    // ── Shared company header ─────────────────────────────────────────
     const headerHtml = await reportHeader({
       company_code: text(code1),
       req: req as RequestWithUser,
@@ -221,10 +365,10 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
                   return `
                   <tr>
                     <td class="center">${escapeHtml(text(r.doc_type))}</td>
-                    <td>${escapeHtml(text(r.inv_no))}</td>
+                    <td class="wrap">${escapeHtml(text(r.inv_no))}</td>
                     <td class="center">${formatDateStr(r.inv_date)}</td>
-                    <td>${escapeHtml(text(r.doc_no))}</td>
-                    <td>${escapeHtml(text(r.remarks))}</td>
+                    <td class="wrap">${escapeHtml(text(r.doc_no))}</td>
+                    <td class="wrap">${escapeHtml(text(r.remarks))}</td>
                     <td class="num">${debit  === 0 ? "0.000" : money(debit)}</td>
                     <td class="num">${credit === 0 ? "0.000" : money(credit)}</td>
                     <td class="num ${runningBalance < 0 ? "neg-balance" : ""}">${moneyBalance(runningBalance)}</td>
@@ -240,67 +384,75 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
               return `
               <div class="statement-block">
 
+                <!-- Clean Title + Currency banner -->
                 <div class="report-meta">
-                  <table class="meta-table">
-                    <tr>
-                      <td class="meta-label">Title :</td>
-                      <td><strong>Outstanding Statement as on ${asOnDate}</strong></td>
-                    </tr>
-                    <tr>
-                      <td class="meta-label">Currency :</td>
-                      <td><strong>${currCode}</strong></td>
-                    </tr>
-                  </table>
+                  <h1 class="meta-title">Outstanding Statement as on ${asOnDate}</h1>
+                  <div class="currency-pill">
+                    <span class="curr-label">Currency</span>
+                    <span>${currCode}</span>
+                  </div>
                 </div>
 
+                <!-- Customer card -->
                 <div class="customer-block">
                   <div class="customer-name">${escapeHtml(ac.ac_code)} &nbsp; ${escapeHtml(ac.ac_name)}</div>
-                  <div class="customer-address">${addressLines}</div>
+                  <div class="customer-address">${addressLines || "&nbsp;"}</div>
 
                   <table class="contact-table">
                     <tr>
                       <td class="contact-label">Ph.</td>
-                      <td>${escapeHtml(ac.phone)}</td>
+                      <td>${escapeHtml(ac.phone) || "–"}</td>
                       <td class="contact-label">Fax</td>
-                      <td>${escapeHtml(ac.fax)}</td>
+                      <td>${escapeHtml(ac.fax) || "–"}</td>
                       <td class="contact-label right-label">Credit Period:</td>
-                      <td class="right-value">${escapeHtml(ac.cr_period)}</td>
+                      <td class="right-value">${escapeHtml(ac.cr_period) || "–"}</td>
                     </tr>
                     <tr>
                       <td class="contact-label">Email</td>
-                      <td colspan="3">${escapeHtml(ac.email)}</td>
+                      <td colspan="3">${escapeHtml(ac.email) || "–"}</td>
                       <td class="contact-label right-label">Credit Amount:</td>
                       <td class="right-value">${money(ac.cr_amt)}</td>
                     </tr>
                     <tr>
                       <td class="contact-label">Attn.</td>
-                      <td colspan="3">${escapeHtml(ac.contact_person)}</td>
-                      <td></td>
-                      <td></td>
+                      <td colspan="5">${escapeHtml(ac.contact_person) || "–"}</td>
                     </tr>
                   </table>
                 </div>
 
+                <!-- Fixed-layout table – columns sized so NOTHING is cut off -->
                 <table class="data-table statement-table">
+                  <colgroup>
+                    <col style="width: 5.5%" />   <!-- Doc Type -->
+                    <col style="width: 11%" />    <!-- Doc No.   (can wrap) -->
+                    <col style="width: 8%" />     <!-- Doc Date -->
+                    <col style="width: 10%" />    <!-- Doc Ref No. (can wrap) -->
+                    <col style="width: 32.5%" />  <!-- Narration (wraps) -->
+                    <col style="width: 11%" />    <!-- Debit -->
+                    <col style="width: 11%" />    <!-- Credit -->
+                    <col style="width: 11%" />    <!-- Balance -->
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style="width:40px;">Doc<br/>Type</th>
-                      <th style="width:110px;">Doc No.</th>
-                      <th style="width:70px;">Doc Date</th>
-                      <th style="width:90px;">Doc Ref No.</th>
-                      <th>Narration</th>
-                      <th class="num" style="width:75px;">Debit</th>
-                      <th class="num" style="width:75px;">Credit</th>
-                      <th class="num" style="width:85px;">Balance</th>
+                      <th>Doc<br/>Type</th>
+                      <th>Doc No.</th>
+                      <th>Doc Date</th>
+                      <th>Doc Ref No.</th>
+                      <th class="left">Narration</th>
+                      <th class="num">Debit</th>
+                      <th class="num">Credit</th>
+                      <th class="num">Balance</th>
                     </tr>
                   </thead>
                   <tbody>
-                    ${bodyRows || `
-                      <tr>
-                        <td colspan="8" class="center muted" style="padding:24px;">
+                    ${
+                      bodyRows ||
+                      `<tr>
+                        <td colspan="8" class="center" style="padding:24px;color:#64748b;">
                           No outstanding records found.
                         </td>
-                      </tr>`}
+                      </tr>`
+                    }
                   </tbody>
                 </table>
 
@@ -308,14 +460,14 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
             })
             .join("");
 
-    // ── Shared footer (repeats on every printed page) ─────────────────
+    // ── Shared footer ─────────────────────────────────────────────────
     const footerHtml = reportFooter({
       reportName: "Outstanding Statement Detail",
       userName: text(loginid),
       endLabel: "End of report",
     });
 
-    // ── Final HTML via the shared shell ───────────────────────────────
+    // ── Final HTML ────────────────────────────────────────────────────
     const reportHtml = buildReportDocument({
       title: "Outstanding Statement Detail",
       headerHtml,
@@ -324,9 +476,8 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
       extraCss: EXTRA_CSS,
     });
 
-    res.setHeader("Content-Type", "text/html");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(reportHtml);
-
   } catch (error: any) {
     console.error("Outstanding Detail Report Error:", error);
     res.status(500).json({
@@ -336,7 +487,11 @@ export const OutstandingDetailReport = async (req: Request, res: Response): Prom
     });
   } finally {
     if (connection) {
-      try { await connection.close(); } catch (e) { console.error("Connection close error:", e); }
+      try {
+        await connection.close();
+      } catch (e) {
+        console.error("Connection close error:", e);
+      }
     }
   }
 };
