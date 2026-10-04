@@ -87,6 +87,48 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
     const topParties = await rowsFromCursor(outBinds.p_top_parties);
     const attention = await rowsFromCursor(outBinds.p_attention);
     const metaRows = await rowsFromCursor(outBinds.p_meta);
+    const selectedFy = metaRows[0]?.SELECTED_FY_PERIOD || fyPeriod || "226";
+
+    try {
+      const activeCountsRes = await conn.execute(
+        `SELECT 
+           COUNT(CASE WHEN DOC_TYPE = 'SI' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS SALES_INVOICE_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'SI' AND CANCELED = 'Y' THEN 1 END) AS SALES_INVOICE_CANCELED_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'PI' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS PURCHASE_INVOICE_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'PI' AND CANCELED = 'Y' THEN 1 END) AS PURCHASE_INVOICE_CANCELED_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'BP' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS BANK_PAYMENT_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'BP' AND CANCELED = 'Y' THEN 1 END) AS BANK_PAYMENT_CANCELED_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'BR' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS BANK_RECEIPT_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'BR' AND CANCELED = 'Y' THEN 1 END) AS BANK_RECEIPT_CANCELED_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'CP' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS CASH_PAYMENT_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'CP' AND CANCELED = 'Y' THEN 1 END) AS CASH_PAYMENT_CANCELED_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'CR' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS CASH_RECEIPT_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'CR' AND CANCELED = 'Y' THEN 1 END) AS CASH_RECEIPT_CANCELED_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'CN' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS CREDIT_NOTE_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'CN' AND CANCELED = 'Y' THEN 1 END) AS CREDIT_NOTE_CANCELED_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'DN' AND (CANCELED IS NULL OR CANCELED != 'Y') THEN 1 END) AS DEBIT_NOTE_COUNT,
+           COUNT(CASE WHEN DOC_TYPE = 'DN' AND CANCELED = 'Y' THEN 1 END) AS DEBIT_NOTE_CANCELED_COUNT
+         FROM (
+           SELECT s.*,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY s.COMPANY_CODE, s.DOC_TYPE, s.DOC_NO
+                    ORDER BY s.DOC_DATE DESC NULLS LAST
+                  ) AS RN
+           FROM VW_AC_HEADER_SEARCH s
+           WHERE s.COMPANY_CODE = :companyCode
+             AND (:selectedFy IS NULL OR s.FY_PERIOD = :selectedFy)
+             AND (:divCode IS NULL OR s.DIV_CODE = :divCode)
+         )
+         WHERE RN = 1`,
+        { companyCode, selectedFy, divCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (activeCountsRes.rows && activeCountsRes.rows.length > 0) {
+        summaryRows[0] = { ...summaryRows[0], ...(activeCountsRes.rows[0] as any) };
+      }
+    } catch (countErr) {
+      console.warn("Active counts refinement query unavailable:", countErr);
+    }
 
     let topCustomers: any[] = [];
     let topSuppliers: any[] = [];
@@ -450,13 +492,13 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
       }
     } catch (_) {}
 
-    const selectedFy = metaRows[0]?.SELECTED_FY_PERIOD || fyPeriod || availableFyPeriods[0] || "226";
+    const finalFy = selectedFy || availableFyPeriods[0] || "226";
 
     res.json({
       success: true,
       data: {
         company_code: companyCode,
-        fy_period: selectedFy,
+        fy_period: finalFy,
         available_fy_periods: availableFyPeriods,
         available_divisions: availableDivisions,
         summary: summaryRows[0] || {},
