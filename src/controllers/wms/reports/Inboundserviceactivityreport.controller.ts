@@ -4,12 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
-import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
-
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
+import {
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ export interface TInboundActivityRow {
   TRANSPORTER_CODE: string | null; VEHICLE_NO: string | null;
   ACTIVITY_GROUP_CODE: string | null; PRIN_NAME: string;
   BILL: number; COST: number; BILL_RATE: number; QUANTITY: number; COST_RATE: number;
-  SO_NO: string | null; PO_NO: string | null; DEST_PORT_NAME: string |null ; PORT_NAME: string | null;
+  SO_NO: string | null; PO_NO: string | null; DEST_PORT_NAME: string | null; PORT_NAME: string | null;
   DESCRIPTION1: string | null; PORT_CODE: string | null; DESTINATION_PORT: string | null;
   TRANSPORT_MODE: string | null; QTY: number | null; CBM: number | null;
   REMARKS: string | null; TRANSPORTER_NAME: string | null;
@@ -59,13 +59,6 @@ function text(value: unknown): string {
   return String(value);
 }
 
-function dateText(value: unknown): string {
-  if (!value) return "—";
-  const d = new Date(String(value));
-  if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 function escapeHtml(value: unknown): string {
   return text(value)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -80,17 +73,16 @@ function escapeXml(value: unknown): string {
 
 function numFmt(value: unknown, decimals = 2): string {
   const n = Number(value);
-  if (!Number.isFinite(n) || n === 0) return "—";
+  if (!Number.isFinite(n) || n === 0) return "\u2014";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
 }
 
-/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
-function withPostMessagePrintListener(html: string): string {
-  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
-  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
+/** "OMSLL  Salalah" style: code and name joined with " - ", skipping blanks */
+function joinParts(...parts: unknown[]): string {
+  return parts.map(text).map((p) => p.trim()).filter(Boolean).join(" - ");
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -125,7 +117,7 @@ async function loadInboundActivityData(
              and job_no = tn_invoice_det.job_no) po_no,
          ti_job.description1, ti_job.port_code,
          (select PORT_NAME from ms_port where port_code = ti_job.port_code ) as PORT_NAME,
-          (select PORT_NAME from ms_port where port_code = ti_job.destination_port ) as DEST_PORT_NAME,
+         (select PORT_NAME from ms_port where port_code = ti_job.destination_port ) as DEST_PORT_NAME,
          ti_job.destination_port, ti_job.transport_mode,
          (select sum(quantity) from vw_trans
            where company_code = tn_invoice_det.company_code
@@ -146,11 +138,11 @@ async function loadInboundActivityData(
          AND ( tn_invoice_det.company_code = ti_job.company_code )
          AND ( tn_invoice_det.prin_code = ti_job.prin_code )
          AND ( tn_invoice_det.job_no = ti_job.job_no )
-         AND ( tn_invoice_det.company_code = '${req.user.company_code}' )
+         AND ( tn_invoice_det.company_code = :company_code )
          AND ( tn_invoice_det.prin_code = :prin_code )
          AND ( tn_invoice_det.job_no = :job_no )
        ORDER BY tn_invoice_det.srno`,
-      { job_no: jobNo, prin_code: prinCode },
+      { company_code: req.user.company_code, job_no: jobNo, prin_code: prinCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const rows = normalize(result.rows as any[]);
@@ -162,154 +154,253 @@ async function loadInboundActivityData(
   }
 }
 
-// ─── Extra CSS specific to this report ─────────────────────────────────────
-// (doc-title-row from Sales Invoice + record/field layout + activity table.
-// The shared COMMON_REPORT_CSS only ships generic table/list styles, so the
-// title row + field-row/box rules live here as extraCss; the activity table
-// reuses the shared .data-table blue-header look, just left-aligned text.)
+// ─── Activity table columns (single header row; ONE alignment per column) ────
+
+type ColAlign = "left" | "center" | "right";
+
+interface ActColumn { label: string; align: ColAlign; width: number } // width in %, sums to 100
+
+const ACT_COLUMNS: ActColumn[] = [
+  { label: "Code",        align: "left",  width: 14 },
+  { label: "Description", align: "left",  width: 42 },
+  { label: "Quantity",    align: "right", width: 14 },
+  { label: "Supplier",    align: "left",  width: 30 },
+];
+
+// ─── Layout CSS – same look as the Quotation List PDF ────────────────────────
+// Used together with fontMode: "native", so the sizes below are the real sizes.
+// Letterhead / footer come from report_common; this only styles the body.
+// NOTE: row selectors include "tbody" so they out-rank the zebra rule
+// (tbody tr:nth-child(even) td) in report_common.
 
 const INBOUND_SERVICE_ACTIVITY_EXTRA_CSS = `
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-  }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-    white-space: nowrap;
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
+
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .section-label {
-    font-size: 9.5px; font-weight: 700; color: #0b4ca1; text-transform: uppercase;
-    letter-spacing: .08em; margin: 14px 0 7px; padding-bottom: 4px;
-    border-bottom: 1.5px solid #0b4ca1;
+  /* Letterhead – navy rule under the header, Enquiry sizes */
+  .company-header {
+    border-bottom: 2px solid #00378c;
+    padding: 0 0 10px 0;
+    margin: 0 0 8px 0;
   }
-  .field-row {
-    display: flex; align-items: baseline; padding: 3.5px 0;
-    border-bottom: 1px solid #f1f5f9;
+  .company-name       { font-size: 18px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 11px; line-height: 1.4; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
+
+  /* Title + filter strip */
+  h1.report-title {
+    margin: 24px 0 14px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #00378c !important;
   }
-  .field-row:last-child { border-bottom: none; }
-  .f-label {
-    font-size: 10px; color: #6b7280; min-width: 108px; padding-right: 8px;
-    text-align: right; white-space: nowrap; flex-shrink: 0;
+  .applied-filters { font-size: 10px; margin-bottom: 18px; }
+
+  /* Section strip (Sign-off) */
+  .group-title {
+    background: #eaf0f8 !important;
+    color: #00378c !important;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 8px;
+    margin: 16px 0 4px 0;
   }
-  .f-value { font-size: 11px; font-weight: 600; color: #111827; }
-  .nil { font-weight: 400; color: #9ca3af; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
-  .box {
-    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
-    padding: 10px 14px; margin-bottom: 14px;
+
+  /* Label / value grid (3 columns) */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 28px;
+    margin: 0 0 14px 0;
   }
-  table.data-table th { text-align: left; }
-  table.data-table th.num { text-align: right; }
-  table.data-table td.num { text-align: right; }
+  .field {
+    display: flex;
+    align-items: baseline;
+    min-height: 24px;
+    padding: 4px 6px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 10.5px;
+    line-height: 1.3;
+  }
+  .field .label {
+    flex: 0 0 110px;
+    padding-right: 8px;
+    color: #475569;
+    font-weight: 700;
+  }
+  .field .label::after { content: ":"; }
+  .field--empty .label::after { content: ""; }
+  .field .value { color: #1e293b; overflow-wrap: anywhere; }
+
+  .filter-header {
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #00378c;
+  }
+
+  /* Data table */
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
+    border-collapse: collapse;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  table.data-table .left   { text-align: left   !important; }
+  table.data-table .center { text-align: center !important; }
+  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+
+  /* Header: solid navy bar, white bold text */
+  table.data-table thead tr th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 12px 8px;
+    border: 0 !important;
+    text-transform: none;
+  }
+
+  /* Section banners: User / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c !important; text-align: left; }
+  table.data-table tbody tr.user-row td { background: #eaf0f8 !important; font-size: 13px; padding: 11px 8px; }
+  table.data-table tbody tr.prod-row td { background: #f4f7fc !important; font-size: 10.5px; padding: 7px 8px 7px 16px; }
+
+  /* Data rows */
+  table.data-table tbody tr.data-row td {
+    background: #fafcfe !important;
+    font-size: 10.5px;
+    padding: 9px 8px;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #1e293b;
+  }
+
+  /* Totals – shaded, bold navy, right aligned */
+  table.data-table tbody tr.subtotal-row td {
+    background: #e2e8f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 8px 8px;
+  }
+  table.data-table tbody tr.grand-total-row td {
+    background: #dbe4f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 9px 8px;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  @media print {
+    body::before { display: none !important; }
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
+    table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.subtotal-row,
+    table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
+    .info-grid   { break-inside: avoid; }
+    .group-title { break-after: avoid; }
+    .report-footer { font-size: 10px; }
+  }
 `;
+// Lets the React parent page trigger printing through postMessage.
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
 
 // ─── HTML body renderer ─────────────────────────────────────────────────────
-// Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
-
-function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
-      </div>
-    </div>`;
-}
 
 function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
   const d = rows[0];
 
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
+  const jobText  = `${text(d.job_type)} ${text(d.job_no)}`.trim();
+  const prinText = joinParts(d.prin_code, d.prin_name);
 
-  const field = (label: string, value: unknown) => `
-    <div class="field-row">
-      <span class="f-label">${escapeHtml(label)}</span>
-      <span class="f-value">${escapeHtml(value) || '<span class="nil"></span>'}</span>
-    </div>`;
+  const field = (label: string, value: unknown) =>
+    `<div class="field"><span class="label">${escapeHtml(label)}</span> <span class="value">${escapeHtml(text(value) || "\u2014")}</span></div>`;
 
-  const activityRows = rows.map((r) => `
-    <tr>
-      <td>${escapeHtml(r.act_code)}</td>
-      <td>${escapeHtml(r.other_services)}</td>
-      <td class="num">${numFmt(r.quantity, 3)}</td>
-      <td>${escapeHtml(r.transporter_name)}</td>
-    </tr>`).join("");
+  const emptyField = `<div class="field field--empty"><span class="label"></span><span class="value"></span></div>`;
+  const col = (items: string[], n: number) =>
+    items.concat(Array(Math.max(0, n - items.length)).fill(emptyField)).join("");
+
+  const filtersHtml = reportAppliedFilters([
+    { label: "Job No",     value: jobText },
+    { label: "Principal",  value: text(d.prin_code) },
+    { label: "Invoice No", value: text(d.invoice_no) },
+  ]);
+
+  const infoLeft = [
+    field("Job No",     jobText),
+    field("Principal",  prinText),
+    field("Invoice No", d.invoice_no),
+  ];
+  const infoRight = [
+    field("Ref #", d.description1),
+    field("SO No", d.so_no),
+    field("PO No", d.po_no),
+  ];
+
+  const moveLeft = [
+    `<div class="filter-header">Movement</div>`,
+    field("Type of Movement", d.transport_mode),
+    field("From",             joinParts(d.port_code, d.port_name)),
+    field("To",               joinParts(d.destination_port, d.dest_port_name)),
+    field("Quantity",         numFmt(d.qty, 0)),
+    field("Volume (CBM)",     numFmt(d.cbm, 3)),
+  ];
+  const moveRight = [
+    `<div class="filter-header">Remarks</div>`,
+    field("Remarks", d.remarks),
+  ];
+
+  const C = ACT_COLUMNS;
+  const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
+  const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
+
+  const activityRows = rows.map((r) =>
+    `<tr class="data-row">` +
+    `<td class="${C[0].align}">${escapeHtml(text(r.act_code) || "\u2014")}</td>` +
+    `<td class="${C[1].align}">${escapeHtml(text(r.other_services) || "\u2014")}</td>` +
+    `<td class="${C[2].align} num">${escapeHtml(numFmt(r.quantity, 3))}</td>` +
+    `<td class="${C[3].align}">${escapeHtml(text(r.transporter_name) || "\u2014")}</td>` +
+    `</tr>`
+  ).join("");
 
   return `
-    ${printMetaHtml(reportTitle, `Job No: ${text(d.job_type)} ${text(d.job_no)} — Principal: ${text(d.prin_code)}`, printDateTime)}
+    <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+    ${filtersHtml}
 
-    <div class="section-label">Job Information</div>
-    <div class="two-col">
-      <div>
-        ${field("Job No",   `${text(d.job_type)} ${text(d.job_no)}`.trim())}
-        ${field("Principal", `${text(d.prin_code)} — ${text(d.prin_name)}`)}
-        ${field("Invoice No", d.invoice_no)}
-      </div>
-      <div>
-        ${field("Ref #",       d.description1)}
-        ${field("SO No",       d.so_no)}
-        ${field("PO No",       d.po_no)}
-      </div>
+    <div class="group-title">Job Information</div>
+    <div class="info-grid">
+      <div>${col(infoLeft, 3)}</div>
+      <div>${col(infoRight, 3)}</div>
     </div>
 
-    <div class="section-label">Activities</div>
+    <div class="group-title">Activities</div>
     <table class="data-table">
-      <thead>
-        <tr>
-          <th style="width:12%">Code</th>
-          <th>Description</th>
-          <th class="num" style="width:14%">Quantity</th>
-          <th style="width:24%">Supplier</th>
-        </tr>
-      </thead>
+      <colgroup>${colgroup}</colgroup>
+      <thead><tr>${headerCells}</tr></thead>
       <tbody>${activityRows}</tbody>
     </table>
 
-    <div class="two-col">
-      <div class="box" style="margin-bottom:0;">
-        <div class="section-label" style="border:none; margin-bottom:6px;">Movement</div>
-        ${field("Type of Movement", d.transport_mode)}
-        ${field("From",             `${text(d.port_code)}  ${text(d.port_name)}`)}
-        ${field("To",               `${text(d.destination_port)} ${text(d.dest_port_name)}`)}
-        ${field("Quantity",         numFmt(d.qty, 0))}
-        ${field("Volume (CBM)",     numFmt(d.cbm, 3))}
-      </div>
-      <div class="box" style="margin-bottom:0;">
-        <div class="section-label" style="border:none; margin-bottom:6px;">Remarks</div>
-        <div style="font-size:11px; color:#111827; white-space:pre-wrap;">${escapeHtml(d.remarks) || '<span class="nil">—</span>'}</div>
-      </div>
+    <div class="group-title">Movement &amp; Remarks</div>
+    <div class="info-grid">
+      <div>${moveLeft.join("")}</div>
+      <div>${moveRight.join("")}</div>
     </div>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
-/**
- * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
- */
 async function renderHtml(
   req: RequestWithUser,
   rows: ReportRow[],
@@ -322,41 +413,37 @@ async function renderHtml(
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
   const bodyHtml   = renderBodyHtml(rows, reportTitle);
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Object: ${escapeHtml(d.company_code)}-${escapeHtml(d.job_no)}`,
+    reportName: "rpt_inbound_service_activity",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
   });
 
-  const html = buildReportDocument({
+  return buildReportDocument({
     title: `${reportTitle} - ${text(d.job_no)}`,
     headerHtml,
     bodyHtml,
     footerHtml,
     extraCss: INBOUND_SERVICE_ACTIVITY_EXTRA_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
+    fontMode: "native",
   });
-
-  return withPostMessagePrintListener(html);
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
-// theme, and a distinct bigger "reportTitle" style (matching the doc-title-row
-// used in HTML) so the Excel title no longer looks like an oversized column
-// header. AdmZip-based xlsx generation has no shared equivalent yet.
+// Same palette / Arial font as the other reports.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:      0,
-  header:       1,  // white text, blue bg, centered — column headers
-  sectionTitle: 2,  // blue text, light-blue bg, bottom border
-  label:        3,  // gray bold, right-aligned
-  value:        4,  // dark bold, wrapping
-  tableHeader:  5,  // white text, blue bg, left aligned
-  tableCell:    6,  // white bg, bordered
-  tableCellNum: 7,  // white bg, bordered, right aligned
-  reportTitle:  8,  // big centered white-on-blue title row
+  title:        1,  // blue bold 14, no fill
+  sectionTitle: 2,  // blue bold on #eaf0f8
+  label:        3,  // slate bold, right-aligned
+  value:        4,  // dark, wrapping
+  tableHeader:  5,  // white on #00378c, centered
+  tableCell:    6,  // left, light bottom border
+  tableCellNum: 7,  // right, #,##0.000, light bottom border
+  footer:       8,  // italic grey, right
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -368,76 +455,93 @@ function xc(v: unknown, style: StyleKey): XlCell {
 }
 
 function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
-  const d      = rows[0];
-  const NCOLS  = 7;
-  const skip   = null;
+  const d     = rows[0];
+  const NCOLS = 4;
+  const skip  = null;
 
   type Row = (XlCell | null)[];
   const xlRows: Row[] = [];
+  const blank = (): Row => Array(NCOLS).fill(skip);
 
-  xlRows.push([xc(`${reportTitle} — Job ${text(d.job_type)} ${text(d.job_no)}`, "reportTitle"), skip, skip, skip, skip, skip, skip]);
+  const spanRow = (label: string, style: StyleKey) => {
+    const row = blank();
+    row[0] = xc(label, style);
+    xlRows.push(row);
+  };
 
-  xlRows.push(Array(NCOLS).fill(skip));
+  const jobText  = `${text(d.job_type)} ${text(d.job_no)}`.trim();
+  const prinText = joinParts(d.prin_code, d.prin_name);
 
-  xlRows.push([xc("JOB INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
+  spanRow(`${reportTitle} \u2014 Job ${jobText}`, "title");
+  xlRows.push(blank());
+
+  spanRow("JOB INFORMATION", "sectionTitle");
 
   const leftInfo: [string, unknown][] = [
-    ["Job No",     `${text(d.job_type)} ${text(d.job_no)}`.trim()],
-    ["Principal",  `${text(d.prin_code)} — ${text(d.prin_name)}`],
+    ["Job No",     jobText],
+    ["Principal",  prinText],
     ["Invoice No", d.invoice_no],
   ];
   const rightInfo: [string, unknown][] = [
-    ["Ref #",  d.description1],
-    ["SO No",  d.so_no],
-    ["PO No",  d.po_no],
+    ["Ref #", d.description1],
+    ["SO No", d.so_no],
+    ["PO No", d.po_no],
   ];
   for (let i = 0; i < Math.max(leftInfo.length, rightInfo.length); i++) {
     const [ll, lv] = leftInfo[i]  ?? ["", ""];
     const [rl, rv] = rightInfo[i] ?? ["", ""];
-    xlRows.push([xc(ll, "label"), xc(lv, "value"), xc("", "default"), xc(rl, "label"), xc(rv, "value"), skip, skip]);
+    xlRows.push([xc(ll, "label"), xc(lv, "value"), xc(rl, "label"), xc(rv, "value")]);
   }
 
-  xlRows.push(Array(NCOLS).fill(skip));
+  xlRows.push(blank());
 
-  xlRows.push([xc("ACTIVITIES", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
-  xlRows.push([
-    xc("Code", "tableHeader"), xc("Description", "tableHeader"),
-    xc("Quantity", "tableHeader"), xc("Supplier", "tableHeader"),
-    skip, skip, skip,
-  ]);
+  spanRow("ACTIVITIES", "sectionTitle");
+  xlRows.push(ACT_COLUMNS.map((c) => xc(c.label, "tableHeader")));
   for (const r of rows) {
     xlRows.push([
-      xc(r.act_code, "tableCell"),
-      xc(r.other_services, "tableCell"),
-      xc(Number(r.quantity) || 0, "tableCellNum"),
-      xc(r.transporter_name, "tableCell"),
-      skip, skip, skip,
+      xc(text(r.act_code)         || "\u2014", "tableCell"),
+      xc(text(r.other_services)   || "\u2014", "tableCell"),
+      xc(Number(r.quantity) || 0,              "tableCellNum"),
+      xc(text(r.transporter_name) || "\u2014", "tableCell"),
     ]);
   }
 
-  xlRows.push(Array(NCOLS).fill(skip));
+  xlRows.push(blank());
 
-  xlRows.push([xc("MOVEMENT", "sectionTitle"), skip, skip, xc("REMARKS", "sectionTitle"), skip, skip, skip]);
+  // MOVEMENT (A:B) | REMARKS (C:D)
+  xlRows.push([xc("MOVEMENT", "sectionTitle"), skip, xc("REMARKS", "sectionTitle"), skip]);
 
   const movement: [string, unknown][] = [
     ["Type of Movement", d.transport_mode],
-    ["From",             d.port_code],
-    ["To",               d.destination_port],
+    ["From",             joinParts(d.port_code, d.port_name)],
+    ["To",               joinParts(d.destination_port, d.dest_port_name)],
     ["Quantity",         numFmt(d.qty, 0)],
     ["Volume (CBM)",     numFmt(d.cbm, 3)],
   ];
   for (let i = 0; i < movement.length; i++) {
     const [ml, mv] = movement[i];
-    const remarksCell = i === 0 ? xc(d.remarks ?? "", "value") : skip;
-    xlRows.push([xc(ml, "label"), xc(mv, "value"), xc("", "default"), remarksCell, skip, skip, skip]);
+    xlRows.push([
+      xc(ml, "label"),
+      xc(mv, "value"),
+      i === 0 ? xc(text(d.remarks) || "\u2014", "value") : skip,
+      skip,
+    ]);
   }
 
-  const COL_WIDTHS = [18, 30, 3, 22, 22, 2, 2];
+  xlRows.push(blank());
+  {
+    const row = blank();
+    row[NCOLS - 1] = xc("Powered by Bayanat Technology", "footer");
+    xlRows.push(row);
+  }
+
+  const COL_WIDTHS = [20, 36, 20, 28];
 
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
+  // merge each run of "value followed by nulls" into one merged range
   const merges: string[] = [];
   xlRows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -462,8 +566,8 @@ function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
 
   let sheetDataXml = "";
   xlRows.forEach((row, ri) => {
-    const rn  = ri + 1;
-    const ht  = rn === 1 ? ` ht="26" customHeight="1"` : "";
+    const rn = ri + 1;
+    const ht = rn === 1 ? ` ht="24" customHeight="1"` : "";
     let rowXml = `<row r="${rn}"${ht}>`;
     row.forEach((cell, ci) => {
       if (cell === null) return;
@@ -494,46 +598,43 @@ function buildExcelBuffer(rows: ReportRow[], reportTitle: string): Buffer {
   // ── Styles XML — order must match STYLE_ID above ──────────────────────────
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
   <fonts count="7">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><b/><sz val="14"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><b/><sz val="9"/><color rgb="FF475569"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><i/><sz val="8"/><color rgb="FF64748B"/><name val="Arial"/></font>
   </fonts>
-  <fills count="5">
+  <fills count="4">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF4FC"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
-  <borders count="3">
+  <borders count="4">
     <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
-      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
-    <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
-      <diagonal/>
-    </border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFCBD5E1"/></bottom><diagonal/></border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="9">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
     <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="4" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="4" borderId="2" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="6" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="top" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -605,8 +706,8 @@ export const getWmsInboundServiceActivityReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "Inbound Service Activity Report";
 
     if (!jobNo || !prinCode) {
@@ -614,11 +715,11 @@ export const getWmsInboundServiceActivityReportExcel = async (
       return;
     }
     const activityRows = await loadInboundActivityData(req, jobNo, prinCode);
-    const buffer        = buildExcelBuffer(activityRows, reportTitle);
+    const buffer       = buildExcelBuffer(activityRows, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Inbound_Service_Activity_${jobNo}.xlsx"`);
-    res.end(buffer); // res.end() matches the pattern — prevents Express buffer re-encoding
+    res.end(buffer);
   } catch (error: any) {
     console.error("Inbound Service Activity Excel error:", error);
     res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate Excel" });

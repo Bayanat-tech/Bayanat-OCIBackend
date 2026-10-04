@@ -5,6 +5,47 @@ import { getCurrentTenantId } from "../../../src/middleware/tenantContext.middle
 
 type Connection = oracledb.Connection;
 
+export const frtDashboard = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const result = await connection.execute(
+      `BEGIN
+         PROC_FRT_DASHBOARD(
+           :p_company_code,
+           :p_user_id,
+           :p_year,
+           :p_month,
+           :p_summary,
+           :p_monthly,
+           :p_top_principals,
+           :p_attention
+         );
+       END;`,
+      {
+        p_company_code: req.body.company_code ?? req.body.COMPANY_CODE,
+        p_user_id: req.body.user_id ?? req.body.USER_ID ?? req.body.loginid ?? req.body.LOGINID,
+        p_year: Number(req.body.year ?? req.body.YEAR) || new Date().getFullYear(),
+        p_month: Number(req.body.month ?? req.body.MONTH) || new Date().getMonth() + 1,
+        p_summary: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        p_monthly: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        p_top_principals: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+        p_attention: { dir: oracledb.BIND_OUT, type: oracledb.CURSOR },
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const outBinds = result.outBinds as any;
+    const summaryRows = await rowsFromCursor(outBinds.p_summary);
+    const monthly = await rowsFromCursor(outBinds.p_monthly);
+    const topPrincipals = await rowsFromCursor(outBinds.p_top_principals);
+    const attention = await rowsFromCursor(outBinds.p_attention);
+
+    res.json({
+      success: true,
+      data: { summary: summaryRows[0] ?? {}, monthly, topPrincipals, attention },
+    });
+  });
+};
+
 export const frtWorkspaceSummary = async (req: Request, res: Response): Promise<void> => {
   await withConnection(res, async (connection) => {
     const result = await connection.execute(

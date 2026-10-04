@@ -4,12 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
-import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
-
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
+import {
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,10 +68,10 @@ function text(value: unknown): string {
 }
 
 function dateText(value: unknown): string {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function escapeHtml(value: unknown): string {
@@ -88,7 +88,7 @@ function escapeXml(value: unknown): string {
 
 function numFmt(value: unknown, decimals = 2): string {
   const n = Number(value);
-  if (!Number.isFinite(n) || n === 0) return "—";
+  if (!Number.isFinite(n) || n === 0) return "\u2014";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -107,6 +107,10 @@ const PROGRESS_COLS: { label: string; flag: string; dateKey: string }[] = [
   { label: "Invoiced",  flag: "invoiced",       dateKey: "invoice_date"   },
 ];
 
+function isDone(d: ReportRow, col: { flag: string; dateKey: string }): boolean {
+  return col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
+}
+
 // ─── Data loader ──────────────────────────────────────────────────────────────
 
 async function loadJobData(
@@ -119,10 +123,10 @@ async function loadJobData(
     const result = await conn.execute(
       `SELECT *
        FROM VW_BOWM_JOBTXN
-       WHERE COMPANY_CODE = '${req.user.company_code}'
-         AND job_no    = :job_no
-         AND prin_code = :prin_code`,
-      { job_no: jobNo, prin_code: prinCode },
+       WHERE COMPANY_CODE = :company_code
+         AND job_no       = :job_no
+         AND prin_code    = :prin_code`,
+      { company_code: req.user.company_code, job_no: jobNo, prin_code: prinCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     const rows = normalize(result.rows as any[]);
@@ -134,121 +138,174 @@ async function loadJobData(
   }
 }
 
-// ─── Extra CSS specific to this report ─────────────────────────────────────
-// (record/field layout — the shared COMMON_REPORT_CSS only ships table/list
-// styles, so the field-row/box/progress-cell rules live here as extraCss)
+// ─── Layout CSS – same look as the Enquiry List PDF ──────────────────────────
+// Works with the shared report_common (fontMode "native"). report_common's
+// @media print block forces a light-blue table header, light-blue group strips
+// and a lighter title colour with !important, so those are overridden here with
+// the same selectors (this CSS is injected after the common CSS, so it wins).
 
 const JOB_DETAILS_EXTRA_CSS = `
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
 
-  .doc-title-row {
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Letterhead – navy rule under the header, Enquiry sizes */
+  .company-header {
+    border-bottom: 2px solid #00378c;
+    padding: 0 0 10px 0;
+    margin: 0 0 8px 0;
+  }
+  .company-name       { font-size: 18px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 11px; line-height: 1.4; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
+
+  /* Title + filter strip */
+  h1.report-title {
+    margin: 24px 0 14px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #00378c !important;
+  }
+  .applied-filters { font-size: 10px; margin-bottom: 20px; }
+
+  /* Section strips (Job Information, References, FIRS, Progress) */
+  .group-title {
+    background: #eaf0f8 !important;
+    color: #00378c !important;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 8px;
+    margin: 14px 0 4px 0;
+  }
+
+  /* Label / value grid */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 28px;
+    margin: 0 0 4px 0;
+  }
+  .field {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-  }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
+    align-items: baseline;
+    min-height: 26px;
+    padding: 5px 8px;
+    border-bottom: 1px solid #e2e8f0;
     font-size: 10.5px;
+    line-height: 1.3;
+  }
+  .field .label {
+    flex: 0 0 120px;
+    padding-right: 8px;
     color: #475569;
-    line-height: 1.4;
+    font-weight: 700;
+  }
+  .field .label::after { content: ":"; }
+  .field--empty .label::after { content: ""; }
+  .field .value { color: #1e293b; overflow-wrap: anywhere; }
+
+  .filter-header {
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #00378c;
   }
 
-  .section-label {
-    font-size: 9.5px; font-weight: 700; color: #0b4ca1; text-transform: uppercase;
-    letter-spacing: .08em; margin: 14px 0 7px; padding-bottom: 4px;
-    border-bottom: 1.5px solid #0b4ca1;
+  /* Job progress table – solid navy header like Enquiry */
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
+    border-collapse: collapse;
   }
-  .field-row {
-    display: flex; align-items: baseline; padding: 3.5px 0;
-    border-bottom: 1px solid #f1f5f9;
+  table.data-table thead th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 11px 8px;
+    text-align: center;
+    border: 0 !important;
   }
-  .field-row:last-child { border-bottom: none; }
-  .f-label {
-    font-size: 10px; color: #6b7280; min-width: 128px; padding-right: 8px;
-    text-align: right; white-space: nowrap; flex-shrink: 0;
+  table.data-table tbody td {
+    font-size: 10.5px;
+    padding: 10px 8px;
+    text-align: center;
+    border-bottom: 1px solid #e2e8f0 !important;
   }
-  .f-value { font-size: 11px; font-weight: 600; color: #111827; }
-  .nil { font-weight: 400; color: #9ca3af; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; margin-bottom: 14px; }
-  .box {
-    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
-    padding: 10px 14px; margin-bottom: 14px;
+  table.data-table tbody td.done    { background: #f0fdf4 !important; color: #166534; font-weight: 700; }
+  table.data-table tbody td.pending { background: #fcfdfe !important; color: #94a3b8; }
+
+  @media print {
+    body::before { display: none !important; }   /* no page border */
+    .info-grid   { break-inside: avoid; }
+    .group-title { break-after: avoid; }
+    .report-footer { font-size: 10px; }
   }
-  .box-title {
-    font-size: 10px; font-weight: 700; color: #0b4ca1; text-transform: uppercase;
-    letter-spacing: .07em; margin-bottom: 8px; padding-bottom: 5px;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  .prog-cell { text-align: center; background: #fff; }
-  .prog-cell.done { background: #f0fdf4; }
-  .prog-date { display: block; font-size: 9.5px; color: #374151; }
-  .prog-cell:not(.done) .prog-date { color: #9ca3af; }
 `;
 
-// ─── HTML body renderer ─────────────────────────────────────────────────────
-// Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
+// Lets the React parent page trigger printing through postMessage.
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
 
-function renderBodyHtml(d: ReportRow, reportTitle: string): string  {
-   const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-   const titleRowHtml = `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(reportTitle)}</h1>
-        <div class="doc-sub">Job No: ${escapeHtml(d.job_no)} &mdash; ${escapeHtml(d.company_code)}</div>
-      </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
-      </div>
-    </div>`;
-  const progressCells = PROGRESS_COLS.map((col) => {
-    const dateVal = dateText(d[col.dateKey]);
-    const isDone  = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
-    return `<td class="prog-cell${isDone ? " done" : ""}">
-      <span class="prog-date">${isDone ? escapeHtml(dateVal) : ""}</span>
-    </td>`;
+// ─── HTML body renderer ─────────────────────────────────────────────────────
+
+function renderBodyHtml(d: ReportRow, reportTitle: string): string {
+  const field = (label: string, value: unknown) =>
+    `<div class="field"><span class="label">${escapeHtml(label)}</span> <span class="value">${escapeHtml(text(value) || "\u2014")}</span></div>`;
+
+  const emptyField = `<div class="field field--empty"><span class="label"></span><span class="value"></span></div>`;
+  const col = (items: string[], n: number) =>
+    items.concat(Array(Math.max(0, n - items.length)).fill(emptyField)).join("");
+
+  const filtersHtml = reportAppliedFilters([
+    { label: "Job No",    value: text(d.job_no) },
+    { label: "Principal", value: text(d.prin_code) },
+    { label: "Job Date",  value: dateText(d.job_date) },
+  ]);
+
+  const left = [
+    field("Job No",         d.job_no),
+    field("Job Date",       dateText(d.job_date)),
+    field("Department",     d.dept_code),
+    field("Transport Mode", d.transport_mode_desc || d.transport_mode),
+    field("Document Ref",   d.doc_ref),
+    field("Principal",      d.prin_code),
+  ];
+  const right = [
+    field("Cancel Date",  dateText(d.cancel_date)),
+    field("Cancelled By", d.canceled_by),
+    field("Created By",   d.created_by),
+  ];
+
+  const progressHead = PROGRESS_COLS.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("");
+  const progressCells = PROGRESS_COLS.map((c) => {
+    const done = isDone(d, c);
+    return `<td class="${done ? "done" : "pending"}">${done ? escapeHtml(dateText(d[c.dateKey])) : "\u2014"}</td>`;
   }).join("");
 
-  const field = (label: string, value: unknown) => `
-    <div class="field-row">
-      <span class="f-label">${escapeHtml(label)}</span>
-      <span class="f-value">${escapeHtml(value) || '<span class="nil"></span>'}</span>
-    </div>`;
-
   return `
-    ${titleRowHtml}
-    <div class="section-label">Job Information</div>
-    <div class="two-col">
-      <div>
-        ${field("Job No",         d.job_no)}
-        ${field("Job Date",       dateText(d.job_date))}
-        ${field("Department",     d.dept_code)}
-        ${field("Transport Mode", d.transport_mode_desc || d.transport_mode)}
-        ${field("Document Ref",   d.doc_ref)}
-        ${field("Principal",      d.prin_code)}
-      </div>
-      <div>
-        ${field("Cancel Date",  dateText(d.cancel_date))}
-        ${field("Cancelled By", d.canceled_by)}
-        ${field("Created By",   d.created_by)}
-      </div>
+    <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+    ${filtersHtml}
+
+    <div class="group-title">Job Information</div>
+    <div class="info-grid">
+      <div>${col(left, 6)}</div>
+      <div>${col(right, 6)}</div>
     </div>
 
-    <div class="section-label">References &amp; Remarks</div>
-    <div class="box" style="margin-bottom:14px;">
+    <div class="group-title">References &amp; Remarks</div>
+    <div>
       ${field("Description",   d.description1)}
       ${field("Description 2", d.description2)}
       ${field("Principal Ref", d.prin_ref1)}
@@ -256,18 +313,18 @@ function renderBodyHtml(d: ReportRow, reportTitle: string): string  {
       ${field("Remarks",       d.remarks)}
     </div>
 
-    <div class="section-label">FIRS Details</div>
-    <div style="gap:16px; margin-bottom:14px; display:grid; grid-template-columns:1fr 1fr;">
-      <div class="box" style="margin-bottom:0;">
-        <div class="box-title">Logistics</div>
+    <div class="group-title">FIRS Details</div>
+    <div class="info-grid">
+      <div>
+        <div class="filter-header">Logistics</div>
         ${field("Port Code",     d.port_code)}
         ${field("ETA",           dateText(d.eta))}
         ${field("ATA",           dateText(d.ata))}
         ${field("ETD",           dateText(d.etd))}
         ${field("Schedule Date", dateText(d.schedule_date))}
       </div>
-      <div class="box" style="margin-bottom:0;">
-        <div class="box-title">Financial</div>
+      <div>
+        <div class="filter-header">Financial</div>
         ${field("Payment Terms",   d.payment_terms)}
         ${field("Currency",        d.curr_code)}
         ${field("Exchange Rate",   numFmt(d.ex_rate, 4))}
@@ -276,21 +333,15 @@ function renderBodyHtml(d: ReportRow, reportTitle: string): string  {
       </div>
     </div>
 
-    <div class="section-label">Job Progress</div>
+    <div class="group-title">Job Progress</div>
     <table class="data-table">
-      <thead>
-        <tr>${PROGRESS_COLS.map((c) => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>
-      </thead>
+      <thead><tr>${progressHead}</tr></thead>
       <tbody><tr>${progressCells}</tr></tbody>
     </table>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
-/**
- * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
- */
 async function renderHtml(
   req: RequestWithUser,
   d: ReportRow,
@@ -299,11 +350,15 @@ async function renderHtml(
   autoPrint: boolean
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
-  const bodyHtml   = renderBodyHtml(d,  reportTitle);
+  const bodyHtml   = renderBodyHtml(d, reportTitle);
+
+  // Same print stamp format as the Enquiry List (9/30/2026, 12:15:22 PM)
+  const printed = new Date().toLocaleString("en-US");
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Object: ${escapeHtml(d.company_code)}-${escapeHtml(d.job_no)}`,
+    reportName: "WMS Job Details",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
+    extraLeft:  `Print: ${escapeHtml(printed)}${loginId ? ` | User: ${escapeHtml(loginId)}` : ""}`,
   });
 
   return buildReportDocument({
@@ -313,22 +368,22 @@ async function renderHtml(
     footerHtml,
     extraCss: JOB_DETAILS_EXTRA_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
+    fontMode: "native",
   });
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// Unchanged — AdmZip-based xlsx generation has no shared equivalent yet.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:         0,
-  header:          1,  // white text, dark-indigo bg, centered
-  sectionTitle:    2,  // indigo text, lavender bg, bottom border
-  label:           3,  // gray bold, right-aligned
-  value:           4,  // dark bold, wrapping
+  header:          1,  // white text, #00378c bg, centered
+  sectionTitle:    2,  // #00378c text, #eaf0f8 bg, bottom border
+  label:           3,  // slate bold, right-aligned
+  value:           4,  // dark, wrapping
   progressDone:    5,  // green-tint bg, centered
-  progressPending: 6,  // white bg, gray text, centered
+  progressPending: 6,  // light bg, grey text, centered
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -346,7 +401,7 @@ function buildExcelBuffer(d: ReportRow): Buffer {
   type Row = (XlCell | null)[];
   const rows: Row[] = [];
 
-  rows.push([xc(`WMS Job Details Report — Job ${text(d.job_no)}`, "header"), skip, skip, skip, skip, skip, skip]);
+  rows.push([xc(`WMS Job Details Report \u2014 Job ${text(d.job_no)}`, "header"), skip, skip, skip, skip, skip, skip]);
   rows.push(Array(NCOLS).fill(skip));
 
   rows.push([xc("JOB INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
@@ -413,15 +468,15 @@ function buildExcelBuffer(d: ReportRow): Buffer {
   rows.push([xc("JOB PROGRESS", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
   rows.push(PROGRESS_COLS.map((col) => xc(col.label, "header")));
   rows.push(PROGRESS_COLS.map((col) => {
-    const isDone = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
-    return xc(isDone ? dateText(d[col.dateKey]) : "—", isDone ? "progressDone" : "progressPending");
+    const done = isDone(d, col);
+    return xc(done ? dateText(d[col.dateKey]) : "\u2014", done ? "progressDone" : "progressPending");
   }));
   rows.push(PROGRESS_COLS.map((col) => {
-    const isDone = col.flag ? text(d[col.flag]) === "Y" : !!d[col.dateKey];
-    return xc(isDone ? "Done" : "Pending", isDone ? "progressDone" : "progressPending");
+    const done = isDone(d, col);
+    return xc(done ? "Done" : "Pending", done ? "progressDone" : "progressPending");
   }));
 
-  const COL_WIDTHS = [18, 30, 3, 18, 30, 2, 2];
+  const COL_WIDTHS = [18, 30, 3, 18, 30, 12, 12];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
@@ -473,40 +528,44 @@ function buildExcelBuffer(d: ReportRow): Buffer {
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
   <sheetFormatPr defaultRowHeight="15"/>
   <cols>${colXml}</cols>
   <sheetData>${sheetDataXml}</sheetData>
   ${mergeXml}
+  <pageMargins left="0.4" right="0.4" top="0.4" bottom="0.4" header="0.3" footer="0.3"/>
+  <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="5">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E1B4B"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+  <fonts count="6">
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><b/><sz val="12"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><b/><sz val="9"/><color rgb="FF475569"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><sz val="10"/><color rgb="FF94A3B8"/><name val="Arial"/></font>
   </fonts>
   <fills count="6">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E1B4B"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF2FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFF0FDF4"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFCFDFE"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="4">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF312E81"/></left><right style="thin"><color rgb="FF312E81"/></right>
-      <top style="thin"><color rgb="FF312E81"/></top><bottom style="thin"><color rgb="FF312E81"/></bottom>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
-    <border><left/><right/><top/><bottom style="thin"><color rgb="FFC7D2FE"/></bottom><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFCBD5E1"/></bottom><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <left style="thin"><color rgb="FFE2E8F0"/></left><right style="thin"><color rgb="FFE2E8F0"/></right>
+      <top style="thin"><color rgb="FFE2E8F0"/></top><bottom style="thin"><color rgb="FFE2E8F0"/></bottom>
       <diagonal/>
     </border>
   </borders>
@@ -517,8 +576,8 @@ function buildExcelBuffer(d: ReportRow): Buffer {
     <xf numFmtId="0" fontId="2" fillId="3" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
     <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" vertical="top"/></xf>
     <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="4" borderId="3" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="5" borderId="3" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="4" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="5" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -563,9 +622,7 @@ function buildExcelBuffer(d: ReportRow): Buffer {
 
 /**
  * GET /api/wms/inbound/reports/job-details/:job_no
- *
- * Returns self-contained HTML for the Dialog iframe, built on the shared
- * reportCommon shell (company header + footer + print CSS).
+ * Returns self-contained HTML built on the shared report_common shell.
  */
 export const getWmsJobDetailsReportHtml = async (
   req: RequestWithUser,
@@ -593,9 +650,7 @@ export const getWmsJobDetailsReportHtml = async (
 
 /**
  * GET /api/wms/inbound/reports/job-details/:job_no/excel
- *
- * Streams a styled .xlsx using AdmZip — unchanged from before, since
- * reportCommon currently only covers HTML reports.
+ * Streams a styled .xlsx using AdmZip.
  */
 export const getWmsJobDetailsReportExcel = async (
   req: RequestWithUser,

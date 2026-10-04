@@ -158,7 +158,7 @@ async function loadOutboundActivityData(
   }
 }
 
-// ─── Extra CSS — Blue theme matching Adjustment Confirmation ─────────────────
+// ─── Extra CSS — freight palette ─────────────────────────────────────────────
 
 const SERVICE_ACTIVITY_EXTRA_CSS = `
   * {
@@ -177,18 +177,18 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
     margin: 0;
     font-size: 18px;
     font-weight: 800;
-    color: #0b4ca1;
+    color: #00378c;
   }
 
   .section-label {
     font-size: 9.5px;
     font-weight: 700;
-    color: #0b4ca1;
+    color: #00378c;
     text-transform: uppercase;
     letter-spacing: .08em;
     margin-bottom: 7px;
     padding-bottom: 4px;
-    border-bottom: 1.5px solid #0b4ca1;
+    border-bottom: 1.5px solid #00378c;
   }
 
   .field-row {
@@ -211,7 +211,7 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
   .f-value {
     font-size: 11px;
     font-weight: 600;
-    color: #0f172a;
+    color: #1e293b;
   }
   .nil { font-weight: 400; color: #94a3b8; }
   .two-col {
@@ -223,14 +223,14 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
 
   .box {
     background: #f8fafc;
-    border: 1px solid #e1e7ef;
-    border-left: 4px solid #0b4ca1;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #00378c;
     border-radius: 3px;
     padding: 10px 14px;
     margin-bottom: 14px;
   }
   .box .field-row {
-    border-bottom: 1px solid #e9eef5;
+    border-bottom: 1px solid #e2e8f0;
   }
   .box .f-label {
     min-width: 128px;
@@ -238,7 +238,7 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
   }
 
   .table-frame {
-    border: 1px solid #b8c4d2;
+    border: 1px solid #cbd5e1;
     border-radius: 3px;
     overflow: hidden;
   }
@@ -250,7 +250,7 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
     table-layout: fixed;
   }
   table.activity-table thead th {
-    background: #0b4ca1;
+    background: #00378c;
     color: #ffffff;
     padding: 7px 8px;
     font-size: 9.5px;
@@ -262,11 +262,11 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
   table.activity-table thead th.num { text-align: right; }
 
   table.activity-table tbody td {
-    border-bottom: 1px solid #e3e8ef;
-    border-right: 1px solid #e3e8ef;
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
     padding: 6px 8px;
     font-size: 10.5px;
-    color: #263445;
+    color: #1e293b;
     vertical-align: middle;
   }
   table.activity-table tbody td:last-child { border-right: 0; }
@@ -274,11 +274,11 @@ const SERVICE_ACTIVITY_EXTRA_CSS = `
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  table.activity-table tbody tr:nth-child(even) { background: #f8fafc; }
+  table.activity-table tbody tr:nth-child(even) { background: #fcfdfe; }
 
   .remarks-text {
     font-size: 11px;
-    color: #0f172a;
+    color: #1e293b;
     white-space: pre-wrap;
     min-height: 18px;
   }
@@ -371,7 +371,7 @@ function renderServiceActivityBody(rows: ReportRow[], reportTitle: string): stri
   `;
 }
 
-// ─── Excel Builder — blue theme via AdmZip ───────────────────────────────────
+// ─── Excel Builder ───────────────────────────────────────────────────────────
 
 const STYLE_ID = {
   default:      0,
@@ -400,11 +400,9 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   type Row = (XlCell | null)[];
   const xlRows: Row[] = [];
 
-  // Title banner
   xlRows.push([xc(`Outbound Activity Service Report — Job ${text(d.job_type)} ${text(d.job_no)}`, "header"), skip, skip, skip, skip, skip, skip]);
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // Job Information
   xlRows.push([xc("JOB INFORMATION", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
 
   const leftInfo: [string, unknown][] = [
@@ -425,7 +423,6 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
 
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // Activities
   xlRows.push([xc("ACTIVITIES", "sectionTitle"), skip, skip, skip, skip, skip, skip]);
   xlRows.push([
     xc("Code", "tableHeader"), xc("Description", "tableHeader"),
@@ -444,7 +441,6 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
 
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // Movement / Remarks
   xlRows.push([xc("MOVEMENT", "sectionTitle"), skip, skip, xc("REMARKS", "sectionTitle"), skip, skip, skip]);
 
   const movement: [string, unknown][] = [
@@ -460,13 +456,11 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
     xlRows.push([xc(ml, "label"), xc(mv, "value"), xc("", "default"), remarksCell, skip, skip, skip]);
   }
 
-  // Column widths
   const COL_WIDTHS = [18, 30, 3, 22, 22, 2, 2];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Merges
   const merges: string[] = [];
   xlRows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -520,34 +514,34 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
   ${mergeXml}
 </worksheet>`;
 
-  // Styles — blue theme
+  // ── Styles — freight palette (#00378c / #eaf0f8) ──
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="6">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FF64748B"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF1E293B"/><name val="Calibri"/></font>
     <font><b/><sz val="9"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
   </fonts>
   <fills count="5">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
     <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FF0B4CA1"/></left><right style="thin"><color rgb="FF0B4CA1"/></right>
-      <top style="thin"><color rgb="FF0B4CA1"/></top><bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <left style="thin"><color rgb="FFCBD5E1"/></left><right style="thin"><color rgb="FFCBD5E1"/></right>
+      <top style="thin"><color rgb="FFCBD5E1"/></top><bottom style="thin"><color rgb="FFCBD5E1"/></bottom>
       <diagonal/>
     </border>
   </borders>
@@ -605,12 +599,6 @@ function buildExcelBuffer(rows: ReportRow[]): Buffer {
 // ROUTE HANDLERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * GET /api/wms/outbound/reports/service-activity/:job_no
- *
- * Returns self-contained HTML via report_common (company header + footer).
- * Print is handled by postMessage("print").
- */
 export const getWmsOutboundServiceActivityReportHtml = async (
   req: RequestWithUser,
   res: Response,

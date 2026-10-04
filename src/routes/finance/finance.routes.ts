@@ -56,6 +56,11 @@ const router = express.Router();
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
+import { getFinanceDashboardData } from "../../controllers/finance/financeDashboard.controller";
+
+router.post("/dashboard", getFinanceDashboardData);
+router.post("/workspace/dashboard", getFinanceDashboardData);
+
 router.post(
   "/insUpdTnInvoiceBulk",
   passport.authenticate("jwt", { session: false }),

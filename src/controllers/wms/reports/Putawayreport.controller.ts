@@ -4,12 +4,12 @@ const AdmZip = require("adm-zip");
 import TenantManager from "../../../database/TenantManager";
 import { getCurrentTenantId } from "../../../middleware/tenantContext.middleware";
 import { RequestWithUser } from "../../../interfaces/common.interface";
-import { buildReportDocument, reportFooter, reportHeader } from "../../common/report_common";
-
-// ─── Shared report building blocks ─────────────────────────────────────────
-// Adjust this import path to wherever reportHeader / reportFooter /
-// buildReportDocument actually live in your project.
-
+import {
+  buildReportDocument,
+  reportAppliedFilters,
+  reportFooter,
+  reportHeader,
+} from "../../common/report_common";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,10 +62,31 @@ function text(value: unknown): string {
 }
 
 function dateText(value: unknown): string {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return String(value).substring(0, 10);
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function dateTimeText(value: unknown): string {
+  if (!value) return "\u2014";
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value);
+  return (
+    d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) +
+    " " +
+    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })
+  );
+}
+
+function elapsed(from: unknown, to: unknown): string {
+  const a = from ? new Date(String(from)).getTime() : NaN;
+  const b = to   ? new Date(String(to)).getTime()   : NaN;
+  if (Number.isNaN(a) || Number.isNaN(b) || b < a) return "\u2014";
+  const mins = Math.round((b - a) / 60000);
+  const hh = String(Math.floor(mins / 60)).padStart(2, "0");
+  const mm = String(mins % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
 }
 
 function escapeHtml(value: unknown): string {
@@ -82,17 +103,11 @@ function escapeXml(value: unknown): string {
 
 function numFmt(value: unknown, decimals = 3): string {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "\u2014";
   return n.toLocaleString("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-}
-
-/** Insert the postMessage("print") listener used by the report Dialog's toolbar. */
-function withPostMessagePrintListener(html: string): string {
-  const script = `<script>window.addEventListener("message",(e)=>{if(e.data==="print")window.print();});</script>`;
-  return html.includes("</body>") ? html.replace("</body>", `${script}</body>`) : html + script;
 }
 
 // ─── Data loader ──────────────────────────────────────────────────────────────
@@ -130,7 +145,7 @@ async function loadTallyData(
   }
 }
 
-// ─── Grouping ──────────────────────────────────────────────────────────────
+// ─── Grouping ─────────────────────────────────────────────────────────────────
 
 function groupRows(rows: ReportRow[]): UserGroup[] {
   const userMap: Record<string, {
@@ -171,159 +186,184 @@ function groupRows(rows: ReportRow[]): UserGroup[] {
   }));
 }
 
-// ─── Extra CSS specific to this report ─────────────────────────────────────
-// Landscape A4 + doc-title-row (Sales Invoice pattern) + info panel +
-// signature strip. The data table now uses the SHARED `.data-table` class
-// from report_common.ts, restyled here only with neutral grey banners +
-// blue accent (matching Sales Invoice), not the old solid-navy theme.
-// report_common.ts itself is never touched.
+// ─── Table columns (single header row so the frontend PDF widths line up) ────
+
+type ColAlign = "left" | "center" | "right";
+
+interface PutColumn { label: string; align: ColAlign; width: number } // width in %, sums to 100
+
+const PUT_COLUMNS: PutColumn[] = [
+  { label: "Site Ind",    align: "left",   width: 7  },
+  { label: "Lot No",      align: "left",   width: 11 },
+  { label: "Pallet Id",   align: "left",   width: 11 },
+  { label: "Mfg. Date",   align: "center", width: 9  },
+  { label: "Exp. Date",   align: "center", width: 9  },
+  { label: "Site",        align: "left",   width: 7  },
+  { label: "Location",    align: "left",   width: 12 },
+  { label: "Primary Qty", align: "right",  width: 11 },
+  { label: "UOM",         align: "left",   width: 6  },
+  { label: "Least Qty",   align: "right",  width: 11 },
+  { label: "UOM",         align: "left",   width: 6  },
+];
+
+const COL_COUNT  = PUT_COLUMNS.length; // 11
+const LABEL_SPAN = 7;                  // total-row label spans everything before Primary Qty
+
+// ─── Layout CSS – same look as the Enquiry List PDF ──────────────────────────
+// Works with the shared report_common (fontMode "native").
+// report_common's @media print block forces, with !important:
+//   • light-blue table header + blue text
+//   • #f8fafc background on every even <tr> in tbody (this would wash out the
+//     banner / total rows), light-blue .group-title, and a lighter title colour.
+// Everything below therefore uses !important on backgrounds/colours and is
+// injected AFTER the common CSS, so it wins.
 
 const TALLY_PUTAWAY_EXTRA_CSS = `
-  @page { size: A4 landscape; margin: 10mm 12mm; }
-  .paper { max-width: 277mm; }
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
 
-  /* ── Title row — same pattern as Sales Invoice ── */
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-  }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-    white-space: nowrap;
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  /* ── Info panel ── */
-  .info-panel {
+  /* Letterhead – navy rule under the header, Enquiry sizes */
+  .company-header {
+    border-bottom: 2px solid #00378c;
+    padding: 0 0 10px 0;
+    margin: 0 0 8px 0;
+  }
+  .company-name       { font-size: 18px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 11px; line-height: 1.4; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
+
+  /* Title + filter strip */
+  h1.report-title {
+    margin: 24px 0 14px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #00378c !important;
+  }
+  .applied-filters { font-size: 10px; margin-bottom: 18px; }
+
+  /* Section strip (Sign-off) */
+  .group-title {
+    background: #eaf0f8 !important;
+    color: #00378c !important;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 8px;
+    margin: 16px 0 4px 0;
+  }
+
+  /* Label / value grid (3 columns) */
+  .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 0;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    margin-bottom: 12px;
-    font-size: 10.5px;
+    gap: 0 28px;
+    margin: 0 0 14px 0;
   }
-  .info-col { padding: 10px 14px; border-right: 1px solid #e2e8f0; }
-  .info-col:last-child { border-right: none; }
-  .info-row { display: flex; align-items: baseline; padding: 3px 0; border-bottom: 1px solid #f1f5f9; }
-  .info-row:last-child { border-bottom: none; }
-  .info-label {
-    min-width: 100px; flex-shrink: 0; font-size: 9.5px; color: #6b7280;
-    font-weight: 600; text-align: right; padding-right: 8px; white-space: nowrap;
-  }
-  .info-value { font-size: 10.5px; font-weight: 700; color: #111827; }
-  .info-value.nil { font-weight: 400; color: #9ca3af; }
-
-  .time-col { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
-  .time-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .time-box { border: 1px dashed #94a3b8; border-radius: 3px; padding: 7px 10px; text-align: center; }
-  .time-box-label {
-    font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase;
-    letter-spacing: .05em; margin-bottom: 4px;
-  }
-  .time-box-value { font-size: 13px; font-weight: 700; color: #0b4ca1; font-variant-numeric: tabular-nums; }
-  .time-box.total { grid-column: 1 / -1; border-color: #0b4ca1; background: #eef4fc; }
-  .time-box.total .time-box-label { color: #0b4ca1; }
-
-  /* ── Grouped data table — SAME theme as Sales Invoice's .data-table ── */
-  table.data-table.putaway-table { table-layout: fixed; }
-  table.data-table.putaway-table col.c0  { width: 7%;  }
-  table.data-table.putaway-table col.c1  { width: 9%;  }
-  table.data-table.putaway-table col.c2  { width: 9%;  }
-  table.data-table.putaway-table col.c3  { width: 9%;  }
-  table.data-table.putaway-table col.c4  { width: 9%;  }
-  table.data-table.putaway-table col.c5  { width: 6%;  }
-  table.data-table.putaway-table col.c6  { width: 11%; }
-  table.data-table.putaway-table col.c7  { width: 9%;  }
-  table.data-table.putaway-table col.c8  { width: 5%;  }
-  table.data-table.putaway-table col.c9  { width: 9%;  }
-  table.data-table.putaway-table col.c10 { width: 5%;  }
-
-  table.data-table.putaway-table thead tr.th-sub th {
-    background: #f1f5f9; color: #0f172a; border-top: none;
-  }
-
-  tr.user-row td {
-    background: #0b4ca1; color: #fff; font-weight: 700;
-    font-size: 11px; padding: 5px 10px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  tr.prod-row td {
-    background: #eef4fc; color: #0b4ca1; font-weight: 700;
-    font-size: 11px; padding: 4px 10px 4px 22px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    border-bottom: 1px solid #dbe6f5;
-  }
-  tr.prod-total td {
-    background: #f8fafc; padding: 4px 10px; font-size: 11px;
-    font-weight: 700; color: #0f172a;
-    border-top: 1px solid #e2e8f0; white-space: nowrap;
-  }
-  tr.prod-total td.total-label { padding-left: 22px; }
-  tr.user-total td {
-    background: #eef4fc; padding: 5px 10px; font-size: 11px;
-    font-weight: 700; color: #0b4ca1; white-space: nowrap;
-  }
-  tr.grand-total td {
-    background: #0b4ca1; color: #fff; font-weight: 700;
-    font-size: 12px; padding: 8px 10px;
-    border-top: 2px solid #083a7d;
-  }
-
-  /* ── Signature strip ── */
-  .sig-strip {
-    margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 16px; border-top: 1.5px solid #e2e8f0; padding-top: 14px;
-  }
-  .sig-group { display: flex; flex-direction: column; gap: 8px; }
-  .sig-group-title {
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .08em; color: #0b4ca1; padding-bottom: 4px;
+  .field {
+    display: flex;
+    align-items: baseline;
+    min-height: 24px;
+    padding: 4px 6px;
     border-bottom: 1px solid #e2e8f0;
+    font-size: 10.5px;
+    line-height: 1.3;
   }
-  .sig-row { display: flex; align-items: flex-end; gap: 8px; }
-  .sig-label { font-size: 9.5px; color: #6b7280; font-weight: 600; min-width: 60px; flex-shrink: 0; padding-bottom: 2px; }
-  .sig-line { flex: 1; border-bottom: 1px solid #374151; min-height: 16px; }
-  .sig-box { border: 1px solid #94a3b8; border-radius: 3px; min-height: 52px; width: 100%; margin-top: 4px; }
-  .sig-group.supervisor .sig-row { margin-bottom: 10px; }
+  .field .label {
+    flex: 0 0 110px;
+    padding-right: 8px;
+    color: #475569;
+    font-weight: 700;
+  }
+  .field .label::after { content: ":"; }
+  .field--empty .label::after { content: ""; }
+  .field .value { color: #1e293b; overflow-wrap: anywhere; }
+
+  .filter-header {
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #00378c;
+  }
+
+  /* Data table */
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
+    border-collapse: collapse;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  table.data-table .left   { text-align: left   !important; }
+  table.data-table .center { text-align: center !important; }
+  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+
+  /* Header: solid navy bar, white bold text */
+  table.data-table thead tr th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 12px 8px;
+    border: 0 !important;
+    text-transform: none;
+  }
+
+  /* Section banners: User / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c !important; text-align: left; }
+  table.data-table tbody tr.user-row td { background: #eaf0f8 !important; font-size: 13px; padding: 11px 8px; }
+  table.data-table tbody tr.prod-row td { background: #f4f7fc !important; font-size: 10.5px; padding: 7px 8px 7px 16px; }
+
+  /* Data rows */
+  table.data-table tbody tr.data-row td {
+    background: #fafcfe !important;
+    font-size: 10.5px;
+    padding: 9px 8px;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #1e293b;
+  }
+
+  /* Totals – shaded, bold navy, right aligned */
+  table.data-table tbody tr.subtotal-row td {
+    background: #e2e8f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 8px 8px;
+  }
+  table.data-table tbody tr.grand-total-row td {
+    background: #dbe4f0 !important; color: #00378c !important; font-weight: 700; font-size: 10.5px; padding: 9px 8px;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
 
   @media print {
-    tr.user-row, tr.prod-row { break-after: avoid; page-break-after: avoid; }
-    tr.prod-total, tr.user-total, tr.grand-total { break-before: avoid; page-break-before: avoid; }
+    body::before { display: none !important; }
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
+    table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
+    table.data-table tr.subtotal-row,
+    table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
+    .info-grid   { break-inside: avoid; }
+    .group-title { break-after: avoid; }
+    .report-footer { font-size: 10px; }
   }
 `;
 
-// ─── HTML body renderer ─────────────────────────────────────────────────────
-// Builds only the *body* — reportHeader()/reportFooter()/buildReportDocument()
-// from reportCommon supply the company header, footer and page shell.
+// Lets the React parent page trigger printing through postMessage.
+const PRINT_LISTENER_SCRIPT = `
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data === "print") window.print();
+    });
+  </script>`;
 
-function printMetaHtml(title: string, subtitle: string, printDateTime: string): string {
-  return `
-    <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
-      </div>
-      <div class="print-meta">
-        Printed: ${escapeHtml(printDateTime)}
-      </div>
-    </div>`;
-}
+// ─── HTML body renderer ───────────────────────────────────────────────────────
 
 function renderBodyHtml(
   userGroups: UserGroup[],
@@ -332,254 +372,149 @@ function renderBodyHtml(
   prinCode: string,
   reportTitle: string
 ): string {
+  const r = firstRow || {};
+
   const grandPQty = userGroups.reduce((s, u) => s + u.totalPQty, 0);
   const grandLQty = userGroups.reduce((s, u) => s + u.totalLQty, 0);
 
-  const r = firstRow || {};
-
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
-  const allRows  = userGroups.flatMap((u) => u.products.flatMap((p) => p.rows));
+  const allRows    = userGroups.flatMap((u) => u.products.flatMap((p) => p.rows));
   const tallyStart = allRows.map((x) => x.start_tally_dt).filter(Boolean).sort()[0] ?? null;
   const tallyEnd   = allRows.map((x) => x.end_tally_dt).filter(Boolean).sort().reverse()[0] ?? null;
   const putStart   = allRows.map((x) => x.start_put_dt).filter(Boolean).sort()[0] ?? null;
   const putEnd     = allRows.map((x) => x.end_put_dt).filter(Boolean).sort().reverse()[0] ?? null;
 
-  function elapsed(from: unknown, to: unknown): string {
-    const a = from ? new Date(String(from)).getTime() : NaN;
-    const b = to   ? new Date(String(to)).getTime()   : NaN;
-    if (Number.isNaN(a) || Number.isNaN(b) || b < a) return "—";
-    const mins = Math.round((b - a) / 60000);
-    const hh = String(Math.floor(mins / 60)).padStart(2, "0");
-    const mm = String(mins % 60).padStart(2, "0");
-    return `${hh}:${mm}`;
-  }
-
   const tallyTime = elapsed(tallyStart, tallyEnd);
   const putTime   = elapsed(putStart, putEnd);
   const totalTime = elapsed(tallyStart, putEnd);
 
-  function dateTimeText(value: unknown): string {
-    if (!value) return "—";
-    const d = new Date(String(value));
-    if (Number.isNaN(d.getTime())) return String(value);
-    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-      + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
-  }
-
   const tallyUsers = [...new Set(allRows.map((x) => text(x.assigned_tally_user)).filter(Boolean))].join(", ");
   const pdaUsers   = [...new Set(allRows.map((x) => text(x.assigned_pda_user)).filter(Boolean))].join(", ");
 
+  const jobNoText    = text(r.job_no) || jobNo;
+  const prinCodeText = text(r.prin_code) || prinCode;
+  const prinText     = prinCodeText + (r.prin_name ? " - " + text(r.prin_name) : "");
+
+  const field = (label: string, value: unknown) =>
+    `<div class="field"><span class="label">${escapeHtml(label)}</span> <span class="value">${escapeHtml(text(value) || "\u2014")}</span></div>`;
+
+  const emptyField = `<div class="field field--empty"><span class="label"></span><span class="value"></span></div>`;
+  const col = (items: string[], n: number) =>
+    items.concat(Array(Math.max(0, n - items.length)).fill(emptyField)).join("");
+
+  const filtersHtml = reportAppliedFilters([
+    { label: "Job No",       value: jobNoText },
+    { label: "Principal",    value: prinCodeText },
+    { label: "Job Date",     value: dateText(r.job_date) },
+    { label: "Container No", value: text(r.container_no) || "\u2014" },
+  ]);
+
+  const infoLeft = [
+    field("Job No",          jobNoText),
+    field("Job Date",        dateText(r.job_date)),
+    field("Principal",       prinText),
+    field("Prin. Reference", r.prin_ref1),
+    field("Container No",    r.container_no),
+  ];
+  const infoMid = [
+    field("Tally Start",   dateTimeText(tallyStart)),
+    field("Tally End",     dateTimeText(tallyEnd)),
+    field("Putaway Start", dateTimeText(putStart)),
+    field("Putaway End",   dateTimeText(putEnd)),
+  ];
+  const infoRight = [
+    field("Tally Time",       tallyTime),
+    field("Putaway Time",     putTime),
+    field("Total Time Taken", totalTime),
+  ];
+
+  const totalRow = (cls: string, label: string, p: number, l: number) =>
+    `<tr class="${cls}">` +
+    `<td class="right" colspan="${LABEL_SPAN}">${label}</td>` +
+    `<td class="right num">${escapeHtml(numFmt(p))}</td>` +
+    `<td></td>` +
+    `<td class="right num">${escapeHtml(numFmt(l))}</td>` +
+    `<td></td>` +
+    `</tr>`;
+
+  const C = PUT_COLUMNS;
   let bodyRows = "";
 
   for (const ug of userGroups) {
-    bodyRows += `
-      <tr class="user-row">
-        <td colspan="11">User : ${escapeHtml(ug.userId)}</td>
-      </tr>`;
+    bodyRows += `<tr class="group-header-row user-row"><td colspan="${COL_COUNT}">User : ${escapeHtml(ug.userId)}</td></tr>`;
 
     for (const pg of ug.products) {
-      bodyRows += `
-        <tr class="prod-row">
-          <td colspan="11">${escapeHtml(pg.prodCode)} | ${escapeHtml(pg.prodName)}</td>
-        </tr>`;
+      const prodLabel = `${escapeHtml(pg.prodCode)}${pg.prodName ? " - " + escapeHtml(pg.prodName) : ""}`;
+      bodyRows += `<tr class="group-header-row prod-row"><td colspan="${COL_COUNT}">${prodLabel}</td></tr>`;
 
       for (const dr of pg.rows) {
-        bodyRows += `
-          <tr>
-            <td>${escapeHtml(dr.site_ind  || "—")}</td>
-            <td>${escapeHtml(dr.lot_no    || "—")}</td>
-            <td>${escapeHtml(dr.pallet_id || "—")}</td>
-            <td>${escapeHtml(dateText(dr.mfg_date))}</td>
-            <td>${escapeHtml(dateText(dr.exp_date))}</td>
-            <td>${escapeHtml(dr.site_code     || "—")}</td>
-            <td>${escapeHtml(dr.location_code || "—")}</td>
-            <td class="right">${escapeHtml(numFmt(dr.qty_puom))}</td>
-            <td>${escapeHtml(dr.p_uom || "—")}</td>
-            <td class="right">${escapeHtml(numFmt(dr.qty_luom))}</td>
-            <td>${escapeHtml(dr.l_uom || "—")}</td>
-          </tr>`;
+        bodyRows +=
+          `<tr class="data-row">` +
+          `<td class="${C[0].align}">${escapeHtml(dr.site_ind || "\u2014")}</td>` +
+          `<td class="${C[1].align}">${escapeHtml(dr.lot_no || "\u2014")}</td>` +
+          `<td class="${C[2].align}">${escapeHtml(dr.pallet_id || "\u2014")}</td>` +
+          `<td class="${C[3].align}">${escapeHtml(dateText(dr.mfg_date))}</td>` +
+          `<td class="${C[4].align}">${escapeHtml(dateText(dr.exp_date))}</td>` +
+          `<td class="${C[5].align}">${escapeHtml(dr.site_code || "\u2014")}</td>` +
+          `<td class="${C[6].align}">${escapeHtml(dr.location_code || "\u2014")}</td>` +
+          `<td class="${C[7].align} num">${escapeHtml(numFmt(dr.qty_puom))}</td>` +
+          `<td class="${C[8].align}">${escapeHtml(dr.p_uom || "\u2014")}</td>` +
+          `<td class="${C[9].align} num">${escapeHtml(numFmt(dr.qty_luom))}</td>` +
+          `<td class="${C[10].align}">${escapeHtml(dr.l_uom || "\u2014")}</td>` +
+          `</tr>`;
       }
-
-      bodyRows += `
-        <tr class="prod-total">
-          <td colspan="7" class="total-label">Product Total : ${escapeHtml(pg.prodCode)}</td>
-          <td class="right">${escapeHtml(numFmt(pg.totalPQty))}</td>
-          <td></td>
-          <td class="right">${escapeHtml(numFmt(pg.totalLQty))}</td>
-          <td></td>
-        </tr>`;
+      bodyRows += totalRow("subtotal-row", `Sub Total (${escapeHtml(pg.prodCode)}):`, pg.totalPQty, pg.totalLQty);
     }
-
-    bodyRows += `
-      <tr class="user-total">
-        <td colspan="7">User Total : ${escapeHtml(ug.userId)}</td>
-        <td class="right">${escapeHtml(numFmt(ug.totalPQty))}</td>
-        <td></td>
-        <td class="right">${escapeHtml(numFmt(ug.totalLQty))}</td>
-        <td></td>
-      </tr>`;
+    bodyRows += totalRow("subtotal-row", `Sub Total (User : ${escapeHtml(ug.userId)}):`, ug.totalPQty, ug.totalLQty);
   }
 
-  const grandRow = `
-    <tr class="grand-total">
-      <td colspan="7">Grand Total</td>
-      <td class="right">${escapeHtml(numFmt(grandPQty))}</td>
-      <td></td>
-      <td class="right">${escapeHtml(numFmt(grandLQty))}</td>
-      <td></td>
-    </tr>`;
+  bodyRows += totalRow("grand-total-row", `GRAND TOTAL (${allRows.length} Records):`, grandPQty, grandLQty);
+
+  const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
+  const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
+
+  const blankLine = "______________";
 
   return `
-    ${printMetaHtml(reportTitle, `Job No: ${text(r.job_no) || jobNo} — Principal: ${text(r.prin_code) || prinCode}`, printDateTime)}
+    <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+    ${filtersHtml}
 
-    <div class="info-panel">
-      <div class="info-col">
-        <div class="info-row">
-          <span class="info-label">Job No</span>
-          <span class="info-value">${escapeHtml(text(r.job_no) || jobNo)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Job Date</span>
-          <span class="info-value">${escapeHtml(dateText(r.job_date))}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Principal</span>
-          <span class="info-value">${escapeHtml(text(r.prin_code) || prinCode)}${r.prin_name ? `&nbsp;<span style="font-weight:400;color:#4b5563;">| ${escapeHtml(text(r.prin_name))}</span>` : ""}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Prin. Reference</span>
-          <span class="info-value${r.prin_ref1 ? "" : " nil"}">${r.prin_ref1 ? escapeHtml(text(r.prin_ref1)) : "—"}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Container No</span>
-          <span class="info-value${r.container_no ? "" : " nil"}">${r.container_no ? escapeHtml(text(r.container_no)) : "—"}</span>
-        </div>
-      </div>
-
-      <div class="info-col">
-        <div class="info-row">
-          <span class="info-label">Tally Start</span>
-          <span class="info-value${tallyStart ? "" : " nil"}">${escapeHtml(dateTimeText(tallyStart))}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Tally End</span>
-          <span class="info-value${tallyEnd ? "" : " nil"}">${escapeHtml(dateTimeText(tallyEnd))}</span>
-        </div>
-        <div class="info-row" style="margin-top:6px;">
-          <span class="info-label">Putaway Start</span>
-          <span class="info-value${putStart ? "" : " nil"}">${escapeHtml(dateTimeText(putStart))}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Putaway End</span>
-          <span class="info-value${putEnd ? "" : " nil"}">${escapeHtml(dateTimeText(putEnd))}</span>
-        </div>
-      </div>
-
-      <div class="time-col">
-        <div class="time-boxes">
-          <div class="time-box">
-            <div class="time-box-label">Tally Time</div>
-            <div class="time-box-value">${escapeHtml(tallyTime)}</div>
-          </div>
-          <div class="time-box">
-            <div class="time-box-label">Put. Time</div>
-            <div class="time-box-value">${escapeHtml(putTime)}</div>
-          </div>
-          <div class="time-box total">
-            <div class="time-box-label">Total Time Taken</div>
-            <div class="time-box-value">${escapeHtml(totalTime)}</div>
-          </div>
-        </div>
-      </div>
+    <div class="info-grid">
+      <div>${col(infoLeft, 5)}</div>
+      <div>${col(infoMid, 5)}</div>
+      <div>${col(infoRight, 5)}</div>
     </div>
 
-    <table class="data-table putaway-table">
-      <colgroup>
-        <col class="c0"/><col class="c1"/><col class="c2"/>
-        <col class="c3"/><col class="c4"/><col class="c5"/>
-        <col class="c6"/><col class="c7"/><col class="c8"/>
-        <col class="c9"/><col class="c10"/>
-      </colgroup>
-      <thead>
-        <tr class="th-group">
-          <th colspan="7" style="text-align:left;">Item Details</th>
-          <th colspan="2">Primary</th>
-          <th colspan="2">Least</th>
-        </tr>
-        <tr class="th-sub">
-          <th>Site Ind</th><th>Lot No</th><th>Pallet Id</th>
-          <th>Mfg. Date</th><th>Exp. Date</th>
-          <th>Site</th><th>Location</th>
-          <th class="right">Quantity</th><th>UOM</th>
-          <th class="right">Quantity</th><th>UOM</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${bodyRows}
-        ${grandRow}
-      </tbody>
+    <table class="data-table">
+      <colgroup>${colgroup}</colgroup>
+      <thead><tr>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
     </table>
 
-    <div class="sig-strip">
-      <div class="sig-group">
-        <div class="sig-group-title">Tally By</div>
-        <div class="sig-row">
-          <span class="sig-label">User</span>
-          <span class="sig-line" style="font-size:10px;font-weight:600;color:#111827;padding-bottom:2px;">${escapeHtml(tallyUsers) || "&nbsp;"}</span>
-        </div>
-        <div class="sig-row">
-          <span class="sig-label">Date</span>
-          <span class="sig-line">&nbsp;</span>
-        </div>
-        <div class="sig-row" style="align-items:flex-start;margin-top:4px;">
-          <span class="sig-label" style="padding-top:4px;">Signature</span>
-          <div class="sig-box"></div>
-        </div>
+    <div class="group-title">Sign-off</div>
+    <div class="info-grid">
+      <div>
+        <div class="filter-header">Tally By</div>
+        ${field("User",      tallyUsers)}
+        ${field("Date",      blankLine)}
+        ${field("Signature", blankLine)}
       </div>
-
-      <div class="sig-group">
-        <div class="sig-group-title">Put-Away By</div>
-        <div class="sig-row">
-          <span class="sig-label">User</span>
-          <span class="sig-line" style="font-size:10px;font-weight:600;color:#111827;padding-bottom:2px;">${escapeHtml(pdaUsers) || "&nbsp;"}</span>
-        </div>
-        <div class="sig-row">
-          <span class="sig-label">Date</span>
-          <span class="sig-line">&nbsp;</span>
-        </div>
-        <div class="sig-row" style="align-items:flex-start;margin-top:4px;">
-          <span class="sig-label" style="padding-top:4px;">Signature</span>
-          <div class="sig-box"></div>
-        </div>
+      <div>
+        <div class="filter-header">Put-Away By</div>
+        ${field("User",      pdaUsers)}
+        ${field("Date",      blankLine)}
+        ${field("Signature", blankLine)}
       </div>
-
-      <div class="sig-group supervisor">
-        <div class="sig-group-title">Supervisor</div>
-        <div class="sig-row">
-          <span class="sig-label">Name</span>
-          <span class="sig-line">&nbsp;</span>
-        </div>
-        <div class="sig-row">
-          <span class="sig-label">Date</span>
-          <span class="sig-line">&nbsp;</span>
-        </div>
-        <div class="sig-row">
-          <span class="sig-label">Signature</span>
-          <span class="sig-line">&nbsp;</span>
-        </div>
+      <div>
+        <div class="filter-header">Supervisor</div>
+        ${field("Name",      blankLine)}
+        ${field("Date",      blankLine)}
+        ${field("Signature", blankLine)}
       </div>
     </div>
+    ${PRINT_LISTENER_SCRIPT}
   `;
 }
 
-/**
- * Assembles the full document via buildReportDocument(), using the shared
- * company reportHeader() and reportFooter(). Kept async because reportHeader
- * hits the DB for company name / address / logo.
- */
 async function renderHtml(
   req: RequestWithUser,
   userGroups: UserGroup[],
@@ -592,44 +527,47 @@ async function renderHtml(
 ): Promise<string> {
   const headerHtml = await reportHeader({ company_code: text(req.user?.company_code), req });
   const bodyHtml   = renderBodyHtml(userGroups, firstRow, jobNo, prinCode, reportTitle);
+
+  // Same print stamp format as the Enquiry List (9/30/2026, 12:15:22 PM)
+  const printed = new Date().toLocaleString("en-US");
   const footerHtml = reportFooter({
-    reportName: reportTitle,
-    userName: loginId,
-    extraLeft: `Object: ${escapeHtml(jobNo)}`,
+    reportName: "Tally & Putaway Detail",
+    userName:   loginId,
+    endLabel:   "Powered by Bayanat Technology",
+    extraLeft:  `Print: ${escapeHtml(printed)}${loginId ? ` | User: ${escapeHtml(loginId)}` : ""}`,
   });
 
-  const html = buildReportDocument({
+  return buildReportDocument({
     title: `${reportTitle} - ${jobNo}`,
     headerHtml,
     bodyHtml,
     footerHtml,
     extraCss: TALLY_PUTAWAY_EXTRA_CSS,
     autoPrint,
-    showPrintButton: !autoPrint,
+    showPrintButton: true,
+    fontMode: "native",
   });
-
-  return withPostMessagePrintListener(html);
 }
 
-// ─── Excel builder ─────────────────────────────────────────────────────────────
-// Unchanged structurally — colors harmonized to the shared blue (#0B4CA1)
-// theme. AdmZip-based xlsx generation has no shared equivalent yet.
+// ─── Excel builder ────────────────────────────────────────────────────────────
+// Same palette / Arial font as the DN Summary Excel.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
-  default:         0,
-  header:          1,  // white text, blue bg, centered
-  sectionUser:     2,  // white text, blue bg
-  sectionProduct:  3,  // blue text, light-blue bg
-  label:           4,  // gray, right-aligned
-  value:           5,  // dark bold, wrapping
-  totalProduct:    6,  // blue text, light-blue bg
-  totalUser:       7,  // blue text, mid-blue-tint bg
-  totalGrand:      8,  // white text, blue bg, bold
-  numValue:        9,  // dark bold, right-aligned
-  numTotal:       10,  // blue bold, right-aligned, light-blue bg
-  numGrand:       11,  // white bold, right-aligned, blue bg
-  reportTitle:    12,  // big centered white-on-blue title row
+  default:      0,
+  header:       1,   // white on #00378c, centered
+  title:        2,   // blue bold 14, no fill
+  meta:         3,   // grey on #f8fafc
+  secUser:      4,   // blue bold on #eaf0f8
+  secProduct:   5,   // blue bold on #f4f7fc
+  data:         6,   // left, light bottom border
+  dataCenter:   7,   // centered, light bottom border
+  dataNum:      8,   // right, #,##0.000
+  subTotal:     9,   // #f1f5f9, blue bold, right
+  subTotalNum: 10,   // same + #,##0.000
+  grandTotal:  11,   // #e2e8f0, blue bold, right
+  grandTotalNum: 12, // same + #,##0.000
+  footer:      13,   // italic grey, right
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -640,96 +578,97 @@ function xc(v: unknown, style: StyleKey): XlCell {
   return { v, s: STYLE_ID[style] };
 }
 
-function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: string, reportTitle: string): Buffer {
-  const NCOLS = 11;
+function buildExcelBuffer(
+  userGroups: UserGroup[],
+  firstRow: ReportRow | null,
+  jobNo: string,
+  prinCode: string,
+  reportTitle: string
+): Buffer {
+  const NCOLS = COL_COUNT;
+  const skip  = null;
+  const r     = firstRow || {};
 
   type Row = (XlCell | null)[];
-  const skip = null;
   const rows: Row[] = [];
 
-  rows.push([
-    xc(`${reportTitle} — Job ${jobNo} / ${prinCode}`, "reportTitle"),
-    skip, skip, skip, skip, skip, skip, skip, skip, skip, skip,
-  ]);
+  const spanRow = (label: string, style: StyleKey) => {
+    const row: Row = Array(NCOLS).fill(skip);
+    row[0] = xc(label, style);
+    rows.push(row);
+  };
 
-  rows.push(Array(NCOLS).fill(skip));
+  // total row: label merged across first 7 cols, then Primary Qty / UOM / Least Qty / UOM
+  const totalRow = (label: string, p: number, l: number, lvl: "subTotal" | "grandTotal") => {
+    const row: Row = Array(NCOLS).fill(skip);
+    row[0]  = xc(label, lvl);
+    row[7]  = xc(p, `${lvl}Num` as StyleKey);
+    row[8]  = xc("", lvl);
+    row[9]  = xc(l, `${lvl}Num` as StyleKey);
+    row[10] = xc("", lvl);
+    rows.push(row);
+  };
 
-  rows.push([
-    xc("Site Ind",   "header"),
-    xc("Lot No",     "header"),
-    xc("Pallet Id",  "header"),
-    xc("Mfg. Date",  "header"),
-    xc("Exp. Date",  "header"),
-    xc("Site",       "header"),
-    xc("Location",   "header"),
-    xc("Primary Qty","header"),
-    xc("PUOM",       "header"),
-    xc("Least Qty",  "header"),
-    xc("LUOM",       "header"),
-  ]);
+  const allRows    = userGroups.flatMap((u) => u.products.flatMap((p) => p.rows));
+  const tallyStart = allRows.map((x) => x.start_tally_dt).filter(Boolean).sort()[0] ?? null;
+  const tallyEnd   = allRows.map((x) => x.end_tally_dt).filter(Boolean).sort().reverse()[0] ?? null;
+  const putStart   = allRows.map((x) => x.start_put_dt).filter(Boolean).sort()[0] ?? null;
+  const putEnd     = allRows.map((x) => x.end_put_dt).filter(Boolean).sort().reverse()[0] ?? null;
+
+  spanRow(reportTitle, "title");
+  spanRow(
+    `Applied Filters: Job No: ${text(r.job_no) || jobNo} | Principal: ${text(r.prin_code) || prinCode} | Job Date: ${dateText(r.job_date)} | Container No: ${text(r.container_no) || "\u2014"}`,
+    "meta"
+  );
+  spanRow(
+    `Tally: ${dateTimeText(tallyStart)} to ${dateTimeText(tallyEnd)} (${elapsed(tallyStart, tallyEnd)}) | Putaway: ${dateTimeText(putStart)} to ${dateTimeText(putEnd)} (${elapsed(putStart, putEnd)}) | Total Time: ${elapsed(tallyStart, putEnd)}`,
+    "meta"
+  );
+
+  rows.push(PUT_COLUMNS.map((c) => xc(c.label, "header")));
 
   for (const ug of userGroups) {
-    rows.push([xc(`User : ${ug.userId}`, "sectionUser"), skip, skip, skip, skip, skip, skip, skip, skip, skip, skip]);
+    spanRow(`User : ${ug.userId}`, "secUser");
 
     for (const pg of ug.products) {
-      rows.push([xc(`${pg.prodCode} | ${pg.prodName}`, "sectionProduct"), skip, skip, skip, skip, skip, skip, skip, skip, skip, skip]);
+      spanRow(pg.prodCode + (pg.prodName ? " - " + pg.prodName : ""), "secProduct");
 
-      for (const r of pg.rows) {
+      for (const dr of pg.rows) {
         rows.push([
-          xc(text(r.site_ind)      || "—", "value"),
-          xc(text(r.lot_no)        || "—", "value"),
-          xc(text(r.pallet_id)     || "—", "value"),
-          xc(dateText(r.mfg_date),          "value"),
-          xc(dateText(r.exp_date),          "value"),
-          xc(text(r.site_code)     || "—", "value"),
-          xc(text(r.location_code) || "—", "value"),
-          xc(parseFloat(String(r.qty_puom)) || 0, "numValue"),
-          xc(text(r.p_uom) || "—",             "value"),
-          xc(parseFloat(String(r.qty_luom)) || 0, "numValue"),
-          xc(text(r.l_uom) || "—",             "value"),
+          xc(text(dr.site_ind)  || "\u2014", "data"),
+          xc(text(dr.lot_no)    || "\u2014", "data"),
+          xc(text(dr.pallet_id) || "\u2014", "data"),
+          xc(dateText(dr.mfg_date),          "dataCenter"),
+          xc(dateText(dr.exp_date),          "dataCenter"),
+          xc(text(dr.site_code)     || "\u2014", "data"),
+          xc(text(dr.location_code) || "\u2014", "data"),
+          xc(parseFloat(String(dr.qty_puom)) || 0, "dataNum"),
+          xc(text(dr.p_uom) || "\u2014", "data"),
+          xc(parseFloat(String(dr.qty_luom)) || 0, "dataNum"),
+          xc(text(dr.l_uom) || "\u2014", "data"),
         ]);
       }
-
-      rows.push([
-        xc(`Product Total : ${pg.prodCode}`, "totalProduct"),
-        skip, skip, skip, skip, skip,
-        xc("", "totalProduct"),
-        xc(pg.totalPQty, "numTotal"),
-        xc("", "totalProduct"),
-        xc(pg.totalLQty, "numTotal"),
-        xc("", "totalProduct"),
-      ]);
+      totalRow(`Sub Total (${pg.prodCode}):`, pg.totalPQty, pg.totalLQty, "subTotal");
     }
-
-    rows.push([
-      xc(`User Total : ${ug.userId}`, "totalUser"),
-      skip, skip, skip, skip, skip,
-      xc("", "totalUser"),
-      xc(ug.totalPQty, "numTotal"),
-      xc("", "totalUser"),
-      xc(ug.totalLQty, "numTotal"),
-      xc("", "totalUser"),
-    ]);
+    totalRow(`Sub Total (User : ${ug.userId}):`, ug.totalPQty, ug.totalLQty, "subTotal");
   }
 
   const grandPQty = userGroups.reduce((s, u) => s + u.totalPQty, 0);
   const grandLQty = userGroups.reduce((s, u) => s + u.totalLQty, 0);
-  rows.push([
-    xc("Grand Total", "totalGrand"),
-    skip, skip, skip, skip, skip,
-    xc("", "totalGrand"),
-    xc(grandPQty, "numGrand"),
-    xc("", "totalGrand"),
-    xc(grandLQty, "numGrand"),
-    xc("", "totalGrand"),
-  ]);
+  totalRow(`GRAND TOTAL (${allRows.length} Records):`, grandPQty, grandLQty, "grandTotal");
 
-  const COL_WIDTHS = [12, 18, 18, 13, 13, 10, 20, 14, 8, 14, 8];
+  {
+    const row: Row = Array(NCOLS).fill(skip);
+    row[6] = xc("Powered by Bayanat Technology", "footer");
+    rows.push(row);
+  }
 
+  const COL_WIDTHS = [11, 18, 18, 13, 13, 10, 18, 14, 8, 14, 8];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
+  // merge each run of "value followed by nulls" into one merged range
   const merges: string[] = [];
   rows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -754,8 +693,8 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
 
   let sheetDataXml = "";
   rows.forEach((row, ri) => {
-    const rn  = ri + 1;
-    const ht  = rn === 1 ? ` ht="26" customHeight="1"` : "";
+    const rn = ri + 1;
+    const ht = rn === 1 ? ` ht="24" customHeight="1"` : "";
     let rowXml = `<row r="${rn}"${ht}>`;
     row.forEach((cell, ci) => {
       if (cell === null) return;
@@ -777,87 +716,64 @@ function buildExcelBuffer(userGroups: UserGroup[], jobNo: string, prinCode: stri
   const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
   <sheetFormatPr defaultRowHeight="15"/>
   <cols>${colXml}</cols>
   <sheetData>${sheetDataXml}</sheetData>
   ${mergeXml}
+  <pageMargins left="0.4" right="0.4" top="0.4" bottom="0.4" header="0.3" footer="0.3"/>
+  <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.000"/></numFmts>
   <fonts count="7">
-    <font><sz val="10"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0B4CA1"/><name val="Calibri"/></font>
-    <font><b/><sz val="9"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
-    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="16"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font>
+    <font><b/><sz val="14"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><sz val="9"/><color rgb="FF475569"/><name val="Arial"/></font>
+    <font><b/><sz val="11"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Arial"/></font>
+    <font><i/><sz val="8"/><color rgb="FF64748B"/><name val="Arial"/></font>
   </fonts>
-  <fills count="6">
+  <fills count="8">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF0B4CA1"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEEF4FC"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFDBE6F5"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEAF0F8"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF4F7FC"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
-  <borders count="3">
+  <borders count="5">
     <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border>
+    <border><left/><right/><top style="thin"><color rgb="FFCBD5E1"/></top><bottom/><diagonal/></border>
+    <border><left/><right/><top style="thin"><color rgb="FF00378C"/></top><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left>
-      <right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top>
-      <bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
-      <diagonal/>
-    </border>
-    <border>
-      <left style="thin"><color rgb="FF0B4CA1"/></left>
-      <right style="thin"><color rgb="FF0B4CA1"/></right>
-      <top style="thin"><color rgb="FF0B4CA1"/></top>
-      <bottom style="thin"><color rgb="FF0B4CA1"/></bottom>
+      <left style="thin"><color rgb="FF00378C"/></left><right style="thin"><color rgb="FF00378C"/></right>
+      <top style="thin"><color rgb="FF00378C"/></top><bottom style="thin"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="13">
+  <cellXfs count="14">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
-      <alignment horizontal="right" vertical="top"/>
-    </xf>
-    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="top" wrapText="1"/>
-    </xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="2" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="right" vertical="top"/>
-    </xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="right" vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="5" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="right" vertical="center"/>
-    </xf>
-    <xf numFmtId="0" fontId="6" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
-      <alignment horizontal="center" vertical="center"/>
-    </xf>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="4" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="5" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="6" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="5" fillId="6" borderId="2" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="7" borderId="3" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="5" fillId="7" borderId="3" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right"/></xf>
   </cellXfs>
   <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
@@ -961,8 +877,8 @@ export const getTallyPutawayReportExcel = async (
   res: Response
 ): Promise<void> => {
   try {
-    const jobNo    = text(req.params.job_no  || req.query.job_no);
-    const prinCode = text(req.query.prin_code || req.params.prin_code);
+    const jobNo       = text(req.params.job_no  || req.query.job_no);
+    const prinCode    = text(req.query.prin_code || req.params.prin_code);
     const reportTitle = text(req.query.title) || "Putaway Detail Report";
 
     if (!jobNo || !prinCode) {
@@ -972,7 +888,7 @@ export const getTallyPutawayReportExcel = async (
 
     const rows       = await loadTallyData(req, jobNo, prinCode);
     const userGroups = groupRows(rows);
-    const buffer     = buildExcelBuffer(userGroups, jobNo, prinCode, reportTitle);
+    const buffer     = buildExcelBuffer(userGroups, rows[0] ?? null, jobNo, prinCode, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Putaway_${jobNo}.xlsx"`);

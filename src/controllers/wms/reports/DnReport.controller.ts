@@ -48,7 +48,6 @@ function text(value: unknown): string {
 function dateText(value: unknown): string {
   if (!value) return "—";
   const s = String(value);
-  // already formatted string like "31-12-2025"
   if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return s.substring(0, 10);
@@ -76,11 +75,6 @@ function numFmt(value: unknown, decimals = 3): string {
   });
 }
 
-/**
- * Format quantity cell:
- * Always show: QTY_PUOM P_UOM
- * Conditionally append: / QTY_LUOM L_UOM  (only when qty_luom != 0 and not null)
- */
 function fmtQtyCell(
   qtyPuom: number, pUom: string,
   qtyLuom: number | null, lUom: string
@@ -94,8 +88,8 @@ function fmtQtyCell(
 // ─── Totals accumulator ───────────────────────────────────────────────────────
 
 interface QtyTotals {
-  puom: Record<string, number>;  // keyed by P_UOM
-  luom: Record<string, number>;  // keyed by L_UOM (only when qty > 0)
+  puom: Record<string, number>;
+  luom: Record<string, number>;
 }
 
 function emptyTotals(): QtyTotals { return { puom: {}, luom: {} }; }
@@ -148,7 +142,7 @@ async function loadDnData(
   }
 }
 
-// ─── Delivery Note-only CSS (extraCss for buildReportDocument) ────────────────
+// ─── Delivery Note-only CSS — freight palette ─────────────────────────────────
 
 const DN_EXTRA_CSS = `
   /* No @page/body margins — from report_common COMMON_REPORT_CSS */
@@ -158,18 +152,18 @@ const DN_EXTRA_CSS = `
     margin: 4px 0 12px 0;
   }
   .doc-title-row h1 {
-    margin: 0; font-size: 18px; font-weight: 800; color: #0b4ca1;
+    margin: 0; font-size: 18px; font-weight: 800; color: #00378c;
   }
 
   .doc-header {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px;
-    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #0b4ca1;
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid #00378c;
   }
   .hdr-col { display: flex; flex-direction: column; gap: 2px; }
   .hdr-row { display: flex; align-items: baseline; line-height: 1.8; }
   .hdr-label { font-size: 10.5px; color: #64748b; white-space: nowrap; min-width: 120px; }
   .hdr-sep  { font-size: 10.5px; color: #94a3b8; margin-right: 6px; }
-  .hdr-value { font-size: 11px; font-weight: 700; color: #0f172a; }
+  .hdr-value { font-size: 11px; font-weight: 700; color: #1e293b; }
   .hdr-value.nil { font-weight: 400; color: #cbd5e1; }
 
   table.rpt-table {
@@ -180,23 +174,23 @@ const DN_EXTRA_CSS = `
   col.c-qty { width: 20%; } col.c-vol { width: 9%; } col.c-wt { width: 9%; }
 
   table.rpt-table thead th {
-    background: #f1f5f9; color: #0f172a; font-size: 10px; font-weight: 700;
-    padding: 6px 5px; border-top: 1px solid #475569; border-bottom: 1px solid #475569;
+    background: #00378c; color: #ffffff; font-size: 10px; font-weight: 700;
+    padding: 6px 5px; border-top: 1px solid #00378c; border-bottom: 1px solid #00378c;
     text-align: center; white-space: nowrap;
   }
   thead th:first-child { text-align: left; }
 
   tbody tr.data-row td {
-    padding: 5px 8px; border-bottom: 1px solid #e2e8f0; color: #0f172a;
+    padding: 5px 8px; border-bottom: 1px solid #e2e8f0; color: #1e293b;
     font-size: 11px; vertical-align: top;
   }
-  tbody tr.data-row:nth-child(even) td { background: #f8fafc; }
+  tbody tr.data-row:nth-child(even) td { background: #fcfdfe; }
   .td-prod { line-height: 1.5; }
-  .prod-code { font-weight: 700; color: #0b4ca1; }
+  .prod-code { font-weight: 700; color: #00378c; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
   tr.total-row td {
-    background: #0b4ca1; color: #fff; font-weight: 700; font-size: 11px; padding: 7px 10px;
+    background: #00378c; color: #ffffff; font-weight: 700; font-size: 11px; padding: 7px 10px;
   }
   tr.total-row .total-label { text-align: right; letter-spacing: .04em; }
 
@@ -220,16 +214,15 @@ const DN_EXTRA_CSS = `
   }
 `;
 
-// ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
+// ─── HTML Body Renderer ───────────────────────────────────────────────────────
 
 function renderDnBody(
   rows:        ReportRow[],
   jobNo:       string,
   reportTitle: string
 ): string {
-  const h = rows[0] || {};   // header fields come from first row
+  const h = rows[0] || {};
 
-  // ── Totals ────────────────────────────────────────────────────────────────
   const totals   = emptyTotals();
   let   totVol   = 0;
   let   totNetWt = 0;
@@ -239,7 +232,6 @@ function renderDnBody(
     totNetWt += parseFloat(String(r.net_wt))  || 0;
   }
 
-  // ── Table body rows ───────────────────────────────────────────────────────
   let bodyRows = "";
   for (const r of rows) {
     const qtyP   = parseFloat(String(r.qty_puom)) || 0;
@@ -260,7 +252,6 @@ function renderDnBody(
       </tr>`;
   }
 
-  // ── Total row ─────────────────────────────────────────────────────────────
   const totalRow = `
     <tr class="total-row">
       <td colspan="3" class="total-label">Total</td>
@@ -269,7 +260,6 @@ function renderDnBody(
       <td class="num">${escapeHtml(numFmt(totNetWt, 3))}</td>
     </tr>`;
 
-  // ── Helper: render one header field ──────────────────────────────────────
   const hf = (label: string, val: unknown) => {
     const v = text(val);
     return `
@@ -285,7 +275,6 @@ function renderDnBody(
       <div><h1>${escapeHtml(reportTitle)}</h1></div>
     </div>
 
-    <!-- ── Document header (flat label : value, no box) ── -->
     <div class="doc-header">
       <div class="hdr-col">
         ${hf("Customer Code",  h.cust_code)}
@@ -303,9 +292,8 @@ function renderDnBody(
         ${hf("Load Start",     h.load_start)}
         ${hf("Load End",       h.load_end)}
       </div>
-    </div><!-- /doc-header -->
+    </div>
 
-    <!-- ── Line items table ── -->
     <table class="rpt-table">
       <colgroup>
         <col class="c-prod"/> <col class="c-batch"/>
@@ -328,7 +316,6 @@ function renderDnBody(
       </tbody>
     </table>
 
-    <!-- ── Signature block ── -->
     <div class="sig-block">
       <div class="sig-col">
         <div class="sig-line"><span class="sig-label">DN Issued By (Name &amp; Signature)</span><span class="sig-sep"> : </span><span class="sig-dots"></span></div>
@@ -344,13 +331,11 @@ function renderDnBody(
       </div>
     </div>
 
-    <!-- ── Legal notice ── -->
     <div class="legal-notice">
       THE PRODUCTS MENTIONED IN THIS DELIVERY NOTE HAS BEEN RECEIVED IN GOOD CONDITION AND AS PER DETAILS MENTIONED ABOVE
     </div>
 
     <script>
-      // Print button in the Dialog toolbar fires this via postMessage
       window.addEventListener("message", (e) => {
         if (e.data === "print") window.print();
       });
@@ -362,15 +347,15 @@ function renderDnBody(
 
 const STYLE_ID = {
   default:      0,
-  header:       1,   // dark blue bg, white bold – title / col headers
-  hdrLeft:      2,   // dark blue bg, white bold – left-aligned col header
-  label:        3,   // grey text, right-align
-  value:        4,   // dark bold
-  dataCell:     5,   // normal data cell with thin border
-  numCell:      6,   // right-aligned data cell
-  totalLabel:   7,   // dark blue bg, white, right-aligned
-  totalNum:     8,   // dark blue bg, white, right-aligned, numeric
-  sectionMeta:  9,   // light grey bg for doc-info rows
+  header:       1,
+  hdrLeft:      2,
+  label:        3,
+  value:        4,
+  dataCell:     5,
+  numCell:      6,
+  totalLabel:   7,
+  totalNum:     8,
+  sectionMeta:  9,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -392,11 +377,9 @@ function buildExcelBuffer(
 
   const h = rows[0] || {};
 
-  // ── Title ────────────────────────────────────────────────────────────────
   xlRows.push([xc(`Delivery Note — Job ${jobNo} / Principal ${prinCode}`, "header"), ...Array(NCOLS - 1).fill(skip)]);
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // ── Doc-info block: two logical columns, each label+value pair ───────────
   const metaRows: [string, unknown, string, unknown][] = [
     ["Customer Code", h.cust_code,  "Job No",      h.job_no    || jobNo],
     ["Customer Name", h.cust_name,  "DN No",       h.dn_no],
@@ -406,7 +389,6 @@ function buildExcelBuffer(
     ["Goods Temp",    h.goods_temp, "Load End",    h.load_end],
   ];
 
-  // Each doc-info row uses columns A(label) B(value) | D(label) E(value); C & F blank
   for (const [lbl1, val1, lbl2, val2] of metaRows) {
     xlRows.push([
       xc(lbl1,          "label"),
@@ -420,7 +402,6 @@ function buildExcelBuffer(
 
   xlRows.push(Array(NCOLS).fill(skip));
 
-  // ── Column headers ────────────────────────────────────────────────────────
   xlRows.push([
     xc("Product",   "hdrLeft"),
     xc("Batch No",  "header"),
@@ -430,7 +411,6 @@ function buildExcelBuffer(
     xc("Weight",    "header"),
   ]);
 
-  // ── Data rows ─────────────────────────────────────────────────────────────
   const totals   = emptyTotals();
   let   totVol   = 0;
   let   totNetWt = 0;
@@ -459,7 +439,6 @@ function buildExcelBuffer(
     ]);
   }
 
-  // ── Total row ─────────────────────────────────────────────────────────────
   xlRows.push([
     xc("Total", "totalLabel"),
     skip,
@@ -469,13 +448,11 @@ function buildExcelBuffer(
     xc(numFmt(totNetWt, 3),  "totalNum"),
   ]);
 
-  // ── Build XML ─────────────────────────────────────────────────────────────
   const COL_WIDTHS = [42, 16, 14, 28, 12, 12];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
 
-  // Detect spans (consecutive nulls after a non-null cell)
   const merges: string[] = [];
   xlRows.forEach((row, ri) => {
     const rn = ri + 1;
@@ -523,76 +500,66 @@ function buildExcelBuffer(
   ${mergeXml}
 </worksheet>`;
 
-  // ── Styles ────────────────────────────────────────────────────────────────
+  // ── Styles — recolored to freight palette (#00378c / #eaf0f8) ──
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="5">
     <font><sz val="10"/><name val="Calibri"/></font>
     <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF1E3A5F"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF00378C"/><name val="Calibri"/></font>
     <font><sz val="10"/><color rgb="FF6B7280"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF111827"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF1E293B"/><name val="Calibri"/></font>
   </fonts>
   <fills count="4">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF00378C"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
   </fills>
   <borders count="3">
     <border><left/><right/><top/><bottom/><diagonal/></border>
     <border>
-      <left style="thin"><color rgb="FFD1D5DB"/></left>
-      <right style="thin"><color rgb="FFD1D5DB"/></right>
-      <top style="thin"><color rgb="FFD1D5DB"/></top>
-      <bottom style="thin"><color rgb="FFD1D5DB"/></bottom>
+      <left style="thin"><color rgb="FFCBD5E1"/></left>
+      <right style="thin"><color rgb="FFCBD5E1"/></right>
+      <top style="thin"><color rgb="FFCBD5E1"/></top>
+      <bottom style="thin"><color rgb="FFCBD5E1"/></bottom>
       <diagonal/>
     </border>
     <border>
-      <left style="medium"><color rgb="FF1E3A5F"/></left>
-      <right style="medium"><color rgb="FF1E3A5F"/></right>
-      <top style="medium"><color rgb="FF1E3A5F"/></top>
-      <bottom style="medium"><color rgb="FF1E3A5F"/></bottom>
+      <left style="medium"><color rgb="FF00378C"/></left>
+      <right style="medium"><color rgb="FF00378C"/></right>
+      <top style="medium"><color rgb="FF00378C"/></top>
+      <bottom style="medium"><color rgb="FF00378C"/></bottom>
       <diagonal/>
     </border>
   </borders>
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="10">
-    <!-- 0: default -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-    <!-- 1: header – dark bg, white bold, centre -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="center" vertical="center"/>
     </xf>
-    <!-- 2: hdrLeft – dark bg, white bold, left -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="left" vertical="center"/>
     </xf>
-    <!-- 3: label – grey text, right-align -->
     <xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
-    <!-- 4: value – dark bold -->
     <xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">
       <alignment horizontal="left" vertical="center"/>
     </xf>
-    <!-- 5: dataCell – normal with border -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
       <alignment vertical="top" wrapText="1"/>
     </xf>
-    <!-- 6: numCell – right-aligned with border -->
     <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="top" wrapText="1"/>
     </xf>
-    <!-- 7: totalLabel – dark bg, white, right-aligned -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center"/>
     </xf>
-    <!-- 8: totalNum – dark bg, white, right-aligned -->
     <xf numFmtId="0" fontId="1" fillId="2" borderId="2" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1">
       <alignment horizontal="right" vertical="center" wrapText="1"/>
     </xf>
-    <!-- 9: sectionMeta – light grey bg -->
     <xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
       <alignment vertical="center"/>
     </xf>
@@ -651,12 +618,6 @@ function colLetter(index: number): string {
 
 // ─── Route handlers ───────────────────────────────────────────────────────────
 
-/**
- * GET /api/wms/outbound/reports/dn/:job_no
- *
- * Returns self-contained HTML for the Dialog iframe via report_common
- * (company header + footer). Print is handled by postMessage("print").
- */
 export const getDnReportHtml = async (
   req: RequestWithUser,
   res: Response

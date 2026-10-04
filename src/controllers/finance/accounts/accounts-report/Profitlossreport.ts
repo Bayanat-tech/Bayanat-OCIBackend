@@ -697,7 +697,6 @@ function sendExcel(res: Response, buffer: Buffer, filename: string) {
 }
 
 // ─── Route: HTML ──────────────────────────────────────────────────────────────
-
 export const getProfitLossReportHtml = async (
   req: RequestWithUser,
   res: Response
@@ -708,15 +707,12 @@ export const getProfitLossReportHtml = async (
     conn = await getConn(req);
     const rawRows = await loadPnlRows(conn, companyCode, fromDate, toDate, divisionCode);
 
-    if (!rawRows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-      return;
-    }
-
     const groups = groupByHeader(rawRows);
     const userName = req.user?.loginid ?? "";
 
     const headerHtml = await reportHeader({ company_code: companyCode, req });
+
+    // Always render HTML — empty state is handled inside renderPnlBody
     const bodyHtml = renderPnlBody(groups, {
       companyCode,
       fromDate,
@@ -724,6 +720,7 @@ export const getProfitLossReportHtml = async (
       divisionCode,
       loginId: userName,
     });
+
     const footerHtml = reportFooter({
       reportName: "Profit & Loss Report",
       userName,
@@ -736,14 +733,17 @@ export const getProfitLossReportHtml = async (
       bodyHtml,
       footerHtml,
       extraCss: PNL_EXTRA_CSS,
-      autoPrint: req.query.print !== "false",
+      autoPrint: req.query.print === "true",  // only auto-print when explicitly requested    
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
     console.error("P&L HTML error:", error);
-    res.status(error.status || 500).json({ success: false, message: error.message || "Unable to generate report" });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Unable to generate report",
+    });
   } finally {
     await closeConn(conn);
   }
