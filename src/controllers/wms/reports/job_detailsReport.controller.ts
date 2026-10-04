@@ -95,6 +95,11 @@ function numFmt(value: unknown, decimals = 2): string {
   });
 }
 
+// Principal display: name first, fall back to code if the view has no name
+function principalLabel(d: ReportRow): string {
+  return text(d.prin_name) || text(d.prin_code);
+}
+
 // ─── Progress columns ─────────────────────────────────────────────────────────
 
 const PROGRESS_COLS: { label: string; flag: string; dateKey: string }[] = [
@@ -132,20 +137,40 @@ async function loadJobData(
     const rows = normalize(result.rows as any[]);
     if (!rows.length)
       throw Object.assign(new Error("Job not found"), { status: 404 });
-    return rows[0];
+
+    const row = rows[0];
+
+    // PRIN_NAME  from VW_TI_JOB
+    try {
+      const pn = await conn.execute(
+        `SELECT PRIN_NAME
+           FROM VW_TI_JOB
+          WHERE COMPANY_CODE = :company_code
+            AND JOB_NO       = :job_no
+            AND PRIN_CODE    = :prin_code
+            AND ROWNUM       = 1`,
+        { company_code: req.user.company_code, job_no: jobNo, prin_code: prinCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const name = normalize(pn.rows as any[])[0]?.prin_name;
+      if (name) row.prin_name = name;
+    } catch (e) {
+      console.warn("Principal name lookup failed:", e);
+    }
+
+    return row;
   } finally {
     await closeConn(conn);
   }
 }
 
-// ─── Layout CSS – same look as the Enquiry List PDF ──────────────────────────
-// Works with the shared report_common (fontMode "native"). report_common's
-// @media print block forces a light-blue table header, light-blue group strips
-// and a lighter title colour with !important, so those are overridden here with
-// the same selectors (this CSS is injected after the common CSS, so it wins).
+// ─── Layout CSS – A4 PORTRAIT ────────────────────────────────────────────────
+// Injected after report_common CSS, so these rules win.
 
 const JOB_DETAILS_EXTRA_CSS = `
-  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
+  @page { size: A4 portrait; margin: 8mm 10mm 12mm 10mm; }
+
+  html, body { max-width: 100%; }
 
   /* Make Chrome print background colors */
   * {
@@ -153,89 +178,89 @@ const JOB_DETAILS_EXTRA_CSS = `
     print-color-adjust: exact !important;
   }
 
-  /* Letterhead – navy rule under the header, Enquiry sizes */
+  /* Letterhead – navy rule under the header */
   .company-header {
     border-bottom: 2px solid #00378c;
     padding: 0 0 10px 0;
     margin: 0 0 8px 0;
   }
-  .company-name       { font-size: 18px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
-  .company-address    { font-size: 11px; line-height: 1.4; }
-  .company-logo-wrap  { max-width: 180px; }
-  .company-logo       { max-height: 56px; max-width: 180px; }
+  .company-name       { font-size: 17px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 10.5px; line-height: 1.4; }
+  .company-logo-wrap  { max-width: 150px; }
+  .company-logo       { max-height: 50px; max-width: 150px; }
 
   /* Title + filter strip */
   h1.report-title {
-    margin: 24px 0 14px 0;
-    font-size: 20px;
+    margin: 18px 0 12px 0;
+    font-size: 18px;
     font-weight: 700;
     color: #00378c !important;
   }
-  .applied-filters { font-size: 10px; margin-bottom: 20px; }
+  .applied-filters { font-size: 10px; margin-bottom: 16px; }
 
-  /* Section strips (Job Information, References, FIRS, Progress) */
+  /* Section strips */
   .group-title {
     background: #eaf0f8 !important;
     color: #00378c !important;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    padding: 8px 8px;
-    margin: 14px 0 4px 0;
+    padding: 7px 8px;
+    margin: 12px 0 4px 0;
   }
 
   /* Label / value grid */
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0 28px;
+    gap: 0 18px;
     margin: 0 0 4px 0;
   }
   .field {
     display: flex;
     align-items: baseline;
-    min-height: 26px;
-    padding: 5px 8px;
+    min-height: 24px;
+    padding: 4px 6px;
     border-bottom: 1px solid #e2e8f0;
-    font-size: 10.5px;
+    font-size: 10px;
     line-height: 1.3;
   }
   .field .label {
-    flex: 0 0 120px;
-    padding-right: 8px;
+    flex: 0 0 95px;
+    padding-right: 6px;
     color: #475569;
     font-weight: 700;
   }
   .field .label::after { content: ":"; }
   .field--empty .label::after { content: ""; }
-  .field .value { color: #1e293b; overflow-wrap: anywhere; }
+  .field .value { color: #1e293b; overflow-wrap: anywhere; min-width: 0; }
 
   .filter-header {
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 4px 6px;
+    font-size: 10.5px;
     font-weight: 700;
     color: #00378c;
   }
 
-  /* Job progress table – solid navy header like Enquiry */
+  /* Job progress table – solid navy header */
   table.data-table {
     width: 100%;
     table-layout: fixed;
-    font-size: 10.5px;
+    font-size: 9.5px;
     margin-top: 0;
     border-collapse: collapse;
   }
   table.data-table thead th {
     background: #00378c !important;
     color: #ffffff !important;
-    font-size: 10.5px;
+    font-size: 9.5px;
     font-weight: 700;
-    padding: 11px 8px;
+    padding: 9px 4px;
     text-align: center;
     border: 0 !important;
   }
   table.data-table tbody td {
-    font-size: 10.5px;
-    padding: 10px 8px;
+    font-size: 9.5px;
+    padding: 9px 4px;
     text-align: center;
     border-bottom: 1px solid #e2e8f0 !important;
   }
@@ -246,7 +271,7 @@ const JOB_DETAILS_EXTRA_CSS = `
     body::before { display: none !important; }   /* no page border */
     .info-grid   { break-inside: avoid; }
     .group-title { break-after: avoid; }
-    .report-footer { font-size: 10px; }
+    .report-footer { font-size: 9.5px; }
   }
 `;
 
@@ -268,9 +293,10 @@ function renderBodyHtml(d: ReportRow, reportTitle: string): string {
   const col = (items: string[], n: number) =>
     items.concat(Array(Math.max(0, n - items.length)).fill(emptyField)).join("");
 
+  // Filter strip on top: Principal NAME instead of code
   const filtersHtml = reportAppliedFilters([
     { label: "Job No",    value: text(d.job_no) },
-    { label: "Principal", value: text(d.prin_code) },
+    { label: "Principal", value: principalLabel(d) },
     { label: "Job Date",  value: dateText(d.job_date) },
   ]);
 
@@ -280,7 +306,7 @@ function renderBodyHtml(d: ReportRow, reportTitle: string): string {
     field("Department",     d.dept_code),
     field("Transport Mode", d.transport_mode_desc || d.transport_mode),
     field("Document Ref",   d.doc_ref),
-    field("Principal",      d.prin_code),
+    field("Principal",      principalLabel(d)),
   ];
   const right = [
     field("Cancel Date",  dateText(d.cancel_date)),
@@ -352,7 +378,6 @@ async function renderHtml(
   const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
   const bodyHtml   = renderBodyHtml(d, reportTitle);
 
-  // Same print stamp format as the Enquiry List (9/30/2026, 12:15:22 PM)
   const printed = new Date().toLocaleString("en-US");
   const footerHtml = reportFooter({
     reportName: "WMS Job Details",
@@ -412,7 +437,7 @@ function buildExcelBuffer(d: ReportRow): Buffer {
     ["Department",     d.dept_code],
     ["Transport Mode", d.transport_mode_desc || d.transport_mode],
     ["Document Ref",   d.doc_ref],
-    ["Principal",      d.prin_code],
+    ["Principal",      principalLabel(d)],
   ];
   const rightInfo: [string, unknown][] = [
     ["Cancel Date",  dateText(d.cancel_date)],
@@ -534,7 +559,7 @@ function buildExcelBuffer(d: ReportRow): Buffer {
   <sheetData>${sheetDataXml}</sheetData>
   ${mergeXml}
   <pageMargins left="0.4" right="0.4" top="0.4" bottom="0.4" header="0.3" footer="0.3"/>
-  <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
+  <pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
