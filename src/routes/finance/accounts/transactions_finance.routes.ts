@@ -106,6 +106,7 @@ import { getSalesAccountDetailsReportExcel, getSalesAccountDetailsReportHtml, ge
 import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareReportHtml, getPurchaseQuotationReportExcel, getPurchaseQuotationReportHtml, getPurchaseQuotationWithRatesReportExcel, getPurchaseQuotationWithRatesReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/PurchaseQuotationReports";
 import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
+import { getSalesDNReportExcel, getSalesDNReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesDNReport";
 
 
 
@@ -250,10 +251,14 @@ router.post('/reports/getGrnPrintReport/html', getGrnPrintReport);
 router.post('/reports/getGrnPrintReport/excel', getGrnPrintReportExcel);
 
 
+// sales delivery note report routes
+router.post('/reports/SalesDNReport/html', getSalesDNReportHtml);
+router.post('/reports/SalesDNReport/excel', getSalesDNReportExcel);
+
 
 // ---------HR Reports Routes------
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
-router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   // 👈 नया route
+router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   
 
 // WMS REPORTS ROUTES
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
