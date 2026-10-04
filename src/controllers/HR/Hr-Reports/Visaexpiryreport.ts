@@ -8,18 +8,25 @@ import {
     reportAppliedFilters,
     reportFooter,
     reportHeader,
-    FREIGHT_COLORS as C,
 } from "../../common/report_common";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const NO_DATA_MESSAGE = "No records found for the selected criteria.";
+const DASH = "\u2014";
+
 const text = (v: any): string => (v == null ? "" : String(v));
 
+// Empty / placeholder dates (null, 01/01/1970 epoch) show as a dash
 const formatDateStr = (v: any): string => {
     if (!v) return "";
     const d = new Date(v);
-    return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
+    if (isNaN(d.getTime())) return String(v);
+    if (d.getFullYear() <= 1970) return "";
+    return d.toLocaleDateString("en-GB");
 };
+
+const dateOrDash = (v: any): string => formatDateStr(v) || DASH;
 
 const escapeHtml = (v: unknown): string =>
     text(v)
@@ -128,7 +135,7 @@ async function fetchVisaRows(body: any): Promise<{ rows: VisaRow[]; connection: 
     }
 }
 
-// ─── Excel HTML (standalone .xls export – own self-contained styling) ────────
+// ─── Excel HTML (standalone .xls export – same colours as the PDF) ───────────
 
 function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): string {
     const reportDate  = formatDateStr(new Date());
@@ -140,24 +147,28 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 
     const excelRows = rows.map((r, i) => {
         const daysNum = Number(r.days_remaining);
-        const bgColor = daysNum < 0 ? "#FFF5F5" : daysNum <= 30 ? "#FFFDF0" : "#FFFFFF";
-        const dayColor = daysNum < 0 ? "color:#C00000;font-weight:bold" : daysNum <= 30 ? "color:#B45309;font-weight:bold" : "";
+        // Same as Freight: every row uses the same background (#fafcfe)
+        const dayColor = daysNum < 0
+            ? "color:#b91c1c;font-weight:bold"
+            : daysNum <= 30
+                ? "color:#b45309;font-weight:bold"
+                : "";
         if (daysNum < 0) totalExpired++;
         else if (daysNum <= 30) totalExpiring++;
         else totalValid++;
 
-        return `<tr style="background:${bgColor}">
+        return `<tr style="background:#fafcfe">
           <td style="text-align:center">${i + 1}</td>
-          <td style="font-weight:bold">${escapeHtml(r.employee_code)}</td>
+          <td style="font-weight:bold;color:#00378c">${escapeHtml(r.employee_code)}</td>
           <td>${escapeHtml(r.rpt_name)}</td>
           <td>${escapeHtml(r.dept_name)}</td>
-          <td style="text-align:center">${escapeHtml(r.div_name)}</td>
+          <td>${escapeHtml(r.div_name)}</td>
           <td>${escapeHtml(r.section_name)}</td>
           <td>${escapeHtml(r.desg_name)}</td>
           <td>${escapeHtml(r.sponsor_name)}</td>
-          <td style="text-align:center">${formatDateStr(r.visa_valid_from)}</td>
-          <td style="text-align:center;${dayColor}">${formatDateStr(r.visa_valid_to)}</td>
-          <td style="text-align:center;${dayColor}">${daysNum}</td>
+          <td style="text-align:center">${dateOrDash(r.visa_valid_from)}</td>
+          <td style="text-align:center;${dayColor}">${dateOrDash(r.visa_valid_to)}</td>
+          <td style="text-align:center;${dayColor}">${Number.isNaN(daysNum) ? DASH : daysNum}</td>
         </tr>`;
     }).join("");
 
@@ -171,20 +182,20 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
 </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 <style>
-  body  { font-family: Calibri, Arial, sans-serif; font-size: 10pt; }
+  body  { font-family: Calibri, Arial, sans-serif; font-size: 10pt; color: #1e293b; }
   table { border-collapse: collapse; width: 100%; }
-  th    { background: #1e3a8a; color: #ffffff; font-weight: bold; padding: 7px 8px;
-          border: 1px solid #1e3a8a; font-size: 9pt; text-align: center; }
-  td    { padding: 6px 8px; border: 1px solid #d1d5db; font-size: 10pt; vertical-align: middle; }
+  th    { background: #00378c; color: #ffffff; font-weight: bold; padding: 8px 8px;
+          border: 1px solid #00378c; font-size: 10pt; text-align: center; }
+  td    { padding: 6px 8px; border: 1px solid #e2e8f0; font-size: 10pt; vertical-align: middle; }
   .meta-lbl { font-weight: bold; color: #475569; width: 110px; }
   .meta-val { color: #1e293b; }
 </style>
 </head>
 <body>
 <table style="border:none;width:auto;margin-bottom:6px">
-  <tr><td style="border:none;font-size:16pt;font-weight:800;color:#1e3a8a;padding:0 0 2px 0" colspan="2">AL MADINA LOGISTICS</td></tr>
-  <tr><td style="border:none;font-size:13pt;font-weight:700;color:#1e293b;padding:0 0 10px 0" colspan="2">Visa Expiry Listing Report</td></tr>
-  <tr><td class="meta-lbl" style="border:none">Period :</td>       <td class="meta-val" style="border:none"><b>${formatDateStr(params.date_from)} – ${formatDateStr(params.date_to)}</b></td></tr>
+  <tr><td style="border:none;font-size:16pt;font-weight:800;color:#172033;padding:0 0 2px 0" colspan="2">AL MADINA LOGISTICS</td></tr>
+  <tr><td style="border:none;font-size:13pt;font-weight:700;color:#00378c;padding:0 0 10px 0" colspan="2">Visa Expiry Listing Report</td></tr>
+  <tr><td class="meta-lbl" style="border:none">Period :</td>       <td class="meta-val" style="border:none"><b>${dateOrDash(params.date_from)} – ${dateOrDash(params.date_to)}</b></td></tr>
   <tr><td class="meta-lbl" style="border:none">Division :</td>     <td class="meta-val" style="border:none">${escapeHtml(params.division) || "All"}</td></tr>
   <tr><td class="meta-lbl" style="border:none">Department :</td>   <td class="meta-val" style="border:none">${escapeHtml(params.department) || "All"}</td></tr>
   <tr><td class="meta-lbl" style="border:none">Emp. Type :</td>    <td class="meta-val" style="border:none">${params.emp_type === "A" ? "Active Employees" : "All Employees"}</td></tr>
@@ -199,24 +210,24 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
       <th style="width:90px">Emp. Code</th>
       <th style="min-width:140px">Employee Name</th>
       <th style="width:100px">Department</th>
-      <th style="width:70px">Division</th>
+      <th style="width:100px">Division</th>
       <th style="width:80px">Section</th>
       <th style="width:120px">Designation</th>
       <th style="width:110px">Sponsor</th>
       <th style="width:80px">Visa From</th>
       <th style="width:80px">Visa To</th>
-      <th style="width:65px">Days Rem.</th>
+      <th style="width:65px">Days</th>
     </tr>
   </thead>
   <tbody>
-    ${excelRows || `<tr><td colspan="11" style="text-align:center;padding:20px;color:#94a3b8">No records found.</td></tr>`}
+    ${excelRows || `<tr><td colspan="11" style="text-align:center;padding:20px;color:#64748b">${escapeHtml(NO_DATA_MESSAGE)}</td></tr>`}
   </tbody>
   <tfoot>
     <tr>
-      <td colspan="11" style="padding:8px;font-weight:bold;background:#f1f5f9;border-top:2px solid #1e3a8a;color:#1e293b">
-        Total Records: ${rows.length} &nbsp;|&nbsp;
-        <span style="color:#C00000">Expired: ${totalExpired}</span> &nbsp;|&nbsp;
-        <span style="color:#B45309">Expiring Soon: ${totalExpiring}</span> &nbsp;|&nbsp;
+      <td colspan="11" style="padding:8px;font-weight:bold;text-align:right;background:#dbe4f0;border-top:1px solid #cbd5e1;color:#00378c">
+        Total: ${rows.length} Records &nbsp;|&nbsp;
+        <span style="color:#b91c1c">Expired: ${totalExpired}</span> &nbsp;|&nbsp;
+        <span style="color:#b45309">Expiring Soon: ${totalExpiring}</span> &nbsp;|&nbsp;
         <span style="color:#15803d">Valid: ${totalValid}</span>
       </td>
     </tr>
@@ -225,133 +236,216 @@ function buildVisaExpiryExcelHtml(rows: VisaRow[], params: VisaReportParams): st
 </body></html>`;
 }
 
-// ─── Report-only CSS (only what report_common does NOT already provide) ──────
-// Header, footer, title, applied-filters, data-table, .center/.strong/.muted
-// all come from report_common – nothing is overridden here.
+// ─── Layout CSS – identical to the Freight "Enquiry List" PDF ────────────────
+// Sizes: company 16px, title 18px, filter strip 10.5px, table text 10.5px, footer 9px.
+// Colours: navy #00378c header, #eaf0f8 strips, #fafcfe rows (ALL rows same, no tint),
+//          #e2e8f0 row lines, #dbe4f0 total row.
+// Used with fontMode: "native".
 
 const VISA_EXTRA_CSS = `
-  /* Landscape – 11 columns. Common @page margins/page-number are kept. */
-  @page { size: A4 landscape; margin: 8mm 10mm 12mm 10mm; }
+  @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
 
-  /* Common .paper is 210mm (portrait) – widen for landscape preview */
-  .paper { max-width: 297mm; }
-
-  /* Compact – must fit BOTH portrait (194mm) and landscape (277mm) */
-  table.data-table.visa-table { table-layout: fixed; }
-  table.data-table.visa-table th {
-    font-size: 9px;
-    padding: 6px 3px;
-    white-space: nowrap;
-    overflow: hidden;
+  /* Make Chrome print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box;
   }
-  table.data-table.visa-table td {
+
+  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+
+  /* No page border (screen + print) – same as Freight */
+  body::before,
+  body::after { display: none !important; content: none !important; }
+
+  /* Letterhead – navy rule under the header */
+  .company-header {
+    border-bottom: 2px solid #00378c;
+    padding: 0 0 10px 0;
+    margin: 0 0 8px 0;
+  }
+  .company-name       { font-size: 16px; font-weight: 700; color: #172033; margin: 0 0 2px 0; }
+  .company-address    { font-size: 9.5px; line-height: 1.4; }
+  .company-logo-wrap  { max-width: 180px; }
+  .company-logo       { max-height: 56px; max-width: 180px; }
+
+  /* Title + filter strip */
+  h1.report-title {
+    margin: 28px 0 14px 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #00378c !important;
+  }
+  .applied-filters { font-size: 10.5px; margin-bottom: 28px; }
+
+  /* Data table */
+  table.data-table {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 0;
+    border-collapse: collapse;
+  }
+  table.data-table th,
+  table.data-table td {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal !important;   /* wrap long text INSIDE its own column */
+    min-width: 0;
+  }
+
+  table.data-table .left   { text-align: left   !important; }
+  table.data-table .center { text-align: center !important; }
+  table.data-table .right  { text-align: right  !important; font-variant-numeric: tabular-nums; }
+
+  /* Header: solid navy bar, white bold text */
+  table.data-table thead tr th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 12px 6px;
+    border: 0 !important;
+    text-transform: none;
+    white-space: normal !important;
+  }
+
+  /* Data rows – every row same colour (like Freight) */
+  table.data-table tbody tr.data-row td {
+    background: #fafcfe !important;
+    font-size: 10.5px;
+    font-weight: 400;
+    padding: 9px 6px;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #1e293b;
+    vertical-align: middle;
+    white-space: normal !important;
+  }
+  /* Codes / dates / numbers stay on one line */
+  table.data-table tbody tr.data-row td.nw {
+    white-space: nowrap !important;
+    font-variant-numeric: tabular-nums;
+  }
+  table.data-table tbody tr.data-row td.primary-text { color: #00378c; font-weight: 700; }
+
+  /* Status shown ONLY by text colour (no row background tint) */
+  table.data-table tbody td.days-exp  { color: #b91c1c !important; font-weight: 700; }
+  table.data-table tbody td.days-warn { color: #b45309 !important; font-weight: 700; }
+
+  /* Total row – shaded, bold navy, right aligned (same as Enquiry "Total: n Records") */
+  table.data-table tbody tr.grand-total-row td {
+    background: #dbe4f0 !important;
+    color: #00378c !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 9px 8px;
+    text-align: right;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+  .grand-total-row .t-exp  { color: #b91c1c; }
+  .grand-total-row .t-warn { color: #b45309; }
+  .grand-total-row .t-ok   { color: #15803d; }
+  .grand-total-row .t-sep  { color: #94a3b8; font-weight: 400; padding: 0 6px; }
+
+  /* Empty state */
+  table.data-table tbody tr.empty-row td {
+    padding: 20px;
+    text-align: center;
+    color: #64748b;
+    background: #fafcfe !important;
+  }
+
+  /* Footer – keep fully inside the page (fixes "Powered by Bayanat Technolog" cut) */
+  .report-footer {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-right: 2px;
     font-size: 9px;
-    padding: 5px 3px;
-    overflow: hidden;
-    overflow-wrap: break-word;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
     word-break: break-word;
   }
-  /* codes / dates / numbers never wrap or spill into next column */
-  table.data-table.visa-table td.nw,
-  .mono { white-space: nowrap; font-variant-numeric: tabular-nums; }
-  table.data-table.visa-table td.nw { text-overflow: clip; }
-
-  /* Row highlighting (beats zebra rows on screen + print) */
-  table.data-table tbody tr.row-exp  td { background: #fff5f5 !important; }
-  table.data-table tbody tr.row-warn td { background: #fffbeb !important; }
-  .days-exp  { color: #c00000; font-weight: 800; }
-  .days-warn { color: #b45309; font-weight: 800; }
-
-  /* Summary bar */
-  .summary-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px;
-    margin-top: 10px;
-    padding: 7px 10px;
-    background: ${C.subtotalBg};
-    border-top: 2px solid ${C.navy};
-    color: ${C.navy};
-    font-weight: 800;
-    break-inside: avoid;
-  }
-  .summary-bar .dot-exp  { color: #c00000; }
-  .summary-bar .dot-warn { color: #b45309; }
-  .summary-bar .dot-ok   { color: #15803d; }
+  .report-footer * { max-width: 100%; }
 
   @media print {
-    table.data-table.visa-table thead { display: table-header-group; }
+    table.data-table thead { display: table-header-group; }
+    table.data-table tr { break-inside: avoid; page-break-inside: avoid; }
+    .report-footer { font-size: 9px; }
   }
 `;
 
 // ─── Body ─────────────────────────────────────────────────────────────────────
+
+// % widths – add up to 100. Sized so the 10 columns also fit portrait without cut text.
+const COL_WIDTHS = [11.5, 12, 11, 9, 9, 12, 9, 10.3, 10.3, 5.9];
 
 function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
     let totalExpired  = 0;
     let totalExpiring = 0;
     let totalValid    = 0;
 
-    const tableRows = rows.map((r, i) => {
+    let tableRows = rows.map((r) => {
         const daysNum = Number(r.days_remaining);
-        let rowCls = "";
         let daysCls = "";
-        if (daysNum < 0)        { totalExpired++;  rowCls = "row-exp";  daysCls = "days-exp";  }
-        else if (daysNum <= 30) { totalExpiring++; rowCls = "row-warn"; daysCls = "days-warn"; }
+        if (daysNum < 0)        { totalExpired++;  daysCls = "days-exp";  }
+        else if (daysNum <= 30) { totalExpiring++; daysCls = "days-warn"; }
         else                    { totalValid++; }
 
         return `
-        <tr class="${rowCls}">
-          <td class="center">${i + 1}</td>
-          <td class="strong nw">${escapeHtml(r.employee_code)}</td>
-          <td>${escapeHtml(r.rpt_name)}</td>
-          <td>${escapeHtml(r.dept_name)}</td>
-          <td class="center">${escapeHtml(r.div_name)}</td>
-          <td>${escapeHtml(r.section_name)}</td>
-          <td>${escapeHtml(r.desg_name)}</td>
-          <td>${escapeHtml(r.sponsor_name)}</td>
-          <td class="center mono">${escapeHtml(formatDateStr(r.visa_valid_from))}</td>
-          <td class="center mono ${daysCls}">${escapeHtml(formatDateStr(r.visa_valid_to))}</td>
-          <td class="center mono ${daysCls}">${Number.isNaN(daysNum) ? "" : daysNum}</td>
+        <tr class="data-row">
+          <td class="left nw primary-text">${escapeHtml(r.employee_code)}</td>
+          <td class="left">${escapeHtml(r.rpt_name)}</td>
+          <td class="left">${escapeHtml(r.dept_name)}</td>
+          <td class="left">${escapeHtml(r.div_name)}</td>
+          <td class="left">${escapeHtml(r.section_name)}</td>
+          <td class="left">${escapeHtml(r.desg_name)}</td>
+          <td class="left">${escapeHtml(r.sponsor_name)}</td>
+          <td class="center nw">${escapeHtml(dateOrDash(r.visa_valid_from))}</td>
+          <td class="center nw ${daysCls}">${escapeHtml(dateOrDash(r.visa_valid_to))}</td>
+          <td class="center nw ${daysCls}">${Number.isNaN(daysNum) ? DASH : daysNum}</td>
         </tr>`;
-    }).join("") || `<tr><td colspan="11" class="center muted">No records found.</td></tr>`;
+    }).join("");
+
+    if (!rows.length) {
+        tableRows = `<tr class="empty-row"><td colspan="10">${escapeHtml(NO_DATA_MESSAGE)}</td></tr>`;
+    } else {
+        const sep = `<span class="t-sep">|</span>`;
+        tableRows += `
+        <tr class="grand-total-row">
+          <td colspan="10">
+            Total: ${rows.length} Records ${sep}
+            <span class="t-exp">Expired: ${totalExpired}</span> ${sep}
+            <span class="t-warn">Expiring Soon: ${totalExpiring}</span> ${sep}
+            <span class="t-ok">Valid: ${totalValid}</span>
+          </td>
+        </tr>`;
+    }
 
     const filtersHtml = reportAppliedFilters([
-        { label: "Period",     value: `${formatDateStr(params.date_from)} – ${formatDateStr(params.date_to)}` },
+        { label: "Period",     value: `${dateOrDash(params.date_from)} – ${dateOrDash(params.date_to)}` },
         { label: "Division",   value: params.division   || "All" },
         { label: "Department", value: params.department || "All" },
         { label: "Emp. Type",  value: params.emp_type === "A" ? "Active Employees" : "All Employees" },
     ]);
 
+    const colgroup = COL_WIDTHS.map((w) => `<col style="width:${w}%"/>`).join("");
+
     return `
-    <div class="doc-title-row">
-      <h1>Visa Expiry Listing Report</h1>
-    </div>
+    <h1 class="report-title">Visa Expiry Listing Report</h1>
     ${filtersHtml}
 
-    <table class="data-table visa-table">
-      <colgroup>
-        <col style="width:3%"/>
-        <col style="width:10%"/>
-        <col style="width:15%"/>
-        <col style="width:11%"/>
-        <col style="width:7%"/>
-        <col style="width:9%"/>
-        <col style="width:12%"/>
-        <col style="width:10%"/>
-        <col style="width:8.5%"/>
-        <col style="width:8.5%"/>
-        <col style="width:6%"/>
-      </colgroup>
+    <table class="data-table">
+      <colgroup>${colgroup}</colgroup>
       <thead>
         <tr>
-          <th class="center">#</th>
-          <th>Emp. Code</th>
-          <th>Employee Name</th>
-          <th>Department</th>
-          <th class="center">Division</th>
-          <th>Section</th>
-          <th>Designation</th>
-          <th>Sponsor</th>
+          <th class="left">Emp. Code</th>
+          <th class="left">Employee Name</th>
+          <th class="left">Department</th>
+          <th class="left">Division</th>
+          <th class="left">Section</th>
+          <th class="left">Designation</th>
+          <th class="left">Sponsor</th>
           <th class="center">Visa From</th>
           <th class="center">Visa To</th>
           <th class="center">Days</th>
@@ -361,13 +455,6 @@ function renderVisaBody(rows: VisaRow[], params: VisaReportParams): string {
         ${tableRows}
       </tbody>
     </table>
-
-    <div class="summary-bar">
-      <span>Total Records: ${rows.length}</span>
-      <span class="dot-exp">&#9679; Expired: ${totalExpired}</span>
-      <span class="dot-warn">&#9679; Expiring Soon: ${totalExpiring}</span>
-      <span class="dot-ok">&#9679; Valid: ${totalValid}</span>
-    </div>
   `;
 }
 
@@ -388,6 +475,8 @@ function resolveParams(body: any): VisaReportParams {
 }
 
 // ─── HTML Controller ──────────────────────────────────────────────────────────
+// No rows is NOT an error: the report still renders and the table shows
+// "No records found for the selected criteria." (same as DN Summary).
 
 export const getVisaExpiryReport = async (req: RequestWithUser, res: Response): Promise<void> => {
     let connection: any;
@@ -395,20 +484,17 @@ export const getVisaExpiryReport = async (req: RequestWithUser, res: Response): 
         const { rows, connection: conn } = await fetchVisaRows(req.body);
         connection = conn;
 
-        if (!rows.length) {
-            res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-            return;
-        }
-
         const params = resolveParams(req.body);
         const companyCode = params.companyCode || req.user?.company_code || "";
 
+        const printed    = new Date().toLocaleString("en-US");
         const headerHtml = await reportHeader({ company_code: companyCode, req });
-        const bodyHtml = renderVisaBody(rows, params);
+        const bodyHtml   = renderVisaBody(rows, params);
         const footerHtml = reportFooter({
             reportName: "Visa Expiry Listing Report",
-            userName: params.loginid,
-            endLabel: "Powered by Bayanat Technology",
+            userName:   params.loginid,
+            endLabel:   "Powered by Bayanat Technology",
+            extraLeft:  `Print: ${escapeHtml(printed)} | User: ${escapeHtml(params.loginid)}`,
         });
 
         const html = buildReportDocument({
@@ -418,6 +504,8 @@ export const getVisaExpiryReport = async (req: RequestWithUser, res: Response): 
             footerHtml,
             extraCss: VISA_EXTRA_CSS,
             autoPrint: req.query.print !== "false",
+            showPrintButton: true,
+            fontMode: "native",
         });
 
         res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -439,6 +527,7 @@ export const exportVisaExpiryReportExcel = async (req: Request, res: Response): 
         const { rows, connection: conn } = await fetchVisaRows(req.body);
         connection = conn;
 
+        // Nothing to export -> friendly message, no file (same as DN Summary Excel)
         if (!rows.length) {
             res.status(200).json({ success: false, message: "No data found for the selected criteria." });
             return;
