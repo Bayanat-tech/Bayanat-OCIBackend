@@ -1,8 +1,6 @@
 import { Response } from "express";
 import { RequestWithUser } from "../../../interfaces/common.interface";
 import { loadSalesDoc, parseDocParams } from "./common/db";
-import { renderDnHtml } from "./dn/html";
-import { buildDnExcelBuffer } from "./dn/excel";
 import { renderInvoiceHtml } from "./invoice/html";
 import { buildInvoiceExcelBuffer } from "./invoice/excel";
 
@@ -11,7 +9,10 @@ import { buildInvoiceExcelBuffer } from "./invoice/excel";
  *
  * Routes:
  *   GET|POST  /api/reports/sales/:reportType
- *     reportType = SDN | SINVOICE  (aliases: DN, INV, INVOICE, …)
+ *     reportType = SINVOICE  (aliases: INV, INVOICE, SI, …)
+ *
+ * Note: SDN (Sales Delivery Note) now has its own standalone controller
+ * (SalesDnReport.ts) and is no longer handled here.
  *
  * Body / query:
  *   company_code  (optional if on req.user)
@@ -26,16 +27,15 @@ export const getSalesDocReportHtml = async (
     const { rows, cfg } = await loadSalesDoc(req);
     const loginId = req.user?.loginid ?? req.user?.username ?? "";
 
-    let html: string;
-    switch (cfg.kind) {
-      case "SINVOICE":
-        html = renderInvoiceHtml(rows, loginId);
-        break;
-      case "SDN":
-      default:
-        html = renderDnHtml(rows, loginId);
-        break;
+    if (cfg.kind !== "SINVOICE") {
+      res.status(400).json({
+        success: false,
+        message: `Unsupported report type "${cfg.kind}" for this endpoint.`,
+      });
+      return;
     }
+
+    const html = renderInvoiceHtml(rows, loginId);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
@@ -63,16 +63,15 @@ export const exportSalesDocReportExcel = async (
     const { rows } = await loadSalesDoc(req);
     const loginId = req.user?.loginid ?? req.user?.username ?? "";
 
-    let buffer: Buffer;
-    switch (cfg.kind) {
-      case "SINVOICE":
-        buffer = buildInvoiceExcelBuffer(rows, loginId);
-        break;
-      case "SDN":
-      default:
-        buffer = buildDnExcelBuffer(rows, loginId);
-        break;
+    if (cfg.kind !== "SINVOICE") {
+      res.status(400).json({
+        success: false,
+        message: `Unsupported report type "${cfg.kind}" for this endpoint.`,
+      });
+      return;
     }
+
+    const buffer = buildInvoiceExcelBuffer(rows, loginId);
 
     const filename = `${cfg.kind.toLowerCase()}_${docNo || "report"}_${new Date()
       .toISOString()
@@ -92,10 +91,3 @@ export const exportSalesDocReportExcel = async (
     });
   }
 };
-
-/* -------------------------------------------------------------------------- */
-/*  Backward-compatible aliases for existing SDN routes                       */
-/* -------------------------------------------------------------------------- */
-
-export const getSalesDNReportHtml = getSalesDocReportHtml;
-export const exportSalesDNReportExcel = exportSalesDocReportExcel;

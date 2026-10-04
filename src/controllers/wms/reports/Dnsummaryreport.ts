@@ -406,44 +406,113 @@ function renderDnBody(prins: PrinSection[], params: DnParams, reportTitle: strin
     `<td class="right num">${escapeHtml(volFmt(vol))}</td>` +
     `</tr>`;
 
-  let bodyRows = "";
+    let bodyRows = "";
+
+if (!prins.length) {
+  bodyRows = `
+    <tr>
+      <td colspan="${DN_COL_COUNT}"
+          class="center muted"
+          style="padding: 20px; text-align: center;">
+        No records found for the selected criteria.
+      </td>
+    </tr>
+  `;
+} else {
 
   for (const ps of prins) {
-    const prinLabel = `${escapeHtml(ps.prinCode)}${ps.prinName ? " - " + escapeHtml(ps.prinName) : ""}`;
-    bodyRows += `<tr class="group-header-row prin-row"><td colspan="${DN_COL_COUNT}">${prinLabel}</td></tr>`;
+    const prinLabel =
+      `${escapeHtml(ps.prinCode)}${
+        ps.prinName ? " - " + escapeHtml(ps.prinName) : ""
+      }`;
+
+    bodyRows +=
+      `<tr class="group-header-row prin-row">` +
+      `<td colspan="${DN_COL_COUNT}">${prinLabel}</td>` +
+      `</tr>`;
 
     for (const gs of ps.groups) {
-      bodyRows += `<tr class="group-header-row group-row"><td colspan="${DN_COL_COUNT}">Group : ${escapeHtml(gs.groupName)}</td></tr>`;
+
+      bodyRows +=
+        `<tr class="group-header-row group-row">` +
+        `<td colspan="${DN_COL_COUNT}">` +
+        `Group : ${escapeHtml(gs.groupName)}` +
+        `</td>` +
+        `</tr>`;
 
       for (const prd of gs.prods) {
-        const prodLabel = `${escapeHtml(prd.prodCode)}${prd.prodName ? " - " + escapeHtml(prd.prodName) : ""}`;
-        bodyRows += `<tr class="group-header-row prod-row"><td colspan="${DN_COL_COUNT}">${prodLabel}</td></tr>`;
+
+        const prodLabel =
+          `${escapeHtml(prd.prodCode)}${
+            prd.prodName ? " - " + escapeHtml(prd.prodName) : ""
+          }`;
+
+        bodyRows +=
+          `<tr class="group-header-row prod-row">` +
+          `<td colspan="${DN_COL_COUNT}">${prodLabel}</td>` +
+          `</tr>`;
 
         for (const dr of prd.rows) {
+
           bodyRows +=
             `<tr class="data-row">` +
-            `<td class="${C[0].align} primary-text">${escapeHtml(dr.dn_no || "\u2014")}</td>` +
+            `<td class="${C[0].align} primary-text">${escapeHtml(dr.dn_no || "—")}</td>` +
             `<td class="${C[1].align}">${escapeHtml(dateText(dr.dn_date ?? dr.receipt_date))}</td>` +
             `<td class="${C[2].align}">${escapeHtml(dateText(dr.principal_confirm_date ?? dr.confirm_date))}</td>` +
-            `<td class="${C[3].align}">${escapeHtml(dr.job_no || "\u2014")}</td>` +
-            `<td class="${C[4].align}">${escapeHtml(dr.customer || dr.cust_code || "\u2014")}</td>` +
-            `<td class="${C[5].align}">${escapeHtml(dr.container_no || "\u2014")}</td>` +
+            `<td class="${C[3].align}">${escapeHtml(dr.job_no || "—")}</td>` +
+            `<td class="${C[4].align}">${escapeHtml(dr.customer || dr.cust_code || "—")}</td>` +
+            `<td class="${C[5].align}">${escapeHtml(dr.container_no || "—")}</td>` +
             `<td class="${C[6].align} num">${escapeHtml(qtyFmt(rowQty(dr)))}</td>` +
             `<td class="${C[7].align} num">${escapeHtml(volFmt(num(dr.volume)))}</td>` +
             `</tr>`;
         }
-        bodyRows += totalRow("subtotal-row", `Sub Total (${prodLabel}):`, prd.totalQty, prd.totalVolume);
+
+        bodyRows += totalRow(
+          "subtotal-row",
+          `Sub Total (${prodLabel}):`,
+          prd.totalQty,
+          prd.totalVolume
+        );
       }
-      bodyRows += totalRow("subtotal-row", `Sub Total (${escapeHtml(gs.groupName)}):`, gs.totalQty, gs.totalVolume);
+
+      bodyRows += totalRow(
+        "subtotal-row",
+        `Sub Total (${escapeHtml(gs.groupName)}):`,
+        gs.totalQty,
+        gs.totalVolume
+      );
     }
-    bodyRows += totalRow("subtotal-row", `Sub Total (${prinLabel}):`, ps.totalQty, ps.totalVolume);
+
+    bodyRows += totalRow(
+      "subtotal-row",
+      `Sub Total (${prinLabel}):`,
+      ps.totalQty,
+      ps.totalVolume
+    );
   }
 
   const recordCount = prins.reduce(
-    (s, p) => s + p.groups.reduce((gs, g) => gs + g.prods.reduce((ps, pr) => ps + pr.rows.length, 0), 0),
+    (s, p) =>
+      s +
+      p.groups.reduce(
+        (gs, g) =>
+          gs +
+          g.prods.reduce(
+            (ps, pr) => ps + pr.rows.length,
+            0
+          ),
+        0
+      ),
     0
   );
-  bodyRows += totalRow("grand-total-row", `GRAND TOTAL (${recordCount} Records):`, grandQty, grandVolume);
+
+  bodyRows += totalRow(
+    "grand-total-row",
+    `GRAND TOTAL (${recordCount} Records):`,
+    grandQty,
+    grandVolume
+  );
+}
 
   const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
   const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
@@ -499,13 +568,23 @@ export const getDnSummaryReportHtml = async (req: RequestWithUser, res: Response
     const autoPrint   = req.query.print === "true";
     const params      = extractParams(req);
 
-    const rows = await loadDnData(req, params);
-    if (!rows.length) {
-      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
-      return;
-    }
+    // const rows = await loadDnData(req, params);
+    // if (!rows.length) {
+    //   res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+    //   return;
+    // }
 
-    const html = await buildDnHtml(req, params, groupRows(rows), reportTitle, autoPrint);
+    // const html = await buildDnHtml(req, params, groupRows(rows), reportTitle, autoPrint);
+
+    const rows = await loadDnData(req, params);
+
+const html = await buildDnHtml(
+  req,
+  params,
+  groupRows(rows),
+  reportTitle,
+  autoPrint
+);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
@@ -516,14 +595,21 @@ export const getDnSummaryReportHtml = async (req: RequestWithUser, res: Response
 
 export const getDnSummaryReportPdf = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
-    const params = extractParams(req);
-    const rows   = await loadDnData(req, params);
+const params = extractParams(req);
+const rows = await loadDnData(req, params);
+
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
     }
 
-    const html = await buildDnHtml(req, params, groupRows(rows), "Delivery Note Report (Summary)", true);
+   const html = await buildDnHtml(
+  req,
+  params,
+  groupRows(rows),
+  "Delivery Note Report (Summary)",
+  true
+);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Content-Disposition", 'inline; filename="DN_Summary.pdf"');
     res.send(html);
