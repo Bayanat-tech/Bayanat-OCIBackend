@@ -102,38 +102,55 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
 
     try {
       const exposureResult = await conn.execute(
-        `WITH PARTY_EXPOSURE AS (
-           SELECT
-             CASE WHEN UPPER(v.ORG_DOCTYPE) = 'SI' THEN 'CUSTOMER' ELSE 'SUPPLIER' END AS PARTY_TYPE,
-             v.AC_CODE,
-             NVL(MAX(a.AC_NAME), v.AC_CODE) AS AC_NAME,
-             COUNT(DISTINCT v.INV_NO) AS OPEN_INVOICE_COUNT,
-             SUM(ABS(NVL(v.LCUR_AMOUNT, 0))) AS OUTSTANDING_AMOUNT,
-             SUM(CASE
-                   WHEN NVL(v.DUE_DATE, v.INV_DATE) < TRUNC(SYSDATE)
-                   THEN ABS(NVL(v.LCUR_AMOUNT, 0))
-                   ELSE 0
+        `WITH INV_BALANCES AS (
+           SELECT 
+             i.COMPANY_CODE,
+             i.AC_CODE,
+             NVL(MAX(a.AC_NAME), i.AC_CODE) AS AC_NAME,
+             i.INV_NO,
+             MAX(NVL(i.INV_DATE, i.DOC_DATE)) AS INV_DATE,
+             MAX(NVL(i.DUE_DATE, NVL(i.INV_DATE, i.DOC_DATE))) AS DUE_DATE,
+             SUM(NVL(i.LCUR_AMOUNT, i.AMOUNT) * NVL(i.SIGN_IND, 1)) AS OUTSTANDING_LCUR,
+             MAX(i.DOC_TYPE) AS DOC_TYPE,
+             i.DIV_CODE
+           FROM TR_AC_INVDETAIL i
+           LEFT JOIN MS_ACCODES a 
+             ON a.COMPANY_CODE = i.COMPANY_CODE 
+            AND a.AC_CODE = i.AC_CODE
+           WHERE i.COMPANY_CODE = :companyCode
+             AND (:divCode IS NULL OR i.DIV_CODE = :divCode)
+           GROUP BY i.COMPANY_CODE, i.AC_CODE, i.INV_NO, i.DIV_CODE
+           HAVING SUM(NVL(i.LCUR_AMOUNT, i.AMOUNT) * NVL(i.SIGN_IND, 1)) <> 0
+         ),
+         PARTY_CLASSIFIED AS (
+           SELECT 
+             CASE 
+               WHEN OUTSTANDING_LCUR > 0 THEN 'CUSTOMER' 
+               ELSE 'SUPPLIER' 
+             END AS PARTY_TYPE,
+             AC_CODE,
+             AC_NAME,
+             COUNT(DISTINCT INV_NO) AS OPEN_INVOICE_COUNT,
+             SUM(ABS(OUTSTANDING_LCUR)) AS OUTSTANDING_AMOUNT,
+             SUM(CASE 
+                   WHEN DUE_DATE < TRUNC(SYSDATE) 
+                   THEN ABS(OUTSTANDING_LCUR) 
+                   ELSE 0 
                  END) AS OVERDUE_AMOUNT,
-             MIN(NVL(v.DUE_DATE, v.INV_DATE)) AS OLDEST_DUE_DATE
-           FROM V_INV_OUTSTANDING_WITHUNALLOC v
-           LEFT JOIN MS_ACCODES a
-             ON a.COMPANY_CODE = v.COMPANY_CODE
-            AND a.AC_CODE = v.AC_CODE
-           WHERE v.COMPANY_CODE = :companyCode
-             AND UPPER(v.ORG_DOCTYPE) IN ('SI', 'PI')
-             AND v.UNALLOCATED_FLAG = 'A'
-             AND ABS(NVL(v.LCUR_AMOUNT, 0)) > 0.0001
-             AND (:divCode IS NULL OR v.DIV_CODE = :divCode)
-           GROUP BY
-             CASE WHEN UPPER(v.ORG_DOCTYPE) = 'SI' THEN 'CUSTOMER' ELSE 'SUPPLIER' END,
-             v.AC_CODE
-         ), RANKED AS (
+             MIN(NVL(DUE_DATE, INV_DATE)) AS OLDEST_DUE_DATE
+           FROM INV_BALANCES
+           GROUP BY 
+             CASE WHEN OUTSTANDING_LCUR > 0 THEN 'CUSTOMER' ELSE 'SUPPLIER' END,
+             AC_CODE,
+             AC_NAME
+         ),
+         RANKED AS (
            SELECT p.*,
                   ROW_NUMBER() OVER (
-                    PARTITION BY PARTY_TYPE
+                    PARTITION BY PARTY_TYPE 
                     ORDER BY OUTSTANDING_AMOUNT DESC, AC_NAME
                   ) AS PARTY_RANK
-           FROM PARTY_EXPOSURE p
+           FROM PARTY_CLASSIFIED p
          )
          SELECT * FROM RANKED
          WHERE PARTY_RANK <= 5
@@ -147,23 +164,87 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
       topSuppliers = exposureRows.filter((row) => row.PARTY_TYPE === "SUPPLIER");
 
       const exposureTotals = await conn.execute(
-        `SELECT
-           NVL(SUM(CASE WHEN UPPER(ORG_DOCTYPE) = 'SI' THEN ABS(NVL(LCUR_AMOUNT, 0)) ELSE 0 END), 0) AS RECEIVABLE_OUTSTANDING,
-           NVL(SUM(CASE WHEN UPPER(ORG_DOCTYPE) = 'SI' AND NVL(DUE_DATE, INV_DATE) < TRUNC(SYSDATE)
-                        THEN ABS(NVL(LCUR_AMOUNT, 0)) ELSE 0 END), 0) AS RECEIVABLE_OVERDUE,
-           NVL(SUM(CASE WHEN UPPER(ORG_DOCTYPE) = 'PI' THEN ABS(NVL(LCUR_AMOUNT, 0)) ELSE 0 END), 0) AS PAYABLE_OUTSTANDING,
-           NVL(SUM(CASE WHEN UPPER(ORG_DOCTYPE) = 'PI' AND NVL(DUE_DATE, INV_DATE) < TRUNC(SYSDATE)
-                        THEN ABS(NVL(LCUR_AMOUNT, 0)) ELSE 0 END), 0) AS PAYABLE_OVERDUE
-         FROM V_INV_OUTSTANDING_WITHUNALLOC
-         WHERE COMPANY_CODE = :companyCode
-           AND UPPER(ORG_DOCTYPE) IN ('SI', 'PI')
-           AND UNALLOCATED_FLAG = 'A'
-           AND ABS(NVL(LCUR_AMOUNT, 0)) > 0.0001
-           AND (:divCode IS NULL OR DIV_CODE = :divCode)`,
+        `WITH INV_BALANCES AS (
+           SELECT 
+             SUM(NVL(i.LCUR_AMOUNT, i.AMOUNT) * NVL(i.SIGN_IND, 1)) AS OUTSTANDING_LCUR,
+             MAX(NVL(i.DUE_DATE, NVL(i.INV_DATE, i.DOC_DATE))) AS DUE_DATE
+           FROM TR_AC_INVDETAIL i
+           WHERE i.COMPANY_CODE = :companyCode
+             AND (:divCode IS NULL OR i.DIV_CODE = :divCode)
+           GROUP BY i.COMPANY_CODE, i.AC_CODE, i.INV_NO, i.DIV_CODE
+           HAVING SUM(NVL(i.LCUR_AMOUNT, i.AMOUNT) * NVL(i.SIGN_IND, 1)) <> 0
+         )
+         SELECT 
+           NVL(SUM(CASE WHEN OUTSTANDING_LCUR > 0 THEN OUTSTANDING_LCUR ELSE 0 END), 0) AS RECEIVABLE_OUTSTANDING,
+           NVL(SUM(CASE WHEN OUTSTANDING_LCUR > 0 AND DUE_DATE < TRUNC(SYSDATE) THEN OUTSTANDING_LCUR ELSE 0 END), 0) AS RECEIVABLE_OVERDUE,
+           NVL(SUM(CASE WHEN OUTSTANDING_LCUR < 0 THEN ABS(OUTSTANDING_LCUR) ELSE 0 END), 0) AS PAYABLE_OUTSTANDING,
+           NVL(SUM(CASE WHEN OUTSTANDING_LCUR < 0 AND DUE_DATE < TRUNC(SYSDATE) THEN ABS(OUTSTANDING_LCUR) ELSE 0 END), 0) AS PAYABLE_OVERDUE
+         FROM INV_BALANCES`,
         { companyCode, divCode },
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
       exposureSummary = { ...exposureSummary, ...((exposureTotals.rows?.[0] as any) || {}) };
+
+      // Fallback: If TR_AC_INVDETAIL has no records, fallback to active SI/SV and PI/PV vouchers in VW_AC_HEADER_SEARCH
+      if (topCustomers.length === 0 && topSuppliers.length === 0) {
+        try {
+          const fallbackRes = await conn.execute(
+            `WITH HEADER_EXPOSURE AS (
+               SELECT 
+                 CASE WHEN UPPER(DOC_TYPE) IN ('SI', 'SV') THEN 'CUSTOMER' ELSE 'SUPPLIER' END AS PARTY_TYPE,
+                 AC_CODE,
+                 NVL(AC_NAME, AC_CODE) AS AC_NAME,
+                 COUNT(DISTINCT DOC_NO) AS OPEN_INVOICE_COUNT,
+                 SUM(ABS(NVL(LCUR_AMOUNT, AMOUNT))) AS OUTSTANDING_AMOUNT,
+                 SUM(CASE WHEN NVL(DUE_DATE, DOC_DATE) < TRUNC(SYSDATE) THEN ABS(NVL(LCUR_AMOUNT, AMOUNT)) ELSE 0 END) AS OVERDUE_AMOUNT,
+                 MIN(NVL(DUE_DATE, DOC_DATE)) AS OLDEST_DUE_DATE
+               FROM VW_AC_HEADER_SEARCH
+               WHERE COMPANY_CODE = :companyCode
+                 AND UPPER(DOC_TYPE) IN ('SI', 'SV', 'PI', 'PV')
+                 AND NVL(CANCELED, 'N') = 'N'
+                 AND (:divCode IS NULL OR DIV_CODE = :divCode)
+               GROUP BY 
+                 CASE WHEN UPPER(DOC_TYPE) IN ('SI', 'SV') THEN 'CUSTOMER' ELSE 'SUPPLIER' END,
+                 AC_CODE,
+                 NVL(AC_NAME, AC_CODE)
+             ),
+             RANKED AS (
+               SELECT h.*,
+                      ROW_NUMBER() OVER (
+                        PARTITION BY PARTY_TYPE 
+                        ORDER BY OUTSTANDING_AMOUNT DESC, AC_NAME
+                      ) AS PARTY_RANK
+               FROM HEADER_EXPOSURE h
+             )
+             SELECT * FROM RANKED
+             WHERE PARTY_RANK <= 5
+             ORDER BY PARTY_TYPE, PARTY_RANK`,
+            { companyCode, divCode },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          const fallbackRows = (fallbackRes.rows || []) as any[];
+          topCustomers = fallbackRows.filter((row) => row.PARTY_TYPE === "CUSTOMER");
+          topSuppliers = fallbackRows.filter((row) => row.PARTY_TYPE === "SUPPLIER");
+
+          const fallbackTotals = await conn.execute(
+            `SELECT 
+               NVL(SUM(CASE WHEN UPPER(DOC_TYPE) IN ('SI', 'SV') THEN ABS(NVL(LCUR_AMOUNT, AMOUNT)) ELSE 0 END), 0) AS RECEIVABLE_OUTSTANDING,
+               NVL(SUM(CASE WHEN UPPER(DOC_TYPE) IN ('SI', 'SV') AND NVL(DUE_DATE, DOC_DATE) < TRUNC(SYSDATE) THEN ABS(NVL(LCUR_AMOUNT, AMOUNT)) ELSE 0 END), 0) AS RECEIVABLE_OVERDUE,
+               NVL(SUM(CASE WHEN UPPER(DOC_TYPE) IN ('PI', 'PV') THEN ABS(NVL(LCUR_AMOUNT, AMOUNT)) ELSE 0 END), 0) AS PAYABLE_OUTSTANDING,
+               NVL(SUM(CASE WHEN UPPER(DOC_TYPE) IN ('PI', 'PV') AND NVL(DUE_DATE, DOC_DATE) < TRUNC(SYSDATE) THEN ABS(NVL(LCUR_AMOUNT, AMOUNT)) ELSE 0 END), 0) AS PAYABLE_OVERDUE
+             FROM VW_AC_HEADER_SEARCH
+             WHERE COMPANY_CODE = :companyCode
+               AND UPPER(DOC_TYPE) IN ('SI', 'SV', 'PI', 'PV')
+               AND NVL(CANCELED, 'N') = 'N'
+               AND (:divCode IS NULL OR DIV_CODE = :divCode)`,
+            { companyCode, divCode },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          exposureSummary = { ...exposureSummary, ...((fallbackTotals.rows?.[0] as any) || {}) };
+        } catch (fallbackErr) {
+          console.warn("Fallback header exposure query unavailable:", fallbackErr);
+        }
+      }
     } catch (exposureError) {
       console.warn("Finance dashboard exposure query unavailable:", exposureError);
     }
