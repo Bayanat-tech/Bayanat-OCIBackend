@@ -114,7 +114,7 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
                    ELSE 0
                  END) AS OVERDUE_AMOUNT,
              MIN(NVL(v.DUE_DATE, v.INV_DATE)) AS OLDEST_DUE_DATE
-           FROM VW_AC_INV_OUTSTANDING_WITHUNALLOC v
+           FROM V_INV_OUTSTANDING_WITHUNALLOC v
            LEFT JOIN MS_ACCODES a
              ON a.COMPANY_CODE = v.COMPANY_CODE
             AND a.AC_CODE = v.AC_CODE
@@ -153,7 +153,7 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
            NVL(SUM(CASE WHEN UPPER(ORG_DOCTYPE) = 'PI' THEN ABS(NVL(LCUR_AMOUNT, 0)) ELSE 0 END), 0) AS PAYABLE_OUTSTANDING,
            NVL(SUM(CASE WHEN UPPER(ORG_DOCTYPE) = 'PI' AND NVL(DUE_DATE, INV_DATE) < TRUNC(SYSDATE)
                         THEN ABS(NVL(LCUR_AMOUNT, 0)) ELSE 0 END), 0) AS PAYABLE_OVERDUE
-         FROM VW_AC_INV_OUTSTANDING_WITHUNALLOC
+         FROM V_INV_OUTSTANDING_WITHUNALLOC
          WHERE COMPANY_CODE = :companyCode
            AND UPPER(ORG_DOCTYPE) IN ('SI', 'PI')
            AND UNALLOCATED_FLAG = 'A'
