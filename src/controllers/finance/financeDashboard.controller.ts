@@ -96,8 +96,9 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
       PAYABLE_OUTSTANDING: 0,
       PAYABLE_OVERDUE: 0,
     };
-    let currencyCode = "OMR";
+    let currencyCode = "";
     let currencySymbol = "";
+    let currencyDecimals: number | null = null;
 
     try {
       const exposureResult = await conn.execute(
@@ -168,27 +169,157 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
     }
 
     try {
-      const currencyResult = await conn.execute(
-        `SELECT BASE_CURR_CODE, CURR_SIGN
-         FROM (
-           SELECT s.BASE_CURR_CODE, c.CURR_SIGN
-           FROM MS_AC_SETUP s
-           LEFT JOIN MS_CURRENCY c
-             ON c.COMPANY_CODE = s.COMPANY_CODE
-            AND c.CURR_CODE = s.BASE_CURR_CODE
-           WHERE s.COMPANY_CODE = :companyCode
-             AND s.BASE_CURR_CODE IS NOT NULL
-           ORDER BY s.AC_CODE
-         )
-         WHERE ROWNUM = 1`,
+      // 1. Try MS_AC_SETUP for this company
+      const acSetupRes = await conn.execute(
+        `SELECT BASE_CURR_CODE, AMOUNT_DECIMAL_NOS, LCUR_DECIMAL_NOS
+         FROM MS_AC_SETUP
+         WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode))
+           AND BASE_CURR_CODE IS NOT NULL
+           AND ROWNUM = 1`,
         { companyCode },
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
-      const currency = currencyResult.rows?.[0] as any;
-      if (currency?.BASE_CURR_CODE) currencyCode = String(currency.BASE_CURR_CODE).trim();
-      if (currency?.CURR_SIGN) currencySymbol = String(currency.CURR_SIGN).trim();
+      const acRow = acSetupRes.rows?.[0] as any;
+      if (acRow?.BASE_CURR_CODE) {
+        currencyCode = String(acRow.BASE_CURR_CODE).trim().toUpperCase();
+        if (acRow.LCUR_DECIMAL_NOS != null || acRow.AMOUNT_DECIMAL_NOS != null) {
+          currencyDecimals = Number(acRow.LCUR_DECIMAL_NOS ?? acRow.AMOUNT_DECIMAL_NOS);
+        }
+      }
+
+      // 2. If not found in MS_AC_SETUP, check MS_COMPANY for country / company name
+      let companyCountry = "";
+      let companyDbName = "";
+      if (!currencyCode) {
+        const compRes = await conn.execute(
+          `SELECT COMPANY_NAME, COUNTRY
+           FROM MS_COMPANY
+           WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode))
+             AND ROWNUM = 1`,
+          { companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const compRow = compRes.rows?.[0] as any;
+        if (compRow) {
+          companyCountry = String(compRow.COUNTRY || "").trim().toUpperCase();
+          companyDbName = String(compRow.COMPANY_NAME || "").trim().toUpperCase();
+        }
+
+        const bodyCompName = String(body.company_name || user.company_name || "").trim().toUpperCase();
+        const fullCompText = `${companyCode} ${companyCountry} ${companyDbName} ${bodyCompName}`;
+
+        if (companyCountry === "INDIA" || fullCompText.includes("INDIA") || ["GNL", "GRL", "BTIND"].includes(companyCode)) {
+          currencyCode = "INR";
+        } else if (companyCountry === "OMAN" || fullCompText.includes("OMAN") || ["BSG", "SNL", "PRL"].includes(companyCode)) {
+          currencyCode = "OMR";
+        } else if (companyCountry === "UAE" || fullCompText.includes("UAE") || fullCompText.includes("EMIRATES") || fullCompText.includes("DUBAI")) {
+          currencyCode = "AED";
+        } else if (companyCountry === "SAUDI" || companyCountry === "KSA" || fullCompText.includes("SAUDI")) {
+          currencyCode = "SAR";
+        } else if (companyCountry === "QATAR" || fullCompText.includes("QATAR")) {
+          currencyCode = "QAR";
+        } else if (companyCountry === "KUWAIT" || fullCompText.includes("KUWAIT")) {
+          currencyCode = "KWD";
+        } else if (companyCountry === "BAHRAIN" || fullCompText.includes("BAHRAIN")) {
+          currencyCode = "BHD";
+        } else if (companyCountry === "USA" || companyCountry === "UNITED STATES") {
+          currencyCode = "USD";
+        } else if (companyCountry === "UK" || companyCountry === "UNITED KINGDOM") {
+          currencyCode = "GBP";
+        }
+      }
+
+      // 3. If still not determined, inspect TR_AC_HEADER transactions
+      if (!currencyCode) {
+        const trCurrRes = await conn.execute(
+          `SELECT CURR_CODE, COUNT(*) AS CNT
+           FROM TR_AC_HEADER
+           WHERE TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode))
+             AND CURR_CODE IS NOT NULL
+           GROUP BY CURR_CODE
+           ORDER BY CNT DESC`,
+          { companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const trRow = trCurrRes.rows?.[0] as any;
+        if (trRow?.CURR_CODE) {
+          currencyCode = String(trRow.CURR_CODE).trim().toUpperCase();
+        }
+      }
+
+      // 4. Default fallback: check if company name or user tenant has India
+      if (!currencyCode) {
+        const tenantHint = String((req as any).user?.tenantId || (req as any).user?.tenant_name || "").toUpperCase();
+        if (tenantHint.includes("IND")) {
+          currencyCode = "INR";
+        } else {
+          currencyCode = "OMR";
+        }
+      }
+
+      // 5. Look up currency symbol and decimal places from MS_CURRENCY
+      const currMasterRes = await conn.execute(
+        `SELECT CURR_SIGN, SUBDIVISION
+         FROM MS_CURRENCY
+         WHERE TRIM(UPPER(CURR_CODE)) = TRIM(UPPER(:currCode))
+         ORDER BY CASE WHEN TRIM(UPPER(COMPANY_CODE)) = TRIM(UPPER(:companyCode)) THEN 0 ELSE 1 END, ROWNUM`,
+        { currCode: currencyCode, companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const currMasterRow = currMasterRes.rows?.[0] as any;
+      if (currMasterRow) {
+        const rawSign = String(currMasterRow.CURR_SIGN || "").trim();
+        // Ignore invalid characters like '?' or unprintable characters
+        if (rawSign && !rawSign.includes("?") && rawSign.toUpperCase() !== currencyCode) {
+          currencySymbol = rawSign;
+        }
+        if (currencyDecimals == null && currMasterRow.SUBDIVISION != null) {
+          currencyDecimals = Number(currMasterRow.SUBDIVISION);
+        }
+      }
+
+      // Known currency symbols map (clean UTF-8)
+      const KNOWN_SYMBOLS: Record<string, string> = {
+        INR: "₹",
+        OMR: "ر.ع.",
+        AED: "د.إ",
+        USD: "$",
+        EUR: "€",
+        GBP: "£",
+        SAR: "ر.س",
+        QAR: "ر.ق",
+        KWD: "د.ك",
+        KD: "د.ك",
+        BHD: "ب.د",
+        JPY: "¥",
+        CNY: "¥",
+        SGD: "S$",
+        CAD: "CA$",
+        AUD: "A$",
+      };
+
+      if (!currencySymbol && KNOWN_SYMBOLS[currencyCode]) {
+        currencySymbol = KNOWN_SYMBOLS[currencyCode];
+      }
+
+      // Decimals precision determination:
+      // 3 decimals for OMR, BHD, KWD, JOD, TND
+      // 2 decimals for INR, USD, AED, SAR, QAR, EUR, GBP
+      // 0 decimals for JPY, KRW
+      if (currencyDecimals == null || isNaN(currencyDecimals)) {
+        if (["OMR", "BHD", "KWD", "KD", "JOD", "TND"].includes(currencyCode)) {
+          currencyDecimals = 3;
+        } else if (["JPY", "KRW"].includes(currencyCode)) {
+          currencyDecimals = 0;
+        } else {
+          currencyDecimals = 2;
+        }
+      }
     } catch (currencyError) {
       console.warn("Finance dashboard currency lookup unavailable:", currencyError);
+      if (!currencyCode) currencyCode = "OMR";
+      if (!currencySymbol) currencySymbol = currencyCode === "INR" ? "₹" : (currencyCode === "OMR" ? "ر.ع." : currencyCode);
+      if (currencyDecimals == null) currencyDecimals = currencyCode === "OMR" ? 3 : 2;
     }
 
     // Also fetch available FY periods and divisions for filter dropdowns
@@ -256,6 +387,7 @@ export const getFinanceDashboardData = async (req: Request, res: Response): Prom
         attention,
         currency_code: currencyCode,
         currency_symbol: currencySymbol,
+        currency_decimals: currencyDecimals,
       },
     });
   } catch (err: any) {
