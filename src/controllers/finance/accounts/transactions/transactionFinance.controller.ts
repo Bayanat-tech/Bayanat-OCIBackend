@@ -618,9 +618,18 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
-    const invRows = normalize(inv.rows || []);
-    const jobRows = normalize(job.rows || []);
-    const expRows = normalize(exp.rows || []).map((r: any) => ({
+    const dedupeChildRows = (rows: any[], keyFn: (r: any) => string) => {
+      const seen = new Set<string>();
+      return rows.filter((r) => {
+        const k = keyFn(r);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    };
+    const invRows = dedupeChildRows(normalize(inv.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.inv_no}`);
+    const jobRows = dedupeChildRows(normalize(job.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.job_no}`);
+    const expRows = dedupeChildRows(normalize(exp.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.exp_code}`).map((r: any) => ({
       ...r,
       // Child tables store numeric DOC_NO; provide a display field combining doc_type + doc_no
       display_doc_no: (r.doc_type ?? '') + String(r.doc_no ?? ''),
