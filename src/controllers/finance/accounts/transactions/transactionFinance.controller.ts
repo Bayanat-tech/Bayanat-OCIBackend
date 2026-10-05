@@ -1657,7 +1657,11 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       qty: req.body.qty ?? old.QTY,
       price: req.body.price ?? old.PRICE,
       prod_code: req.body.prod_code ?? old.PROD_CODE,
-      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS
+      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS,
+      app_ref_no: req.body.app_ref_no ?? old.APP_REF_NO,
+      tx_cat_code: req.body.tx_cat_code ?? old.TX_CAT_CODE,
+      tx_compntcat_code_1: req.body.tx_compntcat_code_1 ?? old.TX_COMPNTCAT_CODE_1,
+      pdo_type: req.body.pdo_type ?? old.PDO_TYPE,
     };
 
     //  Call your SP safely
@@ -1669,7 +1673,8 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
         :pn, :pa, :pp, :pf,
         :rn, :rd,
         :ino, :idt,
-        :dv, :lu
+        :dv, :lu,
+        :ar, :dto, :dem, :dmo, :dco, :pt, :dtm, :tcc, :tc, :pdo
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1689,7 +1694,17 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
         ino: h.invoice_no,
         idt: toDate(h.invoice_date),
         dv: h.div_code,
-        lu: req.user.loginid
+        lu: req.user.loginid,
+        ar: h.app_ref_no ?? null,
+        dto: h.delivery_to ?? null,
+        dem: h.dlvr_email ?? null,
+        dmo: h.dlvr_mobile ?? null,
+        dco: h.dlvr_contact ?? null,
+        pt: h.payment_terms ?? null,
+        dtm: h.dlvr_term ?? null,
+        tcc: h.tx_cat_code ?? null,
+        tc: h.tx_compntcat_code_1 ?? null,
+        pdo: h.pdo_type ?? null
       }
     );
 
