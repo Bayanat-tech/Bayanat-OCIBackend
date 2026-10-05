@@ -3,7 +3,7 @@ import { RequestWithUser } from "../../interfaces/common.interface";
 import { IUser } from "../../interfaces/user.interface";
 import { supplierSchema } from "../../validation/Purchaseflow/Purchaseflow.validation";
 import constants from "../../helpers/constants";
-import { SupplierMasterService } from "../../services/purchaseflow/suppilermaster.service";
+import { SupplierMasterService } from "../../services/purchaseFlow/suppilermaster.service";
 
 export class SupplierMasterController {
   
