@@ -246,12 +246,21 @@ export function reportAppliedFilters(
 }
 
 /* ------------------------------------------------------------------ */
-/*  Common report CSS                                                  */
+/*  Common report CSS — parameterized by orientation                   */
 /* ------------------------------------------------------------------ */
-export const COMMON_REPORT_CSS = `
+export type ReportOrientation = "portrait" | "landscape";
+
+/**
+ * Returns the full COMMON_REPORT_CSS, but with the `@page` rule sized
+ * for the requested orientation. Defaults to portrait (A4) for backward
+ * compatibility with every existing caller.
+ */
+export function commonReportCss(orientation: ReportOrientation = "portrait"): string {
+  const pageSize = orientation === "landscape" ? "A4 landscape" : "A4 portrait";
+  return `
   /* ===== Page setup ===== */
   @page {
-    size: A4;
+    size: ${pageSize};
     margin: 5mm;
   }
 
@@ -407,6 +416,13 @@ export const COMMON_REPORT_CSS = `
   /*  PRINT CSS                                                       */
   /* ================================================================ */
   @media print {
+    /* Re-assert page size inside @media print — Chrome gives the
+       print-media @page rule precedence over screen-media @page. */
+    @page {
+      size: ${pageSize};
+      margin: 5mm;
+    }
+
     html, body {
       margin: 0;
       background: white;
@@ -499,6 +515,13 @@ export const COMMON_REPORT_CSS = `
     }
   }
 `;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Backward-compat: legacy COMMON_REPORT_CSS constant                 */
+/*  (portrait default; keep any existing imports working)              */
+/* ------------------------------------------------------------------ */
+export const COMMON_REPORT_CSS = commonReportCss("portrait");
 
 /* ------------------------------------------------------------------ */
 /*  Forced font size (only when fontMode === "fixed")                  */
@@ -632,6 +655,11 @@ export type BuildReportDocumentOptions = {
    * "native" – keep sizes from CSS (default).
    */
   fontMode?: "fixed" | "native";
+  /**
+   * Page orientation for print / PDF output.
+   * Defaults to "portrait" for backward compatibility.
+   */
+  orientation?: ReportOrientation;
 };
 
 export function buildReportDocument(opts: BuildReportDocumentOptions): string {
@@ -644,6 +672,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
     autoPrint = false,
     showPrintButton = true,
     fontMode = "native",
+    orientation = "portrait",
   } = opts;
 
   return `<!doctype html>
@@ -655,7 +684,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
     ${REPORT_HEADER_CSS}
     ${REPORT_FOOTER_CSS}
     ${REPORT_APPLIED_FILTERS_CSS}
-    ${COMMON_REPORT_CSS}
+    ${commonReportCss(orientation)}
     ${extraCss}
     ${fontMode === "fixed" ? REPORT_FONT_CSS : ""}
   </style>
