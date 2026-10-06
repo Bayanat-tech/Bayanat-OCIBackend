@@ -705,15 +705,102 @@ export const getChequePaymentHeader = async (req: RequestWithUser, res: Response
   try {
     conn = await getConn(req);
     const divCode = String(req.query.div_code || '').trim();
-    const query = divCode
-      ? `SELECT * FROM VW_CHQ_PAYMENT_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt AND div_code = :dc`
-      : `SELECT * FROM VW_CHQ_PAYMENT_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`;
-    const binds: Record<string, any> = { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type };
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
+
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
+      dt: req.query.doc_type,
+    };
     if (divCode) binds.dc = divCode;
-    const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    const row = result.rows?.[0] || null;
+
+    const docCond = `(doc_no = :dn OR TO_CHAR(doc_no) = :dn OR TO_CHAR(doc_no) = :clean_dn)`;
+
+    let row: any = null;
+    try {
+      const query = divCode
+        ? `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt AND div_code = :dc`
+        : `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+      const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = result.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivQuery = `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+                            WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+        const noDivResult = await conn.execute(noDivQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivResult.rows?.[0] || null;
+      }
+    } catch {
+      row = null;
+    }
+
+    // Fallback: If view returns empty (e.g. MS_AC_SETUP is empty in tenant causing inner join failure),
+    // query TR_AC_HEADER directly with LEFT JOINs.
+    if (!row) {
+      const docCondH = `(th.doc_no = :dn OR TO_CHAR(th.doc_no) = :dn OR TO_CHAR(th.doc_no) = :clean_dn)`;
+      const whereDiv = divCode ? 'AND th.div_code = :dc' : '';
+      const fallbackQuery = `
+        SELECT th.*,
+               acc.ac_name,
+               bank_acc.ac_name AS bank_ac_name,
+               curr.curr_name,
+               div.div_name,
+               acs.tax_perc
+        FROM TR_AC_HEADER th
+        LEFT JOIN MS_AC_SETUP acs
+               ON th.company_code = acs.company_code
+        LEFT JOIN MS_ACCODES acc
+               ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+        LEFT JOIN MS_AC_BANKCODE bank
+               ON th.bank_ac_code = bank.ac_code AND th.company_code = bank.company_code
+        LEFT JOIN MS_ACCODES bank_acc
+               ON bank.ac_code = bank_acc.ac_code AND bank.company_code = bank_acc.company_code
+        LEFT JOIN MS_CURRENCY curr
+               ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+        LEFT JOIN MS_HR_DIVISION div
+               ON th.div_code = div.div_code AND th.company_code = div.company_code
+        WHERE th.company_code = :cc
+          AND ${docCondH}
+          AND th.doc_type = :dt
+          ${whereDiv}
+      `;
+      const fbResult = await conn.execute(fallbackQuery, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = fbResult.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivFbQuery = `
+          SELECT th.*,
+                 acc.ac_name,
+                 bank_acc.ac_name AS bank_ac_name,
+                 curr.curr_name,
+                 div.div_name,
+                 acs.tax_perc
+          FROM TR_AC_HEADER th
+          LEFT JOIN MS_AC_SETUP acs
+                 ON th.company_code = acs.company_code
+          LEFT JOIN MS_ACCODES acc
+                 ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+          LEFT JOIN MS_AC_BANKCODE bank
+                 ON th.bank_ac_code = bank.ac_code AND th.company_code = bank.company_code
+          LEFT JOIN MS_ACCODES bank_acc
+                 ON bank.ac_code = bank_acc.ac_code AND bank.company_code = bank_acc.company_code
+          LEFT JOIN MS_CURRENCY curr
+                 ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+          LEFT JOIN MS_HR_DIVISION div
+                 ON th.div_code = div.div_code AND th.company_code = div.company_code
+          WHERE th.company_code = :cc
+            AND ${docCondH}
+            AND th.doc_type = :dt
+        `;
+        const noDivFbResult = await conn.execute(noDivFbQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivFbResult.rows?.[0] || null;
+      }
+    }
+
     res.json({ success: true, data: row ? normalize([row])[0] : null });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -723,15 +810,91 @@ export const getPurchaseHeader = async (req: RequestWithUser, res: Response): Pr
   try {
     conn = await getConn(req);
     const divCode = String(req.query.div_code || '').trim();
-    const query = divCode
-      ? `SELECT * FROM VW_PURCHASE_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt AND div_code = :dc`
-      : `SELECT * FROM VW_PURCHASE_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`;
-    const binds: Record<string, any> = { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type };
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
+
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
+      dt: req.query.doc_type,
+    };
     if (divCode) binds.dc = divCode;
-    const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    const row = result.rows?.[0] || null;
+
+    const docCond = `(doc_no = :dn OR TO_CHAR(doc_no) = :dn OR TO_CHAR(doc_no) = :clean_dn)`;
+
+    let row: any = null;
+    try {
+      const query = divCode
+        ? `SELECT * FROM VW_PURCHASE_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt AND div_code = :dc`
+        : `SELECT * FROM VW_PURCHASE_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+      const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = result.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivQuery = `SELECT * FROM VW_PURCHASE_HEADER
+                            WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+        const noDivResult = await conn.execute(noDivQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivResult.rows?.[0] || null;
+      }
+    } catch {
+      row = null;
+    }
+
+    // Fallback: If view returns nothing, query TR_AC_HEADER directly
+    if (!row) {
+      const docCondH = `(th.doc_no = :dn OR TO_CHAR(th.doc_no) = :dn OR TO_CHAR(th.doc_no) = :clean_dn)`;
+      const whereDiv = divCode ? 'AND th.div_code = :dc' : '';
+      const fallbackQuery = `
+        SELECT th.*,
+               acc.ac_name,
+               curr.curr_name,
+               div.div_name,
+               acs.tax_perc
+        FROM TR_AC_HEADER th
+        LEFT JOIN MS_AC_SETUP acs
+               ON th.company_code = acs.company_code
+        LEFT JOIN MS_ACCODES acc
+               ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+        LEFT JOIN MS_CURRENCY curr
+               ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+        LEFT JOIN MS_HR_DIVISION div
+               ON th.div_code = div.div_code AND th.company_code = div.company_code
+        WHERE th.company_code = :cc
+          AND ${docCondH}
+          AND th.doc_type = :dt
+          ${whereDiv}
+      `;
+      const fbResult = await conn.execute(fallbackQuery, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = fbResult.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivFbQuery = `
+          SELECT th.*,
+                 acc.ac_name,
+                 curr.curr_name,
+                 div.div_name,
+                 acs.tax_perc
+          FROM TR_AC_HEADER th
+          LEFT JOIN MS_AC_SETUP acs
+                 ON th.company_code = acs.company_code
+          LEFT JOIN MS_ACCODES acc
+                 ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+          LEFT JOIN MS_CURRENCY curr
+                 ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+          LEFT JOIN MS_HR_DIVISION div
+                 ON th.div_code = div.div_code AND th.company_code = div.company_code
+          WHERE th.company_code = :cc
+            AND ${docCondH}
+            AND th.doc_type = :dt
+        `;
+        const noDivFbResult = await conn.execute(noDivFbQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivFbResult.rows?.[0] || null;
+      }
+    }
+
     res.json({ success: true, data: row ? normalize([row])[0] : null });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -741,35 +904,115 @@ export const getChequePaymentDetail = async (req: RequestWithUser, res: Response
   try {
     conn = await getConn(req);
     const divCode = String(req.query.div_code || '').trim();
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
     const whereDiv = divCode ? 'AND d.div_code = :dc' : '';
     const binds: Record<string, any> = {
       cc: req.user.company_code,
-      dn: String(req.params.doc_no),
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
       dt: req.query.doc_type,
     };
     if (divCode) binds.dc = divCode;
 
-    const result = await conn.execute(
-      `SELECT d.*,
-              COALESCE(d.ac_name, a.ac_name, l.l4_description, '') AS ac_name_resolved
-       FROM VW_TR_AC_DETAIL_DATA d
-       LEFT JOIN MS_ACCODES a
-              ON a.company_code = d.company_code
-             AND a.ac_code = d.ac_code
-       LEFT JOIN MS_AC_L4 l
-              ON l.company_code = d.company_code
-             AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
-       WHERE d.company_code = :cc AND TO_CHAR(d.doc_no) = :dn
-         AND d.doc_type = :dt
-         ${whereDiv}
-       ORDER BY d.serial_no`,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    const rows = (result.rows || []).map((r: any) => ({
-      ...r,
-      AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
-    }));
+    const docCond = `(d.doc_no = :dn OR TO_CHAR(d.doc_no) = :dn OR TO_CHAR(d.doc_no) = :clean_dn)`;
+
+    let rows: any[] = [];
+    try {
+      const result = await conn.execute(
+        `SELECT d.*,
+                COALESCE(d.ac_name, a.ac_name, l.l4_description, '') AS ac_name_resolved
+         FROM VW_TR_AC_DETAIL_DATA d
+         LEFT JOIN MS_ACCODES a
+                ON a.company_code = d.company_code
+               AND a.ac_code = d.ac_code
+         LEFT JOIN MS_AC_L4 l
+                ON l.company_code = d.company_code
+               AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
+         WHERE d.company_code = :cc AND ${docCond}
+           AND d.doc_type = :dt
+           ${whereDiv}
+         ORDER BY d.serial_no`,
+        binds,
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      rows = (result.rows || []).map((r: any) => ({
+        ...r,
+        AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
+      }));
+    } catch {
+      rows = [];
+    }
+
+    // Fallback: If view returns no rows (e.g. view's td.ac_code <> td.HEADER_AC_CODE filter
+    // wrongly suppresses user lines where detail account matches header account),
+    // query TR_AC_DETAIL directly.
+    if (!rows.length) {
+      const fbDetailQuery = `
+        SELECT d.*,
+               COALESCE(a.ac_name, l.l4_description, '') AS ac_name_resolved,
+               dept.dept_name,
+               cur.curr_name
+        FROM TR_AC_DETAIL d
+        LEFT JOIN MS_ACCODES a
+               ON a.company_code = d.company_code
+              AND a.ac_code = d.ac_code
+        LEFT JOIN MS_AC_L4 l
+               ON l.company_code = d.company_code
+              AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
+        LEFT JOIN MS_DEPARTMENT dept
+               ON d.company_code = dept.company_code
+              AND d.dept_code = dept.dept_code
+        LEFT JOIN MS_CURRENCY cur
+               ON d.company_code = cur.company_code
+              AND d.curr_code = cur.curr_code
+        WHERE d.company_code = :cc
+          AND ${docCond}
+          AND d.doc_type = :dt
+          AND (d.serial_no < 9000 OR (d.header_ac_code IS NULL OR d.ac_code <> d.header_ac_code))
+          ${whereDiv}
+        ORDER BY d.serial_no
+      `;
+      const fbResult = await conn.execute(fbDetailQuery, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      rows = (fbResult.rows || []).map((r: any) => ({
+        ...r,
+        AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
+      }));
+
+      // If divCode was passed and still no rows, retry without divCode filter
+      if (!rows.length && divCode) {
+        const noDivFbQuery = `
+          SELECT d.*,
+                 COALESCE(a.ac_name, l.l4_description, '') AS ac_name_resolved,
+                 dept.dept_name,
+                 cur.curr_name
+          FROM TR_AC_DETAIL d
+          LEFT JOIN MS_ACCODES a
+                 ON a.company_code = d.company_code
+                AND a.ac_code = d.ac_code
+          LEFT JOIN MS_AC_L4 l
+                 ON l.company_code = d.company_code
+                AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
+          LEFT JOIN MS_DEPARTMENT dept
+                 ON d.company_code = dept.company_code
+                AND d.dept_code = dept.dept_code
+          LEFT JOIN MS_CURRENCY cur
+                 ON d.company_code = cur.company_code
+                AND d.curr_code = cur.curr_code
+          WHERE d.company_code = :cc
+            AND ${docCond}
+            AND d.doc_type = :dt
+            AND (d.serial_no < 9000 OR (d.header_ac_code IS NULL OR d.ac_code <> d.header_ac_code))
+          ORDER BY d.serial_no
+        `;
+        const noDivFbResult = await conn.execute(noDivFbQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        rows = (noDivFbResult.rows || []).map((r: any) => ({
+          ...r,
+          AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
+        }));
+      }
+    }
+
     res.json({ success: true, data: normalize(rows) });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -778,14 +1021,40 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
-    const p = { cc: req.user.company_code, dn: req.params.doc_no, dc: req.query.div_code, dt: req.query.doc_type };
-    const where = `WHERE company_code = :cc AND TO_CHAR(doc_no) = :dn
-                     AND div_code = :dc AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
-    const [inv, job, exp] = await Promise.all([
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
+    const divCode = String(req.query.div_code || '').trim();
+    const p: Record<string, any> = {
+      cc: req.user.company_code,
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
+      dt: req.query.doc_type,
+    };
+    if (divCode) p.dc = divCode;
+
+    const docCond = `(doc_no = :dn OR TO_CHAR(doc_no) = :dn OR TO_CHAR(doc_no) = :clean_dn)`;
+    const whereDiv = divCode ? 'AND div_code = :dc' : '';
+    const where = `WHERE company_code = :cc AND ${docCond}
+                     ${whereDiv} AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
+
+    let [inv, job, exp]: any[] = await Promise.all([
       conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
+
+    // If divCode was provided and all child results are empty, retry without divCode filter
+    if (divCode && !(inv.rows?.length || job.rows?.length || exp.rows?.length)) {
+      const pNoDiv = { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type };
+      const whereNoDiv = `WHERE company_code = :cc AND ${docCond}
+                          AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
+      [inv, job, exp] = await Promise.all([
+        conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+        conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+        conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      ]);
+    }
+
     const dedupeChildRows = (rows: any[], keyFn: (r: any) => string) => {
       const seen = new Set<string>();
       return rows.filter((r) => {
