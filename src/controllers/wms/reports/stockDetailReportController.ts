@@ -786,12 +786,17 @@ function renderStockDetailBody(rows: ReportRow[], groupBy: TGroupBy, filtersHtml
   });
 
   const grandTotalLabel = groupBy === "site_location" ? "Total :" : "Grand Total :";
-  const siteHeaderCell1 = includeSiteCol ? `<th rowspan="2">Site</th>` : "";
+  const siteHeaderCell1 = includeSiteCol ? `<th>Site</th>` : "";
   const siteSubHeaderCell1 = includeSiteCol ? `<th>Location</th>` : "";
 
+  // Header row 1 and row 2 must each add up to the same number of leaf
+  // columns as the data rows (totalLeafs). No rowspan on the fixed headers —
+  // row 2 carries the sub-labels (Receipt DT, Location, ...) so both rows
+  // have exactly 12 (+extra) cells and nothing overflows into phantom columns.
   const extraHeaderCells1 = colSpec.extraHeaders
-    .map((h) => `<th rowspan="2">${escapeHtml(h)}</th>`)
+    .map((h) => `<th>${escapeHtml(h)}</th>`)
     .join("");
+  const receiptHeaderColspan = colSpec.extraColCount + 1;
 
   return `
     <div class="doc-title-row">
@@ -805,19 +810,18 @@ function renderStockDetailBody(rows: ReportRow[], groupBy: TGroupBy, filtersHtml
       <thead>
         <tr>
           ${extraHeaderCells1}
-          <th rowspan="2">Job No.</th>
+          <th>Job No.</th>
           ${siteHeaderCell1}
-          <th rowspan="2">Mfg. Date</th>
-          <th rowspan="2">Dco. Ref</th>
-          <th rowspan="2">Batch No</th>
-          <th rowspan="2">Manf. Value</th>
+          <th>Mfg. Date</th>
+          <th>Dco. Ref</th>
+          <th>Batch No</th>
+          <th>Manf. Value</th>
           <th colspan="2">Quantity in Stock</th>
           <th colspan="2">Quantity Available</th>
           <th colspan="2">Quantity Picked</th>
         </tr>
         <tr>
-          ${colSpec.extraHeaders.map(() => "<th></th>").join("")}
-          <th>Receipt DT</th>
+          <th colspan="${receiptHeaderColspan}">Receipt DT</th>
           ${siteSubHeaderCell1}
           <th>Exp. Date</th>
           <th>LoT No.</th>
