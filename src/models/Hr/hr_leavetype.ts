@@ -66,42 +66,42 @@ export class Leavetype implements IHrLeavetype {
     /**
      * Updated at timestamp.
      */
-    @UpdateDateColumn({ 
-        name: "UPDATED_AT", 
-        type: "timestamp",
-        nullable: true 
-    })
-    updated_at!: Date;
+    // @UpdateDateColumn({ 
+    //     name: "UPDATED_AT", 
+    //     type: "timestamp",
+    //     nullable: true 
+    // })
+    // updated_at!: Date;
 
-    /**
-     * Updated by user.
-     */
-    @Column({ 
-        name: "UPDATED_BY", 
-        type: "varchar2", 
-        length: 50, 
-        nullable: true 
-    })
-    updated_by!: string;
+    // /**
+    //  * Updated by user.
+    //  */
+    // @Column({ 
+    //     name: "UPDATED_BY", 
+    //     type: "varchar2", 
+    //     length: 50, 
+    //     nullable: true 
+    // })
+    // updated_by!: string;
 
-    /**
-     * Created by user.
-     */
-    @Column({ 
-        name: "CREATED_BY", 
-        type: "varchar2", 
-        length: 20, 
-        nullable: false 
-    })
-    created_by!: string;
+    // /**
+    //  * Created by user.
+    //  */
+    // @Column({ 
+    //     name: "CREATED_BY", 
+    //     type: "varchar2", 
+    //     length: 20, 
+    //     nullable: false 
+    // })
+    // created_by!: string;
 
     /**
      * Created at timestamp.
      */
-    @CreateDateColumn({ 
-        name: "CREATED_AT", 
-        type: "timestamp",
-        nullable: false 
-    })
-    created_at!: Date;
+    // @CreateDateColumn({ 
+    //     name: "CREATED_AT", 
+    //     type: "timestamp",
+    //     nullable: false 
+    // })
+    // created_at!: Date;
 }
