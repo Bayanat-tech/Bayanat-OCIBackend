@@ -708,7 +708,7 @@ export const currencySchema = (data: ICurrency) => {
 export const supplierSchema = (data: ISupplier) => {
   const schema = Joi.object().keys({
     company_code: Joi.string().required(),
-    prin_code: Joi.string().required(),
+    // prin_code: Joi.string().required(),
     supp_code: Joi.string().required(),
     curr_code: Joi.string().allow("", null),
     country_code: Joi.string().allow("", null),
@@ -743,8 +743,8 @@ export const supplierSchema = (data: ISupplier) => {
     supp_email3: Joi.string().allow(null, ""),
     payment_terms: Joi.number().allow("", null),
     importer_code: Joi.string().allow(null, ""),
-    updated_at: Joi.date().allow("", null),
-    updated_by: Joi.string().allow(null, ""),
+    // updated_at: Joi.date().allow("", null),
+    // updated_by: Joi.string().allow(null, ""),
     created_by: Joi.string().allow(null, ""),
     created_at: Joi.date().allow("", null),
     cr_number: Joi.string().allow(null, ""),
