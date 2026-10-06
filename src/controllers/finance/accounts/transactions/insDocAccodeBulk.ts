@@ -16,22 +16,27 @@ async function resolveL4Code(
   companyCode: string,
   accountCode: string
 ) {
-  const result = await connection.execute<{ L4_CODE: string }>(
-    `
-      SELECT
-        COALESCE(
-          MAX(CASE WHEN AC_CODE = :accountCode THEN L4_CODE END),
-          MAX(CASE WHEN L4_CODE = :accountCode THEN L4_CODE END)
-        ) AS L4_CODE
-      FROM MS_ACCODES
-      WHERE COMPANY_CODE = :companyCode
-        AND (AC_CODE = :accountCode OR L4_CODE = :accountCode)
-    `,
-    { companyCode, accountCode },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+  try {
+    const result = await connection.execute<{ L4_CODE: string }>(
+      `
+        SELECT
+          COALESCE(
+            MAX(CASE WHEN UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode)) AND AC_CODE = :accountCode THEN L4_CODE END),
+            MAX(CASE WHEN AC_CODE = :accountCode THEN L4_CODE END),
+            MAX(CASE WHEN L4_CODE = :accountCode THEN L4_CODE END)
+          ) AS L4_CODE
+        FROM MS_ACCODES
+        WHERE (UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode)) OR :companyCode IS NULL)
+          AND (AC_CODE = :accountCode OR L4_CODE = :accountCode)
+      `,
+      { companyCode, accountCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-  return result.rows?.[0]?.L4_CODE || "";
+    return result.rows?.[0]?.L4_CODE || accountCode;
+  } catch (_) {
+    return accountCode;
+  }
 }
 
 export const insDocAccodeBulk = async (
@@ -52,7 +57,11 @@ export const insDocAccodeBulk = async (
       return;
     }
 
-    const tenantId = getCurrentTenantId();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && loginId) {
+      tenantId = await TenantManager.getTenantForUser(loginId);
+    }
+
     if (!tenantId) {
       res.status(400).json({
         success: false,
@@ -78,12 +87,6 @@ export const insDocAccodeBulk = async (
         throw new Error(`Invalid hdr_dtl '${row.hdr_dtl}'. Use H or D.`);
       }
 
-      const l4Code = await resolveL4Code(connection, companyCode, accountCode);
-
-      if (!l4Code) {
-        throw new Error(`Account ${accountCode} is not available in MS_ACCODES for company ${companyCode}`);
-      }
-
       await connection.execute(
         `
           MERGE INTO MS_AC_SETUP_DOC_ACCODE target
@@ -92,7 +95,7 @@ export const insDocAccodeBulk = async (
               :companyCode AS COMPANY_CODE,
               :docId AS DOC_ID,
               :hdrDtl AS HDR_DTL,
-              :l4Code AS AC_CODE,
+              :accountCode AS AC_CODE,
               :divCode AS DIV_CODE
             FROM DUAL
           ) src
@@ -107,7 +110,7 @@ export const insDocAccodeBulk = async (
             INSERT (COMPANY_CODE, DOC_ID, HDR_DTL, AC_CODE, DIV_CODE)
             VALUES (src.COMPANY_CODE, src.DOC_ID, src.HDR_DTL, src.AC_CODE, src.DIV_CODE)
         `,
-        { companyCode, docId, hdrDtl, l4Code, divCode }
+        { companyCode, docId, hdrDtl, accountCode, divCode }
       );
     }
 

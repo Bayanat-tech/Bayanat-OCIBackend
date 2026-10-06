@@ -10353,919 +10353,741 @@ Error: ORA-12170: TNS:Connect timeout occurred
 2026-10-04 19:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-10-04 19:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSDEV_TENANT 
 2026-10-04 19:50:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
-2026-10-05 11:30:13 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-10-05 11:30:13 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-10-05 11:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:32:00 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12516: TNS:listener could not find available handler with matching protocol stack 
-Error: ORA-12516: TNS:listener could not find available handler with matching protocol stack
-    at async Function.getPoolForTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
-    at async Function.getConnection (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
-    at async Function.executeInTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
-    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
-    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:41:26 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 10:41:26 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-10-05 10:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:42:13 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:42:24 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:42:29 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:42:42 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:42:52 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:43:05 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:44:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:44:12 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:44:19 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:44:25 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:44:30 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:44:34 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:46:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:46:11 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:46:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:46:23 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:46:31 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:46:37 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:48:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:48:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:48:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:48:21 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:48:24 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:48:27 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:50:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:50:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:50:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:50:18 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:50:21 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:50:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:52:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:52:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:52:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:52:18 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:52:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:52:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:54:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:54:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:54:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:54:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:54:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:54:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:56:14 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:56:21 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:56:26 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:56:39 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:56:42 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:56:59 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:58:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:58:11 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:58:15 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:58:22 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:58:25 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:58:29 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:00:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:00:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:00:11 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:00:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:00:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:00:24 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:02:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:02:15 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:02:20 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:02:29 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:02:32 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:02:35 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:04:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:04:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:04:11 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:04:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:04:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:04:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:06:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:06:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:06:11 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:06:18 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:06:21 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:06:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:08:05 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:08:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:08:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:08:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:08:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:08:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:10:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:10:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:10:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:10:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:10:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:10:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:12:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:12:11 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:12:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:12:21 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:12:25 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:12:29 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:14:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:14:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:14:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:14:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:14:29 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:14:34 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:16:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:16:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:16:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:16:22 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:16:25 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:16:28 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:18:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:18:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:18:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:18:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:18:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:18:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:20:09 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:20:13 [[31merror[39m]: [WMSDEV_TENANT] Error in notification scheduler tenant loop: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 11485
+Session ID: 197 Serial number: 6942
+Help: https://docs.oracle.com/error-help/db/ora-03113/ 
+Error: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 11485
+Session ID: 197 Serial number: 6942
+Help: https://docs.oracle.com/error-help/db/ora-03113/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:12 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:14 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:16 [[31merror[39m]: [BTSCMPRD_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:16 [[31merror[39m]: [MHDL_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
 2026-10-05 11:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:34:23 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:34:30 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:34:32 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:34:39 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:34:41 [[31merror[39m]: [BTSCMPRD_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=tOjGQv8JQtCmHxz+oRux+Q==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=tOjGQv8JQtCmHxz+oRux+Q==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:210:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:34:44 [[31merror[39m]: [MHDL_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=uPALrAoxSG2+iaqzYsWt5A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=uPALrAoxSG2+iaqzYsWt5A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:210:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
 2026-10-05 11:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:36:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 11:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:36:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=gbK6eRFnTbS9qPd69CcHLQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=gbK6eRFnTbS9qPd69CcHLQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:36:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:36:10 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:36:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:36:31 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:36:41 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:38:36 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 11:38:36 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
 2026-10-05 11:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 11:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 11:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:40:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:40:17 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:42:15 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 11:42:15 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-10-05 11:42:47 [[33mwarn[39m]: Unhandled event type: SUPPLIER_CREATED 
+2026-10-05 11:45:02 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 11:45:02 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
 2026-10-05 11:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:46:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=sIhr/D+KSsewebuGglpAUg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=sIhr/D+KSsewebuGglpAUg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:46:05 [[31merror[39m]: [WMSDEV_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=3ZzerjR4QxqmC6gpI9qx1A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=3ZzerjR4QxqmC6gpI9qx1A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:46:08 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:46:16 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:46:26 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:46:34 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
 2026-10-05 11:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:48:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=naoslPoDSQa6XQNWyd4Fag==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=naoslPoDSQa6XQNWyd4Fag==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:48:09 [[31merror[39m]: [WMSDEV_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=0LhWUMqhQwSh6PStfnZ1mg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=0LhWUMqhQwSh6PStfnZ1mg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:48:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:48:14 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=inPcacNiR/uJlMP8/nUMDw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=inPcacNiR/uJlMP8/nUMDw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:48:17 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:48:20 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
 2026-10-05 11:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:50:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:50:18 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:50:20 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:50:23 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=a66VuIYXSoGxUDmolmEOPA==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=a66VuIYXSoGxUDmolmEOPA==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:50:26 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:50:30 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
 2026-10-05 11:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:52:10 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=+tdfMDtcSeeDRbf6sXZA+A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=+tdfMDtcSeeDRbf6sXZA+A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:52:13 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:52:16 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:52:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=iwtevhqWQRajBdKf44HUNQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=iwtevhqWQRajBdKf44HUNQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:52:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:52:27 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
 2026-10-05 11:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:54:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:54:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:54:10 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:54:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=dSmBPlp2TJ2u9sbj2Lny6A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=dSmBPlp2TJ2u9sbj2Lny6A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:54:17 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:54:20 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:55:15 [[33mwarn[39m]: Unhandled event type: SUPPLIER_CREATED 
 2026-10-05 11:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:56:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=ppoWVGoYQoGGgZ3OdbmRNw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=ppoWVGoYQoGGgZ3OdbmRNw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:56:06 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:56:09 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:56:12 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=NtSScRdtQgul0R/fmI7kYg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=NtSScRdtQgul0R/fmI7kYg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:56:14 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:56:17 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
 2026-10-05 11:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 11:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 11:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:22:00 [[32minfo[39m]: [WMSTST_TENANT] Found 2 unsent notification(s) 
-2026-10-05 12:22:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-05 12:22:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0003.AREP273.PROD.OUTLOOK.COM 2026-10-05T06:52:08.206Z 08DF210EA80F221A] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0003.AREP273.PROD.OUTLOOK.COM 2026-10-05T06:52:08.206Z 08DF210EA80F221A]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-05 12:22:08 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000604 
-2026-10-05 12:22:08 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-05 12:22:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0037.AREP273.PROD.OUTLOOK.COM 2026-10-05T06:52:15.541Z 08DF20F430553389] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0037.AREP273.PROD.OUTLOOK.COM 2026-10-05T06:52:15.541Z 08DF20F430553389]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-05 12:22:15 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000604 
-2026-10-05 12:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:24:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:32:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:38:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:52:00 [[32minfo[39m]: [WMSTST_TENANT] Found 1 unsent notification(s) 
-2026-10-05 12:52:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: shoeb.shareef@almadinalogistics.com 
-2026-10-05 12:52:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-10-05T07:22:07.854Z 08DF210CF92B1724] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-10-05T07:22:07.854Z 08DF210CF92B1724]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-05 12:52:07 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000605 
-2026-10-05 12:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 12:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 12:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 12:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:06:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 13:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 13:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 13:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:43:29 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:45:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:46:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:48:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:50:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:52:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 14:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 14:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 14:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:00:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:02:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:04:24 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-10-05 15:04:24 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-10-05 15:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:06:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:08:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:10:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:12:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:14:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:18:05 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:20:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:22:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:24:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:26:03 [[32minfo[39m]: [WMSTST_TENANT] Found 1 unsent notification(s) 
-2026-10-05 15:26:03 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-05 15:26:11 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0086.AREP273.PROD.OUTLOOK.COM 2026-10-05T09:56:11.197Z 08DF210F2201D2FA] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0086.AREP273.PROD.OUTLOOK.COM 2026-10-05T09:56:11.197Z 08DF210F2201D2FA]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-05 15:26:11 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000606 
-2026-10-05 15:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:28:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:30:00 [[32minfo[39m]: [WMSTST_TENANT] Found 3 unsent notification(s) 
-2026-10-05 15:30:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-05 15:30:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0079.AREP273.PROD.OUTLOOK.COM 2026-10-05T10:00:07.576Z 08DF20EFF85281EE] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0079.AREP273.PROD.OUTLOOK.COM 2026-10-05T10:00:07.576Z 08DF20EFF85281EE]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-05 15:30:07 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000607 
-2026-10-05 15:30:08 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-05 15:30:16 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0062.AREP273.PROD.OUTLOOK.COM 2026-10-05T10:00:16.189Z 08DF20BAB7B247AF] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0062.AREP273.PROD.OUTLOOK.COM 2026-10-05T10:00:16.189Z 08DF20BAB7B247AF]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-05 15:30:16 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000607 
-2026-10-05 15:30:17 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-05 15:30:24 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-10-05T10:00:24.814Z 08DF21009A29F09B] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0077.AREP273.PROD.OUTLOOK.COM 2026-10-05T10:00:24.814Z 08DF21009A29F09B]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-05 15:30:24 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000607 
-2026-10-05 15:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:32:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:34:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:36:06 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:40:26 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:42:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:44:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:46:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:48:04 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:50:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:52:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:54:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:56:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 15:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 15:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 15:58:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:00:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:02:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:06:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:10:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:14:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:16:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:22:23 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:24:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:26:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:28:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:32:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:34:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:36:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:38:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:40:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:42:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:44:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:46:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:50:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 16:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 16:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 16:58:07 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:02:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:18:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:42:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:50:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:52:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:52:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 17:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 17:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 17:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:02:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:04:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:32:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-05 18:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-05 18:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-05 18:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 11:56:51 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-10-06 11:56:51 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-10-06 11:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 11:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 11:58:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:00:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:06:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:16:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:18:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:20:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:22:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:26:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:28:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:30:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:30:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:30:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:32:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:32:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:32:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:34:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:38:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:40:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:42:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:44:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:44:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:46:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:46:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:48:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:48:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:54:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:54:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:56:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:56:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 12:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 12:58:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 12:58:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:00:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:02:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:04:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:06:00 [[32minfo[39m]: [WMSTST_TENANT] Found 2 unsent notification(s) 
-2026-10-06 13:06:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-06 13:06:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX1P273CA0034.AREP273.PROD.OUTLOOK.COM 2026-10-06T07:36:08.448Z 08DF2119A5BC6CC7] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX1P273CA0034.AREP273.PROD.OUTLOOK.COM 2026-10-06T07:36:08.448Z 08DF2119A5BC6CC7]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-06 13:06:08 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000608 
-2026-10-06 13:06:08 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-06 13:06:15 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-10-06T07:36:15.504Z 08DF20F9DA019716] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0017.AREP273.PROD.OUTLOOK.COM 2026-10-06T07:36:15.504Z 08DF20F9DA019716]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-06 13:06:15 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000608 
-2026-10-06 13:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:10:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:16:34 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-10-06 13:16:34 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-10-06 13:17:48 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-10-06 13:17:48 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-10-06 13:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:18:06 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:20:01 [[32minfo[39m]: [WMSTST_TENANT] Found 1 unsent notification(s) 
-2026-10-06 13:20:01 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: Osama.alfarsi@almadinalogistics.com 
-2026-10-06 13:20:09 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX1P273CA0003.AREP273.PROD.OUTLOOK.COM 2026-10-06T07:50:09.734Z 08DF211A5809DADF] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX1P273CA0003.AREP273.PROD.OUTLOOK.COM 2026-10-06T07:50:09.734Z 08DF211A5809DADF]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-06 13:20:09 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000603 
-2026-10-06 13:22:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:22:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:22:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:24:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:26:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:26:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:26:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 13:28:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 13:28:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 13:28:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:00:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:01:27 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:02:00 [[32minfo[39m]: [WMSTST_TENANT] Found 1 unsent notification(s) 
-2026-10-06 14:02:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-06 14:02:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-10-06T08:32:08.256Z 08DF210CF941C7D3] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DO2P289CA0006.QATP289.PROD.OUTLOOK.COM 2026-10-06T08:32:08.256Z 08DF210CF941C7D3]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-06 14:02:08 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000609 
-2026-10-06 14:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:04:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:04:00 [[32minfo[39m]: [WMSTST_TENANT] Found 1 unsent notification(s) 
-2026-10-06 14:04:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: prem@bayanattechnology.com 
-2026-10-06 14:04:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DO3P289CA0016.QATP289.PROD.OUTLOOK.COM 2026-10-06T08:34:08.525Z 08DF2117AC7FD271] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DO3P289CA0016.QATP289.PROD.OUTLOOK.COM 2026-10-06T08:34:08.525Z 08DF2117AC7FD271]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-06 14:04:08 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=TK2600000609 
-2026-10-06 14:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:06:00 [[32minfo[39m]: [WMSTST_TENANT] Found 1 unsent notification(s) 
-2026-10-06 14:06:00 [[32minfo[39m]: [NOTIFY] Sending email for event: TRANSACTION_COMPLETED, to: naderhakim@almadinalogistics.com 
-2026-10-06 14:06:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DO0P289CA0008.QATP289.PROD.OUTLOOK.COM 2026-10-06T08:36:07.883Z 08DF234BF6FE0FC6] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DO0P289CA0008.QATP289.PROD.OUTLOOK.COM 2026-10-06T08:36:07.883Z 08DF234BF6FE0FC6]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-06 14:06:07 [[32minfo[39m]: [WMSTST_TENANT] Email sent for TXN_NO=HR-26-02166 
-2026-10-06 14:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:34:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:35:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:36:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:36:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:38:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:38:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:38:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:40:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:40:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 14:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 14:42:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 14:42:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:00:19 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-10-06 15:00:19 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-10-06 15:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:02:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:02:00 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12516: TNS:listener could not find available handler with matching protocol stack 
-Error: ORA-12516: TNS:listener could not find available handler with matching protocol stack
-    at async Function.getPoolForTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
-    at async Function.getConnection (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
-    at async Function.executeInTenant (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
-    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
-    at async C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
-2026-10-06 15:04:13 [[32minfo[39m]: Starting Notification Email Scheduler... 
-2026-10-06 15:04:13 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
-2026-10-06 15:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:06:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:06:01 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:08:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:08:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:10:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:10:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:12:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:12:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:14:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:14:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:16:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:16:00 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:18:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:18:02 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
-2026-10-06 15:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
-2026-10-06 15:20:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
-2026-10-06 15:20:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 

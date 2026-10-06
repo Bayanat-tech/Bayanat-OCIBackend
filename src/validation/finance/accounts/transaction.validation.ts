@@ -1110,6 +1110,8 @@ export const LpoSchema = (
     hse_compliance: Joi.string().optional().allow('', null),
     print_letter_head: Joi.boolean().optional().default(false),
     invoice_no: Joi.string().optional().allow('', null),
+    cash_ind: Joi.string().valid('Y', 'N').optional().default('N').allow('', null),
+    inv_generated: Joi.string().valid('Y', 'N').optional().allow('', null),
     canceled: Joi.string().optional().allow('', null),
     ...(isBulkOperation && { company_code: userCompany }),
     files: Joi.array()
@@ -1143,6 +1145,8 @@ export const LpoSchema = (
           curr_code: Joi.string().required(), // Currency code (required)
           ex_rate: Joi.number(), // Exchange rate
           amount: Joi.number().required(), // Amount (required)
+          qty_rcv: Joi.number().allow("", null).optional(),
+          amount_rcv: Joi.number().allow("", null).optional(),
           project: Joi.string(), // Amount (required)
           sign_ind: Joi.number().valid(1,-1).allow(null), // Sign indicator (optional)
           tx_compntcat_code_1: Joi.string().optional().allow("", null), // Transaction component category code 1 (optional)
