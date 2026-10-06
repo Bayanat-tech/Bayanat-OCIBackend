@@ -592,22 +592,18 @@ export async function initializeCompanyFinanceSetup(
   // 2. MS_CURRENCY
   details.currencies = await copyTableRows(conn, 'MS_CURRENCY', newCompany, sourceCompany);
 
-  // 3. MS_HR_DIVISION
+  // 3. MS_HR_DIVISION (Default branch/division)
   details.divisions = await copyTableRows(conn, 'MS_HR_DIVISION', newCompany, sourceCompany);
 
-  // 4. Chart of accounts levels
-  for (const lvl of ['MS_AC_L1', 'MS_AC_L2', 'MS_AC_L3', 'MS_AC_L4']) {
+  // 4. Standard Statutory Chart of Accounts Groups (Levels 1, 2, and 3 only)
+  // Levels 4 & 5 (MS_ACCODES) and specific document account mappings (MS_AC_SETUP_DOC_ACCODE)
+  // are created specifically per company by the finance team.
+  for (const lvl of ['MS_AC_L1', 'MS_AC_L2', 'MS_AC_L3']) {
     details[lvl] = await copyTableRows(conn, lvl, newCompany, sourceCompany);
   }
 
-  // 5. MS_ACCODES
-  details.accodes = await copyTableRows(conn, 'MS_ACCODES', newCompany, sourceCompany);
-
-  // 6. MS_AC_SETUP_DOC
+  // 5. Standard Finance Document Types (BP, BR, CP, CR, JV, etc.)
   details.setup_docs = await copyTableRows(conn, 'MS_AC_SETUP_DOC', newCompany, sourceCompany);
-
-  // 7. MS_AC_SETUP_DOC_ACCODE
-  details.setup_doc_accodes = await copyTableRows(conn, 'MS_AC_SETUP_DOC_ACCODE', newCompany, sourceCompany);
 
   await conn.commit();
   return { success: true, details };
