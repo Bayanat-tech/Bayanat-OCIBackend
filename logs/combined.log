@@ -10353,3 +10353,741 @@ Error: ORA-12170: TNS:Connect timeout occurred
 2026-10-04 19:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-10-04 19:50:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSDEV_TENANT 
 2026-10-04 19:50:00 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:41:26 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 10:41:26 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-10-05 10:42:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:42:13 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:42:24 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:42:29 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:42:42 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:42:52 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:43:05 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:44:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:44:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:44:12 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:44:19 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:44:25 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:44:30 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:44:34 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:46:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:46:11 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:46:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:46:23 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:46:31 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:46:37 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:48:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:48:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:48:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:48:21 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:48:24 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:48:27 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:50:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:50:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:50:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:50:18 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:50:21 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:50:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:52:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:52:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:52:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:52:18 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:52:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:52:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:54:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:54:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:54:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:54:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:54:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:54:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:56:14 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:56:21 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:56:26 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:56:39 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:56:42 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:56:59 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 10:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 10:58:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:58:11 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 10:58:15 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 10:58:22 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 10:58:25 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 10:58:29 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:00:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:00:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:00:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:00:11 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:00:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:00:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:00:24 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:02:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:02:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:02:15 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:02:20 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:02:29 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:02:32 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:02:35 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:04:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:04:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:04:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:04:11 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:04:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:04:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:04:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:06:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:06:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:06:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:06:11 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:06:18 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:06:21 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:06:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:08:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:08:05 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:08:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:08:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:08:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:08:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:08:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:10:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:10:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:10:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:10:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:10:19 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:10:22 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:10:25 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:12:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:12:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:12:11 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:12:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:12:21 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:12:25 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:12:29 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:14:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:14:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:14:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:14:14 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:14:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:14:29 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:14:34 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:16:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:16:09 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:16:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:16:22 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:16:25 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:16:28 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:18:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:18:07 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:18:10 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:18:13 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:18:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:18:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:18:26 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:20:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:20:09 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:20:13 [[31merror[39m]: [WMSDEV_TENANT] Error in notification scheduler tenant loop: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 11485
+Session ID: 197 Serial number: 6942
+Help: https://docs.oracle.com/error-help/db/ora-03113/ 
+Error: NJS-500: connection to Oracle Database was closed or broken
+DPI-1080: connection was closed by ORA-03113
+ORA-03113: end-of-file on communication channel
+Process ID: 11485
+Session ID: 197 Serial number: 6942
+Help: https://docs.oracle.com/error-help/db/ora-03113/
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:295:22)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:12 [[31merror[39m]: [WMSTST_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:14 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:16 [[31merror[39m]: [BTSCMPRD_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:32:16 [[31merror[39m]: [MHDL_TENANT] Error in notification scheduler tenant loop: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/ 
+Error: ORA-12543: TNS:destination host unreachable
+Help: https://docs.oracle.com/error-help/db/ora-12543/
+    at async TenantManager.getCentralConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:86:20)
+    at async TenantManager.getTenantConfig (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:136:18)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:204:20)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:34:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:34:23 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:34:30 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:34:32 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:34:39 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:34:41 [[31merror[39m]: [BTSCMPRD_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=tOjGQv8JQtCmHxz+oRux+Q==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=tOjGQv8JQtCmHxz+oRux+Q==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:210:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:34:44 [[31merror[39m]: [MHDL_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=uPALrAoxSG2+iaqzYsWt5A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=uPALrAoxSG2+iaqzYsWt5A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:210:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:36:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:36:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=gbK6eRFnTbS9qPd69CcHLQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=gbK6eRFnTbS9qPd69CcHLQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:36:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:36:10 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:36:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:36:31 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:36:41 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:38:36 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 11:38:36 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-10-05 11:40:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:40:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:40:17 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:42:15 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 11:42:15 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-10-05 11:42:47 [[33mwarn[39m]: Unhandled event type: SUPPLIER_CREATED 
+2026-10-05 11:45:02 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-05 11:45:02 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-10-05 11:46:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:46:02 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=sIhr/D+KSsewebuGglpAUg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=sIhr/D+KSsewebuGglpAUg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:46:05 [[31merror[39m]: [WMSDEV_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=3ZzerjR4QxqmC6gpI9qx1A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=3ZzerjR4QxqmC6gpI9qx1A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:46:08 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:46:16 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/ 
+Error: ORA-01017: invalid username/password; logon denied
+Help: https://docs.oracle.com/error-help/db/ora-01017/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:46:26 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:46:34 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:48:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:48:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=naoslPoDSQa6XQNWyd4Fag==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=naoslPoDSQa6XQNWyd4Fag==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:48:09 [[31merror[39m]: [WMSDEV_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=0LhWUMqhQwSh6PStfnZ1mg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=0LhWUMqhQwSh6PStfnZ1mg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:48:12 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:48:14 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=inPcacNiR/uJlMP8/nUMDw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=inPcacNiR/uJlMP8/nUMDw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:48:17 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:48:20 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:50:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:50:08 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:50:18 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:50:20 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:50:23 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=a66VuIYXSoGxUDmolmEOPA==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=a66VuIYXSoGxUDmolmEOPA==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:50:26 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:50:30 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:52:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:52:10 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=+tdfMDtcSeeDRbf6sXZA+A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=+tdfMDtcSeeDRbf6sXZA+A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:52:13 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:52:16 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:52:20 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=iwtevhqWQRajBdKf44HUNQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=iwtevhqWQRajBdKf44HUNQ==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:52:23 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:52:27 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:54:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:54:06 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:54:08 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:54:10 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:54:13 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=dSmBPlp2TJ2u9sbj2Lny6A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=dSmBPlp2TJ2u9sbj2Lny6A==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:54:17 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:54:20 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:55:15 [[33mwarn[39m]: Unhandled event type: SUPPLIER_CREATED 
+2026-10-05 11:56:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-05 11:56:03 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=ppoWVGoYQoGGgZ3OdbmRNw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=ppoWVGoYQoGGgZ3OdbmRNw==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:56:06 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
+2026-10-05 11:56:09 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-05 11:56:12 [[31merror[39m]: [BTIND_TENANT] Error in notification scheduler tenant loop: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=NtSScRdtQgul0R/fmI7kYg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/ 
+Error: ORA-12516: Cannot connect to database. Listener at host 10.10.0.16 port 1521 does not have a protocol handler for tcp ready or registered for service btdbnew_pdb1.dbsn.prodvcn.oraclevcn.com. (CONNECTION_ID=NtSScRdtQgul0R/fmI7kYg==)
+Help: https://docs.oracle.com/error-help/db/ora-12516/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-05 11:56:14 [[32minfo[39m]: [BTSCMPRD_TENANT] No unsent notification emails found 
+2026-10-05 11:56:17 [[32minfo[39m]: [MHDL_TENANT] No unsent notification emails found 
+2026-10-05 11:58:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 

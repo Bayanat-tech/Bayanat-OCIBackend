@@ -511,16 +511,159 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
   } finally { await closeConn(conn); }
 };
 
+async function copyTableRows(
+  conn: oracledb.Connection,
+  tbl: string,
+  newCompany: string,
+  sourceCompany: string
+): Promise<number> {
+  try {
+    const check = await conn.execute(
+      `SELECT count(*) FROM ${tbl} WHERE COMPANY_CODE = :newCompany`,
+      { newCompany }
+    );
+    if (((check.rows?.[0] as any)?.[0] || 0) > 0) return 0;
+
+    const cols = await conn.execute(
+      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = :tbl AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
+      { tbl }
+    );
+    if (!cols.rows?.length) return 0;
+
+    const colList = cols.rows
+      .map((r: any) => r[0] || r.COLUMN_NAME)
+      .filter((c: string) => c !== 'COMPANY_CODE');
+    if (!colList.length) return 0;
+
+    const selectCols = colList.join(', ');
+    const insertCols = 'COMPANY_CODE, ' + selectCols;
+
+    const res = await conn.execute(
+      `INSERT INTO ${tbl} (${insertCols})
+       SELECT :newCompany, ${selectCols}
+       FROM ${tbl}
+       WHERE COMPANY_CODE = :sourceCompany`,
+      { newCompany, sourceCompany }
+    );
+    return res.rowsAffected || 0;
+  } catch (err) {
+    console.warn(`[copyTableRows] Non-fatal error copying ${tbl}:`, err);
+    return 0;
+  }
+}
+
+export async function initializeCompanyFinanceSetup(
+  conn: oracledb.Connection,
+  newCompany: string,
+  sourceCompany = 'BSG'
+): Promise<{ success: boolean; details: Record<string, any> }> {
+  const details: Record<string, any> = {};
+
+  // 1. MS_COMPANYINFO
+  const checkInfo = await conn.execute(
+    `SELECT count(*) FROM MS_COMPANYINFO WHERE COMPANY_CODE = :newCompany`,
+    { newCompany }
+  );
+  if (!((checkInfo.rows?.[0] as any)?.[0] || 0)) {
+    const infoCols = await conn.execute(
+      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = 'MS_COMPANYINFO' AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
+      []
+    );
+    const colList = (infoCols.rows || [])
+      .map((r: any) => r[0] || r.COLUMN_NAME)
+      .filter((c: string) => !['COMPANY_CODE', 'COMPANY_NAME', 'AC_FY_PERIOD', 'OPN_FY_PERIOD'].includes(c));
+    const selectCols = colList.length ? ', ' + colList.join(', ') : '';
+
+    await conn.execute(
+      `INSERT INTO MS_COMPANYINFO (COMPANY_CODE, COMPANY_NAME, AC_FY_PERIOD, OPN_FY_PERIOD ${selectCols})
+       SELECT 
+         :newCompany, 
+         COALESCE((SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :newCompany), :newCompany),
+         COALESCE((SELECT AC_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225'),
+         COALESCE((SELECT OPN_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225')
+         ${selectCols}
+       FROM MS_COMPANYINFO
+       WHERE COMPANY_CODE = :sourceCompany`,
+      { newCompany, sourceCompany }
+    );
+    details.company_info = 'initialized';
+  }
+
+  // 2. MS_CURRENCY
+  details.currencies = await copyTableRows(conn, 'MS_CURRENCY', newCompany, sourceCompany);
+
+  // 3. MS_HR_DIVISION (Default branch/division)
+  details.divisions = await copyTableRows(conn, 'MS_HR_DIVISION', newCompany, sourceCompany);
+
+  // 4. Standard Statutory Chart of Accounts Groups (Levels 1, 2, and 3 only)
+  // Levels 4 & 5 (MS_ACCODES) and specific document account mappings (MS_AC_SETUP_DOC_ACCODE)
+  // are created specifically per company by the finance team.
+  for (const lvl of ['MS_AC_L1', 'MS_AC_L2', 'MS_AC_L3']) {
+    details[lvl] = await copyTableRows(conn, lvl, newCompany, sourceCompany);
+  }
+
+  // 5. Standard Finance Document Types (BP, BR, CP, CR, JV, etc.)
+  details.setup_docs = await copyTableRows(conn, 'MS_AC_SETUP_DOC', newCompany, sourceCompany);
+
+  await conn.commit();
+  return { success: true, details };
+}
+
 export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
-    const result = await conn.execute(
+    const companyCode = String(req.user.company_code || '').trim();
+
+    let result = await conn.execute(
       `SELECT * FROM VW_COMPANY_INFO WHERE company_code = :cc`,
-      { cc: req.user.company_code },
+      { cc: companyCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    if (!result.rows?.length) { res.status(500).json({ success: false }); return; }
+
+    // If company info view is missing for this company, check if auto-initialization is possible
+    if (!result.rows?.length && companyCode) {
+      // Find template company
+      const templateRes = await conn.execute(
+        `SELECT COMPANY_CODE FROM MS_COMPANYINFO 
+         WHERE AC_FY_PERIOD IS NOT NULL 
+         ORDER BY CASE WHEN COMPANY_CODE = 'BSG' THEN 1 WHEN COMPANY_CODE = 'AMKSA' THEN 2 ELSE 3 END`
+      );
+      const sourceCompany = (templateRes.rows?.[0] as any)?.[0] || 'BSG';
+
+      // Check if this company exists in MS_COMPANY
+      const compCheck = await conn.execute(
+        `SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :cc`,
+        { cc: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      if (compCheck.rows?.length) {
+        console.log(`[getCompanyInfo] Auto-provisioning Finance setup for new company '${companyCode}' from template '${sourceCompany}'`);
+        await initializeCompanyFinanceSetup(conn, companyCode, sourceCompany);
+
+        // Re-query VW_COMPANY_INFO
+        result = await conn.execute(
+          `SELECT * FROM VW_COMPANY_INFO WHERE company_code = :cc`,
+          { cc: companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+      }
+    }
+
+    if (!result.rows?.length) {
+      // Return safe fallback instead of throwing 500 error
+      res.json({
+        success: true,
+        data: {
+          company_code: companyCode,
+          ac_fy_period: 226,
+          setup_required: true,
+          message: "Finance setup required for this company",
+        }
+      });
+      return;
+    }
 
     // Normalize uppercase keys to lowercase
     const row = result.rows[0] as Record<string, any>;
@@ -530,6 +673,31 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
 
     res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
+};
+
+export const initializeCompanyFinance = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const targetCompany = String(req.body.company_code || req.user.company_code || '').trim();
+    const sourceCompany = String(req.body.source_company || 'BSG').trim();
+
+    if (!targetCompany) {
+      res.status(400).json({ success: false, message: 'company_code is required' });
+      return;
+    }
+
+    const initResult = await initializeCompanyFinanceSetup(conn, targetCompany, sourceCompany);
+    res.json({
+      success: true,
+      message: `Finance setup successfully initialized for company ${targetCompany}`,
+      data: initResult.details,
+    });
+  } catch (err) {
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
 };
 
 export const getChequePaymentHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
@@ -618,9 +786,18 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
-    const invRows = normalize(inv.rows || []);
-    const jobRows = normalize(job.rows || []);
-    const expRows = normalize(exp.rows || []).map((r: any) => ({
+    const dedupeChildRows = (rows: any[], keyFn: (r: any) => string) => {
+      const seen = new Set<string>();
+      return rows.filter((r) => {
+        const k = keyFn(r);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    };
+    const invRows = dedupeChildRows(normalize(inv.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.inv_no}`);
+    const jobRows = dedupeChildRows(normalize(job.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.job_no}`);
+    const expRows = dedupeChildRows(normalize(exp.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.exp_code}`).map((r: any) => ({
       ...r,
       // Child tables store numeric DOC_NO; provide a display field combining doc_type + doc_no
       display_doc_no: (r.doc_type ?? '') + String(r.doc_no ?? ''),
@@ -1657,7 +1834,11 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       qty: req.body.qty ?? old.QTY,
       price: req.body.price ?? old.PRICE,
       prod_code: req.body.prod_code ?? old.PROD_CODE,
-      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS
+      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS,
+      app_ref_no: req.body.app_ref_no ?? old.APP_REF_NO,
+      tx_cat_code: req.body.tx_cat_code ?? old.TX_CAT_CODE,
+      tx_compntcat_code_1: req.body.tx_compntcat_code_1 ?? old.TX_COMPNTCAT_CODE_1,
+      pdo_type: req.body.pdo_type ?? old.PDO_TYPE,
     };
 
     //  Call your SP safely
@@ -1669,7 +1850,8 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
         :pn, :pa, :pp, :pf,
         :rn, :rd,
         :ino, :idt,
-        :dv, :lu
+        :dv, :lu,
+        :ar, :dto, :dem, :dmo, :dco, :pt, :dtm, :tcc, :tc, :pdo
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1689,7 +1871,17 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
         ino: h.invoice_no,
         idt: toDate(h.invoice_date),
         dv: h.div_code,
-        lu: req.user.loginid
+        lu: req.user.loginid,
+        ar: h.app_ref_no ?? null,
+        dto: h.delivery_to ?? null,
+        dem: h.dlvr_email ?? null,
+        dmo: h.dlvr_mobile ?? null,
+        dco: h.dlvr_contact ?? null,
+        pt: h.payment_terms ?? null,
+        dtm: h.dlvr_term ?? null,
+        tcc: h.tx_cat_code ?? null,
+        tc: h.tx_compntcat_code_1 ?? null,
+        pdo: h.pdo_type ?? null
       }
     );
 
