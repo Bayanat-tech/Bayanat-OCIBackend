@@ -57,6 +57,7 @@ router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
 
 import { getFinanceDashboardData } from "../../controllers/finance/financeDashboard.controller";
+import { upsertMsAcBankCode } from "../../models/finance/accounts/masters/controller_bank_code";
 
 router.post("/dashboard", getFinanceDashboardData);
 router.post("/workspace/dashboard", getFinanceDashboardData);
@@ -223,6 +224,14 @@ router.post(
   router.post(
   "/insUpdSecPayCompAc",
   insUpdSecPayCompAc)
+
+// finance
+router.post(
+  "/bankcode",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  upsertMsAcBankCode
+);
 
 router.post(
   "/insUpdBTProject",
