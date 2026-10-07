@@ -15,6 +15,7 @@ interface ReqParams {
 
 interface IPaySlipHeader {
   employee_id: string;
+  alternate_id:string;
   rpt_name: string;
   desg_name: string;
   div_name: string;
@@ -299,7 +300,7 @@ function renderPayslipContent(data: PayslipData): string {
 
       <div class="payslip-info-grid" style="margin-bottom:1rem;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0;">
         <div style="grid-column:span 6 / span 6;">
-          ${renderLabelValue("Employee Code", header.employee_id)}
+          ${renderLabelValue("Employee Code", header.alternate_id)}
           ${renderLabelValue("Name", header.rpt_name)}
           ${renderLabelValue("Designation", header.desg_name)}
           ${renderLabelValue("Division", header.div_name)}
