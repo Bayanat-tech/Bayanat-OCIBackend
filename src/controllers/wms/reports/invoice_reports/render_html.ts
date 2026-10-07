@@ -730,13 +730,20 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   }
   .logo-company-block {
     display: flex;
+    width: 100%;
+    justify-content: space-between;
     align-items: flex-start;
-    gap: 12px;
+    gap: 16px;
+    min-width: 0;
   }
   .company-details-next-to-logo {
     font-size: 10px;
     line-height: 1.4;
     padding-top: 4px;
+    max-width: 52%;
+    margin-left: auto;
+    text-align: right;
+    overflow-wrap: anywhere;
   }
   .company-name-next {
     font-size: 12px;

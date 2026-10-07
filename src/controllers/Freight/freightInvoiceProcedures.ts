@@ -111,10 +111,82 @@ export const frtInvoiceSave = async (req: Request, res: Response): Promise<void>
   await withConnection(res, async (connection) => {
     const result = await runFreightInvoiceSave(connection, req);
     const invoiceNo = String((result.outBinds as any).p_invoice_no || "");
+    const requestedStatus = value(req.body.invoiceHeader?.[0]?.inv_status ?? req.body.invoiceHeader?.[0]?.INV_STATUS);
+    if (requestedStatus === "C" && invoiceNo) {
+      const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE ?? req.body.invoiceHeader?.[0]?.company_code ?? req.body.invoiceHeader?.[0]?.COMPANY_CODE);
+      if (companyCode) {
+        await connection.execute(
+          `UPDATE TN_INVOICE_CONSOLE SET INV_STATUS = 'C' WHERE COMPANY_CODE = :company_code AND INVOICE_NO = :invoice_no`,
+          { company_code: companyCode, invoice_no: invoiceNo },
+          { autoCommit: true }
+        );
+      }
+    }
     res.json({
       success: true,
-      message: "Freight invoice saved successfully",
-      data: { invoice_no: invoiceNo },
+      message: requestedStatus === "C" ? `Freight invoice ${invoiceNo} confirmed successfully` : "Freight invoice saved successfully",
+      data: { invoice_no: invoiceNo, inv_status: requestedStatus === "C" ? "C" : "N" },
+    });
+  });
+};
+
+export const frtInvoiceConfirm = async (req: Request, res: Response): Promise<void> => {
+  await withConnection(res, async (connection) => {
+    const companyCode = value(req.body.company_code ?? req.body.COMPANY_CODE);
+    const invoiceNo = value(req.body.invoice_no ?? req.body.INVOICE_NO);
+
+    if (!companyCode || !invoiceNo) {
+      res.status(400).json({ success: false, message: "Company code and Invoice number are required" });
+      return;
+    }
+
+    const checkResult = await connection.execute(
+      `SELECT INV_STATUS 
+         FROM TN_INVOICE_CONSOLE 
+        WHERE COMPANY_CODE = :company_code 
+          AND INVOICE_NO = :invoice_no`,
+      { company_code: companyCode, invoice_no: invoiceNo },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    const invoiceRow = (checkResult.rows as any[])?.[0];
+    if (!invoiceRow) {
+      res.status(404).json({ success: false, message: `Invoice ${invoiceNo} not found.` });
+      return;
+    }
+
+    if (invoiceRow.INV_STATUS === 'C' || invoiceRow.INV_STATUS === 'CONFIRMED') {
+      res.status(400).json({ success: false, message: `Invoice ${invoiceNo} is already confirmed.` });
+      return;
+    }
+
+    await connection.execute(
+      `UPDATE TN_INVOICE_CONSOLE
+          SET INV_STATUS = 'C'
+        WHERE COMPANY_CODE = :company_code
+          AND INVOICE_NO = :invoice_no`,
+      { company_code: companyCode, invoice_no: invoiceNo },
+      { autoCommit: true }
+    );
+
+    // Also update TN_INVOICE if a corresponding record exists
+    try {
+      await connection.execute(
+        `UPDATE TN_INVOICE
+            SET INV_STATUS = 'C'
+          WHERE COMPANY_CODE = :company_code
+            AND INVOICE_NO = :invoice_no`,
+        { company_code: companyCode, invoice_no: invoiceNo },
+        { autoCommit: true }
+      );
+    } catch {
+      // Non-fatal if TN_INVOICE has no row or different structure
+    }
+
+    res.json({
+      success: true,
+      message: `Invoice ${invoiceNo} confirmed successfully`,
+      data: { invoice_no: invoiceNo, inv_status: "C" },
     });
   });
 };
