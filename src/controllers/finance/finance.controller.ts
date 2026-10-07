@@ -63,16 +63,35 @@ export const getFinanceListData = async (
                   doc_type: "doc_type",
                   div_code: "div_code",
                   fy_period: "fy_period",
-                  ac_code: "ac_name",
+                  ac_code: "ac_code",
                   ac_name: "ac_name",
                   party_name: "ac_name",
                   ref_no: "ref_no",
-                  ac_payee: "ac_name",
+                  ac_payee: "ac_payee",
+                  cheque_no: "cheque_no",
+                  canceled: "canceled",
+                  cancelled: "canceled",
+                  status: "canceled",
+                  doc_status: "canceled",
                 };
                 const dbField = columnMap[field_name];
                 if (!dbField) return;
 
                 const safeParam = `${dbField.replace(/\W/g, "")}_${gi}_${ci}`;
+
+                if (dbField === "canceled") {
+                  const normVal = String(field_value).trim().toUpperCase();
+                  if (normVal === "Y" || normVal.startsWith("CANCEL")) {
+                    groupClauses.push(`UPPER(NVL(canceled, 'N')) = 'Y'`);
+                  } else if (normVal === "N" || normVal.startsWith("ACTIVE")) {
+                    groupClauses.push(`UPPER(NVL(canceled, 'N')) = 'N'`);
+                  } else {
+                    groupClauses.push(`UPPER(NVL(canceled, 'N')) = UPPER(:${safeParam})`);
+                    binds[safeParam] = normVal;
+                  }
+                  return;
+                }
+
                 switch ((operator || "").toLowerCase()) {
                   case "exactmatch":
                   case "=":
@@ -99,6 +118,8 @@ export const getFinanceListData = async (
                 UPPER(doc_no) LIKE UPPER(:search)
                 OR UPPER(doc_type) LIKE UPPER(:search)
                 OR UPPER(div_code) LIKE UPPER(:search)
+                OR UPPER(NVL(ac_name, ' ')) LIKE UPPER(:search)
+                OR UPPER(NVL(ac_payee, ' ')) LIKE UPPER(:search)
               )
             `;
             binds.search = `%${filter.search}%`;

@@ -134,6 +134,20 @@ export const REPORT_HEADER_CSS = `
   .company-header--empty .company-name {
     color: #94a3b8;
   }
+
+  /* ===== Screen-only compact header (print unaffected) ===== */
+  @media screen {
+    .company-header {
+      gap: 12px;
+      padding: 0 0 5px 0;
+      margin: 0 0 4px 0;
+      border-bottom-width: 1px;
+    }
+    .company-logo-wrap { max-width: 110px; }
+    .company-logo { max-height: 30px; max-width: 110px; }
+    .company-name { font-size: 12px; margin: 0 0 2px 0; line-height: 1.15; }
+    .company-address { font-size: 8px; line-height: 1.25; }
+  }
 `;
 
 /* ------------------------------------------------------------------ */
@@ -156,6 +170,15 @@ export const REPORT_FOOTER_CSS = `
   .report-footer .footer-left,
   .report-footer .footer-right {
     white-space: nowrap;
+  }
+
+  /* ===== Screen-only compact footer (print unaffected) ===== */
+  @media screen {
+    .report-footer {
+      padding-top: 3px;
+      gap: 8px;
+      font-size: 8px;
+    }
   }
 `;
 
@@ -199,6 +222,17 @@ export const REPORT_APPLIED_FILTERS_CSS = `
     color: ${FREIGHT_COLORS.rule};
     margin: 0 6px;
     font-weight: 700;
+  }
+
+  /* ===== Screen-only compact filters strip (print unaffected) ===== */
+  @media screen {
+    .applied-filters {
+      margin: 0 0 6px 0;
+      padding: 3px 8px;
+      font-size: 8px;
+      border-left-width: 3px;
+    }
+    .applied-filters .af-sep { margin: 0 4px; }
   }
 `;
 
@@ -251,16 +285,18 @@ export function reportAppliedFilters(
 export type ReportOrientation = "portrait" | "landscape";
 
 /**
- * Returns the full COMMON_REPORT_CSS, but with the `@page` rule sized
- * for the requested orientation. Defaults to portrait (A4) for backward
- * compatibility with every existing caller.
+ * Returns the full COMMON_REPORT_CSS. Orientation is OPTIONAL:
+ * - provided  → `@page` gets `size: A4 portrait|landscape`
+ * - omitted   → no `size` is emitted (the report's own CSS decides)
  */
-export function commonReportCss(orientation: ReportOrientation = "portrait"): string {
-  const pageSize = orientation === "landscape" ? "A4 landscape" : "A4 portrait";
+export function commonReportCss(orientation?: ReportOrientation): string {
+  const pageSizeRule = orientation
+    ? `size: ${orientation === "landscape" ? "A4 landscape" : "A4 portrait"};`
+    : "";
   return `
   /* ===== Page setup ===== */
   @page {
-    size: ${pageSize};
+    ${pageSizeRule}
     margin: 5mm;
   }
 
@@ -413,13 +449,39 @@ export function commonReportCss(orientation: ReportOrientation = "portrait"): st
   }
 
   /* ================================================================ */
+  /*  Screen-only compact sizing (print unaffected)                   */
+  /* ================================================================ */
+  @media screen {
+    body { font-size: 9px; line-height: 1.2; }
+    .paper { padding: 2px; }
+
+    .doc-title-row { margin: 0 0 4px 0; }
+    .doc-title-row h1,
+    .report-title { font-size: 11px; }
+
+    table.data-table { font-size: 9px; margin-top: 1px; }
+    table.data-table th {
+      font-size: 9px;
+      padding: 3px 5px;
+      border-bottom-width: 1px;
+    }
+    table.data-table td { padding: 2px 5px; }
+
+    .group { margin-top: 6px; }
+    .group-title,
+    .section-strip { font-size: 10px; padding: 2px 5px; }
+
+    .empty { padding: 28px; margin-top: 8px; }
+  }
+
+  /* ================================================================ */
   /*  PRINT CSS                                                       */
   /* ================================================================ */
   @media print {
     /* Re-assert page size inside @media print — Chrome gives the
        print-media @page rule precedence over screen-media @page. */
     @page {
-      size: ${pageSize};
+      ${pageSizeRule}
       margin: 5mm;
     }
 
@@ -519,9 +581,9 @@ export function commonReportCss(orientation: ReportOrientation = "portrait"): st
 
 /* ------------------------------------------------------------------ */
 /*  Backward-compat: legacy COMMON_REPORT_CSS constant                 */
-/*  (portrait default; keep any existing imports working)              */
+/*  (no orientation; keep any existing imports working)                */
 /* ------------------------------------------------------------------ */
-export const COMMON_REPORT_CSS = commonReportCss("portrait");
+export const COMMON_REPORT_CSS = commonReportCss();
 
 /* ------------------------------------------------------------------ */
 /*  Forced font size (only when fontMode === "fixed")                  */
@@ -656,8 +718,8 @@ export type BuildReportDocumentOptions = {
    */
   fontMode?: "fixed" | "native";
   /**
-   * Page orientation for print / PDF output.
-   * Defaults to "portrait" for backward compatibility.
+   * Optional page orientation for print / PDF output.
+   * If omitted, no `@page size` is written.
    */
   orientation?: ReportOrientation;
 };
@@ -672,7 +734,7 @@ export function buildReportDocument(opts: BuildReportDocumentOptions): string {
     autoPrint = false,
     showPrintButton = true,
     fontMode = "native",
-    orientation = "portrait",
+    orientation,
   } = opts;
 
   return `<!doctype html>
