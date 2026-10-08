@@ -2093,8 +2093,7 @@ export const saveFile = async (
       const duplicateCheckResult = await connection.execute(
         duplicateCheckQuery,
         { request_number, org_file_name },
-        {}
-      //  { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
 
       if (duplicateCheckResult.rows?.[0]?.COUNT > 0) {
@@ -2158,7 +2157,7 @@ export const saveFile = async (
       const srNoResult = await connection.execute(
         fetchSrNoQuery,
         { request_number, org_file_name },
-        {}
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
 
       if (srNoResult.rows?.[0]?.SR_NO) {

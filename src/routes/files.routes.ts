@@ -131,6 +131,7 @@ router.put(
 router.put(
   "/editAFFile",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editAFFiles
 );
@@ -138,6 +139,7 @@ router.put(
 router.put(
   "/editPurchaseFile",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editAFFiles
 );
@@ -245,8 +247,17 @@ router.delete(
 );
 
 router.delete(
+  "/deleteAF/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  deleteFilesAF
+);
+
+router.delete(
   "/deleteAF/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteFilesAF
 );
@@ -254,6 +265,7 @@ router.delete(
 router.delete(
   "/deletepurchase/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteFilesAF
 );
