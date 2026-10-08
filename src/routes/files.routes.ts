@@ -65,6 +65,7 @@ router.get(
 router.get(
   "/accountFiles/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getAfFiles
 );
@@ -87,6 +88,7 @@ router.get(
 router.get(
   "/purchaseFiles/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getAfFiles
 );
