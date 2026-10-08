@@ -76,12 +76,14 @@ export const insDocAccodeBulk = async (
       const companyCode = String(row.company_code || "").trim();
       const docId = String(row.doc_id || "").trim();
       const hdrDtl = String(row.hdr_dtl || "").trim().toUpperCase().slice(0, 1);
-      const accountCode = String(row.ac_code || "").trim();
+      const rawAccountCode = String(row.ac_code || "").trim();
       const divCode = String(row.div_code || "").trim() || null;
 
-      if (!companyCode || !docId || !hdrDtl || !accountCode) {
-        throw new Error("company_code, doc_id, hdr_dtl and ac_code are required for every row");
-      }
+     if (!companyCode || !docId || !hdrDtl || !rawAccountCode) {
+      throw new Error("company_code, doc_id, hdr_dtl and ac_code are required for every row");
+    }
+
+    const accountCode = await resolveL4Code(connection, companyCode, rawAccountCode);
 
       if (!["H", "D"].includes(hdrDtl)) {
         throw new Error(`Invalid hdr_dtl '${row.hdr_dtl}'. Use H or D.`);
