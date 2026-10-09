@@ -253,11 +253,19 @@ const FINANCE_EXTRA_CSS = `
     gap: 16px;
     margin: 0 0 4px 0;
   }
+  .doc-heading {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .doc-heading h1 { margin: 0; }
   .doc-title-row .doc-sub {
     margin: 0;
-    font-size: 11px;
-    font-weight: 600;
-    color: #64748b;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #0f172a;
   }
   .doc-badge {
     flex-shrink: 0;
@@ -400,6 +408,31 @@ const FINANCE_EXTRA_CSS = `
     color: #334155;
   }
 
+  /* ===== Screen-only compact layout (print unaffected) ===== */
+  @media screen {
+    .doc-title-row { margin: 0 0 3px 0; gap: 8px; }
+    .doc-heading { gap: 4px; }
+    .doc-title-row .doc-sub { font-size: 12px; }
+    .doc-badge { padding: 2px 8px; font-size: 9px; border-radius: 4px; }
+
+    .summary { gap: 6px; margin: 0 0 6px 0; }
+    .box { border-radius: 4px; }
+    .box h2 { padding: 3px 6px; font-size: 9px; border-radius: 3px 3px 0 0; }
+    .box-body { padding: 5px 6px; }
+    .party-name { font-size: 9px; margin-bottom: 2px; }
+    .party-line { font-size: 9px; line-height: 1.3; }
+    .meta { grid-template-columns: 20mm minmax(0, 1fr); gap: 2px 6px; font-size: 9px; }
+
+    .totals-wrap { margin-top: 6px; }
+    .totals { width: 200px; border-radius: 4px; }
+    .totals td { padding: 3px 7px; font-size: 9px; }
+
+    .remarks { margin-top: 6px; padding: 4px 6px; font-size: 9px; line-height: 1.3; border-radius: 4px; }
+
+    .sign { margin-top: 18px; gap: 32px; }
+    .sign .line { padding-top: 3px; font-size: 9px; }
+  }
+
   @media print {
     .box, .totals, .remarks { break-inside: avoid; }
   }
@@ -467,9 +500,9 @@ function renderFinanceBody(
   return `
     <div class="doc-shell">
       <div class="doc-title-row">
-        <div>
-          <h1>${escapeHtml(titleFor(docType))}</h1>
-          <div class="doc-sub">${escapeHtml(header.doc_no || "")}</div>
+        <div class="doc-heading">
+          <h1 style="margin: 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${escapeHtml(titleFor(docType))}${header.doc_no ? " :" : ""}</h1>
+          ${header.doc_no ? `<h2 class="doc-sub">${escapeHtml(header.doc_no)}</h2>` : ""}
         </div>
         <div class="doc-badge${isCancelled ? " cancelled" : ""}">
           ${isCancelled ? "Cancelled" : "Original"}

@@ -15,6 +15,7 @@ interface ReqParams {
 
 interface IPaySlipHeader {
   employee_id: string;
+  alternate_id:string;
   rpt_name: string;
   desg_name: string;
   div_name: string;
@@ -202,13 +203,15 @@ async function loadPayslipData(employeeId: string, month: string, year: string):
     ? `SELECT LABOURCARD_VALID_TO, VISA_VALID_TO, PPT_VALID_TO FROM VW_CURRENTMONTH_VISAEXPIRY WHERE EMPLOYEE_ID = :employeeId`
     : `SELECT LABOURCARD_VALID_TO, VISA_VALID_TO, PPT_VALID_TO FROM VW_HISTORY_VISAEXPIRY WHERE EMPLOYEE_ID = :employeeId`;
 
-  const earnDedBinds = {
-    employeeId,
-    month,
-    year,
-    deptCode: header.dept_code,
-    sourceFlag: HISTORY_SOURCE_FLAG,
-  };
+const earnDedBinds = isCurrentMonthView
+  ? { employeeId, month, year }
+  : {
+      employeeId,
+      month,
+      year,
+      deptCode: header.dept_code,
+      sourceFlag: HISTORY_SOURCE_FLAG,
+    }
 
   const [earningsResult, deductionsResult, attendanceResult, visaExpiryResult] = await Promise.all([
     QueryExecutor.executeRawQuery(earningsSql, earnDedBinds),
@@ -297,7 +300,7 @@ function renderPayslipContent(data: PayslipData): string {
 
       <div class="payslip-info-grid" style="margin-bottom:1rem;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0;">
         <div style="grid-column:span 6 / span 6;">
-          ${renderLabelValue("Employee Code", header.employee_id)}
+          ${renderLabelValue("Employee Code", header.alternate_id)}
           ${renderLabelValue("Name", header.rpt_name)}
           ${renderLabelValue("Designation", header.desg_name)}
           ${renderLabelValue("Division", header.div_name)}
@@ -515,14 +518,20 @@ export const getPayslipReportHtml = async (req: RequestWithUser, res: Response):
     // }
 
     const data = await loadPayslipData(params.employeeId, params.month, params.year);
-    if (!data) {
-      res.status(200).send(renderMessagePage(
-        "No Payslip Found",
-        "No payslip data was found for the selected employee, month, and year. Please verify the search criteria and try again.",
-        false
-      ));
-      return;
-    }
+      if (!data) {
+        const embed = ["1", "true"].includes(text(req.query.embed));
+        if (embed) {
+          // the React page reads this and shows it in the toast and preview
+          res.status(404).json({ success: false, message: "No data found for the selected employee and pay period." });
+        } else {
+          res.status(200).send(renderMessagePage(
+            "No Data Found",
+            "No payslip data was found for the selected employee, month, and year.",
+            false
+          ));
+        }
+        return;
+      }
     const embed = ["1", "true"].includes(text(req.query.embed));
     const html = buildPayslipDocument(renderPayslipContent(data),embed);
 

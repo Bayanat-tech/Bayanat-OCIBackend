@@ -7,6 +7,6 @@ export interface IHrLeavetype {
     half_day: string;
     updated_at?: Date | null; 
     updated_by?: string | null;
-    created_by: string;
-    created_at: Date;
+    created_by?: string;
+    created_at?: Date;
 }
