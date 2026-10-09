@@ -5832,3 +5832,12 @@ Help: https://docs.oracle.com/error-help/db/ora-12516/
     at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
     at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
     at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-09 09:16:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
