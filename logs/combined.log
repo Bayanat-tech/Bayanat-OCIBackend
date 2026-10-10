@@ -11297,3 +11297,16 @@ Help: https://docs.oracle.com/error-help/db/ora-12516/
 2026-10-07 16:24:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
 2026-10-07 16:24:00 [[32minfo[39m]: [NotificationEmailScheduler] Using configured tenant list: WMSTST_TENANT 
 2026-10-07 16:24:03 [[32minfo[39m]: [WMSTST_TENANT] No unsent notification emails found 
+2026-10-09 09:15:53 [[32minfo[39m]: Starting Notification Email Scheduler... 
+2026-10-09 09:15:53 [[32minfo[39m]: Notification Email Scheduler initialized (runs every 2 minutes) 
+2026-10-09 09:16:00 [[32minfo[39m]: NotificationEmailScheduler triggered: checking NOTIFICATION_EMAIL_INFO... 
+2026-10-09 09:16:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
+2026-10-09 09:16:11 [[32minfo[39m]: [WMSDEV_TENANT] No unsent notification emails found 
