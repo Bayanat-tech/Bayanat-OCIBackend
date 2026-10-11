@@ -469,6 +469,11 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
       return;
     }
 
+    let param = parameter;
+    if (param === "Account_Currency_CODE_Search") {
+      param = "Account_Currency_CODE_Serach";
+    }
+
     let tenantId: string | undefined;
     try {
       tenantId = getCurrentTenantId();
@@ -510,7 +515,7 @@ export const proc_build_dynamic_sql_common = async (req: Request, res: Response)
       END;
       `,
       {
-        parameter,
+        parameter: param,
         loginid,
         code1,
         code2,
