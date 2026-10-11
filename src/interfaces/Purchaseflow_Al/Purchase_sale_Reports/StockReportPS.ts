@@ -11,11 +11,11 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  prod_code:    string; // "All" or a product code
-  fromdate:     string; // "All" or "YYYY-MM-DD"
-  todate:       string;
+  prod_code: string; // "All" or a product code
+  fromdate: string; // "All" or "YYYY-MM-DD"
+  todate: string;
 }
 
 // ─── DB helpers (same as PoOrderRegisterReport.ts) ─────────────────────────
@@ -73,11 +73,11 @@ function qtyFmt(value: unknown): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code),
-    prod_code:    text(b.prod_code) || "All",
-    fromdate:     text(b.fromdate) || "All",
-    todate:       text(b.todate) || "All",
+    prod_code: text(b.prod_code) || "All",
+    fromdate: text(b.fromdate) || "All",
+    todate: text(b.todate) || "All",
   };
 }
 
@@ -271,10 +271,9 @@ function renderStockSummaryBody(rows: ReportRow[], loginId: string): string {
   return `
     ${docTitleRowHtml(REPORT_TITLE_SUMMARY, "Stock movement summary by product", printDateTime, loginId)}
 
-    ${
-      rows.length === 0
-        ? `<div class="empty">No records found for the selected filters.</div>`
-        : `
+    ${rows.length === 0
+      ? `<div class="empty">No records found for the selected filters.</div>`
+      : `
       <table class="data-table">
         <thead>
           <tr>

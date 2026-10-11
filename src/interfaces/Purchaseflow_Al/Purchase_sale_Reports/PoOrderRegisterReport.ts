@@ -201,96 +201,125 @@ const REPORT_SUBTITLE = "Order Register";
 
 /** PO Register-only layout CSS (shared header/footer/table CSS comes from report_common) */
 const PO_REGISTER_EXTRA_CSS = `
-    @page { size: A4 landscape; margin: 12mm; }
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
+  /* ── Page ─────────────────────────────────────────────── */
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
   }
-  .doc-title-row h1 {
+
+  /* ── Root scope – everything lives under this one class ─ */
+  .po-register {
+    font-size: 9.5px;
+    line-height: 1.25;
+    color: #1e293b;
+  }
+
+  /* Straight navy breaker right after company header */
+  .po-register .breaker {
+    border: 0;
+    border-top: 1.5px solid #0b4ca1;
+    margin: 4px 0 8px;
+    height: 0;
+  }
+
+  /* Title block */
+  .po-register .title {
+    margin: 0 0 6px;
+  }
+  .po-register .title h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: 13px;
     font-weight: 800;
     color: #0b4ca1;
+    letter-spacing: 0.2px;
   }
-  .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
+  .po-register .title .sub {
+    margin: 1px 0 0;
+    font-size: 10px;
+    font-weight: 600;
     color: #64748b;
   }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
-  }
-  .status-badge {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    vertical-align: middle;
-  }
-  .status-CANCELLED { background: #fee2e2; color: #dc2626; }
 
-  .po-group {
-    margin-bottom: 16px;
+  /* PO group */
+  .po-register .group {
+    margin: 0 0 8px;
     break-inside: avoid;
   }
-  .po-group-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    background: #f8fafc;
+  .po-register .group-head {
+    padding: 4px 8px;
+    background: #f1f5f9;
     border: 1px solid #e2e8f0;
     border-bottom: none;
-    border-radius: 10px 10px 0 0;
+    border-radius: 4px 4px 0 0;
   }
-  .po-group-header .doc-label {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
+  .po-register .group-head .meta {
     display: block;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    margin-bottom: 1px;
   }
-  .po-group-header .supplier-name {
-    font-size: 13px;
+  .po-register .group-head .supplier {
+    font-size: 10.5px;
     font-weight: 700;
     color: #0f172a;
   }
-
-  table.data-table.grouped {
-    border: 1px solid #e2e8f0;
-    border-top: none;
-    border-radius: 0 0 10px 10px;
-    overflow: hidden;
+  .po-register .group-head .badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 9px;
+    font-weight: 700;
+    background: #fee2e2;
+    color: #dc2626;
+    vertical-align: middle;
   }
 
-  .subtotal-row td {
-    background: #eef2f7;
+  /* Table – inherits common data-table, just tighten */
+  .po-register table.data-table {
+    border: 1px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    margin: 0;
+    font-size: 9.5px;
+  }
+  .po-register table.data-table th {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+  .po-register table.data-table td {
+    padding: 3px 6px;
+  }
+  .po-register .subtotal td {
+    background: #eef2f7 !important;
     font-weight: 700;
     color: #1e3a8a;
   }
 
-  .grand-total-box {
-    margin-top: 16px;
-    margin-left: auto;
-    width: 260px;
-    border-radius: 10px;
+  /* Grand total */
+  .po-register .grand {
+    margin: 8px 0 0 auto;
+    width: 220px;
+    border-radius: 4px;
     overflow: hidden;
   }
-  .grand-total-box .row {
+  .po-register .grand .row {
     display: flex;
     justify-content: space-between;
-    padding: 8px 14px;
+    padding: 5px 10px;
     background: #0b4ca1;
     color: #fff;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 11px;
+  }
+
+  /* Empty state */
+  .po-register .empty {
+    padding: 28px;
+    margin-top: 8px;
+    font-size: 11px;
   }
 `;
 
@@ -336,10 +365,11 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
           <thead>
             <tr>
               <th>Product</th>
+               <th class="right">P.O Qty</th>
+              <th>UOM</th>
               <th>Required Date</th>
               <th>Remarks</th>
-              <th class="right">P.O Qty</th>
-              <th>UOM</th>
+             
             </tr>
           </thead>
           <tbody>
@@ -357,13 +387,9 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
 
   return `
     <div class="doc-title-row">
-      <div>
-        <h1>${escapeHtml(REPORT_TITLE)}</h1>
-        <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)}</div>
-      </div>
-     
+      <h1>${escapeHtml(REPORT_TITLE)}</h1>
+      <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)}</div>
     </div>
-
     ${
       rows.length === 0
         ? `<div class="empty">No records found for the selected filters.</div>`
