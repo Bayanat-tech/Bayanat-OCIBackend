@@ -487,6 +487,47 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     if (!result.rows?.length) {
+      try {
+        const fallbackResult = await conn.execute(
+          `SELECT 
+             asd.company_code,
+             asd.doc_id,
+             NVL(asd.curr_code, a.curr_code) AS curr_code,
+             NVL(c.curr_name, cur_a.curr_name) AS curr_name,
+             asd.default_div_code AS div_code,
+             d.div_name,
+             asd.default_h_ac AS ac_code,
+             a.ac_name,
+             acs.tax_perc,
+             NVL(acs.lcur_decimal_nos, 3) AS lcur_decimal_nos
+           FROM MS_AC_SETUP_DOC asd
+           LEFT JOIN MS_ACCODES a
+             ON asd.company_code = a.company_code
+            AND asd.default_h_ac = a.ac_code
+           LEFT JOIN MS_CURRENCY c
+             ON asd.company_code = c.company_code
+            AND asd.curr_code = c.curr_code
+           LEFT JOIN MS_CURRENCY cur_a
+             ON asd.company_code = cur_a.company_code
+            AND a.curr_code = cur_a.curr_code
+           LEFT JOIN MS_HR_DIVISION d
+             ON asd.company_code = d.company_code
+            AND asd.default_div_code = d.div_code
+           LEFT JOIN MS_AC_SETUP acs
+             ON asd.company_code = acs.company_code
+           WHERE UPPER(TRIM(asd.company_code)) = UPPER(TRIM(:cc))
+             AND UPPER(TRIM(asd.doc_id)) = :id`,
+          { cc: req.user.company_code, id: docId },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (fallbackResult.rows?.length) {
+          res.json({ success: true, data: normalize(fallbackResult.rows)[0] });
+          return;
+        }
+      } catch (fbErr) {
+        console.warn('Fallback default query non-fatal error:', fbErr);
+      }
+
       res.json({
         success: true,
         data: {},
