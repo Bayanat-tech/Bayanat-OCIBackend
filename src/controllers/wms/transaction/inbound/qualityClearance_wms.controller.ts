@@ -299,7 +299,7 @@
 //     } = req.body;
 
 //     // Initiating transaction
-//     await sequelize.transaction(async (t) => {
+//     await sequelize.transaction(async (t:any) => {
 //       // Updating packing time and saving it to local storage
 //       const toggledPackets = await PackingDetailsInboundWms.update(
 //         { clearance: "Y" },

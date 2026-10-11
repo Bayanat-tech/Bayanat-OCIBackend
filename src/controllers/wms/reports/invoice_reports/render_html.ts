@@ -1,4 +1,4 @@
-// invoice.types.ts or in your render_html.ts
+// render_html.ts
 export interface InvoiceRow {
   prin_code: string | null;
   client_name: string | null;
@@ -39,8 +39,11 @@ export interface InvoiceRow {
   inv_printed: string | null;
   inv_grp_print_count: number;
   inv_grp_printed: string | null;
-  fc_bill: string | null;
+  fc_bill: string | number | null;
+  fc_bill_rate: number | null;   // <-- NEW: FC rate column from TN_INVOICE_DET_CONSOLE
   ex_rate: number;
+  EX_RATE: number;
+  EXCHANGE_RATE: number;
   address1: string | null;
   address2: string | null;
   address3: string | null;
@@ -99,6 +102,8 @@ export interface InvoiceRow {
   lut_arn?: string | null;
   stamp_path?: string | null;
   crn?: string | null;
+  // Raw SQL columns (uppercased aliases are normalized before use)
+  [key: string]: any;
 }
 
 export interface InvoiceMeta {
@@ -110,14 +115,43 @@ export interface InvoiceMeta {
   clientVatNo?: string;
   qrCodeDataUrl?: string;
   reportType?: string;
-  /**
-   * Base64 data URI for the company stamp, produced by
-   * stampImage.ts's getStampDataUrl() from a static file on disk.
-   * Preferred over InvoiceRow.stamp_path — that field is kept for
-   * backward compatibility only, in case some rows do supply a
-   * usable image URL directly.
-   */
+  exchangeRate?: string | number;
+  bill_rate?: number | null;
+  bill?: number | null;
+  curr_code?: string | null;
+  ex_rate?: number | null;
   stampDataUrl?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Oracle → camelCase normalizer                                     */
+/*                                                                    */
+/*  oracledb with OUT_FORMAT_OBJECT returns keys in UPPERCASE         */
+/*  (BILL, CURR_CODE, EX_RATE, FC_BILL, FC_BILL_RATE, …). The         */
+/*  templates read lowercase (bill, curr_code, ex_rate, fc_bill, …).  */
+/*  Without this normalization every amount collapses to 0 and the    */
+/*  invoice renders blank — which is exactly what the standard report */
+/*  was doing before this fix.                                        */
+/* ------------------------------------------------------------------ */
+export function normalizeOracleInvoiceRow(raw: Record<string, any> | null | undefined): InvoiceRow {
+  const out: Record<string, any> = {};
+  if (!raw) return out as InvoiceRow;
+  for (const key of Object.keys(raw)) {
+    out[key.toLowerCase()] = (raw as any)[key];
+  }
+  // make sure ex_rate / EX_RATE / EXCHANGE_RATE are all in sync when any one exists
+  const ex = out.ex_rate ?? out.exchange_rate ?? raw.EX_RATE ?? raw.EXCHANGE_RATE;
+  if (ex != null) {
+    out.ex_rate = Number(ex) as any;
+    out.EX_RATE = Number(ex) as any;
+    out.EXCHANGE_RATE = Number(ex) as any;
+  }
+  return out as InvoiceRow;
+}
+
+export function normalizeOracleInvoiceRows(rows: Record<string, any>[] | null | undefined): InvoiceRow[] {
+  if (!rows || !Array.isArray(rows)) return [];
+  return rows.map(normalizeOracleInvoiceRow);
 }
 
 function fmtMoney(n: number | null | undefined, decimals = 2): string {
@@ -149,10 +183,7 @@ function fmtDate(d: string | Date | null | undefined): string {
 
 function esc(v: unknown): string {
   if (v === null || v === undefined) return "";
-  return String(v)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 const ONES = [
@@ -174,9 +205,7 @@ function threeDigitsToWords(n: number): string {
     s += TENS[Math.floor(n / 10)] + " ";
     n %= 10;
   }
-  if (n > 0) {
-    s += ONES[n] + " ";
-  }
+  if (n > 0) s += ONES[n] + " ";
   return s.trim();
 }
 
@@ -234,6 +263,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const remark2 = first.inv_desc2 || "";
   const currCode =
     first.curr_code ||
+    meta.curr_code ||
     (first.company_code === "AMKSA" || first.country === "KSA" ? "SAR" : "") ||
     "";
 
@@ -242,28 +272,18 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const billToName = first.client_name || "";
   const billToAddressLines = meta.clientAddress
     ? [meta.clientAddress]
-    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city]
-        .filter((v) => v && String(v).trim().length > 0);
+    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city].filter(
+        (v) => v && String(v).trim().length > 0,
+      );
 
   function isCostRow(r: InvoiceRow): boolean {
-    if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") {
-      return true;
-    }
-    if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) {
-      return true;
-    }
+    if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") return true;
+    if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) return true;
     const source = (r.row_source || "").toLowerCase();
-    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) {
-      return true;
-    }
+    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) return true;
     const text = [r.act_group_name, r.activity_group_code, r.inv_desc, r.other_services, r.remarks]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    if (/\bcost\b|_cost|cost_/.test(text)) {
-      return true;
-    }
-    return false;
+      .filter(Boolean).join(" ").toLowerCase();
+    return /\bcost\b|_cost|cost_/.test(text);
   }
 
   const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
@@ -271,7 +291,6 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   let itemRowsHtml = "";
 
   if (isActivityWise) {
-    /* ---------- flat / activity-wise ---------- */
     const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
     itemRowsHtml = flatRows
       .map((r, idx) => {
@@ -296,7 +315,6 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       })
       .join("");
   } else {
-    /* ---------- grouped (default) – now also 8 columns ---------- */
     const grouped = new Map<number, InvoiceRow[]>();
     for (const r of rows) {
       if (isCostRow(r)) continue;
@@ -311,53 +329,28 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       .map((group) => {
         const head = group[0];
         rowCounter += 1;
-
         const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
         const groupVat = group.reduce((s, r) => s + Number(r.tx_compnt_amt_1 ?? 0), 0);
         const groupWithVat = groupAmt + groupVat;
-
-        // Prefer a rate/qty from the first row when the group is a single activity
         const price = group.length === 1 ? Number(head.bill_rate ?? 0) : 0;
-        const qty   = group.length === 1 ? (head.quantity ?? "") : "";
+        const qty = group.length === 1 ? (head.quantity ?? "") : "";
         const vatPerc = head.tx_compnt_perc_1 ?? "";
-
-        const groupDesc =
-          (head.act_group_name || "").trim() ||
-          head.inv_desc ||
-          head.other_services ||
-          "Service";
-
-        // Main group header row (always 8 cells)
+        const groupDesc = (head.act_group_name || "").trim() || head.inv_desc || head.other_services || "Service";
         const headRow = `
           <tr>
             <td class="c-no"></td>
             <td colspan="7" class="c-desc"><strong>${esc(groupDesc)}</strong></td>
           </tr>`;
-
-        // Sub-activity rows (also 8 cells)
         const subRows = group
           .map((r) => {
-            const activityDesc =
-              (r as any).activity?.trim() ||
-              r.inv_desc ||
-              r.other_services ||
-              groupDesc;
-
-            // Skip the sub-row when it would just duplicate the header
-            if (
-              group.length === 1 &&
-              activityDesc.trim().toUpperCase() === groupDesc.trim().toUpperCase()
-            ) {
-              return "";
-            }
-
+            const activityDesc = (r as any).activity?.trim() || r.inv_desc || r.other_services || groupDesc;
+            if (group.length === 1 && activityDesc.trim().toUpperCase() === groupDesc.trim().toUpperCase()) return "";
             const subPrice = Number(r.bill_rate ?? 0);
-            const subQty   = r.quantity ?? "";
-            const subAmt   = Number(r.bill ?? 0);
-            const subVat   = Number(r.tx_compnt_amt_1 ?? 0);
-            const subWith  = subAmt + subVat;
-            const subVatP  = r.tx_compnt_perc_1 ?? "";
-
+            const subQty = r.quantity ?? "";
+            const subAmt = Number(r.bill ?? 0);
+            const subVat = Number(r.tx_compnt_amt_1 ?? 0);
+            const subWith = subAmt + subVat;
+            const subVatP = r.tx_compnt_perc_1 ?? "";
             return `
               <tr class="sub-row">
                 <td class="c-no">${r.c_srno ?? ""}</td>
@@ -371,7 +364,6 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
               </tr>`;
           })
           .join("");
-
         return headRow + subRows;
       })
       .join("");
@@ -379,24 +371,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
   const FIXED_FILLERS = 28;
   const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
-    .map(
-      () =>
-        `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-price"></td><td class="c-qty"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`
-    )
+    .map(() => `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-price"></td><td class="c-qty"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`)
     .join("");
   const fillerRowsHtml =
     fixedFillerHtml +
-    `
-        <tr class="spacer-row">
-          <td class="c-no"></td>
-          <td class="c-desc"></td>
-          <td class="c-price"></td>
-          <td class="c-qty"></td>
-          <td class="c-amt"></td>
-          <td class="c-vat"></td>
-          <td class="c-amt"></td>
-          <td class="c-amt"></td>
-        </tr>`;
+    `<tr class="spacer-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-price"></td><td class="c-qty"></td><td class="c-amt"></td><td class="c-vat"></td><td class="c-amt"></td><td class="c-amt"></td></tr>`;
 
   const billableRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
   const totalBeforeVat = billableRows.reduce((s, r) => s + Number(r.bill ?? 0), 0);
@@ -412,11 +391,11 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const vatNo = first.prin_trn_no || "";
   const companyVatNo = first.comp_trn_no || "";
 
-  const bankName = first.bank_name
+  const bankName = first.bank_name;
   const acCode = first.ac_code_inv || first.ac_code || "";
   const refNo = first.reference_no_inv || first.reference_no || "";
   const bankAddr = first.bank_address_inv || first.bank_address || "";
-  const companyForBank = companyName; // or first.div_name / first.div_short_name
+  const companyForBank = companyName;
   const swiftCode = first.swift_code || first.swift_code_inv || "";
 
   const bankSection =
@@ -435,6 +414,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       ${remark2 ? `<div class="bank-line export-note">${esc(remark2)}</div>` : ""}
     </div>`
       : "";
+
   const metaRows: Array<[string, string]> = [
     ["Invoice No.", esc(invoiceNo)],
     ["Invoice Date", printDate],
@@ -446,10 +426,6 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     ["VAT (TIN NO)", esc(companyVatNo || "")],
   ];
 
-  // Prefer the static stamp asset passed via meta (base64 data URI,
-  // produced by stampImage.ts). Fall back to first.stamp_path only
-  // for backward compatibility if some rows happen to carry a
-  // usable image URL there.
   const stampUrl = (meta.stampDataUrl || first.stamp_path || "").trim();
 
   return `<!DOCTYPE html>
@@ -461,51 +437,17 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { height: 100%; margin: 0; padding: 0; }
-  body {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
-    background: #e8e8e8;
-    color: #000;
-    padding: 12px;
-  }
-  .invoice-wrapper {
-    max-width: 794px;
-    width: 100%;
-    margin: 0 auto;
-    background: #ffffff;
-    padding: 12px 18px 8px 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    height: 1122px;
-    min-height: 1122px;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; background: #e8e8e8; color: #000; padding: 12px; }
+  .invoice-wrapper { max-width: 794px; width: 100%; margin: 0 auto; background: #ffffff; padding: 12px 18px 8px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); height: 1122px; min-height: 1122px; border: none; display: flex; flex-direction: column; overflow: hidden; }
   @media print {
     @page { size: A4; margin: 8mm; }
     html, body { height: 100%; background: #fff; padding: 0; margin: 0; }
-    .invoice-wrapper {
-      box-shadow: none;
-      max-width: 100%;
-      width: 100%;
-      height: 100vh;
-      min-height: 100vh;
-      border: none;
-      padding: 6px 10px;
-      page-break-after: always;
-    }
+    .invoice-wrapper { box-shadow: none; max-width: 100%; width: 100%; height: 100vh; min-height: 100vh; border: none; padding: 6px 10px; page-break-after: always; }
     .no-print { display: none !important; }
   }
   @media screen and (max-width: 768px) {
     body { padding: 4px; background: #fff; font-size: 12px; }
-    .invoice-wrapper {
-      padding: 8px 10px;
-      height: auto;
-      min-height: auto;
-      box-shadow: none;
-      max-width: 100%;
-    }
+    .invoice-wrapper { padding: 8px 10px; height: auto; min-height: auto; box-shadow: none; max-width: 100%; }
     .top-info { flex-direction: column; }
     .to-block { flex: none; padding: 4px 0; max-width: 100%; }
     .meta-block { flex: none; padding: 4px 0; }
@@ -520,51 +462,16 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
     .qr-top img { width: 50px; height: 50px; }
   }
   .no-print { text-align: right; margin-bottom: 8px; }
-  .no-print button {
-    padding: 6px 20px; background: #1a2c5e; color: #fff; border: none;
-    border-radius: 4px; font-size: 12px; cursor: pointer;
-  }
-  .masthead {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2px;
-    flex-shrink: 0;
-  }
-  .logo-img {
-    max-height: 80px;
-    max-width: 220px;
-    object-fit: contain;
-    display: block;
-  }
+  .no-print button { padding: 6px 20px; background: #1a2c5e; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .masthead { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; flex-shrink: 0; }
+  .logo-img { max-height: 80px; max-width: 220px; object-fit: contain; display: block; }
   .company-name-fallback { font-size: 18px; font-weight: 700; color: #1a2c5e; }
-  .company-tagline {
-    font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #222;
-    margin: 2px 0 6px 0;
-  }
-  .qr-top {
-    text-align: center;
-    flex-shrink: 0;
-  }
-  .qr-top img {
-    width: 58px;
-    height: 58px;
-    display: block;
-  }
-  .qr-top .qr-label {
-    font-size: 7px;
-    color: #444;
-    margin-top: 2px;
-  }
-  .invoice-title {
-    text-align: center; font-size: 18px; font-weight: 700;
-    letter-spacing: 4px; margin-bottom: 6px; flex-shrink: 0;
-  }
-  .top-info {
-    display: flex;
-    border: none;
-    flex-shrink: 0;
-  }
+  .company-tagline { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: #222; margin: 2px 0 6px 0; }
+  .qr-top { text-align: center; flex-shrink: 0; }
+  .qr-top img { width: 58px; height: 58px; display: block; }
+  .qr-top .qr-label { font-size: 7px; color: #444; margin-top: 2px; }
+  .invoice-title { text-align: center; font-size: 18px; font-weight: 700; letter-spacing: 4px; margin-bottom: 6px; flex-shrink: 0; }
+  .top-info { display: flex; border: none; flex-shrink: 0; }
   .to-block { flex: 1.2; padding: 6px 10px 6px 0; border: none; }
   .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
   .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
@@ -574,187 +481,42 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
   .meta-label { width: 120px; color: #000; }
   .meta-colon { width: 10px; }
   .meta-value { font-weight: 600; flex: 1; }
-  .table-area {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    margin-top: 4px;
-  }
-  .items-table {
-    width: 100%;
-    height: 100%;
-    border-collapse: collapse;
-    border: 1px solid #000;
-    font-size: 10px;
-    table-layout: fixed;
-  }
-  .items-table th,
-  .items-table td {
-    border: 1px solid #000;
-    padding: 2px 4px;
-    vertical-align: top;
-    overflow: hidden;
-  }
-  .items-table thead th {
-    background: #eef2f6;
-    font-weight: 700;
-    font-size: 10.5px;
-    text-align: center;
-    vertical-align: middle;
-  }
-.c-no  { width: 28px;  text-align: center; padding-left: 2px; padding-right: 2px; }
-.c-desc { width: auto; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
-.c-price {
-  width: 80px;
-  text-align: center;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  padding-left: 2px;
-  padding-right: 4px;
-}
-.c-qty {
-  width: 40px;
-  text-align: center;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.c-amt {
-  width: 90px;
-  text-align: center;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  padding-left: 2px;
-  padding-right: 4px;
-}
-.c-vat { width: 26px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
-  .c-vat { width: 26px;  text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
+  .table-area { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; margin-top: 4px; }
+  .items-table { width: 100%; height: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10px; table-layout: fixed; }
+  .items-table th, .items-table td { border: 1px solid #000; padding: 2px 4px; vertical-align: top; overflow: hidden; }
+  .items-table thead th { background: #eef2f6; font-weight: 700; font-size: 10.5px; text-align: center; vertical-align: middle; }
+  .c-no { width: 28px; text-align: center; padding-left: 2px; padding-right: 2px; }
+  .c-desc { width: auto; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
+  .c-price { width: 80px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 2px; padding-right: 4px; }
+  .c-qty { width: 40px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .c-amt { width: 90px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 2px; padding-right: 4px; }
+  .c-vat { width: 26px; text-align: center; white-space: nowrap; padding-left: 1px; padding-right: 1px; }
   .sub-row td { border: 1px solid #000; }
   .sub-desc { padding-left: 14px; color: #222; }
   .sub-amt { color: #222; }
   .total-prefix { font-size: 8.5px; font-weight: 700; margin-right: 2px; }
-  .filler-row td {
-    border-top: none !important;
-    border-bottom: none !important;
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    height: 14px;
-    padding: 0 5px;
-  }
-  .spacer-row td {
-    border-top: none !important;
-    border-bottom: none !important;
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    height: 100%;
-    min-height: 40px;
-    padding: 0;
-    vertical-align: top;
-  }
-  .legend-row td {
-    font-size: 8.5px;
-    color: #222;
-    border: 1px solid #000;
-    vertical-align: middle;
-    padding: 2px 4px;
-  }
-  .words-row .total-label {
-    text-align: left;
-    font-weight: 700;
-    font-size: 9.5px;
-    white-space: normal;
-    word-wrap: break-word;
-  }
-  .words-row td {
-    border: 1px solid #000;
-    border-top: 2px solid #000;
-    font-weight: 700;
-    vertical-align: middle;
-    padding: 4px;
-  }
+  .filler-row td { border-top: none !important; border-bottom: none !important; border-left: 1px solid #000; border-right: 1px solid #000; height: 14px; padding: 0 5px; }
+  .spacer-row td { border-top: none !important; border-bottom: none !important; border-left: 1px solid #000; border-right: 1px solid #000; height: 100%; min-height: 40px; padding: 0; vertical-align: top; }
+  .legend-row td { font-size: 8.5px; color: #222; border: 1px solid #000; vertical-align: middle; padding: 2px 4px; }
+  .words-row .total-label { text-align: left; font-weight: 700; font-size: 9.5px; white-space: normal; word-wrap: break-word; }
+  .words-row td { border: 1px solid #000; border-top: 2px solid #000; font-weight: 700; vertical-align: middle; padding: 4px; }
   .words-row .c-amt { font-weight: 700; white-space: nowrap; }
-  /* ── Bank / stamp block ──────────────────────────────────────────
-     Was a flex row before — flex is unreliable in many HTML→PDF
-     engines (wkhtmltopdf and friends barely support it), which is
-     what let the stamp spill past the box in the printed invoice.
-     A fixed-layout table guarantees the stamp cell can never exceed
-     its column width, in any renderer. */
-  .bank-sig-table {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-    margin-top: 10px;
-    flex-shrink: 0;
-  }
+  .bank-sig-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 10px; flex-shrink: 0; }
   .bank-sig-table td { vertical-align: top; padding: 0; border: none; }
   .bank-cell { width: 62%; padding-right: 14px; }
   .stamp-cell { width: 160px; text-align: right; }
   .bank-block { font-size: 10px; line-height: 1.45; }
   .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
   .bank-line { margin-bottom: 1px; }
-  .stamp-img {
-    display: block;
-    margin-left: auto;
-    margin-right: 0;
-    max-height: 90px;
-    max-width: 120px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-  .signature-text {
-    font-weight: 700;
-    font-size: 11px;
-    text-align: right;
-    white-space: nowrap;
-    padding-top: 4px;
-  }
-  .footer {
-    margin-top: 8px;
-    padding-top: 6px;
-    border: none;
-    text-align: center;
-    font-size: 10px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
+  .stamp-img { display: block; margin-left: auto; margin-right: 0; max-height: 90px; max-width: 120px; width: auto; height: auto; object-fit: contain; }
+  .signature-text { font-weight: 700; font-size: 11px; text-align: right; white-space: nowrap; padding-top: 4px; }
+  .footer { margin-top: 8px; padding-top: 6px; border: none; text-align: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
   .footer .addr-line { font-weight: 400; margin-top: 2px; }
-  .footer .disclaimer {
-    font-weight: 400;
-    font-size: 8.5px;
-    color: #222;
-    border: none;
-    margin-top: 4px;
-    text-align: left;
-    padding-top: 2px;
-  }
-  .logo-company-block {
-    display: flex;
-    width: 100%;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 16px;
-    min-width: 0;
-  }
-  .company-details-next-to-logo {
-    font-size: 10px;
-    line-height: 1.4;
-    padding-top: 4px;
-    max-width: 52%;
-    margin-left: auto;
-    text-align: right;
-    overflow-wrap: anywhere;
-  }
-  .company-name-next {
-    font-size: 12px;
-    font-weight: 700;
-    color: #1a2c5e;
-    margin-bottom: 2px;
-  }
-  .company-addr-line {
-    font-size: 9.5px;
-    color: #222;
-  }
+  .footer .disclaimer { font-weight: 400; font-size: 8.5px; color: #222; border: none; margin-top: 4px; text-align: left; padding-top: 2px; }
+  .logo-company-block { display: flex; align-items: flex-start; gap: 12px; }
+  .company-details-next-to-logo { font-size: 10px; line-height: 1.4; padding-top: 4px; }
+  .company-name-next { font-size: 12px; font-weight: 700; color: #1a2c5e; margin-bottom: 2px; }
+  .company-addr-line { font-size: 9.5px; color: #222; }
 </style>
 </head>
 <body>
@@ -765,34 +527,26 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
 <div class="invoice-wrapper">
 
-    <div class="masthead">
-      <div class="logo-company-block">
-        ${
-          (() => {
-            const logoUrl = (first.company_logo || first.logo_path || "").trim();
-            if (logoUrl) {
-              return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
-            }
-            return `<div class="company-name-fallback">${esc(companyName)}</div>`;
-          })()
-        }
-        <div class="company-details-next-to-logo">
-          <div class="company-name-next">${esc(companyName)} COMPANY</div>
-          ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
-          ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
-          ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
-          ${first.city ? `<div class="company-addr-line">City: ${esc(first.city)}</div>` : ""}
-          ${first.email ? `<div class="company-addr-line">e-mail: ${esc(first.email)}</div>` : ""}
-          ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
-          <div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>
-        </div>
+  <div class="masthead">
+    <div class="logo-company-block">
+      ${(() => {
+        const logoUrl = (first.company_logo || first.logo_path || "").trim();
+        if (logoUrl) return `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`;
+        return `<div class="company-name-fallback">${esc(companyName)}</div>`;
+      })()}
+      <div class="company-details-next-to-logo">
+        <div class="company-name-next">${esc(companyName)} COMPANY</div>
+        ${first.address1 ? `<div class="company-addr-line">${esc(first.address1)}</div>` : ""}
+        ${first.address2 ? `<div class="company-addr-line">${esc(first.address2)}</div>` : ""}
+        ${first.address3 ? `<div class="company-addr-line">${esc(first.address3)}</div>` : ""}
+        ${first.city ? `<div class="company-addr-line">City: ${esc(first.city)}</div>` : ""}
+        ${first.email ? `<div class="company-addr-line">e-mail: ${esc(first.email)}</div>` : ""}
+        ${first.tel_no ? `<div class="company-addr-line">Tel: ${esc(first.tel_no)}</div>` : ""}
+        <div class="company-addr-line">C.R. No.: ${esc(first.crn)}</div>
       </div>
-      ${meta.qrCodeDataUrl ? `
-      <div class="qr-top">
-        <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
-        <div class="qr-label">Scan to view online</div>
-      </div>` : ""}
     </div>
+    ${meta.qrCodeDataUrl ? `<div class="qr-top"><img src="${esc(meta.qrCodeDataUrl)}" alt="QR" /><div class="qr-label">Scan to view online</div></div>` : ""}
+  </div>
   <div class="invoice-title">TAX INVOICE</div>
 
   <div class="top-info">
@@ -806,43 +560,28 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
       <div class="to-line">VAT (TIN No) : ${esc(vatNo)}</div>
     </div>
     <div class="meta-block">
-      ${metaRows
-        .map(
-          ([label, value]) => `
-      <div class="meta-row">
-        <div class="meta-label">${label}</div>
-        <div class="meta-colon">${label ? ":" : ""}</div>
-        <div class="meta-value">${value}</div>
-      </div>`
-        )
-        .join("")}
+      ${metaRows.map(([label, value]) => `<div class="meta-row"><div class="meta-label">${label}</div><div class="meta-colon">${label ? ":" : ""}</div><div class="meta-value">${value}</div></div>`).join("")}
     </div>
   </div>
 
   <div class="table-area">
     <table class="items-table">
       <colgroup>
-        <col style="width:28px" />
-        <col />
-        <col style="width:80px" />
-        <col style="width:40px" />
-        <col style="width:90px" />
-        <col style="width:26px" />
-        <col style="width:90px" />
-        <col style="width:90px" />
+        <col style="width:28px" /><col /><col style="width:80px" /><col style="width:40px" />
+        <col style="width:90px" /><col style="width:26px" /><col style="width:90px" /><col style="width:90px" />
       </colgroup>
-<thead>
-  <tr>
-    <th class="c-no">SR No</th>
-    <th class="c-desc">Description</th>
-    <th class="c-price">Price</th>
-    <th class="c-qty">Qty</th>
-    <th class="c-amt">Total<br/>Before Tax</th>
-    <th class="c-vat">VAT<br/>%</th>
-    <th class="c-amt">VAT<br/>Amount</th>
-    <th class="c-amt">Total<br/>With VAT</th>
-  </tr>
-</thead>
+      <thead>
+        <tr>
+          <th class="c-no">SR No</th>
+          <th class="c-desc">Description</th>
+          <th class="c-price">Price</th>
+          <th class="c-qty">Qty</th>
+          <th class="c-amt">Total<br/>Before Tax</th>
+          <th class="c-vat">VAT<br/>%</th>
+          <th class="c-amt">VAT<br/>Amount</th>
+          <th class="c-amt">Total<br/>With VAT</th>
+        </tr>
+      </thead>
       <tbody>
         ${itemRowsHtml}
         ${fillerRowsHtml}
@@ -869,9 +608,7 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
   <div class="footer">
     <div>${esc(first.div_address1 || "")}</div>
-    <div class="addr-line">
-      ${first.phone ? `Tel: ${esc(first.phone)}` : ""}${first.fax ? ` ; Fax: ${esc(first.fax)}` : ""}
-    </div>
+    <div class="addr-line">${first.phone ? `Tel: ${esc(first.phone)}` : ""}${first.fax ? ` ; Fax: ${esc(first.fax)}` : ""}</div>
     <div class="disclaimer">
       This is a digitally signed Tax Invoice generated electronically by ${esc(companyName)}.<br/>
       No physical signature is required. The authenticity of this document can be verified using the QR code (if present) or by contacting the issuer.
@@ -887,22 +624,12 @@ export function buildInvoiceHtmlAMKSA(rows: InvoiceRow[], meta: InvoiceMeta = {}
 function amountInWordsBTIND(amount: number, currCode: string | null | undefined): string {
   const code = (currCode || "USD").toUpperCase();
   const majorNames: Record<string, string> = {
-    USD: "US DOLLARS",
-    INR: "INDIAN RUPEES",
-    OMR: "OMANI RIALS",
-    SAR: "SAUDI RIYALS",
-    AED: "UAE DIRHAMS",
-    EUR: "EUROS",
-    GBP: "POUNDS STERLING",
+    USD: "US DOLLARS", INR: "INDIAN RUPEES", OMR: "OMANI RIALS",
+    SAR: "SAUDI RIYALS", AED: "UAE DIRHAMS", EUR: "EUROS", GBP: "POUNDS STERLING",
   };
   const minorNames: Record<string, string> = {
-    USD: "CENTS",
-    INR: "PAISE",
-    OMR: "BAISA",
-    SAR: "HALALAS",
-    AED: "FILS",
-    EUR: "CENTS",
-    GBP: "PENCE",
+    USD: "CENTS", INR: "PAISE", OMR: "BAISA", SAR: "HALALAS",
+    AED: "FILS", EUR: "CENTS", GBP: "PENCE",
   };
   const major = majorNames[code] || `${code}`;
   const minor = minorNames[code] || "CENTS";
@@ -924,75 +651,88 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
   const first = rows[0];
   const remark1 = first.inv_desc1 || "";
   const remark2 = first.inv_desc2 || "";
-  const currCode = (first.curr_code || "USD").toUpperCase();
-  const currSymbol = currCode === "USD" ? "$" : currCode === "INR" ? "₹" : currCode;
+  // Currency resolution order: row CURR_CODE → meta.curr_code → USD
+  // const currCode = (first.curr_code || meta.curr_code || "USD").toString().toUpperCase();
+  // const currSymbol = currCode === "USD" ? "$" : currCode === "INR" ? "₹" : currCode;
 
   const companyName =
     (first.div_short_name || first.div_name || first.company_short_name || "BAYANAT TECHNOLOGY PRIVATE LTD").trim();
   const companyTagline = "BAYANAT TECHNOLOGY PVT.LTD";
   const companyLegal = "BAYANAT TECHNOLOGY PVT LTD (INDIA)";
 
-  const billToName =
-    first.client_name ||  "";
+  const billToName = first.client_name || "";
   const billToAddressLines = meta.clientAddress
     ? [meta.clientAddress]
-    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city]
-        .filter((v) => v && String(v).trim().length > 0);
+    : [first.prin_addr1, first.prin_addr2, first.prin_addr3, first.prin_city].filter(
+        (v) => v && String(v).trim().length > 0,
+      );
 
   const clienttax_num = meta.clientVatNo || first.cust_vat_no || first.prin_trn_no || "N.A.";
+  const companytax_num = "27AAMCB5564D1ZK";
 
-const companytax_num = "27AAMCB5564D1ZK";
   function isCostRow(r: InvoiceRow): boolean {
     if (r.is_cost === true || r.is_cost === "Y" || r.is_cost === "y" || r.is_cost === "1") return true;
     if (typeof r.is_cost === "string" && r.is_cost.toLowerCase().includes("cost")) return true;
     const source = (r.row_source || "").toLowerCase();
-    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) {
-      return true;
-    }
+    if (source === "cost" || source.includes("_cost") || source.endsWith("cost") || source.includes("cost_")) return true;
     const text = [r.act_group_name, r.activity_group_code, r.inv_desc, r.other_services, r.remarks]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+      .filter(Boolean).join(" ").toLowerCase();
     return /\bcost\b|_cost|cost_/.test(text);
   }
 
-  const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
+const isActivityWise = (meta.reportType || "").toLowerCase() === "activitywise";
+const isStandardReport = (meta.reportType || "").toLowerCase() === "standard";
+const isFlat = isActivityWise || isStandardReport;   // NEW
+const currCode = (
+  isStandardReport
+    ? (meta.curr_code || first.curr_code || "INR")
+    : (first.curr_code || meta.curr_code || "USD")
+).toString().toUpperCase();
+const currSymbol = currCode === "USD" ? "$" : currCode === "INR" ? "₹" : currCode;
 
+  // Helper: for standard report we want the base-currency BILL / BILL_RATE,
+  // otherwise we use FC_BILL (converted) via getBillAmount. FC_BILL_RATE
+  // is available as r.fc_bill_rate after normalization.
+  const pickAmount = (r: InvoiceRow): number =>
+    isStandardReport ? Number(r.bill ?? 0) : getBillAmount(r);
+  const pickRate = (r: InvoiceRow): number =>
+    isStandardReport ? Number(r.bill_rate ?? 0) : Number(r.fc_bill_rate ?? r.bill_rate ?? 0);
+const fmtAmt = (n: number): string => {
+  const cents = Math.round(Math.abs(n) * 100);
+  return cents % 100 === 0 ? fmtMoney(Math.round(n), 0) : fmtMoney(n, 2);
+};
   let itemRowsHtml = "";
 
-  if (isActivityWise) {
-    /* ---------- flat / activity-wise ---------- */
-    const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
+  const FIXED_FILLERS = 18;
+  const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
+    .map(() => `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-sac"></td><td class="c-amt"></td></tr>`)
+    .join("");
+  const fillerRowsHtml =
+    fixedFillerHtml +
+    `<tr class="spacer-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-sac"></td><td class="c-amt"></td></tr>`;
+
+if (isFlat) {
+      const flatRows = rows.filter((r) => !isCostRow(r) && r.bill != null && Number(r.bill) !== 0);
     itemRowsHtml = flatRows
       .map((r, idx) => {
         const desc = r.inv_desc || r.other_services || r.act_group_name || "";
-        const sac =
-          r.sac_code 
-          ||
-          // (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
-          //   ? r.activity_group_code
-          //   : "") ||
-          // r.prin_ref1 ||
-          // r.inv_desc2 ||
-          "";
-        // const amt = Number(r.bill ?? 0);
-            const amt = getBillAmount(r);              // was: Number(r.bill ?? 0)
-
+        const sac = r.sac_code || "";
+        const amt = pickAmount(r);
         return `
           <tr>
             <td class="c-no">${idx + 1}</td>
             <td class="c-desc">${esc(desc)}</td>
             <td class="c-sac">${esc(sac)}</td>
-            <td class="c-amt">${fmtMoney(amt, 2)}</td>
+            <td class="c-amt">${fmtAmt(amt)}</td>
           </tr>`;
       })
       .join("");
   } else {
-    /* ---------- grouped (default) ---------- */
     const grouped = new Map<number, InvoiceRow[]>();
     for (const r of rows) {
       if (isCostRow(r)) continue;
-      if (r.bill == null || Number(r.bill) === 0) continue;
+      if (r.bill == null && r.fc_bill == null) continue;
+      if (Number(r.bill ?? 0) === 0 && Number(r.fc_bill ?? 0) === 0) continue;
       const key = r.srno ?? 0;
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(r);
@@ -1003,77 +743,43 @@ const companytax_num = "27AAMCB5564D1ZK";
       .map((group) => {
         const head = group[0];
         rowCounter += 1;
-        // const groupAmt = group.reduce((s, r) => s + Number(r.bill ?? 0), 0);
-            const groupAmt = group.reduce((s, r) => s + getBillAmount(r), 0);   // was: Number(r.bill ?? 0)
-
+        const groupAmt = group.reduce((s, r) => s + pickAmount(r), 0);
         const headDesc = head.act_group_name || head.inv_desc || head.other_services || "";
-
         const headRow = `
           <tr>
             <td class="c-no">${rowCounter}</td>
             <td class="c-desc"><strong>${esc(headDesc)}</strong></td>
             <td class="c-sac"></td>
-            <td class="c-amt">${fmtMoney(groupAmt, 2)}</td>
+            <td class="c-amt">${fmtAmt(groupAmt)}</td>
           </tr>`;
-
         const subRows = group
           .map((r) => {
             const subDesc = r.inv_desc || r.other_services || headDesc;
-            const sac =
-              r.sac_code
-               ||
-              // (r.activity_group_code && /^\d{4,6}$/.test(String(r.activity_group_code))
-              //   ? r.activity_group_code
-              //   : "") ||
-              // r.prin_ref1 ||
-              // r.inv_desc2 ||
-              "";
-            // const subAmt = Number(r.bill ?? 0);
-            const subAmt = getBillAmount(r);        
-            if (group.length === 1 && !sac && subDesc === headDesc) {
-              return "";
-            }
+            const sac = r.sac_code || "";
+            const subAmt = pickAmount(r);
+            if (group.length === 1 && !sac && subDesc === headDesc) return "";
             return `
-          <tr class="sub-row">
-            <td class="c-no">${r.c_srno ?? ""}</td>
-            <td class="c-desc sub-desc">${esc(subDesc)}</td>
-            <td class="c-sac">${esc(sac)}</td>
-            <td class="c-amt sub-amt">${fmtMoney(subAmt, 2)}</td>
-          </tr>`;
+              <tr class="sub-row">
+                <td class="c-no">${r.c_srno ?? ""}</td>
+                <td class="c-desc sub-desc">${esc(subDesc)}</td>
+                <td class="c-sac">${esc(sac)}</td>
+                <td class="c-amt sub-amt">${fmtAmt(subAmt)}</td>
+              </tr>`;
           })
           .join("");
-
         return headRow + subRows;
       })
       .join("");
   }
 
-  const FIXED_FILLERS = 18;
-  const fixedFillerHtml = Array.from({ length: FIXED_FILLERS })
-    .map(
-      () =>
-        `<tr class="filler-row"><td class="c-no"></td><td class="c-desc"></td><td class="c-sac"></td><td class="c-amt"></td></tr>`
-    )
-    .join("");
-  const fillerRowsHtml =
-    fixedFillerHtml +
-    `
-        <tr class="spacer-row">
-          <td class="c-no"></td>
-          <td class="c-desc"></td>
-          <td class="c-sac"></td>
-          <td class="c-amt"></td>
-        </tr>`;
-
   const totalAmt = rows.reduce((s, r) => {
     if (isCostRow(r)) return s;
-      return s + getBillAmount(r);                  // was: Number(r.bill ?? 0)
-
-    // return s + Number(r.bill ?? 0);
+    return s + pickAmount(r);
   }, 0);
 
-  const printDate = fmtDate(first.invoice_date || first.user_dt);
-  const dueDate = fmtDate(first.due_date);
+const printDate = meta.invoiceDate
+  ? meta.invoiceDate
+  : fmtDate(first.invoice_date || first.user_dt);  const dueDate = fmtDate(first.due_date);
   const invoiceNo = meta.invoiceNo || first.invoice_no || first.invno_prefixed || "";
   const invoicePeriod =
     meta.invoicePeriod ||
@@ -1099,21 +805,24 @@ const companytax_num = "27AAMCB5564D1ZK";
     </div>`;
 
   const logoUrl = (first.company_logo || first.logo_path || "").trim();
-  // Prefer the static stamp asset passed via meta (base64 data URI,
-  // produced by stampImage.ts). Fall back to first.stamp_path only
-  // for backward compatibility if some rows happen to carry a
-  // usable image URL there.
   const stampUrl = (meta.stampDataUrl || first.stamp_path || "").trim();
+
+  // Exchange rate: prefer the row's EX_RATE if meta doesn't have one
+  const rowExRate = Number(first.ex_rate ?? (first as any).EX_RATE ?? 0);
+  const metaExRate = Number(meta.exchangeRate ?? 0);
+  const effectiveExRate = metaExRate > 0 ? metaExRate : rowExRate;
 
   const metaRows: Array<[string, string]> = [
     ["Invoice No.", esc(invoiceNo)],
     ["Invoice Date", printDate],
-    ["Invoice Period", invoicePeriod],
-    ["Due Date", dueDate],
+    ...(invoicePeriod ? ([["Invoice Period", invoicePeriod]] as Array<[string, string]>) : []),
+    ...(dueDate ? ([["Due Date", dueDate]] as Array<[string, string]>) : []),
     ["Currency", esc(currCode)],
+...(!isStandardReport && effectiveExRate && effectiveExRate > 0 && effectiveExRate !== 1
+  ? ([["Exchange Rate", String(effectiveExRate)]] as Array<[string, string]>)
+  : []),
     ["Sales Rep", esc(first.salesman || "")],
-    ["Bill Rep", esc(first.user_id)],
-    ["GSTIN", esc(companytax_num)],
+    ["Billing Rep", esc(first.user_id || "")],
   ];
 
   const footerAddress =
@@ -1129,51 +838,17 @@ const companytax_num = "27AAMCB5564D1ZK";
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { height: 100%; margin: 0; padding: 0; }
-  body {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 10px;
-    background: #e8e8e8;
-    color: #000;
-    padding: 12px;
-  }
-  .invoice-wrapper {
-    max-width: 794px;
-    width: 100%;
-    margin: 0 auto;
-    background: #ffffff;
-    padding: 14px 18px 10px 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    height: 1122px;
-    min-height: 1122px;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; background: #e8e8e8; color: #000; padding: 12px; }
+  .invoice-wrapper { max-width: 794px; width: 100%; margin: 0 auto; background: #ffffff; padding: 14px 18px 10px 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); height: 1122px; min-height: 1122px; border: none; display: flex; flex-direction: column; overflow: hidden; }
   @media print {
     @page { size: A4; margin: 8mm; }
     html, body { height: 100%; background: #fff; padding: 0; margin: 0; }
-    .invoice-wrapper {
-      box-shadow: none;
-      max-width: 100%;
-      width: 100%;
-      height: 100vh;
-      min-height: 100vh;
-      border: none;
-      padding: 6px 10px;
-      page-break-after: always;
-    }
+    .invoice-wrapper { box-shadow: none; max-width: 100%; width: 100%; height: 100vh; min-height: 100vh; border: none; padding: 6px 10px; page-break-after: always; }
     .no-print { display: none !important; }
   }
   @media screen and (max-width: 768px) {
     body { padding: 4px; background: #fff; font-size: 12px; }
-    .invoice-wrapper {
-      padding: 8px 10px;
-      height: auto;
-      min-height: auto;
-      box-shadow: none;
-      max-width: 100%;
-    }
+    .invoice-wrapper { padding: 8px 10px; height: auto; min-height: auto; box-shadow: none; max-width: 100%; }
     .top-info { flex-direction: column; }
     .to-block { flex: none; padding: 4px 0; max-width: 100%; }
     .meta-block { flex: none; padding: 4px 0; }
@@ -1189,152 +864,43 @@ const companytax_num = "27AAMCB5564D1ZK";
     .qr-top img { width: 50px; height: 50px; }
   }
   .no-print { text-align: right; margin-bottom: 8px; }
-  .no-print button {
-    padding: 6px 20px; background: #1a2c5e; color: #fff; border: none;
-    border-radius: 4px; font-size: 12px; cursor: pointer;
-  }
-  .masthead {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 4px;
-    flex-shrink: 0;
-  }
-  .logo-img {
-    max-height: 70px;
-    max-width: 280px;
-    object-fit: contain;
-    display: block;
-  }
-  .company-name-fallback {
-    font-size: 16px; font-weight: 700; color: #1a2c5e; letter-spacing: 1px;
-  }
-  .company-tagline {
-    font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555;
-    margin: 2px 0 4px 0;
-    text-align: left;
-  }
-  .qr-top {
-    text-align: center;
-    flex-shrink: 0;
-  }
-  .qr-top img {
-    width: 58px;
-    height: 58px;
-    display: block;
-  }
-  .qr-top .qr-label {
-    font-size: 7px;
-    color: #444;
-    margin-top: 2px;
-  }
-  .invoice-title {
-    text-align: center; font-size: 16px; font-weight: 700;
-    letter-spacing: 2px; margin: 6px 0 4px 0; flex-shrink: 0;
-  }
-  .title-rule {
-    border: none; border-top: 2px solid #000; margin: 0 0 6px 0; flex-shrink: 0;
-  }
-  .top-info {
-    display: flex;
-    border: none;
-    flex-shrink: 0;
-    margin-bottom: 4px;
-  }
+  .no-print button { padding: 6px 20px; background: #1a2c5e; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .masthead { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; flex-shrink: 0; }
+  .logo-img { max-height: 70px; max-width: 280px; object-fit: contain; display: block; }
+  .company-name-fallback { font-size: 16px; font-weight: 700; color: #1a2c5e; letter-spacing: 1px; }
+  .company-tagline { font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555; margin: 2px 0 4px 0; text-align: left; }
+  .qr-top { text-align: center; flex-shrink: 0; }
+  .qr-top img { width: 58px; height: 58px; display: block; }
+  .qr-top .qr-label { font-size: 7px; color: #444; margin-top: 2px; }
+  .invoice-title { text-align: center; font-size: 16px; font-weight: 700; letter-spacing: 2px; margin: 6px 0 4px 0; flex-shrink: 0; }
+  .title-rule { border: none; border-top: 2px solid #000; margin: 0 0 6px 0; flex-shrink: 0; }
+  .top-info { display: flex; border: none; flex-shrink: 0; margin-bottom: 4px; }
   .to-block { flex: 1.25; padding: 4px 10px 4px 0; }
   .to-label { font-weight: 700; font-size: 10px; margin-bottom: 2px; }
   .to-name { font-weight: 700; font-size: 11px; margin-bottom: 1px; }
-  .to-line {
-    font-size: 10px; line-height: 1.45;
-    border-bottom: 1px solid #bbb; max-width: 200px; min-height: 14px;
-  }
+  .to-line { font-size: 10px; line-height: 1.45; border-bottom: 1px solid #bbb; max-width: 200px; min-height: 14px; }
   .meta-block { flex: 1; padding: 4px 0 4px 12px; }
   .meta-row { display: flex; font-size: 10px; line-height: 1.5; }
   .meta-label { width: 110px; color: #000; }
   .meta-colon { width: 10px; }
   .meta-value { font-weight: 600; flex: 1; }
-  .page-line {
-    text-align: right; font-size: 9px; margin-top: 2px; color: #222;
-  }
-  .table-area {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    margin-top: 2px;
-  }
-  .items-table {
-    width: 100%;
-    height: 100%;
-    border-collapse: collapse;
-    border: 1px solid #000;
-    font-size: 10px;
-    table-layout: fixed;
-  }
-  .items-table th,
-  .items-table td {
-    border: 1px solid #000;
-    padding: 2px 5px;
-    vertical-align: top;
-    overflow: hidden;
-  }
-  .items-table thead th {
-    background: #f0f0f0;
-    font-weight: 700;
-    font-size: 9.5px;
-    text-align: center;
-    vertical-align: middle;
-  }
-  .c-no  { width: 22px; text-align: center; }
+  .page-line { text-align: right; font-size: 9px; margin-top: 2px; color: #222; }
+  .table-area { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; margin-top: 2px; }
+  .items-table { width: 100%; height: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 10px; table-layout: fixed; }
+  .items-table th, .items-table td { border: 1px solid #000; padding: 2px 5px; vertical-align: top; overflow: hidden; }
+  .items-table thead th { background: #f0f0f0; font-weight: 700; font-size: 9.5px; text-align: center; vertical-align: middle; }
+  .c-no { width: 22px; text-align: center; }
   .c-desc { text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
   .c-sac { width: 120px; text-align: center; white-space: nowrap; }
-  .c-amt {
-    width: 110px;
-    text-align: right;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
+  .c-amt { width: 110px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .sub-desc { padding-left: 18px; color: #222; }
   .sub-amt { color: #222; }
-  .filler-row td {
-    border-top: none !important;
-    border-bottom: none !important;
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    height: 14px;
-    padding: 0 5px;
-  }
-  .spacer-row td {
-    border-top: none !important;
-    border-bottom: none !important;
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    height: 100%;
-    min-height: 20px;
-    padding: 0;
-  }
-  .words-row td {
-    border: 1px solid #000;
-    border-top: 2px solid #000;
-    font-weight: 700;
-    vertical-align: middle;
-    padding: 5px;
-    font-size: 10px;
-  }
+  .filler-row td { border-top: none !important; border-bottom: none !important; border-left: 1px solid #000; border-right: 1px solid #000; height: 14px; padding: 0 5px; }
+  .spacer-row td { border-top: none !important; border-bottom: none !important; border-left: 1px solid #000; border-right: 1px solid #000; height: 100%; min-height: 20px; padding: 0; }
+  .words-row td { border: 1px solid #000; border-top: 2px solid #000; font-weight: 700; vertical-align: middle; padding: 5px; font-size: 10px; }
   .words-row .total-label { text-align: left; }
   .words-row .total-prefix { font-size: 10px; margin-right: 4px; }
-  /* ── Bank / stamp block ──────────────────────────────────────────
-     Was a flex row before — flex support is unreliable across
-     HTML→PDF engines (wkhtmltopdf etc.), which is what let the stamp
-     spill past the box in the printed invoice. A fixed-layout table
-     guarantees the stamp cell can never exceed its column width. */
-  .bank-sig-table {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-    margin-top: 10px;
-    flex-shrink: 0;
-  }
+  .bank-sig-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 10px; flex-shrink: 0; }
   .bank-sig-table td { vertical-align: top; padding: 0; border: none; }
   .bank-cell { width: 62%; padding-right: 14px; }
   .stamp-cell { width: 160px; text-align: center; }
@@ -1342,39 +908,11 @@ const companytax_num = "27AAMCB5564D1ZK";
   .bank-title { font-weight: 700; text-decoration: underline; margin-bottom: 2px; }
   .bank-line { margin-bottom: 1px; }
   .export-note { margin-top: 4px; }
-  .stamp-img {
-    display: block;
-    margin: 0 auto 6px auto;
-    max-height: 90px;
-    max-width: 120px;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-  .signature-text {
-    font-weight: 700;
-    font-size: 10px;
-    text-align: center;
-    margin-top: 4px;
-  }
-  .footer {
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px solid #000;
-    text-align: center;
-    font-size: 9px;
-    font-weight: 600;
-    flex-shrink: 0;
-  }
+  .stamp-img { display: block; margin: 0 auto 6px auto; max-height: 90px; max-width: 120px; width: auto; height: auto; object-fit: contain; }
+  .signature-text { font-weight: 700; font-size: 10px; text-align: center; margin-top: 4px; }
+  .footer { margin-top: 8px; padding-top: 6px; border-top: 1px solid #000; text-align: center; font-size: 9px; font-weight: 600; flex-shrink: 0; }
   .footer .addr-line { font-weight: 400; margin-top: 2px; font-size: 8.5px; }
-  .footer .disclaimer {
-    font-weight: 400;
-    font-size: 8px;
-    color: #222;
-    margin-top: 4px;
-    text-align: left;
-    padding-top: 2px;
-  }
+  .footer .disclaimer { font-weight: 400; font-size: 8px; color: #222; margin-top: 4px; text-align: left; padding-top: 2px; }
 </style>
 </head>
 <body>
@@ -1387,18 +925,10 @@ const companytax_num = "27AAMCB5564D1ZK";
 
   <div class="masthead">
     <div>
-      ${
-        logoUrl
-          ? `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />`
-          : `<div class="company-name-fallback">${esc(companyName)}</div>`
-      }
+      ${logoUrl ? `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />` : `<div class="company-name-fallback">${esc(companyName)}</div>`}
       <div class="company-tagline">${esc(companyTagline)}</div>
     </div>
-    ${meta.qrCodeDataUrl ? `
-    <div class="qr-top">
-      <img src="${esc(meta.qrCodeDataUrl)}" alt="QR" />
-      <div class="qr-label">Scan to view online</div>
-    </div>` : ""}
+    ${meta.qrCodeDataUrl ? `<div class="qr-top"><img src="${esc(meta.qrCodeDataUrl)}" alt="QR" /><div class="qr-label">Scan to view online</div></div>` : ""}
   </div>
   <div class="invoice-title">TAX INVOICE</div>
   <hr class="title-rule" />
@@ -1414,16 +944,7 @@ const companytax_num = "27AAMCB5564D1ZK";
       <div class="to-line">GSTIN: ${esc(clienttax_num)}</div>
     </div>
     <div class="meta-block">
-      ${metaRows
-        .map(
-          ([label, value]) => `
-      <div class="meta-row">
-        <div class="meta-label">${label}</div>
-        <div class="meta-colon">:</div>
-        <div class="meta-value">${value}</div>
-      </div>`
-        )
-        .join("")}
+      ${metaRows.map(([label, value]) => `<div class="meta-row"><div class="meta-label">${label}</div><div class="meta-colon">:</div><div class="meta-value">${value}</div></div>`).join("")}
     </div>
   </div>
 
@@ -1449,7 +970,7 @@ const companytax_num = "27AAMCB5564D1ZK";
         <tr class="words-row">
           <td class="total-label" colspan="2">${esc(amountInWordsBTIND(totalAmt, currCode))}</td>
           <td style="text-align:right;font-weight:700;"><span class="total-prefix">Total :</span></td>
-          <td class="c-amt">${fmtMoney(totalAmt, 2)}</td>
+          <td class="c-amt">${fmtAmt(totalAmt)}</td>
         </tr>
       </tbody>
     </table>

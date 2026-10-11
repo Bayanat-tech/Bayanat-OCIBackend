@@ -556,7 +556,9 @@ export const getFinanceListData = async (
           `
     SELECT
       tx_compntcat_code AS "tx_compntcat_code",
-      tx_compntcat_name AS "tx_compntcat_name"
+      tx_compntcat_name AS "tx_compntcat_name",
+      NVL(tx_type, 'N') AS "tx_type",
+      NVL(tx_percnt, 0) AS "tx_percnt"
     FROM MS_TAX_COMPNTCATEGORY
     ${whereClause}
     ${orderByClause}

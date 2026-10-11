@@ -21,6 +21,7 @@ import {
   getStockTransferReportHtml,
   exportStockTransferReportExcel,
 } from "../../../controllers/wms/reports/stockTransferReportController";
+import { getSalaryAdvDedReportHtml } from "../../../controllers/wms/reports/SalaryAdvDedReport.controller";
 
 const router = express.Router();
 
@@ -118,6 +119,13 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   exportStockAgeingVolumeReportExcel
+);
+
+router.post(
+  "/salary-adv-ded/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSalaryAdvDedReportHtml
 );
 
 export default router;

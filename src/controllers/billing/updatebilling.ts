@@ -36,6 +36,8 @@ export interface TInvoiceDetail {
   quantity?: number;
   bill_rate?: number;
   cost_rate?: number;
+    fc_bill?: number;        // Added
+  fc_bill_rate?: number;   // Added
   inv_desc?: string;
   user_id?: string;
 }
@@ -244,6 +246,12 @@ const detailRows =
     COST_RATE:
       getValue(d,"COST_RATE"),
 
+    // >>> ADDED THESE TWO LINES <<<
+    FC_BILL:
+      getValue(d,"FC_BILL"),
+
+    FC_BILL_RATE:
+      getValue(d,"FC_BILL_RATE"),
 
     INV_DESC:
       getValue(d,"INV_DESC"),
