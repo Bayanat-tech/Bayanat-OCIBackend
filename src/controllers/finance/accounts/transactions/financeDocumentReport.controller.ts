@@ -127,22 +127,6 @@ function resolveCompanyCode(req: RequestWithUser): string {
   return code;
 }
 
-/** Debug helper: prints the SQL with bind values filled in (ready to paste in SQL Developer) */
-function debugSql(
-  label: string,
-  sql: string,
-  binds: Record<string, unknown>
-): void {
-  if (process.env.NODE_ENV === "production") return;
-  const filled = sql
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/:(\w+)/g, (match, key) =>
-      key in binds ? `'${String(binds[key]).replace(/'/g, "''")}'` : match
-    );
-  console.log(`[FinanceReport] ${label}\n${filled};\n`);
-}
-
 async function loadReportData(
   req: RequestWithUser,
   docType: string,
@@ -151,28 +135,37 @@ async function loadReportData(
   const conn = await getConn(req);
   try {
     const companyCode = resolveCompanyCode(req);
-    const binds = { company_code: companyCode, doc_type: docType, doc_no: docNo };
-    console.log("[FinanceReport] params", binds);
+    console.log("[FinanceReport] company_code", companyCode);
 
-    const headerSql = `SELECT h.*,
-              a.ac_name
-       FROM TR_AC_HEADER h
-       LEFT JOIN MS_ACCODES a
-              ON a.company_code = h.company_code
-             AND a.ac_code = h.ac_code
-       WHERE h.company_code = :company_code
-         AND h.doc_type = :doc_type
-         AND h.doc_no = :doc_no`;
-    debugSql("HEADER", headerSql, binds);
-    const headerResult = await conn.execute(headerSql, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT,
-    });
+    // Choose the correct tables based on docType
+    const isPO = docType === "PO";
+    const headerTable = isPO ? "TR_AC_LPO_HEADER" : "TR_AC_HEADER";
+    const detailTable = isPO ? "TR_AC_LPO_DETAIL" : "TR_AC_DETAIL";
 
+    const headerSql = `
+      SELECT h.*,
+             a.ac_name
+      FROM ${headerTable} h
+      LEFT JOIN MS_ACCODES a
+             ON a.company_code = h.company_code
+            AND a.ac_code = h.ac_code
+      WHERE h.company_code = :companyCode
+        AND h.doc_type     = :docType
+        AND h.doc_no       = :docNo
+    `;
+
+    const headerResult = await conn.execute(
+      headerSql,
+      { companyCode, docType, docNo },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    console.log("headerSql", headerSql);
     const foundHeader = normalize(headerResult.rows as any[])[0];
     const found = !!foundHeader;
     console.log(`[FinanceReport] header rows: ${found ? 1 : 0}`);
 
-    // No row in the database -> keep going with an empty document
+    // No row in the database → keep going with an empty document
     const header: ReportRow = foundHeader || {
       company_code: companyCode,
       doc_type: docType,
@@ -181,35 +174,45 @@ async function loadReportData(
 
     let detailRows: ReportRow[] = [];
     if (found) {
-      const detailSql = `SELECT d.*,
-              a.ac_name
-       FROM TR_AC_DETAIL d
-       LEFT JOIN MS_ACCODES a
-              ON a.company_code = d.company_code
-             AND a.ac_code = d.ac_code
-       WHERE d.company_code = :company_code
-         AND d.doc_type = :doc_type
-         AND d.doc_no = :doc_no
-         AND NVL(d.cancelled, 'N') = 'N'
-       ORDER BY d.serial_no`;
-      debugSql("DETAIL", detailSql, binds);
-      const detailResult = await conn.execute(detailSql, binds, {
-        outFormat: oracledb.OUT_FORMAT_OBJECT,
-      });
+      const detailSql = `
+        SELECT d.*,
+               a.ac_name
+        FROM ${detailTable} d
+        LEFT JOIN MS_ACCODES a
+               ON a.company_code = d.company_code
+              AND a.ac_code = d.ac_code
+        WHERE d.company_code = :companyCode
+          AND d.doc_type     = :docType
+          AND d.doc_no       = :docNo
+          AND NVL(d.cancelled, 'N') = 'N'
+        ORDER BY d.serial_no
+      `;
+
+      const detailResult = await conn.execute(
+        detailSql,
+        { companyCode, docType, docNo },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      console.log("detailSql", detailSql);
       detailRows = normalize(detailResult.rows as any[]);
       console.log(`[FinanceReport] detail rows: ${detailRows.length}`);
     }
 
     let company: ReportRow = { company_code: companyCode };
     try {
-      const companySql = `SELECT *
-         FROM VW_COMPANY_INFO
-         WHERE company_code = :company_code`;
-      const companyBinds = { company_code: companyCode };
-      debugSql("COMPANY", companySql, companyBinds);
-      const companyResult = await conn.execute(companySql, companyBinds, {
-        outFormat: oracledb.OUT_FORMAT_OBJECT,
-      });
+      const companySql = `
+        SELECT *
+        FROM VW_COMPANY_INFO
+        WHERE company_code = :companyCode
+      `;
+
+      const companyResult = await conn.execute(
+        companySql,
+        { companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
       company = normalize(companyResult.rows as any[])[0] || company;
     } catch (companyError) {
       console.warn(
@@ -229,7 +232,6 @@ async function loadReportData(
     await closeConn(conn);
   }
 }
-
 /**
  * Finance-specific LAYOUT only.
  * Fonts, title, section strip and data-table styling come from

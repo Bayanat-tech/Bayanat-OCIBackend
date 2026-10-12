@@ -1158,6 +1158,7 @@ export const LpoSchema = (
           lcur_amount: Joi.number().optional().allow("", null), // Local currency amount (optional)
           tx_compnt_lcuramt_1: Joi.number().optional().allow("", null), // Transaction component 1 local currency amount (optional)
           tx_cat_code: Joi.string().optional().allow("", null), // Transaction category code (optional)
+          tx_compntcat_name_1: Joi.string().optional().allow("", null), // Transaction component category name 1 (optional)
           div_code: Joi.string().required(), // Division code (required)
           doc_no: Joi.alternatives().try(Joi.string(), Joi.number()).required().custom((v, h) => v == null ? v : String(v)), // Document number (required)
           doc_type: Joi.string() // Document type (required)
