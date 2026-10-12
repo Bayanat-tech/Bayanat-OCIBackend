@@ -99,6 +99,9 @@ export const insUpdTtePQuotationBulk = async (
           ? new Date(header.ref_date)
           : null,
 
+          PR_REQ_NO:
+        header.pr_req_no ?? null,
+
 
       AC_CODE:
         header.ac_code ?? null,
