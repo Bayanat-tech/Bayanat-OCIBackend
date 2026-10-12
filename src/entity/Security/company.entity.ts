@@ -9,7 +9,7 @@ export class Company {
   @Column({ name: "COMPANY_NAME", type: "varchar2", length: 30 })
   company_name!: string;
 
-  @Column({ name: "ADDRESS1", type: "varchar2", length: 20, nullable: true })
+  @Column({ name: "ADDRESS1", type: "varchar2", length: 50, nullable: true })
   address1!: string;
 
   @Column({ name: "ADDRESS2", type: "varchar2", length: 20, nullable: true })
@@ -23,6 +23,9 @@ export class Company {
 
   @Column({ name: "COUNTRY", type: "varchar2", length: 5, nullable: true })
   country!: string;
+
+  @Column({ name: "COMPANY_LOGO", type: "varchar2", length: 225, nullable: true })
+  company_logo!: string;
 
   // @Column({
   //   name: "STMT_OF_ACCOUNTS",
