@@ -9,6 +9,8 @@ import { checkUserAuthorization } from "../middleware/checkUserAthorization";
 import { insUpdAccrualAcctSetup } from "../controllers/purchase_sales/insUpdAccrualAcctSetup";
 import { saveLeaveSlap } from "../controllers/HR/leaveSlap.controller";
 import { insUpdHrSalaryAdvDed } from "../controllers/HR/insUpdHrAdvanceSalaryRecovery";
+import { getHrReport } from "../controllers/HR/Hr-Reports/hr_reports";
+import { upsertHrEmpLeaveEntitle } from "../controllers/HR/controller_leave_entitlement";
 
 // Initialize the Express router
 const router = express.Router();
@@ -88,6 +90,15 @@ router.post(
   checkUserAuthorization,
   insUpdHrSalaryAdvDed
 )
+
+router.all("/reports/:type/:report",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  getHrReport);
+
+router.post("/leave-entitlement/save", upsertHrEmpLeaveEntitle);
+
 
 // Export the router as the default module
 export default router;
