@@ -205,28 +205,25 @@ function buildSalesInvoiceHeader(rows: ReportRow[]): SalesInvoiceHeader {
 // shared CSS; this only adds the bits specific to invoice-style reports)
 
 const SALES_INVOICE_EXTRA_CSS = `
-  .doc-title-row {
+   .doc-title-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin: 0px 0 0px 0;
+    margin: 0 0 8px 0 !important;
+    padding: 0 !important;
   }
   .doc-title-row h1 {
-    margin: 0;
+    margin: 0 !important;
     font-size: 18px;
     font-weight: 800;
     color: #0b4ca1;
+    line-height: 1.2 !important;
   }
   .doc-title-row .doc-sub {
-    margin: 2px 0 0;
+    margin: 2px 0 0 !important;
     font-size: 11px;
     color: #64748b;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.4;
+    line-height: 1.3 !important;
   }
   .status-badge {
     display: inline-block;
@@ -242,26 +239,36 @@ const SALES_INVOICE_EXTRA_CSS = `
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px 100px;
-    margin-bottom: 14px;
+    gap: 12px 24px !important;
+    align-items: start !important;
+    margin: 0 0 12px 0 !important;
+    padding: 0 !important;
   }
   .info-block {
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    padding: 10px 14px;
+    padding: 8px 12px !important;
     background: #f8fafc;
+    height: auto !important;
+    min-height: 0 !important;
   }
   .info-block .label {
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: #64748b;
-    margin-bottom: 6px;
+    margin: 0 0 4px 0 !important;
+    padding: 0 !important;
+    line-height: 1.3 !important;
   }
   .info-block .value-line {
     font-size: 11px;
     color: #0f172a;
-    line-height: 1.55;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.45 !important;
+    min-height: 0 !important;
+    height: auto !important;
   }
 
   .totals-box {
@@ -288,31 +295,59 @@ const SALES_INVOICE_EXTRA_CSS = `
   }
 `;
 
+// ─── Inline spacing overrides (CHANGED) ─────────────────────────────────────
+// Inline `!important` beats ANY stylesheet rule, so these remove the extra
+// vertical gaps even if another stylesheet is styling the same class names.
+// Markup / class names are the same as before, so the look is unchanged.
+
+const S_TITLE_ROW = "background:#ffd6d6 !important;margin:0 0 6px 0 !important;padding:0 !important;gap:0 !important;";
+const S_H1        = "margin:0 !important;padding:0 !important;line-height:1.2 !important;";
+const S_SUB       = "margin:2px 0 0 0 !important;padding:0 !important;line-height:1.3 !important;";
+const S_GRID      = "background:#d6e8ff !important;display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px 24px !important;align-items:start !important;margin:0 0 8px 0 !important;padding:0 !important;";
+const S_BLOCK     = "background:#fff3b0 !important;display:block !important;height:auto !important;min-height:0 !important;margin:0 !important;padding:0 7px !important;gap:0 !important;";
+const S_LABEL     = "background:#c9f7c9 !important;display:block !important;margin:0 0 4px 0 !important;padding:0 !important;line-height:1.3 !important;min-height:0 !important;height:auto !important;";
+const S_LINE      = "display:block !important;margin:0 !important;padding:0 !important;line-height:1.45 !important;min-height:0 !important;height:auto !important;";
+const S_TABLE     = "margin-top:0 !important;";
+
+const vl = (inner: string): string => `<div class="value-line" style="${S_LINE}">${inner}</div>`;
+
+function infoBlockHtml(label: string, linesHtml: string): string {
+  return `
+      <div class="info-block" style="${S_BLOCK}">
+        <div class="label" style="${S_LABEL}">${escapeHtml(label)}</div>
+        ${linesHtml}
+      </div>`;
+}
+
+function infoGridHtml(innerHtml: string): string {
+  return `<div class="info-grid" style="${S_GRID}">${innerHtml}</div>`;
+}
+
 // ─── Shared body pieces ─────────────────────────────────────────────────────
 
 function printMetaHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
   return `
-    <div class="doc-title-row">
+    <div class="doc-title-row" style="${S_TITLE_ROW}">
       <div>
-        <h1>${escapeHtml(title)}</h1>
-        <div class="doc-sub">${escapeHtml(subtitle)}</div>
+        <h1 style="${S_H1}">${escapeHtml(title)}</h1>
+        <div class="doc-sub" style="${S_SUB}">${escapeHtml(subtitle)}</div>
       </div>
-     
     </div>`;
 }
 
 function partyInfoBlockHtml(header: SalesInvoiceHeader): string {
-  return `
-      <div class="info-block">
-        <div class="label">To</div>
-        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
-        <div class="value-line">${escapeHtml(header.party_address)}</div>
-        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
-        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
-        ${header.cust_mobile ? `<div class="value-line">Mob: ${escapeHtml(header.cust_mobile)}</div>` : ""}
-        ${header.cust_email ? `<div class="value-line">Email: ${escapeHtml(header.cust_email)}</div>` : ""}
-        ${header.trn_no ? `<div class="value-line">TRN No: ${escapeHtml(header.trn_no)}</div>` : ""}
-      </div>`;
+  return infoBlockHtml(
+    "To",
+    [
+      vl(`<strong>${escapeHtml(header.party_name)}</strong>`),
+      header.party_address ? vl(escapeHtml(header.party_address)) : "",
+      header.party_phone ? vl(`Tel: ${escapeHtml(header.party_phone)}`) : "",
+      header.party_fax ? vl(`Fax: ${escapeHtml(header.party_fax)}`) : "",
+      header.cust_mobile ? vl(`Mob: ${escapeHtml(header.cust_mobile)}`) : "",
+      header.cust_email ? vl(`Email: ${escapeHtml(header.cust_email)}`) : "",
+      header.trn_no ? vl(`TRN No: ${escapeHtml(header.trn_no)}`) : "",
+    ].join("")
+  );
 }
 
 // ─── Body 1: Sales Invoice ───────────────────────────────────────────────
@@ -342,23 +377,24 @@ function renderSalesInvoiceBody(rows: ReportRow[], loginId: string): string {
     )
     .join("");
 
+  const detailsBlock = infoBlockHtml(
+    "Invoice Details",
+    [
+      vl(`Doc No: <strong>${escapeHtml(header.doc_no)}</strong>`),
+      vl(`Date: ${escapeHtml(dateText(header.doc_date))}`),
+      vl(`A/C Code: ${escapeHtml(header.ac_code)}`),
+      vl(`Payment Term: ${escapeHtml(header.payment_terms)}`),
+      header.salesman_code ? vl(`Sold By: ${escapeHtml(header.salesman_code)}`) : "",
+      header.due_date ? vl(`Due Date: ${escapeHtml(dateText(header.due_date))}`) : "",
+    ].join("")
+  );
+
   return `
-    ${printMetaHtml("Sales Invoice", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
+       ${printMetaHtml("Sales Invoice", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId)}
 
-    <div class="info-grid">
-      ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        ${header.salesman_code ? `<div class="value-line">Sold By: ${escapeHtml(header.salesman_code)}</div>` : ""}
-        ${header.due_date ? `<div class="value-line">Due Date: ${escapeHtml(dateText(header.due_date))}</div>` : ""}
-      </div>
-    </div>
+    ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
 
-    <table class="data-table">
+    <table class="data-table" style="${S_TABLE}">
       <thead>
         <tr>
           <th>S.No.</th>
@@ -412,24 +448,24 @@ function renderSalesInvoiceTaxBody(rows: ReportRow[], loginId: string): string {
     })
     .join("");
 
+  const detailsBlock = infoBlockHtml(
+    "Invoice Details",
+    [
+      vl(`Doc No: <strong>${escapeHtml(header.doc_no)}</strong>`),
+      vl(`Date: ${escapeHtml(dateText(header.doc_date))}`),
+      vl(`A/C Code: ${escapeHtml(header.ac_code)}`),
+      vl(`Payment Term: ${escapeHtml(header.payment_terms)}`),
+      header.salesman_code ? vl(`Sold By: ${escapeHtml(header.salesman_code)}`) : "",
+      vl(`Company TRN No: ${escapeHtml(header.company_trn_no)}`),
+    ].join("")
+  );
+
   return `
-    ${printMetaHtml("Sales Invoice (Tax)", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
+       ${printMetaHtml("Sales Invoice (Tax)", header.div_name ? `Invoice Document — ${header.div_name}` : "Invoice Document", printDateTime, loginId)}
 
-    <div class="info-grid">
-        ${partyInfoBlockHtml(header)}
-      <div class="info-block">
-        <div class="label">Invoice Details</div>
-        <div class="value-line">Doc No: <strong>${escapeHtml(header.doc_no)}</strong></div>
-        <div class="value-line">Date: ${escapeHtml(dateText(header.doc_date))}</div>
-        <div class="value-line">A/C Code: ${escapeHtml(header.ac_code)}</div>
-        <div class="value-line">Payment Term: ${escapeHtml(header.payment_terms)}</div>
-        ${header.salesman_code ? `<div class="value-line">Sold By: ${escapeHtml(header.salesman_code)}</div>` : ""}
-        <div class="value-line">Company TRN No: ${escapeHtml(header.company_trn_no)}</div>
-      </div>
-      
-    </div>
+    ${infoGridHtml(partyInfoBlockHtml(header) + detailsBlock)}
 
-    <table class="data-table">
+    <table class="data-table" style="${S_TABLE}">
       <thead>
         <tr>
           <th>S.No.</th>
@@ -490,7 +526,7 @@ function renderSalesAccountDetailsBody(rows: ReportRow[], loginId: string): stri
   return `
     ${printMetaHtml("Invoice", "Report — rpt_pr_accountledger", printDateTime, loginId)}
 
-    <table class="data-table">
+    <table class="data-table" style="${S_TABLE}">
       <thead>
         <tr>
           <th>Type</th>
@@ -514,8 +550,6 @@ function renderSalesAccountDetailsBody(rows: ReportRow[], loginId: string): stri
 }
 
 // ─── Route handlers (HTML) ──────────────────────────────────────────────────
-// Same shape as po-order-register: shared reportHeader/reportFooter/buildReportDocument,
-// and a JSON {success:false} response (not a rendered page) when there is no data.
 
 export const getSalesInvoiceReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
@@ -625,8 +659,7 @@ export const getSalesAccountDetailsReportHtml = async (req: RequestWithUser, res
   }
 };
 
-// ─── Generic OOXML Excel builder engine (unchanged — shared by all 3 reports,
-//     already on the same styling system / blue as po-order-register's Excel) ─
+// ─── Generic OOXML Excel builder engine (shared by all 3 reports) ───────────
 
 interface XlCell { v: unknown; styleKey: string }
 type XlRow = (XlCell | null)[];

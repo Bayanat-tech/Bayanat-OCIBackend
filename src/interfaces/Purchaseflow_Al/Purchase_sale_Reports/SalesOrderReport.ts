@@ -204,21 +204,27 @@ function computeTotals(rows: ReportRow[], header: SoHeader) {
 
 const SALES_ORDER_EXTRA_CSS = `
   .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 2px !important;
   }
   .doc-title-row h1 {
-    margin: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     font-size: 18px;
     font-weight: 800;
     color: #0b4ca1;
+    line-height: 1.2 !important;
   }
   .doc-title-row .doc-sub {
-    margin: 2px 0 0;
+    margin: 0 !important;
+    padding: 0 !important;
     font-size: 11px;
     color: #64748b;
+    line-height: 1.2 !important;
   }
   .doc-title-row .print-meta {
     text-align: right;
@@ -241,7 +247,9 @@ const SALES_ORDER_EXTRA_CSS = `
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 4px 16px;
-    margin-bottom: 14px;
+    margin-top: 2px !important;
+    margin-bottom: 12px !important;
+    padding-top: 0 !important;
   }
   .info-block {
     border: 1px solid #e2e8f0;
@@ -313,6 +321,8 @@ function printMetaHtml(title: string, subtitle: string, printDateTime: string, l
     </div>`;
 }
 
+
+
 // ─── Body ───────────────────────────────────────────────────────────────────
 
 function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
@@ -340,6 +350,7 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
   return `
     ${printMetaHtml(REPORT_TITLE, `${REPORT_SUBTITLE} — ${header.div_name}`, printDateTime, loginId, header.cancelled)}
 
+    
     <div class="info-grid">
       <div class="info-block">
         <div class="label">Customer</div>

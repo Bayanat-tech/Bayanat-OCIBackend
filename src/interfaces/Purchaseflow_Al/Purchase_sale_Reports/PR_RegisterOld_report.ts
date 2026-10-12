@@ -191,77 +191,86 @@ const REPORT_NAME = "rep_pfs_txns_datewise";
 
 /** Shared extra CSS for both Summary and Details reports (shared header/footer/table CSS from report_common) */
 const PR_REGISTER_EXTRA_CSS = `
-  .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
-  }
-  .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-    letter-spacing: 0.5px;
-  }
-  .doc-title-row .print-meta {
-    text-align: right;
-    font-size: 10.5px;
-    color: #475569;
-    line-height: 1.5;
-  }
-  .doc-title-row .print-meta strong {
-    color: #334155;
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
   }
 
-  .status-block {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    margin-bottom: 16px;
-    overflow: hidden;
+  .pr-register {
+    font-size: 9.5px;
+    line-height: 1.25;
+    color: #1e293b;
+  }
+
+  .pr-register .title {
+    margin: 0 0 6px 0;
+  }
+  .pr-register .title h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #0b4ca1;
+    line-height: 1.2;
+  }
+
+  .pr-register .status-block {
+    margin: 0 0 10px 0;
     break-inside: avoid;
   }
-  .status-header {
-    padding: 8px 14px;
+  .pr-register .status-header {
+    padding: 5px 10px;
     background: #0b4ca1;
     color: #fff;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.03em;
+    border-radius: 4px 4px 0 0;
   }
-  table.data-table.grouped {
-    border-top: none;
+
+  .pr-register table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 9.5px;
   }
-  .subtotal-row td {
-    background: #eef2f7;
+  .pr-register table.data-table th {
+    padding: 5px 6px;
+    font-size: 9px;
+    background: #0b4ca1;
+    color: #fff;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .pr-register table.data-table th.right,
+  .pr-register table.data-table td.right {
+    text-align: right;
+  }
+  .pr-register table.data-table td {
+    padding: 4px 6px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  .pr-register .subtotal-row td {
+    background: #eef2f7 !important;
     font-weight: 700;
     color: #1e3a8a;
   }
-
-  .grand-total-box {
-    margin-top: 16px;
-    margin-left: auto;
-    width: 280px;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .grand-total-box .row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 14px;
-    background: #0b4ca1;
-    color: #fff;
+  .pr-register .grand-row td {
+    background: #0b4ca1 !important;
+    color: #ffffff !important;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
+  }
+
+  .pr-register .empty {
+    padding: 28px;
+    text-align: center;
+    color: #64748b;
+    font-size: 11px;
   }
 `;
 
 /** Body only – no full HTML document */
 function renderSummaryBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
   const { groups, grandAmount } = groupByStatus(rows);
 
   const groupsHtml = groups
@@ -284,7 +293,7 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
       return `
       <div class="status-block">
         <div class="status-header">Purchase Status: ${escapeHtml(g.status)}</div>
-        <table class="data-table grouped">
+        <table class="data-table">
           <thead>
             <tr>
               <th>Request No</th>
@@ -309,21 +318,25 @@ function renderSummaryBody(rows: ReportRow[], loginId: string): string {
     .join("");
 
   return `
-    <div class="doc-title-row">
-      <h1>${escapeHtml(REPORT_TITLE)}</h1>
-     
+    <div class="pr-register">
+      <div class="title">
+        <h1>${escapeHtml(REPORT_TITLE)}</h1>
+      </div>
+
+      ${
+        rows.length === 0
+          ? `<div class="empty">No records found for the selected filters.</div>`
+          : `
+        ${groupsHtml}
+
+        <table class="data-table" style="margin-top:10px;">
+          <tr class="grand-row">
+            <td colspan="6" style="padding:8px 14px;">Grand Total Amount</td>
+            <td class="right" style="padding:8px 14px;">${amtFmt(grandAmount)}</td>
+          </tr>
+        </table>`
+      }
     </div>
-
-    ${
-      rows.length === 0
-        ? `<div class="empty">No records found for the selected filters.</div>`
-        : `
-      ${groupsHtml}
-
-      <div class="grand-total-box">
-        <div class="row"><span>Grand Total Amount</span><span>${amtFmt(grandAmount)}</span></div>
-      </div>`
-    }
   `;
 }
 
@@ -711,10 +724,6 @@ const DETAILS_REPORT_TITLE = "PURCHASE DETAILS REPORT";
 
 /** Body only – no full HTML document */
 function renderDetailsBody(rows: ReportRow[], loginId: string): string {
-  const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-
   const { groups, grandAmount } = groupByRequest(rows);
 
   const groupsHtml = groups
@@ -737,8 +746,10 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
 
       return `
       <div class="status-block">
-        <div class="status-header">Request No. ${escapeHtml(g.request_number)} &nbsp;&bull;&nbsp; ${escapeHtml(dateText(g.request_date))} &nbsp;&bull;&nbsp; ${escapeHtml(g.purch_status)}</div>
-        <table class="data-table grouped">
+        <div class="status-header">
+          Request No. ${escapeHtml(g.request_number)} &nbsp;•&nbsp; ${escapeHtml(dateText(g.request_date))} &nbsp;•&nbsp; ${escapeHtml(g.purch_status)}
+        </div>
+        <table class="data-table">
           <thead>
             <tr>
               <th>Sr No</th>
@@ -764,21 +775,25 @@ function renderDetailsBody(rows: ReportRow[], loginId: string): string {
     .join("");
 
   return `
-    <div class="doc-title-row">
-      <h1>${escapeHtml(DETAILS_REPORT_TITLE)}</h1>
-     
+    <div class="pr-register">
+      <div class="title">
+        <h1>${escapeHtml(DETAILS_REPORT_TITLE)}</h1>
+      </div>
+
+      ${
+        rows.length === 0
+          ? `<div class="empty">No records found for the selected filters.</div>`
+          : `
+        ${groupsHtml}
+
+        <table class="data-table" style="margin-top:10px;">
+          <tr class="grand-row">
+            <td colspan="7" style="padding:8px 14px;">Grand Total Amount</td>
+            <td class="right" style="padding:8px 14px;">${amtFmt(grandAmount)}</td>
+          </tr>
+        </table>`
+      }
     </div>
-
-    ${
-      rows.length === 0
-        ? `<div class="empty">No records found for the selected filters.</div>`
-        : `
-      ${groupsHtml}
-
-      <div class="grand-total-box">
-        <div class="row"><span>Grand Total Amount</span><span>${amtFmt(grandAmount)}</span></div>
-      </div>`
-    }
   `;
 }
 
