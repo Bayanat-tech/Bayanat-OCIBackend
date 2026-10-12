@@ -201,71 +201,53 @@ const REPORT_SUBTITLE = "Order Register";
 
 /** PO Register-only layout CSS (shared header/footer/table CSS comes from report_common) */
 const PO_REGISTER_EXTRA_CSS = `
-  /* ── Page ─────────────────────────────────────────────── */
   @page {
     size: A4 landscape;
     margin: 8mm;
   }
 
-  /* ── Root scope – everything lives under this one class ─ */
   .po-register {
     font-size: 9.5px;
     line-height: 1.25;
     color: #1e293b;
   }
 
-  /* Straight navy breaker right after company header */
-  .po-register .breaker {
-    border: 0;
-    border-top: 1.5px solid #0b4ca1;
-    margin: 4px 0 8px;
-    height: 0;
-  }
-
-  /* Title block */
   .po-register .title {
-    margin: 0 0 6px;
+  margin: 0 0 2px 0 !important;
+  padding: 0 !important;
+}
+.po-register .title h1 {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.2;
+}
+.po-register .title .sub {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.3;
+}
+
+.po-register table.data-table {
+  margin-top: 4px !important;
+}
+  .po-register table.data-table th {
+    padding: 5px 6px;
+    font-size: 9px;
+    background: #0b4ca1;
+    color: #fff;
+    text-align: left;
   }
-  .po-register .title h1 {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 800;
-    color: #0b4ca1;
-    letter-spacing: 0.2px;
+  .po-register table.data-table th.right,
+  .po-register table.data-table td.right {
+    text-align: right;
   }
-  .po-register .title .sub {
-    margin: 1px 0 0;
-    font-size: 10px;
-    font-weight: 600;
-    color: #64748b;
+  .po-register table.data-table td {
+    padding: 4px 6px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
   }
 
-  /* PO group */
-  .po-register .group {
-    margin: 0 0 8px;
-    break-inside: avoid;
-  }
-  .po-register .group-head {
-    padding: 4px 8px;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-bottom: none;
-    border-radius: 4px 4px 0 0;
-  }
-  .po-register .group-head .meta {
-    display: block;
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #64748b;
-    margin-bottom: 1px;
-  }
-  .po-register .group-head .supplier {
-    font-size: 10.5px;
-    font-weight: 700;
-    color: #0f172a;
-  }
-  .po-register .group-head .badge {
+  .po-register .badge {
     display: inline-block;
     margin-left: 6px;
     padding: 1px 7px;
@@ -277,30 +259,8 @@ const PO_REGISTER_EXTRA_CSS = `
     vertical-align: middle;
   }
 
-  /* Table – inherits common data-table, just tighten */
-  .po-register table.data-table {
-    border: 1px solid #e2e8f0;
-    border-top: none;
-    border-radius: 0 0 4px 4px;
-    margin: 0;
-    font-size: 9.5px;
-  }
-  .po-register table.data-table th {
-    padding: 4px 6px;
-    font-size: 9px;
-  }
-  .po-register table.data-table td {
-    padding: 3px 6px;
-  }
-  .po-register .subtotal td {
-    background: #eef2f7 !important;
-    font-weight: 700;
-    color: #1e3a8a;
-  }
-
-  /* Grand total */
   .po-register .grand {
-    margin: 8px 0 0 auto;
+    margin: 10px 0 0 auto;
     width: 220px;
     border-radius: 4px;
     overflow: hidden;
@@ -308,22 +268,26 @@ const PO_REGISTER_EXTRA_CSS = `
   .po-register .grand .row {
     display: flex;
     justify-content: space-between;
-    padding: 5px 10px;
+    padding: 6px 12px;
     background: #0b4ca1;
     color: #fff;
     font-weight: 700;
     font-size: 11px;
   }
 
-  /* Empty state */
   .po-register .empty {
     padding: 28px;
     margin-top: 8px;
     font-size: 11px;
+    text-align: center;
+    color: #64748b;
   }
 `;
 
-/** Body only – no full HTML document */
+
+// ─── Excel builder (raw OOXML, PR-style styling engine) ───────────────────
+
+
 function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit",
@@ -334,90 +298,77 @@ function renderPoRegisterBody(rows: ReportRow[], loginId: string): string {
     hour12: false,
   });
 
-  const { groups, grandQty } = groupByPo(rows);
+  const grandQty = rows.reduce((s, r) => s + num(r.quantity), 0);
 
-  const groupsHtml = groups
-    .map((g) => {
-      const lineRows = g.rows
-        .map(
-          (r) => `
+  const lineRows = rows
+    .map(
+      (r) => `
         <tr>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
+          <td>${escapeHtml(r.doc_no)}</td>
           <td>${escapeHtml(dateText(r.doc_date))}</td>
-          <td>${escapeHtml(r.remarks)}</td>
+          <td>${escapeHtml(r.ac_name)}${
+            text(r.cancelled).toUpperCase() === "Y"
+              ? ` <span class="badge">Cancelled</span>`
+              : ""
+          }</td>
+          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
+          <td>${escapeHtml(dateText(r.required_dt || r.doc_date))}</td>
+          <td>${escapeHtml(r.remarks || r.det_remarks)}</td>
           <td class="right amount">${qtyFmt(r.quantity)}</td>
           <td>${escapeHtml(r.l_uom)}</td>
         </tr>`
-        )
-        .join("");
-
-      return `
-      <div class="po-group">
-        <div class="po-group-header">
-          <div>
-            <span class="doc-label">Doc No. ${escapeHtml(g.doc_no)} &bull; Doc Date ${escapeHtml(dateText(g.doc_date))}</span>
-            <span class="supplier-name">${escapeHtml(g.ac_name)}${
-        g.cancelled ? `<span class="status-badge status-CANCELLED">Cancelled</span>` : ""
-      }</span>
-          </div>
-        </div>
-        <table class="data-table grouped">
-          <thead>
-            <tr>
-              <th>Product</th>
-               <th class="right">P.O Qty</th>
-              <th>UOM</th>
-              <th>Required Date</th>
-              <th>Remarks</th>
-             
-            </tr>
-          </thead>
-          <tbody>
-            ${lineRows}
-            <tr class="subtotal-row">
-              <td colspan="3">Total Qty for ${escapeHtml(g.doc_no)}</td>
-              <td class="right">${qtyFmt(g.qtyTotal)}</td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>`;
-    })
+    )
     .join("");
 
-  return `
-    <div class="doc-title-row">
-      <h1>${escapeHtml(REPORT_TITLE)}</h1>
-      <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)}</div>
+ return `
+  <div class="po-register">
+    <div style="margin:0; padding:0;">
+      <h1 style="margin:0; padding:0; font-size:16px; font-weight:800; color:#0b4ca1; line-height:1.2;">
+        ${escapeHtml(REPORT_TITLE)} - ${escapeHtml(REPORT_SUBTITLE)}
+      </h1>
     </div>
+
     ${
       rows.length === 0
         ? `<div class="empty">No records found for the selected filters.</div>`
         : `
-      ${groupsHtml}
-
-      <div class="grand-total-box">
-        <div class="row"><span>Grand Total Qty</span><span>${qtyFmt(grandQty)}</span></div>
-      </div>`
+      <table class="data-table" style="margin-top:8px !important; border-collapse:collapse; width:100%;">
+        <thead>
+          <tr>
+            <th>Document No.</th>
+            <th>Doc Date</th>
+            <th>Supplier</th>
+            <th>Product</th>
+            <th>Required Date</th>
+            <th>Remarks</th>
+            <th class="right">P.O Qty</th>
+            <th>UOM</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lineRows}
+          <tr style="background:#0b4ca1; color:#ffffff; font-weight:700;">
+            <td colspan="6" style="padding:8px 14px; border:none; color:#ffffff;">Grand Total Qty</td>
+            <td class="right" style="padding:8px 14px; border:none; color:#ffffff; text-align:right;">${qtyFmt(grandQty)}</td>
+            <td style="padding:8px 14px; border:none;"></td>
+          </tr>
+        </tbody>
+      </table>`
     }
-  `;
-}
+  </div>
+`;  }
 
-// ─── Excel builder (raw OOXML, PR-style styling engine) ───────────────────
 
 function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const printDateTime = new Date().toLocaleString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
   const BLUE = "FF1D4ED8";
   const WHITE = "FFFFFFFF";
-  const LBLUE = "FFDBEAFE";
-  const GREEN_BG = "FFD1FAE5";
 
-  const { groups, grandQty } = groupByPo(rows);
-
-  const COL_COUNT = 5; // Product, Required Date, Remarks, P.O Qty, UOM
+  const COL_COUNT = 8; // Document No., Doc Date, Supplier, Product, Required Date, Remarks, P.O Qty, UOM
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -427,55 +378,68 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
 
   // ── Title ──
-  rows_.push([cell(REPORT_TITLE + " - " + REPORT_SUBTITLE, "title"), null, null, null, null]);
+  rows_.push([
+    cell("Purchase Orders - Order Register", "title"),
+    null, null, null, null, null, null, null,
+  ]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   // ── Meta ──
-  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, cell(`Print User: ${loginId}`, "meta"), null, null]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-  merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 4 } });
+  rows_.push([
+    cell(`Print Date: ${printDateTime}`, "meta"), null, null,
+    cell(`Print User: ${loginId}`, "meta"), null, null, null, null,
+  ]);
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 7 } });
 
-  rows_.push([null, null, null, null, null]);
+  rows_.push(new Array(COL_COUNT).fill(null));
 
   // ── Header ──
   rows_.push([
-    cell("Product", "header"), cell("Required Date", "header"), cell("Remarks", "header"),
-    cell("P.O Qty", "header"), cell("UOM", "header"),
+    cell("Document No.", "header"),
+    cell("Doc Date", "header"),
+    cell("Supplier", "header"),
+    cell("Product", "header"),
+    cell("Required Date", "header"),
+    cell("Remarks", "header"),
+    cell("P.O Qty", "header"),
+    cell("UOM", "header"),
   ]);
 
-  // ── Data grouped by PO ──
-  groups.forEach((g) => {
-    const rIdx = rows_.length;
+  // ── Data rows ──
+  let grandQty = 0;
+  rows.forEach((r) => {
+    grandQty += num(r.quantity);
+    const cancelled = text(r.cancelled).toUpperCase() === "Y";
     rows_.push([
-      cell(`Doc No. ${g.doc_no}   Doc Date ${dateText(g.doc_date)}${g.cancelled ? "   Cancelled" : ""}   Supplier: ${g.ac_name}`, "groupHeader"),
-      null, null, null, null,
+      cell(text(r.doc_no), "data"),
+      cell(dateText(r.doc_date), "data"),
+      cell(text(r.ac_name) + (cancelled ? " (Cancelled)" : ""), "data"),
+      cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      cell(dateText(r.required_dt || r.doc_date), "data"),
+      cell(text(r.remarks || r.det_remarks), "data"),
+      cell(num(r.quantity), "dataNum"),
+      cell(text(r.l_uom), "data"),
     ]);
-    merges.push({ s: { r: rIdx, c: 0 }, e: { r: rIdx, c: COL_COUNT - 1 } });
-
-    g.rows.forEach((r) => {
-      rows_.push([
-        cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
-        cell(dateText(r.doc_date), "data"),
-        cell(text(r.remarks), "data"),
-        cell(num(r.quantity), "dataNum"),
-        cell(text(r.l_uom), "data"),
-      ]);
-    });
-
-    const dtRow = rows_.length;
-    rows_.push([cell(`Total Qty for ${g.doc_no}`, "groupTotal"), null, null, cell(g.qtyTotal, "groupTotalNum"), null]);
-    merges.push({ s: { r: dtRow, c: 0 }, e: { r: dtRow, c: 2 } });
-
-    rows_.push([null, null, null, null, null]);
   });
+
+  rows_.push(new Array(COL_COUNT).fill(null));
 
   // ── Grand total ──
   const gtRow = rows_.length;
-  rows_.push([cell("Grand Total Qty", "grandTotal"), null, null, cell(grandQty, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 2 } });
+  rows_.push([
+    cell("Grand Total Qty", "grandTotal"),
+    null, null, null, null, null,
+    cell(grandQty, "grandTotalNum"),
+    null,
+  ]);
+  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 5 } });
 
   // ── Footer ──
-  rows_.push([null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+  rows_.push([
+    null, null, null, null, null, null, null,
+    cell("Powered by Bayanat Technology", "footer"),
+  ]);
 
   // ── Style definitions ──
   const borderThin = (color: string) => ({ style: "thin", color: { rgb: color } });
@@ -490,31 +454,21 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
       font: { bold: true, sz: 10, color: { rgb: WHITE } },
       fill: { fgColor: { rgb: BLUE } },
       alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: { top: borderThin(BLUE), bottom: borderThin(BLUE), left: borderThin(BLUE), right: borderThin(BLUE) },
+      border: {
+        top: borderThin(BLUE), bottom: borderThin(BLUE),
+        left: borderThin(BLUE), right: borderThin(BLUE),
+      },
     },
-    groupHeader: {
-      font: { bold: true, sz: 11, color: { rgb: "FF111827" } },
-      fill: { fgColor: { rgb: LBLUE } },
-      alignment: { horizontal: "left", vertical: "center" },
-      border: { bottom: borderThin("FFE5E7EB") },
+    data: {
+      font: { sz: 10 },
+      alignment: { vertical: "center" },
+      border: { bottom: borderThin("FFF3F4F6") },
     },
-    groupTotal: {
-      font: { bold: true, sz: 10, color: { rgb: "FF065F46" } },
-      fill: { fgColor: { rgb: GREEN_BG } },
-      alignment: { horizontal: "left", vertical: "center" },
-      border: { top: borderThin("FF065F46") },
-    },
-    groupTotalNum: {
-      font: { bold: true, sz: 10, color: { rgb: "FF065F46" } },
-      fill: { fgColor: { rgb: GREEN_BG } },
+    dataNum: {
+      font: { sz: 10 },
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.000",
-      border: { top: borderThin("FF065F46") },
-    },
-    data: { font: { sz: 10 }, alignment: { vertical: "center" }, border: { bottom: borderThin("FFF3F4F6") } },
-    dataNum: {
-      font: { sz: 10 }, alignment: { horizontal: "right", vertical: "center" },
-      numFmt: "#,##0.000", border: { bottom: borderThin("FFF3F4F6") },
+      border: { bottom: borderThin("FFF3F4F6") },
     },
     grandTotal: {
       font: { bold: true, sz: 12, color: { rgb: WHITE } },
@@ -527,7 +481,10 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.000",
     },
-    footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
+    footer: {
+      font: { italic: true, sz: 8, color: { rgb: "FF64748B" } },
+      alignment: { horizontal: "right" },
+    },
   };
 
   // ── Style registration engine ──
@@ -568,7 +525,8 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const registerBorder = (b: any): number => {
     if (!b) return 0;
     const def: BorderDef = {
-      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb, left: b.left?.color?.rgb, right: b.right?.color?.rgb,
+      top: b.top?.color?.rgb, bottom: b.bottom?.color?.rgb,
+      left: b.left?.color?.rgb, right: b.right?.color?.rgb,
     };
     if (!def.top && !def.bottom && !def.left && !def.right) return 0;
     const key = `border:${JSON.stringify(def)}`;
@@ -608,7 +566,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   // ── Sheet XML ──
   const colXml = Array.from({ length: COL_COUNT }, (_, i) =>
-    `<col min="${i + 1}" max="${i + 1}" width="20" customWidth="1"/>`
+    `<col min="${i + 1}" max="${i + 1}" width="16" customWidth="1"/>`
   ).join("");
 
   let sheetDataXml = "";
