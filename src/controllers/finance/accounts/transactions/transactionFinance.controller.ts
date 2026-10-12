@@ -1078,8 +1078,22 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
     const where = `WHERE company_code = :cc AND ${docCond}
                      ${whereDiv} AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
 
+    const invDocCond = `(v.doc_no = :dn OR TO_CHAR(v.doc_no) = :dn OR TO_CHAR(v.doc_no) = :clean_dn)`;
+    const invWhereDiv = divCode ? 'AND v.div_code = :dc' : '';
+    const invWhere = `WHERE v.company_code = :cc AND ${invDocCond}
+                     ${invWhereDiv} AND v.doc_type = :dt ORDER BY v.serial_no, v.dtl_sr_no`;
+    const invWhereNoDiv = `WHERE v.company_code = :cc AND ${invDocCond}
+                          AND v.doc_type = :dt ORDER BY v.serial_no, v.dtl_sr_no`;
+    const invSql = `
+      SELECT v.*, h.ref_no
+      FROM VW_TXN_INVOICE_CHILDREN v
+      LEFT JOIN TR_AC_HEADER h
+        ON h.company_code = v.company_code
+       AND h.doc_no       = v.inv_no
+    `;
+
     let [inv, job, exp]: any[] = await Promise.all([
-      conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      conn.execute(`${invSql} ${invWhere}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
@@ -1090,7 +1104,7 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
       const whereNoDiv = `WHERE company_code = :cc AND ${docCond}
                           AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
       [inv, job, exp] = await Promise.all([
-        conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+        conn.execute(`${invSql} ${invWhereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
         conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
         conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       ]);
@@ -1171,7 +1185,12 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     const binds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
     list.forEach((n, i) => (binds[`inv${i}`] = n));
     const result = await conn.execute(
-      `SELECT * FROM VW_INVOICE_OUTSTANDING WHERE company_code = :cc AND div_code = :dc AND inv_no IN (${placeholders})`,
+      `SELECT o.*, h.ref_no 
+       FROM VW_INVOICE_OUTSTANDING o
+       LEFT JOIN TR_AC_HEADER h
+         ON h.company_code = o.company_code
+        AND h.doc_no       = o.inv_no
+       WHERE o.company_code = :cc AND o.div_code = :dc AND o.inv_no IN (${placeholders})`,
       binds,
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -1180,9 +1199,17 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
       const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
       const org = Number(r.ORIGINAL_AMOUNT || 0);
       const pd = Number(r.PAID_AMOUNT || 0);
-      found[r.INV_NO] = { inv_no: r.INV_NO, original_amount: org, paid_amount: pd, outstanding_amount: out, payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0, is_fully_paid: out <= 0.01 };
+      found[r.INV_NO] = {
+        inv_no: r.INV_NO,
+        ref_no: r.REF_NO ?? '',
+        original_amount: org,
+        paid_amount: pd,
+        outstanding_amount: out,
+        payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+        is_fully_paid: out <= 0.01,
+      };
     });
-    const balances = list.map(inv => found[inv] ?? { inv_no: inv, original_amount: 0, paid_amount: 0, outstanding_amount: 0, payment_percentage: 0, is_fully_paid: true, error: 'Invoice not found' });
+    const balances = list.map(inv => found[inv] ?? { inv_no: inv, ref_no: '', original_amount: 0, paid_amount: 0, outstanding_amount: 0, payment_percentage: 0, is_fully_paid: true, error: 'Invoice not found' });
     res.json({ success: true, data: { balances, count: balances.length } });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
