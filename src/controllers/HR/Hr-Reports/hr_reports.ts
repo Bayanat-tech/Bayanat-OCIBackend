@@ -6,6 +6,10 @@
  *
  * Uses PROC_BUILD_DYNAMIC_SQL_HR_REPORT + report_common (header/footer/CSS).
  * Config-driven so adding a 5th report is mostly a new entry in REPORT_CONFIG.
+ *
+ * Grouping: driven by the `group_by` value sent from the UI
+ *   (DIV, DEPT, SECT, DESG, LABOUR_DESG, SEP_REASON, REASON_SUB).
+ *   Each group renders: header (code - name) -> rows -> subtotal; grand total at the end.
  */
 
 import { Response } from "express";
@@ -56,10 +60,11 @@ interface HrBinds {
   number2: number | null;
   number3: number | null;
   number4: number | null;
-  date1: Date | null;
-  date2: Date | null;
-  date3: Date | null;
-  date4: Date | null;
+  // Dates travel as 'YYYY-MM-DD' strings end-to-end (no JS Date / timezone shifts)
+  date1: string | null;
+  date2: string | null;
+  date3: string | null;
+  date4: string | null;
 }
 
 interface ColumnDef {
@@ -77,7 +82,6 @@ interface ReportConfig {
   procedureParam: string;          // value for P_PARAMETER
   title: string;
   orientation: "portrait" | "landscape";
-  groupBy?: string;                // field used for section headers (e.g. div_name)
   columns: ColumnDef[];
   /** build binds from request body / query */
   buildBinds: (req: RequestWithUser, loginid: string) => HrBinds;
@@ -170,11 +174,29 @@ function pick(req: RequestWithUser, ...keys: string[]): string {
   return "";
 }
 
-function pickDate(req: RequestWithUser, ...keys: string[]): Date | null {
+/**
+ * Returns the date as a 'YYYY-MM-DD' string (or null).
+ * Accepts 'YYYY-MM-DD[...]' (ISO, incl. timestamps) and 'DD/MM/YYYY' or 'DD-MM-YYYY'.
+ * No Date object is used, so there is no timezone shift. "All"/blank/invalid -> null.
+ */
+function pickDate(req: RequestWithUser, ...keys: string[]): string | null {
   const raw = pick(req, ...keys);
   if (!raw) return null;
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
+
+  const valid = (y: string, m: string, d: string): string | null => {
+    const mm = Number(m);
+    const dd = Number(d);
+    if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  };
+
+  let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return valid(m[1], m[2], m[3]);
+
+  m = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m) return valid(m[3], m[2], m[1]);
+
+  return null;
 }
 
 function emptyBinds(loginid: string, parameter: string): HrBinds {
@@ -190,6 +212,59 @@ function emptyBinds(loginid: string, parameter: string): HrBinds {
   };
 }
 
+// ─── Grouping ─────────────────────────────────────────────────────────────
+
+interface GroupDef {
+  label: string;                       // e.g. "Division"
+  labelFn: (r: ReportRow) => string;   // e.g. "10 - Finance"
+}
+
+const codeName = (c: string, n: string) => (r: ReportRow) =>
+  [text(r[c]), text(r[n])].filter(Boolean).join(" - ") || "—";
+
+/**
+ * Keys match the `group_by` values sent by the UI.
+ * SEP_REASON / REASON_SUB need those columns in the Leavers SELECT + GROUP BY
+ * (column names below are assumptions – adjust to your view).
+ */
+const GROUP_DEFS: Record<string, GroupDef> = {
+  DIV:         { label: "Division",           labelFn: codeName("div_code", "div_name") },
+  DEPT:        { label: "Department",         labelFn: codeName("dept_code", "dept_name") },
+  SECT:        { label: "Section",            labelFn: codeName("section_code", "section_name") },
+  DESG:        { label: "Designation",        labelFn: codeName("desg_code", "desg_name") },
+  LABOUR_DESG: { label: "Formal Designation", labelFn: codeName("labour_desg_code", "labour_desg_name") },
+  SEP_REASON:  { label: "Separation Reason",  labelFn: codeName("sep_reason_code", "sep_reason_name") },
+  REASON_SUB:  { label: "Reason SubCategory", labelFn: codeName("reason_sub_code", "reason_sub_name") },
+};
+
+function resolveGroup(req: RequestWithUser, cfg: ReportConfig): GroupDef | null {
+  if (cfg.key === "tenure") return null; // no grouping for tenure
+  const k = pick(req, "group_by").toUpperCase();
+  if (k && GROUP_DEFS[k]) return GROUP_DEFS[k];
+  if (cfg.key === "register") {
+    // No group_by sent from the UI: keep Division | Dept | Section path
+    return { label: "", labelFn: (r) => r._org_path || "—" };
+  }
+  return GROUP_DEFS.DIV;
+}
+
+/** Stable sort so each group is contiguous; original SQL order is kept inside a group */
+function applyGrouping(rows: ReportRow[], g: GroupDef | null): ReportRow[] {
+  if (!g) return rows;
+  return [...rows].sort((a, b) => g.labelFn(a).localeCompare(g.labelFn(b)));
+}
+
+function groupHeaderText(g: GroupDef, row: ReportRow): string {
+  return g.label ? `${g.label} : ${g.labelFn(row)}` : g.labelFn(row);
+}
+
+/** Label spans up to the first amount column; sums sit under the amount columns */
+function totalsLayout(cfg: ReportConfig) {
+  const first = cfg.columns.findIndex((c) => c.format === "amount");
+  const labelSpan = first > -1 ? first : cfg.columns.length;
+  return { labelSpan, sumCols: cfg.columns.slice(labelSpan) };
+}
+
 // ─── REPORT CONFIG (HTML + Excel share the same config) ───────────────────
 
 const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
@@ -199,7 +274,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     procedureParam: "Hr_Report_EMPLOYEE_JOINER_LIST",
     title: "Employee Joiners Listing (Confirmed + Probation)",
     orientation: "landscape",
-    groupBy: "div_name",
     columns: [
       { key: "_sno", header: "SNo.", align: "center", width: 6, format: "sno" },
       { key: "employee_code", header: "Employee Code", width: 14 },
@@ -251,7 +325,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     procedureParam: "Hr_Report_EMPLOYEE_REGISTER",
     title: "Employee Register",
     orientation: "landscape",
-    groupBy: "_org_path", // composite Division / Dept / Section
     columns: [
       { key: "_sno", header: "#", align: "center", width: 5, format: "sno" },
       {
@@ -304,7 +377,6 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
     procedureParam: "Hr_Report_EMPLOYEE_LEAVERS",
     title: "Employee Leavers Listing",
     orientation: "landscape",
-    groupBy: "div_name",
     columns: [
       { key: "_sno", header: "SNo.", align: "center", width: 6, format: "sno" },
       { key: "employee_code", header: "Employee Code", width: 14 },
@@ -359,13 +431,8 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
       { key: "employee_id", header: "Employee ID", width: 12 },
       { key: "rpt_name", header: "Employee Name", width: 30 },
       { key: "join_date", header: "Join Date", width: 12, format: "date", align: "center" },
-      {
-        key: "service",
-        header: "Service Days",
-        width: 22,
-        html: (r) =>
-          `${escapeHtml(r.years)} yrs ${escapeHtml(r.months)} months ${escapeHtml(r.days)} days`,
-      },
+      // days from join date to today (or to the "To Date" if given) – calculated in the procedure
+      { key: "service_days", header: "Service Days", width: 14, format: "number", align: "right" },
     ],
     buildBinds(req, loginid) {
       const b = emptyBinds(loginid, "Hr_Report_EMPLOYEE_TENURE");
@@ -376,6 +443,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
       b.code5 = pick(req, "grade_code", "as_gradecode") || "All";
       b.code6 = pick(req, "desg_code", "as_desgcode") || "All";
       b.code7 = pick(req, "employee_id", "as_employee_id") || "All";
+      b.date1 = pickDate(req, "as_of_date"); // blank -> procedure uses today
       return b;
     },
     buildFilters(req) {
@@ -384,6 +452,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
         { label: "Division", value: pick(req, "div_code", "as_divcode") || "All" },
         { label: "Department", value: pick(req, "dept_code", "as_deptcode") || "All" },
         { label: "Employee ID", value: pick(req, "employee_id", "as_employee_id") || "All" },
+        { label: "As of", value: pickDate(req, "as_of_date") || "" },
       ];
     },
     subtitle(req) {
@@ -398,7 +467,7 @@ const REPORT_CONFIG: Record<ReportKey, ReportConfig> = {
 async function loadReportData(req: RequestWithUser, cfg: ReportConfig): Promise<ReportRow[]> {
   const loginid = text(req.user?.loginid) || pick(req, "loginid") || "ADMIN";
   const binds = cfg.buildBinds(req, loginid);
-
+  console.log(`Loading report data for ${cfg.key} (loginid=${loginid}) with binds:`, binds);
   const conn = await getConn(req);
   try {
     const procBinds: any = {
@@ -466,7 +535,7 @@ async function loadReportData(req: RequestWithUser, cfg: ReportConfig): Promise<
     });
     let rows = normalize(dataResult.rows as any[]);
 
-    // Enrich register rows with a composite group key
+    // Enrich register rows with a composite group key (default grouping)
     if (cfg.key === "register") {
       rows = rows.map((r) => ({
         ...r,
@@ -561,7 +630,8 @@ const HR_EXTRA_CSS = `
 function renderHtmlBody(
   cfg: ReportConfig,
   rows: ReportRow[],
-  req: RequestWithUser
+  req: RequestWithUser,
+  group: GroupDef | null
 ): string {
   const subtitle = cfg.subtitle ? cfg.subtitle(req, rows) : "";
   const filtersHtml = reportAppliedFilters(cfg.buildFilters(req), { includeAll: false });
@@ -578,7 +648,6 @@ function renderHtmlBody(
   }
 
   const colCount = cfg.columns.length;
-  let sno = 0;
   let html = `
     <div class="doc-title-row">
       <h1>${escapeHtml(cfg.title)}</h1>
@@ -601,60 +670,59 @@ function renderHtmlBody(
       <tbody>
   `;
 
-  const groupKey = cfg.groupBy;
+  const { labelSpan, sumCols } = totalsLayout(cfg);
   let currentGroup = "";
-  let groupCount = 0;
-  let grandCount = 0;
+  let groupRows: ReportRow[] = [];
+  const allRows: ReportRow[] = [];
 
-  const flushGroupTotal = (label: string, count: number) => {
-    if (!groupKey || !count) return;
-    html += `
-      <tr class="group-total">
-        <td colspan="${colCount - 1}" class="right">Total No. of Employees in ${escapeHtml(label)} :</td>
-        <td class="right strong">${count}</td>
-      </tr>`;
+  const totalRow = (cls: string, label: string, list: ReportRow[]) => {
+    const cells = sumCols
+      .map((c) =>
+        c.format === "amount"
+          ? `<td class="right strong">${amtFmt(list.reduce((s, r) => s + num(r[c.key]), 0))}</td>`
+          : `<td></td>`
+      )
+      .join("");
+    return `<tr class="${cls}"><td colspan="${labelSpan}" class="right">${escapeHtml(label)} : ${list.length}</td>${cells}</tr>`;
   };
 
+  const flush = () => {
+    if (group && groupRows.length) {
+      html += totalRow("group-total", `Total No. of Employees in ${currentGroup}`, groupRows);
+    }
+  };
+
+  let sno = 0;
   for (const row of rows) {
-    const g = groupKey ? text(row[groupKey]) || "—" : "";
-    if (groupKey && g !== currentGroup) {
-      if (currentGroup) flushGroupTotal(currentGroup, groupCount);
-      currentGroup = g;
-      groupCount = 0;
-      html += `
+    if (group) {
+      const g = groupHeaderText(group, row);
+      if (g !== currentGroup) {
+        flush();
+        currentGroup = g;
+        groupRows = [];
+        html += `
         <tr>
           <td colspan="${colCount}" class="group-strip">${escapeHtml(g)}</td>
         </tr>`;
+      }
     }
 
     sno += 1;
-    groupCount += 1;
-    grandCount += 1;
+    groupRows.push(row);
+    allRows.push(row);
 
     html += `<tr>`;
     for (const col of cfg.columns) {
       const cls = [col.align || "left", col.key === "rpt_name" || col.key === "employee" ? "wrap" : ""]
         .filter(Boolean)
         .join(" ");
-      const val =
-        col.format === "sno"
-          ? String(sno)
-          : cellValue(col, row, sno - 1);
-      html += `<td class="${cls}">${val}</td>`;
+      html += `<td class="${cls}">${cellValue(col, row, sno - 1)}</td>`;
     }
     html += `</tr>`;
   }
 
-  if (groupKey && currentGroup) flushGroupTotal(currentGroup, groupCount);
-
-  // Grand total row for grouped reports
-  if (groupKey) {
-    html += `
-      <tr class="grand-total">
-        <td colspan="${colCount - 1}" class="right">Grand Total :</td>
-        <td class="right strong">${grandCount}</td>
-      </tr>`;
-  }
+  flush();
+  if (group) html += totalRow("grand-total", "Grand Total", allRows);
 
   html += `</tbody></table>`;
   return html;
@@ -662,11 +730,15 @@ function renderHtmlBody(
 
 // ─── Excel builder (lightweight OOXML) ────────────────────────────────────
 
-function buildExcelBuffer(cfg: ReportConfig, rows: ReportRow[], loginId: string): Buffer {
+function buildExcelBuffer(
+  cfg: ReportConfig,
+  rows: ReportRow[],
+  loginId: string,
+  group: GroupDef | null
+): Buffer {
   const BLUE = "FF00378C";
   const WHITE = "FFFFFFFF";
   const STRIP = "FFEAF0F8";
-  const ALT = "FFFCFDFE";
 
   interface XlCell {
     v: unknown;
@@ -703,35 +775,50 @@ function buildExcelBuffer(cfg: ReportConfig, rows: ReportRow[], loginId: string)
   // Header
   sheetRows.push(cfg.columns.map((c) => cell(c.header, "header")));
 
+  const { labelSpan, sumCols } = totalsLayout(cfg);
   let sno = 0;
   let currentGroup = "";
-  let groupCount = 0;
-  let grandCount = 0;
+  let groupRows: ReportRow[] = [];
+  const allRows: ReportRow[] = [];
 
-  const pushGroupTotal = (label: string, count: number) => {
+  const pushTotal = (styleKey: string, label: string, list: ReportRow[]) => {
     const r = sheetRows.length;
-    const row: XlRow = Array(COL).fill(null);
-    row[0] = cell(`Total No. of Employees in ${label} : ${count}`, "groupTotal");
-    sheetRows.push(row);
-    merges.push({ s: { r, c: 0 }, e: { r, c: COL - 1 } });
+    const xr: XlRow = Array(COL).fill(null);
+    xr[0] = cell(`${label} : ${list.length}`, styleKey);
+    sumCols.forEach((c, i) => {
+      if (c.format === "amount") {
+        xr[labelSpan + i] = cell(
+          list.reduce((s, x) => s + num(x[c.key]), 0),
+          styleKey === "grandTotal" ? "grandTotalNum" : "totalNum"
+        );
+      } else {
+        xr[labelSpan + i] = cell("", styleKey);
+      }
+    });
+    sheetRows.push(xr);
+    if (labelSpan > 1) merges.push({ s: { r, c: 0 }, e: { r, c: labelSpan - 1 } });
   };
 
   for (const row of rows) {
-    const g = cfg.groupBy ? text(row[cfg.groupBy]) || "—" : "";
-    if (cfg.groupBy && g !== currentGroup) {
-      if (currentGroup) pushGroupTotal(currentGroup, groupCount);
-      currentGroup = g;
-      groupCount = 0;
-      const r = sheetRows.length;
-      const gr: XlRow = Array(COL).fill(null);
-      gr[0] = cell(g, "groupStrip");
-      sheetRows.push(gr);
-      merges.push({ s: { r, c: 0 }, e: { r, c: COL - 1 } });
+    if (group) {
+      const g = groupHeaderText(group, row);
+      if (g !== currentGroup) {
+        if (currentGroup) {
+          pushTotal("groupTotal", `Total No. of Employees in ${currentGroup}`, groupRows);
+        }
+        currentGroup = g;
+        groupRows = [];
+        const r = sheetRows.length;
+        const gr: XlRow = Array(COL).fill(null);
+        gr[0] = cell(g, "groupStrip");
+        sheetRows.push(gr);
+        merges.push({ s: { r, c: 0 }, e: { r, c: COL - 1 } });
+      }
     }
 
     sno += 1;
-    groupCount += 1;
-    grandCount += 1;
+    groupRows.push(row);
+    allRows.push(row);
 
     const dataRow: XlRow = cfg.columns.map((col) => {
       if (col.format === "sno") return cell(sno, "dataCenter");
@@ -740,9 +827,6 @@ function buildExcelBuffer(cfg: ReportConfig, rows: ReportRow[], loginId: string)
         return cell(num(raw), "dataNum");
       }
       if (col.format === "date") return cell(dateText(raw), "dataCenter");
-      if (col.key === "service") {
-        return cell(`${text(row.years)} yrs ${text(row.months)} months ${text(row.days)} days`, "data");
-      }
       if (col.key === "employee") {
         return cell(`${text(row.employee_code)} ${text(row.rpt_name)}`, "data");
       }
@@ -751,22 +835,17 @@ function buildExcelBuffer(cfg: ReportConfig, rows: ReportRow[], loginId: string)
     sheetRows.push(dataRow);
   }
 
-  if (cfg.groupBy && currentGroup) pushGroupTotal(currentGroup, groupCount);
-
-  if (cfg.groupBy) {
-    const r = sheetRows.length;
-    const gt: XlRow = Array(COL).fill(null);
-    gt[0] = cell(`Grand Total : ${grandCount}`, "grandTotal");
-    sheetRows.push(gt);
-    merges.push({ s: { r, c: 0 }, e: { r, c: COL - 1 } });
+  if (group && currentGroup) {
+    pushTotal("groupTotal", `Total No. of Employees in ${currentGroup}`, groupRows);
   }
+  if (group) pushTotal("grandTotal", "Grand Total", allRows);
 
   sheetRows.push(Array(COL).fill(null));
   const foot: XlRow = Array(COL).fill(null);
   foot[COL - 1] = cell("Powered by AWARE", "footer");
   sheetRows.push(foot);
 
-  // ── Style engine (same pattern as PO reference) ──
+  // ── Style engine ──
   interface FontDef {
     bold?: boolean;
     italic?: boolean;
@@ -816,10 +895,24 @@ function buildExcelBuffer(cfg: ReportConfig, rows: ReportRow[], loginId: string)
     groupTotal: {
       font: { bold: true, sz: 10, color: { rgb: BLUE } },
       fill: { fgColor: { rgb: "FFF1F5F9" } },
+      alignment: { horizontal: "right", vertical: "center" },
     },
     grandTotal: {
       font: { bold: true, sz: 11, color: { rgb: WHITE } },
       fill: { fgColor: { rgb: BLUE } },
+      alignment: { horizontal: "right", vertical: "center" },
+    },
+    totalNum: {
+      font: { bold: true, sz: 10, color: { rgb: BLUE } },
+      fill: { fgColor: { rgb: "FFF1F5F9" } },
+      alignment: { horizontal: "right", vertical: "center" },
+      numFmt: "#,##0.00",
+    },
+    grandTotalNum: {
+      font: { bold: true, sz: 11, color: { rgb: WHITE } },
+      fill: { fgColor: { rgb: BLUE } },
+      alignment: { horizontal: "right", vertical: "center" },
+      numFmt: "#,##0.00",
     },
     data: {
       font: { sz: 10 },
@@ -1110,11 +1203,12 @@ export const getHrReport = async (req: RequestWithUser, res: Response): Promise<
       return;
     }
 
-    const rows = await loadReportData(req, cfg);
+    const group = resolveGroup(req, cfg);
+    const rows = applyGrouping(await loadReportData(req, cfg), group);
     const loginid = text(req.user?.loginid) || pick(req, "loginid") || "ADMIN";
 
     if (type === "excel") {
-      const buffer = buildExcelBuffer(cfg, rows, loginid);
+      const buffer = buildExcelBuffer(cfg, rows, loginid, group);
       const filename = `HR_${reportKey}_${Date.now()}.xlsx`;
       res.setHeader(
         "Content-Type",
@@ -1137,7 +1231,7 @@ export const getHrReport = async (req: RequestWithUser, res: Response): Promise<
       userName: loginid,
       endLabel: "Powered by AWARE",
     });
-    const bodyHtml = renderHtmlBody(cfg, rows, req);
+    const bodyHtml = renderHtmlBody(cfg, rows, req, group);
 
     const html = buildReportDocument({
       title: cfg.title,
