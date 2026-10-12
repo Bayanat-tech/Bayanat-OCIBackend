@@ -28,6 +28,7 @@ export const createcompanymaster = async (
       address3,
       city,
       country,
+      company_logo,
     } = req.body;
 
     // Check for duplicate company
@@ -58,6 +59,7 @@ export const createcompanymaster = async (
       address3,
       city,
       country,
+      company_logo,
       created_by: requestUser.loginid,
       updated_by: requestUser.loginid,
     });

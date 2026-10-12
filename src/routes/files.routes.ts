@@ -28,6 +28,7 @@ import {
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
   uploadAFToS3,
+  uploadCompanyLogo,
   // uploadPurchaseFilesToS3,
   // uploadCPFilesToS3
   uploadTestFileToS3,
@@ -194,6 +195,8 @@ router.post(
   upload.single("file"),
   uploadPFToS3
 );
+
+router.post("/company-logo", passport.authenticate("jwt", { session: false }), tenantContextMiddleware, checkUserAuthorization, multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } }).single("file"), uploadCompanyLogo);
 
 router.post(
   "/uploadFileAf",
