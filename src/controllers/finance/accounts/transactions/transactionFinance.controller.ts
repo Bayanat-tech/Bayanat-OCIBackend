@@ -712,6 +712,22 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
       Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])
     );
 
+    if (!normalizedData.company_logo && companyCode) {
+      try {
+        const logoRes: any = await conn.execute(
+          `SELECT COMPANY_LOGO, COMPANY_LOGO_AWSURL FROM MS_COMPANY WHERE COMPANY_CODE = :cc`,
+          { cc: companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (logoRes?.rows?.length) {
+          const lRow = logoRes.rows[0] as any;
+          normalizedData.company_logo = lRow.COMPANY_LOGO || lRow.company_logo || lRow.COMPANY_LOGO_AWSURL || lRow.company_logo_awsurl || null;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
