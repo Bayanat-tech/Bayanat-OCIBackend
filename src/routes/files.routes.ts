@@ -28,6 +28,7 @@ import {
   uploadVendorAttachmentToS3,
   uploadEmployeeAttachmentToS3,
   uploadAFToS3,
+  uploadCompanyLogo,
   // uploadPurchaseFilesToS3,
   // uploadCPFilesToS3
   uploadTestFileToS3,
@@ -65,6 +66,7 @@ router.get(
 router.get(
   "/accountFiles/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getAfFiles
 );
@@ -87,6 +89,7 @@ router.get(
 router.get(
   "/purchaseFiles/:request_number",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   getAfFiles
 );
@@ -129,6 +132,7 @@ router.put(
 router.put(
   "/editAFFile",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editAFFiles
 );
@@ -136,6 +140,7 @@ router.put(
 router.put(
   "/editPurchaseFile",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   editAFFiles
 );
@@ -191,6 +196,8 @@ router.post(
   uploadPFToS3
 );
 
+router.post("/company-logo", passport.authenticate("jwt", { session: false }), tenantContextMiddleware, checkUserAuthorization, multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } }).single("file"), uploadCompanyLogo);
+
 router.post(
   "/uploadFileAf",
   passport.authenticate("jwt", { session: false }),
@@ -243,8 +250,17 @@ router.delete(
 );
 
 router.delete(
+  "/deleteAF/:request_number",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  checkUserAuthorization,
+  deleteFilesAF
+);
+
+router.delete(
   "/deleteAF/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteFilesAF
 );
@@ -252,6 +268,7 @@ router.delete(
 router.delete(
   "/deletepurchase/:request_number/:sr_no",
   passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
   checkUserAuthorization,
   deleteFilesAF
 );

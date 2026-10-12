@@ -24,6 +24,8 @@ export interface EmbeddedMeta {
   clientAddress?: string;
   clientVatNo?: string;
   reportType?: string; // <-- NEW
+    exchangeRate?: string | number; // <--- ADD THIS LINE
+    curr_code?:string
 }
 
 export interface InvoiceTokenPayload {

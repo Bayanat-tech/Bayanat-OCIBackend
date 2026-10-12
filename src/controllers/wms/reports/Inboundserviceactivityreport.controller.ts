@@ -28,6 +28,8 @@ export interface TInboundActivityRow {
   REMARKS: string | null; TRANSPORTER_NAME: string | null;
 }
 
+const NO_DATA_MESSAGE = "No Job found for the selected criteria.";
+
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
 async function getConn(req: RequestWithUser): Promise<oracledb.Connection> {
@@ -89,6 +91,8 @@ function joinParts(...parts: unknown[]): string {
 // One job can have several activity lines (tn_invoice_det rows) — header-level
 // fields (job/prin/movement/remarks) repeat identically on every row, so we
 // read them off rows[0] and treat the full result set as the activity detail.
+// If the job has no activity lines this returns [] (the report then shows
+// "No records found", same as the DN Summary report).
 
 async function loadInboundActivityData(
   req: RequestWithUser,
@@ -145,10 +149,7 @@ async function loadInboundActivityData(
       { company_code: req.user.company_code, job_no: jobNo, prin_code: prinCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    const rows = normalize(result.rows as any[]);
-    if (!rows.length)
-      throw Object.assign(new Error("Job not found"), { status: 404 });
-    return rows;
+    return normalize(result.rows as any[]);
   } finally {
     await closeConn(conn);
   }
@@ -319,7 +320,41 @@ const PRINT_LISTENER_SCRIPT = `
 
 // ─── HTML body renderer ─────────────────────────────────────────────────────
 
-function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
+function renderBodyHtml(
+  rows: ReportRow[],
+  reportTitle: string,
+  jobNo: string,
+  prinCode: string
+): string {
+  const C = ACT_COLUMNS;
+  const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
+  const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
+
+  // ── No activity lines: same behaviour as DN Summary ("No records found") ──
+  if (!rows.length) {
+    const emptyFilters = reportAppliedFilters([
+      { label: "Job No",    value: jobNo },
+      { label: "Principal", value: prinCode },
+    ]);
+
+    return `
+      <h1 class="report-title">${escapeHtml(reportTitle)}</h1>
+      ${emptyFilters}
+      <table class="data-table">
+        <colgroup>${colgroup}</colgroup>
+        <thead><tr>${headerCells}</tr></thead>
+        <tbody>
+          <tr>
+            <td colspan="${C.length}" class="center" style="padding: 20px; text-align: center;">
+              ${escapeHtml(NO_DATA_MESSAGE)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      ${PRINT_LISTENER_SCRIPT}
+    `;
+  }
+
   const d = rows[0];
 
   const jobText  = `${text(d.job_type)} ${text(d.job_no)}`.trim();
@@ -362,10 +397,6 @@ function renderBodyHtml(rows: ReportRow[], reportTitle: string): string {
     field("Remarks", d.remarks),
   ];
 
-  const C = ACT_COLUMNS;
-  const colgroup    = C.map((c) => `<col style="width:${c.width}%" />`).join("");
-  const headerCells = C.map((c) => `<th class="${c.align}">${escapeHtml(c.label)}</th>`).join("");
-
   const activityRows = rows.map((r) =>
     `<tr class="data-row">` +
     `<td class="${C[0].align}">${escapeHtml(text(r.act_code) || "\u2014")}</td>` +
@@ -406,12 +437,15 @@ async function renderHtml(
   rows: ReportRow[],
   reportTitle: string,
   loginId: string,
-  autoPrint: boolean
+  autoPrint: boolean,
+  jobNo: string,
+  prinCode: string
 ): Promise<string> {
-  const d = rows[0];
+  // company code comes from the data when available, else from the logged-in user
+  const companyCode = text(rows[0]?.company_code) || text(req.user?.company_code);
 
-  const headerHtml = await reportHeader({ company_code: text(d.company_code), req });
-  const bodyHtml   = renderBodyHtml(rows, reportTitle);
+  const headerHtml = await reportHeader({ company_code: companyCode, req });
+  const bodyHtml   = renderBodyHtml(rows, reportTitle, jobNo, prinCode);
   const footerHtml = reportFooter({
     reportName: "rpt_inbound_service_activity",
     userName:   loginId,
@@ -419,7 +453,7 @@ async function renderHtml(
   });
 
   return buildReportDocument({
-    title: `${reportTitle} - ${text(d.job_no)}`,
+    title: `${reportTitle} - ${jobNo}`,
     headerHtml,
     bodyHtml,
     footerHtml,
@@ -691,8 +725,12 @@ export const getWmsInboundServiceActivityReportHtml = async (
       res.status(400).json({ success: false, message: "job_no and prin_code are required" });
       return;
     }
+
+    // Empty result is NOT an error: the report renders "No records found" (like DN Summary)
     const activityRows = await loadInboundActivityData(req, jobNo, prinCode);
-    const html = await renderHtml(req, activityRows, reportTitle, text(req.user?.loginid), autoPrint);
+    const html = await renderHtml(
+      req, activityRows, reportTitle, text(req.user?.loginid), autoPrint, jobNo, prinCode
+    );
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
@@ -715,7 +753,14 @@ export const getWmsInboundServiceActivityReportExcel = async (
       return;
     }
     const activityRows = await loadInboundActivityData(req, jobNo, prinCode);
-    const buffer       = buildExcelBuffer(activityRows, reportTitle);
+
+    // Same as DN Summary Excel: nothing to export -> friendly message, no file
+    if (!activityRows.length) {
+      res.status(200).json({ success: false, message: "No data found for the selected criteria." });
+      return;
+    }
+
+    const buffer = buildExcelBuffer(activityRows, reportTitle);
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Inbound_Service_Activity_${jobNo}.xlsx"`);

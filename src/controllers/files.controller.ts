@@ -8,6 +8,8 @@ import { QueryExecutor } from "../database/QueryExecutor";
 import { FilesPFService } from "../services/filesPF.service";
 import { FilesAFService } from "../services/accountfiles.service";
 import { deleteFile, deleteFileFromS3 } from "../services/ociUpload.service";
+import TenantManager from "../database/TenantManager";
+import { getCurrentTenantId } from "../middleware/tenantContext.middleware";
 
 let filesVHService: FilesVHService;
 let filesPFService: FilesPFService;
@@ -240,9 +242,28 @@ export const editAFFiles = async (
   req: RequestWithUser,
   res: Response
 ): Promise<void> => {
+  let connection: any;
   try {
     const { aws_file_locn, request_number, user_file_name } = req.body;
-    console.log(user_file_name, aws_file_locn, request_number);
+    const tenantId = getCurrentTenantId();
+
+    if (!tenantId) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Tenant context not found",
+      });
+      return;
+    }
+
+    if (!aws_file_locn || !request_number || !user_file_name?.trim()) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "request_number, aws_file_locn, and user_file_name are required",
+      });
+      return;
+    }
+
+    connection = await TenantManager.getConnection(tenantId);
 
     const sql = `
       UPDATE ACCOUNTS_FILES
@@ -255,7 +276,7 @@ export const editAFFiles = async (
       aws_file_locn,
       request_number,
     };
-    const result: any = await oracleDb.query(sql, binds);
+    const result = await connection.execute(sql, binds, { autoCommit: true });
     const affected = result.rowsAffected ?? 0;
 
     if (Number(affected) === 0) {
@@ -273,11 +294,13 @@ export const editAFFiles = async (
 
     return;
   } catch (error: any) {
-    console.error("editPFFiles error:", error);
+    console.error("editAFFiles error:", error);
     res
       .status(constants.STATUS_CODES.BAD_REQUEST)
       .json({ success: false, message: error.message });
     return;
+  } finally {
+    if (connection) await connection.close();
   }
 };
 
@@ -380,6 +403,7 @@ export const deleteFilesAF = async (
 ): Promise<void> => {
   try {
     const { request_number, sr_no } = req.params;
+    const aws_file_locn = req.body?.aws_file_locn;
 
     if (request_number === undefined) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({
@@ -389,8 +413,16 @@ export const deleteFilesAF = async (
       return;
     }
 
-    // query to find the file details
-    const file = await filesAFService.findOne({ request_number, sr_no });
+    if (!sr_no && !aws_file_locn) {
+      res.status(constants.STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "sr_no or aws_file_locn is required",
+      });
+      return;
+    }
+
+    const conditions = sr_no ? { request_number, sr_no } : { request_number, aws_file_locn };
+    const file = await filesAFService.findOne(conditions);
 
     if (!file) {
       res.status(constants.STATUS_CODES.NOT_FOUND).json({
@@ -406,7 +438,7 @@ export const deleteFilesAF = async (
 }
 
 
-    const result = await filesAFService.delete({ request_number, sr_no });
+    const result = await filesAFService.delete(conditions);
 
     if (result.affected === 0) {
       res.status(constants.STATUS_CODES.BAD_REQUEST).json({

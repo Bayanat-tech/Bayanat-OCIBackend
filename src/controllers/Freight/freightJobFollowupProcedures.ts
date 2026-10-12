@@ -34,6 +34,15 @@ export const frtJobInstructionDelete = actionProc("PROC_FRT_JOB_INSTRUCTION_DELE
 
 export const frtJobInstructionSave = async (req: Request, res: Response): Promise<void> => {
   const lines = Array.isArray(req.body.lines) ? req.body.lines : [];
+  const invalidLineIndex = lines.findIndex((line: Record<string, unknown>) => numberValue(line.op_code ?? line.OP_CODE) === null);
+  if (invalidLineIndex >= 0) {
+    res.status(400).json({
+      success: false,
+      message: `Instruction code is required on line ${invalidLineIndex + 1}`,
+      details: "Select an instruction from the instruction master before saving.",
+    });
+    return;
+  }
   await saveLines(res, req, "PROC_FRT_JOB_INSTRUCTION_SAVE", "FRT_JOB_INSTRUCTION_TAB", "p_lines", lines.map(toInstructionObject), "Job instructions saved successfully");
 };
 
@@ -194,11 +203,18 @@ function toAlertObject(row: Record<string, unknown>) {
   return {
     OP_CODE: numberValue(row.op_code ?? row.OP_CODE),
     OP_DATE: toDate(row.op_date ?? row.OP_DATE),
-    REMARKS: stringValue(row.remarks ?? row.REMARKS),
+    REMARKS: stringValue(row.remarks ?? row.REMARKS ?? row.op_remarks ?? row.OP_REMARKS),
     OP_TYPE: stringValue(row.op_type ?? row.OP_TYPE),
     OP_COUNT: numberValue(row.op_count ?? row.OP_COUNT),
-    OP_YESNO: stringValue(row.op_yesno ?? row.OP_YESNO),
+    OP_YESNO: yesNoValue(row.op_yesno ?? row.OP_YESNO),
   };
+}
+
+function yesNoValue(input: unknown) {
+  const value = stringValue(input)?.toUpperCase();
+  if (value === "YES" || value === "Y") return "Y";
+  if (value === "NO" || value === "N") return "N";
+  return value;
 }
 
 function toDepositObject(row: Record<string, unknown>) {

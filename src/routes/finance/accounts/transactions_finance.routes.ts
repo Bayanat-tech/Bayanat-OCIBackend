@@ -22,6 +22,7 @@ import {
   getChequePaymentHeader,
   getChildTableName,
   getCompanyInfo,
+  initializeCompanyFinance,
   getDefaultTransactionDetails,
   getPurchaseHeader,
   getTransactionChildren,
@@ -107,6 +108,7 @@ import { getPurchaseQuotationCompareReportExcel, getPurchaseQuotationCompareRepo
 import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../controllers/HR/Hr-Reports/Visaexpiryreport";
 import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getSalesDNReportExcel, getSalesDNReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesDNReport";
+import { getStockSummaryReportExcel, getStockSummaryReportHtml, getStockTransactionReportExcel, getStockTransactionReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/StockReportPS";
 
 
 
@@ -200,6 +202,16 @@ router.post('/reports/PR_RegisterOld_Summary/excel', getPrRegisterOldSummaryRepo
 
 router.post('/reports/PR_RegisterOld_Details/html', getPrRegisterOldDetailReportHtml);
 router.post('/reports/PR_RegisterOld_Details/excel', getPrRegisterOldDetailReportExcel);
+
+// Purchase Sales Stock Summary/Transaction Report Routes
+
+router.post('/reports/PSStockSummary/html', getStockSummaryReportHtml);
+router.post('/reports/PSStockSummary/excel', getStockSummaryReportExcel);
+
+
+
+router.post('/reports/PSStockTransaction/html', getStockTransactionReportHtml);
+router.post('/reports/PSStockTransaction/excel', getStockTransactionReportExcel);
 
 // ---------------Purchase Invoice 3 reports Routes----------------------
 
@@ -323,6 +335,7 @@ router.post('/reports/PrRegisterReport/excel', exportPRRegisterReportExcel);
 
 // GET Routes - Information Retrieval
 router.get("/company_info", getCompanyInfo);             
+router.post("/initialize_company_finance", initializeCompanyFinance);
 router.get("/default_details", getDefaultTransactionDetails);  
 router.get("/cheque_detail", getChequeDetail);                 
 router.get("/header/:doc_no", getChequePaymentHeader);   

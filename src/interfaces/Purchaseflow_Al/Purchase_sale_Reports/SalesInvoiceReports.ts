@@ -209,7 +209,7 @@ const SALES_INVOICE_EXTRA_CSS = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin: 4px 0 12px 0;
+    margin: 0px 0 0px 0;
   }
   .doc-title-row h1 {
     margin: 0;

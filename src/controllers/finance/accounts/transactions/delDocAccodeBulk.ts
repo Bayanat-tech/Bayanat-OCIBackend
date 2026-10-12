@@ -16,22 +16,27 @@ async function resolveL4Code(
   companyCode: string,
   accountCode: string
 ) {
-  const result = await connection.execute<{ L4_CODE: string }>(
-    `
-      SELECT
-        COALESCE(
-          MAX(CASE WHEN AC_CODE = :accountCode THEN L4_CODE END),
-          MAX(CASE WHEN L4_CODE = :accountCode THEN L4_CODE END)
-        ) AS L4_CODE
-      FROM MS_ACCODES
-      WHERE COMPANY_CODE = :companyCode
-        AND (AC_CODE = :accountCode OR L4_CODE = :accountCode)
-    `,
-    { companyCode, accountCode },
-    { outFormat: oracledb.OUT_FORMAT_OBJECT }
-  );
+  try {
+    const result = await connection.execute<{ L4_CODE: string }>(
+      `
+        SELECT
+          COALESCE(
+            MAX(CASE WHEN UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode)) AND AC_CODE = :accountCode THEN L4_CODE END),
+            MAX(CASE WHEN AC_CODE = :accountCode THEN L4_CODE END),
+            MAX(CASE WHEN L4_CODE = :accountCode THEN L4_CODE END)
+          ) AS L4_CODE
+        FROM MS_ACCODES
+        WHERE (UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode)) OR :companyCode IS NULL)
+          AND (AC_CODE = :accountCode OR L4_CODE = :accountCode)
+      `,
+      { companyCode, accountCode },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
 
-  return result.rows?.[0]?.L4_CODE || accountCode;
+    return result.rows?.[0]?.L4_CODE || accountCode;
+  } catch (_) {
+    return accountCode;
+  }
 }
 
 export const delDocAccodeBulk = async (
@@ -52,7 +57,11 @@ export const delDocAccodeBulk = async (
       return;
     }
 
-    const tenantId = getCurrentTenantId();
+    let tenantId = getCurrentTenantId();
+    if (!tenantId && loginId) {
+      tenantId = await TenantManager.getTenantForUser(loginId);
+    }
+
     if (!tenantId) {
       res.status(400).json({
         success: false,
@@ -75,19 +84,36 @@ export const delDocAccodeBulk = async (
         throw new Error("company_code, doc_id, hdr_dtl and ac_code are required for every row");
       }
 
-      const l4Code = await resolveL4Code(connection, companyCode, accountCode);
-
-      const result = await connection.execute(
+      // 1. Try deleting by exact account code first
+      let result = await connection.execute(
         `
           DELETE FROM MS_AC_SETUP_DOC_ACCODE
-          WHERE COMPANY_CODE = :companyCode
+          WHERE UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode))
             AND DOC_ID = :docId
             AND HDR_DTL = :hdrDtl
-            AND AC_CODE = :l4Code
-            AND NVL(DIV_CODE, 'X') = NVL(:divCode, 'X')
+            AND AC_CODE = :accountCode
+            AND (:divCode IS NULL OR DIV_CODE = :divCode OR NVL(DIV_CODE, 'X') = NVL(:divCode, 'X'))
         `,
-        { companyCode, docId, hdrDtl, l4Code, divCode }
+        { companyCode, docId, hdrDtl, accountCode, divCode }
       );
+
+      // 2. Fallback to resolved L4_CODE if exact match deleted 0 rows (e.g., if saved as L4 group)
+      if ((result.rowsAffected || 0) === 0) {
+        const l4Code = await resolveL4Code(connection, companyCode, accountCode);
+        if (l4Code && l4Code !== accountCode) {
+          result = await connection.execute(
+            `
+              DELETE FROM MS_AC_SETUP_DOC_ACCODE
+              WHERE UPPER(TRIM(COMPANY_CODE)) = UPPER(TRIM(:companyCode))
+                AND DOC_ID = :docId
+                AND HDR_DTL = :hdrDtl
+                AND AC_CODE = :l4Code
+                AND (:divCode IS NULL OR DIV_CODE = :divCode OR NVL(DIV_CODE, 'X') = NVL(:divCode, 'X'))
+            `,
+            { companyCode, docId, hdrDtl, l4Code, divCode }
+          );
+        }
+      }
 
       deleted += result.rowsAffected || 0;
     }

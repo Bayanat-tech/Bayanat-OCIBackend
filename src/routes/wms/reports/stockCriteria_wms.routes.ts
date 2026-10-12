@@ -21,6 +21,8 @@ import {
   getStockTransferReportHtml,
   exportStockTransferReportExcel,
 } from "../../../controllers/wms/reports/stockTransferReportController";
+import { getSalaryAdvDedReportHtml } from "../../../controllers/wms/reports/SalaryAdvDedReport.controller";
+import { getAbsentMemoReportHtml } from "../../../controllers/wms/reports/AbsentMemoReport.controller";
 
 const router = express.Router();
 
@@ -118,6 +120,24 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   exportStockAgeingVolumeReportExcel
+);
+
+// ─── Salary Addition / Deduction ──────────────────────────────────────────────
+
+router.post(
+  "/salary-adv-ded/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getSalaryAdvDedReportHtml
+);
+
+// ─── Absent Memo ──────────────────────────────────────────────────────────────
+
+router.post(
+  "/absent-memo/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAbsentMemoReportHtml
 );
 
 export default router;

@@ -101,6 +101,7 @@ import {
 } from "../../controllers/Freight/freightJobFollowupProcedures";
 import { frtReportRun } from "../../controllers/Freight/freightReportProcedures";
 import {
+  frtInvoiceConfirm,
   frtInvoiceGet,
   frtInvoiceJobSelection,
   frtInvoiceList,
@@ -227,6 +228,7 @@ router.post("/invoice/list", frtInvoiceList);
 router.post("/invoice/get", frtInvoiceGet);
 router.post("/invoice/job-selection", frtInvoiceJobSelection);
 router.post("/invoice/save", frtInvoiceSave);
+router.post("/invoice/confirm", frtInvoiceConfirm);
 router.get("/invoice/report/html", frtInvoiceReportHtml);
 
 router.post("/workspace/summary", frtWorkspaceSummary);

@@ -487,6 +487,47 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
     if (!result.rows?.length) {
+      try {
+        const fallbackResult = await conn.execute(
+          `SELECT 
+             asd.company_code,
+             asd.doc_id,
+             NVL(asd.curr_code, a.curr_code) AS curr_code,
+             NVL(c.curr_name, cur_a.curr_name) AS curr_name,
+             asd.default_div_code AS div_code,
+             d.div_name,
+             asd.default_h_ac AS ac_code,
+             a.ac_name,
+             acs.tax_perc,
+             NVL(acs.lcur_decimal_nos, 3) AS lcur_decimal_nos
+           FROM MS_AC_SETUP_DOC asd
+           LEFT JOIN MS_ACCODES a
+             ON asd.company_code = a.company_code
+            AND asd.default_h_ac = a.ac_code
+           LEFT JOIN MS_CURRENCY c
+             ON asd.company_code = c.company_code
+            AND asd.curr_code = c.curr_code
+           LEFT JOIN MS_CURRENCY cur_a
+             ON asd.company_code = cur_a.company_code
+            AND a.curr_code = cur_a.curr_code
+           LEFT JOIN MS_HR_DIVISION d
+             ON asd.company_code = d.company_code
+            AND asd.default_div_code = d.div_code
+           LEFT JOIN MS_AC_SETUP acs
+             ON asd.company_code = acs.company_code
+           WHERE UPPER(TRIM(asd.company_code)) = UPPER(TRIM(:cc))
+             AND UPPER(TRIM(asd.doc_id)) = :id`,
+          { cc: req.user.company_code, id: docId },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (fallbackResult.rows?.length) {
+          res.json({ success: true, data: normalize(fallbackResult.rows)[0] });
+          return;
+        }
+      } catch (fbErr) {
+        console.warn('Fallback default query non-fatal error:', fbErr);
+      }
+
       res.json({
         success: true,
         data: {},
@@ -511,16 +552,159 @@ export const getDefaultTransactionDetails = async (req: RequestWithUser, res: Re
   } finally { await closeConn(conn); }
 };
 
+async function copyTableRows(
+  conn: oracledb.Connection,
+  tbl: string,
+  newCompany: string,
+  sourceCompany: string
+): Promise<number> {
+  try {
+    const check = await conn.execute(
+      `SELECT count(*) FROM ${tbl} WHERE COMPANY_CODE = :newCompany`,
+      { newCompany }
+    );
+    if (((check.rows?.[0] as any)?.[0] || 0) > 0) return 0;
+
+    const cols = await conn.execute(
+      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = :tbl AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
+      { tbl }
+    );
+    if (!cols.rows?.length) return 0;
+
+    const colList = cols.rows
+      .map((r: any) => r[0] || r.COLUMN_NAME)
+      .filter((c: string) => c !== 'COMPANY_CODE');
+    if (!colList.length) return 0;
+
+    const selectCols = colList.join(', ');
+    const insertCols = 'COMPANY_CODE, ' + selectCols;
+
+    const res = await conn.execute(
+      `INSERT INTO ${tbl} (${insertCols})
+       SELECT :newCompany, ${selectCols}
+       FROM ${tbl}
+       WHERE COMPANY_CODE = :sourceCompany`,
+      { newCompany, sourceCompany }
+    );
+    return res.rowsAffected || 0;
+  } catch (err) {
+    console.warn(`[copyTableRows] Non-fatal error copying ${tbl}:`, err);
+    return 0;
+  }
+}
+
+export async function initializeCompanyFinanceSetup(
+  conn: oracledb.Connection,
+  newCompany: string,
+  sourceCompany = 'BSG'
+): Promise<{ success: boolean; details: Record<string, any> }> {
+  const details: Record<string, any> = {};
+
+  // 1. MS_COMPANYINFO
+  const checkInfo = await conn.execute(
+    `SELECT count(*) FROM MS_COMPANYINFO WHERE COMPANY_CODE = :newCompany`,
+    { newCompany }
+  );
+  if (!((checkInfo.rows?.[0] as any)?.[0] || 0)) {
+    const infoCols = await conn.execute(
+      `SELECT COLUMN_NAME FROM ALL_TAB_COLUMNS WHERE TABLE_NAME = 'MS_COMPANYINFO' AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY COLUMN_ID`,
+      []
+    );
+    const colList = (infoCols.rows || [])
+      .map((r: any) => r[0] || r.COLUMN_NAME)
+      .filter((c: string) => !['COMPANY_CODE', 'COMPANY_NAME', 'AC_FY_PERIOD', 'OPN_FY_PERIOD'].includes(c));
+    const selectCols = colList.length ? ', ' + colList.join(', ') : '';
+
+    await conn.execute(
+      `INSERT INTO MS_COMPANYINFO (COMPANY_CODE, COMPANY_NAME, AC_FY_PERIOD, OPN_FY_PERIOD ${selectCols})
+       SELECT 
+         :newCompany, 
+         COALESCE((SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :newCompany), :newCompany),
+         COALESCE((SELECT AC_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225'),
+         COALESCE((SELECT OPN_FY_PERIOD FROM MS_COMPANYINFO WHERE COMPANY_CODE = :sourceCompany), '225')
+         ${selectCols}
+       FROM MS_COMPANYINFO
+       WHERE COMPANY_CODE = :sourceCompany`,
+      { newCompany, sourceCompany }
+    );
+    details.company_info = 'initialized';
+  }
+
+  // 2. MS_CURRENCY
+  details.currencies = await copyTableRows(conn, 'MS_CURRENCY', newCompany, sourceCompany);
+
+  // 3. MS_HR_DIVISION (Default branch/division)
+  details.divisions = await copyTableRows(conn, 'MS_HR_DIVISION', newCompany, sourceCompany);
+
+  // 4. Standard Statutory Chart of Accounts Groups (Levels 1, 2, and 3 only)
+  // Levels 4 & 5 (MS_ACCODES) and specific document account mappings (MS_AC_SETUP_DOC_ACCODE)
+  // are created specifically per company by the finance team.
+  for (const lvl of ['MS_AC_L1', 'MS_AC_L2', 'MS_AC_L3']) {
+    details[lvl] = await copyTableRows(conn, lvl, newCompany, sourceCompany);
+  }
+
+  // 5. Standard Finance Document Types (BP, BR, CP, CR, JV, etc.)
+  details.setup_docs = await copyTableRows(conn, 'MS_AC_SETUP_DOC', newCompany, sourceCompany);
+
+  await conn.commit();
+  return { success: true, details };
+}
+
 export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
-    const result = await conn.execute(
+    const companyCode = String(req.user.company_code || '').trim();
+
+    let result = await conn.execute(
       `SELECT * FROM VW_COMPANY_INFO WHERE company_code = :cc`,
-      { cc: req.user.company_code },
+      { cc: companyCode },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
-    if (!result.rows?.length) { res.status(500).json({ success: false }); return; }
+
+    // If company info view is missing for this company, check if auto-initialization is possible
+    if (!result.rows?.length && companyCode) {
+      // Find template company
+      const templateRes = await conn.execute(
+        `SELECT COMPANY_CODE FROM MS_COMPANYINFO 
+         WHERE AC_FY_PERIOD IS NOT NULL 
+         ORDER BY CASE WHEN COMPANY_CODE = 'BSG' THEN 1 WHEN COMPANY_CODE = 'AMKSA' THEN 2 ELSE 3 END`
+      );
+      const sourceCompany = (templateRes.rows?.[0] as any)?.[0] || 'BSG';
+
+      // Check if this company exists in MS_COMPANY
+      const compCheck = await conn.execute(
+        `SELECT COMPANY_NAME FROM MS_COMPANY WHERE COMPANY_CODE = :cc`,
+        { cc: companyCode },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      if (compCheck.rows?.length) {
+        console.log(`[getCompanyInfo] Auto-provisioning Finance setup for new company '${companyCode}' from template '${sourceCompany}'`);
+        await initializeCompanyFinanceSetup(conn, companyCode, sourceCompany);
+
+        // Re-query VW_COMPANY_INFO
+        result = await conn.execute(
+          `SELECT * FROM VW_COMPANY_INFO WHERE company_code = :cc`,
+          { cc: companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+      }
+    }
+
+    if (!result.rows?.length) {
+      // Return safe fallback instead of throwing 500 error
+      res.json({
+        success: true,
+        data: {
+          company_code: companyCode,
+          ac_fy_period: 226,
+          setup_required: true,
+          message: "Finance setup required for this company",
+        }
+      });
+      return;
+    }
 
     // Normalize uppercase keys to lowercase
     const row = result.rows[0] as Record<string, any>;
@@ -532,20 +716,132 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
 
+export const initializeCompanyFinance = async (req: RequestWithUser, res: Response): Promise<void> => {
+  let conn: oracledb.Connection | undefined;
+  try {
+    conn = await getConn(req);
+    const targetCompany = String(req.body.company_code || req.user.company_code || '').trim();
+    const sourceCompany = String(req.body.source_company || 'BSG').trim();
+
+    if (!targetCompany) {
+      res.status(400).json({ success: false, message: 'company_code is required' });
+      return;
+    }
+
+    const initResult = await initializeCompanyFinanceSetup(conn, targetCompany, sourceCompany);
+    res.json({
+      success: true,
+      message: `Finance setup successfully initialized for company ${targetCompany}`,
+      data: initResult.details,
+    });
+  } catch (err) {
+    sendError(res, err);
+  } finally {
+    await closeConn(conn);
+  }
+};
+
 export const getChequePaymentHeader = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
     const divCode = String(req.query.div_code || '').trim();
-    const query = divCode
-      ? `SELECT * FROM VW_CHQ_PAYMENT_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt AND div_code = :dc`
-      : `SELECT * FROM VW_CHQ_PAYMENT_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`;
-    const binds: Record<string, any> = { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type };
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
+
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
+      dt: req.query.doc_type,
+    };
     if (divCode) binds.dc = divCode;
-    const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    const row = result.rows?.[0] || null;
+
+    const docCond = `(doc_no = :dn OR TO_CHAR(doc_no) = :dn OR TO_CHAR(doc_no) = :clean_dn)`;
+
+    let row: any = null;
+    try {
+      const query = divCode
+        ? `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt AND div_code = :dc`
+        : `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+      const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = result.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivQuery = `SELECT * FROM VW_CHQ_PAYMENT_HEADER
+                            WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+        const noDivResult = await conn.execute(noDivQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivResult.rows?.[0] || null;
+      }
+    } catch {
+      row = null;
+    }
+
+    // Fallback: If view returns empty (e.g. MS_AC_SETUP is empty in tenant causing inner join failure),
+    // query TR_AC_HEADER directly with LEFT JOINs.
+    if (!row) {
+      const docCondH = `(th.doc_no = :dn OR TO_CHAR(th.doc_no) = :dn OR TO_CHAR(th.doc_no) = :clean_dn)`;
+      const whereDiv = divCode ? 'AND th.div_code = :dc' : '';
+      const fallbackQuery = `
+        SELECT th.*,
+               acc.ac_name,
+               bank_acc.ac_name AS bank_ac_name,
+               curr.curr_name,
+               div.div_name,
+               acs.tax_perc
+        FROM TR_AC_HEADER th
+        LEFT JOIN MS_AC_SETUP acs
+               ON th.company_code = acs.company_code
+        LEFT JOIN MS_ACCODES acc
+               ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+        LEFT JOIN MS_AC_BANKCODE bank
+               ON th.bank_ac_code = bank.ac_code AND th.company_code = bank.company_code
+        LEFT JOIN MS_ACCODES bank_acc
+               ON bank.ac_code = bank_acc.ac_code AND bank.company_code = bank_acc.company_code
+        LEFT JOIN MS_CURRENCY curr
+               ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+        LEFT JOIN MS_HR_DIVISION div
+               ON th.div_code = div.div_code AND th.company_code = div.company_code
+        WHERE th.company_code = :cc
+          AND ${docCondH}
+          AND th.doc_type = :dt
+          ${whereDiv}
+      `;
+      const fbResult = await conn.execute(fallbackQuery, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = fbResult.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivFbQuery = `
+          SELECT th.*,
+                 acc.ac_name,
+                 bank_acc.ac_name AS bank_ac_name,
+                 curr.curr_name,
+                 div.div_name,
+                 acs.tax_perc
+          FROM TR_AC_HEADER th
+          LEFT JOIN MS_AC_SETUP acs
+                 ON th.company_code = acs.company_code
+          LEFT JOIN MS_ACCODES acc
+                 ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+          LEFT JOIN MS_AC_BANKCODE bank
+                 ON th.bank_ac_code = bank.ac_code AND th.company_code = bank.company_code
+          LEFT JOIN MS_ACCODES bank_acc
+                 ON bank.ac_code = bank_acc.ac_code AND bank.company_code = bank_acc.company_code
+          LEFT JOIN MS_CURRENCY curr
+                 ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+          LEFT JOIN MS_HR_DIVISION div
+                 ON th.div_code = div.div_code AND th.company_code = div.company_code
+          WHERE th.company_code = :cc
+            AND ${docCondH}
+            AND th.doc_type = :dt
+        `;
+        const noDivFbResult = await conn.execute(noDivFbQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivFbResult.rows?.[0] || null;
+      }
+    }
+
     res.json({ success: true, data: row ? normalize([row])[0] : null });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -555,15 +851,91 @@ export const getPurchaseHeader = async (req: RequestWithUser, res: Response): Pr
   try {
     conn = await getConn(req);
     const divCode = String(req.query.div_code || '').trim();
-    const query = divCode
-      ? `SELECT * FROM VW_PURCHASE_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt AND div_code = :dc`
-      : `SELECT * FROM VW_PURCHASE_HEADER
-         WHERE company_code = :cc AND doc_no = :dn AND doc_type = :dt`;
-    const binds: Record<string, any> = { cc: req.user.company_code, dn: req.params.doc_no, dt: req.query.doc_type };
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
+
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
+      dt: req.query.doc_type,
+    };
     if (divCode) binds.dc = divCode;
-    const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
-    const row = result.rows?.[0] || null;
+
+    const docCond = `(doc_no = :dn OR TO_CHAR(doc_no) = :dn OR TO_CHAR(doc_no) = :clean_dn)`;
+
+    let row: any = null;
+    try {
+      const query = divCode
+        ? `SELECT * FROM VW_PURCHASE_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt AND div_code = :dc`
+        : `SELECT * FROM VW_PURCHASE_HEADER
+           WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+      const result = await conn.execute(query, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = result.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivQuery = `SELECT * FROM VW_PURCHASE_HEADER
+                            WHERE company_code = :cc AND ${docCond} AND doc_type = :dt`;
+        const noDivResult = await conn.execute(noDivQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivResult.rows?.[0] || null;
+      }
+    } catch {
+      row = null;
+    }
+
+    // Fallback: If view returns nothing, query TR_AC_HEADER directly
+    if (!row) {
+      const docCondH = `(th.doc_no = :dn OR TO_CHAR(th.doc_no) = :dn OR TO_CHAR(th.doc_no) = :clean_dn)`;
+      const whereDiv = divCode ? 'AND th.div_code = :dc' : '';
+      const fallbackQuery = `
+        SELECT th.*,
+               acc.ac_name,
+               curr.curr_name,
+               div.div_name,
+               acs.tax_perc
+        FROM TR_AC_HEADER th
+        LEFT JOIN MS_AC_SETUP acs
+               ON th.company_code = acs.company_code
+        LEFT JOIN MS_ACCODES acc
+               ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+        LEFT JOIN MS_CURRENCY curr
+               ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+        LEFT JOIN MS_HR_DIVISION div
+               ON th.div_code = div.div_code AND th.company_code = div.company_code
+        WHERE th.company_code = :cc
+          AND ${docCondH}
+          AND th.doc_type = :dt
+          ${whereDiv}
+      `;
+      const fbResult = await conn.execute(fallbackQuery, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      row = fbResult.rows?.[0] || null;
+
+      if (!row && divCode) {
+        const noDivFbQuery = `
+          SELECT th.*,
+                 acc.ac_name,
+                 curr.curr_name,
+                 div.div_name,
+                 acs.tax_perc
+          FROM TR_AC_HEADER th
+          LEFT JOIN MS_AC_SETUP acs
+                 ON th.company_code = acs.company_code
+          LEFT JOIN MS_ACCODES acc
+                 ON th.ac_code = acc.ac_code AND th.company_code = acc.company_code
+          LEFT JOIN MS_CURRENCY curr
+                 ON th.curr_code = curr.curr_code AND th.company_code = curr.company_code
+          LEFT JOIN MS_HR_DIVISION div
+                 ON th.div_code = div.div_code AND th.company_code = div.company_code
+          WHERE th.company_code = :cc
+            AND ${docCondH}
+            AND th.doc_type = :dt
+        `;
+        const noDivFbResult = await conn.execute(noDivFbQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        row = noDivFbResult.rows?.[0] || null;
+      }
+    }
+
     res.json({ success: true, data: row ? normalize([row])[0] : null });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -573,35 +945,115 @@ export const getChequePaymentDetail = async (req: RequestWithUser, res: Response
   try {
     conn = await getConn(req);
     const divCode = String(req.query.div_code || '').trim();
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
     const whereDiv = divCode ? 'AND d.div_code = :dc' : '';
     const binds: Record<string, any> = {
       cc: req.user.company_code,
-      dn: String(req.params.doc_no),
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
       dt: req.query.doc_type,
     };
     if (divCode) binds.dc = divCode;
 
-    const result = await conn.execute(
-      `SELECT d.*,
-              COALESCE(d.ac_name, a.ac_name, l.l4_description, '') AS ac_name_resolved
-       FROM VW_TR_AC_DETAIL_DATA d
-       LEFT JOIN MS_ACCODES a
-              ON a.company_code = d.company_code
-             AND a.ac_code = d.ac_code
-       LEFT JOIN MS_AC_L4 l
-              ON l.company_code = d.company_code
-             AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
-       WHERE d.company_code = :cc AND TO_CHAR(d.doc_no) = :dn
-         AND d.doc_type = :dt
-         ${whereDiv}
-       ORDER BY d.serial_no`,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    const rows = (result.rows || []).map((r: any) => ({
-      ...r,
-      AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
-    }));
+    const docCond = `(d.doc_no = :dn OR TO_CHAR(d.doc_no) = :dn OR TO_CHAR(d.doc_no) = :clean_dn)`;
+
+    let rows: any[] = [];
+    try {
+      const result = await conn.execute(
+        `SELECT d.*,
+                COALESCE(d.ac_name, a.ac_name, l.l4_description, '') AS ac_name_resolved
+         FROM VW_TR_AC_DETAIL_DATA d
+         LEFT JOIN MS_ACCODES a
+                ON a.company_code = d.company_code
+               AND a.ac_code = d.ac_code
+         LEFT JOIN MS_AC_L4 l
+                ON l.company_code = d.company_code
+               AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
+         WHERE d.company_code = :cc AND ${docCond}
+           AND d.doc_type = :dt
+           ${whereDiv}
+         ORDER BY d.serial_no`,
+        binds,
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      rows = (result.rows || []).map((r: any) => ({
+        ...r,
+        AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
+      }));
+    } catch {
+      rows = [];
+    }
+
+    // Fallback: If view returns no rows (e.g. view's td.ac_code <> td.HEADER_AC_CODE filter
+    // wrongly suppresses user lines where detail account matches header account),
+    // query TR_AC_DETAIL directly.
+    if (!rows.length) {
+      const fbDetailQuery = `
+        SELECT d.*,
+               COALESCE(a.ac_name, l.l4_description, '') AS ac_name_resolved,
+               dept.dept_name,
+               cur.curr_name
+        FROM TR_AC_DETAIL d
+        LEFT JOIN MS_ACCODES a
+               ON a.company_code = d.company_code
+              AND a.ac_code = d.ac_code
+        LEFT JOIN MS_AC_L4 l
+               ON l.company_code = d.company_code
+              AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
+        LEFT JOIN MS_DEPARTMENT dept
+               ON d.company_code = dept.company_code
+              AND d.dept_code = dept.dept_code
+        LEFT JOIN MS_CURRENCY cur
+               ON d.company_code = cur.company_code
+              AND d.curr_code = cur.curr_code
+        WHERE d.company_code = :cc
+          AND ${docCond}
+          AND d.doc_type = :dt
+          AND (d.serial_no < 9000 OR (d.header_ac_code IS NULL OR d.ac_code <> d.header_ac_code))
+          ${whereDiv}
+        ORDER BY d.serial_no
+      `;
+      const fbResult = await conn.execute(fbDetailQuery, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+      rows = (fbResult.rows || []).map((r: any) => ({
+        ...r,
+        AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
+      }));
+
+      // If divCode was passed and still no rows, retry without divCode filter
+      if (!rows.length && divCode) {
+        const noDivFbQuery = `
+          SELECT d.*,
+                 COALESCE(a.ac_name, l.l4_description, '') AS ac_name_resolved,
+                 dept.dept_name,
+                 cur.curr_name
+          FROM TR_AC_DETAIL d
+          LEFT JOIN MS_ACCODES a
+                 ON a.company_code = d.company_code
+                AND a.ac_code = d.ac_code
+          LEFT JOIN MS_AC_L4 l
+                 ON l.company_code = d.company_code
+                AND l.l4_code = SUBSTR(d.ac_code, 1, 5)
+          LEFT JOIN MS_DEPARTMENT dept
+                 ON d.company_code = dept.company_code
+                AND d.dept_code = dept.dept_code
+          LEFT JOIN MS_CURRENCY cur
+                 ON d.company_code = cur.company_code
+                AND d.curr_code = cur.curr_code
+          WHERE d.company_code = :cc
+            AND ${docCond}
+            AND d.doc_type = :dt
+            AND (d.serial_no < 9000 OR (d.header_ac_code IS NULL OR d.ac_code <> d.header_ac_code))
+          ORDER BY d.serial_no
+        `;
+        const noDivFbResult = await conn.execute(noDivFbQuery, { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        rows = (noDivFbResult.rows || []).map((r: any) => ({
+          ...r,
+          AC_NAME: r.AC_NAME || r.AC_NAME_RESOLVED || '',
+        }));
+      }
+    }
+
     res.json({ success: true, data: normalize(rows) });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -610,17 +1062,52 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
   let conn: oracledb.Connection | undefined;
   try {
     conn = await getConn(req);
-    const p = { cc: req.user.company_code, dn: req.params.doc_no, dc: req.query.div_code, dt: req.query.doc_type };
-    const where = `WHERE company_code = :cc AND TO_CHAR(doc_no) = :dn
-                     AND div_code = :dc AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
-    const [inv, job, exp] = await Promise.all([
+    const rawDocNo = String(req.params.doc_no || '').trim();
+    const cleanDocNo = rawDocNo.replace(/^[A-Za-z]+/, '');
+    const divCode = String(req.query.div_code || '').trim();
+    const p: Record<string, any> = {
+      cc: req.user.company_code,
+      dn: rawDocNo,
+      clean_dn: cleanDocNo,
+      dt: req.query.doc_type,
+    };
+    if (divCode) p.dc = divCode;
+
+    const docCond = `(doc_no = :dn OR TO_CHAR(doc_no) = :dn OR TO_CHAR(doc_no) = :clean_dn)`;
+    const whereDiv = divCode ? 'AND div_code = :dc' : '';
+    const where = `WHERE company_code = :cc AND ${docCond}
+                     ${whereDiv} AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
+
+    let [inv, job, exp]: any[] = await Promise.all([
       conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
-    const invRows = normalize(inv.rows || []);
-    const jobRows = normalize(job.rows || []);
-    const expRows = normalize(exp.rows || []).map((r: any) => ({
+
+    // If divCode was provided and all child results are empty, retry without divCode filter
+    if (divCode && !(inv.rows?.length || job.rows?.length || exp.rows?.length)) {
+      const pNoDiv = { cc: req.user.company_code, dn: rawDocNo, clean_dn: cleanDocNo, dt: req.query.doc_type };
+      const whereNoDiv = `WHERE company_code = :cc AND ${docCond}
+                          AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
+      [inv, job, exp] = await Promise.all([
+        conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+        conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+        conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      ]);
+    }
+
+    const dedupeChildRows = (rows: any[], keyFn: (r: any) => string) => {
+      const seen = new Set<string>();
+      return rows.filter((r) => {
+        const k = keyFn(r);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    };
+    const invRows = dedupeChildRows(normalize(inv.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.inv_no}`);
+    const jobRows = dedupeChildRows(normalize(job.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.job_no}`);
+    const expRows = dedupeChildRows(normalize(exp.rows || []), (r) => `${r.serial_no}_${r.dtl_sr_no}_${r.exp_code}`).map((r: any) => ({
       ...r,
       // Child tables store numeric DOC_NO; provide a display field combining doc_type + doc_no
       display_doc_no: (r.doc_type ?? '') + String(r.doc_no ?? ''),
@@ -1657,7 +2144,11 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       qty: req.body.qty ?? old.QTY,
       price: req.body.price ?? old.PRICE,
       prod_code: req.body.prod_code ?? old.PROD_CODE,
-      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS
+      other_remarks: req.body.other_remarks ?? old.OTHER_REMARKS,
+      app_ref_no: req.body.app_ref_no ?? old.APP_REF_NO,
+      tx_cat_code: req.body.tx_cat_code ?? old.TX_CAT_CODE,
+      tx_compntcat_code_1: req.body.tx_compntcat_code_1 ?? old.TX_COMPNTCAT_CODE_1,
+      pdo_type: req.body.pdo_type ?? old.PDO_TYPE,
     };
 
     //  Call your SP safely
@@ -1669,7 +2160,8 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
         :pn, :pa, :pp, :pf,
         :rn, :rd,
         :ino, :idt,
-        :dv, :lu
+        :dv, :lu,
+        :ar, :dto, :dem, :dmo, :dco, :pt, :dtm, :tcc, :tc, :pdo
       ); END;`,
       {
         cc: req.user.company_code,
@@ -1689,7 +2181,17 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
         ino: h.invoice_no,
         idt: toDate(h.invoice_date),
         dv: h.div_code,
-        lu: req.user.loginid
+        lu: req.user.loginid,
+        ar: h.app_ref_no ?? null,
+        dto: h.delivery_to ?? null,
+        dem: h.dlvr_email ?? null,
+        dmo: h.dlvr_mobile ?? null,
+        dco: h.dlvr_contact ?? null,
+        pt: h.payment_terms ?? null,
+        dtm: h.dlvr_term ?? null,
+        tcc: h.tx_cat_code ?? null,
+        tc: h.tx_compntcat_code_1 ?? null,
+        pdo: h.pdo_type ?? null
       }
     );
 

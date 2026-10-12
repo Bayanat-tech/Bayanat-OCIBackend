@@ -23,11 +23,11 @@ interface ProductGroup {
   prodCode:   string;
   prodName:   string;
   rows:       ReportRow[];
-  recvByPuom: UomTotals;  // QTYPUOM  keyed by P_UOM
-  recvByLuom: UomTotals;  // QTYLUOM  keyed by L_UOM  (L_UOM rule: only if qty > 0)
-  damByPuom:  UomTotals;  // QTYPUOM_DAM keyed by P_UOM
-  damByLuom:  UomTotals;  // QTYLUOM_DAM keyed by L_UOM
-  expByPuom:  UomTotals;  // QTYPUOM_EXPECTED keyed by P_UOM
+  recvByPuom: UomTotals;
+  recvByLuom: UomTotals;
+  damByPuom:  UomTotals;
+  damByLuom:  UomTotals;
+  expByPuom:  UomTotals;
   expByLuom:  UomTotals;
 }
 
@@ -40,7 +40,11 @@ interface GroupSection {
   damByLuom:  UomTotals;
 }
 
-interface ShortExcessCell { text: string; cls: "short" | "excess" | "" }
+interface ShortExcessCell {
+  parts: string[];                 // one entry per line (HTML)
+  text:  string;                   // single-line version (Excel)
+  cls:   "short" | "excess" | "";
+}
 
 // ─── DB helpers ───────────────────────────────────────────────────────────────
 
@@ -101,35 +105,55 @@ function numFmt(value: unknown, decimals = 3): string {
   });
 }
 
+/** Escape every part and join with <br> so each part sits on its own line. */
+function htmlLines(parts: string[]): string {
+  const clean = parts.filter((p) => p !== "");
+  if (clean.length === 0) return "\u2014";
+  return clean.map((p) => escapeHtml(p)).join("<br>");
+}
+
 /** Add qty into a UomTotals bucket */
 function addUom(map: UomTotals, uom: string, qty: number): void {
   if (!uom) return;
   map[uom] = (map[uom] ?? 0) + qty;
 }
 
-function fmtQtyCell(qtyPuom: number, pUom: string, qtyLuom: number, lUom: string): string {
-  let s = `${numFmt(qtyPuom)} ${pUom}`.trim();
-  if (qtyLuom !== 0 && lUom) s += ` / ${numFmt(qtyLuom)} ${lUom}`;
-  return s;
+/** Qty cell as lines: ["37.000 CSE", "1.000 PCS"] */
+function qtyParts(qtyPuom: number, pUom: string, qtyLuom: number, lUom: string): string[] {
+  const parts = [`${numFmt(qtyPuom)} ${pUom}`.trim()];
+  if (qtyLuom !== 0 && lUom) parts.push(`${numFmt(qtyLuom)} ${lUom}`.trim());
+  return parts;
 }
 
-function fmtUomTotals(map: UomTotals, primaryUom?: string): string {
-  const keys = Object.keys(map);
-  if (keys.length === 0) return "\u2014";
+/** Single-line version (used for Excel) */
+function fmtQtyCell(qtyPuom: number, pUom: string, qtyLuom: number, lUom: string): string {
+  return qtyParts(qtyPuom, pUom, qtyLuom, lUom).join(" / ");
+}
 
+/** List of "99.000 PKT" strings, primary UOM first when given */
+function uomList(map: UomTotals, primaryUom?: string): string[] {
+  const keys = Object.keys(map);
   const ordered = primaryUom
     ? [primaryUom, ...keys.filter((k) => k !== primaryUom)]
     : keys;
-
   return ordered
     .filter((k) => map[k] !== undefined)
-    .map((k) => `${numFmt(map[k])} ${k}`)
-    .join(" / ");
+    .map((k) => `${numFmt(map[k])} ${k}`);
 }
 
-/** "99.000 PKT / 12.000 CTN" — primary totals, then least-UOM totals when present */
+function fmtUomTotals(map: UomTotals, primaryUom?: string): string {
+  const list = uomList(map, primaryUom);
+  return list.length === 0 ? "\u2014" : list.join(" / ");
+}
+
+/** Single-line "99.000 PKT / 12.000 CTN" (Excel) */
 function fmtBothTotals(pMap: UomTotals, lMap: UomTotals): string {
   return fmtUomTotals(pMap) + (Object.keys(lMap).length ? " / " + fmtUomTotals(lMap) : "");
+}
+
+/** Multi-line totals (HTML): primary UOMs first, least UOMs after */
+function bothTotalsParts(pMap: UomTotals, lMap: UomTotals): string[] {
+  return [...uomList(pMap), ...uomList(lMap)];
 }
 
 /** Merge UomTotals maps (sum values for matching keys). */
@@ -154,7 +178,8 @@ function fmtShortExcessCell(
   const diffPuom = expPuom - recvPuom;
   const diffLuom = expLuom - recvLuom;
 
-  if (diffPuom === 0 && diffLuom === 0) return { text: "\u2014", cls: "" };
+  if (diffPuom === 0 && diffLuom === 0)
+    return { parts: ["\u2014"], text: "\u2014", cls: "" };
 
   const driver   = diffPuom !== 0 ? diffPuom : diffLuom;
   const isExcess = driver < 0;
@@ -164,7 +189,14 @@ function fmtShortExcessCell(
   if (diffPuom !== 0) parts.push(`${numFmt(Math.abs(diffPuom))} ${pUom}`.trim());
   if (diffLuom !== 0 && lUom) parts.push(`${numFmt(Math.abs(diffLuom))} ${lUom}`.trim());
 
-  return { text: `${prefix}${parts.join(" / ")}`, cls: isExcess ? "excess" : "short" };
+  // prefix goes only on the first line
+  const lines = parts.map((p, i) => (i === 0 ? prefix + p : p));
+
+  return {
+    parts: lines,
+    text:  prefix + parts.join(" / "),
+    cls:   isExcess ? "excess" : "short",
+  };
 }
 
 /**
@@ -309,12 +341,9 @@ function asnText(pg: ProductGroup): string {
     + (Object.keys(pg.expByLuom).length ? " / " + fmtUomTotals(pg.expByLuom, lUom) : "");
 }
 
-// ─── Layout CSS – same look as the Quotation List PDF (LANDSCAPE = default) ──
-// Used together with fontMode: "native", so the sizes below are the real sizes.
-// Letterhead / footer come from report_common; this only styles the body.
-// NOTE: row selectors include "tbody" so they out-rank the zebra rule
-// (tbody tr:nth-child(even) td) in report_common.
-// Short/Excess red/green are business-meaning colours and are kept.
+// ─── Layout CSS (LANDSCAPE = default) ─────────────────────────────────────────
+// Column widths are now set explicitly for BOTH orientations (table-layout: fixed
+// needs them, otherwise every column gets the same width and text is clipped).
 
 const JOB_DETAILS_EXTRA_CSS = `
   @page { size: A4 landscape; margin: 6mm 12mm 12mm 12mm; }
@@ -325,7 +354,7 @@ const JOB_DETAILS_EXTRA_CSS = `
     print-color-adjust: exact !important;
   }
 
-  /* Letterhead – navy rule under the header, Enquiry sizes */
+  /* Letterhead */
   .company-header {
     border-bottom: 2px solid #00378c;
     padding: 0 0 10px 0;
@@ -344,16 +373,6 @@ const JOB_DETAILS_EXTRA_CSS = `
     color: #00378c !important;
   }
   .applied-filters { font-size: 10px; margin-bottom: 18px; }
-
-  /* Section strip (Sign-off) */
-  .group-title {
-    background: #eaf0f8 !important;
-    color: #00378c !important;
-    font-size: 13px;
-    font-weight: 700;
-    padding: 8px 8px;
-    margin: 16px 0 4px 0;
-  }
 
   /* Label / value grid (3 columns) */
   .info-grid {
@@ -381,14 +400,7 @@ const JOB_DETAILS_EXTRA_CSS = `
   .field--empty .label::after { content: ""; }
   .field .value { color: #1e293b; overflow-wrap: anywhere; }
 
-  .filter-header {
-    padding: 4px 6px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #00378c;
-  }
-
-  /* Data table */
+  /* ───────── Data table ───────── */
   table.data-table {
     width: 100%;
     table-layout: fixed;
@@ -396,11 +408,30 @@ const JOB_DETAILS_EXTRA_CSS = `
     margin-top: 0;
     border-collapse: collapse;
   }
+
+  /* Never clip / never force a single line */
   table.data-table th,
   table.data-table td {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
     overflow-wrap: anywhere;
-    word-break: break-word;
+    word-break: normal;
+    vertical-align: middle;
+    line-height: 1.35;
   }
+
+  /* Landscape column widths (sum = 100%) */
+  table.data-table col.c0 { width: 8%;  }  /* Mfg Date    */
+  table.data-table col.c1 { width: 8%;  }  /* Exp Date    */
+  table.data-table col.c2 { width: 9%;  }  /* Batch No    */
+  table.data-table col.c3 { width: 9%;  }  /* Lot No      */
+  table.data-table col.c4 { width: 7%;  }  /* Gross WT    */
+  table.data-table col.c5 { width: 7%;  }  /* Net WT      */
+  table.data-table col.c6 { width: 14%; }  /* Qty Recvd   */
+  table.data-table col.c7 { width: 11%; }  /* Qty Damaged */
+  table.data-table col.c8 { width: 14%; }  /* Total       */
+  table.data-table col.c9 { width: 13%; }  /* Short/Excess*/
 
   table.data-table .left   { text-align: left   !important; }
   table.data-table .center { text-align: center !important; }
@@ -412,24 +443,27 @@ const JOB_DETAILS_EXTRA_CSS = `
     color: #ffffff !important;
     font-weight: 700;
     font-size: 10.5px;
-    padding: 12px 8px;
+    padding: 10px 8px;
     border: 0 !important;
     text-transform: none;
   }
 
-  /* Section banners: User / Product */
-  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c !important; text-align: left; }
-  table.data-table tbody tr.user-row td { background: #eaf0f8 !important; font-size: 13px; padding: 11px 8px; }
-  table.data-table tbody tr.prod-row td { background: #f4f7fc !important; font-size: 10.5px; padding: 7px 8px 7px 16px; }
+  /* Section banners: Group / Product */
+  table.data-table tbody tr.group-header-row td { font-weight: 700; color: #00378c !important; text-align: left !important; }
+  table.data-table tbody tr.group-row td { background: #eaf0f8 !important; font-size: 12px; padding: 9px 8px; }
+  table.data-table tbody tr.prod-row td  { background: #f4f7fc !important; font-size: 10.5px; padding: 7px 8px 7px 16px; }
 
   /* Data rows */
   table.data-table tbody tr.data-row td {
     background: #fafcfe !important;
     font-size: 10.5px;
-    padding: 9px 8px;
+    padding: 8px 8px;
     border-bottom: 1px solid #e2e8f0 !important;
     color: #1e293b;
   }
+  table.data-table tbody tr.data-row td.dim     { color: #64748b; }
+  table.data-table tbody tr.data-row td.short   { color: #dc2626 !important; font-weight: 700; }
+  table.data-table tbody tr.data-row td.excess  { color: #16a34a !important; font-weight: 700; }
 
   /* Totals – shaded, bold navy, right aligned */
   table.data-table tbody tr.subtotal-row td {
@@ -447,40 +481,42 @@ const JOB_DETAILS_EXTRA_CSS = `
     table.data-table tr.group-header-row { break-after: avoid; page-break-after: avoid; }
     table.data-table tr.subtotal-row,
     table.data-table tr.grand-total-row  { break-before: avoid; page-break-before: avoid; }
-    .info-grid   { break-inside: avoid; }
-    .group-title { break-after: avoid; }
+    .info-grid { break-inside: avoid; }
     .report-footer { font-size: 10px; }
   }
 `;
-// ─── PORTRAIT override CSS ──────────────────────────────────────────────────
-// A4 portrait has ~186mm usable width (landscape has ~273mm). Applied when:
+
+// ─── PORTRAIT override CSS ───────────────────────────────────────────────────
+// A4 portrait has ~186mm usable width (landscape ~273mm). Applied when:
 //   1. orientation=portrait  -> always
 //   2. no orientation sent   -> automatically when the page/iframe is narrower than 900px
 
 const PORTRAIT_RULES = `
   table.data-table th,
   table.data-table td {
-    font-size: 8.5px !important;
-    padding: 3px 3px !important;
-    line-height: 1.2 !important;
+    font-size: 8px !important;
+    padding: 4px 3px !important;
+    line-height: 1.3 !important;
   }
-  table.data-table tbody tr.group-row td { font-size: 9.5px !important; }
-  table.data-table tbody tr.prod-row td  { font-size: 8.5px !important; padding-left: 10px !important; }
-  table.data-table tbody tr.grand-total-row td { font-size: 9px !important; }
+  table.data-table tbody tr.group-row td { font-size: 9.5px !important; padding: 6px 5px !important; }
+  table.data-table tbody tr.prod-row td  { font-size: 8.5px !important; padding: 5px 5px 5px 10px !important; }
+  table.data-table tbody tr.grand-total-row td,
+  table.data-table tbody tr.subtotal-row td { font-size: 8.5px !important; }
 
   /* 10 columns, total = 100% */
-  table.data-table col.c0 { width: 8%  !important; }
-  table.data-table col.c1 { width: 8%  !important; }
-  table.data-table col.c2 { width: 8%  !important; }
-  table.data-table col.c3 { width: 8%  !important; }
-  table.data-table col.c4 { width: 6%  !important; }
-  table.data-table col.c5 { width: 6%  !important; }
-  table.data-table col.c6 { width: 18% !important; }
-  table.data-table col.c7 { width: 12% !important; }
-  table.data-table col.c8 { width: 16% !important; }
-  table.data-table col.c9 { width: 10% !important; }
+  table.data-table col.c0 { width: 9%  !important; }  /* Mfg Date    */
+  table.data-table col.c1 { width: 9%  !important; }  /* Exp Date    */
+  table.data-table col.c2 { width: 8%  !important; }  /* Batch No    */
+  table.data-table col.c3 { width: 8%  !important; }  /* Lot No      */
+  table.data-table col.c4 { width: 7%  !important; }  /* Gross WT    */
+  table.data-table col.c5 { width: 7%  !important; }  /* Net WT      */
+  table.data-table col.c6 { width: 14% !important; }  /* Qty Recvd   */
+  table.data-table col.c7 { width: 11% !important; }  /* Qty Damaged */
+  table.data-table col.c8 { width: 14% !important; }  /* Total       */
+  table.data-table col.c9 { width: 13% !important; }  /* Short/Excess*/
 
   .info-grid { gap: 0 12px !important; }
+  .field { font-size: 9px !important; }
   .field .label { flex: 0 0 80px !important; }
 `;
 
@@ -558,12 +594,12 @@ function renderBodyHtml(
   ];
 
   // total row: label spans the first 6 cols, then Received / Damaged / Total, then empty Short/Excess
-  const totalRow = (cls: string, label: string, recv: string, dam: string, total: string) =>
+  const totalRow = (cls: string, label: string, recv: string[], dam: string[], total: string[]) =>
     `<tr class="${cls}">` +
     `<td class="right" colspan="${LABEL_SPAN}">${label}</td>` +
-    `<td class="right">${escapeHtml(recv)}</td>` +
-    `<td class="right">${escapeHtml(dam)}</td>` +
-    `<td class="right">${escapeHtml(total)}</td>` +
+    `<td class="right">${htmlLines(recv)}</td>` +
+    `<td class="right">${htmlLines(dam)}</td>` +
+    `<td class="right">${htmlLines(total)}</td>` +
     `<td class="right"></td>` +
     `</tr>`;
 
@@ -587,10 +623,10 @@ function renderBodyHtml(
         const drPuom     = text(dr.p_uom);
         const drLuom     = text(dr.l_uom);
 
-        const recvStr  = fmtQtyCell(qtyPuom, drPuom, qtyLuom, drLuom);
-        const damStr   = fmtQtyCell(qtyPuomDam, drPuom, qtyLuomDam, drLuom);
-        const totalStr = fmtQtyCell(qtyPuom + qtyPuomDam, drPuom, qtyLuom + qtyLuomDam, drLuom);
-        const se       = fmtShortExcessCell(qtyPuomExp, qtyPuom, drPuom, qtyLuomExp, qtyLuom, drLuom);
+        const recvParts  = qtyParts(qtyPuom, drPuom, qtyLuom, drLuom);
+        const damParts   = qtyParts(qtyPuomDam, drPuom, qtyLuomDam, drLuom);
+        const totalParts = qtyParts(qtyPuom + qtyPuomDam, drPuom, qtyLuom + qtyLuomDam, drLuom);
+        const se         = fmtShortExcessCell(qtyPuomExp, qtyPuom, drPuom, qtyLuomExp, qtyLuom, drLuom);
 
         bodyRows +=
           `<tr class="data-row">` +
@@ -600,10 +636,10 @@ function renderBodyHtml(
           `<td class="${C[3].align}">${escapeHtml(dr.lot_no || "\u2014")}</td>` +
           `<td class="${C[4].align}">${escapeHtml(dr.grosswt || "\u2014")}</td>` +
           `<td class="${C[5].align}">${escapeHtml(dr.netwt || "\u2014")}</td>` +
-          `<td class="${C[6].align}">${escapeHtml(recvStr)}</td>` +
-          `<td class="${C[7].align} dim">${escapeHtml(damStr)}</td>` +
-          `<td class="${C[8].align}">${escapeHtml(totalStr)}</td>` +
-          `<td class="${C[9].align}${se.cls ? " " + se.cls : ""}">${escapeHtml(se.text)}</td>` +
+          `<td class="${C[6].align}">${htmlLines(recvParts)}</td>` +
+          `<td class="${C[7].align} dim">${htmlLines(damParts)}</td>` +
+          `<td class="${C[8].align}">${htmlLines(totalParts)}</td>` +
+          `<td class="${C[9].align}${se.cls ? " " + se.cls : ""}">${htmlLines(se.parts)}</td>` +
           `</tr>`;
       }
     }
@@ -614,18 +650,18 @@ function renderBodyHtml(
     bodyRows += totalRow(
       "subtotal-row",
       `Sub Total (Group : ${escapeHtml(gs.groupName)}):`,
-      fmtBothTotals(gs.recvByPuom, gs.recvByLuom),
-      fmtBothTotals(gs.damByPuom, gs.damByLuom),
-      fmtBothTotals(gsTotalPuom, gsTotalLuom)
+      bothTotalsParts(gs.recvByPuom, gs.recvByLuom),
+      bothTotalsParts(gs.damByPuom, gs.damByLuom),
+      bothTotalsParts(gsTotalPuom, gsTotalLuom)
     );
   }
 
   bodyRows += totalRow(
     "grand-total-row",
     `GRAND TOTAL (${recordCount} Records):`,
-    fmtBothTotals(grandRecvPuom, grandRecvLuom),
-    fmtBothTotals(grandDamPuom, grandDamLuom),
-    fmtBothTotals(grandTotalPuom, grandTotalLuom)
+    bothTotalsParts(grandRecvPuom, grandRecvLuom),
+    bothTotalsParts(grandDamPuom, grandDamLuom),
+    bothTotalsParts(grandTotalPuom, grandTotalLuom)
   );
 
   const colgroup    = C.map((_, i) => `<col class="c${i}" />`).join("");
@@ -685,24 +721,23 @@ async function renderHtml(
 }
 
 // ─── Excel builder ────────────────────────────────────────────────────────────
-// Same palette / Arial font as the DN Summary Excel.
 // STYLE_ID values must stay in sync with <cellXfs> order in stylesXml below.
 
 const STYLE_ID = {
   default:     0,
-  header:      1,   // white on #00378c, centered
-  title:       2,   // blue bold 14, no fill
-  meta:        3,   // grey on #f8fafc
-  secGroup:    4,   // blue bold on #eaf0f8
-  secProduct:  5,   // slate bold on #f4f7fc
-  data:        6,   // left, light bottom border
-  dataCenter:  7,   // centered, light bottom border
-  dataRight:   8,   // right, light bottom border
-  subTotal:    9,   // #f1f5f9, blue bold, right
-  grandTotal: 10,   // #e2e8f0, blue bold, right
-  short:      11,   // red, right
-  excess:     12,   // green bold, right
-  footer:     13,   // italic grey, right
+  header:      1,
+  title:       2,
+  meta:        3,
+  secGroup:    4,
+  secProduct:  5,
+  data:        6,
+  dataCenter:  7,
+  dataRight:   8,
+  subTotal:    9,
+  grandTotal: 10,
+  short:      11,
+  excess:     12,
+  footer:     13,
 } as const;
 
 type StyleKey = keyof typeof STYLE_ID;
@@ -823,7 +858,7 @@ function buildExcelBuffer(
     rows.push(row);
   }
 
-  const COL_WIDTHS = [13, 13, 16, 16, 11, 11, 24, 22, 26, 22];
+  const COL_WIDTHS = [13, 13, 16, 16, 11, 11, 26, 24, 28, 28];
   const colXml = COL_WIDTHS
     .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`)
     .join("");
