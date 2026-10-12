@@ -5832,51 +5832,12 @@ Help: https://docs.oracle.com/error-help/db/ora-12516/
     at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
     at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
     at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25
-2026-10-08 15:26:11 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [PNYP287CA0023.INDP287.PROD.OUTLOOK.COM 2026-10-08T09:56:10.186Z 08DF2101B1698E9B] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [PNYP287CA0023.INDP287.PROD.OUTLOOK.COM 2026-10-08T09:56:10.186Z 08DF2101B1698E9B]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-11 12:12:07 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0103.AREP273.PROD.OUTLOOK.COM 2026-10-11T06:42:07.851Z 08DF2731929873D6] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0103.AREP273.PROD.OUTLOOK.COM 2026-10-11T06:42:07.851Z 08DF2731929873D6]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-11 16:12:08 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-10-11T10:42:08.385Z 08DF275877138A97] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX0P273CA0024.AREP273.PROD.OUTLOOK.COM 2026-10-11T10:42:08.385Z 08DF275877138A97]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
-2026-10-11 16:12:16 [[31merror[39m]: [NOTIFY] ❌ Failed to send email for event: TRANSACTION_COMPLETED Invalid login: 535 5.7.3 Authentication unsuccessful [DX1P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-10-11T10:42:15.958Z 08DF2515D62EF69C] 
-Error: Invalid login: 535 5.7.3 Authentication unsuccessful [DX1P273CA0006.AREP273.PROD.OUTLOOK.COM 2026-10-11T10:42:15.958Z 08DF2515D62EF69C]
-    at SMTPConnection._formatError (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:807:19)
-    at SMTPConnection._actionAUTHComplete (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1586:34)
-    at SMTPConnection.<anonymous> (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:1540:18)
-    at SMTPConnection._processResponse (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:991:20)
-    at SMTPConnection._onData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:772:14)
-    at TLSSocket.SMTPConnection._onSocketData (C:\Users\Administrator.ROHAN-LAPTOP\Documents\GitHub\Bayanat-OCIBackend\node_modules\nodemailer\lib\smtp-connection\index.js:195:44)
-    at TLSSocket.emit (node:events:519:28)
-    at TLSSocket.emit (node:domain:489:12)
-    at addChunk (node:internal/streams/readable:561:12)
-    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+2026-10-09 09:16:04 [[31merror[39m]: [CUSTOMERBK_TENANT] Error in notification scheduler tenant loop: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/ 
+Error: ORA-28001: the password has expired
+Help: https://docs.oracle.com/error-help/db/ora-28001/
+    at async TenantManager.getPoolForTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:254:20)
+    at async TenantManager.getConnection (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:207:18)
+    at async TenantManager.executeInTenant (C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:287:18)
+    at async C:\projects\Bayanat-OCIBackend\src\scheduler\notificationEmail.scheduler.ts:113:26
+    at async C:\projects\Bayanat-OCIBackend\src\database\TenantManager.ts:372:25

@@ -239,7 +239,7 @@ async function loadPendingPOData(req: RequestWithUser, p: ReturnType<typeof pars
       GROUP BY DOC_TYPE, DOC_NO, DOC_DATE
       ORDER BY DOC_DATE DESC, DOC_NO
     `;
-
+ console.log("SQL:--------------->Pending", sql);
     const result = await conn.execute(sql, binds, {
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
@@ -248,6 +248,7 @@ async function loadPendingPOData(req: RequestWithUser, p: ReturnType<typeof pars
     await closeConn(conn);
   }
 }
+
 
 // ─── Grouping (Detail) ────────────────────────────────────────────────────────
 
@@ -290,11 +291,15 @@ function periodLabel(dateFrom: string | null, dateTo: string | null): { from: st
 // ─── Layout CSS — same visual system as PO Order Register ─────────────────
 
 const PENDING_PO_EXTRA_CSS = `
+  .company-header {
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+  }
   .doc-title-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin: 4px 0 12px 0;
+    margin: 0px 0 0 0;
   }
   .doc-title-row h1 {
     margin: 0;
@@ -306,6 +311,9 @@ const PENDING_PO_EXTRA_CSS = `
     margin: 2px 0 0;
     font-size: 11px;
     color: #64748b;
+  }
+  table.data-table {
+    margin-top: 0;
   }
   .doc-title-row .print-meta {
     text-align: right;

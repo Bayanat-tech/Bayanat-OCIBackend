@@ -6,7 +6,6 @@ import { RequestWithUser } from "../../../interfaces/common.interface";
 import {
   reportHeader,
   reportFooter,
-  reportAppliedFilters,
   buildReportDocument,
 } from "../../common/report_common";
 
@@ -58,15 +57,15 @@ function fmtAmount(n: number): string {
   });
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// dd-Mon-yyyy (e.g. 06-Oct-2026), built manually so the month text never depends on locale data
 function fmtDate(value: unknown): string {
   if (!value) return "";
   const d = new Date(value as any);
   if (Number.isNaN(d.getTime())) return text(value).slice(0, 10);
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${dd}-${MONTHS[d.getMonth()]}-${d.getFullYear()}`;
 }
 
 function escapeHtml(value: unknown): string {
@@ -160,7 +159,7 @@ async function loadSalaryAdvDedData(req: RequestWithUser): Promise<ReportRow[]> 
   }
 }
 
-// ─── Salary Addition/Deduction-only CSS (extraCss for buildReportDocument) ───
+// ─── Memo-style CSS (extraCss for buildReportDocument) ───────────────────────
 
 const SALARY_ADV_DED_EXTRA_CSS = `
   * {
@@ -169,45 +168,68 @@ const SALARY_ADV_DED_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  table.info-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-  table.info-table td { padding: 5px 8px; border: 1px solid #cbd5e1; font-size: 11px; vertical-align: top; }
-  table.info-table td.lbl { width: 18%; background: #eff6ff; font-weight: 700; color: #00378c; }
+  @page { size: A4 portrait; }
 
-  .subject-row {
-    margin: 10px 0;
-    padding: 6px 8px;
-    background: #f1f5f9;
-    border-left: 4px solid #00378c;
-    font-weight: 700;
-    font-size: 12px;
+  .memo-title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    padding: 5px 0;
+    margin: 0 0 8px;
+    border-bottom: 1px solid #cbd5e1;
   }
 
-  .remarks-box { margin: 8px 0; font-size: 11px; line-height: 1.5; white-space: pre-wrap; }
+  .memo-meta { text-align: right; font-size: 10.5px; line-height: 1.6; }
+  .memo-meta .k { font-weight: 400; margin-right: 6px; }
 
-  .amount-row {
-    margin: 12px 0;
-    padding: 8px;
+  .memo-party { margin: 14px 0 0 24px; font-size: 11px; }
+  .memo-party .k { font-size: 11px; margin-bottom: 6px; }
+  .memo-party .pname { font-weight: 700; margin-left: 16px; }
+  .memo-party .ppos { margin-left: 16px; }
+
+  .memo-subject { margin: 18px 0 2px 24px; font-size: 11px; }
+  .memo-subject .k { display: inline-block; width: 52px; }
+  .memo-subject b { font-weight: 700; }
+
+  .memo-body {
+    margin: 2px 0 14px 76px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  table.lines-table { width: 100%; border-collapse: collapse; margin: 6px 0 0; }
+  table.lines-table th {
+    padding: 5px 8px;
     background: #00378c;
     color: #fff;
-    font-weight: 800;
-    font-size: 13px;
-    text-align: right;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: left;
+  }
+  table.lines-table td { padding: 4px 6px; font-size: 9.5px; vertical-align: top; }
+  table.lines-table .num { text-align: right; }
+  table.lines-table tr.total td {
+    border-top: 1px solid #1e293b;
+    border-bottom: 1px solid #1e293b;
+    font-weight: 700;
+    font-size: 9.5px;
   }
 
-  table.sign-table { width: 100%; border-collapse: collapse; margin-top: 36px; }
+  .signatory { margin: 26px 0 0 24px; font-size: 11px; font-weight: 700; line-height: 1.7; }
+
+  table.sign-table { width: 100%; border-collapse: collapse; margin-top: 34px; }
   table.sign-table td {
     width: 25%;
-    padding: 6px 8px;
-    border: 1px solid #cbd5e1;
+    padding: 0 6px 0 24px;
     vertical-align: top;
-    font-size: 11px;
+    font-size: 10.5px;
+    border: 0;
   }
-  table.sign-table .sign-title { font-weight: 800; color: #00378c; margin-bottom: 28px; }
+  table.sign-table .sign-title { font-weight: 700; margin-bottom: 26px; }
   table.sign-table .sign-name { font-weight: 700; }
-  table.sign-table .sign-desg { color: #64748b; font-size: 10px; }
-
-  .signatory { margin-top: 30px; font-size: 11px; }
-  .signatory .name { font-weight: 800; }
+  table.sign-table .sign-desg { font-weight: 700; }
 `;
 
 // ─── HTML Body Renderer (body only — no <html>/<head>) ────────────────────────
@@ -222,17 +244,59 @@ function renderSignBlock(title: string, name: string, desg: string): string {
     </td>`;
 }
 
-function renderSalaryAdvDedBody(rows: ReportRow[], filtersHtml = ""): string {
+function renderSalaryAdvDedBody(rows: ReportRow[]): string {
+  const heading = `
+    <div class="memo-title">INTERNAL OFFICE MEMO</div>
+  `;
+
   if (!rows.length) {
     return `
-      <div class="doc-title-row"><div><h1>Salary Addition/Deduction</h1></div></div>
-      ${filtersHtml}
+      ${heading}
       <p class="center muted">No data found</p>
     `;
   }
 
   const r = rows[0];
-  const currency = text(r.curr_code);
+
+  // one row per detail line (header columns repeat on every row)
+  const lineRows = rows.filter((x) => x.line_no != null || x.line_amount != null);
+  const total = lineRows.length
+    ? lineRows.reduce((sum, x) => sum + num(x.line_amount), 0)
+    : num(r.amount);
+
+  const linesHtml = lineRows.length
+    ? `<table class="lines-table">
+        <thead>
+          <tr>
+            <th style="width:14%">Employee Code</th>
+            <th>Employee Name</th>
+            <th style="width:20%">Pay Unit</th>
+            <th style="width:12%" class="num">Amount</th>
+            <th style="width:14%">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lineRows
+            .map(
+              (x) => `<tr>
+            <td>${escapeHtml(x.line_emp_code)}</td>
+            <td>${escapeHtml(x.line_emp_name)}</td>
+            <td>${escapeHtml(x.pay_comp_id)}</td>
+            <td class="num">${escapeHtml(fmtAmount(num(x.line_amount)))}</td>
+            <td>${escapeHtml(fmtDate(x.recover_from_dt))}</td>
+          </tr>`,
+            )
+            .join("")}
+          <tr class="total">
+            <td></td>
+            <td></td>
+            <td class="num">Total:</td>
+            <td class="num">${escapeHtml(fmtAmount(total))}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>`
+    : "";
 
   const signBlocks = [
     renderSignBlock(text(r.ftr1_name), text(r.proposed_by), text(r.proposed_desg)),
@@ -247,41 +311,34 @@ function renderSalaryAdvDedBody(rows: ReportRow[], filtersHtml = ""): string {
     .join("\n");
 
   return `
-    <div class="doc-title-row">
-      <div><h1>Salary Addition/Deduction</h1></div>
+    ${heading}
+
+    <div class="memo-meta">
+      <div><span class="k">Doc No.</span>: ${escapeHtml(r.doc_no)}</div>
+      <div><span class="k">Date</span>${escapeHtml(fmtDate(r.doc_date))}</div>
     </div>
 
-    ${filtersHtml}
+    <div class="memo-party">
+      <div class="k">From</div>
+      <div class="pname">${escapeHtml(r.name_from)}</div>
+      <div class="ppos">${escapeHtml(r.addr_from)}</div>
+    </div>
 
-    <table class="info-table">
-      <tr>
-        <td class="lbl">Doc No</td><td>${escapeHtml(r.doc_no)}</td>
-        <td class="lbl">Doc Date</td><td>${escapeHtml(fmtDate(r.doc_date))}</td>
-      </tr>
-      <tr>
-        <td class="lbl">Doc Type</td><td>${escapeHtml(r.doc_type)}</td>
-        <td class="lbl">Ref No</td><td>${escapeHtml(r.ref_no)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">From</td><td>${escapeHtml(r.name_from)}<br/>${escapeHtml(r.addr_from)}</td>
-        <td class="lbl">To</td><td>${escapeHtml(r.name_to)}<br/>${escapeHtml(r.addr_to)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">Employee</td><td>${escapeHtml(r.emplyee_code)} ${r.emp_name ? "| " + escapeHtml(r.emp_name) : ""}</td>
-        <td class="lbl">Currency / Rate</td><td>${escapeHtml(currency)} ${r.ex_rate != null ? "/ " + escapeHtml(r.ex_rate) : ""}</td>
-      </tr>
-    </table>
+    <div class="memo-party">
+      <div class="k">To</div>
+      <div class="pname">${escapeHtml(r.name_to)}</div>
+      <div class="ppos">${escapeHtml(r.addr_to)}</div>
+    </div>
 
-    <div class="subject-row">Subject : ${escapeHtml(r.lettr_subject)}</div>
+    <div class="memo-subject"><span class="k">Subject</span> <b>${escapeHtml(r.lettr_subject)}</b></div>
+    <div class="memo-body">${remarks}</div>
 
-    <div class="remarks-box">${remarks}</div>
-
-    <div class="amount-row">Total Amount : ${escapeHtml(currency)} ${fmtAmount(num(r.amount))}</div>
+    ${linesHtml}
 
     ${
       r.signatory_name || r.signatory_position
         ? `<div class="signatory">
-             <div class="name">${escapeHtml(r.signatory_name)}</div>
+             <div>${escapeHtml(r.signatory_name)}</div>
              <div>${escapeHtml(r.signatory_position)}</div>
            </div>`
         : ""
@@ -305,12 +362,9 @@ export const getSalaryAdvDedReportHtml = async (
     const params = parseParams(req);
     const rows   = await loadSalaryAdvDedData(req);
 
-    const headerHtml  = await reportHeader({ company_code: params.companyCode, req });
-    const filtersHtml = reportAppliedFilters([
-      { label: "Doc No", value: [String(params.docNo)] },
-    ]);
-    const bodyHtml    = renderSalaryAdvDedBody(rows, filtersHtml);
-    const footerHtml  = reportFooter({
+    const headerHtml = await reportHeader({ company_code: params.companyCode, req });
+    const bodyHtml   = renderSalaryAdvDedBody(rows);
+    const footerHtml = reportFooter({
       reportName: "rpt_salary_adv_ded",
       userName: params.loginId,
       endLabel: "Powered by Bayanat Technology",
