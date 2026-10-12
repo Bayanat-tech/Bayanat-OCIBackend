@@ -72,6 +72,7 @@ SELECT
   inv.inv_no,
   inv.dtl_sr_no,
   inv.doc_no,
+  MAX(h.ref_no) AS ref_no,
   MAX(inv.inv_date) AS inv_date,
   SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END) AS amount,
   1 AS sign_ind,
@@ -89,6 +90,10 @@ SELECT
   MAX(inv.doc_ref) AS doc_ref,
   inv.div_code
 FROM TR_AC_INVDETAIL inv
+LEFT JOIN TR_AC_HEADER h
+  ON h.company_code = inv.company_code
+ AND h.doc_type     = inv.doc_type
+ AND h.doc_no       = inv.doc_no
 WHERE inv.company_code = :company_code
   AND inv.ac_code = :ac_code
   AND inv.div_code = :div_code
