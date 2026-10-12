@@ -657,7 +657,6 @@ export function buildInvoiceHtmlBTIND(rows: InvoiceRow[], meta: InvoiceMeta = {}
 
   const companyName =
     (first.div_short_name || first.div_name || first.company_short_name || "BAYANAT TECHNOLOGY PRIVATE LTD").trim();
-  const companyTagline = "BAYANAT TECHNOLOGY PVT.LTD";
   const companyLegal = "BAYANAT TECHNOLOGY PVT LTD (INDIA)";
 
   const billToName = first.client_name || "";
@@ -868,7 +867,7 @@ const printDate = meta.invoiceDate
   .masthead { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; flex-shrink: 0; }
   .logo-img { max-height: 70px; max-width: 280px; object-fit: contain; display: block; }
   .company-name-fallback { font-size: 16px; font-weight: 700; color: #1a2c5e; letter-spacing: 1px; }
-  .company-tagline { font-size: 9px; font-weight: 600; letter-spacing: 2px; color: #555; margin: 2px 0 4px 0; text-align: left; }
+  .logo-company-block { display: flex; align-items: center; gap: 12px; }
   .qr-top { text-align: center; flex-shrink: 0; }
   .qr-top img { width: 58px; height: 58px; display: block; }
   .qr-top .qr-label { font-size: 7px; color: #444; margin-top: 2px; }
@@ -924,9 +923,8 @@ const printDate = meta.invoiceDate
 <div class="invoice-wrapper">
 
   <div class="masthead">
-    <div>
+    <div class="logo-company-block">
       ${logoUrl ? `<img class="logo-img" src="${esc(logoUrl)}" alt="Logo" />` : `<div class="company-name-fallback">${esc(companyName)}</div>`}
-      <div class="company-tagline">${esc(companyTagline)}</div>
     </div>
     ${meta.qrCodeDataUrl ? `<div class="qr-top"><img src="${esc(meta.qrCodeDataUrl)}" alt="QR" /><div class="qr-label">Scan to view online</div></div>` : ""}
   </div>
