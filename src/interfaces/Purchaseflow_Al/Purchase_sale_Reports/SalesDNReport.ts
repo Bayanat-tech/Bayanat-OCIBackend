@@ -11,10 +11,10 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  doc_type:     string; // "SDN"
-  doc_no:       string;
+  doc_type: string; // "SDN"
+  doc_no: string;
 }
 
 // ─── DB helpers (same as every other report controller) ───────────────────
@@ -120,10 +120,10 @@ function currencyLabel(currCode: string): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code) || text(req.user?.company_code),
-    doc_type:     text(b.doc_type) || "SDN",
-    doc_no:       text(b.doc_no),
+    doc_type: text(b.doc_type) || "SDN",
+    doc_no: text(b.doc_no),
   };
 }
 
@@ -220,7 +220,7 @@ const SALES_DN_EXTRA_CSS = `
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin: 4px 0 12px 0;
+    margin: 2px 0 2px 0;
   }
   .doc-title-row h1 {
     margin: 0;
@@ -334,6 +334,50 @@ const SALES_DN_EXTRA_CSS = `
     font-weight: 700;
     color: #334155;
   }
+
+
+      .dn-sign-table {
+    width: 100%;
+    margin-top: 30px;
+    border-collapse: collapse;
+    page-break-inside: avoid !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .dn-sign-table td {
+    width: 25%;
+    text-align: center;
+    vertical-align: bottom;
+    padding: 0 6px;
+    page-break-inside: avoid !important;
+    border: none !important;
+    background: transparent !important;
+  }
+  .dn-sign-table .sign-space {
+    height: 32px;
+  }
+  .dn-sign-table .sign-line {
+    border-top: 1px solid #64748b;
+    margin-bottom: 4px;
+  }
+  .dn-sign-table .sign-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #334155;
+  }
+
+  /* Force remove any blue bar / separator */
+  .dn-sign-table,
+  .dn-sign-table tr,
+  .dn-sign-table td,
+  .dn-sign-table * {
+    background: transparent !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+  }
+
 `;
 
 const REPORT_TITLE = "Delivery Note";
@@ -392,10 +436,9 @@ function renderSalesDnBody(rows: ReportRow[]): string {
       </div>
     </div>
 
-    ${
-      rows.length === 0
-        ? `<div class="empty">No line items found for this delivery note.</div>`
-        : `
+    ${rows.length === 0
+      ? `<div class="empty">No line items found for this delivery note.</div>`
+      : `
       <table class="data-table">
         <thead>
           <tr>
@@ -418,14 +461,22 @@ function renderSalesDnBody(rows: ReportRow[]): string {
       </div>
 
       <div class="amount-words">${escapeHtml(amountInWords)}</div>
-      ${header.remarks ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>` : ""}
+                  ${header.remarks ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>` : ""}
 
-      <div class="sign-row">
-        <div class="sign-box"><div class="sign-space"></div><div class="sign-line"></div><div class="sign-label">Prepared By</div></div>
-        <div class="sign-box"><div class="sign-space"></div><div class="sign-line"></div><div class="sign-label">Checked By</div></div>
-        <div class="sign-box"><div class="sign-space"></div><div class="sign-line"></div><div class="sign-label">Delivered By</div></div>
-        <div class="sign-box"><div class="sign-space"></div><div class="sign-line"></div><div class="sign-label">Receiver's Name &amp; Signature</div></div>
-      </div>`
+      <table class="dn-sign-table">
+        <tr>
+          ${["Prepared By", "Checked By", "Delivered By", "Receiver's Name & Signature"]
+            .map(
+              (label) => `
+            <td>
+              <div class="sign-space"></div>
+              <div class="sign-line"></div>
+              <div class="sign-label">${label}</div>
+            </td>`
+            )
+            .join("")}
+        </tr>
+      </table>`
     }
   `;
 }
@@ -770,6 +821,7 @@ export const getSalesDNReportHtml = async (req: RequestWithUser, res: Response):
       extraCss: SALES_DN_EXTRA_CSS,
       autoPrint: false,
       showPrintButton: true,
+      orientation: "portrait"
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");

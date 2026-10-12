@@ -337,6 +337,44 @@ const GRN_EXTRA_CSS = `
     color: #64748b;
     margin-top: 3px;
   }
+
+    .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+    margin-bottom: 14px;
+  }
+  .info-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: #f8fafc;
+  }
+  .info-block .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .info-block .value-line {
+    font-size: 11px;
+    color: #0f172a;
+    line-height: 1.55;
+  }
+  .info-block .kv-line {
+    display: flex;
+    font-size: 11px;
+    color: #0f172a;
+    line-height: 1.7;
+  }
+  .info-block .kv-label {
+    flex: 0 0 100px;
+    color: #475569;
+  }
+  .info-block .kv-value {
+    flex: 1;
+  }
 `;
  
 async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
@@ -351,35 +389,27 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
   const headerHtml = await reportHeader({ company_code: p.company_code, req });
  
   // ── Party / GRN details, two data-tables side by side ──
-  const detailsHtml = `
-    <table class="grn-two-col">
-      <tbody>
-        <tr>
-          <td>
-            <div class="group-title">To</div>
-            <table class="data-table">
-              ${kvRow("Name", header.party_name, true)}
-              ${kvRow("Address", header.party_address)}
-              ${kvRow("Tel", header.party_phone)}
-              ${kvRow("Fax", header.party_fax)}
-            </table>
-          </td>
-          <td>
-            <div class="group-title">GRN Details</div>
-            <table class="data-table">
-              ${kvRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
-              ${kvRow("Date", dateText(header.doc_date))}
-              ${kvRow("A/C Code", header.ac_code)}
-              ${kvRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
-              ${kvRow("Deliver To", header.delivery_to)}
-              ${kvRow("Contact", contactMobile)}
-              ${kvRow("Email", emailToShow)}
-              ${kvRow("Delivery Term", header.dlvr_term)}
-            </table>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+   const detailsHtml = `
+    <div class="info-grid">
+      <div class="info-block">
+        <div class="label">To</div>
+        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+        <div class="value-line">${escapeHtml(header.party_address)}</div>
+        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+      </div>
+      <div class="info-block">
+        <div class="label">GRN Details</div>
+        <div class="kv-line"><span class="kv-label">GRN No</span><span class="kv-value">: <strong>${escapeHtml(formatDocNo(header.doc_type, header.doc_no))}</strong></span></div>
+        <div class="kv-line"><span class="kv-label">Date</span><span class="kv-value">: ${escapeHtml(dateText(header.doc_date))}</span></div>
+        <div class="kv-line"><span class="kv-label">A/C Code</span><span class="kv-value">: ${escapeHtml(header.ac_code)}</span></div>
+        <div class="kv-line"><span class="kv-label">Ref No</span><span class="kv-value">: ${escapeHtml(header.ref_no)}${header.ref_date ? ` (${escapeHtml(dateText(header.ref_date))})` : ""}</span></div>
+        <div class="kv-line"><span class="kv-label">Deliver To</span><span class="kv-value">: ${escapeHtml(header.delivery_to)}</span></div>
+        <div class="kv-line"><span class="kv-label">Contact</span><span class="kv-value">: ${escapeHtml(contactMobile)}</span></div>
+        <div class="kv-line"><span class="kv-label">Email</span><span class="kv-value">: ${escapeHtml(emailToShow)}</span></div>
+        <div class="kv-line"><span class="kv-label">Delivery Term</span><span class="kv-value">: ${escapeHtml(header.dlvr_term)}</span></div>
+      </div>
+    </div>
     ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
  
   // ── Line items, using the shared data-table look exactly like every other report ──

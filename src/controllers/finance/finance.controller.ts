@@ -614,11 +614,15 @@ export const getFinanceListData = async (
           `
     SELECT
       tid.*,
-      c.curr_name
+      c.curr_name,
+      h.ref_no
     FROM TR_AC_INVDETAIL tid
     LEFT JOIN MS_CURRENCY c
       ON tid.curr_code = c.curr_code
      AND tid.company_code = c.company_code
+    LEFT JOIN TR_AC_HEADER h
+      ON h.company_code = tid.company_code
+     AND h.doc_no       = tid.inv_no
     WHERE tid.company_code = :company_code
       AND tid.doc_type = :doc_type
       AND tid.doc_no   = :doc_no
