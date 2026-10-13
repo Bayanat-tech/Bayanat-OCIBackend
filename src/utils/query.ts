@@ -69,10 +69,10 @@ WHERE (LTRIM(RTRIM(level3)) IS NOT NULL AND LTRIM(RTRIM(level3)) != ' ')
 
 export const getChequePaymentInvoiceDetail = `
 SELECT
-  inv.inv_no,
+  NVL(MAX(h.doc_no), inv.inv_no) AS inv_no,
   ROW_NUMBER() OVER (ORDER BY inv.inv_no) AS dtl_sr_no,
-  MAX(inv.doc_no) AS doc_no,
-  MAX(h.ref_no) AS ref_no,
+  NVL(MAX(h.doc_no), MAX(inv.doc_no)) AS doc_no,
+  MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
   MAX(inv.inv_date) AS inv_date,
   SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END) AS amount,
   1 AS sign_ind,
@@ -93,7 +93,7 @@ SELECT
 FROM TR_AC_INVDETAIL inv
 LEFT JOIN TR_AC_HEADER h
   ON h.company_code = inv.company_code
- AND h.doc_no       = inv.inv_no
+ AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
 WHERE inv.company_code = :company_code
   AND inv.ac_code = :ac_code
   AND inv.div_code = :div_code

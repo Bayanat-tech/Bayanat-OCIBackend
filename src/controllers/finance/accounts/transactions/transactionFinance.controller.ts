@@ -1208,16 +1208,17 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
       const invDetailRes = await conn.execute(
         `SELECT 
            inv.inv_no,
-           MAX(h.ref_no) AS ref_no,
+           MAX(inv.doc_no) AS doc_no,
+           MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
            NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.amount_origin, inv.lcur_amount) ELSE 0 END)), 0) AS original_amount,
            NVL(SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END), 0) AS paid_amount
          FROM TR_AC_INVDETAIL inv
          LEFT JOIN TR_AC_HEADER h
            ON h.company_code = inv.company_code
-          AND h.doc_no       = inv.inv_no
+          AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
          WHERE inv.company_code = :cc 
            AND inv.div_code     = :dc 
-           AND inv.inv_no IN (${placeholders})
+           AND (inv.inv_no IN (${placeholders}) OR inv.doc_no IN (${placeholders}))
          GROUP BY inv.inv_no`,
         binds,
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -1227,8 +1228,9 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
         const pd = Number(r.PAID_AMOUNT || 0);
         const out = Math.max(0, org - pd);
         if (org > 0) {
-          found[r.INV_NO] = {
+          const resObj = {
             inv_no: r.INV_NO,
+            doc_no: r.DOC_NO ?? r.INV_NO,
             ref_no: r.REF_NO ?? '',
             original_amount: org,
             paid_amount: pd,
@@ -1236,6 +1238,8 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
             payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
             is_fully_paid: out <= 0.01,
           };
+          if (r.INV_NO) found[r.INV_NO] = resObj;
+          if (r.DOC_NO) found[r.DOC_NO] = resObj;
         }
       });
     } catch (e) {
@@ -1254,13 +1258,27 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
           `SELECT 
              h.doc_no AS inv_no,
              h.ref_no,
-             ABS(NVL(h.amount, 0)) AS original_amount,
+             NVL((
+               SELECT ABS(NVL(d.lcur_amount, d.amount))
+               FROM TR_AC_DETAIL d
+               WHERE d.company_code = h.company_code
+                 AND d.doc_type     = h.doc_type
+                 AND d.doc_no       = h.doc_no
+                 AND d.serial_no    = 9001
+             ), (
+               SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
+               FROM TR_AC_DETAIL d
+               WHERE d.company_code = h.company_code
+                 AND d.doc_type     = h.doc_type
+                 AND d.doc_no       = h.doc_no
+                 AND d.serial_no    <> 9001
+             )) AS original_amount,
              NVL((
                SELECT SUM(ABS(d.lcur_amount)) 
                FROM TR_AC_INVDETAIL d 
                WHERE d.company_code = h.company_code 
                  AND d.div_code     = h.div_code 
-                 AND d.inv_no       = h.doc_no 
+                 AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
                  AND NVL(d.indicator_origin, 'N') = 'N'
              ), 0) AS paid_amount
            FROM TR_AC_HEADER h

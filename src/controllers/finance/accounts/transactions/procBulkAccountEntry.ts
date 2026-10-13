@@ -330,6 +330,29 @@ export const procBulkAccountEntry = async (
 
     await connection.commit();
 
+    const outHeader = (result.outBinds as any)?.p_header?.[0];
+    const generatedDocNo = outHeader?.DOC_NO || header.doc_no;
+    if (generatedDocNo && generatedDocNo !== '0' && ['SI', 'PI', 'SV', 'PO'].includes(header.doc_type)) {
+      try {
+        await connection.execute(
+          `UPDATE TR_AC_INVDETAIL 
+           SET INV_NO = :genDocNo 
+           WHERE company_code = :cc 
+             AND doc_no = :genDocNo 
+             AND (inv_no = '0' OR inv_no IS NULL OR inv_no = :refNo)
+             AND indicator_origin = 'Y'`,
+          {
+            genDocNo: generatedDocNo,
+            cc: header.company_code,
+            refNo: header.ref_no || ''
+          }
+        );
+        await connection.commit();
+      } catch (uErr) {
+        console.warn('[procBulkAccountEntry] Could not update TR_AC_INVDETAIL.INV_NO:', uErr);
+      }
+    }
+
     res.json({
       success: true,
       message: "Account Entry saved successfully",
