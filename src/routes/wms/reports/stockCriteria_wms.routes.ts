@@ -23,6 +23,7 @@ import {
 } from "../../../controllers/wms/reports/stockTransferReportController";
 import { getSalaryAdvDedReportHtml } from "../../../controllers/wms/reports/SalaryAdvDedReport.controller";
 import { getAbsentMemoReportHtml } from "../../../controllers/wms/reports/AbsentMemoReport.controller";
+import { getRetirementReportHtml } from "../../../controllers/wms/reports/RetirementReportController";
 
 const router = express.Router();
 
@@ -138,6 +139,23 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getAbsentMemoReportHtml
+);
+
+// ─── Retirement Report ────────────────────────────────────────────────────────
+
+router.get(
+  "/hr/retirement/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getRetirementReportHtml
+);
+
+// Optional: also allow POST for parity with other routes
+router.post(
+  "/hr/retirement/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getRetirementReportHtml
 );
 
 export default router;
