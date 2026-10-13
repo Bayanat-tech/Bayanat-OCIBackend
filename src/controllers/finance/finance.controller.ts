@@ -587,6 +587,10 @@ export const getFinanceListData = async (
 
         let defaultData: { [key: string]: any } = {};
 
+        const voucherType = String(extra_param2 || "").toUpperCase();
+        const isReceipt = ["BR", "CR", "RJV"].includes(voucherType);
+        const isPayment = ["BP", "CP", "PJV"].includes(voucherType);
+
         const invoiceResult = await connection.execute(
           `
     ${getChequePaymentInvoiceDetail}
@@ -600,8 +604,104 @@ export const getFinanceListData = async (
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
-        // Use the outer `fetchedData` (do not shadow it) so the response includes data and count consistently
-        fetchedData = invoiceResult.rows || [];
+        // Filter invoices by voucher type: Receipts only settle Sales (SI, SV); Payments only settle Purchase (PI, PO)
+        let rawInvoices = (invoiceResult.rows || []) as any[];
+        if (isReceipt) {
+          rawInvoices = rawInvoices.filter((row: any) => {
+            const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+            return !["PI", "PO", "BP", "CP", "PJV"].includes(dt);
+          });
+        } else if (isPayment) {
+          rawInvoices = rawInvoices.filter((row: any) => {
+            const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+            return !["SI", "SV", "BR", "CR", "RJV"].includes(dt);
+          });
+        }
+        fetchedData = rawInvoices;
+
+        // Query TR_AC_HEADER for any open invoices not yet indexed in TR_AC_INVDETAIL
+        try {
+          const headerInvoicesResult = await connection.execute(
+            `SELECT 
+               h.doc_no AS inv_no,
+               h.doc_no,
+               h.ref_no,
+               h.doc_date AS inv_date,
+               ABS(NVL(h.amount, 0)) AS inv_amt,
+               h.curr_code AS c_curr_code_origin,
+               h.ex_rate AS c_ex_rate_origin,
+               h.div_code,
+               h.ac_code,
+               h.company_code,
+               h.doc_type AS origin_doc_type,
+               NVL((
+                 SELECT SUM(ABS(d.lcur_amount))
+                 FROM TR_AC_INVDETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.div_code     = h.div_code
+                   AND d.inv_no       = h.doc_no
+                   AND NVL(d.indicator_origin, 'N') = 'N'
+                   AND (TRIM(d.doc_type) || TRIM(TO_CHAR(d.doc_no)) || TRIM(TO_CHAR(d.serial_no)) <> :invrsno)
+               ), 0) AS amount
+             FROM TR_AC_HEADER h
+             WHERE h.company_code = :company_code
+               AND h.div_code     = :div_code
+               AND h.ac_code      = :ac_code
+               AND NVL(h.canceled, 'N') = 'N'
+               AND (
+                 (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV'))
+                 OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
+                 OR (:is_receipt = 0 AND :is_payment = 0)
+               )`,
+            {
+              company_code: req.user.company_code,
+              div_code: extra_param1,
+              ac_code: code,
+              invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
+              is_receipt: isReceipt ? 1 : 0,
+              is_payment: isPayment ? 1 : 0,
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+
+          const existingFetchedInvNos = new Set((fetchedData as any[]).map((r: any) => String(r.INV_NO || r.inv_no)));
+          (headerInvoicesResult.rows || []).forEach((hRow: any) => {
+            const invNo = String(hRow.INV_NO || hRow.inv_no);
+            if (!existingFetchedInvNos.has(invNo)) {
+              const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
+              const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
+              const bal = Math.max(0, invAmt - paidAmt);
+              if (bal > 0.001) {
+                const rowObj: any = {
+                  inv_no: invNo,
+                  doc_no: hRow.DOC_NO || hRow.doc_no,
+                  ref_no: hRow.REF_NO || hRow.ref_no || '',
+                  inv_date: hRow.INV_DATE || hRow.inv_date,
+                  amount: paidAmt,
+                  sign_ind: 1,
+                  ac_code: hRow.AC_CODE || hRow.ac_code,
+                  company_code: hRow.COMPANY_CODE || hRow.company_code,
+                  inv_amt: invAmt,
+                  c_curr_code: ' ',
+                  c_curr_amt: 0.0,
+                  c_indicator_origin: 'N',
+                  c_curr_code_origin: hRow.C_CURR_CODE_ORIGIN || hRow.c_curr_code_origin,
+                  c_ex_rate_origin: hRow.C_EX_RATE_ORIGIN || hRow.c_ex_rate_origin,
+                  c_bal_amt_org: bal,
+                  job_no: null,
+                  bl_no: null,
+                  doc_ref: null,
+                  div_code: hRow.DIV_CODE || hRow.div_code,
+                  origin_doc_type: hRow.ORIGIN_DOC_TYPE || hRow.origin_doc_type,
+                };
+                (fetchedData as any[]).push(rowObj);
+                existingFetchedInvNos.add(invNo);
+              }
+            }
+          });
+        } catch (hdrErr) {
+          console.warn('[finance.controller invoice] Header invoices query error:', hdrErr);
+        }
 
         const fetchedInvoiceNumbers = (fetchedData as any[]).map((row: any) => {
           defaultData[row.inv_no] = row;

@@ -272,8 +272,10 @@ export const procBulkAccountEntry = async (
             EX_RATE: d.ex_rate,
             EX_RATE_ORIGIN: d.ex_rate_origin,
             CURR_CODE_ORIGIN: d.curr_code_origin,
-            AMOUNT_ORIGIN: d.amount_origin,
-            INDICATOR_ORIGIN: oneChar(d.indicator_origin),
+            INDICATOR_ORIGIN: oneChar(
+              d.indicator_origin,
+              (header.doc_type === 'SI' || header.doc_type === 'PI' || header.doc_type === 'SV' || header.doc_type === 'PO') ? 'Y' : 'N'
+            ),
             DIV_CODE: d.div_code
           }))
         },

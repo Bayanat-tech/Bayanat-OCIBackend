@@ -88,6 +88,7 @@ SELECT
   MAX(inv.job_no) AS job_no,
   MAX(inv.bl_no) AS bl_no,
   MAX(inv.doc_ref) AS doc_ref,
+  MAX(CASE WHEN inv.indicator_origin = 'Y' THEN inv.doc_type ELSE h.doc_type END) AS origin_doc_type,
   inv.div_code
 FROM TR_AC_INVDETAIL inv
 LEFT JOIN TR_AC_HEADER h
