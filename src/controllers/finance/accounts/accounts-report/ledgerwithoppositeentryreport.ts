@@ -9,11 +9,24 @@ import {
   reportHeader,
 } from "../../../common/report_common";
 
-const money = (v: any) => {
+/** Decimals for a currency code (OMR → 3, INR/USD → 2). Defaults to 3. */
+const currencyDecimals = (code?: string | null): number => {
+  if (!code) return 3;
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency: code })
+        .resolvedOptions().maximumFractionDigits ?? 3
+    );
+  } catch {
+    return 3;
+  }
+};
+
+const makeMoney = (decimals: number) => (v: any) => {
   const n = Number(v);
   return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 };
 
@@ -24,9 +37,6 @@ const formatDateStr = (v: any) => {
   const d = new Date(v);
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
-
-const formatBalance = (value: number) =>
-  value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
 export const getLedgerWithOppositeEntryReport = async (
   req: Request,
@@ -115,6 +125,12 @@ export const getLedgerWithOppositeEntryReport = async (
         return acc;
       }, {})
     );
+
+    // Currency = CURR_CODE of the first row
+    const reportCurrency = text(rows[0]?.curr_code).trim(); // "" when no rows
+    const money = makeMoney(currencyDecimals(reportCurrency));
+    const formatBalance = (value: number) =>
+      value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
     // Group by ac_code
     const groups: Record<string, any[]> = {};
@@ -329,7 +345,7 @@ tr.grand-row td {
       <div class="report-meta">
         <span><strong>User:</strong> ${text(generatedBy)}</span>
         <span><strong>Report:</strong> ${text(parameter || "Account_Report_Ledger_Grp1")}</span>
-        <span><strong>Currency:</strong> OMR</span>
+        ${reportCurrency ? `<span><strong>Currency:</strong> ${reportCurrency}</span>` : ""}
       </div>
 
       <table class="data-table">
