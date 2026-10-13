@@ -272,8 +272,10 @@ export const procBulkAccountEntry = async (
             EX_RATE: d.ex_rate,
             EX_RATE_ORIGIN: d.ex_rate_origin,
             CURR_CODE_ORIGIN: d.curr_code_origin,
-            AMOUNT_ORIGIN: d.amount_origin,
-            INDICATOR_ORIGIN: oneChar(d.indicator_origin),
+            INDICATOR_ORIGIN: oneChar(
+              d.indicator_origin,
+              (header.doc_type === 'SI' || header.doc_type === 'PI' || header.doc_type === 'SV' || header.doc_type === 'PO') ? 'Y' : 'N'
+            ),
             DIV_CODE: d.div_code
           }))
         },
@@ -327,6 +329,29 @@ export const procBulkAccountEntry = async (
     );
 
     await connection.commit();
+
+    const outHeader = (result.outBinds as any)?.p_header?.[0];
+    const generatedDocNo = outHeader?.DOC_NO || header.doc_no;
+    if (generatedDocNo && generatedDocNo !== '0' && ['SI', 'PI', 'SV', 'PO'].includes(header.doc_type)) {
+      try {
+        await connection.execute(
+          `UPDATE TR_AC_INVDETAIL 
+           SET INV_NO = :genDocNo 
+           WHERE company_code = :cc 
+             AND doc_no = :genDocNo 
+             AND (inv_no = '0' OR inv_no IS NULL OR inv_no = :refNo)
+             AND indicator_origin = 'Y'`,
+          {
+            genDocNo: generatedDocNo,
+            cc: header.company_code,
+            refNo: header.ref_no || ''
+          }
+        );
+        await connection.commit();
+      } catch (uErr) {
+        console.warn('[procBulkAccountEntry] Could not update TR_AC_INVDETAIL.INV_NO:', uErr);
+      }
+    }
 
     res.json({
       success: true,
