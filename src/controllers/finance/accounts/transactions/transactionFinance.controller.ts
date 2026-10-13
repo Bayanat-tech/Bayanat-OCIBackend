@@ -1261,8 +1261,9 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
         const pd = Number(r.PAID_AMOUNT || 0);
         const out = Math.max(0, org - pd);
         const resObj = {
-          inv_no: r.INV_NO,
-          ref_no: r.REF_NO ?? '',
+          inv_no: r.REF_NO || r.INV_NO,
+          doc_no: r.INV_NO,
+          ref_no: r.INV_NO,
           original_amount: org,
           paid_amount: pd,
           outstanding_amount: out,

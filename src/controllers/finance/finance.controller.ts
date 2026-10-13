@@ -665,11 +665,12 @@ export const getFinanceListData = async (
             const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
             const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
             const bal = Math.max(0, invAmt - paidAmt);
+            const primaryInvNo = refNo || docNo;
             if (bal > 0.001) {
               const rowObj: any = {
-                inv_no: docNo,
+                inv_no: primaryInvNo,
                 doc_no: docNo,
-                ref_no: refNo,
+                ref_no: docNo,
                 inv_date: hRow.INV_DATE || hRow.inv_date,
                 amount: paidAmt,
                 sign_ind: 1,
