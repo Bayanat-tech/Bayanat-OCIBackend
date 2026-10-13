@@ -712,6 +712,22 @@ export const getCompanyInfo = async (req: RequestWithUser, res: Response): Promi
       Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])
     );
 
+    if (!normalizedData.company_logo && companyCode) {
+      try {
+        const logoRes: any = await conn.execute(
+          `SELECT COMPANY_LOGO, COMPANY_LOGO_AWSURL FROM MS_COMPANY WHERE COMPANY_CODE = :cc`,
+          { cc: companyCode },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (logoRes?.rows?.length) {
+          const lRow = logoRes.rows[0] as any;
+          normalizedData.company_logo = lRow.COMPANY_LOGO || lRow.company_logo || lRow.COMPANY_LOGO_AWSURL || lRow.company_logo_awsurl || null;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     res.json({ success: true, data: normalizedData });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -1078,8 +1094,22 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
     const where = `WHERE company_code = :cc AND ${docCond}
                      ${whereDiv} AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
 
+    const invDocCond = `(v.doc_no = :dn OR TO_CHAR(v.doc_no) = :dn OR TO_CHAR(v.doc_no) = :clean_dn)`;
+    const invWhereDiv = divCode ? 'AND v.div_code = :dc' : '';
+    const invWhere = `WHERE v.company_code = :cc AND ${invDocCond}
+                     ${invWhereDiv} AND v.doc_type = :dt ORDER BY v.serial_no, v.dtl_sr_no`;
+    const invWhereNoDiv = `WHERE v.company_code = :cc AND ${invDocCond}
+                          AND v.doc_type = :dt ORDER BY v.serial_no, v.dtl_sr_no`;
+    const invSql = `
+      SELECT v.*, h.ref_no
+      FROM VW_TXN_INVOICE_CHILDREN v
+      LEFT JOIN TR_AC_HEADER h
+        ON h.company_code = v.company_code
+       AND h.doc_no       = v.inv_no
+    `;
+
     let [inv, job, exp]: any[] = await Promise.all([
-      conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+      conn.execute(`${invSql} ${invWhere}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${where}`, p, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
     ]);
@@ -1090,7 +1120,7 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
       const whereNoDiv = `WHERE company_code = :cc AND ${docCond}
                           AND doc_type = :dt ORDER BY serial_no, dtl_sr_no`;
       [inv, job, exp] = await Promise.all([
-        conn.execute(`SELECT * FROM VW_TXN_INVOICE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
+        conn.execute(`${invSql} ${invWhereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
         conn.execute(`SELECT * FROM VW_TXN_JOB_CHILDREN     ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
         conn.execute(`SELECT * FROM VW_TXN_EXPENSE_CHILDREN ${whereNoDiv}`, pNoDiv, { outFormat: oracledb.OUT_FORMAT_OBJECT }),
       ]);
@@ -1170,19 +1200,151 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
     const binds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
     list.forEach((n, i) => (binds[`inv${i}`] = n));
-    const result = await conn.execute(
-      `SELECT * FROM VW_INVOICE_OUTSTANDING WHERE company_code = :cc AND div_code = :dc AND inv_no IN (${placeholders})`,
-      binds,
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
+
     const found: Record<string, any> = {};
-    (result.rows || []).forEach((r: any) => {
-      const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
-      const org = Number(r.ORIGINAL_AMOUNT || 0);
-      const pd = Number(r.PAID_AMOUNT || 0);
-      found[r.INV_NO] = { inv_no: r.INV_NO, original_amount: org, paid_amount: pd, outstanding_amount: out, payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0, is_fully_paid: out <= 0.01 };
-    });
-    const balances = list.map(inv => found[inv] ?? { inv_no: inv, original_amount: 0, paid_amount: 0, outstanding_amount: 0, payment_percentage: 0, is_fully_paid: true, error: 'Invoice not found' });
+
+    // 1. Primary: query live TR_AC_INVDETAIL grouped by inv_no
+    try {
+      const invDetailRes = await conn.execute(
+        `SELECT 
+           inv.inv_no,
+           MAX(inv.doc_no) AS doc_no,
+           MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
+           NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.amount_origin, inv.lcur_amount) ELSE 0 END)), 0) AS original_amount,
+           NVL(SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END), 0) AS paid_amount
+         FROM TR_AC_INVDETAIL inv
+         LEFT JOIN TR_AC_HEADER h
+           ON h.company_code = inv.company_code
+          AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
+         WHERE inv.company_code = :cc 
+           AND inv.div_code     = :dc 
+           AND (inv.inv_no IN (${placeholders}) OR inv.doc_no IN (${placeholders}))
+         GROUP BY inv.inv_no`,
+        binds,
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      (invDetailRes.rows || []).forEach((r: any) => {
+        const org = Number(r.ORIGINAL_AMOUNT || 0);
+        const pd = Number(r.PAID_AMOUNT || 0);
+        const out = Math.max(0, org - pd);
+        if (org > 0) {
+          const resObj = {
+            inv_no: r.INV_NO,
+            doc_no: r.DOC_NO ?? r.INV_NO,
+            ref_no: r.REF_NO ?? '',
+            original_amount: org,
+            paid_amount: pd,
+            outstanding_amount: out,
+            payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+            is_fully_paid: out <= 0.01,
+          };
+          if (r.INV_NO) found[r.INV_NO] = resObj;
+          if (r.DOC_NO) found[r.DOC_NO] = resObj;
+        }
+      });
+    } catch (e) {
+      console.warn('[getInvoiceOutstandingBalances] TR_AC_INVDETAIL query error:', e);
+    }
+
+    // 2. Fallback to TR_AC_HEADER for any invoices with 0 origin in TR_AC_INVDETAIL
+    const missingInvs = list.filter(inv => !found[inv] || found[inv].original_amount <= 0);
+    if (missingInvs.length > 0) {
+      const missingPlaceholders = missingInvs.map((_, i) => `:m_inv${i}`).join(',');
+      const missingBinds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
+      missingInvs.forEach((n, i) => (missingBinds[`m_inv${i}`] = n));
+
+      try {
+        const hdrRes = await conn.execute(
+          `SELECT 
+             h.doc_no AS inv_no,
+             h.ref_no,
+             NVL((
+               SELECT ABS(NVL(d.lcur_amount, d.amount))
+               FROM TR_AC_DETAIL d
+               WHERE d.company_code = h.company_code
+                 AND d.doc_type     = h.doc_type
+                 AND d.doc_no       = h.doc_no
+                 AND d.serial_no    = 9001
+             ), (
+               SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
+               FROM TR_AC_DETAIL d
+               WHERE d.company_code = h.company_code
+                 AND d.doc_type     = h.doc_type
+                 AND d.doc_no       = h.doc_no
+                 AND d.serial_no    <> 9001
+             )) AS original_amount,
+             NVL((
+               SELECT SUM(ABS(d.lcur_amount)) 
+               FROM TR_AC_INVDETAIL d 
+               WHERE d.company_code = h.company_code 
+                 AND d.div_code     = h.div_code 
+                 AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
+                 AND NVL(d.indicator_origin, 'N') = 'N'
+             ), 0) AS paid_amount
+           FROM TR_AC_HEADER h
+           WHERE h.company_code = :cc 
+             AND h.div_code     = :dc 
+             AND h.doc_no IN (${missingPlaceholders})`,
+          missingBinds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        (hdrRes.rows || []).forEach((r: any) => {
+          const org = Number(r.ORIGINAL_AMOUNT || 0);
+          const pd = Number(r.PAID_AMOUNT || 0);
+          const out = Math.max(0, org - pd);
+          found[r.INV_NO] = {
+            inv_no: r.INV_NO,
+            ref_no: r.REF_NO ?? '',
+            original_amount: org,
+            paid_amount: pd,
+            outstanding_amount: out,
+            payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+            is_fully_paid: out <= 0.01,
+          };
+        });
+      } catch (e) {
+        console.warn('[getInvoiceOutstandingBalances] TR_AC_HEADER fallback error:', e);
+      }
+    }
+
+    // 3. Fallback to VW_INVOICE_OUTSTANDING for any still missing
+    const stillMissing = list.filter(inv => !found[inv]);
+    if (stillMissing.length > 0) {
+      try {
+        const viewPlaceholders = stillMissing.map((_, i) => `:v_inv${i}`).join(',');
+        const viewBinds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
+        stillMissing.forEach((n, i) => (viewBinds[`v_inv${i}`] = n));
+
+        const result = await conn.execute(
+          `SELECT o.*, h.ref_no 
+           FROM VW_INVOICE_OUTSTANDING o
+           LEFT JOIN TR_AC_HEADER h
+             ON h.company_code = o.company_code
+            AND h.doc_no       = o.inv_no
+           WHERE o.company_code = :cc AND o.div_code = :dc AND o.inv_no IN (${viewPlaceholders})`,
+          viewBinds,
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        (result.rows || []).forEach((r: any) => {
+          const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
+          const org = Number(r.ORIGINAL_AMOUNT || 0);
+          const pd = Number(r.PAID_AMOUNT || 0);
+          found[r.INV_NO] = {
+            inv_no: r.INV_NO,
+            ref_no: r.REF_NO ?? '',
+            original_amount: org,
+            paid_amount: pd,
+            outstanding_amount: out,
+            payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+            is_fully_paid: out <= 0.01,
+          };
+        });
+      } catch (e) {
+        // ignore view error
+      }
+    }
+
+    const balances = list.map(inv => found[inv] ?? { inv_no: inv, ref_no: '', original_amount: 0, paid_amount: 0, outstanding_amount: 0, payment_percentage: 0, is_fully_paid: true, error: 'Invoice not found' });
     res.json({ success: true, data: { balances, count: balances.length } });
   } catch (err) { sendError(res, err); } finally { await closeConn(conn); }
 };
@@ -1419,6 +1581,7 @@ export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise
           d.price,
           d.uom,
           d.prod_code,
+          d.cost_code,
           d.qty_rcv,
           d.amount_rcv,
           d.other_remarks,
@@ -1507,7 +1670,7 @@ export const getLPOPrint = async (req: RequestWithUser, res: Response): Promise<
 
     // details
     const det = await conn.execute(
-      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt
+      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.cost_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt
        FROM TR_AC_LPO_DETAIL d
        LEFT JOIN MS_ACCODES m
               ON m.company_code = d.company_code
@@ -2053,13 +2216,14 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
           sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
           am: d.amount, cu: d.curr_code, er: d.ex_rate,
           si: d.sign_ind, dv: d.div_code, la: d.lcur_amount,
           qty: d.qty, pr: d.price, pc: d.prod_code,
+          pcc: d.cost_code ?? null,
           or: d.other_remarks ?? null,
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
@@ -2212,7 +2376,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       await conn.executeMany(
         `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
           :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
+          :qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
         ); END;`,
         req.body.detail.map((d: any, i: number) => ({
           cc: req.user.company_code,
@@ -2230,6 +2394,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
           qty: Number(d.qty ?? 1),
           pr: Number(d.price ?? 0),
           pc: d.prod_code ?? null,
+          pcc: d.cost_code ?? null,
           or: d.other_remarks ?? null,
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null,
