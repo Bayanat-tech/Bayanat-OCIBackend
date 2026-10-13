@@ -7,13 +7,41 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../common
 import { RequestWithUser } from "../../../../interfaces/common.interface";
 
 /* ───────────────────────── helpers ───────────────────────── */
-const money = (v: any) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "0.000";
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  });
+
+/** Decimals for a currency code (OMR → 3, INR/USD → 2). Defaults to 3. */
+const currencyDecimals = (code?: string | null): number => {
+  if (!code) return 3;
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency: code })
+        .resolvedOptions().maximumFractionDigits ?? 3
+    );
+  } catch {
+    return 3;
+  }
+};
+
+/** Builds money / moneyBalance formatters for the given number of decimals. */
+const makeFormatters = (decimals: number) => {
+  const fmt = (n: number) =>
+    n.toLocaleString("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+
+  const money = (v: any) => {
+    const n = Number(v);
+    return fmt(Number.isFinite(n) ? n : 0);
+  };
+
+  const moneyBalance = (v: any) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return fmt(0);
+    const abs = fmt(Math.abs(n));
+    return n < 0 ? `(${abs})` : abs;
+  };
+
+  return { money, moneyBalance };
 };
 
 const text = (v: any) => (v == null ? "" : String(v));
@@ -25,16 +53,6 @@ const formatDateStr = (v: any) => {
 };
 
 const num = (v: any) => Number(v) || 0;
-
-const moneyBalance = (v: any) => {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "0.000";
-  const abs = Math.abs(n).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  });
-  return n < 0 ? `(${abs})` : abs;
-};
 
 /* ───────────────────────── Extra CSS ───────────────────────── */
 const EXTRA_CSS = `
@@ -295,6 +313,12 @@ export const OutstandingDetailReport = async (
       }, {})
     );
 
+    // ── Currency = CURR_CODE of the first row ─────────────────────────
+    const rawCurrCode = text(rows[0]?.curr_code).trim(); // "" when no rows
+    const currCode = escapeHtml(rawCurrCode);
+    const { money, moneyBalance } = makeFormatters(currencyDecimals(rawCurrCode));
+    const zero = money(0);
+
     // ── Group by ac_code ──────────────────────────────────────────────
     type DetailRow = (typeof rows)[0];
     type AcGroup = {
@@ -335,8 +359,7 @@ export const OutstandingDetailReport = async (
       acMap.get(acKey)!.rows.push(r);
     });
 
-    // ── Currency & as-on date ─────────────────────────────────────────
-    const currCode = escapeHtml(text(code5) || "OMR");
+    // ── As-on date ────────────────────────────────────────────────────
     const asOnDate = escapeHtml(formatDateStr(code6) || text(code6));
 
     // ── Shared company header ─────────────────────────────────────────
@@ -369,8 +392,8 @@ export const OutstandingDetailReport = async (
                     <td class="center">${formatDateStr(r.inv_date)}</td>
                     <td class="wrap">${escapeHtml(text(r.doc_no))}</td>
                     <td class="wrap">${escapeHtml(text(r.remarks))}</td>
-                    <td class="num">${debit  === 0 ? "0.000" : money(debit)}</td>
-                    <td class="num">${credit === 0 ? "0.000" : money(credit)}</td>
+                    <td class="num">${debit  === 0 ? zero : money(debit)}</td>
+                    <td class="num">${credit === 0 ? zero : money(credit)}</td>
                     <td class="num ${runningBalance < 0 ? "neg-balance" : ""}">${moneyBalance(runningBalance)}</td>
                   </tr>`;
                 })
@@ -387,10 +410,14 @@ export const OutstandingDetailReport = async (
                 <!-- Clean Title + Currency banner -->
                 <div class="report-meta">
                   <h1 class="meta-title">Outstanding Statement as on ${asOnDate}</h1>
-                  <div class="currency-pill">
+                  ${
+                    currCode
+                      ? `<div class="currency-pill">
                     <span class="curr-label">Currency</span>
                     <span>${currCode}</span>
-                  </div>
+                  </div>`
+                      : ""
+                  }
                 </div>
 
                 <!-- Customer card -->
