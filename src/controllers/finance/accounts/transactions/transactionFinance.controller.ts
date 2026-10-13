@@ -1192,13 +1192,24 @@ export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
 export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const { inv_nos, div_code } = req.query;
+    const { inv_nos, div_code, ac_code, doc_type } = req.query;
     if (!inv_nos || !div_code) { res.status(400).json({ success: false, message: 'inv_nos and div_code are required' }); return; }
     const list = (inv_nos as string).split(',').map(n => n.trim()).filter(Boolean);
     if (!list.length) { res.status(400).json({ success: false, message: 'At least one invoice number is required' }); return; }
     conn = await getConn(req);
+
+    const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO';
+    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV';
+
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
-    const binds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dc: div_code,
+      has_ac: ac_code ? 1 : 0,
+      ac: ac_code ? String(ac_code).trim() : '',
+      is_payment: isPayment ? 1 : 0,
+      is_receipt: isReceipt ? 1 : 0,
+    };
     list.forEach((n, i) => (binds[`inv${i}`] = n));
 
     const found: Record<string, any> = {};
@@ -1235,6 +1246,12 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
          FROM TR_AC_HEADER h
          WHERE h.company_code = :cc 
            AND h.div_code     = :dc 
+           AND (:has_ac = 0 OR h.ac_code = :ac)
+           AND (
+             (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV'))
+             OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
+             OR (:is_receipt = 0 AND :is_payment = 0)
+           )
            AND (h.doc_no IN (${placeholders}) OR (h.ref_no IS NOT NULL AND h.ref_no IN (${placeholders})))`,
         binds,
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
@@ -1263,7 +1280,14 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
     const missingInvs = list.filter(inv => !found[inv]);
     if (missingInvs.length > 0) {
       const missingPlaceholders = missingInvs.map((_, i) => `:m_inv${i}`).join(',');
-      const missingBinds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
+      const missingBinds: Record<string, any> = {
+        cc: req.user.company_code,
+        dc: div_code,
+        has_ac: ac_code ? 1 : 0,
+        ac: ac_code ? String(ac_code).trim() : '',
+        is_payment: isPayment ? 1 : 0,
+        is_receipt: isReceipt ? 1 : 0,
+      };
       missingInvs.forEach((n, i) => (missingBinds[`m_inv${i}`] = n));
 
       try {
@@ -1280,6 +1304,12 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
             AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
            WHERE inv.company_code = :cc 
              AND inv.div_code     = :dc 
+             AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
+             AND (
+               (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV') OR h.doc_type IN ('SI', 'SV')))
+               OR (:is_payment = 1 AND (inv.doc_type IN ('PI', 'PO') OR h.doc_type IN ('PI', 'PO')))
+               OR (:is_receipt = 0 AND :is_payment = 0)
+             )
              AND (inv.inv_no IN (${missingPlaceholders}) OR inv.doc_no IN (${missingPlaceholders}))
            GROUP BY inv.inv_no`,
           missingBinds,
