@@ -306,7 +306,6 @@ export const getRetirementReportHtml = async (
 
     const headerHtml = await reportHeader({ company_code: params.companyCode, req });
     const filtersHtml = reportAppliedFilters([
-      { label: "Company", value: [params.companyCode] },
       { label: "Division", value: [params.divCode] },
       { label: "Department", value: [params.deptCode] },
       { label: "Section", value: [params.sectCode] },
