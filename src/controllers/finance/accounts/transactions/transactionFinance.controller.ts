@@ -2096,13 +2096,14 @@ export const createLPODocument = async (req: RequestWithUser, res: Response): Pr
 
     if (v.detail?.length) {
       await conn.executeMany(
-        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
+        `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(:cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,:qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm ,:dd); END;`,
         v.detail.map((d: any) => ({
           cc: req.user.company_code, dt: v.doc_type, dn: doc_no,
           sn: d.serial_no, ac: d.ac_code, hac: v.ac_code,
           am: d.amount, cu: d.curr_code, er: d.ex_rate,
           si: d.sign_ind, dv: d.div_code, la: d.lcur_amount,
           qty: d.qty, pr: d.price, pc: d.prod_code,
+          pcc: d.cost_code ?? null,
           or: d.other_remarks ?? null,
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null, tc: d.tx_compntcat_code_1 ?? null,
@@ -2255,7 +2256,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
       await conn.executeMany(
         `BEGIN SP_INSERT_LPO_DETAIL_SINGLE(
           :cc,:dt,:dn,:sn,:ac,:hac,:am,:cu,:er,:si,:dv,:la,
-          :qty,:pr,:pc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
+          :qty,:pr,:pc,:pcc,:or,:rm,:tcc,:tc,:tp,:tm,:dd
         ); END;`,
         req.body.detail.map((d: any, i: number) => ({
           cc: req.user.company_code,
@@ -2273,6 +2274,7 @@ export const updateLPODocument = async (req: RequestWithUser, res: Response): Pr
           qty: Number(d.qty ?? 1),
           pr: Number(d.price ?? 0),
           pc: d.prod_code ?? null,
+          pcc: d.cost_code ?? null,
           or: d.other_remarks ?? null,
           rm: d.remarks ?? null,
           tcc: d.tx_cat_code ?? null,
