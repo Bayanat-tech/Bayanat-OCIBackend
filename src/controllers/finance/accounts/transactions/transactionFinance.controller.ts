@@ -1581,6 +1581,7 @@ export const getLpoDetail = async (req: RequestWithUser, res: Response): Promise
           d.price,
           d.uom,
           d.prod_code,
+          d.cost_code,
           d.qty_rcv,
           d.amount_rcv,
           d.other_remarks,
@@ -1669,7 +1670,7 @@ export const getLPOPrint = async (req: RequestWithUser, res: Response): Promise<
 
     // details
     const det = await conn.execute(
-      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt
+      `SELECT d.company_code,d.doc_type,d.doc_no,d.serial_no,d.doc_date,d.ac_code,m.ac_name,d.header_ac_code,d.remarks,d.amount,d.sign_ind,d.curr_code,d.ex_rate,d.lcur_amount,d.job_no,d.dept_code,d.qty,d.price,d.uom,d.prod_code,d.cost_code,d.qty_rcv,d.amount_rcv,d.other_remarks,d.item_remark,d.div_code,d.tx_cat_code,d.tx_compntcat_code_1,d.tx_compntcat_code_2,d.tx_compntcat_code_3,d.tx_compntcat_code_4,d.tx_compnt_perc_1,d.tx_compnt_perc_2,d.tx_compnt_perc_3,d.tx_compnt_perc_4,d.tx_compnt_amt_1,d.tx_compnt_amt_2,d.tx_compnt_amt_3,d.tx_compnt_amt_4,d.tx_compnt_lcuramt_1,d.tx_compnt_lcuramt_2,d.tx_compnt_lcuramt_3,d.tx_compnt_lcuramt_4,d.tx_compnt_1_expmt,d.tx_compnt_2_expmt,d.tx_compnt_3_expmt,d.tx_compnt_4_expmt
        FROM TR_AC_LPO_DETAIL d
        LEFT JOIN MS_ACCODES m
               ON m.company_code = d.company_code
