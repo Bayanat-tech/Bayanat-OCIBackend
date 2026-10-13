@@ -1,15 +1,16 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { QueryExecutor } from "../../database/QueryExecutor";
+import { RequestWithUser } from "../../interfaces/common.interface";
 import oracledb from "oracledb";
+import { getPamsLoginId, getPamsTenantSchema, validatePamsGeneratedSql } from "./pamsTenantSafety";
 
 export const proc_build_dynamic_ins_upd_PAMS = async (
-  req: Request,
+  req: RequestWithUser,
   res: Response
 ): Promise<void> => {
   try {
     const {
       parameter,
-      loginid,
 
       // INSERT / UPDATE VALUES
       val1s1,
@@ -63,13 +64,15 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
       return;
     }
 
+    const tenantSchema = await getPamsTenantSchema();
+
     // Call procedure to build INSERT / UPDATE SQL (Tenant-Aware)
     const result = await QueryExecutor.executeRawQuery(
       `
       DECLARE
         v_sql CLOB;
       BEGIN
-        PROC_BUILD_DYNAMIC_INS_UPD_PAMS(
+        ${tenantSchema}.PROC_BUILD_DYNAMIC_INS_UPD_PAMS(
           :parameter,
           :loginid,
 
@@ -93,7 +96,7 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
       `,
       {
         parameter,
-        loginid,
+        loginid: getPamsLoginId(req),
 
         val1s1,
         val1s2,
@@ -159,9 +162,8 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
       return;
     }
 
-    console.log("Generated INSERT/UPDATE SQL:", dynamicSql);
-
     // Execute INSERT / UPDATE (Tenant-Aware)
+    validatePamsGeneratedSql(dynamicSql, "write");
     await QueryExecutor.executeRawQuery(dynamicSql, []);
 
     res.json({

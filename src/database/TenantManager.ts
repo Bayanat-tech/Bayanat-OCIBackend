@@ -210,14 +210,35 @@ export class TenantManager {
     const conn = await pool.getConnection();
     console.log(`[getConnection] Connection acquired`);
     
-    // Set schema if needed
-    if (config.CONNECTION_TYPE === 'SCHEMA' && config.SCHEMA_NAME) {
-      console.log(`[getConnection] STEP 4: Setting schema to ${config.SCHEMA_NAME}...`);
+    // Schema-based tenants must fail closed: never continue on the connection's
+    // default schema if selecting the tenant schema fails.
+    if (config.CONNECTION_TYPE?.trim().toUpperCase() === "SCHEMA") {
+      const schemaName = config.SCHEMA_NAME?.trim();
+      if (!schemaName || !/^[A-Za-z][A-Za-z0-9_$#]*$/.test(schemaName)) {
+        await conn.close();
+        throw new Error(`Invalid schema configuration for tenant ${tenantId}`);
+      }
+
       try {
-        await conn.execute(`ALTER SESSION SET CURRENT_SCHEMA = ${config.SCHEMA_NAME}`);
-        console.log(`[getConnection] Schema set successfully`);
+        await conn.execute(`ALTER SESSION SET CURRENT_SCHEMA = ${schemaName}`);
+        const schemaResult = await conn.execute(
+          "SELECT SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') AS CURRENT_SCHEMA FROM DUAL",
+          {},
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        const currentSchema = (schemaResult.rows?.[0] as { CURRENT_SCHEMA?: string } | undefined)?.CURRENT_SCHEMA;
+        if (String(currentSchema || "").toUpperCase() !== schemaName.toUpperCase()) {
+          throw new Error(`Oracle session selected ${currentSchema || "no schema"}`);
+        }
+        console.log(`[getConnection] Tenant schema selected: ${schemaName}`);
       } catch (error) {
-        console.warn(`[getConnection] Failed to set schema: ${error instanceof Error ? error.message : String(error)}`);
+        try {
+          await conn.close();
+        } catch (closeError) {
+          console.error(`[getConnection] Failed to close connection after schema selection failure for ${tenantId}:`, closeError);
+        }
+        console.error(`[getConnection] Failed to select tenant schema ${schemaName} for ${tenantId}:`, error);
+        throw new Error(`Unable to select tenant schema for tenant ${tenantId}`);
       }
     } else {
       console.log(`[getConnection] STEP 4: Skipping schema change (CONNECTION_TYPE: ${config.CONNECTION_TYPE})`);

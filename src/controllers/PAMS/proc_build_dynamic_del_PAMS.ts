@@ -1,8 +1,10 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { QueryExecutor } from "../../database/QueryExecutor";
+import { RequestWithUser } from "../../interfaces/common.interface";
 import oracledb from "oracledb";
+import { getPamsLoginId, getPamsTenantSchema, validatePamsGeneratedSql } from "./pamsTenantSafety";
 
-export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): Promise<void> => {
+export const proc_build_dynamic_del_PAMS = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const {
       parameter,
@@ -24,12 +26,12 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
       date4
     } = req.body;
 
-    console.log('Check dynamic delete request:', req.body);
-
     if (!parameter) {
       res.status(400).json({ success: false, message: "Missing required parameter 'parameter'" });
       return;
     }
+
+    const tenantSchema = await getPamsTenantSchema();
 
     // Call procedure to get dynamic SQL (Tenant-Aware)
     const result = await QueryExecutor.executeRawQuery(
@@ -37,7 +39,7 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
       DECLARE
         v_sql VARCHAR2(32767);
       BEGIN
-        PROC_BUILD_DYNAMIC_DEL_PAMS(
+        ${tenantSchema}.PROC_BUILD_DYNAMIC_DEL_PAMS(
           :parameter,
           :loginid,
           :code1,
@@ -62,7 +64,7 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
       `,
       {
         parameter,
-        loginid,
+        loginid: getPamsLoginId(req),
         code1,
         code2,
         code3,
@@ -95,10 +97,9 @@ export const proc_build_dynamic_del_PAMS = async (req: Request, res: Response): 
       return;
     }
 
-    console.log("Generated DELETE SQL:", rawSql);
-
     try {
       // Execute the DELETE SQL (Tenant-Aware)
+      validatePamsGeneratedSql(rawSql, "delete");
       await QueryExecutor.executeRawQuery(rawSql, []);
 
       res.json({
