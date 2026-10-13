@@ -67,10 +67,4 @@ export function validatePamsGeneratedSql(
   if (/;\s*\S/.test(statement) || /@[A-Za-z0-9_$#"]/i.test(statement)) {
     throw new Error("PAMS procedure returned multi-statement or database-link SQL");
   }
-
-  const schemaQualifiedObject =
-    /\b(?:FROM|JOIN|UPDATE|INTO|DELETE\s+FROM)\s+(?:"[^"]+"|[A-Za-z][A-Za-z0-9_$#]*)\s*\./i;
-  if (schemaQualifiedObject.test(statement)) {
-    throw new Error("PAMS procedure returned schema-qualified SQL; tenant-local objects are required");
-  }
 }
