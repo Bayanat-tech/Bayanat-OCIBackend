@@ -61,7 +61,12 @@ export function validatePamsGeneratedSql(
         : /^DELETE\b/i;
 
   if (!statement || !allowedStart.test(statement)) {
-    throw new Error(`PAMS procedure returned SQL that is not permitted for ${operation}`);
+    const leadingKeyword = statement.match(/^[A-Za-z]+/)?.[0] ?? "unknown";
+    throw new Error(
+      `PAMS procedure returned ${leadingKeyword} for ${operation}; expected ${
+        operation === "read" ? "SELECT or WITH" : operation === "write" ? "INSERT or UPDATE" : "DELETE"
+      }`
+    );
   }
 
   if (/;\s*\S/.test(statement) || /@[A-Za-z0-9_$#"]/i.test(statement)) {
