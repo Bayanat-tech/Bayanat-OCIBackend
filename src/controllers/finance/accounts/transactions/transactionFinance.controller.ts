@@ -1101,11 +1101,11 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
     const invWhereNoDiv = `WHERE v.company_code = :cc AND ${invDocCond}
                           AND v.doc_type = :dt ORDER BY v.serial_no, v.dtl_sr_no`;
     const invSql = `
-      SELECT v.*, h.ref_no
+      SELECT v.*, NVL(h.doc_no, v.doc_no) AS voucher_doc_no, NVL(h.ref_no, v.inv_no) AS ref_no
       FROM VW_TXN_INVOICE_CHILDREN v
       LEFT JOIN TR_AC_HEADER h
         ON h.company_code = v.company_code
-       AND h.doc_no       = v.inv_no
+       AND (h.doc_no = v.inv_no OR (h.ref_no IS NOT NULL AND (h.ref_no = v.inv_no OR UPPER(TRIM(h.ref_no)) = UPPER(TRIM(v.inv_no)))))
     `;
 
     let [inv, job, exp]: any[] = await Promise.all([
@@ -1220,6 +1220,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
         `SELECT 
            h.doc_no AS inv_no,
            h.ref_no,
+           NVL(h.canceled, 'N') AS canceled,
            NVL((
              SELECT ABS(NVL(d.lcur_amount, d.amount))
              FROM TR_AC_DETAIL d
@@ -1266,18 +1267,47 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
       (hdrRes.rows || []).forEach((r: any) => {
+        const isCanceled = String(r.CANCELED || '').trim().toUpperCase() === 'Y';
+        const vendorBillNo = r.REF_NO ? String(r.REF_NO).trim() : String(r.INV_NO).trim();
+        const voucherDocNo = String(r.INV_NO).trim();
+
+        if (isCanceled) {
+          const cancelObj = {
+            inv_no: vendorBillNo,
+            doc_no: voucherDocNo,
+            ref_no: voucherDocNo,
+            original_amount: 0,
+            paid_amount: 0,
+            outstanding_amount: 0,
+            payment_percentage: 0,
+            is_fully_paid: true,
+            is_cancelled: true,
+            error: `Invoice ${voucherDocNo}${r.REF_NO ? ' (Ref #' + r.REF_NO + ')' : ''} is CANCELLED. Cancelled invoices cannot be allocated in payments.`,
+          };
+          if (r.INV_NO) {
+            found[r.INV_NO] = cancelObj;
+            found[String(r.INV_NO).toUpperCase()] = cancelObj;
+          }
+          if (r.REF_NO) {
+            found[r.REF_NO] = cancelObj;
+            found[String(r.REF_NO).toUpperCase()] = cancelObj;
+          }
+          return;
+        }
+
         const org = Number(r.ORIGINAL_AMOUNT || 0);
         const pd = Number(r.PAID_AMOUNT || 0);
         const out = Math.max(0, org - pd);
         const resObj = {
-          inv_no: r.REF_NO || r.INV_NO,
-          doc_no: r.INV_NO,
-          ref_no: r.INV_NO,
+          inv_no: vendorBillNo,
+          doc_no: voucherDocNo,
+          ref_no: voucherDocNo,
           original_amount: org,
           paid_amount: pd,
           outstanding_amount: out,
           payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
           is_fully_paid: out <= 0.001,
+          is_cancelled: false,
         };
         if (r.INV_NO) {
           found[r.INV_NO] = resObj;
@@ -1312,6 +1342,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
              inv.inv_no,
              MAX(inv.doc_no) AS doc_no,
              MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
+             MAX(NVL(h.canceled, 'N')) AS canceled,
              NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.amount_origin, inv.lcur_amount) ELSE 0 END)), 0) AS original_amount,
              NVL(SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END), 0) AS paid_amount
            FROM TR_AC_INVDETAIL inv
@@ -1320,6 +1351,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
             AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
            WHERE inv.company_code = :cc 
              AND inv.div_code     = :dc 
+             AND NVL(h.canceled, 'N') = 'N'
              AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
              AND (
                (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV') OR h.doc_type IN ('SI', 'SV')))
@@ -1335,19 +1367,25 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
         (invDetailRes.rows || []).forEach((r: any) => {
+          const isCanceled = String(r.CANCELED || '').trim().toUpperCase() === 'Y';
+          if (isCanceled) return;
+
           const org = Number(r.ORIGINAL_AMOUNT || 0);
           const pd = Number(r.PAID_AMOUNT || 0);
           const out = Math.max(0, org - pd);
           if (org > 0) {
+            const vendorBillNo = r.REF_NO ? String(r.REF_NO).trim() : String(r.INV_NO).trim();
+            const voucherDocNo = String(r.DOC_NO || r.INV_NO).trim();
             const resObj = {
-              inv_no: r.INV_NO,
-              doc_no: r.DOC_NO ?? r.INV_NO,
-              ref_no: r.REF_NO ?? '',
+              inv_no: vendorBillNo,
+              doc_no: voucherDocNo,
+              ref_no: voucherDocNo,
               original_amount: org,
               paid_amount: pd,
               outstanding_amount: out,
               payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
               is_fully_paid: out <= 0.001,
+              is_cancelled: false,
             };
             if (r.INV_NO) {
               found[r.INV_NO] = resObj;
@@ -1356,6 +1394,10 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
             if (r.DOC_NO) {
               found[r.DOC_NO] = resObj;
               found[String(r.DOC_NO).toUpperCase()] = resObj;
+            }
+            if (r.REF_NO) {
+              found[r.REF_NO] = resObj;
+              found[String(r.REF_NO).toUpperCase()] = resObj;
             }
           }
         });

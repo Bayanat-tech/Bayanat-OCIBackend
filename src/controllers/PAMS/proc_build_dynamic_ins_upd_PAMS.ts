@@ -162,6 +162,11 @@ export const proc_build_dynamic_ins_upd_PAMS = async (
       return;
     }
 
+    if (/^BEGIN\s+NULL\s*;\s*END\s*;?$/i.test(dynamicSql.trim())) {
+      res.json({ success: true });
+      return;
+    }
+
     // Execute INSERT / UPDATE (Tenant-Aware)
     validatePamsGeneratedSql(dynamicSql, "write");
     await QueryExecutor.executeRawQuery(dynamicSql, []);
