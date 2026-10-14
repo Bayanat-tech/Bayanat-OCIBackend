@@ -111,6 +111,7 @@ import { getSalesDNReportExcel, getSalesDNReportHtml } from "../../../interfaces
 import { getStockSummaryReportExcel, getStockSummaryReportHtml, getStockTransactionReportExcel, getStockTransactionReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/StockReportPS";
 import { exportEmployeeAssessmentReportExcel, getEmployeeAssessmentReport } from "../../../controllers/HR/Hr-Reports/Employeeassessmentreport";
 import { exportEmployeeTicketEligibilityReportExcel, getEmployeeTicketEligibilityReport } from "../../../controllers/HR/Hr-Reports/Employeeticketeligibility";
+import { exportEmployeeAddressListRepotExcel, getEmployeeAddressListReport } from "../../../controllers/HR/Hr-Reports/Employeeaddresslist";
 
 
 
@@ -288,6 +289,11 @@ router.post('/reports/GrnSummaryReport/excel', getGrnSummaryReportExcel);
 
 router.post('/reports/getEmployeeTicketEligibilityReportHtml/html', getEmployeeTicketEligibilityReport);
 router.post('/reports/exportEmployeeTicketEligibilityReportExcel/excel', exportEmployeeTicketEligibilityReportExcel); 
+
+
+router.post('/reports/getEmployeeAddressListReportHtml/html', getEmployeeAddressListReport);
+router.post('/reports/getEmployeeAddressListReportExcel/excel', exportEmployeeAddressListRepotExcel); 
+
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
 router.post('/reports/tax-vat-out-ledger/excel', exportTaxInvoiceExcel);
