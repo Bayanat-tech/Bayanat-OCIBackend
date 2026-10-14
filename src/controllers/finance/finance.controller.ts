@@ -588,13 +588,14 @@ export const getFinanceListData = async (
         let defaultData: { [key: string]: any } = {};
 
         const voucherType = String(extra_param2 || "").toUpperCase();
-        const isReceipt = ["BR", "CR", "RJV"].includes(voucherType);
-        const isPayment = ["BP", "CP", "PJV"].includes(voucherType);
+        const isReceipt = ["BR", "CR", "RJV", "CN"].includes(voucherType);
+        const isPayment = ["BP", "CP", "PJV", "DN"].includes(voucherType);
 
         // 1. Primary: Query TR_AC_HEADER for all open invoices for this account & division
         let headerInvoices: any[] = [];
         const knownDocNos = new Set<string>();
         const knownRefNos = new Set<string>();
+        const knownKeys = new Set<string>();
 
         try {
           const headerInvoicesResult = await connection.execute(
@@ -662,15 +663,16 @@ export const getFinanceListData = async (
           (headerInvoicesResult.rows || []).forEach((hRow: any) => {
             const docNo = String(hRow.DOC_NO || hRow.doc_no || '').trim();
             const refNo = String(hRow.REF_NO || hRow.ref_no || '').trim();
+            const primaryInvNo = refNo || docNo;
 
-            // Register all invoice documents from TR_AC_HEADER so secondary query NEVER resurrects paid invoices
-            if (docNo) knownDocNos.add(docNo.toUpperCase());
-            if (refNo) knownRefNos.add(refNo.toUpperCase());
+            // Register all invoice documents from TR_AC_HEADER so secondary query NEVER resurrects paid or duplicate invoices
+            if (docNo) { knownDocNos.add(docNo.toUpperCase()); knownKeys.add(docNo.toUpperCase()); }
+            if (refNo) { knownRefNos.add(refNo.toUpperCase()); knownKeys.add(refNo.toUpperCase()); }
+            if (primaryInvNo) { knownKeys.add(primaryInvNo.toUpperCase()); }
 
             const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
             const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
             const bal = Math.max(0, invAmt - paidAmt);
-            const primaryInvNo = refNo || docNo;
             if (bal > 0.001) {
               const rowObj: any = {
                 inv_no: primaryInvNo,
@@ -711,8 +713,8 @@ export const getFinanceListData = async (
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
           (cancelledRes.rows || []).forEach((cRow: any) => {
-            if (cRow.DOC_NO) knownDocNos.add(String(cRow.DOC_NO).toUpperCase());
-            if (cRow.REF_NO) knownRefNos.add(String(cRow.REF_NO).toUpperCase());
+            if (cRow.DOC_NO) { knownDocNos.add(String(cRow.DOC_NO).toUpperCase()); knownKeys.add(String(cRow.DOC_NO).toUpperCase()); }
+            if (cRow.REF_NO) { knownRefNos.add(String(cRow.REF_NO).toUpperCase()); knownKeys.add(String(cRow.REF_NO).toUpperCase()); }
           });
         } catch (cErr) {
           console.warn('[finance.controller invoice] Cancelled invoices check error:', cErr);
@@ -751,20 +753,44 @@ export const getFinanceListData = async (
             const rRefNo = String(r.REF_NO || r.ref_no || '').trim().toUpperCase();
 
             // Strict deduplication: skip if already in TR_AC_HEADER by doc_no, inv_no, or ref_no
+            if (rDocNo && knownKeys.has(rDocNo)) return;
+            if (rInvNo && knownKeys.has(rInvNo)) return;
+            if (rRefNo && knownKeys.has(rRefNo)) return;
             if (knownDocNos.has(rDocNo) || knownDocNos.has(rInvNo)) return;
             if (rRefNo && (knownRefNos.has(rRefNo) || knownDocNos.has(rRefNo))) return;
             if (rInvNo && knownRefNos.has(rInvNo)) return;
 
             legacyInvoices.push(r);
-            if (rDocNo) knownDocNos.add(rDocNo);
-            if (rInvNo) knownDocNos.add(rInvNo);
-            if (rRefNo) knownRefNos.add(rRefNo);
+            if (rDocNo) { knownDocNos.add(rDocNo); knownKeys.add(rDocNo); }
+            if (rInvNo) { knownDocNos.add(rInvNo); knownKeys.add(rInvNo); }
+            if (rRefNo) { knownRefNos.add(rRefNo); knownKeys.add(rRefNo); }
           });
         } catch (invErr) {
           console.warn('[finance.controller invoice] TR_AC_INVDETAIL query error:', invErr);
         }
 
-        fetchedData = [...headerInvoices, ...legacyInvoices];
+        // Final strict deduplication across both queries by invoice/voucher identifier
+        const combinedInvoices = [...headerInvoices, ...legacyInvoices];
+        const seenInvoiceKeys = new Set<string>();
+        const uniqueInvoices: any[] = [];
+        for (const item of combinedInvoices) {
+          const dNo = String(item.DOC_NO || item.doc_no || '').trim().toUpperCase();
+          const iNo = String(item.INV_NO || item.inv_no || '').trim().toUpperCase();
+          const rNo = String(item.REF_NO || item.ref_no || '').trim().toUpperCase();
+          const id = dNo || iNo || rNo;
+          if (!id) continue;
+          if ((dNo && seenInvoiceKeys.has(`DOC_${dNo}`)) ||
+              (iNo && seenInvoiceKeys.has(`INV_${iNo}`)) ||
+              (rNo && seenInvoiceKeys.has(`REF_${rNo}`))) {
+            continue;
+          }
+          if (dNo) seenInvoiceKeys.add(`DOC_${dNo}`);
+          if (iNo) seenInvoiceKeys.add(`INV_${iNo}`);
+          if (rNo) seenInvoiceKeys.add(`REF_${rNo}`);
+          uniqueInvoices.push(item);
+        }
+
+        fetchedData = uniqueInvoices;
 
         const fetchedInvoiceNumbers = (fetchedData as any[]).map((row: any) => {
           defaultData[row.inv_no] = row;
