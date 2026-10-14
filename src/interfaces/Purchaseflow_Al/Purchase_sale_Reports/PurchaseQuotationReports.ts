@@ -11,10 +11,10 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  doc_type:     string;
-  doc_no:       string;
+  doc_type: string;
+  doc_no: string;
 }
 
 // ─── DB helpers (same as SalesInvoiceReports.ts) ───────────────────────────
@@ -83,10 +83,10 @@ function amtFmt(value: unknown): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code),
-    doc_type:     text(b.doc_type),
-    doc_no:       text(b.doc_no),
+    doc_type: text(b.doc_type),
+    doc_no: text(b.doc_no),
   };
 }
 
@@ -160,6 +160,7 @@ interface PurchaseQuotationHeader {
   dlvr_contact: string;
   dlvr_email: string;
   disc_hdr_price: number;
+  disc_hdr_percent: number;
   curr_code: string;
 }
 
@@ -182,9 +183,14 @@ function buildPurchaseQuotationHeader(rows: ReportRow[]): PurchaseQuotationHeade
     dlvr_contact: text(h.dlvr_contact),
     dlvr_email: text(h.dlvr_email),
     disc_hdr_price: num(h.disc_hdr_price),
+    disc_hdr_percent: num(h.disc_hdr_percent),
     curr_code: text(h.curr_code) || "QAR",
   };
 }
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+const headerDiscOf = (h: PurchaseQuotationHeader, base: number) =>
+  round2(h.disc_hdr_price || (base * h.disc_hdr_percent) / 100);
 
 // ─── Shared visual system (identical extra CSS across all 3 reports) ──────
 
@@ -268,6 +274,7 @@ const PQ_EXTRA_CSS = `
     font-size: 10.5px;
     padding: 6px 6px;
   }
+    .totals-box { margin-bottom: 0; page-break-inside: avoid; }
 `;
 
 function docTitleRowHtml(title: string, subtitle: string, printDateTime: string, loginId: string): string {
@@ -319,7 +326,7 @@ function renderPurchaseQuotationBody(rows: ReportRow[], loginId: string): string
   const header = buildPurchaseQuotationHeader(rows);
 
   const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const overallDiscount = header.disc_hdr_price;
+  const overallDiscount = headerDiscOf(header, totalAmount);
   const grandTotal = totalAmount - overallDiscount;
 
   const bodyRows = rows
