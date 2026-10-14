@@ -627,6 +627,11 @@ export const getFinanceListData = async (
                NVL((
                  SELECT SUM(ABS(d.lcur_amount))
                  FROM TR_AC_INVDETAIL d
+                 JOIN TR_AC_HEADER pay_h
+                   ON pay_h.company_code = d.company_code
+                  AND pay_h.doc_no       = d.doc_no
+                  AND pay_h.doc_type     = d.doc_type
+                  AND NVL(pay_h.canceled, 'N') = 'N'
                  WHERE d.company_code = h.company_code
                    AND d.div_code     = h.div_code
                    AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
