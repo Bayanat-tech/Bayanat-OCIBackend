@@ -24,6 +24,9 @@ import {
 import { getSalaryAdvDedReportHtml } from "../../../controllers/wms/reports/SalaryAdvDedReport.controller";
 import { getAbsentMemoReportHtml } from "../../../controllers/wms/reports/AbsentMemoReport.controller";
 import { getRetirementReportHtml } from "../../../controllers/wms/reports/RetirementReportController";
+import { getAbsenceReportHtml } from "../../../controllers/wms/reports/AbsenceReport.controller";
+import { getDocumentReportHtml } from "../../../controllers/wms/reports/HrDocumentReport.controller";
+import { getLabourCardExpiryReportHtml } from "../../../controllers/wms/reports/HrLabourExpiryCard.controller";
 
 const router = express.Router();
 
@@ -156,6 +159,57 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getRetirementReportHtml
+);
+
+// ─── Absence Report ───────────────────────────────────────────────────────────
+
+router.get(
+  "/hr/absence/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAbsenceReportHtml
+);
+
+// Optional: also allow POST for parity with other routes
+router.post(
+  "/hr/absence/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getAbsenceReportHtml
+);
+
+// ─── HR Document Report ───────────────────────────────────────────────────────
+
+router.get(
+  "/hr/document/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getDocumentReportHtml
+);
+
+// Optional: also allow POST for parity with other routes
+router.post(
+  "/hr/document/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getDocumentReportHtml
+);
+
+// ─── Labour Card Expiry Listing Report ────────────────────────────────────────
+
+router.get(
+  "/hr/labour-card-expiry/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getLabourCardExpiryReportHtml
+);
+
+// Optional: also allow POST for parity with other routes
+router.post(
+  "/hr/labour-card-expiry/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getLabourCardExpiryReportHtml
 );
 
 export default router;

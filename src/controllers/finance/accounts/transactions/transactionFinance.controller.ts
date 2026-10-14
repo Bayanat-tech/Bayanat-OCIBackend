@@ -1101,11 +1101,11 @@ export const getTransactionChildren = async (req: RequestWithUser, res: Response
     const invWhereNoDiv = `WHERE v.company_code = :cc AND ${invDocCond}
                           AND v.doc_type = :dt ORDER BY v.serial_no, v.dtl_sr_no`;
     const invSql = `
-      SELECT v.*, h.ref_no
+      SELECT v.*, NVL(h.doc_no, v.doc_no) AS voucher_doc_no, NVL(h.ref_no, v.inv_no) AS ref_no
       FROM VW_TXN_INVOICE_CHILDREN v
       LEFT JOIN TR_AC_HEADER h
         ON h.company_code = v.company_code
-       AND h.doc_no       = v.inv_no
+       AND (h.doc_no = v.inv_no OR (h.ref_no IS NOT NULL AND (h.ref_no = v.inv_no OR UPPER(TRIM(h.ref_no)) = UPPER(TRIM(v.inv_no)))))
     `;
 
     let [inv, job, exp]: any[] = await Promise.all([
@@ -1192,155 +1192,261 @@ export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
 export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const { inv_nos, div_code } = req.query;
+    const { inv_nos, div_code, ac_code, doc_type } = req.query;
     if (!inv_nos || !div_code) { res.status(400).json({ success: false, message: 'inv_nos and div_code are required' }); return; }
     const list = (inv_nos as string).split(',').map(n => n.trim()).filter(Boolean);
     if (!list.length) { res.status(400).json({ success: false, message: 'At least one invoice number is required' }); return; }
     conn = await getConn(req);
+
+    const isPayment = doc_type === 'BP' || doc_type === 'CP' || doc_type === 'PI' || doc_type === 'PO';
+    const isReceipt = doc_type === 'BR' || doc_type === 'CR' || doc_type === 'SI' || doc_type === 'SV';
+
     const placeholders = list.map((_, i) => `:inv${i}`).join(',');
-    const binds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
-    list.forEach((n, i) => (binds[`inv${i}`] = n));
+    const binds: Record<string, any> = {
+      cc: req.user.company_code,
+      dc: div_code,
+      has_ac: ac_code ? 1 : 0,
+      ac: ac_code ? String(ac_code).trim() : '',
+      is_payment: isPayment ? 1 : 0,
+      is_receipt: isReceipt ? 1 : 0,
+    };
+    list.forEach((n, i) => (binds[`inv${i}`] = n.trim().toUpperCase()));
 
     const found: Record<string, any> = {};
 
-    // 1. Primary: query live TR_AC_INVDETAIL grouped by inv_no
+    // 1. Primary: query TR_AC_HEADER for authoritative gross amount & settlements
     try {
-      const invDetailRes = await conn.execute(
+      const hdrRes = await conn.execute(
         `SELECT 
-           inv.inv_no,
-           MAX(inv.doc_no) AS doc_no,
-           MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
-           NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.amount_origin, inv.lcur_amount) ELSE 0 END)), 0) AS original_amount,
-           NVL(SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END), 0) AS paid_amount
-         FROM TR_AC_INVDETAIL inv
-         LEFT JOIN TR_AC_HEADER h
-           ON h.company_code = inv.company_code
-          AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
-         WHERE inv.company_code = :cc 
-           AND inv.div_code     = :dc 
-           AND (inv.inv_no IN (${placeholders}) OR inv.doc_no IN (${placeholders}))
-         GROUP BY inv.inv_no`,
+           h.doc_no AS inv_no,
+           h.ref_no,
+           NVL(h.canceled, 'N') AS canceled,
+           NVL((
+             SELECT ABS(NVL(d.lcur_amount, d.amount))
+             FROM TR_AC_DETAIL d
+             WHERE d.company_code = h.company_code
+               AND d.doc_type     = h.doc_type
+               AND d.doc_no       = h.doc_no
+               AND d.serial_no    = 9001
+           ), (
+             SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
+             FROM TR_AC_DETAIL d
+             WHERE d.company_code = h.company_code
+               AND d.doc_type     = h.doc_type
+               AND d.doc_no       = h.doc_no
+               AND d.serial_no    <> 9001
+           )) AS original_amount,
+           NVL((
+             SELECT SUM(ABS(d.lcur_amount)) 
+             FROM TR_AC_INVDETAIL d 
+             WHERE d.company_code = h.company_code 
+               AND d.div_code     = h.div_code 
+               AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
+               AND NVL(d.indicator_origin, 'N') = 'N'
+           ), 0) AS paid_amount
+         FROM TR_AC_HEADER h
+         WHERE h.company_code = :cc 
+           AND h.div_code     = :dc 
+           AND (:has_ac = 0 OR h.ac_code = :ac OR EXISTS (
+             SELECT 1 FROM TR_AC_DETAIL d2 
+             WHERE d2.company_code = h.company_code 
+               AND d2.doc_type = h.doc_type 
+               AND d2.doc_no = h.doc_no 
+               AND d2.ac_code = :ac
+           ))
+           AND (
+             (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV'))
+             OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
+             OR (:is_receipt = 0 AND :is_payment = 0)
+           )
+           AND (
+             UPPER(TRIM(h.doc_no)) IN (${placeholders}) 
+             OR (h.ref_no IS NOT NULL AND UPPER(TRIM(h.ref_no)) IN (${placeholders}))
+           )`,
         binds,
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
-      (invDetailRes.rows || []).forEach((r: any) => {
+      (hdrRes.rows || []).forEach((r: any) => {
+        const isCanceled = String(r.CANCELED || '').trim().toUpperCase() === 'Y';
+        const vendorBillNo = r.REF_NO ? String(r.REF_NO).trim() : String(r.INV_NO).trim();
+        const voucherDocNo = String(r.INV_NO).trim();
+
+        if (isCanceled) {
+          const cancelObj = {
+            inv_no: vendorBillNo,
+            doc_no: voucherDocNo,
+            ref_no: voucherDocNo,
+            original_amount: 0,
+            paid_amount: 0,
+            outstanding_amount: 0,
+            payment_percentage: 0,
+            is_fully_paid: true,
+            is_cancelled: true,
+            error: `Invoice ${voucherDocNo}${r.REF_NO ? ' (Ref #' + r.REF_NO + ')' : ''} is CANCELLED. Cancelled invoices cannot be allocated in payments.`,
+          };
+          if (r.INV_NO) {
+            found[r.INV_NO] = cancelObj;
+            found[String(r.INV_NO).toUpperCase()] = cancelObj;
+          }
+          if (r.REF_NO) {
+            found[r.REF_NO] = cancelObj;
+            found[String(r.REF_NO).toUpperCase()] = cancelObj;
+          }
+          return;
+        }
+
         const org = Number(r.ORIGINAL_AMOUNT || 0);
         const pd = Number(r.PAID_AMOUNT || 0);
         const out = Math.max(0, org - pd);
-        if (org > 0) {
-          const resObj = {
-            inv_no: r.INV_NO,
-            doc_no: r.DOC_NO ?? r.INV_NO,
-            ref_no: r.REF_NO ?? '',
-            original_amount: org,
-            paid_amount: pd,
-            outstanding_amount: out,
-            payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
-            is_fully_paid: out <= 0.01,
-          };
-          if (r.INV_NO) found[r.INV_NO] = resObj;
-          if (r.DOC_NO) found[r.DOC_NO] = resObj;
+        const resObj = {
+          inv_no: vendorBillNo,
+          doc_no: voucherDocNo,
+          ref_no: voucherDocNo,
+          original_amount: org,
+          paid_amount: pd,
+          outstanding_amount: out,
+          payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+          is_fully_paid: out <= 0.001,
+          is_cancelled: false,
+        };
+        if (r.INV_NO) {
+          found[r.INV_NO] = resObj;
+          found[String(r.INV_NO).toUpperCase()] = resObj;
+        }
+        if (r.REF_NO) {
+          found[r.REF_NO] = resObj;
+          found[String(r.REF_NO).toUpperCase()] = resObj;
         }
       });
     } catch (e) {
-      console.warn('[getInvoiceOutstandingBalances] TR_AC_INVDETAIL query error:', e);
+      console.warn('[getInvoiceOutstandingBalances] TR_AC_HEADER primary error:', e);
     }
 
-    // 2. Fallback to TR_AC_HEADER for any invoices with 0 origin in TR_AC_INVDETAIL
-    const missingInvs = list.filter(inv => !found[inv] || found[inv].original_amount <= 0);
+    // 2. Secondary fallback: TR_AC_INVDETAIL for any legacy items not in TR_AC_HEADER
+    const missingInvs = list.filter(inv => !found[inv] && !found[inv.toUpperCase()]);
     if (missingInvs.length > 0) {
       const missingPlaceholders = missingInvs.map((_, i) => `:m_inv${i}`).join(',');
-      const missingBinds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
-      missingInvs.forEach((n, i) => (missingBinds[`m_inv${i}`] = n));
+      const missingBinds: Record<string, any> = {
+        cc: req.user.company_code,
+        dc: div_code,
+        has_ac: ac_code ? 1 : 0,
+        ac: ac_code ? String(ac_code).trim() : '',
+        is_payment: isPayment ? 1 : 0,
+        is_receipt: isReceipt ? 1 : 0,
+      };
+      missingInvs.forEach((n, i) => (missingBinds[`m_inv${i}`] = n.trim().toUpperCase()));
 
       try {
-        const hdrRes = await conn.execute(
+        const invDetailRes = await conn.execute(
           `SELECT 
-             h.doc_no AS inv_no,
-             h.ref_no,
-             NVL((
-               SELECT ABS(NVL(d.lcur_amount, d.amount))
-               FROM TR_AC_DETAIL d
-               WHERE d.company_code = h.company_code
-                 AND d.doc_type     = h.doc_type
-                 AND d.doc_no       = h.doc_no
-                 AND d.serial_no    = 9001
-             ), (
-               SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
-               FROM TR_AC_DETAIL d
-               WHERE d.company_code = h.company_code
-                 AND d.doc_type     = h.doc_type
-                 AND d.doc_no       = h.doc_no
-                 AND d.serial_no    <> 9001
-             )) AS original_amount,
-             NVL((
-               SELECT SUM(ABS(d.lcur_amount)) 
-               FROM TR_AC_INVDETAIL d 
-               WHERE d.company_code = h.company_code 
-                 AND d.div_code     = h.div_code 
-                 AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
-                 AND NVL(d.indicator_origin, 'N') = 'N'
-             ), 0) AS paid_amount
-           FROM TR_AC_HEADER h
-           WHERE h.company_code = :cc 
-             AND h.div_code     = :dc 
-             AND h.doc_no IN (${missingPlaceholders})`,
+             inv.inv_no,
+             MAX(inv.doc_no) AS doc_no,
+             MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
+             MAX(NVL(h.canceled, 'N')) AS canceled,
+             NVL(ABS(MAX(CASE WHEN inv.indicator_origin = 'Y' THEN NVL(inv.amount_origin, inv.lcur_amount) ELSE 0 END)), 0) AS original_amount,
+             NVL(SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END), 0) AS paid_amount
+           FROM TR_AC_INVDETAIL inv
+           LEFT JOIN TR_AC_HEADER h
+             ON h.company_code = inv.company_code
+            AND (h.doc_no       = inv.doc_no OR h.doc_no = inv.inv_no)
+           WHERE inv.company_code = :cc 
+             AND inv.div_code     = :dc 
+             AND NVL(h.canceled, 'N') = 'N'
+             AND (:has_ac = 0 OR inv.ac_code = :ac OR h.ac_code = :ac)
+             AND (
+               (:is_receipt = 1 AND (inv.doc_type IN ('SI', 'SV') OR h.doc_type IN ('SI', 'SV')))
+               OR (:is_payment = 1 AND (inv.doc_type IN ('PI', 'PO') OR h.doc_type IN ('PI', 'PO')))
+               OR (:is_receipt = 0 AND :is_payment = 0)
+             )
+             AND (
+               UPPER(TRIM(inv.inv_no)) IN (${missingPlaceholders}) 
+               OR (inv.doc_no IS NOT NULL AND UPPER(TRIM(inv.doc_no)) IN (${missingPlaceholders}))
+             )
+           GROUP BY inv.inv_no`,
           missingBinds,
           { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
-        (hdrRes.rows || []).forEach((r: any) => {
+        (invDetailRes.rows || []).forEach((r: any) => {
+          const isCanceled = String(r.CANCELED || '').trim().toUpperCase() === 'Y';
+          if (isCanceled) return;
+
           const org = Number(r.ORIGINAL_AMOUNT || 0);
           const pd = Number(r.PAID_AMOUNT || 0);
           const out = Math.max(0, org - pd);
-          found[r.INV_NO] = {
-            inv_no: r.INV_NO,
-            ref_no: r.REF_NO ?? '',
-            original_amount: org,
-            paid_amount: pd,
-            outstanding_amount: out,
-            payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
-            is_fully_paid: out <= 0.01,
-          };
+          if (org > 0) {
+            const vendorBillNo = r.REF_NO ? String(r.REF_NO).trim() : String(r.INV_NO).trim();
+            const voucherDocNo = String(r.DOC_NO || r.INV_NO).trim();
+            const resObj = {
+              inv_no: vendorBillNo,
+              doc_no: voucherDocNo,
+              ref_no: voucherDocNo,
+              original_amount: org,
+              paid_amount: pd,
+              outstanding_amount: out,
+              payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+              is_fully_paid: out <= 0.001,
+              is_cancelled: false,
+            };
+            if (r.INV_NO) {
+              found[r.INV_NO] = resObj;
+              found[String(r.INV_NO).toUpperCase()] = resObj;
+            }
+            if (r.DOC_NO) {
+              found[r.DOC_NO] = resObj;
+              found[String(r.DOC_NO).toUpperCase()] = resObj;
+            }
+            if (r.REF_NO) {
+              found[r.REF_NO] = resObj;
+              found[String(r.REF_NO).toUpperCase()] = resObj;
+            }
+          }
         });
       } catch (e) {
-        console.warn('[getInvoiceOutstandingBalances] TR_AC_HEADER fallback error:', e);
+        console.warn('[getInvoiceOutstandingBalances] TR_AC_INVDETAIL fallback error:', e);
       }
     }
 
-    // 3. Fallback to VW_INVOICE_OUTSTANDING for any still missing
-    const stillMissing = list.filter(inv => !found[inv]);
-    if (stillMissing.length > 0) {
-      try {
-        const viewPlaceholders = stillMissing.map((_, i) => `:v_inv${i}`).join(',');
-        const viewBinds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
-        stillMissing.forEach((n, i) => (viewBinds[`v_inv${i}`] = n));
+    // 3. Fallback to VW_INVOICE_OUTSTANDING ONLY if no ac_code and no doc_type filter is present
+    // (VW_INVOICE_OUTSTANDING lacks account and doc_type columns, so it must NEVER be used when querying for a specific vendor/customer)
+    if (!ac_code && !isPayment && !isReceipt) {
+      const stillMissing = list.filter(inv => !found[inv] && !found[inv.toUpperCase()]);
+      if (stillMissing.length > 0) {
+        try {
+          const viewPlaceholders = stillMissing.map((_, i) => `:v_inv${i}`).join(',');
+          const viewBinds: Record<string, any> = { cc: req.user.company_code, dc: div_code };
+          stillMissing.forEach((n, i) => (viewBinds[`v_inv${i}`] = n.trim().toUpperCase()));
 
-        const result = await conn.execute(
-          `SELECT o.*, h.ref_no 
-           FROM VW_INVOICE_OUTSTANDING o
-           LEFT JOIN TR_AC_HEADER h
-             ON h.company_code = o.company_code
-            AND h.doc_no       = o.inv_no
-           WHERE o.company_code = :cc AND o.div_code = :dc AND o.inv_no IN (${viewPlaceholders})`,
-          viewBinds,
-          { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
-        (result.rows || []).forEach((r: any) => {
-          const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
-          const org = Number(r.ORIGINAL_AMOUNT || 0);
-          const pd = Number(r.PAID_AMOUNT || 0);
-          found[r.INV_NO] = {
-            inv_no: r.INV_NO,
-            ref_no: r.REF_NO ?? '',
-            original_amount: org,
-            paid_amount: pd,
-            outstanding_amount: out,
-            payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
-            is_fully_paid: out <= 0.01,
-          };
-        });
-      } catch (e) {
-        // ignore view error
+          const result = await conn.execute(
+            `SELECT o.*, h.ref_no 
+             FROM VW_INVOICE_OUTSTANDING o
+             LEFT JOIN TR_AC_HEADER h
+               ON h.company_code = o.company_code
+              AND h.doc_no       = o.inv_no
+             WHERE o.company_code = :cc AND o.div_code = :dc AND UPPER(TRIM(o.inv_no)) IN (${viewPlaceholders})`,
+            viewBinds,
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          (result.rows || []).forEach((r: any) => {
+            const out = Math.max(0, Number(r.OUTSTANDING_AMOUNT || 0));
+            const org = Number(r.ORIGINAL_AMOUNT || 0);
+            const pd = Number(r.PAID_AMOUNT || 0);
+            const resObj = {
+              inv_no: r.INV_NO,
+              ref_no: r.REF_NO ?? '',
+              original_amount: org,
+              paid_amount: pd,
+              outstanding_amount: out,
+              payment_percentage: org > 0 ? Math.round((pd / org) * 10000) / 100 : 0,
+              is_fully_paid: out <= 0.01,
+            };
+            if (r.INV_NO) {
+              found[r.INV_NO] = resObj;
+              found[String(r.INV_NO).toUpperCase()] = resObj;
+            }
+          });
+        } catch (e) {
+          // ignore view error
+        }
       }
     }
 
