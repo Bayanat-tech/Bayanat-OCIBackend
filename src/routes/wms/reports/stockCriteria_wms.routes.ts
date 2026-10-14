@@ -26,6 +26,7 @@ import { getAbsentMemoReportHtml } from "../../../controllers/wms/reports/Absent
 import { getRetirementReportHtml } from "../../../controllers/wms/reports/RetirementReportController";
 import { getAbsenceReportHtml } from "../../../controllers/wms/reports/AbsenceReport.controller";
 import { getDocumentReportHtml } from "../../../controllers/wms/reports/HrDocumentReport.controller";
+import { getLabourCardExpiryReportHtml } from "../../../controllers/wms/reports/HrLabourExpiryCard.controller";
 
 const router = express.Router();
 
@@ -192,6 +193,23 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getDocumentReportHtml
+);
+
+// ─── Labour Card Expiry Listing Report ────────────────────────────────────────
+
+router.get(
+  "/hr/labour-card-expiry/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getLabourCardExpiryReportHtml
+);
+
+// Optional: also allow POST for parity with other routes
+router.post(
+  "/hr/labour-card-expiry/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getLabourCardExpiryReportHtml
 );
 
 export default router;
