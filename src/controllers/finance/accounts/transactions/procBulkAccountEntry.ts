@@ -339,7 +339,7 @@ export const procBulkAccountEntry = async (
            SET INV_NO = :genDocNo 
            WHERE company_code = :cc 
              AND doc_no = :genDocNo 
-             AND (inv_no = '0' OR inv_no IS NULL OR inv_no = :refNo)
+             AND (inv_no = '0' OR inv_no IS NULL)
              AND indicator_origin = 'Y'`,
           {
             genDocNo: generatedDocNo,

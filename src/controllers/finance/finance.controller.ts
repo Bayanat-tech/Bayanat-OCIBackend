@@ -657,14 +657,20 @@ export const getFinanceListData = async (
           (headerInvoicesResult.rows || []).forEach((hRow: any) => {
             const docNo = String(hRow.DOC_NO || hRow.doc_no || '').trim();
             const refNo = String(hRow.REF_NO || hRow.ref_no || '').trim();
+
+            // Register all invoice documents from TR_AC_HEADER so secondary query NEVER resurrects paid invoices
+            if (docNo) knownDocNos.add(docNo.toUpperCase());
+            if (refNo) knownRefNos.add(refNo.toUpperCase());
+
             const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
             const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
             const bal = Math.max(0, invAmt - paidAmt);
+            const primaryInvNo = refNo || docNo;
             if (bal > 0.001) {
               const rowObj: any = {
-                inv_no: docNo,
+                inv_no: primaryInvNo,
                 doc_no: docNo,
-                ref_no: refNo,
+                ref_no: docNo,
                 inv_date: hRow.INV_DATE || hRow.inv_date,
                 amount: paidAmt,
                 sign_ind: 1,
@@ -684,8 +690,6 @@ export const getFinanceListData = async (
                 origin_doc_type: hRow.ORIGIN_DOC_TYPE || hRow.origin_doc_type,
               };
               headerInvoices.push(rowObj);
-              if (docNo) knownDocNos.add(docNo.toUpperCase());
-              if (refNo) knownRefNos.add(refNo.toUpperCase());
             }
           });
         } catch (hdrErr) {
