@@ -11,10 +11,10 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  doc_type:     string;
-  doc_no:       string;
+  doc_type: string;
+  doc_no: string;
 }
 
 // ─── DB helpers (same as PoOrderRegisterReport.ts) ─────────────────────────
@@ -83,10 +83,10 @@ function amtFmt(value: unknown): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code),
-    doc_type:     text(b.doc_type),
-    doc_no:       text(b.doc_no),
+    doc_type: text(b.doc_type),
+    doc_no: text(b.doc_no),
   };
 }
 
@@ -169,6 +169,7 @@ interface InvoiceHeader {
   due_date: any;
   tax_reg_no: string;
   disc_hdr_price: number;
+  disc_hdr_percent: number;
 }
 
 function buildInvoiceHeader(rows: ReportRow[]): InvoiceHeader {
@@ -190,7 +191,35 @@ function buildInvoiceHeader(rows: ReportRow[]): InvoiceHeader {
     due_date: h.due_date,
     tax_reg_no: text(h.tax_reg_no),
     disc_hdr_price: num(h.disc_hdr_price),
+    disc_hdr_percent: num(h.disc_hdr_percent),
   };
+}
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+
+const lineDiscOf = (r: ReportRow) => {
+  const gross = num(r.quantity) * num(r.unit_price);
+  return round2(num(r.disc_price) || (gross * num(r.disc_percent)) / 100);
+};
+
+function computeInvoiceTotals(rows: ReportRow[], header: InvoiceHeader) {
+  const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
+
+  // Gross = qty × rate 
+  const totalAmount = round2(rows.reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0));
+
+  const lineDiscount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
+
+ 
+  const lineNet = totalAmount - lineDiscount;
+  const headerDiscount = round2(header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100);
+
+  const overallDiscount = round2(lineDiscount + headerDiscount);
+  const grandTotal = round2(totalAmount - overallDiscount);
+  const totalTax = round2(rows.reduce((s, r) => s + num(r.tx_compnt_amt_1), 0));
+
+  return { totalQty, totalAmount, overallDiscount, grandTotal, totalTax };
 }
 
 // ─── Layout CSS — same visual system as Sales Invoice / PO Order Register ──
@@ -311,24 +340,18 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
   });
 
   const header = buildInvoiceHeader(rows);
-  const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-  const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const overallDiscount = header.disc_hdr_price;
-  const grandTotal = totalAmount - overallDiscount;
+  const t = computeInvoiceTotals(rows, header);
 
-  const bodyRows = rows
-    .map(
-      (r, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
-          <td>${escapeHtml(r.p_uom)}</td>
-          <td class="right">${qtyFmt(r.quantity)}</td>
-          <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right amount">${amtFmt(r.amount)}</td>
-        </tr>`
-    )
-    .join("");
+  const bodyRows = rows.map((r, i) => `
+  <tr>
+    <td>${i + 1}</td>
+    <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.full_prod_name || r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
+    <td>${escapeHtml(r.p_uom)}</td>
+    <td class="right">${qtyFmt(r.quantity)}</td>
+    <td class="right">${amtFmt(r.unit_price)}</td>
+    <td class="right">${amtFmt(lineDiscOf(r))}</td>
+    <td class="right amount">${amtFmt(r.amount)}</td>
+  </tr>`).join("");
 
   return `
     ${printMetaHtml("Purchase Invoice", `Invoice Document — ${header.div_name}`, printDateTime, loginId)}
@@ -352,18 +375,19 @@ function renderPurchaseInvoiceBody(rows: ReportRow[], loginId: string): string {
           <th>Product / Description</th>
           <th>Unit</th>
           <th class="right">Qty</th>
-          <th class="right">Unit Rate</th>
-          <th class="right">Gross Value</th>
+<th class="right">Unit Rate</th>
+<th class="right">Disc</th>
+<th class="right">Amount</th>
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>
     </table>
 
     <div class="totals-box">
-      <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
-      <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
-      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-      <div class="row grand"><span>Grand Total</span><span>${amtFmt(grandTotal)}</span></div>
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
+<div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
+<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+<div class="row grand"><span>Grand Total</span><span>${amtFmt(t.grandTotal)}</span></div>
     </div>`;
 }
 
@@ -375,11 +399,8 @@ function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): strin
   });
 
   const header = buildInvoiceHeader(rows);
-  const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-  const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const totalTax = rows.reduce((s, r) => s + num(r.tx_compnt_amt_1), 0);
-  const overallDiscount = header.disc_hdr_price;
-  const netTotal = totalAmount - overallDiscount + totalTax;
+  const t = computeInvoiceTotals(rows, header);
+  const netTotal = round2(t.grandTotal + t.totalTax);
 
   const bodyRows = rows
     .map((r, i) => {
@@ -391,6 +412,7 @@ function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): strin
           <td>${escapeHtml(r.p_uom)}</td>
           <td class="right">${qtyFmt(r.quantity)}</td>
           <td class="right">${amtFmt(r.unit_price)}</td>
+          <td class="right">${amtFmt(lineDiscOf(r))}</td> 
           <td class="right">${amtFmt(r.amount)}</td>
           <td class="right">${amtFmt(r.tx_compnt_perc_1)}%</td>
           <td class="right">${amtFmt(r.tx_compnt_amt_1)}</td>
@@ -422,6 +444,7 @@ function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): strin
           <th>Unit</th>
           <th class="right">Qty</th>
           <th class="right">Unit Rate</th>
+          <th class="right">Discount</th>
           <th class="right">Amount</th>
           <th class="right">VAT %</th>
           <th class="right">Amount Tax</th>
@@ -432,11 +455,11 @@ function renderPurchaseInvoiceTaxBody(rows: ReportRow[], loginId: string): strin
     </table>
 
     <div class="totals-box">
-      <div class="row"><span>Total Quantity</span><span>${qtyFmt(totalQty)}</span></div>
-      <div class="row"><span>Total Amount</span><span>${amtFmt(totalAmount)}</span></div>
-      <div class="row"><span>Overall Discount</span><span>${amtFmt(overallDiscount)}</span></div>
-      <div class="row"><span>TAX Amount</span><span>${amtFmt(totalTax)}</span></div>
-      <div class="row grand"><span>Net Total</span><span>${amtFmt(netTotal)}</span></div>
+      <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
+<div class="row"><span>Total Amount</span><span>${amtFmt(t.totalAmount)}</span></div>
+<div class="row"><span>Overall Discount</span><span>${amtFmt(t.overallDiscount)}</span></div>
+<div class="row"><span>TAX Amount</span><span>${amtFmt(t.totalTax)}</span></div>
+<div class="row grand"><span>Net Total</span><span>${amtFmt(netTotal)}</span></div>
     </div>`;
 }
 
@@ -877,60 +900,57 @@ function buildXlsxBuffer(sheetName: string, colCount: number, colWidth: number, 
 
 function buildPurchaseInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildInvoiceHeader(rows);
-  const COL_COUNT = 6; // S.No, Description, Unit, Qty, Unit Rate, Gross Value
+  const t = computeInvoiceTotals(rows, header);
+  const COL_COUNT = 7; // S.No, Description, Unit, Qty, Unit Rate, Disc, Amount
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell(`Purchase Invoice - ${header.doc_no}`, "title"), null, null, null, null, null]);
+  rows_.push([xlCell(`Purchase Invoice - ${header.doc_no}`, "title"), ...new Array(COL_COUNT - 1).fill(null)]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   rows_.push([
     xlCell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null,
-    xlCell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
+    xlCell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null, null,
   ]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 5 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 6 } });
 
   rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
     xlCell("S.No", "header"), xlCell("Product / Description", "header"), xlCell("Unit", "header"),
-    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Gross Value", "header"),
+    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Disc", "header"), xlCell("Amount", "header"),
   ]);
 
-  let totalQty = 0;
-  let totalAmount = 0;
   rows.forEach((r, i) => {
-    totalQty += num(r.quantity);
-    totalAmount += num(r.amount);
     rows_.push([
       xlCell(i + 1, "data"),
       xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),
+      xlCell(lineDiscOf(r), "dataNum"),
       xlCell(num(r.amount), "dataNum"),
     ]);
   });
 
-  const overallDiscount = header.disc_hdr_price;
-  const grandTotal = totalAmount - overallDiscount;
-
   rows_.push(new Array(COL_COUNT).fill(null));
 
-  const totalRow = rows_.length;
-  rows_.push([xlCell("Total Amount", "groupTotal"), null, null, null, null, xlCell(totalAmount, "groupTotalNum")]);
-  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 4 } });
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length;
+    const arr: XlRow = new Array(COL_COUNT).fill(null);
+    arr[0] = xlCell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = xlCell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr);
+    merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
+  };
+  addTotal("Total Amount", t.totalAmount);
+  addTotal("Overall Discount", t.overallDiscount);
+  addTotal("Grand Total", t.grandTotal, true);
 
-  const discRow = rows_.length;
-  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, xlCell(overallDiscount, "groupTotalNum")]);
-  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 4 } });
-
-  const grandRow = rows_.length;
-  rows_.push([xlCell("Grand Total", "grandTotal"), null, null, null, null, xlCell(grandTotal, "grandTotalNum")]);
-  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 4 } });
-
-  rows_.push([null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+  const footer: XlRow = new Array(COL_COUNT).fill(null);
+  footer[COL_COUNT - 1] = xlCell("Powered by Bayanat Technology", "footer");
+  rows_.push(footer);
 
   return buildXlsxBuffer("Purchase Invoice", COL_COUNT, 20, rows_, merges, defaultXlStyleDefs());
 }
@@ -939,73 +959,65 @@ function buildPurchaseInvoiceExcelBuffer(rows: ReportRow[]): Buffer {
 
 function buildPurchaseInvoiceTaxExcelBuffer(rows: ReportRow[]): Buffer {
   const header = buildInvoiceHeader(rows);
-  const COL_COUNT = 8; // S.No, Description, Unit, Qty, Unit Rate, Amount, VAT%, Amount Tax
+  const t = computeInvoiceTotals(rows, header);
+  const netTotal = round2(t.grandTotal + t.totalTax);
+  const COL_COUNT = 10; // S.No, Desc, Unit, Qty, Rate, Disc, Amount, VAT%, Tax, Amount(Incl Tax)
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell(`Purchase Invoice (Tax) - ${header.doc_no}`, "title"), null, null, null, null, null, null, null]);
+  rows_.push([xlCell(`Purchase Invoice (Tax) - ${header.doc_no}`, "title"), ...new Array(COL_COUNT - 1).fill(null)]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
   rows_.push([
     xlCell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null,
-    xlCell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}   Tax Reg No: ${header.tax_reg_no}`, "meta"), null, null, null, null,
+    xlCell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}   Tax Reg No: ${header.tax_reg_no}`, "meta"),
+    ...new Array(COL_COUNT - 4).fill(null),
   ]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 7 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: COL_COUNT - 1 } });
 
   rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
     xlCell("S.No", "header"), xlCell("Product / Description", "header"), xlCell("Unit", "header"),
-    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Amount", "header"),
-    xlCell("VAT %", "header"), xlCell("Amount Tax", "header"),
+    xlCell("Qty", "header"), xlCell("Unit Rate", "header"), xlCell("Disc", "header"),
+    xlCell("Amount", "header"), xlCell("VAT %", "header"), xlCell("Amount Tax", "header"),
+    xlCell("Amount (Incl. Tax)", "header"),
   ]);
 
-  let totalQty = 0;
-  let totalAmount = 0;
-  let totalTax = 0;
   rows.forEach((r, i) => {
-    totalQty += num(r.quantity);
-    totalAmount += num(r.amount);
-    totalTax += num(r.tx_compnt_amt_1);
     rows_.push([
       xlCell(i + 1, "data"),
       xlCell(`${text(r.prod_code)} ${text(r.full_prod_name || r.prod_name)}`, "data"),
       xlCell(text(r.p_uom), "data"),
       xlCell(num(r.quantity), "dataNum"),
       xlCell(num(r.unit_price), "dataNum"),
+      xlCell(lineDiscOf(r), "dataNum"),
       xlCell(num(r.amount), "dataNum"),
       xlCell(num(r.tx_compnt_perc_1), "dataNum"),
       xlCell(num(r.tx_compnt_amt_1), "dataNum"),
+      xlCell(num(r.amount) + num(r.tx_compnt_amt_1), "dataNum"),
     ]);
   });
 
-  const overallDiscount = header.disc_hdr_price;
-  const netTotal = totalAmount - overallDiscount + totalTax;
-
   rows_.push(new Array(COL_COUNT).fill(null));
 
-  const totalRow = rows_.length;
-  rows_.push([xlCell("Total Amount", "groupTotal"), null, null, null, null, xlCell(totalAmount, "groupTotalNum"), null, null]);
-  merges.push({ s: { r: totalRow, c: 0 }, e: { r: totalRow, c: 4 } });
-  merges.push({ s: { r: totalRow, c: 6 }, e: { r: totalRow, c: 7 } });
+  const addTotal = (label: string, value: number, grand = false) => {
+    const r = rows_.length;
+    const arr: XlRow = new Array(COL_COUNT).fill(null);
+    arr[0] = xlCell(label, grand ? "grandTotal" : "groupTotal");
+    arr[COL_COUNT - 1] = xlCell(value, grand ? "grandTotalNum" : "groupTotalNum");
+    rows_.push(arr);
+    merges.push({ s: { r, c: 0 }, e: { r, c: COL_COUNT - 2 } });
+  };
+  addTotal("Total Amount", t.totalAmount);
+  addTotal("Overall Discount", t.overallDiscount);
+  addTotal("TAX Amount", t.totalTax);
+  addTotal("Net Total", netTotal, true);
 
-  const discRow = rows_.length;
-  rows_.push([xlCell("Overall Discount", "groupTotal"), null, null, null, null, xlCell(overallDiscount, "groupTotalNum"), null, null]);
-  merges.push({ s: { r: discRow, c: 0 }, e: { r: discRow, c: 4 } });
-  merges.push({ s: { r: discRow, c: 6 }, e: { r: discRow, c: 7 } });
-
-  const taxRow = rows_.length;
-  rows_.push([xlCell("TAX Amount", "groupTotal"), null, null, null, null, xlCell(totalTax, "groupTotalNum"), null, null]);
-  merges.push({ s: { r: taxRow, c: 0 }, e: { r: taxRow, c: 4 } });
-  merges.push({ s: { r: taxRow, c: 6 }, e: { r: taxRow, c: 7 } });
-
-  const grandRow = rows_.length;
-  rows_.push([xlCell("Net Total", "grandTotal"), null, null, null, null, xlCell(netTotal, "grandTotalNum"), null, null]);
-  merges.push({ s: { r: grandRow, c: 0 }, e: { r: grandRow, c: 4 } });
-  merges.push({ s: { r: grandRow, c: 6 }, e: { r: grandRow, c: 7 } });
-
-  rows_.push([null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+  const footer: XlRow = new Array(COL_COUNT).fill(null);
+  footer[COL_COUNT - 1] = xlCell("Powered by Bayanat Technology", "footer");
+  rows_.push(footer);
 
   return buildXlsxBuffer("Purchase Invoice Tax", COL_COUNT, 16, rows_, merges, defaultXlStyleDefs());
 }

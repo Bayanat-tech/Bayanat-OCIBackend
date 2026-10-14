@@ -11,10 +11,10 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  doc_type:     string; // "LPO"
-  doc_no:       string;
+  doc_type: string; // "LPO"
+  doc_no: string;
 }
 
 // ─── DB helpers (same as PoOrderRegisterReport.ts) ─────────────────────────
@@ -87,10 +87,10 @@ function grossValue(r: ReportRow): number {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code),
-    doc_type:     text(b.doc_type) || "LPO",
-    doc_no:       text(b.doc_no),
+    doc_type: text(b.doc_type) || "LPO",
+    doc_no: text(b.doc_no),
   };
 }
 
@@ -186,17 +186,31 @@ function buildHeader(rows: ReportRow[]): PoHeader {
     total_discount: num(h.total_discount),
     total_tx_compnt_amt_1: num(h.total_tx_compnt_amt_1),
     cancelled: text(h.cancelled).toUpperCase() === "Y",
-    logo_url: h.logo_url || null, // TODO: PROC_BUILD_DYNAMIC_SQL_PURCHASE_ORDER doesn't select logo_url yet — add the same subquery used in the register proc if you want the letterhead logo here too.
+    logo_url: h.logo_url || null,
   };
 }
 
+
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+
+const lineDiscOf = (r: ReportRow) =>
+  round2(num(r.disc_price) || (grossValue(r) * num(r.disc_percent)) / 100);
+
 function computeTotals(rows: ReportRow[], header: PoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-  const totalAmount = rows.reduce((s, r) => s + grossValue(r), 0);
-  const discount = header.total_discount || (totalAmount * header.total_discount) / 100;
-  const exclusiveVat = totalAmount - discount;
+
+  // Gross = qty × rate
+  const totalAmount = round2(rows.reduce((s, r) => s + grossValue(r), 0));
+
+
+  const discount = round2(rows.reduce((s, r) => s + lineDiscOf(r), 0));
+
+  const exclusiveVat = round2(totalAmount - discount);
   const total_tx_compnt_amt_1 = header.total_tx_compnt_amt_1;
-  const inclusiveVat = exclusiveVat + total_tx_compnt_amt_1;
+  const inclusiveVat = round2(exclusiveVat + total_tx_compnt_amt_1);
+
   return { totalQty, totalAmount, discount, exclusiveVat, total_tx_compnt_amt_1, inclusiveVat };
 }
 
@@ -343,14 +357,14 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
       (r, i) => `
     <tr>
       <td>${i + 1}</td>
-      <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${
-        r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""
-      }</td>
+      <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""
+        }</td>
       <td>${escapeHtml(r.p_uom)}</td>
       <td class="right">${qtyFmt(r.quantity)}</td>
       <td class="right">${amtFmt(r.unit_price)}</td>
-      <td class="right amount">${amtFmt(grossValue(r))}</td>
-      <td class="right">\u2014</td>
+<td class="right amount">${amtFmt(grossValue(r))}</td>
+<td class="right">${amtFmt(lineDiscOf(r))}</td>
+<td class="right">\u2014</td>
     </tr>`
     )
     .join("");
@@ -360,11 +374,10 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
       <div>
         <h1>${escapeHtml(REPORT_TITLE)}</h1>
         <div class="doc-sub">${escapeHtml(REPORT_SUBTITLE)} — ${escapeHtml(header.div_name)}</div>
-        ${
-          header.cancelled
-            ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>`
-            : ""
-        }
+        ${header.cancelled
+      ? `<div><span class="status-badge status-CANCELLED">Cancelled</span></div>`
+      : ""
+    }
       </div>
       
     </div>
@@ -387,10 +400,9 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
       </div>
     </div>
 
-    ${
-      rows.length === 0
-        ? `<div class="empty-lines">No line items found for this PO.</div>`
-        : `
+    ${rows.length === 0
+      ? `<div class="empty-lines">No line items found for this PO.</div>`
+      : `
       <table class="data-table">
         <thead>
           <tr>
@@ -400,6 +412,7 @@ function renderPoBody(rows: ReportRow[], loginId: string): string {
             <th class="right">Qty</th>
             <th class="right">Unit Rate</th>
             <th class="right">Gross Value</th>
+            <th class="right">Disc</th>
             <th class="right">VAT Type</th>
           </tr>
         </thead>
@@ -433,7 +446,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
-  const COL_COUNT = 7; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value, VAT Type
+  const COL_COUNT = 8; // S.No, Product/Description, Unit, Qty, Unit Rate, Gross Value, VAT Type
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -442,25 +455,26 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null]);
+  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null, null]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
-  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null]);
+  rows_.push([cell(`Print Date: ${printDateTime}`, "meta"), null, null, cell(`Print User: ${loginId}`, "meta"), null, null, null, null]);
   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 6 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 7 } });
 
   rows_.push([
     cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null,
-    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null,
+    cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null, null,
   ]);
   merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
-  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: 6 } });
+  merges.push({ s: { r: 2, c: 4 }, e: { r: 2, c: 7 } });
 
-  rows_.push([null, null, null, null, null, null, null]);
+  rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
     cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
-    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Gross Value", "header"), cell("VAT Type", "header"),
+    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Gross Value", "header"),
+    cell("Disc", "header"), cell("VAT Type", "header"),
   ]);
 
   rows.forEach((r, i) => {
@@ -470,13 +484,13 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
       cell(text(r.p_uom), "data"),
       cell(num(r.quantity), "dataNum"),
       cell(num(r.unit_price), "dataNum"),
-      // cell(num(r.amount), "dataNum"),
-       cell(grossValue(r), "dataNum"), 
+      cell(grossValue(r), "dataNum"),
+      cell(lineDiscOf(r), "dataNum"),
       cell("", "data"), // TODO: VAT type column not available yet
     ]);
   });
 
-  rows_.push([null, null, null, null, null, null, null]);
+  rows_.push(new Array(COL_COUNT).fill(null));
 
   const totalRows: [string, number][] = [
     ["Total Quantity", totals.totalQty],
@@ -487,15 +501,15 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   ];
   totalRows.forEach(([label, value]) => {
     const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
+    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null, null]);
     merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
   });
 
   const gtRow = rows_.length;
-  rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null]);
+  rows_.push([cell("Total (Inclusive VAT)", "grandTotal"), null, null, null, null, cell(totals.inclusiveVat, "grandTotalNum"), null, null]);
   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
 
-  rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+  rows_.push([null, null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
 
   // ── Style registration engine (identical to PO Order Register) ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
