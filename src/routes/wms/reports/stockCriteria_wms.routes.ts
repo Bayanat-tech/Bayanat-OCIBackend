@@ -27,6 +27,7 @@ import { getRetirementReportHtml } from "../../../controllers/wms/reports/Retire
 import { getAbsenceReportHtml } from "../../../controllers/wms/reports/AbsenceReport.controller";
 import { getDocumentReportHtml } from "../../../controllers/wms/reports/HrDocumentReport.controller";
 import { getLabourCardExpiryReportHtml } from "../../../controllers/wms/reports/HrLabourExpiryCard.controller";
+import { getEmployeeHeadCountReportHtml } from "../../../controllers/wms/reports/HrEmployeeHeadCountList.controller";
 
 const router = express.Router();
 
@@ -210,6 +211,23 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   checkUserAuthorization,
   getLabourCardExpiryReportHtml
+);
+
+// ─── Employee Head Count List Report ──────────────────────────────────────────
+
+router.get(
+  "/hr/employee-head-count/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getEmployeeHeadCountReportHtml
+);
+
+// Optional: also allow POST for parity with other routes
+router.post(
+  "/hr/employee-head-count/html",
+  passport.authenticate("jwt", { session: false }),
+  checkUserAuthorization,
+  getEmployeeHeadCountReportHtml
 );
 
 export default router;

@@ -75,7 +75,7 @@ import { HrEmpStatus } from "../../models/Hr/hr_employee_status";
 import {insUpdHRHolidayCalendarBulk} from "../../controllers/HR/holiday_calendar_hr.controller";
 import { tenantContextMiddleware } from "../../middleware/tenantContext.middleware";
 import { mhupsertLeaveApprovalHandler } from "../../controllers/HR/MHDL/mh_leave_approval";
-import { MHleaveDaysCntHandler, MHvalidateLeaveHandler } from "../../controllers/HR/MHDL/mh_hr.controller";
+import { getMHEmployeesHandler, MHleaveDaysCntHandler, MHvalidateLeaveHandler } from "../../controllers/HR/MHDL/mh_hr.controller";
 import { getPayslipReportHtml } from "../../controllers/HR/MHDL/Payslip.report.controller";
 import { mhgetRequestFlowUsers } from "../../controllers/HR/MHDL/mh_hr_leave_flow_sentback";
 
@@ -157,7 +157,7 @@ router.get("/getRequestFlowUsers", getRequestFlowUsers as any );
 router.get("/mhgetRequestFlowUsers", mhgetRequestFlowUsers as any)
 
 // HR .NET API routes
-router.get("/employees", getEmployeesHandler);
+router.get("/employees", getMHEmployeesHandler);
 router.get("/leavebalance/:employeeId", getLeaveBalanceHandler);
 router.get("/leaveentitle/:employeeId", getLeaveEntitleHandler);
 router.get("/leavehistory", getLeaveHistoryHandler);

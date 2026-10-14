@@ -1192,7 +1192,7 @@ export const getChequeDetail = async (req: RequestWithUser, res: Response) => {
 export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: Response): Promise<void> => {
   let conn: oracledb.Connection | undefined;
   try {
-    const { inv_nos, div_code, ac_code, doc_type } = req.query;
+    const { inv_nos, div_code, ac_code, doc_type, exclude_doc_no } = req.query as any;
     if (!inv_nos || !div_code) { res.status(400).json({ success: false, message: 'inv_nos and div_code are required' }); return; }
     const list = (inv_nos as string).split(',').map(n => n.trim()).filter(Boolean);
     if (!list.length) { res.status(400).json({ success: false, message: 'At least one invoice number is required' }); return; }
@@ -1209,6 +1209,7 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
       ac: ac_code ? String(ac_code).trim() : '',
       is_payment: isPayment ? 1 : 0,
       is_receipt: isReceipt ? 1 : 0,
+      exclude_doc_no: exclude_doc_no ? String(exclude_doc_no).trim() : null,
     };
     list.forEach((n, i) => (binds[`inv${i}`] = n.trim().toUpperCase()));
 
@@ -1239,10 +1240,16 @@ export const getInvoiceOutstandingBalances = async (req: RequestWithUser, res: R
            NVL((
              SELECT SUM(ABS(d.lcur_amount)) 
              FROM TR_AC_INVDETAIL d 
+             JOIN TR_AC_HEADER pay_h
+               ON pay_h.company_code = d.company_code
+              AND pay_h.doc_no       = d.doc_no
+              AND pay_h.doc_type     = d.doc_type
+              AND NVL(pay_h.canceled, 'N') = 'N'
              WHERE d.company_code = h.company_code 
                AND d.div_code     = h.div_code 
                AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no)) 
                AND NVL(d.indicator_origin, 'N') = 'N'
+               AND (:exclude_doc_no IS NULL OR d.doc_no <> :exclude_doc_no)
            ), 0) AS paid_amount
          FROM TR_AC_HEADER h
          WHERE h.company_code = :cc 
@@ -2551,6 +2558,38 @@ export const cancelDocument = async (req: RequestWithUser, res: Response): Promi
     const docType = typeof doc_type === 'string' ? doc_type : (Array.isArray(doc_type) ? doc_type[0] : String(doc_type));
 
     conn = await getConn(req);
+
+    // Accounting safeguard: Invoices cannot be cancelled if active settled payments exist
+    if (['PI', 'PO', 'SI', 'SV'].includes(docType.toUpperCase())) {
+      const paymentCheckRes = await conn.execute(
+        `SELECT NVL(SUM(ABS(d.lcur_amount)), 0) AS PAID_AMOUNT
+         FROM TR_AC_INVDETAIL d
+         JOIN TR_AC_HEADER pay_h
+           ON pay_h.company_code = d.company_code
+          AND pay_h.doc_no       = d.doc_no
+          AND pay_h.doc_type     = d.doc_type
+          AND NVL(pay_h.canceled, 'N') = 'N'
+         JOIN TR_AC_HEADER inv_h
+           ON inv_h.company_code = d.company_code
+          AND (d.inv_no = inv_h.doc_no OR (inv_h.ref_no IS NOT NULL AND d.inv_no = inv_h.ref_no))
+         WHERE inv_h.company_code = :cc
+           AND inv_h.doc_no       = :dn
+           AND inv_h.doc_type     = :dt
+           AND NVL(d.indicator_origin, 'N') = 'N'
+           AND NVL(d.lcur_amount, 0) <> 0`,
+        { cc: req.user.company_code, dn: docNo, dt: docType },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      const paid = Number((paymentCheckRes.rows?.[0] as any)?.PAID_AMOUNT || 0);
+      if (paid > 0.0001) {
+        res.status(400).json({
+          success: false,
+          message: `Cannot cancel invoice ${docNo}. Active payments totaling ${paid.toFixed(3)} have already been settled against this invoice. Please unallocate or cancel the payment vouchers first.`,
+        });
+        return;
+      }
+    }
+
     await conn.execute(
       `BEGIN SP_CANCEL_DOCUMENT(:cc, :dn, :dt, :lu); END;`,
       { cc: req.user.company_code, dn: docNo, dt: docType, lu: req.user.loginid }

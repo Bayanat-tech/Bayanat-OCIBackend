@@ -101,7 +101,10 @@ function extractParams(req: RequestWithUser): ReqParams {
 // ─── Data loader ────────────────────────────────────────────────────────────
 
 async function loadPrRegisterOldData(req: RequestWithUser, p: ReqParams, dispatchParam: string): Promise<ReportRow[]> {
+  const tConn = Date.now();
   const conn = await getConn(req);
+  console.log(`[PR] getConn: ${Date.now() - tConn} ms`);
+
   try {
     const toDate = (iso: string): Date | null => {
       if (!iso || iso.toUpperCase() === "ALL") return null;
@@ -127,6 +130,7 @@ async function loadPrRegisterOldData(req: RequestWithUser, p: ReqParams, dispatc
       out_sql: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
 
+    const tProc = Date.now();
     const result = await conn.execute(
       `DECLARE
          v_sql VARCHAR2(32767);
@@ -142,13 +146,17 @@ async function loadPrRegisterOldData(req: RequestWithUser, p: ReqParams, dispatc
        END;`,
       binds
     );
+    console.log(`[PR] procedure (build SQL): ${Date.now() - tProc} ms`);
 
     const rawSql = (result.outBinds as any).out_sql;
     if (!rawSql) throw new Error("Procedure did not return a valid SQL query.");
 
     console.log("=== GENERATED SQL ===\n", rawSql, "\n=== END ===");
 
+    const tQuery = Date.now();
     const dataResult = await conn.execute(rawSql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+    console.log(`[PR] data query: ${Date.now() - tQuery} ms, rows: ${dataResult.rows?.length}`);
+
     return normalize(dataResult.rows as any[]);
   } finally {
     await closeConn(conn);
@@ -1138,8 +1146,13 @@ function buildDetailsExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
 export const getPrRegisterOldSummaryReportHtml = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
+    const t0 = Date.now();
     const params = extractParams(req);
+    console.log("[PR] params:", params);
+
     const rows = await loadPrRegisterOldData(req, params, "PR_REGISTER_OLD_SUMMARY_19082026");
+    console.log(`[PR] load data total: ${Date.now() - t0} ms`);
+
     if (!rows.length) {
       res.status(200).json({ success: false, message: "No data found for the selected criteria." });
       return;
@@ -1151,7 +1164,10 @@ export const getPrRegisterOldSummaryReportHtml = async (req: RequestWithUser, re
       text(req.query.company_code) ||
       "BSG";
 
+    const tHeader = Date.now();
     const headerHtml = await reportHeader({ company_code: companyCode, req });
+    console.log(`[PR] reportHeader: ${Date.now() - tHeader} ms`);
+
     const footerHtml = reportFooter({
       reportName: REPORT_NAME,
       userName: params.loginid,
@@ -1169,6 +1185,7 @@ export const getPrRegisterOldSummaryReportHtml = async (req: RequestWithUser, re
       showPrintButton: true,
     });
 
+    console.log(`[PR] TOTAL request: ${Date.now() - t0} ms`);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
   } catch (error: any) {
