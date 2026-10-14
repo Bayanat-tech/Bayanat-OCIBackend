@@ -627,6 +627,11 @@ export const getFinanceListData = async (
                NVL((
                  SELECT SUM(ABS(d.lcur_amount))
                  FROM TR_AC_INVDETAIL d
+                 JOIN TR_AC_HEADER pay_h
+                   ON pay_h.company_code = d.company_code
+                  AND pay_h.doc_no       = d.doc_no
+                  AND pay_h.doc_type     = d.doc_type
+                  AND NVL(pay_h.canceled, 'N') = 'N'
                  WHERE d.company_code = h.company_code
                    AND d.div_code     = h.div_code
                    AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
@@ -694,6 +699,23 @@ export const getFinanceListData = async (
           });
         } catch (hdrErr) {
           console.warn('[finance.controller invoice] Header invoices query error:', hdrErr);
+        }
+
+        // Also register CANCELLED documents from TR_AC_HEADER so they are NEVER resurrected by legacy/fallback queries
+        try {
+          const cancelledRes = await connection.execute(
+            `SELECT UPPER(TRIM(doc_no)) AS doc_no, UPPER(TRIM(ref_no)) AS ref_no 
+             FROM TR_AC_HEADER 
+             WHERE company_code = :company_code AND div_code = :div_code AND NVL(canceled, 'N') = 'Y'`,
+            { company_code: req.user.company_code, div_code: extra_param1 },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          (cancelledRes.rows || []).forEach((cRow: any) => {
+            if (cRow.DOC_NO) knownDocNos.add(String(cRow.DOC_NO).toUpperCase());
+            if (cRow.REF_NO) knownRefNos.add(String(cRow.REF_NO).toUpperCase());
+          });
+        } catch (cErr) {
+          console.warn('[finance.controller invoice] Cancelled invoices check error:', cErr);
         }
 
         // 2. Secondary: Query TR_AC_INVDETAIL for any legacy open items not found in TR_AC_HEADER
