@@ -696,6 +696,23 @@ export const getFinanceListData = async (
           console.warn('[finance.controller invoice] Header invoices query error:', hdrErr);
         }
 
+        // Also register CANCELLED documents from TR_AC_HEADER so they are NEVER resurrected by legacy/fallback queries
+        try {
+          const cancelledRes = await connection.execute(
+            `SELECT UPPER(TRIM(doc_no)) AS doc_no, UPPER(TRIM(ref_no)) AS ref_no 
+             FROM TR_AC_HEADER 
+             WHERE company_code = :company_code AND div_code = :div_code AND NVL(canceled, 'N') = 'Y'`,
+            { company_code: req.user.company_code, div_code: extra_param1 },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          (cancelledRes.rows || []).forEach((cRow: any) => {
+            if (cRow.DOC_NO) knownDocNos.add(String(cRow.DOC_NO).toUpperCase());
+            if (cRow.REF_NO) knownRefNos.add(String(cRow.REF_NO).toUpperCase());
+          });
+        } catch (cErr) {
+          console.warn('[finance.controller invoice] Cancelled invoices check error:', cErr);
+        }
+
         // 2. Secondary: Query TR_AC_INVDETAIL for any legacy open items not found in TR_AC_HEADER
         let legacyInvoices: any[] = [];
         try {

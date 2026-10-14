@@ -69,10 +69,10 @@ WHERE (LTRIM(RTRIM(level3)) IS NOT NULL AND LTRIM(RTRIM(level3)) != ' ')
 
 export const getChequePaymentInvoiceDetail = `
 SELECT
-  NVL(MAX(h.doc_no), inv.inv_no) AS inv_no,
+  NVL(MAX(h.ref_no), inv.inv_no) AS inv_no,
   ROW_NUMBER() OVER (ORDER BY inv.inv_no) AS dtl_sr_no,
   NVL(MAX(h.doc_no), MAX(inv.doc_no)) AS doc_no,
-  MAX(NVL(h.ref_no, NVL(h.ref_doc_no, ''))) AS ref_no,
+  NVL(MAX(h.doc_no), MAX(inv.doc_no)) AS ref_no,
   MAX(inv.inv_date) AS inv_date,
   SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END) AS amount,
   1 AS sign_ind,
@@ -97,6 +97,7 @@ LEFT JOIN TR_AC_HEADER h
 WHERE inv.company_code = :company_code
   AND inv.ac_code = :ac_code
   AND inv.div_code = :div_code
+  AND NVL(h.canceled, 'N') = 'N'
   AND (TRIM(inv.doc_type) || TRIM(TO_CHAR(inv.doc_no)) || TRIM(TO_CHAR(inv.serial_no)) <> :invrsno)
 GROUP BY inv.company_code, inv.ac_code, inv.inv_no, inv.div_code
 HAVING (SUM(CASE WHEN inv.indicator_origin = 'Y' THEN ABS(inv.lcur_amount) ELSE 0 END) - SUM(CASE WHEN NVL(inv.indicator_origin, 'N') IN ('N', NULL) THEN ABS(inv.lcur_amount) ELSE 0 END)) > 0
