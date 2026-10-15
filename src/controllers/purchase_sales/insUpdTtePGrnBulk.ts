@@ -440,7 +440,10 @@ export const insUpdTtePGrnBulk = async (
 
 
       FLOW_CODE:
-        header.flow_code ?? "NA"
+        header.flow_code ?? "NA",
+        
+        JOB_CARD_NO :
+        header.job_card_no ?? null,
 
 
     };
@@ -750,7 +753,9 @@ export const insUpdTtePGrnBulk = async (
 
 
       TX_COMPNT_HDISC_LCURAMT_1:
-        d.tx_compnt_hdisc_lcuramt_1 ?? 0
+        d.tx_compnt_hdisc_lcuramt_1 ?? 0,
+
+      
 
 
     }));
