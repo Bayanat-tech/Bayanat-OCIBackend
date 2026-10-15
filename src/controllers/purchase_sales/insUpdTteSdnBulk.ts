@@ -374,6 +374,10 @@ export const insUpdTteSdnBulk = async (
         header.tx_compnt_hdisc_amt_1 ?? 0,
 
 
+       JOB_CARD_NO :
+        header.job_card_no ?? null,
+
+
 
       /******************************************************
        * Workflow Fields

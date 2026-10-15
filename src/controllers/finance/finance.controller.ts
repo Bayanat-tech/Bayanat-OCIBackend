@@ -210,8 +210,29 @@ export const getFinanceListData = async (
 
         const dataResult = await connection.execute(
           `
-          SELECT *
-          FROM ${documentSource}
+          SELECT ranked.*,
+                 COALESCE(
+                   ranked.ac_name,
+                   (SELECT m.ac_name 
+                    FROM tr_ac_detail d, MS_ACCODES m 
+                    WHERE d.company_code = ranked.company_code 
+                      AND d.doc_type = ranked.doc_type 
+                      AND d.doc_no = ranked.doc_no 
+                      AND d.ac_code = m.ac_code(+) 
+                      AND ROWNUM = 1)
+                 ) AS resolved_ac_name,
+                 COALESCE(
+                   ranked.amount,
+                   (SELECT GREATEST(
+                             NVL(SUM(CASE WHEN d.sign_ind = 1 THEN d.lcur_amount ELSE 0 END), 0),
+                             NVL(SUM(CASE WHEN d.sign_ind = -1 THEN d.lcur_amount ELSE 0 END), 0)
+                           )
+                    FROM tr_ac_detail d
+                    WHERE d.company_code = ranked.company_code 
+                      AND d.doc_type = ranked.doc_type 
+                      AND d.doc_no = ranked.doc_no)
+                 ) AS resolved_amount
+          FROM ${documentSource} ranked
           ORDER BY doc_no DESC, doc_type
           OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
           `,
@@ -228,9 +249,11 @@ export const getFinanceListData = async (
           Object.keys(row).forEach((k) => {
             if (k.toLowerCase() !== "document_row_rank") mapped[k.toLowerCase()] = (row as any)[k];
           });
+          if (mapped.resolved_ac_name !== undefined) mapped.ac_name = mapped.resolved_ac_name;
+          if (mapped.resolved_amount !== undefined) mapped.amount = mapped.resolved_amount;
           return mapped;
         });
-        console.log('Get data from doc :', fetchedData);
+        console.log('Get data from doc count:', fetchedData.length);
       };
         break;
 
