@@ -109,6 +109,14 @@ import { exportVisaExpiryReportExcel, getVisaExpiryReport } from "../../../contr
 import { getGrnPrintReport, getGrnPrintReportExcel } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/getGrnPrintReport";
 import { getSalesDNReportExcel, getSalesDNReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/SalesDNReport";
 import { getStockSummaryReportExcel, getStockSummaryReportHtml, getStockTransactionReportExcel, getStockTransactionReportHtml } from "../../../interfaces/Purchaseflow_Al/Purchase_sale_Reports/StockReportPS";
+import { exportEmployeeAssessmentReportExcel, getEmployeeAssessmentReport } from "../../../controllers/HR/Hr-Reports/Employeeassessmentreport";
+import { exportEmployeeTicketEligibilityReportExcel, getEmployeeTicketEligibilityReport } from "../../../controllers/HR/Hr-Reports/Employeeticketeligibility";
+import { exportEmployeeAddressListRepotExcel, getEmployeeAddressListReport } from "../../../controllers/HR/Hr-Reports/Employeeaddresslist";
+import { exportVacationSeparationReportExcel, getVacationSeparationReport } from "../../../controllers/HR/Hr-Reports/Vacationseparationreport";
+import { exportMonthlySalarySummaryReportExcel, getMonthlySalarySummaryReport } from "../../../controllers/HR/Hr-Reports/Monthlysalarysummary";
+import { exportEmployeeSalaryNotProcessedReportExcel, getEmployeeSalaryNotProcessedReport } from "../../../controllers/HR/Hr-Reports/Employeesalarynotprocessed";
+import { exportYearlyLeaveBalanceReportExcel, getYearlyLeaveBalanceReport } from "../../../controllers/HR/Hr-Reports/Yearlyleavebalance";
+import { exportLeaveResumptionReportExcel, getLeaveResumptionReport } from "../../../controllers/HR/Hr-Reports/leaveResumptionReport";
 
 
 
@@ -117,6 +125,8 @@ const router = express.Router();
 // Apply tenant middleware to ensure database switching
 router.use(tenantMiddleware);
 router.use(tenantContextMiddleware);
+
+
 
 router.post("/insUpdTrAcJVBulk", insUpdTrAcJVBulk );
 router.post("/account-entry/bulk", procBulkAccountEntry);
@@ -272,6 +282,8 @@ router.post('/reports/SalesDNReport/excel', getSalesDNReportExcel);
 router.post('/reports/getVisaExpiryReport/html', getVisaExpiryReport);
 router.post('/reports/getVisaExpiryReport/excel', exportVisaExpiryReportExcel);   
 
+router.post('/reports/getEmployeeAssessmentReport/html', getEmployeeAssessmentReport);
+router.post('/reports/exportEmployeeAssessmentReportExcel/excel', exportEmployeeAssessmentReportExcel); 
 // WMS REPORTS ROUTES
 router.post('/reports/getDnSummaryReport/html', getDnSummaryReportHtml);
 router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
@@ -280,6 +292,35 @@ router.post('/reports/getDnSummaryReport/excel', getDnSummaryReportExcel);
 router.post('/reports/GrnSummaryReport/html', getGrnSummaryReportHtml);
 router.post('/reports/GrnSummaryReport/excel', getGrnSummaryReportExcel);
 
+router.post('/reports/getEmployeeTicketEligibilityReportHtml/html', getEmployeeTicketEligibilityReport);
+router.post('/reports/exportEmployeeTicketEligibilityReportExcel/excel', exportEmployeeTicketEligibilityReportExcel); 
+
+
+router.post('/reports/getVacationSeparationReportHtml/html',  getVacationSeparationReport);
+router.post('/reports/getVacationSeparationReportExcel/excel', exportVacationSeparationReportExcel);
+
+
+
+router.post('/reports/getYearlyLeaveBalanceReportHtml/html',   getYearlyLeaveBalanceReport);
+router.post('/reports/exportYearlyLeaveBalanceReportExcel/excel', exportYearlyLeaveBalanceReportExcel);
+
+
+router.post('/reports/getMonthlySalarySummaryReportHtml/html',  getMonthlySalarySummaryReport);
+router.post('/reports/exportMonthlySalarySummaryReportExcel/excel', exportMonthlySalarySummaryReportExcel);
+
+
+router.post('/reports/getEmployeeSalaryNotProcessedReportHtml/html',   getEmployeeSalaryNotProcessedReport);
+router.post('/reports/getEmployeeSalaryNotProcessedReportExcel/excel', exportEmployeeSalaryNotProcessedReportExcel);
+
+router.post('/reports/getEmployeeAddressListReportHtml/html', getEmployeeAddressListReport);
+router.post('/reports/getEmployeeAddressListReportExcel/excel', exportEmployeeAddressListRepotExcel); 
+
+
+
+
+
+router.post('/reports/getLeaveResumptionReportHtml/html', getLeaveResumptionReport);
+router.post('/reports/exportLeaveResumptionReportExcel/excel', exportLeaveResumptionReportExcel); 
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
 router.post('/reports/tax-vat-out-ledger/excel', exportTaxInvoiceExcel);

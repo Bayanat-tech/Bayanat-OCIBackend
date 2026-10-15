@@ -1,6 +1,11 @@
 // src/controllers/wms/reports/EmployeeHeadCountReport.controller.ts
 //
 // HR Employee Head Count List — HTML/print endpoint
+// Visual style matches the Labour Card Expiry / Freight Expense preview:
+//   • navy header row (white text, no cell borders)
+//   • plain data rows, thin bottom border, no zebra
+//   • ALL data cells same weight (400), colour and size
+//   • bold-navy grand total (#e2e8f0)
 //
 // Frontend sends:
 //   GET /api/wms/reports/hr/employee-head-count/html
@@ -262,7 +267,12 @@ async function loadHeadCountData(req: RequestWithUser): Promise<ReportRow[]> {
   }
 }
 
-// ─── Extra CSS ────────────────────────────────────────────────────────────────
+// ─── Extra CSS — matches the Labour Card Expiry / Freight Expense preview ────
+//
+//   navy          = #00378c  (header bar, title, totals)
+//   grandStrip    = #e2e8f0  (Grand Total row)
+//   rowBg         = #fcfdfe  (data rows)
+//   rule          = #e2e8f0  (thin bottom border under each row)
 
 const HEAD_COUNT_EXTRA_CSS = `
   * {
@@ -271,55 +281,170 @@ const HEAD_COUNT_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  .rpt-title {
-    text-align: center;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 3px;
-    padding: 5px 0;
-    margin: 0 0 10px;
-    border-bottom: 1px solid #cbd5e1;
-  }
-  .rpt-subtitle {
-    text-align: center;
-    font-size: 11px;
-    color: #475569;
-    font-weight: 600;
-    margin: 0 0 10px;
-    letter-spacing: 0.5px;
+  body, table.hc-table {
+    font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   }
 
-  .hc-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 10px;
-    margin-top: 8px;
+  /* ── Title ──────────────────────────────────────────────────────────── */
+  .doc-title-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin: 4px 0 10px 0;
   }
-  .hc-table th,
-  .hc-table td {
-    border: 1px solid #94a3b8;
-    padding: 4px 6px;
+  body .doc-title-row h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #00378c !important;   /* beats report_common's print override (#0b4ca1) */
+    letter-spacing: 0;
+  }
+  .doc-subtitle {
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 400;
+    color: #64748b;
+  }
+
+  /* ── Table reset ────────────────────────────────────────────────────── */
+  table.hc-table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+    margin-top: 6px;
+    border: 0;
+  }
+
+  /* ── Navy header ────────────────────────────────────────────────────── */
+  table.hc-table thead th {
+    background: #00378c !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0;
+    padding: 10px 8px;
     text-align: left;
     vertical-align: middle;
+    border: 0 !important;
+    box-shadow: inset 0 0 0 1000px #00378c;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
-  .hc-table th {
-    background: #f1f5f9;
-    font-weight: 700;
+  table.hc-table thead th.num-head { text-align: right; }
+
+  /* ── Data rows — every cell: same weight, colour, size ─────────────── */
+  table.hc-table tbody td {
+    padding: 6px 8px;
+    border: 0;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #1e293b;
+    font-size: 10.5px;
+    font-weight: 400;
+    background: #fcfdfe;
+    vertical-align: middle;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  table.hc-table tbody tr:nth-child(even) td { background: #fcfdfe; }
+
+  /* ── Alignment ─────────────────────────────────────────────────────── */
+  .center { text-align: center; }
+  .left   { text-align: left; }
+  .right  { text-align: right; }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .hc-table td.num { text-align: right; }
-  .hc-table td.ctr { text-align: center; }
-  .hc-table td.bold { font-weight: 700; }
-  .hc-table thead { display: table-header-group; }
-  .hc-table tr { page-break-inside: avoid; }
-  .hc-table tbody tr:nth-child(even) td { background: #f8fafc; }
 
-  .hc-total {
-    margin-top: 8px;
-    font-size: 10.5px;
+  /* ── Grand Total ───────────────────────────────────────────────────── */
+  table.hc-table tbody tr.grand-total-row td {
+    background: #e2e8f0 !important;
+    color: #00378c !important;
+    font-weight: 800;
+    text-align: right;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  /* ── Empty state ───────────────────────────────────────────────────── */
+  .hc-empty {
+    border: 1px dashed #cbd5e1;
+    background: #f8fafc;
+    text-align: center;
+    padding: 40px 12px;
+    margin-top: 14px;
+    color: #64748b;
     font-weight: 700;
   }
+
+  /* ── Screen-only compact sizing (print unaffected) ─────────────────── */
+  @media screen {
+    body .doc-title-row h1 { font-size: 13px; }
+    .doc-subtitle { font-size: 9.5px; }
+    table.hc-table { font-size: 9.5px; }
+    table.hc-table thead th { font-size: 9.5px; padding: 7px 6px; }
+    table.hc-table tbody td { padding: 5px 6px; font-size: 9.5px; }
+  }
+
+  /* ── Print: keep navy header, avoid row splits ─────────────────────── */
+  @media print {
+    body .doc-title-row h1 { color: #00378c !important; }
+
+    table.hc-table thead { display: table-header-group; }
+    table.hc-table tr    { page-break-inside: avoid; }
+
+    table.hc-table thead th {
+      background: #00378c !important;
+      color: #ffffff !important;
+      box-shadow: inset 0 0 0 1000px #00378c;
+    }
+  }
 `;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Loads Inter so the PDF renderer doesn't fall back to a wide system font. */
+const FONT_LINK = `
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
+
+type Head = { label: string; num?: boolean; width?: string };
+
+function headHtml(heads: Head[]): string {
+  return heads
+    .map(
+      (h) =>
+        `<th${h.num ? ` class="num-head"` : ""}${h.width ? ` style="width:${h.width}"` : ""}>${escapeHtml(h.label)}</th>`,
+    )
+    .join("");
+}
+
+function tableHtml(heads: Head[], bodyRows: string, grandTotalRow: string): string {
+  return `
+    <table class="hc-table">
+      <thead><tr>${headHtml(heads)}</tr></thead>
+      <tbody>${bodyRows}${grandTotalRow}</tbody>
+    </table>`;
+}
+
+/** Grand total row where the label spans every column. */
+function grandTotalFull(colCount: number, count: number): string {
+  return `
+        <tr class="grand-total-row">
+          <td colspan="${colCount}">GRAND TOTAL (${count} Records):</td>
+        </tr>`;
+}
+
+/** Grand total row with the label spanning leading columns and a total in the last one. */
+function grandTotalWithSum(labelCols: number, count: number, total: number): string {
+  return `
+        <tr class="grand-total-row">
+          <td colspan="${labelCols}">GRAND TOTAL (${count} Records):</td>
+          <td class="num">${total}</td>
+        </tr>`;
+}
 
 // ─── Body Renderers (one per mode) ───────────────────────────────────────────
 
@@ -331,23 +456,19 @@ function renderDivisionWise(rows: ReportRow[]): string {
         <tr>
           <td class="num">${i + 1}</td>
           <td>${escapeHtml(r.div_name)}</td>
-          <td class="num bold">${escapeHtml(r.head_count)}</td>
+          <td class="num">${escapeHtml(r.head_count)}</td>
         </tr>`,
     )
     .join("");
-  return `
-    <table class="hc-table">
-      <thead>
-        <tr>
-          <th style="width:36px">#</th>
-          <th>Division</th>
-          <th style="width:120px">Head Count</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-    <div class="hc-total">Total Head Count: ${total}</div>
-  `;
+  return tableHtml(
+    [
+      { label: "SNo.", num: true, width: "6%" },
+      { label: "Division" },
+      { label: "Head Count", num: true, width: "20%" },
+    ],
+    body,
+    grandTotalWithSum(2, rows.length, total),
+  );
 }
 
 function renderDepartmentWise(rows: ReportRow[]): string {
@@ -359,24 +480,20 @@ function renderDepartmentWise(rows: ReportRow[]): string {
           <td class="num">${i + 1}</td>
           <td>${escapeHtml(r.div_name)}</td>
           <td>${escapeHtml(r.dept_name)}</td>
-          <td class="num bold">${escapeHtml(r.head_count)}</td>
+          <td class="num">${escapeHtml(r.head_count)}</td>
         </tr>`,
     )
     .join("");
-  return `
-    <table class="hc-table">
-      <thead>
-        <tr>
-          <th style="width:36px">#</th>
-          <th>Division</th>
-          <th>Department</th>
-          <th style="width:120px">Head Count</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-    <div class="hc-total">Total Head Count: ${total}</div>
-  `;
+  return tableHtml(
+    [
+      { label: "SNo.", num: true, width: "6%" },
+      { label: "Division" },
+      { label: "Department" },
+      { label: "Head Count", num: true, width: "20%" },
+    ],
+    body,
+    grandTotalWithSum(3, rows.length, total),
+  );
 }
 
 function renderLocalExpat(rows: ReportRow[]): string {
@@ -394,32 +511,29 @@ function renderLocalExpat(rows: ReportRow[]): string {
           <td class="num">${escapeHtml(r.expat_male)}</td>
           <td class="num">${escapeHtml(r.expat_female)}</td>
           <td class="num">${escapeHtml(r.expat_other)}</td>
-          <td class="num bold">${escapeHtml(r.emp_count)}</td>
+          <td class="num">${escapeHtml(r.emp_count)}</td>
           <td class="num">${escapeHtml(num(r.omani_perc, 2))}%</td>
         </tr>`,
     )
     .join("");
-  return `
-    <table class="hc-table">
-      <thead>
-        <tr>
-          <th style="width:36px">#</th>
-          <th>Company</th>
-          <th>Division</th>
-          <th>Department</th>
-          <th>Omani M</th>
-          <th>Omani F</th>
-          <th>Omani O</th>
-          <th>Expat M</th>
-          <th>Expat F</th>
-          <th>Expat O</th>
-          <th>Total</th>
-          <th>Omani %</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
+  return tableHtml(
+    [
+      { label: "SNo.", num: true, width: "4%" },
+      { label: "Company" },
+      { label: "Division" },
+      { label: "Department" },
+      { label: "Omani M", num: true },
+      { label: "Omani F", num: true },
+      { label: "Omani O", num: true },
+      { label: "Expat M", num: true },
+      { label: "Expat F", num: true },
+      { label: "Expat O", num: true },
+      { label: "Total", num: true },
+      { label: "Omani %", num: true },
+    ],
+    body,
+    grandTotalFull(12, rows.length),
+  );
 }
 
 function renderBudgetedVariance(rows: ReportRow[]): string {
@@ -441,26 +555,23 @@ function renderBudgetedVariance(rows: ReportRow[]): string {
         </tr>`,
     )
     .join("");
-  return `
-    <table class="hc-table">
-      <thead>
-        <tr>
-          <th style="width:36px">#</th>
-          <th>Month</th>
-          <th>Dept</th>
-          <th>Dept Name</th>
-          <th>Desg</th>
-          <th>Budgeted (YTD)</th>
-          <th>Current Month</th>
-          <th>Joiners</th>
-          <th>Leavers</th>
-          <th>Actuals</th>
-          <th>Prev Month</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
+  return tableHtml(
+    [
+      { label: "SNo.", num: true, width: "4%" },
+      { label: "Month", num: true },
+      { label: "Dept" },
+      { label: "Dept Name" },
+      { label: "Desg" },
+      { label: "Budgeted (YTD)", num: true },
+      { label: "Current Month", num: true },
+      { label: "Joiners", num: true },
+      { label: "Leavers", num: true },
+      { label: "Actuals", num: true },
+      { label: "Prev Month", num: true },
+    ],
+    body,
+    grandTotalFull(11, rows.length),
+  );
 }
 
 function renderManpowerDept(rows: ReportRow[]): string {
@@ -483,33 +594,33 @@ function renderManpowerDept(rows: ReportRow[]): string {
         </tr>`,
     )
     .join("");
-  return `
-    <table class="hc-table">
-      <thead>
-        <tr>
-          <th style="width:36px">#</th>
-          <th>Company</th>
-          <th>Division</th>
-          <th>Department</th>
-          <th>Section</th>
-          <th>Prev Year</th>
-          <th>Joins</th>
-          <th>Transfers</th>
-          <th>Promotions</th>
-          <th>Leave</th>
-          <th>Transfers −</th>
-          <th>Promotions −</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
+  return tableHtml(
+    [
+      { label: "SNo.", num: true, width: "4%" },
+      { label: "Company" },
+      { label: "Division" },
+      { label: "Department" },
+      { label: "Section" },
+      { label: "Prev Year", num: true },
+      { label: "Joins", num: true },
+      { label: "Transfers", num: true },
+      { label: "Promotions", num: true },
+      { label: "Leave", num: true },
+      { label: "Transfers −", num: true },
+      { label: "Promotions −", num: true },
+    ],
+    body,
+    grandTotalFull(12, rows.length),
+  );
 }
 
 function renderGeneric(rows: ReportRow[]): string {
   if (!rows.length) return "";
   const cols = Object.keys(rows[0]);
-  const head = cols.map((c) => `<th>${escapeHtml(c.replace(/_/g, " ").toUpperCase())}</th>`).join("");
+  const heads: Head[] = [
+    { label: "SNo.", num: true, width: "4%" },
+    ...cols.map((c) => ({ label: c.replace(/_/g, " ").toUpperCase() })),
+  ];
   const body = rows
     .map(
       (r, i) =>
@@ -518,12 +629,7 @@ function renderGeneric(rows: ReportRow[]): string {
         `</tr>`,
     )
     .join("");
-  return `
-    <table class="hc-table">
-      <thead><tr><th style="width:36px">#</th>${head}</tr></thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
+  return tableHtml(heads, body, grandTotalFull(cols.length + 1, rows.length));
 }
 
 function renderHeadCountBody(
@@ -532,15 +638,20 @@ function renderHeadCountBody(
   filtersHtml: string,
   subtitle: string,
 ): string {
-  const heading = `<div class="rpt-title">HR EMPLOYEE HEAD COUNT LIST</div>`;
-  const sub = `<div class="rpt-subtitle">${escapeHtml(subtitle)}</div>`;
+  const heading = `
+    ${FONT_LINK}
+    <div class="doc-title-row">
+      <div>
+        <h1>HR Employee Head Count List</h1>
+        <div class="doc-subtitle">${escapeHtml(subtitle)}</div>
+      </div>
+    </div>`;
 
   if (!rows.length) {
     return `
       ${heading}
-      ${sub}
       ${filtersHtml}
-      <p class="center muted">No data found</p>
+      <div class="hc-empty">No data found</div>
     `;
   }
 
@@ -569,10 +680,8 @@ function renderHeadCountBody(
 
   return `
     ${heading}
-    ${sub}
     ${filtersHtml}
     ${inner}
-    <div class="hc-total">Total Records: ${rows.length}</div>
   `;
 }
 

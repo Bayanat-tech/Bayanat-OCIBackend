@@ -63,6 +63,8 @@ export const getFinanceListData = async (
                   doc_type: "doc_type",
                   div_code: "div_code",
                   fy_period: "fy_period",
+                  doc_date: "doc_date",
+                  date: "doc_date",
                   ac_code: "ac_code",
                   ac_name: "ac_name",
                   party_name: "ac_name",
@@ -88,6 +90,53 @@ export const getFinanceListData = async (
                   } else {
                     groupClauses.push(`UPPER(NVL(canceled, 'N')) = UPPER(:${safeParam})`);
                     binds[safeParam] = normVal;
+                  }
+                  return;
+                }
+
+                if (dbField === "doc_date") {
+                  let fromVal: string | undefined;
+                  let toVal: string | undefined;
+
+                  if (typeof field_value === "object" && field_value !== null) {
+                    fromVal = (field_value as any).from;
+                    toVal = (field_value as any).to;
+                  } else if (typeof field_value === "string") {
+                    try {
+                      const parsed = JSON.parse(field_value);
+                      if (parsed && typeof parsed === "object") {
+                        fromVal = parsed.from;
+                        toVal = parsed.to;
+                      }
+                    } catch {
+                      const match = field_value.match(/\d{4}-\d{2}-\d{2}/);
+                      if (match) {
+                        fromVal = match[0];
+                        toVal = match[0];
+                      }
+                    }
+                  }
+
+                  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                  if (fromVal && dateRegex.test(String(fromVal).slice(0, 10))) fromVal = String(fromVal).slice(0, 10);
+                  else fromVal = undefined;
+                  if (toVal && dateRegex.test(String(toVal).slice(0, 10))) toVal = String(toVal).slice(0, 10);
+                  else toVal = undefined;
+
+                  if (fromVal && toVal) {
+                    const pFrom = `doc_date_from_${gi}_${ci}`;
+                    const pTo = `doc_date_to_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) >= TO_DATE(:${pFrom}, 'YYYY-MM-DD') AND TRUNC(doc_date) <= TO_DATE(:${pTo}, 'YYYY-MM-DD')`);
+                    binds[pFrom] = fromVal;
+                    binds[pTo] = toVal;
+                  } else if (fromVal) {
+                    const pFrom = `doc_date_from_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) >= TO_DATE(:${pFrom}, 'YYYY-MM-DD')`);
+                    binds[pFrom] = fromVal;
+                  } else if (toVal) {
+                    const pTo = `doc_date_to_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) <= TO_DATE(:${pTo}, 'YYYY-MM-DD')`);
+                    binds[pTo] = toVal;
                   }
                   return;
                 }
@@ -119,6 +168,8 @@ export const getFinanceListData = async (
                 OR UPPER(doc_type) LIKE UPPER(:search)
                 OR UPPER(div_code) LIKE UPPER(:search)
                 OR UPPER(NVL(ac_name, ' ')) LIKE UPPER(:search)
+                OR UPPER(NVL(ref_no, ' ')) LIKE UPPER(:search)
+                OR UPPER(NVL(cheque_no, ' ')) LIKE UPPER(:search)
                 OR UPPER(NVL(ac_payee, ' ')) LIKE UPPER(:search)
               )
             `;
