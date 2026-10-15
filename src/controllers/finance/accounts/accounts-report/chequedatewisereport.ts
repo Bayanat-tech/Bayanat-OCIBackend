@@ -9,11 +9,28 @@ import {
 } from "../../../common/report_common";
 
 /* ── helpers ─────────────────────────────────────────────────────── */
-const money = (v: any) => {
+
+/**
+ * Number of decimals for a currency, derived from the currency code
+ * (OMR → 3, INR/USD → 2, JPY → 0). Falls back to 3 if the code is unknown.
+ */
+const currencyDecimals = (code?: string | null): number => {
+  if (!code) return 3;
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency: code })
+        .resolvedOptions().maximumFractionDigits ?? 3
+    );
+  } catch {
+    return 3;
+  }
+};
+
+const makeMoney = (decimals: number) => (v: any) => {
   const n = Number(v);
   return (Number.isFinite(n) ? n : 0).toLocaleString("en-US", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 };
 
@@ -24,9 +41,6 @@ const formatDateStr = (v: any) => {
   const d = new Date(v);
   return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-GB");
 };
-
-const formatBalance = (value: number) =>
-  value < 0 ? `(${money(Math.abs(value))})` : money(value);
 
 /**
  * Report-specific CSS only.
@@ -229,11 +243,26 @@ export const getChequeDateWiseReport = async (
       outFormat: oracledb.OUT_FORMAT_OBJECT,
     });
 
-    const rows = ((dataResult.rows as any[]) || []).map((row) =>
-      Object.keys(row).reduce((acc: any, key) => {
-        acc[key.toLowerCase()] = row[key];
-        return acc;
-      }, {})
+    // Lower-case all keys; drop cancelled documents (CANCELLED = 'Y')
+    const rows = ((dataResult.rows as any[]) || [])
+      .map((row) =>
+        Object.keys(row).reduce((acc: any, key) => {
+          acc[key.toLowerCase()] = row[key];
+          return acc;
+        }, {})
+      )
+      .filter((r) => text(r.cancelled).toUpperCase() !== "Y");
+
+    /* ── values that come from the data instead of being hardcoded ── */
+    // Currency = CURR_CODE of the first row
+    const reportCurrency = text(rows[0]?.curr_code).trim(); // "" when no rows
+    const money = makeMoney(currencyDecimals(reportCurrency));
+    const formatBalance = (value: number) =>
+      value < 0 ? `(${money(Math.abs(value))})` : money(value);
+
+    // Company code (COMPANY_CODE) – DB first, request as fallback
+    const companyCode = text(
+      rows[0]?.company_code || req.body.company_code || code1 || ""
     );
 
     // Group by account
@@ -263,10 +292,10 @@ export const getChequeDateWiseReport = async (
           <td class="num opening-val" colspan="2">${formatBalance(opening)}</td>
         </tr>`;
 
-      // PDC / NORMAL
+      // PDC / NORMAL (PDC_IND)
       const pdcGroups: Record<string, any[]> = {};
       groupRows.forEach((r) => {
-        const k = r.pdc_ind === "Y" ? "PDC" : "NORMAL";
+        const k = text(r.pdc_ind).toUpperCase() === "Y" ? "PDC" : "NORMAL";
         if (!pdcGroups[k]) pdcGroups[k] = [];
         pdcGroups[k].push(r);
       });
@@ -278,14 +307,34 @@ export const getChequeDateWiseReport = async (
           </tr>`;
 
         pdcRows.forEach((r) => {
-          const amount = Number(r.lcur_amount) || 0;
-          const dr = r.sign_ind > 0 ? amount : 0;
-          const cr = r.sign_ind < 0 ? Math.abs(amount) : 0;
+          // Prefer DEBIT_AMT / CREDIT_AMT from the view;
+          // fall back to LCUR_AMOUNT + SIGN_IND if they are missing.
+          let dr: number;
+          let cr: number;
+          if (r.debit_amt != null || r.credit_amt != null) {
+            dr = Number(r.debit_amt) || 0;
+            cr = Number(r.credit_amt) || 0;
+          } else {
+            const amount = Number(r.lcur_amount) || 0;
+            dr = Number(r.sign_ind) > 0 ? Math.abs(amount) : 0;
+            cr = Number(r.sign_ind) < 0 ? Math.abs(amount) : 0;
+          }
           totalDebit += dr;
           totalCredit += cr;
           runningBalance += dr - cr;
 
-          const narration = text(r.narration || r.remarks || r.details || "").trim();
+          // Bank name = BANK_AC_NAME (falls back to legacy "bank" alias)
+          const bankName = text(r.bank_ac_name || r.bank || "");
+
+          // Narration = REMARKS / CHEQUE_DESC, plus PDC cleared date if any
+          const narrParts = [
+            text(r.remarks || r.narration || r.details || "").trim(),
+            text(r.cheque_desc || "").trim(),
+          ].filter(Boolean);
+          if (r.pdc_cleared_date) {
+            narrParts.push(`Cleared: ${formatDateStr(r.pdc_cleared_date)}`);
+          }
+          const narration = narrParts.join(" | ");
           const wrappedNarration =
             narration.match(/.{1,80}(\s|$)/g)?.join("<br/>") || narration;
 
@@ -298,7 +347,7 @@ export const getChequeDateWiseReport = async (
               <td><span class="cell-main">${text(r.cheque_no || "")}</span></td>
               <td class="center"><span class="cell-main">${formatDateStr(r.cheque_date)}</span></td>
               <td>
-                <span class="cell-main">${text(r.bank || "")}</span>
+                <span class="cell-main">${bankName}</span>
                 ${narration ? `<span class="cell-narr">${wrappedNarration}</span>` : ""}
               </td>
               <td class="num dr-amt">${money(dr)}</td>
@@ -325,19 +374,21 @@ export const getChequeDateWiseReport = async (
         </tr>`;
     });
 
-    tableBodyHtml += `
+    if (rows.length > 0) {
+      tableBodyHtml += `
       <tr class="grand-row">
         <td colspan="6" class="right"><strong>Grand Total :</strong></td>
         <td class="num"><strong>${money(grandTotalDebit)}</strong></td>
         <td class="num"><strong>${money(grandTotalCredit)}</strong></td>
         <td></td>
       </tr>`;
+    }
 
     const reportTitle = `Cheque Date Wise Report ${text(code5)} - ${text(code6)}`;
     const generatedBy = text(loginid) || "Unknown User";
 
     const headerHtml = await reportHeader({
-      company_code: text(req.body.company_code || code1 || ""),
+      company_code: companyCode,
       req: req as any,
     });
 
@@ -351,7 +402,7 @@ export const getChequeDateWiseReport = async (
       <div class="section-strip">
         Date: ${formatDateStr(new Date())}
         &nbsp;|&nbsp; User: ${generatedBy}
-        &nbsp;|&nbsp; Currency: OMR
+        ${reportCurrency ? `&nbsp;|&nbsp; Currency: ${reportCurrency}` : ""}
       </div>
       <table class="data-table">
         <colgroup>

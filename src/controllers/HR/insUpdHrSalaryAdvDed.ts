@@ -87,6 +87,8 @@ export const insUpdHrSalaryAdvDed = async (req: Request, res: Response): Promise
     }));
 
     // ================= CALL PROCEDURE =================
+    console.log('headerRow:', headerRow);
+    console.log('detailRows:', detailRows);
     await connection.execute(
       `BEGIN
          PROC_INS_UPD_HR_ADVDED(:p_header, :p_details);

@@ -296,24 +296,36 @@ const PENDING_PO_EXTRA_CSS = `
     margin-bottom: 4px;
   }
   .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 0px 0 0 0;
-  }
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.doc-title-row + table,
+.doc-title-row ~ table.data-table {
+  margin-top: 6px !important;
+}
+
   .doc-title-row h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0b4ca1;
-  }
+  margin: 0 0 2px 0 !important;
+  padding: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0b4ca1;
+  line-height: 1.2;
+}
   .doc-title-row .doc-sub {
-    margin: 2px 0 0;
-    font-size: 11px;
-    color: #64748b;
-  }
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
   table.data-table {
-    margin-top: 0;
+  margin-top: 2px !important;
   }
   .doc-title-row .print-meta {
     text-align: right;
@@ -408,7 +420,8 @@ function renderSummaryBody(rows: ReportRow[], loginId: string, dateFrom: string 
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
   const { from, to } = periodLabel(dateFrom, dateTo);
-  const subtitle = from || to ? `List for the Period ${from} - ${to}` : "List — All Periods";
+  // const subtitle = from || to ? `List for the Period ${from} - ${to}` : "List — All Periods";
+  const subtitle = `Summary Report  |  ${from || to ? `List for the Period ${from} - ${to}` : "All Periods"}`;
 
   const totalQty = rows.reduce((s, r) => s + num(r.total_qty), 0);
   const totalBalance = rows.reduce((s, r) => s + num(r.qty_balance), 0);
@@ -435,7 +448,7 @@ function renderSummaryBody(rows: ReportRow[], loginId: string, dateFrom: string 
       rows.length === 0
         ? `<div class="empty">No pending purchase orders found for the selected filters.</div>`
         : `
-      <table class="data-table">
+     <table class="data-table" style="margin-top: 3px !important;">
         <thead>
           <tr>
             <th>Document No.</th>
@@ -462,77 +475,140 @@ function renderSummaryBody(rows: ReportRow[], loginId: string, dateFrom: string 
 
 // ─── Body: Detail ───────────────────────────────────────────────────────────
 
-function renderDetailBody(rows: ReportRow[], loginId: string): string {
+// function renderDetailBody(rows: ReportRow[], loginId: string): string {
+//   const printDateTime = new Date().toLocaleString("en-GB", {
+//     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+//   });
+
+//   const groups = groupDetailByDoc(rows);
+//   const grandQty = groups.reduce((s, g) => s + g.totalQty, 0);
+
+//   const groupsHtml = groups
+//     .map((g) => {
+//       const cancelled = text(g.header.cancelled).toUpperCase() === "Y";
+//       const lineRows = g.lines
+//         .map(
+//           (r) => `
+//         <tr>
+//           <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
+//           <td>${escapeHtml(formatDate(r.required_dt))}</td>
+//           <td>${escapeHtml(r.det_remarks)}</td>
+//           <td class="right amount">${fmtNumber(num(r.quantity))}</td>
+//           <td>${escapeHtml(r.l_uom)}</td>
+//         </tr>`
+//         )
+//         .join("");
+
+//       return `
+//       <div class="po-group">
+//         <div class="po-group-header">
+//           <div>
+//             <span class="doc-label">Doc No. ${escapeHtml(docLabel(g.header.doc_type, g.header.doc_no))} &bull; Doc Date ${escapeHtml(formatDate(g.header.doc_date))}</span>
+//             <span class="supplier-name">${escapeHtml(g.header.ac_name)}${
+//         cancelled ? `<span class="status-badge status-CANCELLED">Cancelled</span>` : ""
+//       }</span>
+//           </div>
+//         </div>
+//         <table class="data-table grouped">
+//           <thead>
+//             <tr>
+//               <th>Product</th>
+//               <th>Required Date</th>
+//               <th>Remarks</th>
+//               <th class="right">P.O Qty</th>
+//               <th>UOM</th>
+//             </tr>
+//           </thead>
+//           <tbody>
+//             ${lineRows}
+//             <tr class="subtotal-row">
+//               <td colspan="3">Total Qty for ${escapeHtml(docLabel(g.header.doc_type, g.header.doc_no))}</td>
+//               <td class="right">${fmtNumber(g.totalQty)}</td>
+//               <td></td>
+//             </tr>
+//           </tbody>
+//         </table>
+//       </div>`;
+//     })
+//     .join("");
+
+//   return `
+//     ${printMetaHtml("Purchase Orders", "Pending Order Detail", printDateTime, loginId)}
+
+//     ${
+//       rows.length === 0
+//         ? `<div class="empty">No pending purchase order lines found for the selected filters.</div>`
+//         : `
+//       ${groupsHtml}
+
+//       <div class="grand-total-box">
+//         <div class="row"><span>Grand Total Qty</span><span>${fmtNumber(grandQty)}</span></div>
+//       </div>`
+//     }
+//   `;
+// }
+function renderDetailBody(rows: ReportRow[], loginId: string, dateFrom: string | null, dateTo: string | null): string {
   const printDateTime = new Date().toLocaleString("en-GB", {
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
+  const { from, to } = periodLabel(dateFrom, dateTo);
+  const periodText = from || to ? `List for the Period ${from} - ${to}` : "All Periods";
+  const subtitle = `Detail Report  |  ${periodText}`;
 
-  const groups = groupDetailByDoc(rows);
-  const grandQty = groups.reduce((s, g) => s + g.totalQty, 0);
+  const grandQty = rows.reduce((s, r) => s + num(r.quantity), 0);
 
-  const groupsHtml = groups
-    .map((g) => {
-      const cancelled = text(g.header.cancelled).toUpperCase() === "Y";
-      const lineRows = g.lines
-        .map(
-          (r) => `
+  const lineRows = rows
+    .map(
+      (r) => `
         <tr>
+          <td>${escapeHtml(docLabel(r.doc_type, r.doc_no))}</td>
+          <td>${escapeHtml(formatDate(r.doc_date))}</td>
+          <td>${escapeHtml(r.ac_name)}${
+            text(r.cancelled).toUpperCase() === "Y"
+              ? ` <span class="status-badge status-CANCELLED">Cancelled</span>`
+              : ""
+          }</td>
           <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}</td>
           <td>${escapeHtml(formatDate(r.required_dt))}</td>
           <td>${escapeHtml(r.det_remarks)}</td>
           <td class="right amount">${fmtNumber(num(r.quantity))}</td>
           <td>${escapeHtml(r.l_uom)}</td>
         </tr>`
-        )
-        .join("");
-
-      return `
-      <div class="po-group">
-        <div class="po-group-header">
-          <div>
-            <span class="doc-label">Doc No. ${escapeHtml(docLabel(g.header.doc_type, g.header.doc_no))} &bull; Doc Date ${escapeHtml(formatDate(g.header.doc_date))}</span>
-            <span class="supplier-name">${escapeHtml(g.header.ac_name)}${
-        cancelled ? `<span class="status-badge status-CANCELLED">Cancelled</span>` : ""
-      }</span>
-          </div>
-        </div>
-        <table class="data-table grouped">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Required Date</th>
-              <th>Remarks</th>
-              <th class="right">P.O Qty</th>
-              <th>UOM</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lineRows}
-            <tr class="subtotal-row">
-              <td colspan="3">Total Qty for ${escapeHtml(docLabel(g.header.doc_type, g.header.doc_no))}</td>
-              <td class="right">${fmtNumber(g.totalQty)}</td>
-              <td></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>`;
-    })
+    )
     .join("");
 
-  return `
-    ${printMetaHtml("Purchase Orders", "Pending Order Detail", printDateTime, loginId)}
+ return `
+  ${printMetaHtml("Pending Purchase Orders", subtitle, printDateTime, loginId)}
 
-    ${
-      rows.length === 0
-        ? `<div class="empty">No pending purchase order lines found for the selected filters.</div>`
-        : `
-      ${groupsHtml}
+  ${
+    rows.length === 0
+      ? `<div class="empty">No pending purchase order lines found for the selected filters.</div>`
+      : `
+    
 
-      <div class="grand-total-box">
-        <div class="row"><span>Grand Total Qty</span><span>${fmtNumber(grandQty)}</span></div>
-      </div>`
-    }
-  `;
+
+      
+      <table class="data-table" style="margin-top: 3px !important;">
+      <thead>
+        <tr>
+          <th>Document No.</th>
+          <th>Doc Date</th>
+          <th>Supplier</th>
+          <th>Product</th>
+          <th>Required Date</th>
+          <th>Remarks</th>
+          <th class="right">P.O Qty</th>
+          <th>UOM</th>
+        </tr>
+      </thead>
+      <tbody>${lineRows}</tbody>
+    </table>
+
+    <div class="grand-total-box">
+      <div class="row"><span>Grand Total Qty</span><span>${fmtNumber(grandQty)}</span></div>
+    </div>`
+  }
+`;
 }
 
 // ─── Generic OOXML Excel builder engine (shared style with po-order-register /
@@ -875,66 +951,128 @@ function buildSummaryExcelBuffer(rows: ReportRow[], loginId: string, dateFrom: s
 
 // ─── Excel builder: Detail (grouped by document, same shape as PO Register) ─
 
-function buildDetailExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
+// function buildDetailExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
+//   const printDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+//   const COL_COUNT = 5; // Product, Required Date, Remarks, P.O Qty, UOM
+//   const rows_: XlRow[] = [];
+//   const merges: XlMerge[] = [];
+
+//   rows_.push([xlCell("PURCHASE ORDERS - PENDING DETAIL", "title"), null, null, null, null]);
+//   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+
+//   rows_.push([xlCell(`Date: ${printDate}`, "meta"), null, xlCell(`User: ${loginId}`, "meta"), null, null]);
+//   merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
+//   merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 4 } });
+
+//   rows_.push(new Array(COL_COUNT).fill(null));
+
+//   rows_.push([
+//     xlCell("Product", "header"), xlCell("Required Date", "header"), xlCell("Remarks", "header"),
+//     xlCell("P.O Qty", "header"), xlCell("UOM", "header"),
+//   ]);
+
+//   const groups = groupDetailByDoc(rows);
+//   let grandQty = 0;
+
+//   groups.forEach((g) => {
+//     const cancelled = text(g.header.cancelled).toUpperCase() === "Y";
+//     const rIdx = rows_.length;
+//     rows_.push([
+//       xlCell(
+//         `Doc No. ${docLabel(g.header.doc_type, g.header.doc_no)}   Doc Date ${formatDate(g.header.doc_date)}${cancelled ? "   Cancelled" : ""}   Supplier: ${text(g.header.ac_name)}`,
+//         "groupHeader"
+//       ),
+//       null, null, null, null,
+//     ]);
+//     merges.push({ s: { r: rIdx, c: 0 }, e: { r: rIdx, c: COL_COUNT - 1 } });
+
+//     g.lines.forEach((r) => {
+//       rows_.push([
+//         xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+//         xlCell(formatDate(r.required_dt), "data"),
+//         xlCell(text(r.det_remarks), "data"),
+//         xlCell(num(r.quantity), "dataNum"),
+//         xlCell(text(r.l_uom), "data"),
+//       ]);
+//     });
+
+//     const dtRow = rows_.length;
+//     rows_.push([xlCell(`Total Qty for ${docLabel(g.header.doc_type, g.header.doc_no)}`, "groupTotal"), null, null, xlCell(g.totalQty, "groupTotalNum"), null]);
+//     merges.push({ s: { r: dtRow, c: 0 }, e: { r: dtRow, c: 2 } });
+
+//     rows_.push(new Array(COL_COUNT).fill(null));
+//     grandQty += g.totalQty;
+//   });
+
+//   const gtRow = rows_.length;
+//   rows_.push([xlCell("Grand Total Qty", "grandTotal"), null, null, xlCell(grandQty, "grandTotalNum"), null]);
+//   merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 2 } });
+
+//   rows_.push([null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+
+//   return buildXlsxBuffer("Pending PO Detail", COL_COUNT, 20, rows_, merges, defaultXlStyleDefs());
+// }
+
+function buildDetailExcelBuffer(rows: ReportRow[], loginId: string, dateFrom: string | null, dateTo: string | null): Buffer {
   const printDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const COL_COUNT = 5; // Product, Required Date, Remarks, P.O Qty, UOM
+  const { from, to } = periodLabel(dateFrom, dateTo);
+  const COL_COUNT = 8; // Document No., Doc Date, Supplier, Product, Required Date, Remarks, P.O Qty, UOM
   const rows_: XlRow[] = [];
   const merges: XlMerge[] = [];
 
-  rows_.push([xlCell("PURCHASE ORDERS - PENDING DETAIL", "title"), null, null, null, null]);
+  rows_.push([xlCell("PURCHASE ORDERS - PENDING DETAIL", "title"), null, null, null, null, null, null, null]);
   merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
-  rows_.push([xlCell(`Date: ${printDate}`, "meta"), null, xlCell(`User: ${loginId}`, "meta"), null, null]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
-  merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 4 } });
+  rows_.push([
+    xlCell(from || to ? `Period: ${from} - ${to}` : "Period: All", "meta"), null, null,
+    xlCell(`Date: ${printDate}`, "meta"), null,
+    xlCell(`User: ${loginId}`, "meta"), null, null,
+  ]);
+  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 4 } });
+  merges.push({ s: { r: 1, c: 5 }, e: { r: 1, c: 7 } });
 
   rows_.push(new Array(COL_COUNT).fill(null));
 
   rows_.push([
-    xlCell("Product", "header"), xlCell("Required Date", "header"), xlCell("Remarks", "header"),
-    xlCell("P.O Qty", "header"), xlCell("UOM", "header"),
+    xlCell("Document No.", "header"),
+    xlCell("Doc Date", "header"),
+    xlCell("Supplier", "header"),
+    xlCell("Product", "header"),
+    xlCell("Required Date", "header"),
+    xlCell("Remarks", "header"),
+    xlCell("P.O Qty", "header"),
+    xlCell("UOM", "header"),
   ]);
 
-  const groups = groupDetailByDoc(rows);
   let grandQty = 0;
-
-  groups.forEach((g) => {
-    const cancelled = text(g.header.cancelled).toUpperCase() === "Y";
-    const rIdx = rows_.length;
+  rows.forEach((r) => {
+    grandQty += num(r.quantity);
+    const cancelled = text(r.cancelled).toUpperCase() === "Y";
     rows_.push([
-      xlCell(
-        `Doc No. ${docLabel(g.header.doc_type, g.header.doc_no)}   Doc Date ${formatDate(g.header.doc_date)}${cancelled ? "   Cancelled" : ""}   Supplier: ${text(g.header.ac_name)}`,
-        "groupHeader"
-      ),
-      null, null, null, null,
+      xlCell(docLabel(r.doc_type, r.doc_no), "data"),
+      xlCell(formatDate(r.doc_date), "data"),
+      xlCell(text(r.ac_name) + (cancelled ? " (Cancelled)" : ""), "data"),
+      xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+      xlCell(formatDate(r.required_dt), "data"),
+      xlCell(text(r.det_remarks), "data"),
+      xlCell(num(r.quantity), "dataNum"),
+      xlCell(text(r.l_uom), "data"),
     ]);
-    merges.push({ s: { r: rIdx, c: 0 }, e: { r: rIdx, c: COL_COUNT - 1 } });
-
-    g.lines.forEach((r) => {
-      rows_.push([
-        xlCell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
-        xlCell(formatDate(r.required_dt), "data"),
-        xlCell(text(r.det_remarks), "data"),
-        xlCell(num(r.quantity), "dataNum"),
-        xlCell(text(r.l_uom), "data"),
-      ]);
-    });
-
-    const dtRow = rows_.length;
-    rows_.push([xlCell(`Total Qty for ${docLabel(g.header.doc_type, g.header.doc_no)}`, "groupTotal"), null, null, xlCell(g.totalQty, "groupTotalNum"), null]);
-    merges.push({ s: { r: dtRow, c: 0 }, e: { r: dtRow, c: 2 } });
-
-    rows_.push(new Array(COL_COUNT).fill(null));
-    grandQty += g.totalQty;
   });
 
+  rows_.push(new Array(COL_COUNT).fill(null));
+
   const gtRow = rows_.length;
-  rows_.push([xlCell("Grand Total Qty", "grandTotal"), null, null, xlCell(grandQty, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 2 } });
+  rows_.push([
+    xlCell("Grand Total Qty", "grandTotal"), null, null, null, null, null,
+    xlCell(grandQty, "grandTotalNum"), null,
+  ]);
+  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 5 } });
 
-  rows_.push([null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
+  rows_.push([null, null, null, null, null, null, null, xlCell("Powered by Bayanat Technology", "footer")]);
 
-  return buildXlsxBuffer("Pending PO Detail", COL_COUNT, 20, rows_, merges, defaultXlStyleDefs());
+  return buildXlsxBuffer("Pending PO Detail", COL_COUNT, 16, rows_, merges, defaultXlStyleDefs());
 }
 
 // ─── Route Handlers ───────────────────────────────────────────────────────────
@@ -961,12 +1099,12 @@ export const getPendingPOReportHtml = async (
       endLabel: "Powered by Bayanat Technology",
     });
     const bodyHtml =
-      params.reportType === "Summary"
-        ? renderSummaryBody(rows, params.loginId, params.dateFrom, params.dateTo)
-        : renderDetailBody(rows, params.loginId);
+  params.reportType === "Summary"
+    ? renderSummaryBody(rows, params.loginId, params.dateFrom, params.dateTo)
+    : renderDetailBody(rows, params.loginId, params.dateFrom, params.dateTo);
 
     const html = buildReportDocument({
-      title: params.reportType === "Summary" ? "Pending Purchase Orders" : "Purchase Orders - Pending Detail",
+      title: params.reportType === "Summary" ? "Pending Purchase Orders-Summary" : "Pending Purchase Orders - Detail",
       headerHtml,
       bodyHtml,
       footerHtml,
@@ -1000,9 +1138,9 @@ export const exportPendingPOReportExcel = async (
     }
 
     const buffer =
-      params.reportType === "Summary"
-        ? buildSummaryExcelBuffer(rows, params.loginId, params.dateFrom, params.dateTo)
-        : buildDetailExcelBuffer(rows, params.loginId);
+  params.reportType === "Summary"
+    ? buildSummaryExcelBuffer(rows, params.loginId, params.dateFrom, params.dateTo)
+    : buildDetailExcelBuffer(rows, params.loginId, params.dateFrom, params.dateTo);
 
     const filename = `pending_po_${params.reportType.toLowerCase()}_${new Date()
       .toISOString()

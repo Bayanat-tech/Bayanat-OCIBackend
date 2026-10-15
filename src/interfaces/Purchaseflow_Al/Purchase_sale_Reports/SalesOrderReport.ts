@@ -11,10 +11,10 @@ import { buildReportDocument, reportFooter, reportHeader } from "../../../contro
 type ReportRow = Record<string, any>;
 
 interface ReqParams {
-  loginid:      string;
+  loginid: string;
   company_code: string;
-  doc_type:     string;
-  doc_no:       string;
+  doc_type: string;
+  doc_no: string;
 }
 
 // ─── DB helpers ─────────────────────────────────────────────────────────────
@@ -83,10 +83,10 @@ function amtFmt(value: unknown): string {
 function extractParams(req: RequestWithUser): ReqParams {
   const b = req.body || {};
   return {
-    loginid:      text(req.user?.loginid) || text(b.loginid) || "ADMIN",
+    loginid: text(req.user?.loginid) || text(b.loginid) || "ADMIN",
     company_code: text(b.company_code),
-    doc_type:     text(b.doc_type) || "SO",
-    doc_no:       text(b.doc_no),
+    doc_type: text(b.doc_type) || "SO",
+    doc_no: text(b.doc_no),
   };
 }
 
@@ -191,34 +191,55 @@ function buildHeader(rows: ReportRow[]): SoHeader {
 
 function computeTotals(rows: ReportRow[], header: SoHeader) {
   const totalQty = rows.reduce((s, r) => s + num(r.quantity), 0);
-  const totalAmount = rows.reduce((s, r) => s + num(r.amount), 0);
-  const discount = header.total_discount || (totalAmount * header.total_discount) / 100;
+
+  // Gross = qty × rate 
+  const totalAmount = rows.reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0);
+
+
+  const lineDiscount = rows.reduce((s, r) => {
+    const gross = num(r.quantity) * num(r.unit_price);
+    const d = num(r.disc_price) || (gross * num(r.disc_percent)) / 100;
+    return s + d;
+  }, 0);
+
+
+  const lineNet = totalAmount - lineDiscount;
+  const headerDiscount =
+    header.disc_hdr_price || (lineNet * header.disc_hdr_percent) / 100;
+
+  const discount = lineDiscount + headerDiscount;
   const exclusiveVat = totalAmount - discount;
-  // NOTE: vw_erp_salesorder has no VAT column — wire real values once confirmed.
   const vatAmount = 0;
   const inclusiveVat = exclusiveVat + vatAmount;
+
   return { totalQty, totalAmount, discount, exclusiveVat, vatAmount, inclusiveVat };
 }
 
-// ─── Layout CSS — same visual system as Sales Invoice / PO Order Register ──
+
 
 const SALES_ORDER_EXTRA_CSS = `
   .doc-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin: 4px 0 12px 0;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 2px !important;
   }
   .doc-title-row h1 {
-    margin: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     font-size: 18px;
     font-weight: 800;
     color: #0b4ca1;
+    line-height: 1.2 !important;
   }
   .doc-title-row .doc-sub {
-    margin: 2px 0 0;
+    margin: 0 !important;
+    padding: 0 !important;
     font-size: 11px;
     color: #64748b;
+    line-height: 1.2 !important;
   }
   .doc-title-row .print-meta {
     text-align: right;
@@ -241,7 +262,9 @@ const SALES_ORDER_EXTRA_CSS = `
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 4px 16px;
-    margin-bottom: 14px;
+    margin-top: 2px !important;
+    margin-bottom: 12px !important;
+    padding-top: 0 !important;
   }
   .info-block {
     border: 1px solid #e2e8f0;
@@ -313,6 +336,8 @@ function printMetaHtml(title: string, subtitle: string, printDateTime: string, l
     </div>`;
 }
 
+
+
 // ─── Body ───────────────────────────────────────────────────────────────────
 
 function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
@@ -332,6 +357,7 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
           <td>${escapeHtml(r.p_uom)}</td>
           <td class="right">${qtyFmt(r.quantity)}</td>
           <td class="right">${amtFmt(r.unit_price)}</td>
+          <td class="right">${amtFmt(num(r.disc_price) || (num(r.quantity) * num(r.unit_price) * num(r.disc_percent)) / 100)}</td>
           <td class="right amount">${amtFmt(r.amount)}</td>
         </tr>`
     )
@@ -340,6 +366,7 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
   return `
     ${printMetaHtml(REPORT_TITLE, `${REPORT_SUBTITLE} — ${header.div_name}`, printDateTime, loginId, header.cancelled)}
 
+    
     <div class="info-grid">
       <div class="info-block">
         <div class="label">Customer</div>
@@ -357,10 +384,9 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
       </div>
     </div>
 
-    ${
-      rows.length === 0
-        ? `<div class="empty">No line items found for this order.</div>`
-        : `
+    ${rows.length === 0
+      ? `<div class="empty">No line items found for this order.</div>`
+      : `
       <table class="data-table">
         <thead>
           <tr>
@@ -369,6 +395,7 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
             <th>Unit</th>
             <th class="right">Qty</th>
             <th class="right">Unit Rate</th>
+            <th class="right">Disc</th>
             <th class="right">Amount</th>
           </tr>
         </thead>
@@ -378,7 +405,7 @@ function renderSalesOrderBody(rows: ReportRow[], loginId: string): string {
       <div class="totals-box">
         <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
         <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
-        <div class="row"><span>Discount</span><span>${amtFmt(totals.discount)}</span></div>
+        <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.discount)}</span></div>
         <div class="row grand"><span>Net Amount</span><span>${amtFmt(totals.inclusiveVat)}</span></div>
       </div>`
     }
@@ -399,7 +426,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
 
-  const COL_COUNT = 6;
+  const COL_COUNT = 7;
 
   interface XlCell { v: unknown; styleKey: string }
   type Row = (XlCell | null)[];
@@ -426,7 +453,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   rows_.push([
     cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
-    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Amount", "header"),
+    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Disc", "header"), cell("Amount", "header"),
   ]);
 
   rows.forEach((r, i) => {
@@ -436,6 +463,7 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
       cell(text(r.p_uom), "data"),
       cell(num(r.quantity), "dataNum"),
       cell(num(r.unit_price), "dataNum"),
+      cell(num(r.disc_price) || (num(r.quantity) * num(r.unit_price) * num(r.disc_percent)) / 100, "dataNum"),
       cell(num(r.amount), "dataNum"),
     ]);
   });

@@ -11,6 +11,7 @@ import {
   diagnosticPermissions,
 } from "../controllers/auth.controller";
 import { public_invoice } from "../controllers/wms/reports/invoice_reports/invoice_report";
+import { getCompanyLogoDirect } from "../controllers/Freight/companyLogo.controller";
 
 // Create a new Express router
 const router = express.Router();
@@ -27,6 +28,12 @@ router.get("/me",
   passport.authenticate("jwt", { session: false }), 
   tenantContextMiddleware,
   me
+);
+
+router.get("/company-logo",
+  passport.authenticate("jwt", { session: false }),
+  tenantContextMiddleware,
+  getCompanyLogoDirect
 );
 
 router.get("/diagnostic-permissions",

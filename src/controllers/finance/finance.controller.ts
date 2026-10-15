@@ -63,6 +63,8 @@ export const getFinanceListData = async (
                   doc_type: "doc_type",
                   div_code: "div_code",
                   fy_period: "fy_period",
+                  doc_date: "doc_date",
+                  date: "doc_date",
                   ac_code: "ac_code",
                   ac_name: "ac_name",
                   party_name: "ac_name",
@@ -88,6 +90,53 @@ export const getFinanceListData = async (
                   } else {
                     groupClauses.push(`UPPER(NVL(canceled, 'N')) = UPPER(:${safeParam})`);
                     binds[safeParam] = normVal;
+                  }
+                  return;
+                }
+
+                if (dbField === "doc_date") {
+                  let fromVal: string | undefined;
+                  let toVal: string | undefined;
+
+                  if (typeof field_value === "object" && field_value !== null) {
+                    fromVal = (field_value as any).from;
+                    toVal = (field_value as any).to;
+                  } else if (typeof field_value === "string") {
+                    try {
+                      const parsed = JSON.parse(field_value);
+                      if (parsed && typeof parsed === "object") {
+                        fromVal = parsed.from;
+                        toVal = parsed.to;
+                      }
+                    } catch {
+                      const match = field_value.match(/\d{4}-\d{2}-\d{2}/);
+                      if (match) {
+                        fromVal = match[0];
+                        toVal = match[0];
+                      }
+                    }
+                  }
+
+                  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                  if (fromVal && dateRegex.test(String(fromVal).slice(0, 10))) fromVal = String(fromVal).slice(0, 10);
+                  else fromVal = undefined;
+                  if (toVal && dateRegex.test(String(toVal).slice(0, 10))) toVal = String(toVal).slice(0, 10);
+                  else toVal = undefined;
+
+                  if (fromVal && toVal) {
+                    const pFrom = `doc_date_from_${gi}_${ci}`;
+                    const pTo = `doc_date_to_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) >= TO_DATE(:${pFrom}, 'YYYY-MM-DD') AND TRUNC(doc_date) <= TO_DATE(:${pTo}, 'YYYY-MM-DD')`);
+                    binds[pFrom] = fromVal;
+                    binds[pTo] = toVal;
+                  } else if (fromVal) {
+                    const pFrom = `doc_date_from_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) >= TO_DATE(:${pFrom}, 'YYYY-MM-DD')`);
+                    binds[pFrom] = fromVal;
+                  } else if (toVal) {
+                    const pTo = `doc_date_to_${gi}_${ci}`;
+                    groupClauses.push(`TRUNC(doc_date) <= TO_DATE(:${pTo}, 'YYYY-MM-DD')`);
+                    binds[pTo] = toVal;
                   }
                   return;
                 }
@@ -119,6 +168,8 @@ export const getFinanceListData = async (
                 OR UPPER(doc_type) LIKE UPPER(:search)
                 OR UPPER(div_code) LIKE UPPER(:search)
                 OR UPPER(NVL(ac_name, ' ')) LIKE UPPER(:search)
+                OR UPPER(NVL(ref_no, ' ')) LIKE UPPER(:search)
+                OR UPPER(NVL(cheque_no, ' ')) LIKE UPPER(:search)
                 OR UPPER(NVL(ac_payee, ' ')) LIKE UPPER(:search)
               )
             `;
@@ -587,21 +638,210 @@ export const getFinanceListData = async (
 
         let defaultData: { [key: string]: any } = {};
 
-        const invoiceResult = await connection.execute(
-          `
-    ${getChequePaymentInvoiceDetail}
-    `,
-          {
-            company_code: req.user.company_code,
-            ac_code: code,
-            div_code: extra_param1,
-            invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
-          },
-          { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
+        const voucherType = String(extra_param2 || "").toUpperCase();
+        const isReceipt = ["BR", "CR", "RJV", "CN"].includes(voucherType);
+        const isPayment = ["BP", "CP", "PJV", "DN"].includes(voucherType);
 
-        // Use the outer `fetchedData` (do not shadow it) so the response includes data and count consistently
-        fetchedData = invoiceResult.rows || [];
+        // 1. Primary: Query TR_AC_HEADER for all open invoices for this account & division
+        let headerInvoices: any[] = [];
+        const knownDocNos = new Set<string>();
+        const knownRefNos = new Set<string>();
+        const knownKeys = new Set<string>();
+
+        try {
+          const headerInvoicesResult = await connection.execute(
+            `SELECT 
+               h.doc_no AS inv_no,
+               h.doc_no,
+               h.ref_no,
+               h.doc_date AS inv_date,
+               NVL((
+                 SELECT ABS(NVL(d.lcur_amount, d.amount))
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    = 9001
+               ), (
+                 SELECT SUM(ABS(NVL(d.lcur_amount, d.amount)))
+                 FROM TR_AC_DETAIL d
+                 WHERE d.company_code = h.company_code
+                   AND d.doc_type     = h.doc_type
+                   AND d.doc_no       = h.doc_no
+                   AND d.serial_no    <> 9001
+               )) AS inv_amt,
+               h.curr_code AS c_curr_code_origin,
+               h.ex_rate AS c_ex_rate_origin,
+               h.div_code,
+               h.ac_code,
+               h.company_code,
+               h.doc_type AS origin_doc_type,
+               NVL((
+                 SELECT SUM(ABS(d.lcur_amount))
+                 FROM TR_AC_INVDETAIL d
+                 JOIN TR_AC_HEADER pay_h
+                   ON pay_h.company_code = d.company_code
+                  AND pay_h.doc_no       = d.doc_no
+                  AND pay_h.doc_type     = d.doc_type
+                  AND NVL(pay_h.canceled, 'N') = 'N'
+                 WHERE d.company_code = h.company_code
+                   AND d.div_code     = h.div_code
+                   AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
+                   AND NVL(d.indicator_origin, 'N') = 'N'
+                   AND (TRIM(d.doc_type) || TRIM(TO_CHAR(d.doc_no)) || TRIM(TO_CHAR(d.serial_no)) <> :invrsno)
+               ), 0) AS amount
+             FROM TR_AC_HEADER h
+             WHERE h.company_code = :company_code
+               AND h.div_code     = :div_code
+               AND h.ac_code      = :ac_code
+               AND NVL(h.canceled, 'N') = 'N'
+               AND (
+                 (:is_receipt = 1 AND h.doc_type IN ('SI', 'SV'))
+                 OR (:is_payment = 1 AND h.doc_type IN ('PI', 'PO'))
+                 OR (:is_receipt = 0 AND :is_payment = 0)
+               )`,
+            {
+              company_code: req.user.company_code,
+              div_code: extra_param1,
+              ac_code: code,
+              invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
+              is_receipt: isReceipt ? 1 : 0,
+              is_payment: isPayment ? 1 : 0,
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+
+          (headerInvoicesResult.rows || []).forEach((hRow: any) => {
+            const docNo = String(hRow.DOC_NO || hRow.doc_no || '').trim();
+            const refNo = String(hRow.REF_NO || hRow.ref_no || '').trim();
+            const primaryInvNo = refNo || docNo;
+
+            // Register all invoice documents from TR_AC_HEADER so secondary query NEVER resurrects paid or duplicate invoices
+            if (docNo) { knownDocNos.add(docNo.toUpperCase()); knownKeys.add(docNo.toUpperCase()); }
+            if (refNo) { knownRefNos.add(refNo.toUpperCase()); knownKeys.add(refNo.toUpperCase()); }
+            if (primaryInvNo) { knownKeys.add(primaryInvNo.toUpperCase()); }
+
+            const invAmt = Number(hRow.INV_AMT || hRow.inv_amt || 0);
+            const paidAmt = Number(hRow.AMOUNT || hRow.amount || 0);
+            const bal = Math.max(0, invAmt - paidAmt);
+            if (bal > 0.001) {
+              const rowObj: any = {
+                inv_no: primaryInvNo,
+                doc_no: docNo,
+                ref_no: docNo,
+                inv_date: hRow.INV_DATE || hRow.inv_date,
+                amount: paidAmt,
+                sign_ind: 1,
+                ac_code: hRow.AC_CODE || hRow.ac_code,
+                company_code: hRow.COMPANY_CODE || hRow.company_code,
+                inv_amt: invAmt,
+                c_curr_code: ' ',
+                c_curr_amt: 0.0,
+                c_indicator_origin: 'N',
+                c_curr_code_origin: hRow.C_CURR_CODE_ORIGIN || hRow.c_curr_code_origin,
+                c_ex_rate_origin: hRow.C_EX_RATE_ORIGIN || hRow.c_ex_rate_origin,
+                c_bal_amt_org: bal,
+                job_no: null,
+                bl_no: null,
+                doc_ref: null,
+                div_code: hRow.DIV_CODE || hRow.div_code,
+                origin_doc_type: hRow.ORIGIN_DOC_TYPE || hRow.origin_doc_type,
+              };
+              headerInvoices.push(rowObj);
+            }
+          });
+        } catch (hdrErr) {
+          console.warn('[finance.controller invoice] Header invoices query error:', hdrErr);
+        }
+
+        // Also register CANCELLED documents from TR_AC_HEADER so they are NEVER resurrected by legacy/fallback queries
+        try {
+          const cancelledRes = await connection.execute(
+            `SELECT UPPER(TRIM(doc_no)) AS doc_no, UPPER(TRIM(ref_no)) AS ref_no 
+             FROM TR_AC_HEADER 
+             WHERE company_code = :company_code AND div_code = :div_code AND NVL(canceled, 'N') = 'Y'`,
+            { company_code: req.user.company_code, div_code: extra_param1 },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          (cancelledRes.rows || []).forEach((cRow: any) => {
+            if (cRow.DOC_NO) { knownDocNos.add(String(cRow.DOC_NO).toUpperCase()); knownKeys.add(String(cRow.DOC_NO).toUpperCase()); }
+            if (cRow.REF_NO) { knownRefNos.add(String(cRow.REF_NO).toUpperCase()); knownKeys.add(String(cRow.REF_NO).toUpperCase()); }
+          });
+        } catch (cErr) {
+          console.warn('[finance.controller invoice] Cancelled invoices check error:', cErr);
+        }
+
+        // 2. Secondary: Query TR_AC_INVDETAIL for any legacy open items not found in TR_AC_HEADER
+        let legacyInvoices: any[] = [];
+        try {
+          const invoiceResult = await connection.execute(
+            `\n${getChequePaymentInvoiceDetail}\n`,
+            {
+              company_code: req.user.company_code,
+              ac_code: code,
+              div_code: extra_param1,
+              invrsno: `${extra_param2}${extra_param3}${extra_param4}`,
+            },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+
+          let rawInvoices = (invoiceResult.rows || []) as any[];
+          if (isReceipt) {
+            rawInvoices = rawInvoices.filter((row: any) => {
+              const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+              return !["PI", "PO", "BP", "CP", "PJV"].includes(dt);
+            });
+          } else if (isPayment) {
+            rawInvoices = rawInvoices.filter((row: any) => {
+              const dt = String(row.ORIGIN_DOC_TYPE || row.origin_doc_type || "").toUpperCase();
+              return !["SI", "SV", "BR", "CR", "RJV"].includes(dt);
+            });
+          }
+
+          rawInvoices.forEach((r: any) => {
+            const rDocNo = String(r.DOC_NO || r.doc_no || '').trim().toUpperCase();
+            const rInvNo = String(r.INV_NO || r.inv_no || '').trim().toUpperCase();
+            const rRefNo = String(r.REF_NO || r.ref_no || '').trim().toUpperCase();
+
+            // Strict deduplication: skip if already in TR_AC_HEADER by doc_no, inv_no, or ref_no
+            if (rDocNo && knownKeys.has(rDocNo)) return;
+            if (rInvNo && knownKeys.has(rInvNo)) return;
+            if (rRefNo && knownKeys.has(rRefNo)) return;
+            if (knownDocNos.has(rDocNo) || knownDocNos.has(rInvNo)) return;
+            if (rRefNo && (knownRefNos.has(rRefNo) || knownDocNos.has(rRefNo))) return;
+            if (rInvNo && knownRefNos.has(rInvNo)) return;
+
+            legacyInvoices.push(r);
+            if (rDocNo) { knownDocNos.add(rDocNo); knownKeys.add(rDocNo); }
+            if (rInvNo) { knownDocNos.add(rInvNo); knownKeys.add(rInvNo); }
+            if (rRefNo) { knownRefNos.add(rRefNo); knownKeys.add(rRefNo); }
+          });
+        } catch (invErr) {
+          console.warn('[finance.controller invoice] TR_AC_INVDETAIL query error:', invErr);
+        }
+
+        // Final strict deduplication across both queries by invoice/voucher identifier
+        const combinedInvoices = [...headerInvoices, ...legacyInvoices];
+        const seenInvoiceKeys = new Set<string>();
+        const uniqueInvoices: any[] = [];
+        for (const item of combinedInvoices) {
+          const dNo = String(item.DOC_NO || item.doc_no || '').trim().toUpperCase();
+          const iNo = String(item.INV_NO || item.inv_no || '').trim().toUpperCase();
+          const rNo = String(item.REF_NO || item.ref_no || '').trim().toUpperCase();
+          const id = dNo || iNo || rNo;
+          if (!id) continue;
+          if ((dNo && seenInvoiceKeys.has(`DOC_${dNo}`)) ||
+              (iNo && seenInvoiceKeys.has(`INV_${iNo}`)) ||
+              (rNo && seenInvoiceKeys.has(`REF_${rNo}`))) {
+            continue;
+          }
+          if (dNo) seenInvoiceKeys.add(`DOC_${dNo}`);
+          if (iNo) seenInvoiceKeys.add(`INV_${iNo}`);
+          if (rNo) seenInvoiceKeys.add(`REF_${rNo}`);
+          uniqueInvoices.push(item);
+        }
+
+        fetchedData = uniqueInvoices;
 
         const fetchedInvoiceNumbers = (fetchedData as any[]).map((row: any) => {
           defaultData[row.inv_no] = row;
@@ -614,11 +854,15 @@ export const getFinanceListData = async (
           `
     SELECT
       tid.*,
-      c.curr_name
+      c.curr_name,
+      h.ref_no
     FROM TR_AC_INVDETAIL tid
     LEFT JOIN MS_CURRENCY c
       ON tid.curr_code = c.curr_code
      AND tid.company_code = c.company_code
+    LEFT JOIN TR_AC_HEADER h
+      ON h.company_code = tid.company_code
+     AND h.doc_no       = tid.inv_no
     WHERE tid.company_code = :company_code
       AND tid.doc_type = :doc_type
       AND tid.doc_no   = :doc_no

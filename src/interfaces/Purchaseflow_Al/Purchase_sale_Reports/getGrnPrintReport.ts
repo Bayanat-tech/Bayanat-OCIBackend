@@ -268,9 +268,9 @@ const GRN_EXTRA_CSS = `
   .grn-two-col > tbody > tr > td:last-child { padding-left: 10px; }
   .grn-status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10.5px; font-weight: 700; background: #fee2e2; color: #dc2626; margin-top: 4px; }
  
-  .grn-totals { width: 260px; margin-left: auto; margin-top: 10px; border-collapse: collapse; }
-  .grn-totals td { padding: 5px 8px; font-size: 10.5px; border-bottom: 1px solid #e2e8f0; }
-  .grn-totals tr.grand td { background: #0b4ca1 !important; color: #fff !important; font-weight: 800; font-size: 12px; border-bottom: none; }
+  .totals-box { margin-top: 10px; margin-left: auto; width: 260px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.totals-box .row { display: flex; justify-content: space-between; padding: 6px 14px; font-size: 11.5px; border-bottom: 1px solid #f1f5f9; }
+.totals-box .row.grand { background: #0b4ca1; color: #fff; font-weight: 700; font-size: 13px; border-bottom: none; }
  
   /* ── Items table: fixed layout with widths pinned per column via
      nth-child (more reliable across HTML→PDF renderers than <colgroup>). ── */
@@ -337,6 +337,44 @@ const GRN_EXTRA_CSS = `
     color: #64748b;
     margin-top: 3px;
   }
+
+    .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+    margin-bottom: 14px;
+  }
+  .info-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    background: #f8fafc;
+  }
+  .info-block .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .info-block .value-line {
+    font-size: 11px;
+    color: #0f172a;
+    line-height: 1.55;
+  }
+  .info-block .kv-line {
+    display: flex;
+    font-size: 11px;
+    color: #0f172a;
+    line-height: 1.7;
+  }
+  .info-block .kv-label {
+    flex: 0 0 100px;
+    color: #475569;
+  }
+  .info-block .kv-value {
+    flex: 1;
+  }
 `;
  
 async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: RequestWithUser): Promise<string> {
@@ -351,35 +389,27 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
   const headerHtml = await reportHeader({ company_code: p.company_code, req });
  
   // ── Party / GRN details, two data-tables side by side ──
-  const detailsHtml = `
-    <table class="grn-two-col">
-      <tbody>
-        <tr>
-          <td>
-            <div class="group-title">To</div>
-            <table class="data-table">
-              ${kvRow("Name", header.party_name, true)}
-              ${kvRow("Address", header.party_address)}
-              ${kvRow("Tel", header.party_phone)}
-              ${kvRow("Fax", header.party_fax)}
-            </table>
-          </td>
-          <td>
-            <div class="group-title">GRN Details</div>
-            <table class="data-table">
-              ${kvRow("GRN No", formatDocNo(header.doc_type, header.doc_no), true)}
-              ${kvRow("Date", dateText(header.doc_date))}
-              ${kvRow("A/C Code", header.ac_code)}
-              ${kvRow("Ref No", header.ref_no + (header.ref_date ? ` (${dateText(header.ref_date)})` : ""))}
-              ${kvRow("Deliver To", header.delivery_to)}
-              ${kvRow("Contact", contactMobile)}
-              ${kvRow("Email", emailToShow)}
-              ${kvRow("Delivery Term", header.dlvr_term)}
-            </table>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+   const detailsHtml = `
+    <div class="info-grid">
+      <div class="info-block">
+        <div class="label">To</div>
+        <div class="value-line"><strong>${escapeHtml(header.party_name)}</strong></div>
+        <div class="value-line">${escapeHtml(header.party_address)}</div>
+        <div class="value-line">Tel: ${escapeHtml(header.party_phone)}</div>
+        <div class="value-line">Fax: ${escapeHtml(header.party_fax)}</div>
+      </div>
+      <div class="info-block">
+        <div class="label">GRN Details</div>
+        <div class="kv-line"><span class="kv-label">GRN No</span><span class="kv-value">: <strong>${escapeHtml(formatDocNo(header.doc_type, header.doc_no))}</strong></span></div>
+        <div class="kv-line"><span class="kv-label">Date</span><span class="kv-value">: ${escapeHtml(dateText(header.doc_date))}</span></div>
+        <div class="kv-line"><span class="kv-label">A/C Code</span><span class="kv-value">: ${escapeHtml(header.ac_code)}</span></div>
+        <div class="kv-line"><span class="kv-label">Ref No</span><span class="kv-value">: ${escapeHtml(header.ref_no)}${header.ref_date ? ` (${escapeHtml(dateText(header.ref_date))})` : ""}</span></div>
+        <div class="kv-line"><span class="kv-label">Deliver To</span><span class="kv-value">: ${escapeHtml(header.delivery_to)}</span></div>
+        <div class="kv-line"><span class="kv-label">Contact</span><span class="kv-value">: ${escapeHtml(contactMobile)}</span></div>
+        <div class="kv-line"><span class="kv-label">Email</span><span class="kv-value">: ${escapeHtml(emailToShow)}</span></div>
+        <div class="kv-line"><span class="kv-label">Delivery Term</span><span class="kv-value">: ${escapeHtml(header.dlvr_term)}</span></div>
+      </div>
+    </div>
     ${header.cancelled ? `<div class="grn-status">Cancelled</div>` : ""}`;
  
   // ── Line items, using the shared data-table look exactly like every other report ──
@@ -416,12 +446,11 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
         </thead>
         <tbody>${bodyRows}</tbody>
       </table>
-      <table class="grn-totals">
-        <tbody>
-          <tr><td>Total P. Qty</td><td class="num">${qtyFmt(totals.totalPQty)}</td></tr>
-          <tr><td>Total L. Qty</td><td class="num">${qtyFmt(totals.totalLQty)}</td></tr>
-          <tr class="grand"><td>Total Quantity</td><td class="num">${qtyFmt(totals.totalQty)}</td></tr>
-        </tbody>
+      <div class="totals-box">
+  <div class="row"><span>Total P. Qty</span><span>${qtyFmt(totals.totalPQty)}</span></div>
+  <div class="row"><span>Total L. Qty</span><span>${qtyFmt(totals.totalLQty)}</span></div>
+  <div class="row grand"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
+</div>
       </table>`;
   }
  
@@ -561,18 +590,20 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
   rows_.push([null, null, null, null, null, null, null]);
  
   const totalRows: [string, number][] = [
-    ["Total P. Qty", totals.totalPQty],
-    ["Total L. Qty", totals.totalLQty],
-  ];
-  totalRows.forEach(([label, value]) => {
-    const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, cell(value, "groupTotalNum"), null]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
-  });
- 
-  const gtRow = rows_.length;
-  rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, cell(totals.totalQty, "grandTotalNum"), null]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 4 } });
+  ["Total P. Qty", totals.totalPQty],
+  ["Total L. Qty", totals.totalLQty],
+];
+totalRows.forEach(([label, value]) => {
+  const r = rows_.length;
+  rows_.push([cell(label, "groupTotal"), null, null, null, null, null, cell(value, "groupTotalNum")]);
+  merges.push({ s: { r, c: 0 }, e: { r, c: 5 } });
+});
+
+const gtRow = rows_.length;
+rows_.push([cell("Total Quantity", "grandTotal"), null, null, null, null, null, cell(totals.totalQty, "grandTotalNum")]);
+merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 5 } });
+
+rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
  
   // ── Style registration engine ──
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
@@ -620,6 +651,7 @@ function buildExcelBuffer(data: GrnData, loginId: string): Buffer {
       alignment: { horizontal: "right", vertical: "center" },
       numFmt: "#,##0.000",
     },
+    footer: { font: { italic: true, sz: 8, color: { rgb: "FF64748B" } }, alignment: { horizontal: "right" } },
   };
  
   const fonts: FontDef[] = [{}];

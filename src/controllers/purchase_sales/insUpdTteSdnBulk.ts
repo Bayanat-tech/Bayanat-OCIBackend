@@ -225,7 +225,7 @@ export const insUpdTteSdnBulk = async (
 
 
       REF_DOC_NO:
-        header.ref_doc_no ?? 0,
+        header.ref_doc_no ?? null,
 
 
 

@@ -1,8 +1,10 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { QueryExecutor } from "../../database/QueryExecutor";
+import { RequestWithUser } from "../../interfaces/common.interface";
 import oracledb from "oracledb";
+import { getPamsLoginId, getPamsTenantSchema, validatePamsGeneratedSql } from "./pamsTenantSafety";
 
-export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): Promise<void> => {
+export const proc_build_dynamic_sql_PAMS = async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
     const {
       parameter,
@@ -23,18 +25,18 @@ export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): 
       date4
     } = req.body;
 
-    console.log('check dynamic sql', req.body);
-
     if (!parameter) {
       res.status(400).json({ error: "Missing required parameter 'parameter'" });
       return;
     }
 
+    const tenantSchema = await getPamsTenantSchema();
+
     // Call the procedure correctly with OUT bind (Tenant-Aware)
     const result = await QueryExecutor.executeRawQuery(
       `
       BEGIN
-        PROC_BUILD_DYNAMIC_SQL_PAMS(
+        ${tenantSchema}.PROC_BUILD_DYNAMIC_SQL_PAMS(
           :parameter,
           :loginid,
           :code1,
@@ -57,7 +59,7 @@ export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): 
       `,
       {
         parameter,
-        loginid,
+        loginid: getPamsLoginId(req),
         code1,
         code2,
         code3,
@@ -88,26 +90,14 @@ export const proc_build_dynamic_sql_PAMS = async (req: Request, res: Response): 
       return;
     }
 
-    console.log("Generated SQL:", rawSql);
-
     let tableData: any[] = [];
     let message: string | undefined;
 
     // Execute SELECT statements dynamically
     if (/^\s*(SELECT|WITH)/i.test(rawSql))  {
+      validatePamsGeneratedSql(rawSql, "read");
       const dataResult = await QueryExecutor.executeRawQuery(rawSql, []);
 
-      console.log("=== RAW ROWS ===", JSON.stringify(dataResult.rows?.[0]));
-      console.log("=== METADATA ===", JSON.stringify(dataResult.metaData));
-      console.log("=== ROW TYPE ===", typeof dataResult.rows?.[0], Array.isArray(dataResult.rows?.[0]));
-
-      // tableData = dataResult.rows?.map((row: any) => {
-      //   const obj: Record<string, any> = {};
-      //   dataResult.metaData?.forEach((col: any, i: number) => {
-      //     obj[col.name.toLowerCase()] = row[i];
-      //   });
-      //   return obj;
-      // }) || [];
       tableData = dataResult.rows ?? [];
     } else {
       // For UPDATE/INSERT/DELETE statements or messages

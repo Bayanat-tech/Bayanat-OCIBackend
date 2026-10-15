@@ -10,23 +10,33 @@ export interface LeaveResumeDatesUpdate {
 
 export const HrService = {
   getEmployeesUnder: async (supervisor_empid: string) => {
+
+    console.log('supervisor_empid:', supervisor_empid);
     try {
       const query = `
-      SELECT * 
-      FROM VW_HR_EMPLOYEE 
-      WHERE
-      EMP_STATUS IN ('P','C') 
-      AND ( SUPERVISOR_EMPID = :supervisor_empid 
-      OR DEPT_HEAD_EMPID = :supervisor_empid 
-      OR MANGR_EMPID = :supervisor_empid )
+          SELECT DISTINCT *
+    FROM (
+      SELECT *
+      FROM VW_HR_EMPLOYEE_AWARE
+      WHERE EMP_STATUS <> 'S'
+      START WITH
+        EMPLOYEE_ID = ${supervisor_empid}
+        OR SUPERVISOR_EMPID = ${supervisor_empid}
+        OR DEPT_HEAD_EMPID = ${supervisor_empid}
+        OR MANGR_EMPID = ${supervisor_empid}
+      CONNECT BY NOCYCLE PRIOR EMPLOYEE_ID = SUPERVISOR_EMPID
+        OR PRIOR EMPLOYEE_ID = DEPT_HEAD_EMPID
+        OR PRIOR EMPLOYEE_ID = MANGR_EMPID
+    )
     `;
+    console.log('query:', query);
 
-      const bindParams = {
-        supervisor_empid: supervisor_empid,
-      };
+      // const bindParams = {
+      //   supervisor_empid: supervisor_empid,
+      // };
 
-      const result = await QueryExecutor.executeRawQuery(query, bindParams);
-
+      const result = await QueryExecutor.executeRawQuery(query);
+      console.log('result:',result);
       if (!result || !result.rows || result.rows.length === 0) {
         console.warn(`No employees found under empid: ${supervisor_empid}`);
         return [];

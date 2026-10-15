@@ -117,6 +117,78 @@ export const procBulkAccountEntry = async (
       header.doc_no = '0'
     }
     console.log("Header doc_no after check:", header.inv_no);
+
+    // Accounting validation: For commercial invoices, verify settled payments before updating
+    if (header.doc_no && String(header.doc_no) !== '0' && ['PI', 'PO', 'SI', 'SV'].includes(String(header.doc_type || '').toUpperCase())) {
+      const existingRes = await connection.execute(
+        `SELECT h.ac_code, NVL(h.canceled, 'N') AS canceled,
+           NVL((
+             SELECT SUM(ABS(d.lcur_amount))
+             FROM TR_AC_INVDETAIL d
+             JOIN TR_AC_HEADER pay_h
+               ON pay_h.company_code = d.company_code
+              AND pay_h.doc_no       = d.doc_no
+              AND pay_h.doc_type     = d.doc_type
+              AND NVL(pay_h.canceled, 'N') = 'N'
+             WHERE d.company_code = h.company_code
+               AND (d.inv_no = h.doc_no OR (h.ref_no IS NOT NULL AND d.inv_no = h.ref_no))
+               AND NVL(d.indicator_origin, 'N') = 'N'
+               AND NVL(d.lcur_amount, 0) <> 0
+           ), 0) AS paid_amount
+         FROM TR_AC_HEADER h
+         WHERE h.company_code = :cc
+           AND h.doc_no       = :dn
+           AND h.doc_type     = :dt`,
+        {
+          cc: header.company_code,
+          dn: String(header.doc_no),
+          dt: String(header.doc_type).toUpperCase(),
+        },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      const existingRow = (existingRes.rows?.[0] as any);
+      if (existingRow) {
+        const settledPaid = Number(existingRow.PAID_AMOUNT || 0);
+        if (settledPaid > 0.0001) {
+          // 1. Prevent cancelling invoice when payments exist
+          if (oneChar(header.canceled) === 'Y') {
+            try { await connection.close(); } catch {}
+            res.status(400).json({
+              success: false,
+              message: `Cannot cancel invoice ${header.doc_no}. Active payments totaling ${settledPaid.toFixed(3)} have already been settled against this invoice. Please unallocate or cancel the payment vouchers first.`,
+            });
+            return;
+          }
+
+          // 2. Prevent changing the party account when payments exist
+          if (header.ac_code && existingRow.AC_CODE && String(header.ac_code).trim() !== String(existingRow.AC_CODE).trim()) {
+            try { await connection.close(); } catch {}
+            res.status(400).json({
+              success: false,
+              message: `Cannot change party account on invoice ${header.doc_no}. Active payments totaling ${settledPaid.toFixed(3)} have already been settled against this invoice.`,
+            });
+            return;
+          }
+
+          // 3. Prevent reducing the invoice net amount below settled payments
+          const line9001 = safeDetails.find((d: any) => Number(d.serial_no) === 9001);
+          const newInvoiceTotal = line9001
+            ? Math.abs(Number(line9001.lcur_amount ?? line9001.amount ?? 0))
+            : safeDetails.filter((d: any) => Number(d.serial_no) !== 9001).reduce((sum: number, d: any) => sum + Math.abs(Number(d.lcur_amount ?? d.amount ?? 0)), 0);
+
+          if (newInvoiceTotal > 0 && newInvoiceTotal < settledPaid - 0.001) {
+            try { await connection.close(); } catch {}
+            res.status(400).json({
+              success: false,
+              message: `Invoice total (${newInvoiceTotal.toFixed(3)}) cannot be less than already settled payments (${settledPaid.toFixed(3)}). Please adjust the payment vouchers or issue a debit/credit note first.`,
+            });
+            return;
+          }
+        }
+      }
+    }
+
     const result = await connection.execute(
       `
       BEGIN
@@ -272,8 +344,10 @@ export const procBulkAccountEntry = async (
             EX_RATE: d.ex_rate,
             EX_RATE_ORIGIN: d.ex_rate_origin,
             CURR_CODE_ORIGIN: d.curr_code_origin,
-            AMOUNT_ORIGIN: d.amount_origin,
-            INDICATOR_ORIGIN: oneChar(d.indicator_origin),
+            INDICATOR_ORIGIN: oneChar(
+              d.indicator_origin,
+              (header.doc_type === 'SI' || header.doc_type === 'PI' || header.doc_type === 'SV' || header.doc_type === 'PO') ? 'Y' : 'N'
+            ),
             DIV_CODE: d.div_code
           }))
         },
@@ -327,6 +401,29 @@ export const procBulkAccountEntry = async (
     );
 
     await connection.commit();
+
+    const outHeader = (result.outBinds as any)?.p_header?.[0];
+    const generatedDocNo = outHeader?.DOC_NO || header.doc_no;
+    if (generatedDocNo && generatedDocNo !== '0' && ['SI', 'PI', 'SV', 'PO'].includes(header.doc_type)) {
+      try {
+        await connection.execute(
+          `UPDATE TR_AC_INVDETAIL 
+           SET INV_NO = :genDocNo 
+           WHERE company_code = :cc 
+             AND doc_no = :genDocNo 
+             AND (inv_no = '0' OR inv_no IS NULL)
+             AND indicator_origin = 'Y'`,
+          {
+            genDocNo: generatedDocNo,
+            cc: header.company_code,
+            refNo: header.ref_no || ''
+          }
+        );
+        await connection.commit();
+      } catch (uErr) {
+        console.warn('[procBulkAccountEntry] Could not update TR_AC_INVDETAIL.INV_NO:', uErr);
+      }
+    }
 
     res.json({
       success: true,
