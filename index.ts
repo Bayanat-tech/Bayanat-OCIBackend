@@ -43,6 +43,7 @@ import pamsRoutes from "./src/routes/pams.routes";
 import almsRoutes from "./src/routes/alms.routes";
 import mmsRoutes from "./src/routes/mms_routes";
 import gmHrRoutes from "./src/routes/HR/gmHr.routes";
+import { generateReportPdf } from "./src/controllers/pdf_download";
 //----------------routes-------------
 app.use("/api/files", fileRoutes);
 
@@ -85,7 +86,9 @@ app.use("/api/wms", wmsRoutes);
 
 app.use("/api/user", editLangrouter);
 
-app.use("/api/mms", mmsRoutes); 
+app.use("/api/mms", mmsRoutes);
+
+app.post('/api/report-pdf', generateReportPdf)
 
 // Health check
 app.get("/health", (req: Request, res: Response) => {
