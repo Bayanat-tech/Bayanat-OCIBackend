@@ -1,6 +1,11 @@
-// src/pages/hr/Reports/RetirementReportHtml.ts (or controllers/wms/reports/RetirementReport.controller.ts)
+// src/controllers/wms/reports/RetirementReport.controller.ts
 //
 // HR Retirement Report — HTML/print endpoint
+// Visual style matches the Labour Card Expiry / Freight Expense preview:
+//   • navy header row (white text, no cell borders)
+//   • plain data rows, thin bottom border, no zebra
+//   • ALL data cells same weight (400), colour and size
+//   • bold-navy grand total (#e2e8f0)
 
 import { Response } from "express";
 import oracledb from "oracledb";
@@ -196,7 +201,12 @@ async function loadRetirementData(req: RequestWithUser): Promise<ReportRow[]> {
   }
 }
 
-// ─── Extra CSS ────────────────────────────────────────────────────────────────
+// ─── Extra CSS — matches the Labour Card Expiry / Freight Expense preview ────
+//
+//   navy          = #00378c  (header bar, title, totals)
+//   grandStrip    = #e2e8f0  (Grand Total row)
+//   rowBg         = #fcfdfe  (data rows)
+//   rule          = #e2e8f0  (thin bottom border under each row)
 
 const RETIREMENT_EXTRA_CSS = `
   * {
@@ -205,56 +215,145 @@ const RETIREMENT_EXTRA_CSS = `
     color-adjust: exact !important;
   }
 
-  .rpt-title {
-    text-align: center;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 3px;
-    padding: 5px 0;
-    margin: 0 0 10px;
-    border-bottom: 1px solid #cbd5e1;
+  body, table.ret-table {
+    font-family: Inter, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   }
 
-  .ret-table {
+  /* ── Title ──────────────────────────────────────────────────────────── */
+  .doc-title-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin: 4px 0 10px 0;
+  }
+  body .doc-title-row h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: #00378c !important;   /* beats report_common's print override (#0b4ca1) */
+    letter-spacing: 0;
+  }
+
+  /* ── Table reset ────────────────────────────────────────────────────── */
+  table.ret-table {
     width: 100%;
+    max-width: 100%;
     border-collapse: collapse;
-    font-size: 10px;
-    margin-top: 8px;
+    table-layout: fixed;
+    font-size: 10.5px;
+    margin-top: 6px;
+    border: 0;
   }
-  .ret-table th,
-  .ret-table td {
-    border: 1px solid #94a3b8;
-    padding: 3px 5px;
-    text-align: left;
-    vertical-align: top;
-  }
-  .ret-table th {
-    background: #f1f5f9;
+
+  /* ── Navy header ────────────────────────────────────────────────────── */
+  table.ret-table thead th {
+    background: #00378c !important;
+    color: #ffffff !important;
     font-weight: 700;
+    font-size: 10.5px;
+    letter-spacing: 0;
+    padding: 10px 8px;
+    text-align: left;
+    vertical-align: middle;
+    border: 0 !important;
+    box-shadow: inset 0 0 0 1000px #00378c;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+  table.ret-table thead th.num-head { text-align: right; }
+  table.ret-table thead th.center-head { text-align: center; }
+
+  /* ── Data rows — every cell: same weight, colour, size ─────────────── */
+  table.ret-table tbody td {
+    padding: 6px 8px;
+    border: 0;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #1e293b;
+    font-size: 10.5px;
+    font-weight: 400;
+    background: #fcfdfe;
+    vertical-align: middle;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* ── Alignment ─────────────────────────────────────────────────────── */
+  .center { text-align: center; }
+  .left   { text-align: left; }
+  .right  { text-align: right; }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .ret-table td.num { text-align: right; }
-  .ret-table td.ret { font-weight: 700; }
-  .ret-table thead { display: table-header-group; }
-  .ret-table tr { page-break-inside: avoid; }
 
-  .ret-total {
-    margin-top: 8px;
-    font-size: 10.5px;
+  /* ── Grand Total ───────────────────────────────────────────────────── */
+  table.ret-table tbody tr.grand-total-row td {
+    background: #e2e8f0 !important;
+    color: #00378c !important;
+    font-weight: 800;
+    text-align: right;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  /* ── Empty state ───────────────────────────────────────────────────── */
+  .ret-empty {
+    border: 1px dashed #cbd5e1;
+    background: #f8fafc;
+    text-align: center;
+    padding: 40px 12px;
+    margin-top: 14px;
+    color: #64748b;
     font-weight: 700;
+  }
+
+  /* ── Screen-only compact sizing (print unaffected) ─────────────────── */
+  @media screen {
+    body .doc-title-row h1 { font-size: 13px; }
+    table.ret-table { font-size: 9.5px; }
+    table.ret-table thead th { font-size: 9.5px; padding: 7px 6px; }
+    table.ret-table tbody td { padding: 5px 6px; font-size: 9.5px; }
+  }
+
+  /* ── Print: keep navy header, avoid row splits ─────────────────────── */
+  @media print {
+    body .doc-title-row h1 { color: #00378c !important; }
+
+    table.ret-table thead { display: table-header-group; }
+    table.ret-table tr    { page-break-inside: avoid; }
+
+    table.ret-table thead th {
+      background: #00378c !important;
+      color: #ffffff !important;
+      box-shadow: inset 0 0 0 1000px #00378c;
+    }
   }
 `;
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Loads Inter so the PDF renderer doesn't fall back to a wide system font. */
+const FONT_LINK = `
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">`;
+
 // ─── Body Renderer ────────────────────────────────────────────────────────────
 
+const COL_COUNT = 7;
+
 function renderRetirementBody(rows: ReportRow[], filtersHtml = ""): string {
-  const heading = `<div class="rpt-title">RETIREMENT REPORT</div>`;
+  const heading = `
+    ${FONT_LINK}
+    <div class="doc-title-row">
+      <div><h1>Retirement Report</h1></div>
+    </div>`;
 
   if (!rows.length) {
     return `
       ${heading}
       ${filtersHtml}
-      <p class="center muted">No data found</p>
+      <div class="ret-empty">No data found</div>
     `;
   }
 
@@ -265,32 +364,45 @@ function renderRetirementBody(rows: ReportRow[], filtersHtml = ""): string {
           <td class="num">${i + 1}</td>
           <td>${escapeHtml(r.employee_code ?? r.emplyee_code)}</td>
           <td>${escapeHtml(r.rpt_name)}</td>
-          <td>${escapeHtml(fmtDate(r.birth_date))}</td>
+          <td class="center">${escapeHtml(fmtDate(r.birth_date))}</td>
           <td class="num">${escapeHtml(r.age)}</td>
-          <td>${escapeHtml(fmtDate(r.join_date))}</td>
-          <td class="ret">${escapeHtml(fmtDate(r.date_of_retirement))}</td>
+          <td class="center">${escapeHtml(fmtDate(r.join_date))}</td>
+          <td class="center">${escapeHtml(fmtDate(r.date_of_retirement))}</td>
         </tr>`,
     )
     .join("");
 
+  const grandTotal = `
+        <tr class="grand-total-row">
+          <td colspan="${COL_COUNT}">GRAND TOTAL (${rows.length} Records):</td>
+        </tr>`;
+
   return `
     ${heading}
     ${filtersHtml}
-    <table class="ret-table">
+    <table class="ret-table" style="table-layout:fixed;width:100%;max-width:100%;">
+      <colgroup>
+        <col style="width:5%">
+        <col style="width:13%">
+        <col style="width:28%">
+        <col style="width:14%">
+        <col style="width:10%">
+        <col style="width:14%">
+        <col style="width:16%">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:32px">#</th>
-          <th style="width:110px">Employee</th>
+          <th class="num-head">SNo.</th>
+          <th>Employee</th>
           <th>Employee Name</th>
-          <th style="width:110px">Date of Birth</th>
-          <th style="width:80px">Current Age</th>
-          <th style="width:110px">Join Date</th>
-          <th style="width:130px">Date of Retirement</th>
+          <th class="center-head">Date of Birth</th>
+          <th class="num-head">Current Age</th>
+          <th class="center-head">Join Date</th>
+          <th class="center-head">Date of Retirement</th>
         </tr>
       </thead>
-      <tbody>${bodyRows}</tbody>
+      <tbody>${bodyRows}${grandTotal}</tbody>
     </table>
-    <div class="ret-total">Total: ${rows.length}</div>
   `;
 }
 
