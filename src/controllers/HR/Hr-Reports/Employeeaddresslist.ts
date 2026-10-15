@@ -44,9 +44,11 @@ interface AddressRow {
     employee_id: string;
     employee_code: string;
     employee_name: string;
-    rpt_name: string;
     join_date: any;
     desg_name: string;
+    labour_desg_name: string;
+    grade_name: string;
+    div_name: string;
     dept_name: string;
     section_name: string;
     phone_office: string;
@@ -58,20 +60,21 @@ interface AddressRow {
 interface AddressParams {
     loginid: string;
     companyCode: string;
-    division: string;      // comma separated codes or "" (= All)
+    division: string;           // comma separated codes or "" (= All)
     department: string;
     section: string;
     grade: string;
     designation: string;
-    employeeCode: string;  // comma separated codes or "" (= All)
-    status: string;        // single status code or "" (= All)
-    join_from: string;     // YYYY-MM-DD or ""
+    formalDesignation: string;  // LABOUR_DESG_CODE list
+    employeeCode: string;
+    status: string;             // single status code or "" (= All)
+    join_from: string;          // YYYY-MM-DD or ""
     join_to: string;
 }
 
 // ─── Resolve request body ─────────────────────────────────────────────────────
 // code1 company, code2 division, code3 department, code4 section, code5 grade,
-// code6 designation, code7 employee code, code8 status,
+// code6 designation, code7 employee code, code8 status, code9 formal designation,
 // date1/date2 join date from/to (YYYY-MM-DD, optional).
 
 const csvOrEmpty = (v: any): string => {
@@ -80,19 +83,20 @@ const csvOrEmpty = (v: any): string => {
 };
 
 function resolveParams(body: any): AddressParams {
-    const { loginid, company_code, code1, code2, code3, code4, code5, code6, code7, code8, date1, date2 } = body;
+    const { loginid, company_code, code1, code2, code3, code4, code5, code6, code7, code8, code9, date1, date2 } = body;
     return {
-        loginid:      loginid || "ADMIN",
-        companyCode:  text(company_code || code1),
-        division:     csvOrEmpty(code2),
-        department:   csvOrEmpty(code3),
-        section:      csvOrEmpty(code4),
-        grade:        csvOrEmpty(code5),
-        designation:  csvOrEmpty(code6),
-        employeeCode: csvOrEmpty(code7),
-        status:       csvOrEmpty(code8),
-        join_from:    text(date1).slice(0, 10),
-        join_to:      text(date2).slice(0, 10),
+        loginid:           loginid || "ADMIN",
+        companyCode:       text(company_code || code1),
+        division:          csvOrEmpty(code2),
+        department:        csvOrEmpty(code3),
+        section:           csvOrEmpty(code4),
+        grade:             csvOrEmpty(code5),
+        designation:       csvOrEmpty(code6),
+        employeeCode:      csvOrEmpty(code7),
+        status:            csvOrEmpty(code8),
+        formalDesignation: csvOrEmpty(code9),
+        join_from:         text(date1).slice(0, 10),
+        join_to:           text(date2).slice(0, 10),
     };
 }
 
@@ -126,32 +130,19 @@ async function fetchAddressRows(body: any): Promise<{ rows: AddressRow[]; connec
 
     try {
         const binds: Record<string, any> = {};
-        const where: string[] = [
-            "E.COMPANY_CODE = N.COMPANY_CODE",
-            "E.DESG_CODE    = N.DESG_CODE",
-            "E.COMPANY_CODE = G.COMPANY_CODE",
-            "E.GRADE_CODE   = G.GRADE_CODE",
-            "E.COMPANY_CODE = D.COMPANY_CODE",
-            "E.DIV_CODE     = D.DIV_CODE",
-            "E.COMPANY_CODE = M.COMPANY_CODE",
-            "E.DIV_CODE     = M.DIV_CODE",
-            "E.DEPT_CODE    = M.DEPT_CODE",
-            "E.COMPANY_CODE = S.COMPANY_CODE",
-            "E.DIV_CODE     = S.DIV_CODE",
-            "E.DEPT_CODE    = S.DEPT_CODE",
-            "E.SECTION_CODE = S.SECTION_CODE",
-        ];
+        const where: string[] = ["1 = 1"];
 
         if (p.companyCode) {
             binds.as_companycode = p.companyCode;
             where.push("E.COMPANY_CODE = :as_companycode");
         }
-        addInClause("E.DIV_CODE",      p.division,     "div",  binds, where);
-        addInClause("E.DEPT_CODE",     p.department,   "dept", binds, where);
-        addInClause("E.SECTION_CODE",  p.section,      "sect", binds, where);
-        addInClause("E.GRADE_CODE",    p.grade,        "grd",  binds, where);
-        addInClause("E.DESG_CODE",     p.designation,  "desg", binds, where);
-        addInClause("E.EMPLOYEE_CODE", p.employeeCode, "emp",  binds, where);
+        addInClause("E.DIV_CODE",         p.division,          "div",  binds, where);
+        addInClause("E.DEPT_CODE",        p.department,        "dept", binds, where);
+        addInClause("E.SECTION_CODE",     p.section,           "sect", binds, where);
+        addInClause("E.GRADE_CODE",       p.grade,             "grd",  binds, where);
+        addInClause("E.DESG_CODE",        p.designation,       "desg", binds, where);
+        addInClause("E.LABOUR_DESG_CODE", p.formalDesignation, "fdsg", binds, where);
+        addInClause("E.EMPLOYEE_CODE",    p.employeeCode,      "emp",  binds, where);
 
         if (p.status) {
             binds.as_empstatus = p.status;
@@ -167,27 +158,43 @@ async function fetchAddressRows(body: any): Promise<{ rows: AddressRow[]; connec
             where.push("E.JOIN_DATE < TO_DATE(:adt_join_to, 'YYYY-MM-DD') + 1");
         }
 
-        // NOTE: MS_HR_COMPANY was removed from the FROM list – it was never joined,
-        // so it produced a cartesian product. Division is now also joined on company.
+        // LEFT JOIN: master row ya LABOUR_DESG_CODE blank ho tab bhi employee report se gayab nahi hoga.
         const sql = `
             SELECT E.EMPLOYEE_ID,
                    E.EMPLOYEE_CODE,
-                   TRIM(NVL(E.TITLE, '') || ' ' || NVL(E.FIRST_NAME, '') || ' ' || NVL(E.LAST_NAME, '')) EMPLOYEE_NAME,
-                   E.RPT_NAME,
+                   NVL(TRIM(E.RPT_NAME), TRIM(E.FIRST_NAME || ' ' || E.LAST_NAME)) EMPLOYEE_NAME,
                    E.JOIN_DATE,
                    N.DESG_NAME,
+                   L.LABOUR_DESG_NAME,
+                   G.GRADE_NAME,
+                   D.DIV_NAME,
                    M.DEPT_NAME,
                    S.SECTION_NAME,
                    E.PHONE_OFFICE,
                    E.PHONE_OFFICE_EXTN,
                    E.MOBILE_NO,
                    E.EMAIL_OFFICIAL
-              FROM MS_HR_EMPLOYEE    E,
-                   MS_HR_DESIGNATION N,
-                   MS_HR_GRADE       G,
-                   MS_HR_DIVISION    D,
-                   MS_HR_DEPARTMENT  M,
-                   MS_HR_SECTION     S
+              FROM MS_HR_EMPLOYEE E
+              LEFT JOIN MS_HR_DESIGNATION N
+                     ON N.COMPANY_CODE = E.COMPANY_CODE
+                    AND N.DESG_CODE    = E.DESG_CODE
+              LEFT JOIN MS_HR_LABOUR_DESIGNATION L
+                     ON L.LABOUR_DESG_CODE = E.LABOUR_DESG_CODE
+              LEFT JOIN MS_HR_GRADE G
+                     ON G.COMPANY_CODE = E.COMPANY_CODE
+                    AND G.GRADE_CODE   = E.GRADE_CODE
+              LEFT JOIN MS_HR_DIVISION D
+                     ON D.COMPANY_CODE = E.COMPANY_CODE
+                    AND D.DIV_CODE     = E.DIV_CODE
+              LEFT JOIN MS_HR_DEPARTMENT M
+                     ON M.COMPANY_CODE = E.COMPANY_CODE
+                    AND M.DIV_CODE     = E.DIV_CODE
+                    AND M.DEPT_CODE    = E.DEPT_CODE
+              LEFT JOIN MS_HR_SECTION S
+                     ON S.COMPANY_CODE = E.COMPANY_CODE
+                    AND S.DIV_CODE     = E.DIV_CODE
+                    AND S.DEPT_CODE    = E.DEPT_CODE
+                    AND S.SECTION_CODE = E.SECTION_CODE
              WHERE ${where.join("\n               AND ")}
              ORDER BY E.EMPLOYEE_CODE`;
 
@@ -215,14 +222,15 @@ const officePhone = (r: AddressRow): string => {
 };
 
 const filterRows = (p: AddressParams): { label: string; value: string }[] => [
-    { label: "Join Date",     value: `${dateOrAll(p.join_from)} – ${dateOrAll(p.join_to)}` },
-    { label: "Division",      value: p.division     || ALL },
-    { label: "Department",    value: p.department   || ALL },
-    { label: "Section",       value: p.section      || ALL },
-    { label: "Grade",         value: p.grade        || ALL },
-    { label: "Designation",   value: p.designation  || ALL },
-    { label: "Employee Code", value: p.employeeCode || ALL },
-    { label: "Status",        value: p.status       || ALL },
+    { label: "Join Date",          value: `${dateOrAll(p.join_from)} – ${dateOrAll(p.join_to)}` },
+    { label: "Division",           value: p.division          || ALL },
+    { label: "Department",         value: p.department        || ALL },
+    { label: "Section",            value: p.section           || ALL },
+    { label: "Grade",              value: p.grade             || ALL },
+    { label: "Designation",        value: p.designation       || ALL },
+    { label: "Formal Designation", value: p.formalDesignation || ALL },
+    { label: "Employee Code",      value: p.employeeCode      || ALL },
+    { label: "Status",             value: p.status            || ALL },
 ];
 
 // ─── Excel HTML (.xls) ────────────────────────────────────────────────────────
@@ -235,11 +243,14 @@ function buildExcelHtml(rows: AddressRow[], params: AddressParams): string {
             (r, i) => `<tr>
           <td style="text-align:center">${i + 1}</td>
           <td style="font-weight:bold;color:#00378c">${escapeHtml(r.employee_code)}</td>
-          <td>${escapeHtml(r.employee_name)}</td>
+          <td>${escapeHtml(valueOrDash(r.employee_name))}</td>
           <td style="text-align:center">${escapeHtml(valueOrDash(formatDateStr(r.join_date)))}</td>
-          <td>${escapeHtml(valueOrDash(r.desg_name))}</td>
+          <td>${escapeHtml(valueOrDash(r.div_name))}</td>
           <td>${escapeHtml(valueOrDash(r.dept_name))}</td>
           <td>${escapeHtml(valueOrDash(r.section_name))}</td>
+          <td>${escapeHtml(valueOrDash(r.desg_name))}</td>
+          <td>${escapeHtml(valueOrDash(r.labour_desg_name))}</td>
+          <td>${escapeHtml(valueOrDash(r.grade_name))}</td>
           <td>${escapeHtml(officePhone(r))}</td>
           <td>${escapeHtml(valueOrDash(r.mobile_no))}</td>
           <td>${escapeHtml(valueOrDash(r.email_official))}</td>
@@ -277,12 +288,13 @@ function buildExcelHtml(rows: AddressRow[], params: AddressParams): string {
   <thead>
     <tr>
       <th>SI No.</th><th>Employee Code</th><th>Employee Name</th><th>Join Date</th>
-      <th>Designation</th><th>Department</th><th>Section</th>
+      <th>Division</th><th>Department</th><th>Section</th>
+      <th>Designation</th><th>Formal Designation</th><th>Grade</th>
       <th>Phone (Office)</th><th>Mobile No.</th><th>Email-ID</th>
     </tr>
   </thead>
   <tbody>${body}
-    <tr><td colspan="10" style="font-weight:bold;background:#dbe4f0;color:#00378c">Total Records : ${rows.length}</td></tr>
+    <tr><td colspan="13" style="font-weight:bold;background:#dbe4f0;color:#00378c">Total Records : ${rows.length}</td></tr>
   </tbody>
 </table>
 </body></html>`;
@@ -352,31 +364,36 @@ const ADDRESS_EXTRA_CSS = `
 
 // ─── Body ─────────────────────────────────────────────────────────────────────
 
-// % widths – add up to 100  (Code, Name, Join Date, Designation, Department, Section)
-const COL_WIDTHS = [10, 22, 10, 20, 19, 19];
+// % widths – total 100
+// Code, Name, Join Date, Division, Department, Section, Designation, Formal Desg, Grade
+const COL_WIDTHS = [8, 17, 8, 11, 12, 11, 13, 12, 8];
+const COL_COUNT = COL_WIDTHS.length;
 
 function renderBody(rows: AddressRow[], params: AddressParams): string {
     let tableRows = "";
     if (!rows.length) {
-        tableRows = `<tr class="empty-row"><td colspan="6">${escapeHtml(NO_DATA_MESSAGE)}</td></tr>`;
+        tableRows = `<tr class="empty-row"><td colspan="${COL_COUNT}">${escapeHtml(NO_DATA_MESSAGE)}</td></tr>`;
     } else {
         rows.forEach((r) => {
             tableRows += `
         <tr class="data-row">
           <td class="left nw primary-text" rowspan="2">${escapeHtml(r.employee_code)}</td>
-          <td class="left" rowspan="2">${escapeHtml(r.employee_name)}</td>
+          <td class="left" rowspan="2">${escapeHtml(valueOrDash(r.employee_name))}</td>
           <td class="center nw">${escapeHtml(valueOrDash(formatDateStr(r.join_date)))}</td>
-          <td class="left">${escapeHtml(valueOrDash(r.desg_name))}</td>
+          <td class="left">${escapeHtml(valueOrDash(r.div_name))}</td>
           <td class="left">${escapeHtml(valueOrDash(r.dept_name))}</td>
           <td class="left">${escapeHtml(valueOrDash(r.section_name))}</td>
+          <td class="left">${escapeHtml(valueOrDash(r.desg_name))}</td>
+          <td class="left">${escapeHtml(valueOrDash(r.labour_desg_name))}</td>
+          <td class="left">${escapeHtml(valueOrDash(r.grade_name))}</td>
         </tr>
         <tr class="data-row-sub">
           <td class="left" colspan="2">Ph: ${escapeHtml(officePhone(r))}</td>
-          <td class="left">Mob: ${escapeHtml(valueOrDash(r.mobile_no))}</td>
-          <td class="left">${escapeHtml(valueOrDash(r.email_official))}</td>
+          <td class="left" colspan="2">Mob: ${escapeHtml(valueOrDash(r.mobile_no))}</td>
+          <td class="left" colspan="3">${escapeHtml(valueOrDash(r.email_official))}</td>
         </tr>`;
         });
-        tableRows += `<tr class="grand-total-row"><td colspan="6">Total Records : ${rows.length}</td></tr>`;
+        tableRows += `<tr class="grand-total-row"><td colspan="${COL_COUNT}">Total Records : ${rows.length}</td></tr>`;
     }
 
     const filtersHtml = reportAppliedFilters(filterRows(params));
@@ -393,14 +410,17 @@ function renderBody(rows: AddressRow[], params: AddressParams): string {
           <th rowspan="2">Employee Code</th>
           <th rowspan="2">Employee Name</th>
           <th>Join Date</th>
-          <th>Designation</th>
+          <th>Division</th>
           <th>Department</th>
           <th>Section</th>
+          <th>Designation</th>
+          <th>Formal Designation</th>
+          <th>Grade</th>
         </tr>
         <tr>
           <th colspan="2">Phone (Office)</th>
-          <th>Mobile No.</th>
-          <th>Email-ID</th>
+          <th colspan="2">Mobile No.</th>
+          <th colspan="3">Email-ID</th>
         </tr>
       </thead>
       <tbody>
@@ -453,6 +473,7 @@ export const getEmployeeAddressListReport = async (req: RequestWithUser, res: Re
 };
 
 // ─── Excel Controller ─────────────────────────────────────────────────────────
+// NOTE: name kept as "Repot" so your existing route import still works.
 
 export const exportEmployeeAddressListRepotExcel = async (req: Request, res: Response): Promise<void> => {
     let connection: any;

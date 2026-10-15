@@ -112,6 +112,11 @@ import { getStockSummaryReportExcel, getStockSummaryReportHtml, getStockTransact
 import { exportEmployeeAssessmentReportExcel, getEmployeeAssessmentReport } from "../../../controllers/HR/Hr-Reports/Employeeassessmentreport";
 import { exportEmployeeTicketEligibilityReportExcel, getEmployeeTicketEligibilityReport } from "../../../controllers/HR/Hr-Reports/Employeeticketeligibility";
 import { exportEmployeeAddressListRepotExcel, getEmployeeAddressListReport } from "../../../controllers/HR/Hr-Reports/Employeeaddresslist";
+import { exportVacationSeparationReportExcel, getVacationSeparationReport } from "../../../controllers/HR/Hr-Reports/Vacationseparationreport";
+import { exportMonthlySalarySummaryReportExcel, getMonthlySalarySummaryReport } from "../../../controllers/HR/Hr-Reports/Monthlysalarysummary";
+import { exportEmployeeSalaryNotProcessedReportExcel, getEmployeeSalaryNotProcessedReport } from "../../../controllers/HR/Hr-Reports/Employeesalarynotprocessed";
+import { exportYearlyLeaveBalanceReportExcel, getYearlyLeaveBalanceReport } from "../../../controllers/HR/Hr-Reports/Yearlyleavebalance";
+import { exportLeaveResumptionReportExcel, getLeaveResumptionReport } from "../../../controllers/HR/Hr-Reports/leaveResumptionReport";
 
 
 
@@ -291,9 +296,31 @@ router.post('/reports/getEmployeeTicketEligibilityReportHtml/html', getEmployeeT
 router.post('/reports/exportEmployeeTicketEligibilityReportExcel/excel', exportEmployeeTicketEligibilityReportExcel); 
 
 
+router.post('/reports/getVacationSeparationReportHtml/html',  getVacationSeparationReport);
+router.post('/reports/getVacationSeparationReportExcel/excel', exportVacationSeparationReportExcel);
+
+
+
+router.post('/reports/getYearlyLeaveBalanceReportHtml/html',   getYearlyLeaveBalanceReport);
+router.post('/reports/exportYearlyLeaveBalanceReportExcel/excel', exportYearlyLeaveBalanceReportExcel);
+
+
+router.post('/reports/getMonthlySalarySummaryReportHtml/html',  getMonthlySalarySummaryReport);
+router.post('/reports/exportMonthlySalarySummaryReportExcel/excel', exportMonthlySalarySummaryReportExcel);
+
+
+router.post('/reports/getEmployeeSalaryNotProcessedReportHtml/html',   getEmployeeSalaryNotProcessedReport);
+router.post('/reports/getEmployeeSalaryNotProcessedReportExcel/excel', exportEmployeeSalaryNotProcessedReportExcel);
+
 router.post('/reports/getEmployeeAddressListReportHtml/html', getEmployeeAddressListReport);
 router.post('/reports/getEmployeeAddressListReportExcel/excel', exportEmployeeAddressListRepotExcel); 
 
+
+
+
+
+router.post('/reports/getLeaveResumptionReportHtml/html', getLeaveResumptionReport);
+router.post('/reports/exportLeaveResumptionReportExcel/excel', exportLeaveResumptionReportExcel); 
 
 router.post('/reports/tax-vat-out-ledger/html', getTaxInvoiceReport);
 router.post('/reports/tax-vat-out-ledger/excel', exportTaxInvoiceExcel);
