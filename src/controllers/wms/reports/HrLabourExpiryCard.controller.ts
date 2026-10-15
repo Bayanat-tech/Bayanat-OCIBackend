@@ -1,7 +1,8 @@
-// src/pages/hr/Reports/LabourCardExpiryReportHtml.ts
-// (or controllers/wms/reports/LabourCardExpiryReport.controller.ts)
+// src/controllers/wms/reports/LabourCardExpiryReport.controller.ts
 //
 // HR Labour Card Expiry Listing Report — HTML/print endpoint
+// Built on report_common (data-table, report-title, applied filters, header/footer).
+// Layout matches the legacy report (rpt_hr_expiry_labourcard_rpt).
 
 import { Response } from "express";
 import oracledb from "oracledb";
@@ -79,6 +80,11 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Date -> 'YYYY-MM-DD' string (the format PROC_BUILD_DYNAMIC_SQL_HR_REPORT expects). */
+function toYmd(d: Date | null): string | null {
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
 // ─── Param Parser ────────────────────────────────────────────────────────────
 
 function allIfBlank(value: unknown): string {
@@ -89,7 +95,6 @@ function allIfBlank(value: unknown): string {
 function parseParams(req: RequestWithUser) {
   const src = { ...(req.query as Record<string, any>), ...(req.body || {}) };
 
-  // Prefer the logged-in user's company, TRIM in case DB has trailing spaces.
   const userCompany = text(req.user?.company_code).trim();
   const companyCode = userCompany || text(src.company_code).trim() || "";
 
@@ -154,10 +159,11 @@ async function loadLabourCardData(req: RequestWithUser): Promise<ReportRow[]> {
       p_number2: null,
       p_number3: null,
       p_number4: null,
-      p_date1: { val: params.fromDate, type: oracledb.DATE },
-      p_date2: { val: params.toDate, type: oracledb.DATE },
-      p_date3: { val: null, type: oracledb.DATE },
-      p_date4: { val: null, type: oracledb.DATE },
+      // Procedure declares P_DATE1..4 as VARCHAR2 ('YYYY-MM-DD') — bind strings.
+      p_date1: toYmd(params.fromDate),
+      p_date2: toYmd(params.toDate),
+      p_date3: null,
+      p_date4: null,
       p_return_string: { dir: oracledb.BIND_OUT, type: oracledb.STRING, maxSize: 32767 },
     };
 
@@ -213,77 +219,46 @@ async function loadLabourCardData(req: RequestWithUser): Promise<ReportRow[]> {
   }
 }
 
-// ─── Extra CSS ────────────────────────────────────────────────────────────────
+// ─── Extra CSS (only what report_common does not already provide) ────────────
 
 const LABOUR_CARD_EXTRA_CSS = `
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
+  .lc-title { text-align: center; letter-spacing: 3px; margin-bottom: 8px; }
 
-  .rpt-title {
-    text-align: center;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 3px;
-    padding: 5px 0;
-    margin: 0 0 10px;
-    border-bottom: 1px solid #cbd5e1;
-  }
-
-  .lc-table {
+  /* Fixed columns + wrapping so nothing overflows or clips */
+  table.data-table.lc-table {
+    table-layout: fixed;
     width: 100%;
-    border-collapse: collapse;
-    font-size: 9.5px;
-    margin-top: 8px;
+    max-width: 100%;
   }
-  .lc-table th,
-  .lc-table td {
+  table.data-table.lc-table th,
+  table.data-table.lc-table td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     border: 1px solid #94a3b8;
-    padding: 3px 5px;
-    text-align: left;
-    vertical-align: top;
   }
-  .lc-table th {
-    background: #f1f5f9;
-    font-weight: 700;
-    white-space: nowrap;
+  table.data-table.lc-table th { text-align: center; }
+  table.data-table.lc-table td.ctr { text-align: center; }
+  table.data-table.lc-table td.num { white-space: normal; }
+  table.data-table.lc-table td.mono {
+    font-family: "Courier New", monospace;
+    word-break: break-all;
   }
-  .lc-table td.num { text-align: right; }
-  .lc-table td.ctr { text-align: center; }
-  .lc-table td.mono { font-family: "Courier New", monospace; letter-spacing: 0.5px; }
-  .lc-table thead { display: table-header-group; }
-  .lc-table tr { page-break-inside: avoid; }
 
-  /* Row status colouring */
-  .lc-table tr.status-expired  td { background: #fee2e2; }
-  .lc-table tr.status-today    td { background: #fef3c7; }
-  .lc-table tr.status-critical td { background: #ffedd5; }
-  .lc-table tr.status-active   td { background: #dcfce7; }
+  /* Two-line cells (Department/Division, Section/Designation) */
+  .lc-table .l1 { display: block; font-weight: 600; }
+  .lc-table .l2 { display: block; color: #475569; }
 
-  .lc-badge {
-    display: inline-block;
-    padding: 1px 6px;
-    border-radius: 8px;
-    font-size: 8.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-  }
-  .lc-badge.expired  { background: #dc2626; color: #fff; }
-  .lc-badge.today    { background: #d97706; color: #fff; }
-  .lc-badge.critical { background: #ea580c; color: #fff; }
-  .lc-badge.active   { background: #16a34a; color: #fff; }
+  /* Row status colours — !important so they beat report_common's print row striping */
+  table.data-table.lc-table tbody tr.status-expired  td { background: #fee2e2 !important; }
+  table.data-table.lc-table tbody tr.status-today    td { background: #fef3c7 !important; }
+  table.data-table.lc-table tbody tr.status-critical td { background: #ffedd5 !important; }
+  table.data-table.lc-table tbody tr.status-active   td { background: #dcfce7 !important; }
 
-  .lc-total {
-    margin-top: 8px;
-    font-size: 10.5px;
-    font-weight: 700;
-  }
+  .lc-total { margin-top: 8px; font-weight: 700; }
 `;
 
-// ─── Row Status Helper ────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusClass(raw: unknown): string {
   const s = text(raw).toLowerCase();
@@ -294,55 +269,49 @@ function statusClass(raw: unknown): string {
   return "";
 }
 
-function statusBadgeClass(raw: unknown): string {
-  const s = text(raw).toLowerCase();
-  if (s.includes("expired")) return "expired";
-  if (s.includes("today")) return "today";
-  if (s.includes("critical")) return "critical";
-  if (s.includes("active")) return "active";
-  return "";
+/** Inline wrapping rules: inline !important beats any stylesheet rule. */
+const WRAP =
+  "white-space:normal !important;word-break:break-word !important;overflow-wrap:anywhere !important;min-width:0;";
+
+/** Two-line cell; skips a blank line so nothing leaves a gap. */
+function twoLine(first: unknown, second: unknown): string {
+  const a = text(first).trim();
+  const b = text(second).trim();
+  return (
+    (a ? `<span class="l1" style="display:block;font-weight:600;${WRAP}">${escapeHtml(a)}</span>` : "") +
+    (b ? `<span class="l2" style="display:block;color:#475569;${WRAP}">${escapeHtml(b)}</span>` : "")
+  );
 }
 
 // ─── Body Renderer ────────────────────────────────────────────────────────────
 
 function renderLabourCardBody(rows: ReportRow[], filtersHtml = ""): string {
-  const heading = `<div class="rpt-title">LABOUR CARD EXPIRY LISTING</div>`;
+  const heading = `
+    <div class="doc-title-row">
+      <h1 class="report-title lc-title">LABOUR CARD EXPIRY LISTING</h1>
+    </div>`;
 
   if (!rows.length) {
     return `
       ${heading}
       ${filtersHtml}
-      <p class="center muted">No data found</p>
+      <div class="empty">No data found</div>
     `;
   }
 
   const bodyRows = rows
     .map((r, i) => {
-      const rowCls = statusClass(r.status);
-      const badgeCls = statusBadgeClass(r.status);
+      const employee = [text(r.employee_code), text(r.rpt_name)].filter(Boolean).join(" - ");
       return `
-        <tr class="${rowCls}">
+        <tr class="${statusClass(r.status)}">
           <td class="num">${i + 1}</td>
-          <td>${escapeHtml(r.employee_code)}</td>
-          <td>${escapeHtml(r.rpt_name)}</td>
-          <td>${escapeHtml(fmtDate(r.join_date))}</td>
-          <td>${escapeHtml(r.div_name)}</td>
-          <td>${escapeHtml(r.dept_name)}</td>
-          <td>${escapeHtml(r.section_name)}</td>
-          <td>${escapeHtml(r.desg_name)}</td>
-          <td>${escapeHtml(r.grade_name)}</td>
-          <td>${escapeHtml(r.sponsor_name)}</td>
+          <td style="${WRAP}">${escapeHtml(employee)}</td>
+          <td style="${WRAP}">${twoLine(r.dept_name, r.div_name)}</td>
+          <td style="${WRAP}">${twoLine(r.section_name, r.desg_name)}</td>
           <td class="mono">${escapeHtml(r.labourcard_no)}</td>
-          <td>${escapeHtml(fmtDate(r.labourcard_valid_from))}</td>
-          <td>${escapeHtml(fmtDate(r.labourcard_valid_to))}</td>
-          <td>${escapeHtml(fmtDate(r.visa_valid_from))}</td>
-          <td>${escapeHtml(fmtDate(r.visa_valid_to))}</td>
+          <td class="ctr">${escapeHtml(fmtDate(r.labourcard_valid_from))}</td>
+          <td class="ctr">${escapeHtml(fmtDate(r.labourcard_valid_to))}</td>
           <td class="ctr">${escapeHtml(r.days_remaining)}</td>
-          <td class="ctr">${
-            r.status
-              ? `<span class="lc-badge ${badgeCls}">${escapeHtml(r.status)}</span>`
-              : ""
-          }</td>
         </tr>`;
     })
     .join("");
@@ -350,26 +319,27 @@ function renderLabourCardBody(rows: ReportRow[], filtersHtml = ""): string {
   return `
     ${heading}
     ${filtersHtml}
-    <table class="lc-table">
+    <table class="data-table lc-table" style="table-layout:fixed;width:100%;max-width:100%;">
+      <colgroup>
+        <col style="width:5%">
+        <col style="width:19%">
+        <col style="width:20%">
+        <col style="width:20%">
+        <col style="width:12%">
+        <col style="width:9%">
+        <col style="width:9%">
+        <col style="width:6%">
+      </colgroup>
       <thead>
         <tr>
-          <th style="width:26px">#</th>
-          <th style="width:70px">Emp Code</th>
-          <th>Employee Name</th>
-          <th style="width:70px">Join Date</th>
-          <th>Division</th>
-          <th>Department</th>
-          <th>Section</th>
-          <th>Designation</th>
-          <th>Grade</th>
-          <th>Sponsor</th>
-          <th style="width:90px">Labour Card No</th>
-          <th style="width:70px">LC From</th>
-          <th style="width:70px">LC To</th>
-          <th style="width:70px">Visa From</th>
-          <th style="width:70px">Visa To</th>
-          <th style="width:50px">Days Left</th>
-          <th style="width:70px">Status</th>
+          <th>SNo.</th>
+          <th>Employee</th>
+          <th>Department<br/>Division</th>
+          <th>Section<br/>Designation</th>
+          <th>Labour Card No.</th>
+          <th>Valid From</th>
+          <th>Valid To</th>
+          <th>Valid<br/>Days</th>
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>
@@ -407,7 +377,7 @@ export const getLabourCardExpiryReportHtml = async (
     ]);
     const bodyHtml = renderLabourCardBody(rows, filtersHtml);
     const footerHtml = reportFooter({
-      reportName: "rpt_labour_card_expiry",
+      reportName: "rpt_hr_expiry_labourcard_rpt",
       userName: params.loginId,
       endLabel: "Powered by Bayanat Technology",
     });
@@ -420,7 +390,7 @@ export const getLabourCardExpiryReportHtml = async (
       extraCss: LABOUR_CARD_EXTRA_CSS,
       autoPrint: req.query.print !== "false",
       showPrintButton: true,
-      orientation: "landscape", // 17 columns → landscape reads far better
+      orientation: "portrait",
     });
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");

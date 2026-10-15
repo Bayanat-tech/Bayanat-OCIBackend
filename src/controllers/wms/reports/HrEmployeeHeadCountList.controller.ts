@@ -110,6 +110,11 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Date -> 'YYYY-MM-DD' string (the format PROC_BUILD_DYNAMIC_SQL_HR_REPORT expects). */
+function toYmd(d: Date | null): string | null {
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
 function num(value: unknown, digits = 0): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return "";
@@ -208,10 +213,12 @@ async function loadHeadCountData(req: RequestWithUser): Promise<ReportRow[]> {
       p_number3: null,
       p_number4: null,
 
-      p_date1: { val: params.fromDate, type: oracledb.DATE },
-      p_date2: { val: params.toDate, type: oracledb.DATE },
-      p_date3: { val: null, type: oracledb.DATE },
-      p_date4: { val: null, type: oracledb.DATE },
+      // Procedure declares P_DATE1..4 as VARCHAR2 ('YYYY-MM-DD') — bind strings,
+      // NOT oracledb.DATE (that gets NLS-formatted and parsed as year 0001).
+      p_date1: toYmd(params.fromDate),
+      p_date2: toYmd(params.toDate),
+      p_date3: null,
+      p_date4: null,
 
       p_return_string: {
         dir: oracledb.BIND_OUT,
