@@ -498,14 +498,7 @@ async function renderHtml(data: GrnData, loginId: string, p: ReqParams, req: Req
   // ── Body: report title first, then details / items / remarks / terms ──
   const bodyHtml = `
     <div class="grn-report-title">${escapeHtml(REPORT_TITLE)}</div>
- 
     ${detailsHtml}
- 
-    <div class="group">
-      <div class="group-title">Items</div>
-      ${itemsHtml}
-    </div>
- 
     ${remarksHtml}
     ${termsHtml}`;
  

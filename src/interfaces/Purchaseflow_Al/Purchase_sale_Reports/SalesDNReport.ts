@@ -439,7 +439,7 @@ function printMetaHtml(title: string, subtitle: string, cancelled: boolean): str
 function renderSalesDnBody(rows: ReportRow[]): string {
   const header = buildHeader(rows);
   const totals = computeTotals(rows, header);
-  const amountInWords = amountToWords(totals.grandTotal, header.curr_code);
+ 
 
   const bodyRows = rows
     .map(
@@ -449,9 +449,7 @@ function renderSalesDnBody(rows: ReportRow[]): string {
           <td>${escapeHtml(r.prod_code)} ${escapeHtml(r.prod_name)}${r.det_remarks ? ` — ${escapeHtml(r.det_remarks)}` : ""}</td>
           <td>${escapeHtml(r.p_uom)}</td>
           <td class="right">${qtyFmt(qtyOf(r))}</td>
-          <td class="right">${amtFmt(r.unit_price)}</td>
-          <td class="right">${amtFmt(lineDiscOf(r))}</td>
-          <td class="right amount">${amtFmt(r.amount)}</td>
+          
         </tr>`
     )
     .join("");
@@ -489,9 +487,7 @@ function renderSalesDnBody(rows: ReportRow[]): string {
             <th>Product / Description</th>
             <th>Unit</th>
             <th class="right">Qty</th>
-            <th class="right">Unit Rate</th>
-             <th class="right">Disc</th>
-            <th class="right">Gross Value</th>
+            
           </tr>
         </thead>
         <tbody>${bodyRows}</tbody>
@@ -499,12 +495,10 @@ function renderSalesDnBody(rows: ReportRow[]): string {
 
       <div class="totals-box">
         <div class="row"><span>Total Quantity</span><span>${qtyFmt(totals.totalQty)}</span></div>
-        <div class="row"><span>Total Amount</span><span>${amtFmt(totals.totalAmount)}</span></div>
-        <div class="row"><span>Overall Discount</span><span>${amtFmt(totals.overallDiscount)}</span></div>
-        <div class="row grand"><span>Grand Total</span><span>${amtFmt(totals.grandTotal)}</span></div>
+        
       </div>
 
-      <div class="amount-words">${escapeHtml(amountInWords)}</div>
+     
                   ${header.remarks ? `<div class="group"><span class="strong">Remarks: </span><span class="muted">${escapeHtml(header.remarks)}</span></div>` : ""}
 
       <table class="dn-sign-table">
@@ -544,56 +538,39 @@ function buildExcelBuffer(rows: ReportRow[], loginId: string): Buffer {
 
   const cell = (v: unknown, styleKey: string): XlCell => ({ v, styleKey });
 
-  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null, null, null, null]);
-  merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
+  rows_.push([cell(`${REPORT_TITLE} - ${header.doc_no}`, "title"), null, null, null]);
+merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: COL_COUNT - 1 } });
 
-  rows_.push([cell(`Print User: ${loginId}`, "meta"), null, null, cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null, null, null]);
-  merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-  merges.push({ s: { r: 1, c: 3 }, e: { r: 1, c: 6 } });
+rows_.push([cell(`Print User: ${loginId}`, "meta"), null, cell(`Date: ${dateText(header.doc_date)}   A/C: ${header.ac_code}`, "meta"), null]);
+merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 1 } });
+merges.push({ s: { r: 1, c: 2 }, e: { r: 1, c: 3 } });
 
-  rows_.push([cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null, null, null, null]);
-  merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 6 } });
+rows_.push([cell(`To: ${header.party_name}, ${header.party_address}`, "meta"), null, null, null]);
+merges.push({ s: { r: 2, c: 0 }, e: { r: 2, c: 3 } });
 
-  rows_.push([null, null, null, null, null, null, null]);
+rows_.push([null, null, null, null]);
 
+rows_.push([
+  cell("S.No", "header"), cell("Product / Description", "header"),
+  cell("Unit", "header"), cell("Qty", "header"),
+]);
+
+rows.forEach((r, i) => {
   rows_.push([
-    cell("S.No", "header"), cell("Product / Description", "header"), cell("Unit", "header"),
-    cell("Qty", "header"), cell("Unit Rate", "header"), cell("Disc", "header"), cell("Amount", "header"),
+    cell(i + 1, "data"),
+    cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
+    cell(text(r.p_uom), "data"),
+    cell(qtyOf(r), "dataNum"),
   ]);
+});
 
-  rows.forEach((r, i) => {
-    rows_.push([
-      cell(i + 1, "data"),
-      cell(`${text(r.prod_code)} ${text(r.prod_name)}`, "data"),
-      cell(text(r.p_uom), "data"),
-      cell(qtyOf(r), "dataNum"),
-      cell(num(r.unit_price), "dataNum"),
-      cell(lineDiscOf(r), "dataNum"),
-      cell(num(r.amount), "dataNum"),
-    ]);
-  });
+rows_.push([null, null, null, null]);
 
-  rows_.push([null, null, null, null, null, null, null]);
+const qtyRow = rows_.length;
+rows_.push([cell("Total Quantity", "groupTotal"), null, null, cell(totals.totalQty, "groupTotalNum")]);
+merges.push({ s: { r: qtyRow, c: 0 }, e: { r: qtyRow, c: 2 } });
 
-  const totalRows: [string, number][] = [
-    ["Total Quantity", totals.totalQty],
-    ["Total Amount", totals.totalAmount],
-    ["Overall Discount", totals.overallDiscount],
-  ];
-  totalRows.forEach(([label, value]) => {
-    const r = rows_.length;
-    rows_.push([cell(label, "groupTotal"), null, null, null, null, null, cell(value, "groupTotalNum")]);
-    merges.push({ s: { r, c: 0 }, e: { r, c: 5 } });
-  });
-
-  const gtRow = rows_.length;
-  rows_.push([cell("Grand Total", "grandTotal"), null, null, null, null, null, cell(totals.grandTotal, "grandTotalNum")]);
-  merges.push({ s: { r: gtRow, c: 0 }, e: { r: gtRow, c: 5 } });
-
-  rows_.push([cell(amountInWords, "meta"), null, null, null, null, null, null]);
-  merges.push({ s: { r: rows_.length - 1, c: 0 }, e: { r: rows_.length - 1, c: 6 } });
-
-  rows_.push([null, null, null, null, null, null, cell("Powered by Bayanat Technology", "footer")]);
+rows_.push([null, null, null, cell("Powered by Bayanat Technology", "footer")]);
 
   interface FontDef { bold?: boolean; italic?: boolean; sz?: number; color?: string; }
   interface FillDef { color?: string; }
