@@ -334,52 +334,45 @@ const PURCHASE_INVOICE_TAX_EXTRA_CSS = `${PURCHASE_INVOICE_EXTRA_CSS}
   .data-table th:nth-child(9), .data-table td:nth-child(9)   { width: 10%; }
   .data-table th:nth-child(10), .data-table td:nth-child(10) { width: 15%; }
 `;
-const PURCHASE_INVOICE_TAX_PORTRAIT_CSS = `${PURCHASE_INVOICE_EXTRA_CSS}
-  @page { size: A4 portrait; margin: 10mm; }
+const PURCHASE_INVOICE_TAX_PORTRAIT_CSS = `
+  .doc-title-row { display:flex; justify-content:space-between; align-items:flex-start; margin:4px 0 12px 0; }
+  .doc-title-row h1 { margin:0; font-size:18px; font-weight:800; color:#0b4ca1; }
+  .doc-title-row .doc-sub { margin:2px 0 0; font-size:11px; color:#64748b; }
 
-  .totals-box { width: 100%; max-width: 280px; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .info-block { border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; background:#f8fafc; }
+  .info-block .label { font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:#64748b; margin-bottom:6px; font-weight:700; }
+  .info-block .value-line { font-size:12px; color:#0f172a; line-height:1.55; }
 
-  .data-table {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-    border-collapse: collapse;
+  .totals-box { margin-top:16px; margin-left:auto; width:300px; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; page-break-inside:avoid; }
+  .totals-box .row { display:flex; justify-content:space-between; padding:7px 14px; font-size:12px; border-bottom:1px solid #f1f5f9; }
+  .totals-box .row.grand { background:#0b4ca1; color:#fff; font-weight:700; font-size:13px; border-bottom:none; }
+
+  table.data-table.pi-portrait { width:100%; table-layout:fixed; }
+  table.data-table.pi-portrait th,
+  table.data-table.pi-portrait td {
+    font-size:9px;
+    padding:5px 3px;
+    word-break:break-word;
+    overflow-wrap:anywhere;
   }
-  .data-table th,
-  .data-table td {
-    font-size: 8.5px !important;
-    padding: 4px 3px !important;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-    white-space: normal !important;
-    min-width: 0 !important;
-  }
-  .data-table th:nth-child(1), .data-table td:nth-child(1)   { width: 5%; }
-  .data-table th:nth-child(2), .data-table td:nth-child(2)   { width: 22%; }
-  .data-table th:nth-child(3), .data-table td:nth-child(3)   { width: 6%; }
-  .data-table th:nth-child(4), .data-table td:nth-child(4)   { width: 7%; }
-  .data-table th:nth-child(5), .data-table td:nth-child(5)   { width: 9%; }
-  .data-table th:nth-child(6), .data-table td:nth-child(6)   { width: 9%; }
-  .data-table th:nth-child(7), .data-table td:nth-child(7)   { width: 10%; }
-  .data-table th:nth-child(8), .data-table td:nth-child(8)   { width: 6%; }
-  .data-table th:nth-child(9), .data-table td:nth-child(9)   { width: 9%; }
-  .data-table th:nth-child(10), .data-table td:nth-child(10) { width: 17%; }
 `;
 
-const TAX_TABLE_FIX_HTML_PORTRAIT = `
-<style>
-  @page { size: A4 portrait; margin: 10mm; }
-  body table.data-table { width: 100% !important; max-width: 100% !important; table-layout: fixed !important; }
-  body table.data-table th,
-  body table.data-table td {
-    font-size: 8.5px !important;
-    padding: 4px 3px !important;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-    white-space: normal !important;
-  }
-</style>`;
+// const TAX_TABLE_FIX_HTML_PORTRAIT = `
+// <style>
+//   @page { size: A4 portrait; margin: 10mm; }
+//   body table.data-table { width: 100% !important; max-width: 100% !important; table-layout: fixed !important; }
+//   body table.data-table th,
+//   body table.data-table td {
+//     font-size: 8.5px !important;
+//     padding: 4px 3px !important;
+//     word-break: break-word;
+//     overflow-wrap: anywhere;
+//     white-space: normal !important;
+//   }
+// </style>`;
+
+const TAX_TABLE_FIX_HTML_PORTRAIT = ``;
 
 const TAX_TABLE_FIX_HTML = `
 <style>
@@ -530,32 +523,32 @@ function renderPurchaseInvoiceTaxBody(
       </div>
     </div>
 
-        <table class="data-table" style="width:100%;max-width:100%;table-layout:fixed;">
+        <table class="data-table pi-portrait" style="${isPortrait ? "" : "width:100%;table-layout:fixed;"}">
   <colgroup>
     ${isPortrait
-      ? `<col style="width:5%"><col style="width:22%"><col style="width:6%"><col style="width:7%">
-         <col style="width:9%"><col style="width:9%"><col style="width:10%"><col style="width:6%">
-         <col style="width:9%"><col style="width:17%">`
+      ? `<col style="width:5%"><col style="width:21%"><col style="width:6%"><col style="width:6%">
+         <col style="width:9%"><col style="width:10%"><col style="width:11%"><col style="width:7%">
+         <col style="width:9%"><col style="width:16%">`
       : `<col style="width:5%"><col style="width:21%"><col style="width:6%"><col style="width:7%">
          <col style="width:9%"><col style="width:10%"><col style="width:10%"><col style="width:7%">
          <col style="width:10%"><col style="width:15%">`}
   </colgroup>
-      <thead>
-        <tr>
-          <th>S.No.</th>
-          <th>Product / Description</th>
-          <th>Unit</th>
-          <th class="right">Qty</th>
-          <th class="right">${isPortrait ? "Rate" : "Unit Rate"}</th>
-<th class="right">${isPortrait ? "Disc." : "Discount"}</th>
-<th class="right">Amount</th>
-<th class="right">VAT %</th>
-<th class="right">${isPortrait ? "Tax Amt" : "Amount Tax"}</th>
-<th class="right">${isPortrait ? "Total (Incl. Tax)" : "Amount (Incl. Tax)"}</th>
-        </tr>
-      </thead>
-      <tbody>${bodyRows}</tbody>
-    </table>
+  <thead>
+    <tr>
+      <th>S.No.</th>
+      <th>Product / Description</th>
+      <th>Unit</th>
+      <th class="right">Qty</th>
+      <th class="right">${isPortrait ? "Rate" : "Unit Rate"}</th>
+      <th class="right">${isPortrait ? "Disc." : "Discount"}</th>
+      <th class="right">Amount</th>
+      <th class="right">VAT %</th>
+      <th class="right">${isPortrait ? "Tax Amt" : "Amount Tax"}</th>
+      <th class="right">${isPortrait ? "Total" : "Amount (Incl. Tax)"}</th>
+    </tr>
+  </thead>
+  <tbody>${bodyRows}</tbody>
+</table>
 
     <div class="totals-box">
       <div class="row"><span>Total Quantity</span><span>${qtyFmt(t.totalQty)}</span></div>
@@ -685,15 +678,15 @@ export const getPurchaseInvoiceTaxReportHtml = async (req: RequestWithUser, res:
     const bodyHtml = renderPurchaseInvoiceTaxBody(rows, params.loginid, orientation);
 
     const html = buildReportDocument({
-      title: "Purchase Invoice (Tax)",
-      headerHtml,
-      bodyHtml,
-      footerHtml,
-      extraCss: orientation === "portrait" ? PURCHASE_INVOICE_TAX_PORTRAIT_CSS : PURCHASE_INVOICE_TAX_EXTRA_CSS,
-      autoPrint: false,
-      showPrintButton: true,
-      orientation,
-    });
+  title: "Purchase Invoice (Tax)",
+  headerHtml,
+  bodyHtml,
+  footerHtml,
+  extraCss: orientation === "portrait" ? PURCHASE_INVOICE_TAX_PORTRAIT_CSS : PURCHASE_INVOICE_TAX_EXTRA_CSS,
+  autoPrint: false,
+  showPrintButton: true,
+  ...(orientation === "landscape" ? { orientation } : {}),
+});
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(html);
